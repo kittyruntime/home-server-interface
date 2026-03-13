@@ -29,6 +29,7 @@ const TASK_STREAM = {
     "nasx.root.container.restart",
     "nasx.root.container.remove",
     "nasx.root.container.inspect",
+    "nasx.root.container.listAll",
     "nasx.root.network.create",
     "nasx.root.network.remove",
     "nasx.root.volume.create",

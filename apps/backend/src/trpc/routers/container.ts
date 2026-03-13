@@ -216,6 +216,68 @@ const appRouter = router({
         throw mapWorkerError(e)
       }
     }),
+
+  listUnmanaged: adminProcedure.query(async ({ ctx }) => {
+    type DockerContainer = {
+      name:         string
+      image:        string
+      status:       string
+      ports:        Array<{ hostPort: number; containerPort: number; protocol: string }>
+      labels:       Record<string, string>
+      volumes:      Array<{ type: string; source: string; target: string }>
+      networkNames: string[]
+    }
+
+    let all: DockerContainer[]
+    try {
+      all = await requestSync<DockerContainer[]>("nasx.root.container.listAll", {}, 10_000)
+    } catch {
+      return []
+    }
+
+    const managed     = await listApps(ctx.prisma)
+    const managedNames = new Set(managed.map(a => a.name))
+
+    return all
+      .filter(c => !managedNames.has(c.name))
+      .map(c => ({
+        name:           c.name,
+        image:          c.image,
+        status:         c.status,
+        ports:          c.ports         ?? [],
+        labels:         c.labels        ?? {},
+        volumes:        c.volumes       ?? [],
+        networkNames:   c.networkNames  ?? [],
+        composeProject: c.labels?.["com.docker.compose.project"] ?? null,
+        composeService: c.labels?.["com.docker.compose.service"] ?? null,
+        composeFile:    c.labels?.["com.docker.compose.config-files"] ?? null,
+      }))
+  }),
+
+  importContainer: adminProcedure
+    .input(z.object({
+      name:         z.string().min(1).max(64),
+      image:        z.string().min(1),
+      ports:        z.array(zPortMapping).default([]),
+      envs:         z.array(zEnvVar).default([]),
+      volumes:      z.array(z.object({
+        type:   z.enum(["bind", "named", "place"]),
+        source: z.string(),
+        target: z.string(),
+      })).default([]),
+      networkNames: z.array(z.string()).default([]),
+      labels:       z.array(zLabelEntry).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const app = await createApp(ctx.prisma, {
+        ...input,
+        capAdd:        [],
+        capDrop:       [],
+        restartPolicy: "no",
+      })
+      await setAppStatus(ctx.prisma, app.id, input.name ? "unknown" : "unknown")
+      return app
+    }),
 })
 
 // ── Network sub-router ────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppFormModal from './AppFormModal.vue'
+import UnmanagedContainers from './UnmanagedContainers.vue'
 
 type App = {
   id: string; name: string; image: string; status: string
@@ -367,6 +368,8 @@ async function unpin(app: App) {
       </div>
     </div>
   </div>
+
+  <UnmanagedContainers @imported="load" />
 
   <AppFormModal
     v-if="showModal"
