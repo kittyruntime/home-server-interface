@@ -1,10 +1,10 @@
-# NASX
+# Brume
 
 > [!WARNING]
-> **Early stage software.** NASX is under active development and has not been audited for security. It may contain vulnerabilities, incomplete features, or breaking changes without notice. Use at your own risk, preferably on an isolated network.
+> **Early stage software.** Brume is under active development and has not been audited for security. It may contain vulnerabilities, incomplete features, or breaking changes without notice. Use at your own risk, preferably on an isolated network.
 > Tested on **Ubuntu 24.04** only. Other distributions are not officially supported.
 
-A self-hosted server dashboard — browse, upload and manage files, monitor your system, and manage containers from any browser.
+A modern home server OS for self-hosting apps, media and storage.
 
 ---
 
@@ -64,17 +64,17 @@ The backend runs as an unprivileged user. A separate **root worker** process com
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/nasx/main/scripts/install-release.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh | sudo bash
 ```
 
 The script:
-1. Creates a `nasx` system user
-2. Installs Node.js 22 via nvm (in the `nasx` user's home)
+1. Creates a `brume` system user
+2. Installs Node.js 22 via nvm (in the `brume` user's home)
 3. Downloads and installs the [NATS](https://nats.io) message broker
-4. Installs the `nasx-root-worker` privilege worker
+4. Installs the `brume-root-worker` privilege worker
 5. Applies the database schema
 6. Seeds an `admin / admin` account
-7. Registers and starts three systemd services: `nasx-nats`, `nasx-root-worker`, `nasx`
+7. Registers and starts three systemd services: `brume-nats`, `brume-root-worker`, `brume`
 8. Configures nginx if present
 
 > **Change the admin password immediately after first login.**
@@ -84,7 +84,7 @@ The script:
 Re-run the same command. The script detects an existing installation, preserves the database and all secrets, and restarts only the application services.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/nasx/main/scripts/install-release.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh | sudo bash
 ```
 
 ### Pin a version
@@ -99,13 +99,13 @@ curl -fsSL ... | sudo VERSION=v1.2.0 bash
 
 | Unit | Role |
 |---|---|
-| `nasx-nats` | NATS JetStream message broker |
-| `nasx-root-worker` | Privileged filesystem worker (runs as root) |
-| `nasx` | Backend API + static file server |
+| `brume-nats` | NATS JetStream message broker |
+| `brume-root-worker` | Privileged filesystem worker (runs as root) |
+| `brume` | Backend API + static file server |
 
 ```bash
-systemctl status nasx nasx-root-worker nasx-nats
-journalctl -u nasx -f
+systemctl status brume brume-root-worker brume-nats
+journalctl -u brume -f
 ```
 
 ---
@@ -115,8 +115,8 @@ journalctl -u nasx -f
 Requirements: Node.js ≥ 18, pnpm, Go ≥ 1.21, curl, openssl.
 
 ```bash
-git clone https://github.com/kittyruntime/nasx
-cd nasx
+git clone https://github.com/kittyruntime/brume
+cd brume
 sudo bash scripts/install.sh
 ```
 
@@ -126,3 +126,4 @@ sudo bash scripts/install.sh
 
 Free for personal, non-commercial use by private individuals.
 Company and commercial use requires prior written agreement — see [LICENSE](LICENSE) for details.
+
