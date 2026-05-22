@@ -12,28 +12,28 @@ let js: JetStreamClient
 // ── Stream definition ─────────────────────────────────────────────────────────
 
 const TASK_STREAM = {
-  name: "BRUME_TASKS",
+  name: "TASKS",
   subjects: [
-    "brume.root.fs.mkdir",
-    "brume.root.fs.copy",
-    "brume.root.fs.move",
-    "brume.root.fs.rename",
-    "brume.root.fs.delete",
-    "brume.root.fs.assemble",
-    "brume.root.fs.chmod",
-    "brume.root.fs.chown",
-    "brume.root.container.create",
-    "brume.root.container.recreate",
-    "brume.root.container.start",
-    "brume.root.container.stop",
-    "brume.root.container.restart",
-    "brume.root.container.remove",
-    "brume.root.container.inspect",
-    "brume.root.container.listAll",
-    "brume.root.network.create",
-    "brume.root.network.remove",
-    "brume.root.volume.create",
-    "brume.root.volume.remove",
+    "root.fs.mkdir",
+    "root.fs.copy",
+    "root.fs.move",
+    "root.fs.rename",
+    "root.fs.delete",
+    "root.fs.assemble",
+    "root.fs.chmod",
+    "root.fs.chown",
+    "root.container.create",
+    "root.container.recreate",
+    "root.container.start",
+    "root.container.stop",
+    "root.container.restart",
+    "root.container.remove",
+    "root.container.inspect",
+    "root.container.listAll",
+    "root.network.create",
+    "root.network.remove",
+    "root.volume.create",
+    "root.volume.remove",
   ],
 }
 
@@ -42,10 +42,10 @@ const TASK_STREAM = {
 export async function connectNats(): Promise<void> {
   const servers = process.env.NATS_URL ?? "nats://127.0.0.1:4222"
   const user    = process.env.NATS_USER ?? "backend"
-  const pass    = process.env.NATS_PASS ?? "brume-backend-dev"
+  const pass    = process.env.NATS_PASS ?? "backend-dev"
 
   // Retry the initial connection for up to 60 s.  systemd's After= guarantees
-  // brume-nats is *started* before us, but not necessarily ready yet.
+  // nats is *started* before us, but not necessarily ready yet.
   const deadline = Date.now() + 60_000
   while (true) {
     try {
@@ -64,7 +64,7 @@ export async function connectNats(): Promise<void> {
     await jsm.streams.add(TASK_STREAM as any)
   } catch (e: any) {
     if (e instanceof NatsError && e.message.includes("stream name already in use")) {
-      await jsm.streams.update("BRUME_TASKS", TASK_STREAM as any)
+      await jsm.streams.update("TASKS", TASK_STREAM as any)
     } else {
       throw e
     }
@@ -97,7 +97,7 @@ export async function publishJob(
     data: { id: jobId, status: "pending", action, userId },
   })
 
-  const subject = `brume.root.${action}`
+  const subject = `root.${action}`
   await js.publish(subject, sc.encode(JSON.stringify({ jobId, ...payload })))
 
   return jobId
@@ -134,7 +134,7 @@ export async function requestRead(
   timeout = 30_000,
 ): Promise<Buffer> {
   const msg = await nc.request(
-    "brume.root.fs.read",
+    "root.fs.read",
     sc.encode(JSON.stringify({ path, linuxUsername })),
     { timeout },
   )
@@ -159,7 +159,7 @@ export async function writeChunk(opts: {
     linuxUsername: opts.linuxUsername,
   }))
   const msg = await nc.request(
-    "brume.root.fs.write-chunk",
+    "root.fs.write-chunk",
     opts.data,
     { headers: h, timeout },
   )
@@ -184,7 +184,7 @@ type JobEvent = {
 }
 
 export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void> {
-  const sub = nc.subscribe("brume.events.job.*")
+  const sub = nc.subscribe("events.job.*")
 
   for await (const msg of sub) {
     try {

@@ -330,16 +330,16 @@ authorization {
       user: "backend"
       password: "$NATS_BACKEND_PASS"
       permissions: {
-        publish:   [ "brume.root.>", "_INBOX.>", "\$JS.>" ]
-        subscribe: [ "brume.events.>", "_INBOX.>", "\$JS.>" ]
+        publish:   [ "root.>", "_INBOX.>", "\$JS.>" ]
+        subscribe: [ "events.>", "_INBOX.>", "\$JS.>" ]
       }
     }
     {
       user: "worker"
       password: "$NATS_WORKER_PASS"
       permissions: {
-        publish:   [ "brume.events.>", "_INBOX.>", "\$JS.>" ]
-        subscribe: [ "brume.root.>", "_INBOX.>", "\$JS.>" ]
+        publish:   [ "events.>", "_INBOX.>", "\$JS.>" ]
+        subscribe: [ "root.>", "_INBOX.>", "\$JS.>" ]
       }
     }
   ]

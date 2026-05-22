@@ -2,7 +2,7 @@ import { ref, watchEffect } from 'vue'
 
 export type Theme = 'auto' | 'light' | 'dark'
 
-const STORAGE_KEY = 'brume-theme'
+const STORAGE_KEY = 'theme'
 
 function readStored(): Theme {
   const v = localStorage.getItem(STORAGE_KEY)
@@ -36,7 +36,7 @@ export function useTheme() {
 
 export type Accent = 'orange' | 'blue' | 'green' | 'purple'
 
-const ACCENT_KEY = 'brume-accent'
+const ACCENT_KEY = 'accent'
 
 function readAccent(): Accent {
   const v = localStorage.getItem(ACCENT_KEY)

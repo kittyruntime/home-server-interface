@@ -206,7 +206,7 @@ const appRouter = router({
       const app = await getApp(ctx.prisma, input.id)
       try {
         const result = await requestSync<{ status: string; [k: string]: unknown }>(
-          "brume.root.container.inspect",
+          "root.container.inspect",
           { containerName: app.name },
         )
         await setAppStatus(ctx.prisma, input.id, result.status ?? "unknown")
@@ -230,7 +230,7 @@ const appRouter = router({
 
     let all: DockerContainer[]
     try {
-      all = await requestSync<DockerContainer[]>("brume.root.container.listAll", {}, 10_000)
+      all = await requestSync<DockerContainer[]>("root.container.listAll", {}, 10_000)
     } catch {
       return []
     }
