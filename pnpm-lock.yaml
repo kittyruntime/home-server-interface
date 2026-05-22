@@ -10,6 +10,12 @@ importers:
 
   apps/backend:
     dependencies:
+      '@brume/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@brume/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.2.0
@@ -19,12 +25,6 @@ importers:
       '@fastify/static':
         specifier: ^8.1.1
         version: 8.3.0
-      '@nasx/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@nasx/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.4
@@ -62,7 +62,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@nasx/shared-types':
+      '@brume/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@trpc/client':
