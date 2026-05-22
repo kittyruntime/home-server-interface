@@ -413,6 +413,12 @@ systemctl enable brume
 systemctl restart brume
 success "Service installed and started (systemctl status brume)"
 
+# ── 14. Record installed version ─────────────────────────────────────────────────
+PKG_VERSION=$(node -p "require(\'$REPO_ROOT/package.json\').version" 2>/dev/null || echo "0.0.0")
+echo "v${PKG_VERSION}" > "$REPO_ROOT/VERSION"
+chown "$BACKEND_USER:" "$REPO_ROOT/VERSION"
+success "Version recorded → $REPO_ROOT/VERSION"
+
 # ── 14. nginx (optional) ─────────────────────────────────────────────────────────
 if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"

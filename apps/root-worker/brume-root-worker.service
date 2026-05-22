@@ -1,17 +1,17 @@
 [Unit]
-Description=NASX Root Worker
-Documentation=https://github.com/nasx
+Description=Brume Root Worker
+Documentation=https://github.com/kittyruntime/Brume
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/nasx-root-worker
+ExecStart=/usr/local/bin/brume-root-worker
 User=root
 # Credentials are read from this file at runtime.
-# Create /etc/nasx/worker.env with:
+# Create /etc/brume/worker.env with:
 #   NATS_URL=nats://127.0.0.1:4222
 #   NATS_USER=worker
 #   NATS_PASS=<password matching nats.conf>
-EnvironmentFile=/etc/nasx/worker.env
+EnvironmentFile=/etc/brume/worker.env
 PrivateTmp=yes
 # NoNewPrivileges must be off: the worker uses setresuid to impersonate users.
 NoNewPrivileges=no

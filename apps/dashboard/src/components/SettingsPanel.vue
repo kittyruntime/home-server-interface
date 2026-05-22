@@ -5,10 +5,11 @@ import ProfileSection from './ProfileSection.vue'
 import UserListPanel from './UserListPanel.vue'
 import PlacesSection from './PlacesSection.vue'
 import RolesSection from './RolesSection.vue'
+import UpdateSection from './UpdateSection.vue'
 
 const { isAdmin, canManageUsers } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'roles'
+type SectionId = 'profile' | 'users' | 'places' | 'roles' | 'updates'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -24,6 +25,7 @@ const nav: NavItem[] = [
   { id: 'users',       label: 'Users',       show: () => canManageUsers.value },
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'admin' },
   { id: 'roles',       label: 'Roles',       show: () => isAdmin.value, group: 'admin' },
+  { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'admin' },
 ]
 
 const visibleNav = computed(() => nav.filter(n => n.show()))
@@ -78,6 +80,10 @@ watch(() => props.focusSection, s => { if (s) active.value = s })
             <svg v-else-if="item.id === 'roles'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             </svg>
+            <!-- Updates icon -->
+            <svg v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
             {{ item.label }}
           </button>
         </div>
@@ -94,6 +100,7 @@ watch(() => props.focusSection, s => { if (s) active.value = s })
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
         <RolesSection       v-else-if="active === 'roles'" />
+        <UpdateSection      v-else-if="active === 'updates'" />
 
       </div>
     </div>

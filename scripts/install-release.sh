@@ -464,7 +464,90 @@ systemctl enable brume
 systemctl restart brume
 success "Service installed and started"
 
-# ── 17. nginx (optional) ────────────────────────────────────────────────────────
+# ── 17. Record installed version ────────────────────────────────────────────────
+echo "$VERSION" > "$INSTALL_DIR/VERSION"
+chown "$BRUME_USER:" "$INSTALL_DIR/VERSION"
+success "Version recorded → $INSTALL_DIR/VERSION"
+
+# ── 18. Update checker (systemd timer) ──────────────────────────────────────────
+step "Installing update checker"
+
+install -m 755 /dev/stdin /usr/local/bin/brume-check-update << 'CHECKEOF'
+#!/usr/bin/env bash
+REPO="kittyruntime/Brume"
+INSTALL_DIR="${INSTALL_DIR:-/opt/brume}"
+latest=$(curl -fsSL --max-time 15 \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/${REPO}/releases/latest" \
+  | grep -oP '"tag_name":\s*"\K[^"]+' || true)
+[[ -n "$latest" ]] || exit 0
+printf '{"latestVersion":"%s","checkedAt":"%s"}\n' \
+  "$latest" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "$INSTALL_DIR/.update-check.json"
+CHECKEOF
+
+cat > /etc/systemd/system/brume-update-check.service << EOF
+[Unit]
+Description=Brume update check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=$BRUME_USER
+Environment=INSTALL_DIR=$INSTALL_DIR
+ExecStart=/usr/local/bin/brume-check-update
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=brume-update-check
+EOF
+
+cat > /etc/systemd/system/brume-update-check.timer << 'EOF'
+[Unit]
+Description=Daily Brume update check
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+cat > /etc/systemd/system/brume-update-apply.service << EOF
+[Unit]
+Description=Apply pending Brume update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/bin/bash -c 'VERSION=\$(cat $INSTALL_DIR/.pending-update) bash <(curl -fsSL https://raw.githubusercontent.com/kittyruntime/Brume/main/scripts/install-release.sh)'
+ExecStartPost=-/bin/rm -f $INSTALL_DIR/.pending-update
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=brume-update
+EOF
+
+cat > /etc/systemd/system/brume-update-apply.path << EOF
+[Unit]
+Description=Watch for pending Brume update
+
+[Path]
+PathExists=$INSTALL_DIR/.pending-update
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now brume-update-check.timer
+systemctl enable --now brume-update-apply.path
+success "Update checker timer and apply watcher enabled"
+
+# ── 19. nginx (optional) ────────────────────────────────────────────────────────
 if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"
 
