@@ -8,6 +8,10 @@ A modern home server dashboard for self-hosting apps, media and storage.
 
 ---
 
+![Demo](docs/demo.gif)
+
+---
+
 | List view | Grid view |
 |---|---|
 | ![File browser — list view](docs/screenshots/fm-row.png) | ![File browser — grid view](docs/screenshots/fm-grid.png) |
