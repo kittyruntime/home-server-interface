@@ -8,7 +8,7 @@ if (!process.env.JWT_SECRET) {
   )
 }
 
-export const JWT_SECRET = process.env.JWT_SECRET ?? "nasx-dev-secret"
+export const JWT_SECRET = process.env.JWT_SECRET ?? "brume-dev-secret"
 
 export interface TokenPayload {
   userId: string

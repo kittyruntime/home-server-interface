@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
-import type { PrismaClient, Prisma } from "@nasx/database"
+import type { PrismaClient, Prisma } from "@brume/database"
 
 export const userSelect = {
   id: true,

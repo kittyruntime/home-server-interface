@@ -1,5 +1,5 @@
 {
-  "name": "@nasx/dashboard",
+  "name": "@brume/dashboard",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nasx/shared-types": "workspace:*",
+    "@brume/shared-types": "workspace:*",
     "@trpc/client": "^10.45.2",
     "vue": "^3.5.25",
     "vue-router": "^4.5.0",

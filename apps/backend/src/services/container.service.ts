@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server"
-import type { PrismaClient } from "@nasx/database"
+import type { PrismaClient } from "@brume/database"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

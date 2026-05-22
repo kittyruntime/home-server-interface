@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # =============================================================================
-# NASX — Install / Update from GitHub Release
+# Brume — Install / Update from GitHub Release
 # =============================================================================
-# Downloads the latest pre-built release from GitHub and installs NASX
-# as a systemd service. Node.js is installed via nvm in the nasx user space —
+# Downloads the latest pre-built release from GitHub and installs Brume
+# as a systemd service. Node.js is installed via nvm in the brume user space —
 # no system-wide Node required.
 #
 # First install:
-#   curl -fsSL https://raw.githubusercontent.com/kittyruntime/nasx/main/scripts/install-release.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh | sudo bash
 #
 # Update (re-run the same command):
-#   curl -fsSL https://raw.githubusercontent.com/kittyruntime/nasx/main/scripts/install-release.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh | sudo bash
 #
 # Or pin a specific version:
 #   curl -fsSL ... | sudo VERSION=v1.2.0 bash
 #
 # Environment overrides:
 #   VERSION               Release tag to install (default: latest)
-#   INSTALL_DIR           Installation directory  (default: /opt/nasx)
-#   NASX_USER             System user to run as   (default: nasx)
+#   INSTALL_DIR           Installation directory  (default: /opt/brume)
+#   BRUME_USER             System user to run as   (default: brume)
 #   BACKEND_PORT          Backend API port        (default: 9001)
 #   NATS_SERVER_VERSION   nats-server version     (default: v2.10.24)
 #   SKIP_NGINX            Set to 1 to skip nginx  (default: 0)
@@ -27,9 +27,9 @@
 
 set -euo pipefail
 
-REPO="kittyruntime/nasx"
-INSTALL_DIR="${INSTALL_DIR:-/opt/nasx}"
-NASX_USER="${NASX_USER:-nasx}"
+REPO="kittyruntime/brume"
+INSTALL_DIR="${INSTALL_DIR:-/opt/brume}"
+BRUME_USER="${BRUME_USER:-brume}"
 BACKEND_PORT="${BACKEND_PORT:-9001}"
 NATS_SERVER_VERSION="${NATS_SERVER_VERSION:-v2.10.24}"
 SKIP_NGINX="${SKIP_NGINX:-0}"
@@ -85,15 +85,15 @@ if [[ -z "${VERSION:-}" ]]; then
   [[ -n "$VERSION" ]] || die "Could not fetch latest release from GitHub."
 fi
 
-TARBALL_URL="https://github.com/${REPO}/releases/download/${VERSION}/nasx-${VERSION}-linux-amd64.tar.gz"
+TARBALL_URL="https://github.com/${REPO}/releases/download/${VERSION}/brume-${VERSION}-linux-amd64.tar.gz"
 
 info "Version:      $VERSION"
 info "Install dir:  $INSTALL_DIR"
-info "Run as user:  $NASX_USER"
+info "Run as user:  $BRUME_USER"
 info "Backend port: $BACKEND_PORT"
 
 # ── 3. Detect fresh install vs update ──────────────────────────────────────────
-DB_FILE="$INSTALL_DIR/database/data/nasx.db"
+DB_FILE="$INSTALL_DIR/database/data/brume.db"
 if [[ -f "$DB_FILE" ]]; then
   IS_UPDATE=1
   warn "Existing installation detected at $INSTALL_DIR — performing update"
@@ -106,20 +106,20 @@ fi
 # ── 4. Create system user ───────────────────────────────────────────────────────
 step "Setting up system user"
 
-if id "$NASX_USER" &>/dev/null; then
-  success "User '$NASX_USER' already exists"
+if id "$BRUME_USER" &>/dev/null; then
+  success "User '$BRUME_USER' already exists"
 else
-  useradd -r -m -s /usr/sbin/nologin "$NASX_USER"
-  success "Created system user '$NASX_USER'"
+  useradd -r -m -s /usr/sbin/nologin "$BRUME_USER"
+  success "Created system user '$BRUME_USER'"
 fi
 
-NASX_HOME=$(getent passwd "$NASX_USER" | cut -d: -f6)
-NVM_DIR="$NASX_HOME/.nvm"
+BRUME_HOME=$(getent passwd "$BRUME_USER" | cut -d: -f6)
+NVM_DIR="$BRUME_HOME/.nvm"
 
-# ── Helper: run a command as nasx with nvm loaded ──────────────────────────────
-nasx_exec() {
-  sudo -u "$NASX_USER" bash -c "
-    export HOME='$NASX_HOME'
+# ── Helper: run a command as brume with nvm loaded ──────────────────────────────
+brume_exec() {
+  sudo -u "$BRUME_USER" bash -c "
+    export HOME='$BRUME_HOME'
     export NVM_DIR='$NVM_DIR'
     [[ -s '$NVM_DIR/nvm.sh' ]] && source '$NVM_DIR/nvm.sh'
     $*
@@ -132,25 +132,25 @@ step "Installing Node.js $NODE_VERSION via nvm"
 if [[ -f "$NVM_DIR/nvm.sh" ]]; then
   warn "nvm already installed — skipping"
 else
-  sudo -u "$NASX_USER" bash -c "
-    export HOME='$NASX_HOME'
+  sudo -u "$BRUME_USER" bash -c "
+    export HOME='$BRUME_HOME'
     export NVM_DIR='$NVM_DIR'
     curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
   "
   success "nvm installed"
 fi
 
-nasx_exec "nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
-NODE_BIN=$(nasx_exec "nvm which $NODE_VERSION")
+brume_exec "nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
+NODE_BIN=$(brume_exec "nvm which $NODE_VERSION")
 NPM_BIN="$(dirname "$NODE_BIN")/npm"
 success "Node: $NODE_BIN"
 
 # ── 6. Stop services before replacing files (update only) ──────────────────────
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   step "Stopping services before update"
-  # Stop the app services; nasx-nats can keep running (we don't touch its binary
+  # Stop the app services; brume-nats can keep running (we don't touch its binary
   # unless a new nats-server version is requested — handled separately below).
-  systemctl stop nasx nasx-root-worker 2>/dev/null || true
+  systemctl stop brume brume-root-worker 2>/dev/null || true
   success "Application services stopped"
 fi
 
@@ -160,7 +160,7 @@ step "Downloading $VERSION"
 DL_DIR=$(mktemp -d)
 trap 'rm -rf "$DL_DIR"' EXIT
 
-TARBALL="$DL_DIR/nasx.tar.gz"
+TARBALL="$DL_DIR/brume.tar.gz"
 curl -fsSL --progress-bar "$TARBALL_URL" -o "$TARBALL" \
   || die "Download failed: $TARBALL_URL"
 success "Downloaded"
@@ -169,18 +169,18 @@ mkdir -p "$INSTALL_DIR"
 # Extract: replaces server.js, public/, database/prisma/, bin/ etc.
 # Does NOT touch database/data/ (not in tarball) or .env (not in tarball).
 tar -xzf "$TARBALL" --strip-components=1 -C "$INSTALL_DIR"
-chown -R "$NASX_USER:" "$INSTALL_DIR"
+chown -R "$BRUME_USER:" "$INSTALL_DIR"
 success "Extracted to $INSTALL_DIR"
 
-# ── 8. Install nasx-root-worker binary ─────────────────────────────────────────
-chmod +x "$INSTALL_DIR/bin/nasx-root-worker"
-install -m 755 "$INSTALL_DIR/bin/nasx-root-worker" /usr/local/bin/nasx-root-worker
-success "Installed: /usr/local/bin/nasx-root-worker"
+# ── 8. Install brume-root-worker binary ─────────────────────────────────────────
+chmod +x "$INSTALL_DIR/bin/brume-root-worker"
+install -m 755 "$INSTALL_DIR/bin/brume-root-worker" /usr/local/bin/brume-root-worker
+success "Installed: /usr/local/bin/brume-root-worker"
 
 # ── 9. Install runtime dependencies (Prisma, tsx) ──────────────────────────────
 step "Installing runtime dependencies"
 
-nasx_exec "
+brume_exec "
   '$NPM_BIN' install \
     --prefix '$INSTALL_DIR' \
     --no-save --no-fund --no-audit \
@@ -193,7 +193,7 @@ step "Generating Prisma client"
 
 PRISMA_BIN="$INSTALL_DIR/node_modules/.bin/prisma"
 
-nasx_exec "
+brume_exec "
   cd '$INSTALL_DIR/database'
   NODE_PATH='$INSTALL_DIR/node_modules' '$PRISMA_BIN' generate
 "
@@ -204,29 +204,29 @@ step "Setting up database"
 
 DB_DIR="$INSTALL_DIR/database/data"
 mkdir -p "$DB_DIR"
-chown "$NASX_USER:" "$DB_DIR"
+chown "$BRUME_USER:" "$DB_DIR"
 
 TSX_BIN="$INSTALL_DIR/node_modules/.bin/tsx"
 
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   # Back up the database before touching the schema.
-  BACKUP="$DB_DIR/nasx.db.bak-$(date +%Y%m%d-%H%M%S)"
+  BACKUP="$DB_DIR/brume.db.bak-$(date +%Y%m%d-%H%M%S)"
   cp "$DB_FILE" "$BACKUP"
   success "Database backed up → $BACKUP"
 
   # Rotate: keep only the 5 most recent backups.
-  ls -1t "$DB_DIR"/nasx.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
+  ls -1t "$DB_DIR"/brume.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
 
   # Apply schema changes. Without --accept-data-loss, Prisma refuses to run
   # destructive operations — manual intervention would be needed in that case.
-  nasx_exec "
+  brume_exec "
     cd '$INSTALL_DIR/database'
     NODE_PATH='$INSTALL_DIR/node_modules' '$PRISMA_BIN' db push
   "
   success "Schema migrated (existing data preserved)"
 else
   # Fresh install — no data to protect.
-  nasx_exec "
+  brume_exec "
     cd '$INSTALL_DIR/database'
     NODE_PATH='$INSTALL_DIR/node_modules' '$PRISMA_BIN' db push --accept-data-loss
   "
@@ -238,7 +238,7 @@ fi
 # users or their data. It also re-hashes any plaintext passwords left from
 # older releases.
 if [[ "${SKIP_SEED:-0}" != "1" ]]; then
-  nasx_exec "
+  brume_exec "
     cd '$INSTALL_DIR/database'
     NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' prisma/seed.ts
   "
@@ -259,7 +259,7 @@ if [[ -f "$ENV_FILE" ]]; then
 else
   JWT_SECRET=$(openssl rand -hex 32)
   printf 'NODE_ENV=production\nJWT_SECRET=%s\n' "$JWT_SECRET" > "$ENV_FILE"
-  chown "$NASX_USER:" "$ENV_FILE"
+  chown "$BRUME_USER:" "$ENV_FILE"
   chmod 600 "$ENV_FILE"
   success "Generated JWT secret → $ENV_FILE"
 fi
@@ -277,7 +277,7 @@ else
     || { rm -rf "$NATS_TMP"; die "Failed to download nats-server from $NATS_DL"; }
   tar -xzf "$NATS_TMP/nats.tar.gz" -C "$NATS_TMP" --strip-components=1
   # Stop NATS before replacing its binary (running executable cannot be replaced on Linux).
-  systemctl stop nasx-nats 2>/dev/null || true
+  systemctl stop brume-nats 2>/dev/null || true
   install -m 755 "$NATS_TMP/nats-server" /usr/local/bin/nats-server
   rm -rf "$NATS_TMP"
   success "Installed: /usr/local/bin/nats-server"
@@ -291,33 +291,33 @@ fi
 # ── 14. Configure NATS ──────────────────────────────────────────────────────────
 step "Configuring NATS"
 
-NASX_CONF_DIR="/etc/nasx"
-NATS_DATA_DIR="/var/lib/nasx/nats"
-NATS_CONF="$NASX_CONF_DIR/nats.conf"
-WORKER_ENV="$NASX_CONF_DIR/worker.env"
+BRUME_CONF_DIR="/etc/brume"
+NATS_DATA_DIR="/var/lib/brume/nats"
+NATS_CONF="$BRUME_CONF_DIR/nats.conf"
+WORKER_ENV="$BRUME_CONF_DIR/worker.env"
 
-mkdir -p "$NASX_CONF_DIR" "$NATS_DATA_DIR"
+mkdir -p "$BRUME_CONF_DIR" "$NATS_DATA_DIR"
 chown nats: "$NATS_DATA_DIR"
 
 # Generate credentials once; on updates the existing credentials are reused so
 # the worker and backend .env do not need manual rotation.
-if [[ ! -f "$NASX_CONF_DIR/.nats-credentials" ]]; then
+if [[ ! -f "$BRUME_CONF_DIR/.nats-credentials" ]]; then
   NATS_BACKEND_PASS=$(openssl rand -hex 32)
   NATS_WORKER_PASS=$(openssl rand -hex 32)
   printf 'NATS_BACKEND_PASS=%s\nNATS_WORKER_PASS=%s\n' \
     "$NATS_BACKEND_PASS" "$NATS_WORKER_PASS" \
-    > "$NASX_CONF_DIR/.nats-credentials"
-  chmod 600 "$NASX_CONF_DIR/.nats-credentials"
-  success "Generated NATS credentials → $NASX_CONF_DIR/.nats-credentials"
+    > "$BRUME_CONF_DIR/.nats-credentials"
+  chmod 600 "$BRUME_CONF_DIR/.nats-credentials"
+  success "Generated NATS credentials → $BRUME_CONF_DIR/.nats-credentials"
 else
   warn "NATS credentials already exist — reusing"
 fi
 
 # shellcheck source=/dev/null
-source "$NASX_CONF_DIR/.nats-credentials"
+source "$BRUME_CONF_DIR/.nats-credentials"
 
 cat > "$NATS_CONF" <<EOF
-# NASX NATS configuration — generated by install-release.sh on $(date)
+# Brume NATS configuration — generated by install-release.sh on $(date)
 max_payload: 67108864  # 64 MB
 
 jetstream {
@@ -330,16 +330,16 @@ authorization {
       user: "backend"
       password: "$NATS_BACKEND_PASS"
       permissions: {
-        publish:   [ "nasx.root.>", "_INBOX.>", "\$JS.>" ]
-        subscribe: [ "nasx.events.>", "_INBOX.>", "\$JS.>" ]
+        publish:   [ "brume.root.>", "_INBOX.>", "\$JS.>" ]
+        subscribe: [ "brume.events.>", "_INBOX.>", "\$JS.>" ]
       }
     }
     {
       user: "worker"
       password: "$NATS_WORKER_PASS"
       permissions: {
-        publish:   [ "nasx.events.>", "_INBOX.>", "\$JS.>" ]
-        subscribe: [ "nasx.root.>", "_INBOX.>", "\$JS.>" ]
+        publish:   [ "brume.events.>", "_INBOX.>", "\$JS.>" ]
+        subscribe: [ "brume.root.>", "_INBOX.>", "\$JS.>" ]
       }
     }
   ]
@@ -368,44 +368,44 @@ NATS_PASS=$NATS_BACKEND_PASS
 EOF
 success "Backend NATS credentials → $ENV_FILE"
 
-cat > /etc/systemd/system/nasx-nats.service <<EOF
+cat > /etc/systemd/system/brume-nats.service <<EOF
 [Unit]
-Description=NASX NATS JetStream Server
+Description=Brume NATS JetStream Server
 After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/nats-server --config $NATS_CONF
 # Wait until port 4222 is accepting connections before systemd marks this
-# service active.  This makes After=nasx-nats.service a true readiness gate
-# for the dependent nasx and nasx-root-worker units.
+# service active.  This makes After=brume-nats.service a true readiness gate
+# for the dependent brume and brume-root-worker units.
 ExecStartPost=/bin/bash -c 'for i in \$(seq 1 30); do bash -c "echo >/dev/tcp/127.0.0.1/4222" 2>/dev/null && exit 0; sleep 1; done; exit 1'
 User=nats
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=nasx-nats
+SyslogIdentifier=brume-nats
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable nasx-nats
-systemctl restart nasx-nats
-success "nasx-nats service started"
+systemctl enable brume-nats
+systemctl restart brume-nats
+success "brume-nats service started"
 
 # ── 15. Install worker service ──────────────────────────────────────────────────
-step "Installing nasx-root-worker service"
+step "Installing brume-root-worker service"
 
-cat > /etc/systemd/system/nasx-root-worker.service <<EOF
+cat > /etc/systemd/system/brume-root-worker.service <<EOF
 [Unit]
-Description=NASX Root Worker
-After=network.target nasx-nats.service
-Requires=nasx-nats.service
+Description=Brume Root Worker
+After=network.target brume-nats.service
+Requires=brume-nats.service
 
 [Service]
-ExecStart=/usr/local/bin/nasx-root-worker
+ExecStart=/usr/local/bin/brume-root-worker
 User=root
 EnvironmentFile=$WORKER_ENV
 PrivateTmp=yes
@@ -414,33 +414,33 @@ Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=nasx-root-worker
+SyslogIdentifier=brume-root-worker
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable nasx-root-worker
-systemctl restart nasx-root-worker
-success "nasx-root-worker service started"
+systemctl enable brume-root-worker
+systemctl restart brume-root-worker
+success "brume-root-worker service started"
 
 # ── 16. Systemd service (backend) ───────────────────────────────────────────────
 step "Installing systemd service"
 
-SERVICE_FILE="/etc/systemd/system/nasx.service"
+SERVICE_FILE="/etc/systemd/system/brume.service"
 
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=NASX NAS Backend
+Description=Brume Backend
 Documentation=https://github.com/${REPO}
-After=network.target nasx-nats.service nasx-root-worker.service
-Requires=nasx-nats.service nasx-root-worker.service
+After=network.target brume-nats.service brume-root-worker.service
+Requires=brume-nats.service brume-root-worker.service
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-User=$NASX_USER
+User=$BRUME_USER
 WorkingDirectory=$INSTALL_DIR
 EnvironmentFile=$ENV_FILE
 ExecStart=$NODE_BIN $INSTALL_DIR/server.js
@@ -448,20 +448,20 @@ Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=nasx
+SyslogIdentifier=brume
 
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$INSTALL_DIR/database/data $NASX_HOME /tmp
+ReadWritePaths=$INSTALL_DIR/database/data $BRUME_HOME /tmp
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable nasx
-systemctl restart nasx
+systemctl enable brume
+systemctl restart brume
 success "Service installed and started"
 
 # ── 17. nginx (optional) ────────────────────────────────────────────────────────
@@ -469,10 +469,10 @@ if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"
 
   DASHBOARD_DIST="$INSTALL_DIR/public"
-  NGINX_CONF="/etc/nginx/sites-available/nasx"
+  NGINX_CONF="/etc/nginx/sites-available/brume"
 
   cat > "$NGINX_CONF" <<EOF
-# NASX — generated by install-release.sh on $(date)
+# Brume — generated by install-release.sh on $(date)
 server {
     listen 80;
     server_name _;
@@ -509,8 +509,8 @@ EOF
 
   SITES_ENABLED="/etc/nginx/sites-enabled"
   if [[ -d "$SITES_ENABLED" ]]; then
-    rm -f "$SITES_ENABLED/nasx"
-    ln -s "$NGINX_CONF" "$SITES_ENABLED/nasx"
+    rm -f "$SITES_ENABLED/brume"
+    ln -s "$NGINX_CONF" "$SITES_ENABLED/brume"
   fi
 
   if [[ -f "$SITES_ENABLED/default" ]]; then
@@ -526,11 +526,11 @@ fi
 echo ""
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   echo -e "${BOLD}${GREEN}╔═══════════════════════════════════╗"
-  echo -e "║   NASX updated successfully!     ║"
+  echo -e "║   Brume updated successfully!     ║"
   echo -e "╚═══════════════════════════════════╝${NC}"
 else
   echo -e "${BOLD}${GREEN}╔═══════════════════════════════════╗"
-  echo -e "║   NASX installed successfully!   ║"
+  echo -e "║   Brume installed successfully!   ║"
   echo -e "╚═══════════════════════════════════╝${NC}"
 fi
 echo ""
@@ -538,9 +538,9 @@ echo ""
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
 if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
-  echo -e "  ${BOLD}Access NASX:${NC}  http://$SERVER_IP"
+  echo -e "  ${BOLD}Access Brume:${NC}  http://$SERVER_IP"
 else
-  echo -e "  ${BOLD}Access NASX:${NC}  http://$SERVER_IP:$BACKEND_PORT"
+  echo -e "  ${BOLD}Access Brume:${NC}  http://$SERVER_IP:$BACKEND_PORT"
 fi
 
 echo ""
@@ -554,10 +554,10 @@ fi
 
 echo ""
 echo -e "  ${BOLD}Useful commands:${NC}"
-echo -e "    systemctl status nasx               # backend"
-echo -e "    systemctl status nasx-root-worker   # privilege worker"
-echo -e "    systemctl status nasx-nats          # message bus"
-echo -e "    journalctl -u nasx -f               # live logs"
+echo -e "    systemctl status brume               # backend"
+echo -e "    systemctl status brume-root-worker   # privilege worker"
+echo -e "    systemctl status brume-nats          # message bus"
+echo -e "    journalctl -u brume -f               # live logs"
 echo ""
 echo -e "  ${BOLD}To update:${NC}"
 echo -e "    curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install-release.sh | sudo bash"

@@ -3,4 +3,4 @@ dist/
 *.db
 *.db-journal
 apps/backend/bin/
-apps/root-worker/nasx-root-worker
+apps/root-worker/brume-root-worker

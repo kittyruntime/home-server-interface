@@ -27,7 +27,7 @@ const CATALOG: { type: WidgetType; label: string }[] = [
 
 // ---- Persistence ----------------------------------------------------------
 
-const SK = 'nasx:dashboard'
+const SK = 'brume:dashboard'
 
 const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w-cpu',  type: 'cpu',        cols: 1 },

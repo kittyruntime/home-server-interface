@@ -229,7 +229,7 @@ func doVolumeRemove(name string) error {
 
 // ── Inspect (sync request-reply) ──────────────────────────────────────────────
 
-// handleDockerInspect handles nasx.root.docker.container.inspect (request-reply).
+// handleDockerInspect handles brume.root.docker.container.inspect (request-reply).
 // Returns {"status":"running","running":true,"exitCode":0} or similar.
 func handleDockerInspect(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
@@ -261,7 +261,7 @@ func handleDockerInspect(nc *nats.Conn, msg *nats.Msg) {
 
 // ── Async task dispatcher ─────────────────────────────────────────────────────
 
-// handleDockerTask handles all nasx.root.docker.* JetStream messages.
+// handleDockerTask handles all brume.root.docker.* JetStream messages.
 func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 	var task dockerTaskMsg
 	if err := json.Unmarshal(msg.Data, &task); err != nil {
@@ -272,25 +272,25 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 
 	var err error
 	switch subject {
-	case "nasx.root.docker.container.create":
+	case "brume.root.docker.container.create":
 		err = doContainerCreate(&task)
-	case "nasx.root.docker.container.recreate":
+	case "brume.root.docker.container.recreate":
 		err = doContainerRecreate(&task)
-	case "nasx.root.docker.container.start":
+	case "brume.root.docker.container.start":
 		err = doContainerStart(task.ContainerName)
-	case "nasx.root.docker.container.stop":
+	case "brume.root.docker.container.stop":
 		err = doContainerStop(task.ContainerName)
-	case "nasx.root.docker.container.restart":
+	case "brume.root.docker.container.restart":
 		err = doContainerRestart(task.ContainerName)
-	case "nasx.root.docker.container.remove":
+	case "brume.root.docker.container.remove":
 		err = doContainerRemove(task.ContainerName)
-	case "nasx.root.docker.network.create":
+	case "brume.root.docker.network.create":
 		err = doNetworkCreate(&task)
-	case "nasx.root.docker.network.remove":
+	case "brume.root.docker.network.remove":
 		err = doNetworkRemove(task.NetworkName)
-	case "nasx.root.docker.volume.create":
+	case "brume.root.docker.volume.create":
 		err = doVolumeCreate(task.VolumeName)
-	case "nasx.root.docker.volume.remove":
+	case "brume.root.docker.volume.remove":
 		err = doVolumeRemove(task.VolumeName)
 	default:
 		log.Printf("docker task: unknown subject %s", subject)

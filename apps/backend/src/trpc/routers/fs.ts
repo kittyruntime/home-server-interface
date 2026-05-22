@@ -112,7 +112,7 @@ export const fsRouter = router({
         if (!linuxUser) {
           return sortEntries(await listAsProcess(p))
         }
-        const entries = await requestSync<FsEntry[]>("nasx.root.fs.list", { path: p, linuxUsername: linuxUser })
+        const entries = await requestSync<FsEntry[]>("brume.root.fs.list", { path: p, linuxUsername: linuxUser })
         return sortEntries(entries)
       } catch (e: any) {
         throw mapWorkerError(e)
@@ -129,7 +129,7 @@ export const fsRouter = router({
       try {
         return await requestSync<{
           mode: string; owner: string; group: string; uid: number; gid: number; type: string; size: number | null
-        }>("nasx.root.fs.stat", { path: p, linuxUsername: linuxUser ?? "" })
+        }>("brume.root.fs.stat", { path: p, linuxUsername: linuxUser ?? "" })
       } catch (e: any) {
         throw mapWorkerError(e)
       }

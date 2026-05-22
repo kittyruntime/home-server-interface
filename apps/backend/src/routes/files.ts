@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { join, basename, normalize } from "node:path"
 import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
-import { prisma } from "@nasx/database"
+import { prisma } from "@brume/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
 import {
   getUpload, setUpload, deleteUpload, startUploadGc,
@@ -126,7 +126,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // Body: raw binary (application/octet-stream)
   //
   // Chunks are written by the root worker DIRECTLY into
-  // <destDir>/.nasx-uploads-<uploadId>/ under the linuxUser's identity,
+  // <destDir>/.brume-uploads-<uploadId>/ under the linuxUser's identity,
   // so no /tmp staging and no double disk usage.
   //
   // The last-chunk response includes { done: true, jobId } for polling.
@@ -159,7 +159,7 @@ export async function fileRoutes(app: FastifyInstance) {
       const linuxUser = await getLinuxUser(user.userId)
       if (!linuxUser) return reply.status(500).send("User has no Linux account configured")
       // Staging dir lives directly inside destDir — same filesystem, no double-write.
-      const stagingDir = join(destDir, `.nasx-uploads-${uploadId}`)
+      const stagingDir = join(destDir, `.brume-uploads-${uploadId}`)
       const newState: UploadState = {
         received: new Set(), totalChunks, fileName, destDir, stagingDir,
         linuxUser, createdAt: Date.now(),

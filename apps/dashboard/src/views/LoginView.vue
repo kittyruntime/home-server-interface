@@ -29,7 +29,7 @@ async function handleLogin() {
   <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)]">
     <div class="w-full max-w-sm">
       <div class="text-center mb-8">
-        <div class="text-4xl font-bold tracking-widest text-[var(--c-accent)] mb-1">NASX</div>
+        <div class="text-4xl font-bold tracking-widest text-[var(--c-accent)] mb-1">Brume</div>
         <div class="text-slate-500 text-sm">Network Attached Storage</div>
       </div>
 

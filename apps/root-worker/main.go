@@ -78,7 +78,7 @@ func replyErr(nc *nats.Conn, replySubject string, e *fsError) {
 func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, errMsg string) {
 	event := jobEvent{JobID: jobID, Status: status, Result: result, Error: errMsg}
 	data, _ := json.Marshal(event)
-	subject := fmt.Sprintf("nasx.events.job.%s", jobID)
+	subject := fmt.Sprintf("brume.events.job.%s", jobID)
 	if err := nc.Publish(subject, data); err != nil {
 		log.Printf("publish event for job %s: %v", jobID, err)
 	}
@@ -108,30 +108,30 @@ func withUser(username string, fn func() error) error {
 
 var taskSubjects = []string{
 	// Filesystem operations
-	"nasx.root.fs.mkdir",
-	"nasx.root.fs.copy",
-	"nasx.root.fs.move",
-	"nasx.root.fs.rename",
-	"nasx.root.fs.delete",
-	"nasx.root.fs.assemble",
-	"nasx.root.fs.chmod",
-	"nasx.root.fs.chown",
+	"brume.root.fs.mkdir",
+	"brume.root.fs.copy",
+	"brume.root.fs.move",
+	"brume.root.fs.rename",
+	"brume.root.fs.delete",
+	"brume.root.fs.assemble",
+	"brume.root.fs.chmod",
+	"brume.root.fs.chown",
 	// Container (Docker) operations
-	"nasx.root.docker.container.create",
-	"nasx.root.docker.container.recreate",
-	"nasx.root.docker.container.start",
-	"nasx.root.docker.container.stop",
-	"nasx.root.docker.container.restart",
-	"nasx.root.docker.container.remove",
-	"nasx.root.docker.network.create",
-	"nasx.root.docker.network.remove",
-	"nasx.root.docker.volume.create",
-	"nasx.root.docker.volume.remove",
+	"brume.root.docker.container.create",
+	"brume.root.docker.container.recreate",
+	"brume.root.docker.container.start",
+	"brume.root.docker.container.stop",
+	"brume.root.docker.container.restart",
+	"brume.root.docker.container.remove",
+	"brume.root.docker.network.create",
+	"brume.root.docker.network.remove",
+	"brume.root.docker.volume.create",
+	"brume.root.docker.volume.remove",
 }
 
 func ensureStream(js nats.JetStreamContext) error {
 	cfg := &nats.StreamConfig{
-		Name:      "NASX_TASKS",
+		Name:      "BRUME_TASKS",
 		Subjects:  taskSubjects,
 		Retention: nats.WorkQueuePolicy,
 	}
@@ -146,16 +146,16 @@ func ensureStream(js nats.JetStreamContext) error {
 }
 
 // ensureConsumer deletes the durable pull consumer if its filter subject is
-// stale (e.g. "nasx.root.fs.*") so that PullSubscribe can recreate it with the
-// broader "nasx.root.>" filter that covers both FS and Docker subjects.
+// stale (e.g. "brume.root.fs.*") so that PullSubscribe can recreate it with the
+// broader "brume.root.>" filter that covers both FS and Docker subjects.
 func ensureConsumer(js nats.JetStreamContext) {
-	info, err := js.ConsumerInfo("NASX_TASKS", "nasx-root-worker")
+	info, err := js.ConsumerInfo("BRUME_TASKS", "brume-root-worker")
 	if err != nil {
 		return // doesn't exist yet — PullSubscribe will create it
 	}
-	if info.Config.FilterSubject == "nasx.root.fs.*" {
-		log.Println("Migrating pull consumer filter from nasx.root.fs.* to nasx.root.>")
-		if err := js.DeleteConsumer("NASX_TASKS", "nasx-root-worker"); err != nil {
+	if info.Config.FilterSubject == "brume.root.fs.*" {
+		log.Println("Migrating pull consumer filter from brume.root.fs.* to brume.root.>")
+		if err := js.DeleteConsumer("BRUME_TASKS", "brume-root-worker"); err != nil {
 			log.Printf("warn: delete old consumer: %v", err)
 		}
 	}
@@ -164,7 +164,7 @@ func ensureConsumer(js nats.JetStreamContext) {
 // ── Request-reply handlers ────────────────────────────────────────────────────
 
 // handleWriteChunk writes a single upload chunk directly into
-// <destDir>/.nasx-uploads-<uploadId>/<chunkIndex>.part as the target user.
+// <destDir>/.brume-uploads-<uploadId>/<chunkIndex>.part as the target user.
 // Metadata arrives in the "X-Meta" NATS header; raw binary in msg.Data.
 func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 	type chunkMeta struct {
@@ -189,7 +189,7 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	stagingDir := filepath.Join(meta.DestDir, ".nasx-uploads-"+meta.UploadID)
+	stagingDir := filepath.Join(meta.DestDir, ".brume-uploads-"+meta.UploadID)
 	chunkPath  := filepath.Join(stagingDir, fmt.Sprintf("%d.part", meta.ChunkIndex))
 	data       := msg.Data
 
@@ -318,7 +318,7 @@ func handleRead(nc *nats.Conn, msg *nats.Msg) {
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	// Route docker subjects to the docker handler before parsing the FS taskMsg.
-	if strings.HasPrefix(msg.Subject, "nasx.root.docker.") {
+	if strings.HasPrefix(msg.Subject, "brume.root.docker.") {
 		handleDockerTask(nc, msg, msg.Subject)
 		return
 	}
@@ -336,7 +336,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	var fsErr *fsError
 
 	switch subject {
-	case "nasx.root.fs.mkdir":
+	case "brume.root.fs.mkdir":
 		fsErr = validatePaths(task.ParentPath)
 		if fsErr == nil {
 			var res *mkdirResult
@@ -353,7 +353,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = res
 		}
 
-	case "nasx.root.fs.copy":
+	case "brume.root.fs.copy":
 		fsErr = validatePaths(task.Src, task.DstDir)
 		if fsErr == nil {
 			var res *copyResult
@@ -370,7 +370,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = res
 		}
 
-	case "nasx.root.fs.move":
+	case "brume.root.fs.move":
 		fsErr = validatePaths(task.Src, task.DstDir)
 		if fsErr == nil {
 			var res *moveResult
@@ -387,7 +387,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = res
 		}
 
-	case "nasx.root.fs.rename":
+	case "brume.root.fs.rename":
 		fsErr = validatePaths(task.Path)
 		if fsErr == nil {
 			var res *renameResult
@@ -404,7 +404,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = res
 		}
 
-	case "nasx.root.fs.delete":
+	case "brume.root.fs.delete":
 		fsErr = validatePaths(task.Path)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
@@ -420,8 +420,8 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = map[string]bool{"ok": true}
 		}
 
-	case "nasx.root.fs.assemble":
-		// Chunks are in /tmp (owned by nasx backend user) — readable by root.
+	case "brume.root.fs.assemble":
+		// Chunks are in /tmp (owned by brume backend user) — readable by root.
 		// DestFile is in the user's destination dir — write as linuxUser.
 		fsErr = validatePaths(append([]string{task.DestFile}, task.Chunks...)...)
 		if fsErr == nil {
@@ -436,7 +436,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 				fsErr = toFsErr(err)
 			}
 			if fsErr == nil {
-				// Clean up staging dir (owned by nasx user — remove as root).
+				// Clean up staging dir (owned by brume user — remove as root).
 				if task.StagingDir != "" {
 					if verr := validatePath(task.StagingDir); verr == nil {
 						_ = os.RemoveAll(task.StagingDir)
@@ -446,7 +446,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			}
 		}
 
-	case "nasx.root.fs.chmod":
+	case "brume.root.fs.chmod":
 		// chmod runs as root, no impersonation.
 		fsErr = validatePaths(task.Path)
 		if fsErr == nil {
@@ -454,7 +454,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = map[string]bool{"ok": true}
 		}
 
-	case "nasx.root.fs.chown":
+	case "brume.root.fs.chown":
 		// chown runs as root, no impersonation.
 		fsErr = validatePaths(task.Path)
 		if fsErr == nil {
@@ -498,7 +498,7 @@ func toFsErr(err error) *fsError {
 func main() {
 	natsURL  := getenv("NATS_URL", "nats://127.0.0.1:4222")
 	natsUser := getenv("NATS_USER", "worker")
-	natsPass := getenv("NATS_PASS", "nasx-worker-dev")
+	natsPass := getenv("NATS_PASS", "brume-worker-dev")
 
 	nc, err := nats.Connect(natsURL,
 		nats.UserInfo(natsUser, natsPass),
@@ -530,11 +530,11 @@ func main() {
 
 	// ── Request-reply subscriptions (sync ops) ─────────────────────────────
 	for subj, handler := range map[string]func(*nats.Conn, *nats.Msg){
-		"nasx.root.fs.list":                     handleList,
-		"nasx.root.fs.stat":                     handleStat,
-		"nasx.root.fs.read":                     handleRead,
-		"nasx.root.fs.write-chunk":              handleWriteChunk,
-		"nasx.root.docker.container.inspect":    handleDockerInspect,
+		"brume.root.fs.list":                     handleList,
+		"brume.root.fs.stat":                     handleStat,
+		"brume.root.fs.read":                     handleRead,
+		"brume.root.fs.write-chunk":              handleWriteChunk,
+		"brume.root.docker.container.inspect":    handleDockerInspect,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {
@@ -543,8 +543,8 @@ func main() {
 	}
 
 	// ── JetStream pull consumer (async jobs) ──────────────────────────────
-	sub, err := js.PullSubscribe("nasx.root.>", "nasx-root-worker",
-		nats.BindStream("NASX_TASKS"),
+	sub, err := js.PullSubscribe("brume.root.>", "brume-root-worker",
+		nats.BindStream("BRUME_TASKS"),
 		nats.MaxDeliver(3),
 		nats.AckExplicit(),
 	)
@@ -573,7 +573,7 @@ func main() {
 		}
 	}()
 
-	log.Println("nasx-root-worker ready")
+	log.Println("brume-root-worker ready")
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

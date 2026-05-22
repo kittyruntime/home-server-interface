@@ -1,5 +1,29 @@
-# Vue 3 + TypeScript + Vite
+# Brume — Dashboard
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + TypeScript + Vite frontend for the Brume home server interface.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Stack
+
+- [Vue 3](https://vuejs.org/) with `<script setup>` SFCs
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vitejs.dev/)
+- [Tailwind CSS v4](https://tailwindcss.com/)
+- [tRPC](https://trpc.io/) client
+
+## Development
+
+```bash
+# From the repo root
+pnpm install
+pnpm -F @brume/dashboard dev
+```
+
+The dev server proxies `/trpc` to the backend at `http://localhost:9001`.
+Set `VITE_API_URL` in `.env.local` to point at a different backend.
+
+## Build
+
+```bash
+pnpm -F @brume/dashboard build
+# Output: apps/dashboard/dist/
+```

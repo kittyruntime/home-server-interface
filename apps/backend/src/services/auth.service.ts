@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
-import type { PrismaClient } from "@nasx/database"
+import type { PrismaClient } from "@brume/database"
 import { signToken, hasPermission } from "../trpc/auth"
 
 export async function loginUser(

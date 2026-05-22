@@ -4,11 +4,15 @@
 > **Early stage software.** Brume is under active development and has not been audited for security. It may contain vulnerabilities, incomplete features, or breaking changes without notice. Use at your own risk, preferably on an isolated network.
 > Tested on **Ubuntu 24.04** only. Other distributions are not officially supported.
 
-A modern home server OS for self-hosting apps, media and storage.
+A modern home server dashboard for self-hosting apps, media and storage.
 
 ---
 
-![File browser — list view](docs/screenshots/fm-row.png)
+| List view | Grid view |
+|---|---|
+| ![File browser — list view](docs/screenshots/fm-row.png) | ![File browser — grid view](docs/screenshots/fm-grid.png) |
+
+![Upload in progress](docs/screenshots/fm-upload.png)
 
 ---
 
@@ -23,12 +27,6 @@ The home panel surfaces live system metrics at a glance: CPU, memory, disk usage
 - Pause, resume or cancel uploads mid-flight
 - Click the throughput badge to switch to chunk count display
 - One-click download
-
-| List view | Grid view |
-|---|---|
-| ![List view](docs/screenshots/fm-row.png) | ![Grid view](docs/screenshots/fm-grid.png) |
-
-![Upload in progress](docs/screenshots/fm-upload.png)
 
 ### Apps (containers)
 - List, inspect, start, stop and restart containers
@@ -90,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/ins
 ### Pin a version
 
 ```bash
-curl -fsSL ... | sudo VERSION=v1.2.0 bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh | sudo VERSION=v1.2.0 bash
 ```
 
 ---
@@ -126,4 +124,3 @@ sudo bash scripts/install.sh
 
 Free for personal, non-commercial use by private individuals.
 Company and commercial use requires prior written agreement — see [LICENSE](LICENSE) for details.
-
