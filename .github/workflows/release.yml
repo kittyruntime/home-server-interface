@@ -38,10 +38,10 @@ jobs:
       - name: Generate Prisma client
         run: cd packages/database && npx prisma generate
 
-      - name: Build nasx-root-worker (linux/amd64)
+      - name: Build brume-root-worker (linux/amd64)
         run: |
           cd apps/root-worker
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o nasx-root-worker .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o brume-root-worker .
 
       - name: Build backend
         run: |
@@ -61,20 +61,20 @@ jobs:
       - name: Build dashboard
         run: |
           echo "VITE_API_URL=/trpc" > apps/dashboard/.env.production
-          pnpm --filter @nasx/dashboard run build
+          pnpm --filter @brume/dashboard run build
 
       - name: Package release
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          ARCHIVE="nasx-${VERSION}-linux-amd64.tar.gz"
+          ARCHIVE="brume-${VERSION}-linux-amd64.tar.gz"
 
           tar -czf "$ARCHIVE" \
             --transform "s|^apps/backend/dist/server\.js$|server.js|" \
             --transform "s|^apps/dashboard/dist|public|" \
-            --transform "s|^apps/root-worker/nasx-root-worker$|bin/nasx-root-worker|" \
+            --transform "s|^apps/root-worker/brume-root-worker$|bin/brume-root-worker|" \
             --transform "s|^packages/database|database|" \
-            --transform "s|^|nasx-${VERSION}/|" \
-            apps/root-worker/nasx-root-worker \
+            --transform "s|^|brume-${VERSION}/|" \
+            apps/root-worker/brume-root-worker \
             apps/backend/dist/server.js \
             apps/dashboard/dist \
             packages/database/package.json \

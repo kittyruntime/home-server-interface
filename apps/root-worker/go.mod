@@ -1,4 +1,4 @@
-module nasx-root-worker
+module brume-root-worker
 
 go 1.21
 
