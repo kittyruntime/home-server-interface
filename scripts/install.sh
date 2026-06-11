@@ -218,9 +218,10 @@ if command -v nats-server &>/dev/null && \
   success "nats-server $NATS_SERVER_VERSION already installed"
 else
   NATS_TMP=$(mktemp -d)
+  trap 'rm -rf "$NATS_TMP"' EXIT
   NATS_DL="https://github.com/nats-io/nats-server/releases/download/${NATS_SERVER_VERSION}/nats-server-${NATS_SERVER_VERSION}-linux-amd64.tar.gz"
   curl -fsSL --progress-bar "$NATS_DL" -o "$NATS_TMP/nats.tar.gz" \
-    || { rm -rf "$NATS_TMP"; die "Failed to download nats-server from $NATS_DL"; }
+    || die "Failed to download nats-server from $NATS_DL"
   tar -xzf "$NATS_TMP/nats.tar.gz" -C "$NATS_TMP" --strip-components=1
   # Stop NATS before replacing its binary.
   systemctl stop brume-nats 2>/dev/null || true
@@ -414,12 +415,12 @@ systemctl restart brume
 success "Service installed and started (systemctl status brume)"
 
 # ── 14. Record installed version ─────────────────────────────────────────────────
-PKG_VERSION=$(node -p "require(\'$REPO_ROOT/package.json\').version" 2>/dev/null || echo "0.0.0")
+PKG_VERSION=$(node -e "process.stdout.write(require('$REPO_ROOT/package.json').version)" 2>/dev/null || echo "0.0.0")
 echo "v${PKG_VERSION}" > "$REPO_ROOT/VERSION"
 chown "$BACKEND_USER:" "$REPO_ROOT/VERSION"
 success "Version recorded → $REPO_ROOT/VERSION"
 
-# ── 14. nginx (optional) ─────────────────────────────────────────────────────────
+# ── 15. nginx (optional) ─────────────────────────────────────────────────────────
 if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"
 

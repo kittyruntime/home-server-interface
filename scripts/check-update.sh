@@ -3,7 +3,7 @@
 # Writes .update-check.json into the install directory.
 set -euo pipefail
 
-REPO="kittyruntime/Brume"
+REPO="kittyruntime/brume"
 INSTALL_DIR="${INSTALL_DIR:-/opt/brume}"
 
 latest=$(curl -fsSL --max-time 15 \

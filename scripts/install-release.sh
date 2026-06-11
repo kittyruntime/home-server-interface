@@ -272,9 +272,10 @@ if command -v nats-server &>/dev/null && \
   success "nats-server $NATS_SERVER_VERSION already installed"
 else
   NATS_TMP=$(mktemp -d)
+  trap 'rm -rf "$DL_DIR" "$NATS_TMP"' EXIT
   NATS_DL="https://github.com/nats-io/nats-server/releases/download/${NATS_SERVER_VERSION}/nats-server-${NATS_SERVER_VERSION}-linux-amd64.tar.gz"
   curl -fsSL --progress-bar "$NATS_DL" -o "$NATS_TMP/nats.tar.gz" \
-    || { rm -rf "$NATS_TMP"; die "Failed to download nats-server from $NATS_DL"; }
+    || die "Failed to download nats-server from $NATS_DL"
   tar -xzf "$NATS_TMP/nats.tar.gz" -C "$NATS_TMP" --strip-components=1
   # Stop NATS before replacing its binary (running executable cannot be replaced on Linux).
   systemctl stop brume-nats 2>/dev/null || true
@@ -443,6 +444,7 @@ Type=simple
 User=$BRUME_USER
 WorkingDirectory=$INSTALL_DIR
 EnvironmentFile=$ENV_FILE
+Environment=INSTALL_DIR=$INSTALL_DIR
 ExecStart=$NODE_BIN $INSTALL_DIR/server.js
 Restart=on-failure
 RestartSec=5
@@ -453,7 +455,7 @@ SyslogIdentifier=brume
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$INSTALL_DIR/database/data $BRUME_HOME /tmp
+ReadWritePaths=$INSTALL_DIR/database/data $INSTALL_DIR $BRUME_HOME /tmp
 
 [Install]
 WantedBy=multi-user.target
@@ -474,7 +476,7 @@ step "Installing update checker"
 
 install -m 755 /dev/stdin /usr/local/bin/brume-check-update << 'CHECKEOF'
 #!/usr/bin/env bash
-REPO="kittyruntime/Brume"
+REPO="kittyruntime/brume"
 INSTALL_DIR="${INSTALL_DIR:-/opt/brume}"
 latest=$(curl -fsSL --max-time 15 \
   -H "Accept: application/vnd.github+json" \
@@ -524,8 +526,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/bin/bash -c 'VERSION=\$(cat $INSTALL_DIR/.pending-update) bash <(curl -fsSL https://raw.githubusercontent.com/kittyruntime/Brume/main/scripts/install-release.sh)'
-ExecStartPost=-/bin/rm -f $INSTALL_DIR/.pending-update
+ExecStart=/bin/bash -c 'set -e; v=\$(cat $INSTALL_DIR/.pending-update); tmp=\$(mktemp); trap "rm -f \$tmp $INSTALL_DIR/.pending-update" EXIT; curl -fsSL https://raw.githubusercontent.com/kittyruntime/brume/main/scripts/install-release.sh -o \$tmp; VERSION=\$v bash \$tmp'
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=brume-update
