@@ -1,7 +1,7 @@
 {
   "name": "brume",
-  "version": "0.2.0",
-  "description": "",
+  "version": "1.0.0",
+  "description": "A modern home server dashboard for self-hosting apps, media and storage.",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -10,8 +10,8 @@
     "start": "pnpm -r start"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "kittyruntime",
+  "license": "SEE LICENSE IN LICENSE",
   "packageManager": "pnpm@10.18.0",
   "pnpm": {
     "onlyBuiltDependencies": [
