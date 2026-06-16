@@ -2,8 +2,8 @@
 // Centralise the in-memory map, TTL eviction, and chunk limits so that
 // files.ts contains only HTTP handler logic.
 
-export const MAX_CHUNKS      = 10_000
-export const UPLOAD_TTL_MS   = 2 * 60 * 60 * 1_000  // 2 h
+export const MAX_CHUNKS      = 131_072               // 256 GB at 2 MB/chunk
+export const UPLOAD_TTL_MS   = 24 * 60 * 60 * 1_000 // 24 h (large uploads can take many hours)
 const        GC_INTERVAL_MS  = 5 * 60 * 1_000         // run GC every 5 min
 
 export interface UploadState {

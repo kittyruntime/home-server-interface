@@ -60,7 +60,7 @@ export async function fileRoutes(app: FastifyInstance) {
     (_req, body, done) => done(null, body),
   )
 
-  // Clean up uploads that have been silent for more than 2 h.
+  // Clean up uploads that have been silent for more than UPLOAD_TTL_MS.
   startUploadGc((id, state) => {
     app.log.warn({ uploadId: id }, "Stale upload evicted by GC")
     publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.stagingDir })
