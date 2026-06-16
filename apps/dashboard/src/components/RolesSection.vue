@@ -31,7 +31,6 @@ async function load() {
   const [r, u] = await Promise.all([trpc.role.list.query(), trpc.user.list.query()])
   roles.value = r as Role[]
   users.value = u as User[]
-  // Keep selectedRole in sync with fresh data
   if (selectedRole.value) {
     selectedRole.value = roles.value.find(r => r.id === selectedRole.value!.id) ?? null
   }
@@ -50,13 +49,8 @@ async function createRole() {
   }
 }
 
-function openEditor(role: Role) {
-  selectedRole.value = role
-}
-
-function onBack() {
-  selectedRole.value = null
-}
+function openEditor(role: Role) { selectedRole.value = role }
+function onBack() { selectedRole.value = null }
 
 onMounted(load)
 </script>
@@ -64,7 +58,7 @@ onMounted(load)
 <template>
   <div>
 
-    <!-- ── Role editor ────────────────────────────────────────────────────── -->
+    <!-- ── Role editor ───────────────────────────────────────────────────────── -->
     <RoleEditor
       v-if="selectedRole"
       :role="selectedRole"
@@ -73,66 +67,86 @@ onMounted(load)
       @reload="load"
     />
 
-    <!-- ── Role list ──────────────────────────────────────────────────────── -->
+    <!-- ── Role list ─────────────────────────────────────────────────────────── -->
     <section v-else class="space-y-5">
 
-      <div class="flex items-center justify-between px-0.5">
-        <h3 class="text-xs font-medium uppercase tracking-widest text-slate-500">Roles</h3>
-        <span class="text-xs text-slate-700">{{ roles.length }} total</span>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Roles</h2>
+          <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+            {{ roles.length }} role{{ roles.length !== 1 ? 's' : '' }} configured
+          </p>
+        </div>
       </div>
 
       <!-- List -->
-      <div class="space-y-1.5">
-        <div v-if="roles.length === 0" class="text-sm text-slate-600 italic px-1">No roles yet.</div>
+      <div class="rounded-xl border border-[var(--c-border)] overflow-hidden">
+        <div v-if="roles.length === 0"
+          class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
+          No roles yet.
+        </div>
 
-        <div
-          v-for="role in roles"
-          :key="role.id"
-          class="flex items-center gap-3 px-4 py-3 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl"
-        >
-          <!-- Name + badges -->
-          <div class="flex-1 min-w-0 flex items-center gap-2">
-            <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ role.name }}</span>
-            <span
-              v-if="role.isAdmin"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0"
-            >admin</span>
-            <span
-              v-if="isPersonal(role)"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-500 shrink-0"
-            >personal</span>
-          </div>
+        <div v-else class="divide-y divide-[var(--c-border)]">
+          <div
+            v-for="role in roles"
+            :key="role.id"
+            class="flex items-center gap-4 px-5 py-3.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
+          >
+            <!-- Name + badges -->
+            <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ role.name }}</span>
+              <span v-if="role.isAdmin"
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
+                admin
+              </span>
+              <span v-if="isPersonal(role)"
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
+                personal
+              </span>
+            </div>
 
-          <!-- Meta + Edit -->
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="text-xs text-slate-700 tabular-nums hidden sm:block">
-              {{ role.userRoles.length }}m · {{ role.permissions.length }}p
-            </span>
+            <!-- Meta -->
+            <div class="hidden sm:flex items-center gap-3 text-xs text-[var(--c-text-3)] shrink-0">
+              <span class="flex items-center gap-1" title="Members">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5.916-3.5M9 20H4v-2a4 4 0 015.916-3.5M15 7a3 3 0 11-6 0 3 3 0 016 0zM21 10a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                {{ role.userRoles.length }}
+              </span>
+              <span class="flex items-center gap-1" title="Permissions">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                {{ role.permissions.length }}
+              </span>
+            </div>
+
+            <!-- Edit button -->
             <button
               @click="openEditor(role)"
-              class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border-strong)] text-slate-500
-                     hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] transition-colors"
+              class="shrink-0 text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border-strong)] text-[var(--c-text-3)]
+                     hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors"
             >Edit</button>
           </div>
         </div>
       </div>
 
       <!-- Create role -->
-      <form @submit.prevent="createRole" class="flex gap-2 pt-1">
+      <form @submit.prevent="createRole" class="flex gap-2">
         <input
           v-model="newRoleName"
           placeholder="New role name…"
-          class="flex-1 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)]
-                 placeholder-slate-600 focus:outline-none focus:border-[var(--c-accent)]"
+          class="flex-1 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm
+                 text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
         />
         <button
           type="submit"
           :disabled="!newRoleName.trim()"
           class="px-4 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
-                 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors"
+                 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-opacity"
         >Add</button>
       </form>
-      <p v-if="createError" class="text-red-400 text-xs px-0.5">{{ createError }}</p>
+      <p v-if="createError" class="text-red-400 text-xs">{{ createError }}</p>
 
     </section>
   </div>

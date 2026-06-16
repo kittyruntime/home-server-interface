@@ -40,7 +40,7 @@ const emit = defineEmits<{
     <!-- Mobile: places sidebar toggle -->
     <button @click="emit('toggleSidebar')" title="Places"
       class="sm:hidden p-1.5 rounded-lg flex-shrink-0 transition-colors"
-      :class="sidebarOpen ? 'text-[var(--c-accent)] bg-[var(--c-accent-subtle)]' : 'text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]'">
+      :class="sidebarOpen ? 'text-[var(--c-accent)] bg-[var(--c-accent-subtle)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]'">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
@@ -48,7 +48,7 @@ const emit = defineEmits<{
 
     <!-- Back / Up -->
     <button v-if="canGoUp" @click="emit('goUp')" title="Go up"
-      class="p-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors flex-shrink-0">
+      class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors flex-shrink-0">
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
       </svg>
@@ -72,14 +72,14 @@ const emit = defineEmits<{
 
       <!-- Selection actions -->
       <template v-if="selectedCount > 0">
-        <span class="text-xs tabular-nums text-slate-500 select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
+        <span class="text-xs tabular-nums text-[var(--c-text-3)] select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
         <button @click="emit('clearSelection')" title="Clear selection"
-          class="p-1 rounded text-slate-600 hover:text-[var(--c-text-2)] transition-colors">
+          class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
           <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
-        <div class="w-px h-3.5 bg-slate-800 mx-0.5 flex-shrink-0" />
+        <div class="w-px h-3.5 bg-[var(--c-border-strong)] mx-0.5 flex-shrink-0" />
 
         <button @click="emit('copy')" title="Copy" class="sel-btn">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -115,12 +115,12 @@ const emit = defineEmits<{
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
         </button>
-        <div class="w-px h-3.5 bg-slate-800 mx-0.5 flex-shrink-0" />
+        <div class="w-px h-3.5 bg-[var(--c-border-strong)] mx-0.5 flex-shrink-0" />
       </template>
 
       <!-- New Folder -->
       <button v-if="currentPath" @click="emit('createFolder')" title="New Folder"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors text-xs">
+        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors text-xs">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
         </svg>
@@ -129,7 +129,7 @@ const emit = defineEmits<{
 
       <!-- Upload -->
       <button v-if="currentPath" @click="emit('uploadClick')" title="Upload files"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors text-xs">
+        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors text-xs">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
@@ -149,26 +149,26 @@ const emit = defineEmits<{
       </button>
 
       <!-- Divider -->
-      <div v-if="currentPath" class="w-px h-4 bg-slate-800 mx-1" />
+      <div v-if="currentPath" class="w-px h-4 bg-[var(--c-border-strong)] mx-1" />
 
       <!-- Refresh -->
       <button v-if="currentPath" @click="emit('refresh')" title="Refresh"
-        class="p-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
       </button>
 
       <!-- View toggle -->
-      <div class="flex items-center gap-0.5 bg-slate-800/60 rounded-lg p-0.5">
+      <div class="flex items-center gap-0.5 bg-[var(--c-surface-deep)] rounded-lg p-0.5">
         <button @click="emit('update:viewMode', 'list')" title="List view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-slate-700 text-[var(--c-text-3)]' : 'text-slate-500 hover:text-[var(--c-text-2)]']">
+          :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-[var(--c-surface)] text-[var(--c-text-2)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
           </svg>
         </button>
         <button @click="emit('update:viewMode', 'grid')" title="Grid view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-slate-700 text-[var(--c-text-3)]' : 'text-slate-500 hover:text-[var(--c-text-2)]']">
+          :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-[var(--c-surface)] text-[var(--c-text-2)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
           </svg>
@@ -182,7 +182,7 @@ const emit = defineEmits<{
 @reference "tailwindcss";
 
 .sel-btn {
-  @apply p-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors;
+  @apply p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors;
 }
 .sel-btn-danger {
   @apply hover:bg-red-900/30 hover:text-red-400;

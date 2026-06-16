@@ -170,7 +170,7 @@ async function toggleMember(userId: string) {
       <!-- Back -->
       <button
         @click="$emit('back')"
-        class="p-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
         title="Back to roles"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -180,7 +180,7 @@ async function toggleMember(userId: string) {
 
       <!-- Name + badges -->
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <span class="text-base font-semibold text-[var(--c-text-3)] truncate">{{ role.name }}</span>
+        <span class="text-base font-semibold text-[var(--c-text-1)] truncate">{{ role.name }}</span>
         <span
           v-if="role.isAdmin"
           class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0"
@@ -195,7 +195,7 @@ async function toggleMember(userId: string) {
           'text-xs px-2.5 py-1 rounded-lg border transition-colors shrink-0 disabled:opacity-40',
           role.isAdmin
             ? 'border-[var(--c-border-strong)] text-[var(--c-accent)] hover:border-red-500/40 hover:text-red-400'
-            : 'border-[var(--c-border-strong)] text-slate-500 hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]',
+            : 'border-[var(--c-border-strong)] text-[var(--c-text-3)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]',
         ]"
       >{{ role.isAdmin ? 'Revoke admin' : 'Grant admin' }}</button>
 
@@ -203,7 +203,7 @@ async function toggleMember(userId: string) {
       <template v-if="!deleteConfirm">
         <button
           @click="deleteConfirm = true"
-          class="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-900/20 transition-colors shrink-0"
+          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
           title="Delete role"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -229,7 +229,7 @@ async function toggleMember(userId: string) {
 
     <!-- ── Permissions ─────────────────────────────────────────────────────── -->
     <div class="space-y-5">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Permissions</h4>
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Permissions</h4>
 
       <!-- Admin notice -->
       <div
@@ -247,10 +247,10 @@ async function toggleMember(userId: string) {
       >
         <!-- Group label -->
         <div class="flex items-center gap-1.5 px-0.5 mb-2">
-          <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" :d="group.icon"/>
           </svg>
-          <span class="text-[11px] font-medium text-slate-500">{{ group.label }}</span>
+          <span class="text-[11px] font-medium text-[var(--c-text-3)]">{{ group.label }}</span>
         </div>
 
         <!-- Permission rows -->
@@ -287,7 +287,7 @@ async function toggleMember(userId: string) {
           <!-- Permission name + description -->
           <div class="flex-1 min-w-0 flex items-baseline gap-2.5">
             <code class="text-xs font-mono text-[var(--c-text-2)] shrink-0">{{ perm.name }}</code>
-            <span class="text-xs text-slate-600 truncate">{{ perm.desc }}</span>
+            <span class="text-xs text-[var(--c-text-3)] truncate">{{ perm.desc }}</span>
           </div>
         </div>
       </div>
@@ -296,26 +296,23 @@ async function toggleMember(userId: string) {
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Members</h4>
-        <span class="text-xs text-slate-700">{{ sortedUsers.filter(u => userHasRole(u)).length }} / {{ users.length }}</span>
+        <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Members</h4>
+        <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => userHasRole(u)).length }} / {{ users.length }}</span>
       </div>
 
       <div class="divide-y divide-[var(--c-border)] border border-[var(--c-border)] rounded-xl overflow-hidden">
 
-        <div v-if="users.length === 0" class="px-4 py-3 text-xs text-slate-600 italic">No users</div>
+        <div v-if="users.length === 0" class="px-4 py-4 text-xs text-[var(--c-text-3)] italic">No users</div>
 
         <div
           v-for="user in sortedUsers"
           :key="user.id"
-          :class="[
-            'flex items-center gap-3 px-4 py-2.5 transition-colors',
-            userHasRole(user) ? 'bg-[var(--c-surface-alt)]' : 'bg-[var(--c-surface-alt)]',
-          ]"
+          class="flex items-center gap-3 px-4 py-2.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
         >
           <!-- Avatar -->
           <div :class="[
             'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0',
-            userHasRole(user) ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]' : 'bg-slate-800 text-slate-500',
+            userHasRole(user) ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]',
           ]">
             {{ user.username.slice(0, 2).toUpperCase() }}
           </div>
@@ -323,12 +320,12 @@ async function toggleMember(userId: string) {
           <!-- Name -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
-              <span :class="['text-sm font-medium truncate', userHasRole(user) ? 'text-[var(--c-text-1)]' : 'text-slate-500']">
+              <span :class="['text-sm font-medium truncate', userHasRole(user) ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-3)]']">
                 {{ user.username }}
               </span>
-              <span v-if="user.id === currentUserId" class="text-[10px] text-slate-600">(you)</span>
+              <span v-if="user.id === currentUserId" class="text-[10px] text-[var(--c-text-3)]">(you)</span>
             </div>
-            <div v-if="user.displayName" class="text-xs text-slate-600 truncate">{{ user.displayName }}</div>
+            <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate">{{ user.displayName }}</div>
           </div>
 
           <!-- Action -->
@@ -338,8 +335,8 @@ async function toggleMember(userId: string) {
               :disabled="user.id === currentUserId || memberBusy[user.id]"
               @click="user.id !== currentUserId && toggleMember(user.id)"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-slate-500 border border-[var(--c-border-strong)]
-                     hover:text-red-400 hover:border-red-500/40 hover:bg-red-900/15
+                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
+                     hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/8
                      disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -352,7 +349,7 @@ async function toggleMember(userId: string) {
               :disabled="memberBusy[user.id]"
               @click="toggleMember(user.id)"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-slate-600 border border-[var(--c-border-strong)]
+                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
                      hover:text-[var(--c-accent)] hover:border-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)]
                      disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
