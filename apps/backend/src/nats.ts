@@ -1,7 +1,7 @@
 import { connect, StringCodec, NatsError } from "nats"
 import type { NatsConnection, JetStreamClient, JetStreamManager } from "nats"
 import type { FastifyBaseLogger } from "fastify"
-import { prisma } from "@brume/database"
+import { prisma } from "@app/database"
 import crypto from "node:crypto"
 
 const sc = StringCodec()

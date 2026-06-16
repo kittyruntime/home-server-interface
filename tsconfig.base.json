@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@brume/*": [
+      "@app/*": [
         "packages/*"
       ]
     }

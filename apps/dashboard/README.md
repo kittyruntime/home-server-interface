@@ -1,6 +1,6 @@
-# Brume — Dashboard
+# Dashboard
 
-Vue 3 + TypeScript + Vite frontend for the Brume home server interface.
+Vue 3 + TypeScript + Vite frontend.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Vue 3 + TypeScript + Vite frontend for the Brume home server interface.
 ```bash
 # From the repo root
 pnpm install
-pnpm -F @brume/dashboard dev
+pnpm -F @app/dashboard dev
 ```
 
 The dev server proxies `/trpc` to the backend at `http://localhost:9001`.
@@ -24,6 +24,6 @@ Set `VITE_API_URL` in `.env.local` to point at a different backend.
 ## Build
 
 ```bash
-pnpm -F @brume/dashboard build
+pnpm -F @app/dashboard build
 # Output: apps/dashboard/dist/
 ```

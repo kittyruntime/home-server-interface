@@ -10,6 +10,9 @@ on:
         description: "Version tag (ex: v1.0.0)"
         required: true
 
+env:
+  APP_NAME: app
+
 permissions:
   contents: write
 
@@ -38,10 +41,10 @@ jobs:
       - name: Generate Prisma client
         run: cd packages/database && npx prisma generate
 
-      - name: Build brume-root-worker (linux/amd64)
+      - name: Build root-worker (linux/amd64)
         run: |
           cd apps/root-worker
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o brume-root-worker .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o root-worker .
 
       - name: Build backend
         run: |
@@ -61,20 +64,21 @@ jobs:
       - name: Build dashboard
         run: |
           echo "VITE_API_URL=/trpc" > apps/dashboard/.env.production
-          pnpm --filter @brume/dashboard run build
+          pnpm --filter @app/dashboard run build
 
       - name: Package release
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          ARCHIVE="brume-${VERSION}-linux-amd64.tar.gz"
+          APP_NAME="${{ env.APP_NAME }}"
+          ARCHIVE="${APP_NAME}-${VERSION}-linux-amd64.tar.gz"
 
           tar -czf "$ARCHIVE" \
             --transform "s|^apps/backend/dist/server\.js$|server.js|" \
             --transform "s|^apps/dashboard/dist|public|" \
-            --transform "s|^apps/root-worker/brume-root-worker$|bin/brume-root-worker|" \
+            --transform "s|^apps/root-worker/root-worker$|bin/${APP_NAME}-root-worker|" \
             --transform "s|^packages/database|database|" \
-            --transform "s|^|brume-${VERSION}/|" \
-            apps/root-worker/brume-root-worker \
+            --transform "s|^|${APP_NAME}-${VERSION}/|" \
+            apps/root-worker/root-worker \
             apps/backend/dist/server.js \
             apps/dashboard/dist \
             packages/database/package.json \

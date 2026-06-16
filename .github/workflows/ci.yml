@@ -28,10 +28,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build brume-root-worker
+      - name: Build root-worker
         run: |
           cd apps/root-worker
-          go build -o brume-root-worker .
+          go build -o root-worker .
 
       - name: Generate Prisma client
         run: cd packages/database && npx prisma generate
@@ -52,4 +52,4 @@ jobs:
             --log-level=warning
 
       - name: Build dashboard
-        run: pnpm --filter @brume/dashboard run build
+        run: pnpm --filter @app/dashboard run build

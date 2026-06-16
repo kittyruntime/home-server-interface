@@ -421,7 +421,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.assemble":
-		// Chunks are in /tmp (owned by brume backend user) — readable by root.
+		// Chunks are in /tmp (owned by the backend user) — readable by root.
 		// DestFile is in the user's destination dir — write as linuxUser.
 		fsErr = validatePaths(append([]string{task.DestFile}, task.Chunks...)...)
 		if fsErr == nil {
@@ -436,7 +436,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 				fsErr = toFsErr(err)
 			}
 			if fsErr == nil {
-				// Clean up staging dir (owned by brume user — remove as root).
+				// Clean up staging dir (owned by the backend user — remove as root).
 				if task.StagingDir != "" {
 					if verr := validatePath(task.StagingDir); verr == nil {
 						_ = os.RemoveAll(task.StagingDir)

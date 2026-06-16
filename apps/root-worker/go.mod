@@ -1,4 +1,4 @@
-module brume-root-worker
+module root-worker
 
 go 1.21
 

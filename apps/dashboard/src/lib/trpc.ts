@@ -1,5 +1,5 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
-import type { AppRouter } from '@brume/shared-types'
+import type { AppRouter } from '@app/shared-types'
 
 export const trpc = createTRPCProxyClient<AppRouter>({
   links: [

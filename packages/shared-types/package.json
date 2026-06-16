@@ -1,5 +1,5 @@
 {
-  "name": "@brume/shared-types",
+  "name": "@app/shared-types",
   "private": true,
   "version": "0.0.0",
   "type": "module",

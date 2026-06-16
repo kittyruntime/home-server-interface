@@ -1,4 +1,4 @@
-# Démarrer Brume en local
+# Démarrer le projet en local
 
 4 processus à lancer : NATS, root-worker, backend, dashboard.
 
@@ -51,14 +51,14 @@ sudo NATS_URL=nats://127.0.0.1:4222 NATS_USER=worker NATS_PASS=worker-dev ./root
 ## 6. Backend (terminal 3)
 
 ```bash
-pnpm -F @brume/backend dev
+pnpm -F @app/backend dev
 # écoute sur http://localhost:9001
 ```
 
 ## 7. Dashboard (terminal 4)
 
 ```bash
-pnpm -F @brume/dashboard dev
+pnpm -F @app/dashboard dev
 # écoute sur http://localhost:5173
 ```
 

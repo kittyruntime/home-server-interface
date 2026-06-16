@@ -1,17 +1,17 @@
 [Unit]
-Description=Brume Root Worker
-Documentation=https://github.com/kittyruntime/Brume
+Description=Root Worker
+Documentation=https://github.com/kittyruntime/app
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/brume-root-worker
+ExecStart=/usr/local/bin/app-root-worker
 User=root
 # Credentials are read from this file at runtime.
-# Create /etc/brume/worker.env with:
+# Create /etc/app/worker.env with:
 #   NATS_URL=nats://127.0.0.1:4222
 #   NATS_USER=worker
 #   NATS_PASS=<password matching nats.conf>
-EnvironmentFile=/etc/brume/worker.env
+EnvironmentFile=/etc/app/worker.env
 PrivateTmp=yes
 # NoNewPrivileges must be off: the worker uses setresuid to impersonate users.
 NoNewPrivileges=no

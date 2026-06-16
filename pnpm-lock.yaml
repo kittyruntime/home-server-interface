@@ -10,10 +10,10 @@ importers:
 
   apps/backend:
     dependencies:
-      '@brume/database':
+      '@app/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@brume/shared-types':
+      '@app/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@fastify/cors':
@@ -62,7 +62,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@brume/shared-types':
+      '@app/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@trpc/client':

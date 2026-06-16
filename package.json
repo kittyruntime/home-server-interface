@@ -1,5 +1,5 @@
 {
-  "name": "brume",
+  "name": "app",
   "version": "1.0.0",
   "description": "A modern home server dashboard for self-hosting apps, media and storage.",
   "type": "module",

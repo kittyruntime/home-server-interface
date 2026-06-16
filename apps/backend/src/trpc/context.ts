@@ -1,4 +1,4 @@
-import { prisma } from "@brume/database"
+import { prisma } from "@app/database"
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify"
 import { verifyToken, isTokenBlacklisted, type TokenPayload } from "./auth"
 

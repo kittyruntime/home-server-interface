@@ -1,5 +1,5 @@
 {
-  "name": "@brume/dashboard",
+  "name": "@app/dashboard",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@brume/shared-types": "workspace:*",
+    "@app/shared-types": "workspace:*",
     "@trpc/client": "^10.45.2",
     "vue": "^3.5.25",
     "vue-router": "^4.5.0",

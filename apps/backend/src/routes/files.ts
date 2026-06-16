@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { join, basename, normalize } from "node:path"
 import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
-import { prisma } from "@brume/database"
+import { prisma } from "@app/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
 import {
   getUpload, setUpload, deleteUpload, startUploadGc,
