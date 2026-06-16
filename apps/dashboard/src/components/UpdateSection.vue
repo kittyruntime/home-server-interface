@@ -50,12 +50,17 @@ async function applyUpdate() {
 }
 
 function pollRestart() {
+  let serverWentDown = false
   const interval = setInterval(async () => {
     try {
       await fetch('/health')
-      clearInterval(interval)
-      window.location.reload()
-    } catch { /* server still down */ }
+      if (serverWentDown) {
+        clearInterval(interval)
+        window.location.reload()
+      }
+    } catch {
+      serverWentDown = true
+    }
   }, 3000)
 }
 
