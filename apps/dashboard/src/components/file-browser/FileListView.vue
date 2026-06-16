@@ -41,7 +41,7 @@ function fileExt(name: string): string {
 <template>
   <table class="w-full text-sm">
     <thead class="sticky top-0 bg-[var(--c-bg)] border-b border-[var(--c-border)] z-10">
-      <tr class="text-left text-xs uppercase tracking-wider text-slate-600">
+      <tr class="text-left text-xs uppercase tracking-wider text-[var(--c-text-3)]">
         <th class="pl-3 pr-1 py-2.5 w-7">
           <input type="checkbox"
             :checked="selected.size === entries.length && entries.length > 0"
@@ -86,7 +86,7 @@ function fileExt(name: string): string {
             <svg v-if="entry.type === 'dir'" class="w-4 h-4 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
             </svg>
-            <svg v-else class="w-4 h-4 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <svg v-else class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
 
@@ -109,19 +109,19 @@ function fileExt(name: string): string {
                 :title="entry.name"
                 :class="['transition-colors truncate select-none',
                   entry.type === 'dir'
-                    ? 'text-[var(--c-text-1)] hover:text-white'
-                    : 'text-slate-400 hover:text-[var(--c-text-1)]']">
+                    ? 'text-[var(--c-text-1)] hover:text-[var(--c-accent)]'
+                    : 'text-[var(--c-text-2)] hover:text-[var(--c-text-1)]']">
                 {{ entry.name }}
               </span>
-              <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-slate-600 text-[10px] font-mono shrink-0">
+              <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-[var(--c-text-3)] text-[10px] font-mono shrink-0">
                 {{ fileExt(entry.name) }}
               </span>
             </template>
           </div>
         </td>
 
-        <td class="px-3 py-2.5 text-right text-slate-500 font-mono text-xs tabular-nums">{{ formatSize(entry.size) }}</td>
-        <td class="px-3 py-2.5 text-right text-slate-500 text-xs tabular-nums">{{ formatDate(entry.mtime) }}</td>
+        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] font-mono text-xs tabular-nums">{{ formatSize(entry.size) }}</td>
+        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] text-xs tabular-nums">{{ formatDate(entry.mtime) }}</td>
       </tr>
     </tbody>
   </table>

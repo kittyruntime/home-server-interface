@@ -413,7 +413,7 @@ onMounted(async () => {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex items-center gap-2 text-slate-500 text-sm p-6">
+        <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
           <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -430,7 +430,7 @@ onMounted(async () => {
         </div>
 
         <!-- No place selected -->
-        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-slate-700 select-none">
+        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
           <div class="text-center space-y-2">
             <svg class="w-10 h-10 mx-auto opacity-20" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
@@ -440,7 +440,7 @@ onMounted(async () => {
         </div>
 
         <!-- Empty directory -->
-        <div v-else-if="entries.length === 0" class="flex items-center justify-center h-full text-slate-700 select-none">
+        <div v-else-if="entries.length === 0" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
           <p class="text-sm">Empty directory</p>
         </div>
 
@@ -531,7 +531,7 @@ onMounted(async () => {
               Permissions
             </button>
           </template>
-          <div class="h-px bg-slate-800 mx-2 my-1" />
+          <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
           <button @click="doDelete(); closeContextMenu()"
             class="ctx-item ctx-item-danger">
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -539,7 +539,7 @@ onMounted(async () => {
             </svg>
             Delete
           </button>
-          <div class="h-px bg-slate-800 mx-2 my-1" />
+          <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
         </template>
 
         <!-- General actions -->
@@ -562,7 +562,7 @@ onMounted(async () => {
           </svg>
           Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
         </button>
-        <div v-if="currentPath" class="h-px bg-slate-800 mx-2 my-1" />
+        <div v-if="currentPath" class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
         <button v-if="currentPath" @click="refresh(); closeContextMenu()" class="ctx-item">
           <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
