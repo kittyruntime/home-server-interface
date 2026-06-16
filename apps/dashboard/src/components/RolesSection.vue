@@ -27,6 +27,13 @@ const createError  = ref('')
 const usernames  = computed(() => new Set(users.value.map(u => u.username)))
 function isPersonal(role: Role) { return usernames.value.has(role.name) }
 
+// ── Pagination ──────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+const page      = ref(1)
+const pageCount = computed(() => Math.max(1, Math.ceil(roles.value.length / PAGE_SIZE)))
+const paged     = computed(() => roles.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+function goPage(n: number) { page.value = Math.max(1, Math.min(n, pageCount.value)) }
+
 async function load() {
   const [r, u] = await Promise.all([trpc.role.list.query(), trpc.user.list.query()])
   roles.value = r as Role[]
@@ -44,6 +51,7 @@ async function createRole() {
     await trpc.role.create.mutate({ name })
     newRoleName.value = ''
     await load()
+    page.value = pageCount.value
   } catch (e: any) {
     createError.value = e?.message ?? 'Failed to create role'
   }
@@ -80,7 +88,7 @@ onMounted(load)
       </div>
 
       <!-- List -->
-      <div class="rounded-xl border border-[var(--c-border)] overflow-hidden">
+      <div class="panel-card">
         <div v-if="roles.length === 0"
           class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
           No roles yet.
@@ -88,7 +96,7 @@ onMounted(load)
 
         <div v-else class="divide-y divide-[var(--c-border)]">
           <div
-            v-for="role in roles"
+            v-for="role in paged"
             :key="role.id"
             class="flex items-center gap-4 px-5 py-3.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
           >
@@ -131,19 +139,55 @@ onMounted(load)
         </div>
       </div>
 
+      <!-- Pagination -->
+      <div v-if="pageCount > 1" class="flex items-center justify-between px-1">
+        <span class="text-xs text-[var(--c-text-3)]">
+          {{ (page - 1) * PAGE_SIZE + 1 }}–{{ Math.min(page * PAGE_SIZE, roles.length) }} of {{ roles.length }}
+        </span>
+        <div class="flex items-center gap-1">
+          <button
+            @click="goPage(page - 1)"
+            :disabled="page === 1"
+            class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <template v-for="n in pageCount" :key="n">
+            <button
+              @click="goPage(n)"
+              :class="[
+                'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
+                n === page
+                  ? 'bg-[var(--c-accent)] text-[var(--c-accent-fg)]'
+                  : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]',
+              ]"
+            >{{ n }}</button>
+          </template>
+          <button
+            @click="goPage(page + 1)"
+            :disabled="page === pageCount"
+            class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Create role -->
       <form @submit.prevent="createRole" class="flex gap-2">
         <input
           v-model="newRoleName"
           placeholder="New role name…"
-          class="flex-1 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm
-                 text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input flex-1"
         />
         <button
           type="submit"
           :disabled="!newRoleName.trim()"
-          class="px-4 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
-                 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-opacity"
+          class="btn btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
         >Add</button>
       </form>
       <p v-if="createError" class="text-red-400 text-xs">{{ createError }}</p>

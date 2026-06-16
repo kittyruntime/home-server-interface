@@ -220,7 +220,7 @@ async function toggleMember(userId: string) {
         >Yes</button>
         <button
           @click="deleteConfirm = false"
-          class="text-xs px-2 py-1 rounded text-slate-500 hover:text-[var(--c-text-2)] transition-colors"
+          class="text-xs px-2 py-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
         >No</button>
       </template>
     </div>

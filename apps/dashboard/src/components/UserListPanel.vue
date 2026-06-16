@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
+import UserDetailPanel from './UserDetailPanel.vue'
 
 type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
 type User = {
@@ -14,14 +15,7 @@ type User = {
 }
 type RoleBasic = { id: string; name: string; isAdmin: boolean }
 
-function matchesPerm(grants: string[], required: string): boolean {
-  const [rNs] = required.split('.')
-  return grants.some(g => g === required || g === '*.*' || (() => { const [ns, act] = g.split('.'); return ns === rNs && act === '*' })())
-}
 function userIsAdmin(u: User) { return u.userRoles.some(ur => ur.role.isAdmin) }
-function userCanManage(u: User) {
-  return userIsAdmin(u) || matchesPerm(u.userRoles.flatMap(ur => ur.role.permissions.map(rp => rp.permission.name)), 'users.manage')
-}
 
 const { canManageUsers, currentUserId } = useAuth()
 
@@ -30,22 +24,22 @@ const roles     = ref<RoleBasic[]>([])
 const loading   = ref(true)
 const loadError = ref('')
 
+const selectedUser = ref<User | null>(null)
+
 // ── Add user ─────────────────────────────────────────────────────────────────
 const addingUser = ref(false)
 const newUser    = reactive({ username: '', password: '', confirmPassword: '', displayName: '' })
 const addError   = ref('')
 const addLoading = ref(false)
 
-// ── Edit user ─────────────────────────────────────────────────────────────────
-const editingUserId    = ref<string | null>(null)
-const editForm         = reactive({ displayName: '', linuxUsername: '' })
-const editError        = ref('')
-const editLoading      = ref(false)
-const roleToggleBusy   = ref<Record<string, boolean>>({})
+// ── Pagination ────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+const page      = ref(1)
+const pageCount = computed(() => Math.max(1, Math.ceil(users.value.length / PAGE_SIZE)))
+const paged     = computed(() => users.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
 
-const editingUser = computed(() => users.value.find(u => u.id === editingUserId.value) ?? null)
+function goPage(n: number) { page.value = Math.max(1, Math.min(n, pageCount.value)) }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 async function load() {
   loading.value = true
   loadError.value = ''
@@ -53,6 +47,10 @@ async function load() {
     const [u, r] = await Promise.all([trpc.user.list.query(), trpc.role.list.query()])
     users.value = u as User[]
     roles.value = (r as any[]).map(r => ({ id: r.id, name: r.name, isAdmin: r.isAdmin }))
+    if (selectedUser.value) {
+      selectedUser.value = users.value.find(u => u.id === selectedUser.value!.id) ?? null
+    }
+    if (page.value > pageCount.value) page.value = pageCount.value
   } catch {
     loadError.value = 'Failed to load users'
   } finally {
@@ -63,8 +61,6 @@ async function load() {
 function formatDate(d: Date | string) {
   return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
-
-function getInitials(u: string) { return u.slice(0, 2).toUpperCase() }
 
 const palette = [
   'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
@@ -97,6 +93,7 @@ async function submitAdd() {
     })
     addingUser.value = false
     await load()
+    page.value = pageCount.value
   } catch (e: any) {
     addError.value = e?.message ?? 'Failed to create user'
   } finally {
@@ -104,297 +101,224 @@ async function submitAdd() {
   }
 }
 
-// ── Edit user ─────────────────────────────────────────────────────────────────
-function openEdit(user: User) {
-  editingUserId.value = user.id
-  editError.value = ''
-  Object.assign(editForm, { displayName: user.displayName ?? '', linuxUsername: user.linuxUsername ?? '' })
-}
-function cancelEdit() { editingUserId.value = null }
-
-async function submitEdit() {
-  if (!editingUserId.value) return
-  editError.value = ''
-  editLoading.value = true
-  try {
-    await trpc.user.update.mutate({
-      userId:        editingUserId.value,
-      displayName:   editForm.displayName.trim() || null,
-      linuxUsername: editForm.linuxUsername.trim() || null,
-    })
-    editingUserId.value = null
-    await load()
-  } catch (e: any) {
-    editError.value = e?.message ?? 'Failed to update user'
-  } finally {
-    editLoading.value = false
-  }
-}
-
-// ── Role toggle (immediate) ───────────────────────────────────────────────────
-async function toggleRole(userId: string, roleId: string) {
-  const user = users.value.find(u => u.id === userId)
-  if (!user) return
-  const hasRole = user.userRoles.some(ur => ur.role.id === roleId)
-  const key = `${userId}-${roleId}`
-  if (roleToggleBusy.value[key]) return
-  roleToggleBusy.value[key] = true
-  editError.value = ''
-  try {
-    if (hasRole) await trpc.role.removeUser.mutate({ userId, roleId })
-    else          await trpc.role.assignUser.mutate({ userId, roleId })
-    await load()
-  } catch (e: any) {
-    editError.value = e?.message ?? 'Failed to update role'
-  } finally {
-    roleToggleBusy.value[key] = false
-  }
-}
-
-async function deleteUser(userId: string) {
-  if (!confirm('Delete this user? This cannot be undone.')) return
-  try {
-    await trpc.user.delete.mutate({ userId })
-    await load()
-  } catch (e: any) {
-    alert(e?.message ?? 'Failed to delete user')
-  }
-}
+function openDetail(user: User) { selectedUser.value = user }
+function onBack() { selectedUser.value = null }
 
 onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div>
 
-    <!-- ── Header ── -->
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Users</h2>
-        <p v-if="!loading && !loadError" class="text-xs text-[var(--c-text-3)] mt-0.5">
-          {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
-        </p>
+    <!-- ── Detail view ── -->
+    <UserDetailPanel
+      v-if="selectedUser"
+      :user="selectedUser"
+      :roles="roles"
+      @back="onBack"
+      @reload="load"
+    />
+
+    <!-- ── List view ── -->
+    <div v-else class="space-y-6">
+
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Users</h2>
+          <p v-if="!loading && !loadError" class="text-xs text-[var(--c-text-3)] mt-0.5">
+            {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
+          </p>
+        </div>
+        <button
+          v-if="canManageUsers && !addingUser"
+          @click="openAdd"
+          class="btn btn-primary btn-xs shrink-0"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Add user
+        </button>
       </div>
-      <button
-        v-if="canManageUsers && !addingUser"
-        @click="openAdd"
-        class="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--c-accent)] hover:opacity-90
-               text-[var(--c-accent-fg)] text-xs font-medium rounded-lg transition-opacity shrink-0"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+
+      <!-- Add user form -->
+      <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
+        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New user</h4>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-red-400">*</span></label>
+            <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Display name</label>
+            <input v-model="newUser.displayName" placeholder="John Doe" class="ui-input"/>
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Password <span class="text-red-400">*</span></label>
+            <input v-model="newUser.password" type="password" placeholder="Min. 6 chars" class="ui-input"/>
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm password <span class="text-red-400">*</span></label>
+            <input v-model="newUser.confirmPassword" type="password" placeholder="Repeat" class="ui-input"/>
+          </div>
+        </div>
+
+        <p v-if="addError" class="text-red-400 text-xs">{{ addError }}</p>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button
+            @click="submitAdd"
+            :disabled="addLoading || !newUser.username || !newUser.password"
+            class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {{ addLoading ? 'Creating…' : 'Create' }}
+          </button>
+          <button @click="cancelAdd" class="btn btn-ghost btn-sm">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm py-6">
+        <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
         </svg>
-        Add user
-      </button>
-    </div>
-
-    <!-- ── Add user form ── -->
-    <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-      <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New user</h4>
-
-      <div class="grid grid-cols-2 gap-2.5">
-        <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-red-400">*</span></label>
-          <input v-model="newUser.username" placeholder="johndoe" autofocus
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-        </div>
-        <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Display name</label>
-          <input v-model="newUser.displayName" placeholder="John Doe"
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-        </div>
-        <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Password <span class="text-red-400">*</span></label>
-          <input v-model="newUser.password" type="password" placeholder="Min. 6 chars"
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-        </div>
-        <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm password <span class="text-red-400">*</span></label>
-          <input v-model="newUser.confirmPassword" type="password" placeholder="Repeat"
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-        </div>
+        Loading…
       </div>
 
-      <p v-if="addError" class="text-red-400 text-xs">{{ addError }}</p>
-
-      <div class="flex items-center gap-2 pt-1">
-        <button @click="submitAdd" :disabled="addLoading || !newUser.username || !newUser.password"
-          class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
-                 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-opacity">
-          {{ addLoading ? 'Creating…' : 'Create' }}
-        </button>
-        <button @click="cancelAdd" class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
-          Cancel
-        </button>
+      <!-- Error -->
+      <div v-else-if="loadError" class="flex items-center gap-2 text-red-400 text-sm py-4">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        {{ loadError }}
       </div>
-    </div>
 
-    <!-- ── Loading ── -->
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm py-6">
-      <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
-      Loading…
-    </div>
-
-    <!-- ── Error ── -->
-    <div v-else-if="loadError" class="flex items-center gap-2 text-red-400 text-sm py-4">
-      <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-      </svg>
-      {{ loadError }}
-    </div>
-
-    <!-- ── User table ── -->
-    <div v-else class="rounded-xl border border-[var(--c-border)] overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-            <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">User</th>
-            <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</th>
-            <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Linux user</th>
-            <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden md:table-cell">Created</th>
-            <th v-if="canManageUsers" class="px-4 py-3 w-20"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[var(--c-border)]">
-          <template v-for="user in users" :key="user.id">
-
-            <!-- ── User row ── -->
-            <tr :class="['transition-colors', editingUserId === user.id ? 'bg-[var(--c-surface)]' : 'bg-[var(--c-bg)] hover:bg-[var(--c-surface)]']">
-              <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
-                  <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0', avatarGradient(user.username)]">
-                    {{ getInitials(user.username) }}
-                  </div>
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
-                      <span v-if="user.id === currentUserId"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
-                      <span v-if="userIsAdmin(user)"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
-                      <span v-else-if="userCanManage(user)"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">manager</span>
+      <!-- Table -->
+      <template v-else>
+        <div class="panel-card">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">User</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Linux user</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden md:table-cell">Created</th>
+                <th v-if="canManageUsers" class="px-4 py-3 w-16"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--c-border)]">
+              <tr
+                v-for="user in paged"
+                :key="user.id"
+                class="bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
+              >
+                <!-- User -->
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0', avatarGradient(user.username)]">
+                      {{ user.username.slice(0, 2).toUpperCase() }}
                     </div>
-                    <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
+                        <span v-if="user.id === currentUserId"
+                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+                        <span v-if="userIsAdmin(user)"
+                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+                      </div>
+                      <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
+                </td>
 
-              <td class="px-5 py-3.5">
-                <div class="flex flex-wrap gap-1">
-                  <span v-for="ur in user.userRoles" :key="ur.role.id"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
-                    {{ ur.role.name }}
-                  </span>
-                  <span v-if="user.userRoles.length === 0" class="text-[var(--c-text-3)] text-xs">—</span>
-                </div>
-              </td>
+                <!-- Roles -->
+                <td class="px-5 py-3.5">
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="ur in user.userRoles" :key="ur.role.id"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
+                      {{ ur.role.name }}
+                    </span>
+                    <span v-if="user.userRoles.length === 0" class="text-[var(--c-text-3)] text-xs">—</span>
+                  </div>
+                </td>
 
-              <td class="px-5 py-3.5 hidden sm:table-cell">
-                <code v-if="user.linuxUsername" class="text-xs text-[var(--c-text-2)] font-mono">{{ user.linuxUsername }}</code>
-                <span v-else class="text-[var(--c-text-3)] text-xs">—</span>
-              </td>
+                <!-- Linux user -->
+                <td class="px-5 py-3.5 hidden sm:table-cell">
+                  <code v-if="user.linuxUsername" class="text-xs text-[var(--c-text-2)] font-mono">{{ user.linuxUsername }}</code>
+                  <span v-else class="text-[var(--c-text-3)] text-xs">—</span>
+                </td>
 
-              <td class="px-5 py-3.5 hidden md:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                {{ formatDate(user.createdAt) }}
-              </td>
+                <!-- Created -->
+                <td class="px-5 py-3.5 hidden md:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+                  {{ formatDate(user.createdAt) }}
+                </td>
 
-              <td v-if="canManageUsers" class="px-4 py-3.5">
-                <div class="flex items-center gap-1 justify-end">
+                <!-- Actions -->
+                <td v-if="canManageUsers" class="px-4 py-3.5 text-right">
                   <button
-                    v-if="editingUserId !== user.id"
-                    @click="openEdit(user)"
-                    title="Edit"
+                    @click="openDetail(user)"
+                    title="Edit user"
                     class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>
                   </button>
-                  <button
-                    v-if="user.id !== currentUserId"
-                    @click="deleteUser(user.id)"
-                    title="Delete"
-                    class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
+                </td>
+              </tr>
 
-            <!-- ── Inline edit row ── -->
-            <tr v-if="editingUserId === user.id" :key="user.id + '-edit'" class="bg-[var(--c-surface-alt)]">
-              <td :colspan="canManageUsers ? 5 : 4" class="px-5 py-5 border-t border-[var(--c-border)]">
-                <div class="space-y-4 max-w-xl">
-                  <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">
-                    Editing {{ editingUser?.username }}
-                  </p>
+              <!-- Empty state -->
+              <tr v-if="users.length === 0">
+                <td :colspan="canManageUsers ? 5 : 4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
+                  No users yet.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-                  <div class="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label class="block text-xs text-[var(--c-text-3)] mb-1">Display name</label>
-                      <input v-model="editForm.displayName" placeholder="Full name"
-                        class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-                    </div>
-                    <div>
-                      <label class="block text-xs text-[var(--c-text-3)] mb-1">Linux username</label>
-                      <input v-model="editForm.linuxUsername" placeholder="linux_user"
-                        class="font-mono w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"/>
-                    </div>
-                  </div>
+        <!-- Pagination -->
+        <div v-if="pageCount > 1" class="flex items-center justify-between px-1">
+          <span class="text-xs text-[var(--c-text-3)]">
+            {{ (page - 1) * PAGE_SIZE + 1 }}–{{ Math.min(page * PAGE_SIZE, users.length) }} of {{ users.length }}
+          </span>
+          <div class="flex items-center gap-1">
+            <button
+              @click="goPage(page - 1)"
+              :disabled="page === 1"
+              class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <template v-for="n in pageCount" :key="n">
+              <button
+                @click="goPage(n)"
+                :class="[
+                  'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
+                  n === page
+                    ? 'bg-[var(--c-accent)] text-[var(--c-accent-fg)]'
+                    : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]',
+                ]"
+              >{{ n }}</button>
+            </template>
+            <button
+              @click="goPage(page + 1)"
+              :disabled="page === pageCount"
+              class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </template>
 
-                  <!-- Role assignment -->
-                  <div v-if="roles.length > 0">
-                    <label class="block text-xs text-[var(--c-text-3)] mb-2">Roles</label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <button
-                        v-for="role in roles"
-                        :key="role.id"
-                        @click="toggleRole(editingUser!.id, role.id)"
-                        :disabled="!!roleToggleBusy[editingUser!.id + '-' + role.id]"
-                        :class="[
-                          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border transition-colors disabled:opacity-50',
-                          editingUser!.userRoles.some(ur => ur.role.id === role.id)
-                            ? 'bg-violet-500/10 text-violet-400 border-violet-500/25 hover:bg-red-500/8 hover:text-red-400 hover:border-red-500/25'
-                            : 'text-[var(--c-text-3)] border-[var(--c-border-strong)] hover:border-violet-500/40 hover:text-violet-400 hover:bg-violet-500/8',
-                        ]"
-                      >
-                        <svg v-if="editingUser!.userRoles.some(ur => ur.role.id === role.id)"
-                          class="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        {{ role.name }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <p v-if="editError" class="text-red-400 text-xs">{{ editError }}</p>
-
-                  <div class="flex items-center gap-2">
-                    <button @click="submitEdit" :disabled="editLoading"
-                      class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40
-                             text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-opacity">
-                      {{ editLoading ? 'Saving…' : 'Save' }}
-                    </button>
-                    <button @click="cancelEdit"
-                      class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-
-          </template>
-        </tbody>
-      </table>
     </div>
-
   </div>
 </template>
