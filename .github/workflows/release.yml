@@ -87,7 +87,7 @@ jobs:
             package.json \
             pnpm-lock.yaml \
             pnpm-workspace.yaml \
-            scripts/install-release.sh
+            scripts/install.sh
 
           echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
