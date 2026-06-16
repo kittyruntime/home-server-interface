@@ -105,7 +105,7 @@ function notifBorderColor(type: Notification['type']): string {
     <Transition name="nm">
       <div
         v-if="open"
-        class="fixed z-50 w-80 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden"
         :style="{
           bottom: pos.bottom + 'px',
           left:   pos.left + 'px',

@@ -39,7 +39,8 @@ const activePlaceId   = ref<string | null>(null)
 const dragOver        = ref(false)
 let   dragDepth = 0
 const fileInput = ref<HTMLInputElement | null>(null)
-const ctxMenu   = ref<{ x: number; y: number } | null>(null)
+const ctxMenu     = ref<{ x: number; y: number } | null>(null)
+const sidebarOpen = ref(false)
 
 // ── places ───────────────────────────────────────────────────────────────────
 const VIRTUAL_ROOT: Place = { id: '__root__', name: 'Root', path: '/' }
@@ -345,12 +346,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-full" @click="clearSelection">
+  <div class="flex h-full relative overflow-hidden" @click="clearSelection">
+
+    <!-- Mobile sidebar overlay -->
+    <div
+      v-if="sidebarOpen"
+      class="absolute inset-0 z-10 bg-black/40 sm:hidden"
+      @click.stop="sidebarOpen = false"
+    />
 
     <PlacesSidebar
+      :class="[
+        'transition-transform duration-200',
+        'absolute sm:relative z-20 sm:z-0 inset-y-0 left-0',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
+      ]"
       :places="allPlaces"
       :active-place-id="activePlaceId"
-      @select="selectPlace"
+      @select="selectPlace($event); sidebarOpen = false"
     />
 
     <div class="flex-1 flex flex-col min-w-0">
@@ -363,6 +376,7 @@ onMounted(async () => {
         :selected-entries="selectedEntries"
         :clipboard="clipboard"
         :view-mode="viewMode"
+        :sidebar-open="sidebarOpen"
         @go-up="goUp"
         @navigate="navigate"
         @clear-selection="clearSelection"
@@ -377,6 +391,7 @@ onMounted(async () => {
         @paste="doPaste"
         @refresh="refresh"
         @update:view-mode="viewMode = $event"
+        @toggle-sidebar="sidebarOpen = !sidebarOpen"
       />
 
       <!-- Content area -->

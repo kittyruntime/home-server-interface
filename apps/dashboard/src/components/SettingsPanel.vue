@@ -40,10 +40,17 @@ watch(() => props.focusSection, s => { if (s) active.value = s })
 </script>
 
 <template>
-  <div class="flex h-full">
+  <div class="flex flex-col sm:flex-row h-full">
+
+    <!-- ── Mobile section picker ─────────────────────────────────────── -->
+    <div class="sm:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
+      <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
+        <option v-for="item in visibleNav" :key="item.id" :value="item.id">{{ item.label }}</option>
+      </select>
+    </div>
 
     <!-- ── Left nav ───────────────────────────────────────────────────── -->
-    <nav class="w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
 
       <template v-for="(item, i) in visibleNav" :key="item.id">
 

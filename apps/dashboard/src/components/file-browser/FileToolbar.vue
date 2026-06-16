@@ -10,6 +10,7 @@ defineProps<{
   selectedEntries: Entry[]
   clipboard: { paths: readonly string[]; mode: 'copy' | 'cut' } | null
   viewMode: 'list' | 'grid'
+  sidebarOpen: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +28,7 @@ const emit = defineEmits<{
   paste: []
   refresh: []
   'update:viewMode': [mode: 'list' | 'grid']
+  toggleSidebar: []
 }>()
 </script>
 
@@ -35,6 +37,15 @@ const emit = defineEmits<{
     class="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]/60 backdrop-blur-sm flex-shrink-0 h-11"
     @click.stop
   >
+    <!-- Mobile: places sidebar toggle -->
+    <button @click="emit('toggleSidebar')" title="Places"
+      class="sm:hidden p-1.5 rounded-lg flex-shrink-0 transition-colors"
+      :class="sidebarOpen ? 'text-[var(--c-accent)] bg-[var(--c-accent-subtle)]' : 'text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]'">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+
     <!-- Back / Up -->
     <button v-if="canGoUp" @click="emit('goUp')" title="Go up"
       class="p-1.5 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors flex-shrink-0">
@@ -113,7 +124,7 @@ const emit = defineEmits<{
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
         </svg>
-        New folder
+        <span class="hidden sm:inline">New folder</span>
       </button>
 
       <!-- Upload -->
@@ -122,7 +133,7 @@ const emit = defineEmits<{
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
-        Upload
+        <span class="hidden sm:inline">Upload</span>
       </button>
 
       <!-- Paste -->
@@ -134,7 +145,7 @@ const emit = defineEmits<{
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }} {{ clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }}
+        <span class="hidden sm:inline">Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }} {{ clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }}</span>
       </button>
 
       <!-- Divider -->
