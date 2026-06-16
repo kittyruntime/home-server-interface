@@ -182,14 +182,14 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
     <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--c-border)] flex-shrink-0">
       <div class="flex items-center gap-3">
         <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Overview</h3>
-        <span v-if="metrics" class="text-xs text-slate-600 font-mono">{{ uptimeStr }}</span>
+        <span v-if="metrics" class="text-xs text-[var(--c-text-3)] font-mono">{{ uptimeStr }}</span>
       </div>
 
       <!-- Add widget dropdown -->
       <div class="relative">
         <button
           @click.stop="addOpen = !addOpen"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-[var(--c-border-strong)] text-[var(--c-text-2)] text-sm rounded-lg hover:bg-[var(--c-hover)] transition-colors"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] text-[var(--c-text-2)] text-sm rounded-lg hover:bg-[var(--c-hover)] transition-colors"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -217,11 +217,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
     <!-- Widget grid -->
     <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-slate-600">
+      <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-[var(--c-text-3)]">
         <svg class="w-10 h-10 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
         </svg>
-        <p class="text-sm">No widgets. Click <strong class="text-slate-400">Add</strong> to get started.</p>
+        <p class="text-sm">No widgets. Click <strong class="text-[var(--c-text-2)]">Add</strong> to get started.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -234,7 +234,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             <button
               @click="toggleCols(w)"
               :title="w.cols === 1 ? 'Expand' : 'Shrink'"
-              class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)] rounded-md transition-colors text-xs"
+              class="w-6 h-6 flex items-center justify-center text-[var(--c-text-3)] hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)] rounded-md transition-colors text-xs"
             >
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4M8 15l4 4 4-4" v-if="w.cols === 1"/>
@@ -244,7 +244,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             <button
               @click="removeWidget(w.id)"
               title="Remove"
-              class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+              class="w-6 h-6 flex items-center justify-center text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -254,13 +254,13 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- CPU ---- -->
           <template v-if="w.type === 'cpu'">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">CPU</p>
+            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">CPU</p>
             <div class="flex items-end gap-4 flex-1">
               <div class="flex-shrink-0">
                 <span class="text-4xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
                   {{ metrics?.cpu ?? '—' }}
                 </span>
-                <span class="text-lg text-slate-500 ml-0.5">%</span>
+                <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
               </div>
               <div class="flex-1 min-w-0">
                 <svg
@@ -284,32 +284,32 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- Memory ---- -->
           <template v-else-if="w.type === 'memory'">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Memory</p>
+            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Memory</p>
             <div class="flex-1 flex flex-col justify-between">
               <div class="flex items-baseline justify-between mb-3">
                 <span class="text-2xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
                   {{ metrics ? fmtMem(metrics.memory.used) : '—' }}
                 </span>
-                <span class="text-xs text-slate-500">
+                <span class="text-xs text-[var(--c-text-3)]">
                   of {{ metrics ? fmtMem(metrics.memory.total) : '—' }}
                 </span>
               </div>
               <div class="space-y-1.5">
-                <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-500"
                     :class="(metrics?.memory.percent ?? 0) > 85 ? 'bg-red-500' : (metrics?.memory.percent ?? 0) > 65 ? 'bg-amber-400' : 'bg-emerald-500'"
                     :style="{ width: (metrics?.memory.percent ?? 0) + '%' }"
                   />
                 </div>
-                <p class="text-xs text-slate-500 tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
+                <p class="text-xs text-[var(--c-text-3)] tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
               </div>
             </div>
           </template>
 
           <!-- ---- Network ---- -->
           <template v-else-if="w.type === 'network'">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Network</p>
+            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Network</p>
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <div class="space-y-0.5">
@@ -358,19 +358,19 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- Containers ---- -->
           <template v-else-if="w.type === 'containers'">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">Containers</p>
+            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Containers</p>
             <div class="flex-1 flex items-center gap-6">
               <div class="text-center">
                 <p class="text-3xl font-bold text-emerald-400 tabular-nums leading-none">{{ ctrRunning }}</p>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Running</p>
+                <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Running</p>
               </div>
               <div class="text-center">
-                <p class="text-3xl font-bold text-slate-500 tabular-nums leading-none">{{ ctrStopped }}</p>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Stopped</p>
+                <p class="text-3xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">{{ ctrStopped }}</p>
+                <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Stopped</p>
               </div>
               <div class="text-center">
-                <p class="text-3xl font-bold tabular-nums leading-none" :class="ctrError > 0 ? 'text-red-400' : 'text-slate-700'">{{ ctrError }}</p>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Error</p>
+                <p class="text-3xl font-bold tabular-nums leading-none" :class="ctrError > 0 ? 'text-red-400' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
+                <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Error</p>
               </div>
             </div>
           </template>

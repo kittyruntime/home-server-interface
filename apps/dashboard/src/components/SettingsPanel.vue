@@ -68,7 +68,7 @@ watch(() => props.focusSection, s => { if (s) active.value = s })
               'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
               active === item.id
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >
             <!-- Profile icon -->

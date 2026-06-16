@@ -104,7 +104,7 @@ onMounted(async () => {
 <template>
   <section>
     <div class="flex items-center justify-between mb-3 px-1">
-      <h3 class="text-xs font-medium uppercase tracking-widest text-slate-500">Places</h3>
+      <h3 class="text-xs font-medium uppercase tracking-widest text-[var(--c-text-3)]">Places</h3>
       <button
         v-if="!adding"
         @click="adding = true"
@@ -118,23 +118,23 @@ onMounted(async () => {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-slate-600 text-sm px-1">Loading…</div>
+    <div v-if="loading" class="text-[var(--c-text-3)] text-sm px-1">Loading…</div>
 
     <template v-else>
       <!-- Add form -->
       <div v-if="adding" class="rounded-xl border border-[var(--c-border-strong)] bg-[var(--c-surface)] p-4 mb-3">
         <div class="flex gap-3 mb-3">
           <div class="flex-1">
-            <label class="block text-xs text-slate-500 mb-1">Name</label>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Name</label>
             <input v-model="newName" type="text" placeholder="Media"
               class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-3)]
-                     focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder-slate-600"/>
+                     focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
           </div>
           <div class="flex-[2]">
-            <label class="block text-xs text-slate-500 mb-1">Path</label>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Path</label>
             <input v-model="newPath" type="text" placeholder="/mnt/data"
               class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-3)]
-                     font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder-slate-600"/>
+                     font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
           </div>
         </div>
         <div v-if="addError" class="text-red-400 text-xs mb-2">{{ addError }}</div>
@@ -145,7 +145,7 @@ onMounted(async () => {
             {{ addLoading ? 'Adding…' : 'Add Place' }}
           </button>
           <button @click="adding = false; addError = ''"
-            class="px-3 py-1.5 text-slate-400 hover:text-[var(--c-text-1)] text-sm transition-colors">
+            class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
             Cancel
           </button>
         </div>
@@ -153,7 +153,7 @@ onMounted(async () => {
 
       <!-- Empty state -->
       <div v-if="places.length === 0 && !adding" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-5 py-4">
-        <p class="text-sm text-slate-600 italic">No places configured yet.</p>
+        <p class="text-sm text-[var(--c-text-3)] italic">No places configured yet.</p>
       </div>
 
       <!-- Places list -->
@@ -171,17 +171,17 @@ onMounted(async () => {
               </svg>
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-[var(--c-text-1)]">{{ place.name }}</span>
-                <span class="text-slate-600 text-xs font-mono ml-3">{{ place.path }}</span>
+                <span class="text-[var(--c-text-3)] text-xs font-mono ml-3">{{ place.path }}</span>
               </div>
               <!-- Expand chevron -->
-              <svg :class="['w-3.5 h-3.5 text-slate-600 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
+              <svg :class="['w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
             <button @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-600 hover:text-red-400
-                     hover:bg-red-900/20 transition-all shrink-0"
+              class="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--c-text-3)] hover:text-red-400
+                     hover:bg-red-500/10 transition-all shrink-0"
               title="Remove">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -192,11 +192,11 @@ onMounted(async () => {
           <!-- Permissions matrix (expanded) -->
           <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
             <div class="px-4 py-2 bg-[var(--c-surface-alt)]">
-              <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Permissions</span>
+              <span class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Permissions</span>
             </div>
             <table class="w-full text-xs">
               <thead>
-                <tr class="text-slate-600 uppercase tracking-wider border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
+                <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
                   <th class="px-4 py-2 text-left font-medium">Subject</th>
                   <th class="px-3 py-2 text-center font-medium w-16">Read</th>
                   <th class="px-3 py-2 text-center font-medium w-16">Write</th>
@@ -224,7 +224,7 @@ onMounted(async () => {
                 <tr v-for="user in users.filter(u => !userIsAdmin(u))" :key="'user-' + user.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-400">user</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                       <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                     </div>
                   </td>
@@ -237,7 +237,7 @@ onMounted(async () => {
                 </tr>
 
                 <tr v-if="visibleRoles.length === 0 && !users.some(u => !userIsAdmin(u))">
-                  <td colspan="4" class="px-4 py-3 text-slate-600 italic">No roles or users to assign.</td>
+                  <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
                 </tr>
               </tbody>
             </table>

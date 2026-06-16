@@ -47,7 +47,7 @@ function uploadBarColor(status: UploadTask['status']): string {
   switch (status) {
     case 'done':      return 'bg-green-500'
     case 'error':     return 'bg-red-500'
-    case 'cancelled': return 'bg-slate-600'
+    case 'cancelled': return 'bg-[var(--c-text-3)]'
     case 'paused':    return 'bg-amber-500'
     default:          return 'bg-[var(--c-accent)]'
   }
@@ -57,7 +57,7 @@ function uploadStatusColor(status: UploadTask['status']): string {
   switch (status) {
     case 'done':      return 'text-green-400'
     case 'error':     return 'text-red-400'
-    case 'cancelled': return 'text-slate-500'
+    case 'cancelled': return 'text-[var(--c-text-3)]'
     case 'paused':    return 'text-amber-400'
     default:          return 'text-[var(--c-accent)]'
   }
@@ -78,7 +78,7 @@ function notifIconColor(type: Notification['type']): string {
     case 'success':  return 'text-green-400'
     case 'error':    return 'text-red-400'
     case 'info':     return 'text-blue-400'
-    default:         return 'text-slate-400'
+    default:         return 'text-[var(--c-text-3)]'
   }
 }
 
@@ -118,7 +118,7 @@ function notifBorderColor(type: Notification['type']): string {
           <span class="text-sm font-semibold text-[var(--c-text-1)]">Activity</span>
           <button
             @click="$emit('close')"
-            class="p-1 rounded-lg text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+            class="p-1 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
           >
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -131,7 +131,7 @@ function notifBorderColor(type: Notification['type']): string {
 
           <!-- Transfers -->
           <section v-if="uploads.tasks.value.length > 0">
-            <div class="text-[10px] uppercase tracking-widest text-slate-600 px-1 mb-2 select-none">Transfers</div>
+            <div class="text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Transfers</div>
             <div class="flex flex-col gap-2">
               <div
                 v-for="task in uploads.tasks.value"
@@ -144,7 +144,7 @@ function notifBorderColor(type: Notification['type']): string {
                     {{ uploadStatusLabel(task) }}
                   </span>
                 </div>
-                <div class="h-1 bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden mb-2">
                   <div
                     class="h-full rounded-full transition-all duration-300"
                     :class="uploadBarColor(task.status)"
@@ -156,7 +156,7 @@ function notifBorderColor(type: Notification['type']): string {
                     v-if="task.status === 'uploading' || task.status === 'paused'"
                     @click.stop="toggleStatMode()"
                     :title="statMode === 'throughput' ? 'Switch to chunks' : 'Switch to throughput'"
-                    class="text-[10px] tabular-nums text-slate-500 hover:text-[var(--c-text-2)] transition-colors cursor-pointer"
+                    class="text-[10px] tabular-nums text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors cursor-pointer"
                   >
                     <template v-if="statMode === 'throughput' && task.status === 'uploading'">
                       {{ formatThroughput(task.bytesPerSec) }}
@@ -165,7 +165,7 @@ function notifBorderColor(type: Notification['type']): string {
                       {{ task.sentChunks }} / {{ task.totalChunks }} chunks
                     </template>
                   </button>
-                  <span v-else class="text-[10px] text-slate-600 tabular-nums">
+                  <span v-else class="text-[10px] text-[var(--c-text-3)] tabular-nums">
                     {{ task.sentChunks }} / {{ task.totalChunks }} chunks
                   </span>
 
@@ -173,7 +173,7 @@ function notifBorderColor(type: Notification['type']): string {
                     <button
                       @click="togglePause(task)"
                       :title="task.status === 'uploading' ? 'Pause' : 'Resume'"
-                      class="p-1 rounded text-slate-500 hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+                      class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
                     >
                       <svg v-if="task.status === 'uploading'" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="6" y="4" width="4" height="16" rx="1"/>
@@ -186,7 +186,7 @@ function notifBorderColor(type: Notification['type']): string {
                     <button
                       @click="uploads.cancel(task.id)"
                       title="Cancel"
-                      class="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-900/30 transition-colors"
+                      class="p-1 rounded text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="4" y="4" width="16" height="16" rx="2"/>
@@ -204,7 +204,7 @@ function notifBorderColor(type: Notification['type']): string {
 
           <!-- Alerts -->
           <section v-if="notifications.length > 0">
-            <div class="text-[10px] uppercase tracking-widest text-slate-600 px-1 mb-2 select-none">Alerts</div>
+            <div class="text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Alerts</div>
             <div class="flex flex-col gap-2">
               <div
                 v-for="n in notifications"
@@ -223,14 +223,14 @@ function notifBorderColor(type: Notification['type']): string {
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-xs text-[var(--c-text-1)] leading-snug">{{ n.title }}</p>
-                  <p v-if="n.detail" class="text-[10px] text-slate-500 mt-0.5 leading-snug truncate">{{ n.detail }}</p>
-                  <div v-if="n.progress != null && n.progress >= 0" class="h-0.5 bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <p v-if="n.detail" class="text-[10px] text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.detail }}</p>
+                  <div v-if="n.progress != null && n.progress >= 0" class="h-0.5 bg-[var(--c-surface-deep)] rounded-full mt-1.5 overflow-hidden">
                     <div class="h-full bg-[var(--c-accent)] rounded-full transition-all duration-200" :style="{ width: n.progress + '%' }"/>
                   </div>
                 </div>
                 <button
                   @click="dismiss(n.id)"
-                  class="shrink-0 p-0.5 rounded text-slate-600 hover:text-[var(--c-text-2)] transition-colors"
+                  class="shrink-0 p-0.5 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
                 >
                   <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -243,7 +243,7 @@ function notifBorderColor(type: Notification['type']): string {
           <!-- Empty state -->
           <div
             v-if="uploads.tasks.value.length === 0 && notifications.length === 0"
-            class="flex-1 flex flex-col items-center justify-center gap-2 text-slate-700 select-none py-10"
+            class="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--c-text-3)] select-none py-10"
           >
             <svg class="w-7 h-7 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -256,7 +256,7 @@ function notifBorderColor(type: Notification['type']): string {
         <div v-if="notifications.length > 0" class="px-4 py-2.5 border-t border-[var(--c-border)] flex-shrink-0">
           <button
             @click="dismissAll()"
-            class="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
           >
             Clear all alerts
           </button>

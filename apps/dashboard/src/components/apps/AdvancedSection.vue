@@ -41,7 +41,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
 
     <!-- Cap Add -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Cap Add</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Cap Add</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capAdd" :key="cap"
@@ -65,7 +65,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
 
     <!-- Cap Drop -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Cap Drop</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Cap Drop</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capDrop" :key="cap"
@@ -89,7 +89,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
 
     <!-- Restart policy -->
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Restart Policy</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Restart Policy</label>
       <select
         :value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
@@ -105,7 +105,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
     <!-- Hostname / User / Command -->
     <div class="grid grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Hostname</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Hostname</label>
         <input
           :value="modelValue.hostname ?? ''" placeholder="my-container"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
@@ -113,7 +113,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">User</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">User</label>
         <input
           :value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
@@ -122,7 +122,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
       </div>
     </div>
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Command override</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Command override</label>
       <input
         :value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
@@ -133,7 +133,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
     <!-- CPU / Memory -->
     <div class="grid grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">CPU Limit</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">CPU Limit</label>
         <input
           type="number" min="0" max="64" step="0.1"
           :value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
@@ -142,7 +142,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Memory Limit</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Memory Limit</label>
         <input
           :value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"

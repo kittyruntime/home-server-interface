@@ -77,7 +77,7 @@ onUnmounted(() => clearInterval(timer))
 <template>
   <div>
     <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Updates</h2>
-    <p class="text-sm text-slate-500 mb-6">Manage software updates for this server.</p>
+    <p class="text-sm text-[var(--c-text-3)] mb-6">Manage software updates for this server.</p>
 
     <!-- Restarting state -->
     <div v-if="restarting" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5">
@@ -88,7 +88,7 @@ onUnmounted(() => clearInterval(timer))
         </svg>
         <div>
           <p class="text-sm font-medium text-[var(--c-text-1)]">Update in progress</p>
-          <p class="text-xs text-slate-500 mt-0.5">The server is restarting. The page will reload automatically.</p>
+          <p class="text-xs text-[var(--c-text-3)] mt-0.5">The server is restarting. The page will reload automatically.</p>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@ onUnmounted(() => clearInterval(timer))
             <p class="text-sm font-medium text-[var(--c-text-1)]">
               Version {{ status.latest }} available
             </p>
-            <p class="text-xs text-slate-500 mt-0.5">
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">
               You are on {{ status.current }}.
               The server will restart after installation.
             </p>
@@ -151,7 +151,7 @@ onUnmounted(() => clearInterval(timer))
         </div>
         <div>
           <p class="text-sm font-medium text-[var(--c-text-1)]">Up to date</p>
-          <p class="text-xs text-slate-500 mt-0.5">Running version {{ status.current }}</p>
+          <p class="text-xs text-[var(--c-text-3)] mt-0.5">Running version {{ status.current }}</p>
         </div>
       </div>
 

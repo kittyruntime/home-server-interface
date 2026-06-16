@@ -273,7 +273,7 @@ async function save() {
 
         <!-- Header -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--c-border)]">
-          <h2 class="text-base font-semibold text-[var(--c-text-3)]">
+          <h2 class="text-base font-semibold text-[var(--c-text-1)]">
             {{ editApp ? 'Edit App' : 'New App' }}
           </h2>
           <div class="flex items-center gap-2">
@@ -284,7 +284,7 @@ async function save() {
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
                 showCompose
                   ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)] hover:opacity-80'
-                  : 'text-slate-500 hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)]',
+                  : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)]',
               ]"
             >
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -292,7 +292,7 @@ async function save() {
               </svg>
               Import Compose
             </button>
-            <button @click="emit('close')" class="text-slate-500 hover:text-[var(--c-text-2)] transition-colors">
+            <button @click="emit('close')" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -309,14 +309,14 @@ async function save() {
               'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
               activeTab === tab.id
                 ? 'border-[var(--c-accent)] text-[var(--c-accent)]'
-                : 'border-transparent text-slate-500 hover:text-[var(--c-text-2)]',
+                : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
             ]"
           >{{ tab.label }}</button>
         </div>
 
         <!-- Compose import panel -->
         <div v-if="showCompose" class="px-6 py-4 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]/60 space-y-3">
-          <p class="text-xs text-slate-500">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
+          <p class="text-xs text-[var(--c-text-3)]">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
           <textarea
             v-model="composeRaw"
             placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
@@ -325,7 +325,7 @@ async function save() {
           />
           <div class="flex items-center gap-3">
             <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-              <label class="text-xs text-slate-400 whitespace-nowrap">Service:</label>
+              <label class="text-xs text-[var(--c-text-3)] whitespace-nowrap">Service:</label>
               <select
                 v-model="composeSelectedService"
                 class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
@@ -333,7 +333,7 @@ async function save() {
                 <option v-for="s in composeServices" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
-            <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-slate-500">
+            <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-[var(--c-text-3)]">
               Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
             </div>
             <div v-else class="flex-1" />
@@ -354,14 +354,14 @@ async function save() {
           <!-- Basic -->
           <div v-if="activeTab === 'basic'" class="space-y-4">
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Container name *</label>
+              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
               <input
                 v-model="form.name" placeholder="my-app" :disabled="!!editApp"
                 class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
               />
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">Image *</label>
+              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Image *</label>
               <input
                 v-model="form.image" placeholder="nginx:alpine"
                 class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
@@ -369,12 +369,12 @@ async function save() {
             </div>
             <!-- Sidebar pin URL -->
             <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
-              <label class="text-xs font-medium text-slate-400 uppercase tracking-wide">URL sidebar (optional)</label>
+              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">URL sidebar (optional)</label>
               <input
                 v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
                 class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
               />
-              <p class="text-xs text-slate-600">Pins the app in the sidebar if set.</p>
+              <p class="text-xs text-[var(--c-text-3)]">Pins the app in the sidebar if set.</p>
             </div>
           </div>
 
@@ -395,7 +395,7 @@ async function save() {
 
           <!-- Networks -->
           <div v-else-if="activeTab === 'networks'" class="space-y-3">
-            <p class="text-xs text-slate-500">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
+            <p class="text-xs text-[var(--c-text-3)]">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
             <div class="flex gap-2">
               <input
                 v-model="networkInput" placeholder="network-name"
@@ -415,7 +415,7 @@ async function save() {
                 {{ n }}
                 <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>
               </span>
-              <span v-if="form.networkNames.length === 0" class="text-xs text-slate-600">No networks attached.</span>
+              <span v-if="form.networkNames.length === 0" class="text-xs text-[var(--c-text-3)]">No networks attached.</span>
             </div>
           </div>
 
@@ -438,7 +438,7 @@ async function save() {
           <div class="flex gap-2">
             <button
               @click="emit('close')"
-              class="px-4 py-2 text-sm text-slate-400 hover:text-[var(--c-text-1)] transition-colors"
+              class="px-4 py-2 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors"
             >Cancel</button>
             <button
               @click="save" :disabled="loading || !form.name || !form.image"

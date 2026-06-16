@@ -47,7 +47,7 @@ function updateRow(i: number, field: 'key' | 'value', val: string) {
     <div class="flex justify-end">
       <button
         @click="toggleMode"
-        class="text-xs text-slate-400 hover:text-[var(--c-text-1)] transition-colors border border-[var(--c-border-strong)] rounded-lg px-2 py-1"
+        class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors border border-[var(--c-border-strong)] rounded-lg px-2 py-1"
       >
         {{ mode === 'table' ? 'Raw' : 'Table' }}
       </button>
@@ -55,20 +55,20 @@ function updateRow(i: number, field: 'key' | 'value', val: string) {
 
     <!-- Table mode -->
     <template v-if="mode === 'table'">
-      <div v-if="modelValue.length === 0" class="text-sm text-slate-500 py-2">No environment variables.</div>
+      <div v-if="modelValue.length === 0" class="text-sm text-[var(--c-text-3)] py-2">No environment variables.</div>
       <div v-for="(env, i) in modelValue" :key="i" class="flex items-center gap-2">
         <input
           :value="env.key" placeholder="KEY"
           @input="updateRow(i, 'key', ($event.target as HTMLInputElement).value)"
           class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
         />
-        <span class="text-slate-500 text-sm">=</span>
+        <span class="text-[var(--c-text-3)] text-sm">=</span>
         <input
           :value="env.value" placeholder="value"
           @input="updateRow(i, 'value', ($event.target as HTMLInputElement).value)"
           class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
         />
-        <button @click="removeRow(i)" class="p-1.5 text-slate-500 hover:text-red-400 transition-colors">
+        <button @click="removeRow(i)" class="p-1.5 text-[var(--c-text-3)] hover:text-red-400 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>

@@ -26,7 +26,7 @@ function update(i: number, field: keyof VolumeMount, val: string) {
 
 <template>
   <div class="space-y-3">
-    <div v-if="modelValue.length === 0" class="text-sm text-slate-500 py-2">No volumes.</div>
+    <div v-if="modelValue.length === 0" class="text-sm text-[var(--c-text-3)] py-2">No volumes.</div>
 
     <div v-for="(vol, i) in modelValue" :key="i" class="space-y-1">
       <div class="flex items-center gap-2">
@@ -67,7 +67,7 @@ function update(i: number, field: keyof VolumeMount, val: string) {
           <option v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
         </select>
 
-        <span class="text-slate-500 text-sm shrink-0">→</span>
+        <span class="text-[var(--c-text-3)] text-sm shrink-0">→</span>
 
         <!-- Target (chemin dans le container) -->
         <input
@@ -76,7 +76,7 @@ function update(i: number, field: keyof VolumeMount, val: string) {
           class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
         />
 
-        <button @click="remove(i)" class="p-1.5 text-slate-500 hover:text-red-400 transition-colors shrink-0">
+        <button @click="remove(i)" class="p-1.5 text-[var(--c-text-3)] hover:text-red-400 transition-colors shrink-0">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -86,7 +86,7 @@ function update(i: number, field: keyof VolumeMount, val: string) {
       <!-- Chemin résolu pour les Places -->
       <p
         v-if="vol.type === 'place' && vol.source && placePath(vol.source)"
-        class="ml-[calc(theme(spacing.2)+5rem)] text-xs text-slate-500 font-mono"
+        class="ml-[calc(theme(spacing.2)+5rem)] text-xs text-[var(--c-text-3)] font-mono"
       >
         ↳ {{ placePath(vol.source) }}
       </p>

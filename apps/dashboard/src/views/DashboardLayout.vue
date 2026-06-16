@@ -148,7 +148,7 @@ onUnmounted(() => {
               'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
               isActive('dashboard')
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -170,7 +170,7 @@ onUnmounted(() => {
               'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
               isActive('files')
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -192,7 +192,7 @@ onUnmounted(() => {
               'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
               isActive('apps')
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -214,7 +214,7 @@ onUnmounted(() => {
               'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
               isActive('settings')
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -254,11 +254,11 @@ onUnmounted(() => {
         ref="avatarRef"
         @click.stop="toggleUserMenu"
         title="Account"
-        class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center
-               justify-center text-white text-xs font-bold select-none transition-all duration-150"
+        class="w-9 h-9 rounded-full bg-[var(--c-accent)] flex items-center
+               justify-center text-[var(--c-accent-fg)] text-xs font-bold select-none transition-all duration-150"
         :class="userMenuOpen
           ? 'ring-2 ring-[var(--c-accent)] ring-offset-2 ring-offset-[var(--c-sidebar)]'
-          : 'hover:ring-2 hover:ring-slate-600/80 hover:ring-offset-2 hover:ring-offset-[var(--c-sidebar)]'"
+          : 'opacity-80 hover:opacity-100'"
       >
         {{ initials }}
       </button>
@@ -278,12 +278,12 @@ onUnmounted(() => {
           }"
         >
           <div class="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--c-border)]">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div class="w-8 h-8 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] text-xs font-bold shrink-0">
               {{ initials }}
             </div>
             <div class="min-w-0">
               <div class="text-[var(--c-text-1)] text-sm font-medium truncate">{{ currentUsername }}</div>
-              <div class="text-slate-500 text-xs">{{ isAdmin ? 'Administrator' : 'User' }}</div>
+              <div class="text-[var(--c-text-3)] text-xs">{{ isAdmin ? 'Administrator' : 'User' }}</div>
             </div>
           </div>
           <div class="p-1.5">
@@ -292,12 +292,12 @@ onUnmounted(() => {
               class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--c-text-2)]
                      hover:bg-[var(--c-hover)] rounded-lg transition-colors text-left"
             >
-              <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               Profile
             </button>
-            <div class="h-px bg-slate-800 mx-1 my-1" />
+            <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
             <button
               @click="handleLogout"
               class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400
@@ -337,7 +337,7 @@ onUnmounted(() => {
         <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
         <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
         <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
-        <div v-else class="flex items-center justify-center h-full text-slate-700 select-none">
+        <div v-else class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
           <div class="text-center space-y-3">
             <svg class="w-12 h-12 mx-auto opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -358,7 +358,7 @@ onUnmounted(() => {
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
         <button @click="selectApp('dashboard')" title="Overview"
           :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('dashboard') ? 'text-[var(--c-accent)]' : 'text-slate-500']">
+            isActive('dashboard') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
           </svg>
@@ -371,7 +371,7 @@ onUnmounted(() => {
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
         <button @click="selectApp('files')" title="Files"
           :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('files') ? 'text-[var(--c-accent)]' : 'text-slate-500']">
+            isActive('files') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
           </svg>
@@ -384,7 +384,7 @@ onUnmounted(() => {
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
         <button @click="selectApp('apps')" title="Apps"
           :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('apps') ? 'text-[var(--c-accent)]' : 'text-slate-500']">
+            isActive('apps') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
           </svg>
@@ -397,7 +397,7 @@ onUnmounted(() => {
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
         <button @click="selectApp('settings')" title="Settings"
           :class="['relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('settings') ? 'text-[var(--c-accent)]' : 'text-slate-500']">
+            isActive('settings') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -410,7 +410,7 @@ onUnmounted(() => {
       <!-- Notifications bell -->
       <button @click.stop="toggleNotifMenu" title="Activity"
         :class="['relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-          notifMenuOpen ? 'text-[var(--c-accent)]' : 'text-slate-500']">
+          notifMenuOpen ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
@@ -421,8 +421,8 @@ onUnmounted(() => {
 
       <!-- User avatar -->
       <button @click.stop="toggleUserMenu" title="Account"
-        class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold select-none transition-all duration-150"
-        :class="userMenuOpen ? 'ring-2 ring-[var(--c-accent)] ring-offset-2 ring-offset-[var(--c-sidebar)]' : ''">
+        class="w-9 h-9 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] text-xs font-bold select-none transition-all duration-150"
+        :class="userMenuOpen ? 'ring-2 ring-[var(--c-accent)] ring-offset-2 ring-offset-[var(--c-sidebar)]' : 'opacity-80'">
         {{ initials }}
       </button>
 

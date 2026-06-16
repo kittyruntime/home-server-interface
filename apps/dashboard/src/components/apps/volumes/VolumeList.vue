@@ -76,12 +76,12 @@ function typeLabel(t: string) {
     <div v-if="adding" class="mx-6 my-4 p-4 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl space-y-3">
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1.5">
-          <label class="text-xs text-slate-400">Name *</label>
+          <label class="text-xs text-[var(--c-text-3)]">Name *</label>
           <input v-model="form.name" placeholder="my-data"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]" />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-slate-400">Type</label>
+          <label class="text-xs text-[var(--c-text-3)]">Type</label>
           <select v-model="form.volumeType"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]">
             <option value="named">Named (container-managed)</option>
@@ -90,14 +90,14 @@ function typeLabel(t: string) {
           </select>
         </div>
         <div v-if="form.volumeType !== 'named'" class="space-y-1.5 col-span-2">
-          <label class="text-xs text-slate-400">{{ form.volumeType === 'path' ? 'Source path' : 'Place ID' }}</label>
+          <label class="text-xs text-[var(--c-text-3)]">{{ form.volumeType === 'path' ? 'Source path' : 'Place ID' }}</label>
           <input v-model="form.sourcePath" :placeholder="form.volumeType === 'path' ? '/data/myapp' : 'place-uuid'"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]" />
         </div>
       </div>
       <p v-if="addError" class="text-xs text-red-400">{{ addError }}</p>
       <div class="flex justify-end gap-2">
-        <button @click="adding = false" class="px-3 py-1.5 text-sm text-slate-400 hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+        <button @click="adding = false" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
         <button @click="addVolume" :disabled="addLoading || !form.name"
           class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors">
           {{ addLoading ? 'Creating…' : 'Create' }}
@@ -107,27 +107,27 @@ function typeLabel(t: string) {
 
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="loading" class="flex items-center justify-center h-40 text-slate-500 text-sm">Loading…</div>
-      <div v-else-if="volumes.length === 0 && !adding" class="flex flex-col items-center justify-center h-40 gap-3 text-slate-600">
+      <div v-if="loading" class="flex items-center justify-center h-40 text-[var(--c-text-3)] text-sm">Loading…</div>
+      <div v-else-if="volumes.length === 0 && !adding" class="flex flex-col items-center justify-center h-40 gap-3 text-[var(--c-text-3)]">
         <p class="text-sm">No volumes yet.</p>
       </div>
       <table v-else-if="volumes.length > 0" class="w-full text-sm">
         <thead>
           <tr class="border-b border-[var(--c-border)]">
-            <th class="text-left px-6 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wide">Name</th>
-            <th class="text-left px-3 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wide">Type</th>
-            <th class="text-left px-3 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wide">Source</th>
+            <th class="text-left px-6 py-2.5 text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Name</th>
+            <th class="text-left px-3 py-2.5 text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Type</th>
+            <th class="text-left px-3 py-2.5 text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Source</th>
             <th class="px-6 py-2.5" />
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--c-border)]">
           <tr v-for="vol in volumes" :key="vol.id" class="hover:bg-[var(--c-hover)] transition-colors">
             <td class="px-6 py-3 font-mono text-[var(--c-text-1)]">{{ vol.name }}</td>
-            <td class="px-3 py-3 text-slate-400">{{ typeLabel(vol.volumeType) }}</td>
-            <td class="px-3 py-3 text-slate-400 font-mono text-xs">{{ vol.sourcePath ?? vol.placeId ?? '—' }}</td>
+            <td class="px-3 py-3 text-[var(--c-text-3)]">{{ typeLabel(vol.volumeType) }}</td>
+            <td class="px-3 py-3 text-[var(--c-text-3)] font-mono text-xs">{{ vol.sourcePath ?? vol.placeId ?? '—' }}</td>
             <td class="px-6 py-3 text-right">
               <button @click="deleteVolume(vol.id)"
-                class="p-1.5 text-slate-500 hover:text-red-400 transition-colors rounded-lg hover:bg-[var(--c-hover)]">
+                class="p-1.5 text-[var(--c-text-3)] hover:text-red-400 transition-colors rounded-lg hover:bg-[var(--c-hover)]">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>

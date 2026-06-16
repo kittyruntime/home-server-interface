@@ -62,7 +62,7 @@ onUnmounted(() => {
 function statusDot(status: string) {
   switch (status) {
     case 'running':       return 'bg-emerald-500'
-    case 'stopped':       return 'bg-slate-600'
+    case 'stopped':       return 'bg-[var(--c-text-3)]'
     case 'error':         return 'bg-red-500'
     case 'transitioning': return 'bg-amber-400 animate-pulse'
     default:              return 'bg-amber-500'
@@ -72,10 +72,10 @@ function statusDot(status: string) {
 function statusText(status: string) {
   switch (status) {
     case 'running':       return { label: 'Running',  cls: 'text-emerald-400' }
-    case 'stopped':       return { label: 'Stopped',  cls: 'text-slate-500'   }
+    case 'stopped':       return { label: 'Stopped',  cls: 'text-[var(--c-text-3)]'   }
     case 'error':         return { label: 'Error',    cls: 'text-red-400'     }
     case 'transitioning': return { label: 'Updating…',cls: 'text-amber-400'  }
-    default:              return { label: 'Unknown',  cls: 'text-slate-500'   }
+    default:              return { label: 'Unknown',  cls: 'text-[var(--c-text-3)]'   }
   }
 }
 
@@ -392,14 +392,14 @@ async function unpin(app: App) {
           <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
             Pin <span class="font-mono text-[var(--c-accent)]">{{ pinDialog.name }}</span> to quick access
           </h3>
-          <button @click="pinDialog = null" class="text-slate-500 hover:text-[var(--c-text-2)] transition-colors">
+          <button @click="pinDialog = null" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-slate-400">URL</label>
+          <label class="text-xs text-[var(--c-text-3)]">URL</label>
           <input
             v-model="pinDialogUrl"
             placeholder="http://192.168.1.x:8080"
@@ -411,7 +411,7 @@ async function unpin(app: App) {
           <p v-if="pinDialogErr" class="text-xs text-red-400">{{ pinDialogErr }}</p>
         </div>
         <div class="flex justify-end gap-2">
-          <button @click="pinDialog = null" class="px-3 py-1.5 text-sm text-slate-400 hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+          <button @click="pinDialog = null" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
           <button
             @click="savePin"
             :disabled="pinDialogBusy || !pinDialogUrl.trim()"

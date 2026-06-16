@@ -128,7 +128,7 @@ onMounted(async () => {
   <div class="space-y-8">
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center gap-2 text-slate-500 text-sm py-4">
+    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm py-4">
       <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -148,10 +148,10 @@ onMounted(async () => {
         <!-- Name + badges -->
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-[var(--c-text-3)] text-lg font-semibold leading-tight">
+            <span class="text-[var(--c-text-1)] text-lg font-semibold leading-tight">
               {{ me.displayName || me.username }}
             </span>
-            <span v-if="me.displayName" class="text-slate-500 text-sm">{{ me.username }}</span>
+            <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
             <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
             <span v-if="!meIsAdmin && meCanManage" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/15 text-violet-400">manager</span>
           </div>
@@ -161,7 +161,7 @@ onMounted(async () => {
               class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
               {{ ur.role.name }}
             </span>
-            <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400">
+            <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
               {{ me.linuxUsername }}
             </span>
           </div>
@@ -171,15 +171,15 @@ onMounted(async () => {
       <!-- ── Display name ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Display name</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Display name</h4>
           <button v-if="!editingName" @click="startEditName"
-            class="text-xs text-slate-600 hover:text-[var(--c-text-2)] transition-colors">
+            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             Edit
           </button>
         </div>
 
         <div v-if="!editingName" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between">
-          <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-slate-600 text-sm italic'">
+          <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-[var(--c-text-3)] text-sm italic'">
             {{ me.displayName || 'Not set' }}
           </span>
           <span v-if="nameSuccess" class="text-xs text-green-400">Saved</span>
@@ -192,7 +192,7 @@ onMounted(async () => {
             autofocus
             @keydown.enter="saveName"
             @keydown.escape="editingName = false"
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder-slate-600 focus:outline-none focus:border-[var(--c-accent)]"
+            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"
           />
           <p v-if="nameError" class="text-red-400 text-xs">{{ nameError }}</p>
           <div class="flex gap-2">
@@ -201,7 +201,7 @@ onMounted(async () => {
               {{ nameLoading ? 'Saving…' : 'Save' }}
             </button>
             <button @click="editingName = false"
-              class="px-3 py-1.5 text-slate-500 hover:text-[var(--c-text-1)] text-sm transition-colors">
+              class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
               Cancel
             </button>
           </div>
@@ -211,15 +211,15 @@ onMounted(async () => {
       <!-- ── Change password ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Password</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Password</h4>
           <button v-if="!pwOpen" @click="openPassword"
-            class="text-xs text-slate-600 hover:text-[var(--c-text-2)] transition-colors">
+            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             Change
           </button>
         </div>
 
         <div v-if="!pwOpen" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3">
-          <span class="text-slate-600 text-sm tracking-widest select-none">••••••••</span>
+          <span class="text-[var(--c-text-3)] text-sm tracking-widest select-none">••••••••</span>
         </div>
 
         <div v-else class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl p-4 space-y-3">
@@ -232,21 +232,21 @@ onMounted(async () => {
 
           <template v-else>
             <div>
-              <label class="block text-xs text-slate-500 mb-1">Current password</label>
+              <label class="block text-xs text-[var(--c-text-3)] mb-1">Current password</label>
               <input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
-                class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder-slate-600 focus:outline-none focus:border-[var(--c-accent)]"/>
+                class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
             </div>
             <div class="grid grid-cols-2 gap-2.5">
               <div>
-                <label class="block text-xs text-slate-500 mb-1">New password</label>
+                <label class="block text-xs text-[var(--c-text-3)] mb-1">New password</label>
                 <input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"
-                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder-slate-600 focus:outline-none focus:border-[var(--c-accent)]"/>
+                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Confirm</label>
+                <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm</label>
                 <input v-model="pwForm.confirm" type="password" placeholder="Repeat"
                   @keydown.enter="submitPassword"
-                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder-slate-600 focus:outline-none focus:border-[var(--c-accent)]"/>
+                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
               </div>
             </div>
             <p v-if="pwError" class="text-red-400 text-xs">{{ pwError }}</p>
@@ -256,7 +256,7 @@ onMounted(async () => {
                 {{ pwLoading ? 'Saving…' : 'Update password' }}
               </button>
               <button @click="pwOpen = false"
-                class="px-3 py-1.5 text-slate-500 hover:text-[var(--c-text-1)] text-sm transition-colors">
+                class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
                 Cancel
               </button>
             </div>
@@ -266,7 +266,7 @@ onMounted(async () => {
 
       <!-- ── Theme ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Theme</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Theme</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-2">
           <button
             v-for="opt in THEME_OPTIONS"
@@ -276,7 +276,7 @@ onMounted(async () => {
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
               theme === opt.value
                 ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-slate-500 hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
             ]"
           >{{ opt.label }}</button>
         </div>
@@ -284,7 +284,7 @@ onMounted(async () => {
 
       <!-- ── Accent color ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Accent color</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Accent color</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-3">
           <button
             v-for="opt in ACCENT_OPTIONS"
@@ -299,7 +299,7 @@ onMounted(async () => {
                 : 'opacity-60 hover:opacity-100',
             ]"
           />
-          <span class="text-xs text-slate-500 ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
+          <span class="text-xs text-[var(--c-text-3)] ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
         </div>
       </div>
 

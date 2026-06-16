@@ -36,7 +36,7 @@ const { notifications, dismiss } = useNotifications()
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
               <!-- Info -->
-              <svg v-else class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg v-else class="w-4 h-4 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
               </svg>
             </div>
@@ -46,14 +46,14 @@ const { notifications, dismiss } = useNotifications()
               <div :class="['font-medium leading-snug', n.type === 'error' ? 'text-red-300' : n.type === 'success' ? 'text-emerald-300' : 'text-[var(--c-text-1)]']">
                 {{ n.title }}
               </div>
-              <div v-if="n.detail" class="text-xs text-slate-500 mt-0.5 leading-snug">{{ n.detail }}</div>
+              <div v-if="n.detail" class="text-xs text-[var(--c-text-3)] mt-0.5 leading-snug">{{ n.detail }}</div>
             </div>
 
             <!-- Dismiss -->
             <button
               v-if="n.type !== 'progress'"
               @click="dismiss(n.id)"
-              class="text-slate-600 hover:text-[var(--c-text-2)] transition-colors shrink-0 mt-0.5"
+              class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors shrink-0 mt-0.5"
             >
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -62,7 +62,7 @@ const { notifications, dismiss } = useNotifications()
           </div>
 
           <!-- Progress bar -->
-          <div v-if="n.type === 'progress'" class="h-0.5 rounded-full bg-slate-800 overflow-hidden">
+          <div v-if="n.type === 'progress'" class="h-0.5 rounded-full bg-[var(--c-surface-deep)] overflow-hidden">
             <div
               v-if="n.progress === -1 || n.progress == null"
               class="h-full w-1/3 rounded-full bg-[var(--c-accent)] animate-[slide_1.2s_ease-in-out_infinite]"

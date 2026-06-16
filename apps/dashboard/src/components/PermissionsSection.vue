@@ -72,9 +72,9 @@ onMounted(load)
 
 <template>
   <section>
-    <h3 class="text-xs font-medium uppercase tracking-widest text-slate-500 mb-3 px-1">Permissions</h3>
+    <h3 class="text-xs font-medium uppercase tracking-widest text-[var(--c-text-3)] mb-3 px-1">Permissions</h3>
 
-    <div v-if="places.length === 0" class="text-sm text-slate-600 italic px-1">No places configured.</div>
+    <div v-if="places.length === 0" class="text-sm text-[var(--c-text-3)] italic px-1">No places configured.</div>
 
     <div class="space-y-2">
       <div
@@ -89,10 +89,10 @@ onMounted(load)
         >
           <div>
             <span class="text-sm font-medium text-[var(--c-text-1)]">{{ place.name }}</span>
-            <span class="ml-2 text-xs text-slate-600 font-mono">{{ place.path }}</span>
+            <span class="ml-2 text-xs text-[var(--c-text-3)] font-mono">{{ place.path }}</span>
           </div>
           <svg
-            :class="['w-3.5 h-3.5 text-slate-600 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
+            :class="['w-3.5 h-3.5 text-[var(--c-text-3)] transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
           >
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
@@ -103,7 +103,7 @@ onMounted(load)
         <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
           <table class="w-full text-xs">
             <thead>
-              <tr class="text-slate-600 uppercase tracking-wider border-b border-[var(--c-border)]">
+              <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)]">
                 <th class="px-4 py-2 text-left font-medium">Subject</th>
                 <th class="px-3 py-2 text-center font-medium w-16">Read</th>
                 <th class="px-3 py-2 text-center font-medium w-16">Write</th>
@@ -133,7 +133,7 @@ onMounted(load)
               <tr v-for="user in users.filter(u => !u.userRoles.some(ur => ur.role.isAdmin))" :key="'user-' + user.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-400">user</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                     <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                   </div>
                 </td>
@@ -148,7 +148,7 @@ onMounted(load)
               </tr>
 
               <tr v-if="roles.length === 0 && users.filter(u => !u.userRoles.some(ur => ur.role.isAdmin)).length === 0">
-                <td colspan="4" class="px-4 py-3 text-slate-600 italic">No roles or users to assign.</td>
+                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
               </tr>
             </tbody>
           </table>

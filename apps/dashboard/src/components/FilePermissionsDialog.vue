@@ -90,9 +90,9 @@ async function save() {
         <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--c-border)]">
           <div>
             <div class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ path.split('/').pop() }}</div>
-            <div class="text-xs text-slate-600 font-mono mt-0.5">{{ path }}</div>
+            <div class="text-xs text-[var(--c-text-3)] font-mono mt-0.5">{{ path }}</div>
           </div>
-          <button @click="emit('close')" class="text-slate-600 hover:text-[var(--c-text-2)] transition-colors">
+          <button @click="emit('close')" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -100,7 +100,7 @@ async function save() {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex items-center gap-2 text-slate-500 text-sm p-6">
+        <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
           <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -114,13 +114,13 @@ async function save() {
             <!-- Mode display -->
             <div class="flex items-center gap-3">
               <span class="font-mono text-lg text-[var(--c-text-1)] tracking-widest">{{ modeDisplay }}</span>
-              <span class="font-mono text-xs text-slate-600 bg-slate-800/60 px-2 py-0.5 rounded">{{ serializeMode() }}</span>
+              <span class="font-mono text-xs text-[var(--c-text-3)] bg-[var(--c-surface-deep)] px-2 py-0.5 rounded">{{ serializeMode() }}</span>
             </div>
 
             <!-- Permission grid -->
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-xs text-slate-600 uppercase tracking-wider">
+                <tr class="text-xs text-[var(--c-text-3)] uppercase tracking-wider">
                   <th class="text-left font-medium pb-2 w-20"></th>
                   <th class="text-center font-medium pb-2 w-16">Read</th>
                   <th class="text-center font-medium pb-2 w-16">Write</th>
@@ -129,7 +129,7 @@ async function save() {
               </thead>
               <tbody class="divide-y divide-[var(--c-border)]">
                 <tr v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
-                  <td class="py-2.5 text-slate-400 text-xs">{{ label }}</td>
+                  <td class="py-2.5 text-[var(--c-text-3)] text-xs">{{ label }}</td>
                   <td v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
                     <input
                       type="checkbox"
@@ -145,7 +145,7 @@ async function save() {
             <!-- Owner / Group (admin only) -->
             <div v-if="isAdmin" class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Owner</label>
+                <label class="block text-xs text-[var(--c-text-3)] mb-1">Owner</label>
                 <input
                   v-model="owner"
                   class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-3)]
@@ -153,7 +153,7 @@ async function save() {
                 />
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Group</label>
+                <label class="block text-xs text-[var(--c-text-3)] mb-1">Group</label>
                 <input
                   v-model="group"
                   class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-3)]
@@ -162,15 +162,15 @@ async function save() {
               </div>
             </div>
             <div v-else class="flex gap-4 text-sm">
-              <div><span class="text-slate-600 text-xs mr-1">Owner</span><span class="font-mono text-[var(--c-text-2)]">{{ owner }}</span></div>
-              <div><span class="text-slate-600 text-xs mr-1">Group</span><span class="font-mono text-[var(--c-text-2)]">{{ group }}</span></div>
+              <div><span class="text-[var(--c-text-3)] text-xs mr-1">Owner</span><span class="font-mono text-[var(--c-text-2)]">{{ owner }}</span></div>
+              <div><span class="text-[var(--c-text-3)] text-xs mr-1">Group</span><span class="font-mono text-[var(--c-text-2)]">{{ group }}</span></div>
             </div>
 
           </div>
 
           <!-- Footer -->
           <div v-if="isAdmin" class="px-5 py-3.5 border-t border-[var(--c-border)] flex justify-end gap-2">
-            <button @click="emit('close')" class="px-3 py-1.5 text-sm text-slate-400 hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+            <button @click="emit('close')" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
             <button
               @click="save"
               :disabled="saving"
