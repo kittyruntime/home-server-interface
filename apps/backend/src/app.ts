@@ -27,8 +27,8 @@ export function buildApp() {
     // Disable cross-origin requests — the frontend is served from the same origin.
     app.register(cors, { origin: false })
 
-    // Global rate limit: 200 req/min per IP.
-    app.register(rateLimit, { max: 200, timeWindow: "1 minute" })
+    // Global rate limit — high ceiling to accommodate chunked file uploads.
+    app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
 
     // Stricter rate limit on the login endpoint: 20 req/min per IP.
     // Implemented via a simple in-memory sliding-window counter keyed by IP.
