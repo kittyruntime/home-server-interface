@@ -4,10 +4,11 @@ import { trpc } from '../lib/trpc'
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 
-const status  = ref<Status | null>(null)
-const loading = ref(true)
+const status   = ref<Status | null>(null)
+const loading  = ref(true)
 const applying = ref(false)
-const error   = ref<string | null>(null)
+const checking = ref(false)
+const error    = ref<string | null>(null)
 const restarting = ref(false)
 
 async function fetchStatus() {
@@ -18,6 +19,19 @@ async function fetchStatus() {
     error.value = e?.message ?? 'Failed to fetch update status'
   } finally {
     loading.value = false
+  }
+}
+
+async function checkNow() {
+  checking.value = true
+  error.value = null
+  try {
+    await trpc.update.check.mutate()
+    await fetchStatus()
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to check for updates'
+  } finally {
+    checking.value = false
   }
 }
 
@@ -141,12 +155,26 @@ onUnmounted(() => clearInterval(timer))
         </div>
       </div>
 
-      <!-- Meta -->
-      <div class="text-xs text-slate-600 space-y-1">
-        <p v-if="status.checkedAt">
-          Last checked: {{ formatDate(status.checkedAt) }}
+      <!-- Meta + manual check -->
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-xs text-[var(--c-text-3)]">
+          <template v-if="status.checkedAt">Last checked: {{ formatDate(status.checkedAt) }}</template>
+          <template v-else>Never checked — check runs daily via systemd timer.</template>
         </p>
-        <p v-else>No update check on record yet. Check runs daily via systemd timer.</p>
+        <button
+          @click="checkNow"
+          :disabled="checking || applying || status.pending"
+          class="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg
+            class="w-3.5 h-3.5"
+            :class="checking ? 'animate-spin' : ''"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          {{ checking ? 'Checking…' : 'Check now' }}
+        </button>
       </div>
 
     </div>

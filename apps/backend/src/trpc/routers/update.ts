@@ -38,6 +38,8 @@ function isNewer(candidate: string, current: string): boolean {
   return caPatch > cuPatch
 }
 
+const GITHUB_REPO = "kittyruntime/home-server-interface"
+
 export const updateRouter = router({
   status: adminProcedure.query(() => {
     const current  = readCurrentVersion()
@@ -51,6 +53,25 @@ export const updateRouter = router({
       checkedAt: check?.checkedAt    ?? null,
       pending,
     }
+  }),
+
+  check: adminProcedure.mutation(async () => {
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
+      { headers: { "User-Agent": "hsi-update-checker", Accept: "application/vnd.github+json" } }
+    )
+    if (!res.ok) throw new Error(`GitHub API returned ${res.status}`)
+    const data = await res.json() as { tag_name: string }
+    const result: CheckResult = {
+      latestVersion: data.tag_name,
+      checkedAt: new Date().toISOString(),
+    }
+    fs.writeFileSync(
+      path.join(installDir(), ".update-check.json"),
+      JSON.stringify(result),
+      "utf8"
+    )
+    return result
   }),
 
   apply: adminProcedure
