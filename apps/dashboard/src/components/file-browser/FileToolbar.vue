@@ -57,9 +57,9 @@ const emit = defineEmits<{
     <!-- Breadcrumb -->
     <nav v-if="currentPath" class="flex items-center gap-0.5 text-sm flex-1 min-w-0 overflow-x-auto">
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
-        <span v-if="i > 0" class="text-slate-700 select-none mx-0.5 flex-shrink-0">›</span>
+        <span v-if="i > 0" class="text-[var(--c-text-3)] select-none mx-0.5 flex-shrink-0">›</span>
         <button v-if="crumb.clickable" @click="emit('navigate', crumb.path)"
-          class="px-1 py-0.5 text-slate-400 hover:text-[var(--c-text-1)] rounded hover:bg-[var(--c-hover)] transition-colors whitespace-nowrap flex-shrink-0">
+          class="px-1 py-0.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] rounded hover:bg-[var(--c-hover)] transition-colors whitespace-nowrap flex-shrink-0">
           {{ crumb.label }}
         </button>
         <span v-else class="px-1 text-[var(--c-text-1)] whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>

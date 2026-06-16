@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 
 type UnmanagedContainer = {
@@ -22,6 +22,7 @@ const loading    = ref(false)
 const containers = ref<UnmanagedContainer[]>([])
 const importing  = ref<Set<string>>(new Set())
 const error      = ref<string | null>(null)
+let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
 async function load() {
   loading.value = true
@@ -37,7 +38,7 @@ async function load() {
 
 async function toggle() {
   expanded.value = !expanded.value
-  if (expanded.value && !containers.value.length && !loading.value) await load()
+  if (expanded.value) await load()
 }
 
 async function importContainer(c: UnmanagedContainer) {
@@ -75,129 +76,361 @@ async function importContainer(c: UnmanagedContainer) {
   }
 }
 
-function statusDot(status: string) {
+function statusColor(status: string) {
   switch (status) {
-    case 'running': return 'bg-emerald-500'
+    case 'running': return 'var(--status-running)'
     case 'exited':
-    case 'stopped': return 'bg-slate-600'
-    default:        return 'bg-amber-500'
+    case 'stopped': return 'var(--status-stopped)'
+    default:        return 'var(--status-other)'
   }
 }
 
+function portsSummary(c: UnmanagedContainer): string {
+  if (!c.ports.length) return ''
+  const shown = c.ports.slice(0, 3).map(p => `${p.hostPort}:${p.containerPort}`).join('  ')
+  return c.ports.length > 3 ? `${shown}  +${c.ports.length - 3}` : shown
+}
+
 onMounted(() => {
-  // pre-load silently so count shows on mount
   load()
+  refreshTimer = setInterval(load, 60_000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer !== null) clearInterval(refreshTimer)
 })
 </script>
 
 <template>
-  <div class="border-t border-[var(--c-border)] mt-auto">
+  <div class="unmanaged-root">
 
-    <!-- Toggle header -->
-    <button
-      @click="toggle"
-      class="w-full flex items-center gap-2 px-6 py-3 text-left hover:bg-[var(--c-hover)] transition-colors group"
-    >
-      <svg
-        :class="['w-3 h-3 text-slate-600 transition-transform duration-150', expanded ? 'rotate-90' : '']"
-        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
-      >
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-      </svg>
+    <!-- Header row -->
+    <div class="header-row">
+      <button class="toggle-btn" @click="toggle">
+        <svg
+          :class="['chevron', { 'chevron--open': expanded }]"
+          viewBox="0 0 16 16" fill="none"
+        >
+          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="section-label">Unmanaged</span>
+        <span v-if="!loading && containers.length" class="count-badge">
+          {{ containers.length }}
+        </span>
+        <svg v-if="loading" class="spin-icon" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 20" />
+        </svg>
+      </button>
 
-      <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest group-hover:text-slate-400 transition-colors">
-        Unmanaged containers
-      </span>
-
-      <span
-        v-if="!loading && containers.length"
-        class="ml-1 px-1.5 py-0.5 text-[10px] font-semibold bg-slate-700 text-slate-400 rounded-full leading-none"
-      >{{ containers.length }}</span>
-
-      <svg
-        v-if="loading"
-        class="w-3 h-3 text-slate-600 animate-spin ml-1"
-        fill="none" viewBox="0 0 24 24"
-      >
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
-    </button>
+      <button class="refresh-btn" @click="load" :disabled="loading" title="Refresh">
+        <svg viewBox="0 0 16 16" fill="none">
+          <path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M13.5 2.5V6h-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
 
     <!-- Expanded content -->
-    <div v-if="expanded" class="pb-3">
+    <Transition name="slide">
+      <div v-if="expanded" class="content">
 
-      <div v-if="error" class="px-6 py-2 text-xs text-red-400">{{ error }}</div>
+        <div v-if="error" class="state-msg state-msg--error">
+          <svg viewBox="0 0 16 16" fill="none" class="state-icon">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.25"/>
+            <path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          {{ error }}
+        </div>
 
-      <div
-        v-else-if="!loading && containers.length === 0"
-        class="px-6 py-3 text-xs text-slate-600"
-      >
-        No unmanaged containers found.
-      </div>
+        <div v-else-if="!loading && containers.length === 0" class="state-msg">
+          No unmanaged containers.
+        </div>
 
-      <table v-else-if="containers.length" class="w-full text-sm table-fixed">
-        <colgroup>
-          <col class="w-[22%]" />
-          <col class="w-[35%]" />
-          <col class="w-[18%]" />
-          <col class="w-[11%]" />
-          <col class="w-[14%]" />
-        </colgroup>
-        <tbody class="divide-y divide-[var(--c-border)]/50">
-          <tr
-            v-for="c in containers" :key="c.name"
-            class="group hover:bg-[var(--c-hover)]/50 transition-colors"
+        <ul v-else class="card-list">
+          <li
+            v-for="c in containers"
+            :key="c.name"
+            class="card"
           >
-            <!-- Name + compose badge -->
-            <td class="px-6 py-3">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="font-mono text-slate-400 text-[13px] truncate">{{ c.name }}</span>
+            <!-- Left: status + identity -->
+            <div class="card-identity">
+              <span class="status-pip" :style="{ background: statusColor(c.status) }" />
+              <div class="identity-text">
+                <span class="container-name">{{ c.name }}</span>
+                <span class="container-image">{{ c.image }}</span>
               </div>
-              <div v-if="c.composeProject" class="flex items-center gap-1 mt-0.5">
-                <svg class="w-3 h-3 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                </svg>
-                <span class="text-[10px] text-amber-500/80 font-medium truncate">
-                  compose: {{ c.composeProject }}<span v-if="c.composeService"> / {{ c.composeService }}</span>
-                </span>
-              </div>
-            </td>
+            </div>
 
-            <!-- Image -->
-            <td class="px-3 py-3">
-              <span class="font-mono text-slate-500 text-xs truncate block">{{ c.image }}</span>
-            </td>
+            <!-- Ports (hidden on small screens) -->
+            <span v-if="portsSummary(c)" class="ports-label">
+              {{ portsSummary(c) }}
+            </span>
 
-            <!-- Ports -->
-            <td class="px-3 py-3">
-              <span class="font-mono text-slate-600 text-xs">
-                {{ c.ports.length ? c.ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ') + (c.ports.length > 2 ? ` +${c.ports.length - 2}` : '') : '—' }}
-              </span>
-            </td>
+            <!-- Compose badge (hidden on small screens) -->
+            <span v-if="c.composeProject" class="compose-badge">
+              <svg viewBox="0 0 12 12" fill="none" class="compose-icon">
+                <path d="M6 1.5L10.5 9H1.5L6 1.5Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+              </svg>
+              {{ c.composeProject }}
+            </span>
 
-            <!-- Status -->
-            <td class="px-3 py-3">
-              <span class="flex items-center gap-1.5">
-                <span :class="['w-1.5 h-1.5 rounded-full flex-shrink-0', statusDot(c.status)]" />
-                <span class="text-xs text-slate-600 capitalize">{{ c.status }}</span>
-              </span>
-            </td>
+            <!-- Import button -->
+            <button
+              class="import-btn"
+              @click="importContainer(c)"
+              :disabled="importing.has(c.name)"
+            >
+              <svg v-if="importing.has(c.name)" class="btn-spin" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="2" stroke-dasharray="24 12" />
+              </svg>
+              {{ importing.has(c.name) ? 'Importing…' : 'Import' }}
+            </button>
+          </li>
+        </ul>
 
-            <!-- Import -->
-            <td class="px-6 py-3 text-right">
-              <button
-                @click="importContainer(c)"
-                :disabled="importing.has(c.name)"
-                class="px-2.5 py-1 text-[11px] font-medium text-slate-400 border border-slate-700 rounded-lg hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] disabled:opacity-40 transition-colors"
-              >
-                {{ importing.has(c.name) ? 'Importing…' : 'Import' }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-    </div>
+      </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@reference "tailwindcss";
+
+.unmanaged-root {
+  --status-running: #22c55e;
+  --status-stopped: color-mix(in srgb, var(--c-text-3) 60%, transparent);
+  --status-other:   #f59e0b;
+  border-top: 1px solid var(--c-border);
+}
+
+/* ── Header ── */
+.header-row {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem 0 1.25rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.toggle-btn:hover .section-label { color: var(--c-text-2); }
+
+.chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--c-text-3);
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.chevron--open { transform: rotate(90deg); }
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+  transition: color 0.15s;
+  user-select: none;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-text-3);
+  background: color-mix(in srgb, var(--c-text-3) 12%, transparent);
+  border-radius: 999px;
+}
+
+.spin-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--c-text-3);
+  animation: spin 0.8s linear infinite;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--c-text-3);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.refresh-btn:hover:not(:disabled) {
+  color: var(--c-text-2);
+  background: var(--c-hover);
+}
+.refresh-btn:disabled { opacity: 0.4; cursor: default; }
+.refresh-btn svg { width: 13px; height: 13px; }
+
+/* ── Content ── */
+.content {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.state-msg {
+  font-size: 12px;
+  color: var(--c-text-3);
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+.state-msg--error {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #f87171;
+}
+.state-icon { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* ── Card list ── */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--c-surface-alt);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+  min-width: 0;
+}
+.card:hover { border-color: color-mix(in srgb, var(--c-border) 60%, var(--c-accent) 40%); }
+
+/* Status + identity */
+.card-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.status-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.identity-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.container-name {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.container-image {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--c-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ports */
+.ports-label {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--c-text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: none;
+}
+@media (min-width: 768px) { .ports-label { display: block; } }
+
+/* Compose badge */
+.compose-badge {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f59e0b;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 1024px) { .compose-badge { display: flex; } }
+.compose-icon { width: 10px; height: 10px; flex-shrink: 0; }
+
+/* Import button */
+.import-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.75rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-accent);
+  background: var(--c-accent-subtle);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent);
+  border-radius: 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+.import-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--c-accent) 20%, transparent);
+}
+.import-btn:disabled { opacity: 0.4; cursor: default; }
+
+.btn-spin {
+  width: 11px;
+  height: 11px;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Transitions ── */
+.slide-enter-active { transition: opacity 0.18s ease, transform 0.18s ease; }
+.slide-leave-active { transition: opacity 0.14s ease, transform 0.12s ease; }
+.slide-enter-from   { opacity: 0; transform: translateY(-4px); }
+.slide-leave-to     { opacity: 0; transform: translateY(-4px); }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
