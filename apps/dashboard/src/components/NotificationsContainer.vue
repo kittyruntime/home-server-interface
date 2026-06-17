@@ -5,7 +5,11 @@ const { notifications, dismiss } = useNotifications()
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80 pointer-events-none">
+    <div
+      class="fixed z-50 flex flex-col gap-2 pointer-events-none overflow-y-auto
+             inset-x-3 bottom-[4.75rem] max-h-[40vh]
+             sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-80 sm:max-h-[60vh]"
+    >
       <TransitionGroup name="notif" tag="div" class="flex flex-col gap-2">
         <div
           v-for="n in notifications"

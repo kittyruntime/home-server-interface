@@ -101,7 +101,7 @@ watch(() => props.focusSection, s => { if (s) active.value = s })
 
     <!-- ── Content area ───────────────────────────────────────────────── -->
     <div class="flex-1 overflow-y-auto">
-      <div class="p-8 max-w-2xl">
+      <div :class="['p-8', active === 'users' || active === 'roles' ? 'max-w-5xl' : 'max-w-2xl']">
 
         <ProfileSection     v-if="active === 'profile'" />
         <UserListPanel      v-else-if="active === 'users'" />

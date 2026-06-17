@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import RoleEditor from './RoleEditor.vue'
 import Pagination from './ui/Pagination.vue'
+import SortableHeader from './ui/SortableHeader.vue'
+import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
 
 type Role = {
@@ -23,14 +25,53 @@ type User = {
 const roles        = ref<Role[]>([])
 const users        = ref<User[]>([])
 const selectedRole = ref<Role | null>(null)
-const newRoleName  = ref('')
-const createError  = ref('')
 
 const usernames  = computed(() => new Set(users.value.map(u => u.username)))
 function isPersonal(role: Role) { return usernames.value.has(role.name) }
 
+// ── Add role ─────────────────────────────────────────────────────────────────
+const addingRole  = ref(false)
+const newRoleName = ref('')
+const createError = ref('')
+const createLoading = ref(false)
+
+function openAdd() {
+  addingRole.value = true
+  createError.value = ''
+  newRoleName.value = ''
+}
+function cancelAdd() { addingRole.value = false }
+
+// ── Search + sort ────────────────────────────────────────────────────────────
+const search  = ref('')
+type SortKey = 'name' | 'createdAt'
+const sortKey = ref<SortKey>('createdAt')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = key === 'createdAt' ? 'desc' : 'asc' }
+}
+
+const filteredRoles = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  const list = q ? roles.value.filter(r => r.name.toLowerCase().includes(q)) : roles.value
+  return [...list].sort((a, b) => {
+    const cmp = sortKey.value === 'name'
+      ? a.name.localeCompare(b.name)
+      : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+})
+
 // ── Pagination ──────────────────────────────────────────────────────────────
-const { page, pageCount, paged, pageSize } = usePagination(roles, 10)
+const { page, pageCount, paged, pageSize } = usePagination(filteredRoles, 10)
+
+watch(search, () => { page.value = 1 })
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 async function load() {
   const [r, u] = await Promise.all([trpc.role.list.query(), trpc.user.list.query()])
@@ -45,13 +86,18 @@ async function createRole() {
   const name = newRoleName.value.trim()
   if (!name) return
   createError.value = ''
+  createLoading.value = true
   try {
     await trpc.role.create.mutate({ name })
-    newRoleName.value = ''
+    addingRole.value = false
     await load()
-    page.value = pageCount.value
+    page.value = 1
+    sortKey.value = 'createdAt'
+    sortDir.value = 'desc'
   } catch (e: any) {
     createError.value = e?.message ?? 'Failed to create role'
+  } finally {
+    createLoading.value = false
   }
 }
 
@@ -80,80 +126,128 @@ onMounted(load)
         <div>
           <h2 class="text-base font-semibold text-[var(--c-text-1)]">Roles</h2>
           <p class="text-xs text-[var(--c-text-3)] mt-0.5">
-            {{ roles.length }} role{{ roles.length !== 1 ? 's' : '' }} configured
+            {{ filteredRoles.length }} of {{ roles.length }} role{{ roles.length !== 1 ? 's' : '' }}
           </p>
+        </div>
+        <button
+          v-if="!addingRole"
+          @click="openAdd"
+          class="btn btn-primary btn-xs shrink-0"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Add role
+        </button>
+      </div>
+
+      <!-- Add role form -->
+      <div v-if="addingRole" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
+        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New role</h4>
+        <div>
+          <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-red-400">*</span></label>
+          <input
+            v-model="newRoleName"
+            placeholder="e.g. editor"
+            autofocus
+            @keydown.enter.prevent="createRole"
+            class="ui-input"
+          />
+        </div>
+        <p v-if="createError" class="text-red-400 text-xs">{{ createError }}</p>
+        <div class="flex items-center gap-2 pt-1">
+          <button
+            @click="createRole"
+            :disabled="createLoading || !newRoleName.trim()"
+            class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {{ createLoading ? 'Creating…' : 'Create' }}
+          </button>
+          <button @click="cancelAdd" class="btn btn-ghost btn-sm">Cancel</button>
         </div>
       </div>
 
-      <!-- List -->
+      <!-- Search -->
+      <SearchInput v-model="search" placeholder="Search roles by name…" class="max-w-sm" />
+
+      <!-- Table -->
       <div class="panel-card">
-        <div v-if="roles.length === 0"
-          class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
-          No roles yet.
-        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
+              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+                <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Role</SortableHeader>
+              </th>
+              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Members</th>
+              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Permissions</th>
+              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
+                <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
+              </th>
+              <th class="px-4 py-3 w-16"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--c-border)]">
+            <tr
+              v-for="role in paged"
+              :key="role.id"
+              class="bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
+            >
+              <!-- Role -->
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-[var(--c-text-1)]">{{ role.name }}</span>
+                  <span v-if="role.isAdmin"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
+                    admin
+                  </span>
+                  <span v-if="isPersonal(role)"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
+                    personal
+                  </span>
+                </div>
+              </td>
 
-        <div v-else class="divide-y divide-[var(--c-border)]">
-          <div
-            v-for="role in paged"
-            :key="role.id"
-            class="flex items-center gap-4 px-5 py-3.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
-          >
-            <!-- Name + badges -->
-            <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ role.name }}</span>
-              <span v-if="role.isAdmin"
-                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
-                admin
-              </span>
-              <span v-if="isPersonal(role)"
-                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
-                personal
-              </span>
-            </div>
-
-            <!-- Meta -->
-            <div class="hidden sm:flex items-center gap-3 text-xs text-[var(--c-text-3)] shrink-0">
-              <span class="flex items-center gap-1" title="Members">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5.916-3.5M9 20H4v-2a4 4 0 015.916-3.5M15 7a3 3 0 11-6 0 3 3 0 016 0zM21 10a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
+              <!-- Members -->
+              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
                 {{ role.userRoles.length }}
-              </span>
-              <span class="flex items-center gap-1" title="Permissions">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-                {{ role.permissions.length }}
-              </span>
-            </div>
+              </td>
 
-            <!-- Edit button -->
-            <button
-              @click="openEditor(role)"
-              class="shrink-0 text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border-strong)] text-[var(--c-text-3)]
-                     hover:border-[var(--c-accent)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors"
-            >Edit</button>
-          </div>
-        </div>
+              <!-- Permissions -->
+              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+                {{ role.permissions.length }}
+              </td>
+
+              <!-- Created -->
+              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+                {{ formatDate(role.createdAt) }}
+              </td>
+
+              <!-- Actions -->
+              <td class="px-4 py-3.5 text-right">
+                <button
+                  @click="openEditor(role)"
+                  title="Edit role"
+                  class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Empty state -->
+            <tr v-if="filteredRoles.length === 0">
+              <td colspan="5" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
+                {{ roles.length === 0 ? 'No roles yet.' : 'No roles match your search.' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Pagination -->
-      <Pagination :page="page" :page-count="pageCount" :total="roles.length" :page-size="pageSize" @update:page="page = $event" />
-
-      <!-- Create role -->
-      <form @submit.prevent="createRole" class="flex gap-2">
-        <input
-          v-model="newRoleName"
-          placeholder="New role name…"
-          class="ui-input flex-1"
-        />
-        <button
-          type="submit"
-          :disabled="!newRoleName.trim()"
-          class="btn btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-        >Add</button>
-      </form>
-      <p v-if="createError" class="text-red-400 text-xs">{{ createError }}</p>
+      <Pagination :page="page" :page-count="pageCount" :total="filteredRoles.length" :page-size="pageSize" @update:page="page = $event" />
 
     </section>
   </div>

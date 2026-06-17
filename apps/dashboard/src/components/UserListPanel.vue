@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import UserDetailPanel from './UserDetailPanel.vue'
 import Pagination from './ui/Pagination.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+import SortableHeader from './ui/SortableHeader.vue'
+import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
 
 type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
@@ -35,8 +37,34 @@ const newUser    = reactive({ username: '', password: '', confirmPassword: '', d
 const addError   = ref('')
 const addLoading = ref(false)
 
+// ── Search + sort ────────────────────────────────────────────────────────────
+const search  = ref('')
+type SortKey = 'username' | 'createdAt'
+const sortKey = ref<SortKey>('createdAt')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = key === 'createdAt' ? 'desc' : 'asc' }
+}
+
+const filteredUsers = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  const list = q
+    ? users.value.filter(u => u.username.toLowerCase().includes(q) || (u.displayName ?? '').toLowerCase().includes(q))
+    : users.value
+  return [...list].sort((a, b) => {
+    const cmp = sortKey.value === 'username'
+      ? a.username.localeCompare(b.username)
+      : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+})
+
 // ── Pagination ────────────────────────────────────────────────────────────────
-const { page, pageCount, paged, pageSize, clampPage } = usePagination(users, 10)
+const { page, pageCount, paged, pageSize, clampPage } = usePagination(filteredUsers, 10)
+
+watch(search, () => { page.value = 1 })
 
 async function load() {
   loading.value = true
@@ -125,7 +153,7 @@ onMounted(load)
         <div>
           <h2 class="text-base font-semibold text-[var(--c-text-1)]">Users</h2>
           <p v-if="!loading && !loadError" class="text-xs text-[var(--c-text-3)] mt-0.5">
-            {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
+            {{ filteredUsers.length }} of {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
           </p>
         </div>
         <button
@@ -139,6 +167,9 @@ onMounted(load)
           Add user
         </button>
       </div>
+
+      <!-- Search -->
+      <SearchInput v-if="!loading && !loadError" v-model="search" placeholder="Search by username or display name…" class="max-w-sm" />
 
       <!-- Add user form -->
       <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
@@ -196,10 +227,14 @@ onMounted(load)
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">User</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+                  <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">User</SortableHeader>
+                </th>
                 <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</th>
                 <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Linux user</th>
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden md:table-cell">Created</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
+                  <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
+                </th>
                 <th v-if="canManageUsers" class="px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -246,7 +281,7 @@ onMounted(load)
                 </td>
 
                 <!-- Created -->
-                <td class="px-5 py-3.5 hidden md:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+                <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
                   {{ formatDate(user.createdAt) }}
                 </td>
 
@@ -265,9 +300,9 @@ onMounted(load)
               </tr>
 
               <!-- Empty state -->
-              <tr v-if="users.length === 0">
+              <tr v-if="filteredUsers.length === 0">
                 <td :colspan="canManageUsers ? 5 : 4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
-                  No users yet.
+                  {{ users.length === 0 ? 'No users yet.' : 'No users match your search.' }}
                 </td>
               </tr>
             </tbody>
@@ -275,7 +310,7 @@ onMounted(load)
         </div>
 
         <!-- Pagination -->
-        <Pagination :page="page" :page-count="pageCount" :total="users.length" :page-size="pageSize" @update:page="page = $event" />
+        <Pagination :page="page" :page-count="pageCount" :total="filteredUsers.length" :page-size="pageSize" @update:page="page = $event" />
       </template>
 
     </div>
