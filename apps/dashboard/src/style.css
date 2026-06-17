@@ -81,6 +81,20 @@
   box-sizing: border-box;
 }
 
+/* Tailwind's preflight no longer forces a pointer cursor on <button>; browsers
+   default it to "default". Restore it everywhere except disabled buttons. */
+button:not(:disabled),
+select:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+/* For non-native clickable elements (div/span with @click) where a <button>
+   isn't appropriate. */
+.clickable {
+  cursor: pointer;
+}
+
 /* ── Shared UI utilities ─────────────────────────────────────────────────────
    Use these classes in components instead of repeating Tailwind strings.
    ─────────────────────────────────────────────────────────────────────────── */

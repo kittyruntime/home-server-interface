@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../../lib/trpc'
+import { useConfirm } from '../../../lib/confirm'
+import EmptyState from '../../ui/EmptyState.vue'
+import LoadingSpinner from '../../ui/LoadingSpinner.vue'
+
+const { confirm } = useConfirm()
 
 type Volume = { id: string; name: string; volumeType: string; sourcePath: string | null; placeId: string | null }
 
@@ -42,7 +47,7 @@ async function addVolume() {
 }
 
 async function deleteVolume(id: string) {
-  if (!confirm('Remove this volume?')) return
+  if (!await confirm('Remove this volume?', { danger: true, confirmLabel: 'Remove' })) return
   try {
     await trpc.container.volume.delete.mutate({ id })
     volumes.value = volumes.value.filter(v => v.id !== id)
@@ -74,7 +79,7 @@ function typeLabel(t: string) {
 
     <!-- Add form -->
     <div v-if="adding" class="mx-6 my-4 p-4 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl space-y-3">
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1.5">
           <label class="text-xs text-[var(--c-text-3)]">Name *</label>
           <input v-model="form.name" placeholder="my-data"
@@ -107,11 +112,12 @@ function typeLabel(t: string) {
 
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="loading" class="flex items-center justify-center h-40 text-[var(--c-text-3)] text-sm">Loading…</div>
-      <div v-else-if="volumes.length === 0 && !adding" class="flex flex-col items-center justify-center h-40 gap-3 text-[var(--c-text-3)]">
-        <p class="text-sm">No volumes yet.</p>
+      <div v-if="loading" class="flex items-center justify-center h-40 text-[var(--c-text-3)] text-sm"><LoadingSpinner /></div>
+      <div v-else-if="volumes.length === 0 && !adding" class="flex items-center justify-center h-40">
+        <EmptyState message="No volumes yet." />
       </div>
-      <table v-else-if="volumes.length > 0" class="w-full text-sm">
+      <div v-else-if="volumes.length > 0" class="overflow-x-auto">
+      <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-[var(--c-border)]">
             <th class="text-left px-6 py-2.5 text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Name</th>
@@ -136,6 +142,7 @@ function typeLabel(t: string) {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>

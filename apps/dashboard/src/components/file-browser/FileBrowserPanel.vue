@@ -10,6 +10,7 @@ import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
 import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -413,12 +414,8 @@ onMounted(async () => {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
-          <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-          Loading…
+        <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm p-6">
+          <LoadingSpinner />
         </div>
 
         <!-- Error -->

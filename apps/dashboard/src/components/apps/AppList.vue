@@ -3,6 +3,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppFormModal from './AppFormModal.vue'
 import UnmanagedContainers from './UnmanagedContainers.vue'
+import Modal from '../ui/Modal.vue'
+import EmptyState from '../ui/EmptyState.vue'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import { useConfirm } from '../../lib/confirm'
+
+const { confirm } = useConfirm()
 
 type App = {
   id: string; name: string; image: string; status: string
@@ -101,7 +107,7 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
   const app = apps.value.find(a => a.id === id)
   try {
     if (action === 'delete') {
-      if (!confirm('Delete this app? The container will be removed.')) return
+      if (!await confirm('Delete this app? The container will be removed.', { danger: true, confirmLabel: 'Delete' })) return
       await trpc.container.app.delete.mutate({ id })
       apps.value = apps.value.filter(a => a.id !== id)
       return
@@ -175,34 +181,35 @@ async function unpin(app: App) {
     <div class="flex-1 overflow-y-auto flex flex-col min-w-0">
 
       <!-- Loading -->
-      <div v-if="loading" class="flex-1 flex items-center justify-center gap-2 text-[var(--c-text-3)] text-sm">
-        <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
-        Loading…
+      <div v-if="loading" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
+        <LoadingSpinner />
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="apps.length === 0" class="flex-1 flex flex-col items-center justify-center gap-6 px-8 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-[var(--c-surface-alt)] border border-[var(--c-border)] flex items-center justify-center">
-          <svg class="w-8 h-8 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-          </svg>
-        </div>
-        <div class="space-y-1">
-          <p class="text-sm font-semibold text-[var(--c-text-2)]">No containers yet</p>
-          <p class="text-xs text-[var(--c-text-3)] max-w-xs">Deploy your first container to get started. You can configure ports, volumes, environment variables and more.</p>
-        </div>
-        <button
-          @click="openNew"
-          class="flex items-center gap-1.5 px-4 py-2 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+      <div v-else-if="apps.length === 0" class="flex-1 flex items-center justify-center px-8">
+        <EmptyState
+          message="No containers yet"
+          description="Deploy your first container to get started. You can configure ports, volumes, environment variables and more."
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-          New App
-        </button>
+          <template #icon>
+            <div class="w-16 h-16 rounded-2xl bg-[var(--c-surface-alt)] border border-[var(--c-border)] flex items-center justify-center">
+              <svg class="w-8 h-8 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+              </svg>
+            </div>
+          </template>
+          <template #action>
+            <button
+              @click="openNew"
+              class="flex items-center gap-1.5 px-4 py-2 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
+              New App
+            </button>
+          </template>
+        </EmptyState>
       </div>
 
       <div v-else class="flex flex-col flex-1">
@@ -229,19 +236,13 @@ async function unpin(app: App) {
         </div>
 
         <!-- Table -->
-        <table class="w-full text-sm table-fixed">
-          <colgroup>
-            <col class="w-[20%]" />
-            <col class="w-[35%]" />
-            <col class="w-[15%]" />
-            <col class="w-[15%]" />
-            <col class="w-[15%]" />
-          </colgroup>
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-[var(--c-border)]">
               <th class="text-left px-6 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">Container</th>
-              <th class="text-left px-3 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">Image</th>
-              <th class="text-left px-3 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">Ports</th>
+              <th class="text-left px-3 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest hidden sm:table-cell">Image</th>
+              <th class="text-left px-3 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest hidden md:table-cell">Ports</th>
               <th class="text-left px-3 py-2.5 text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">Status</th>
               <th class="px-6 py-2.5 text-right"></th>
             </tr>
@@ -266,12 +267,12 @@ async function unpin(app: App) {
               </td>
 
               <!-- Image -->
-              <td class="px-3 py-3.5">
+              <td class="px-3 py-3.5 hidden sm:table-cell">
                 <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.image }}</span>
               </td>
 
               <!-- Ports -->
-              <td class="px-3 py-3.5">
+              <td class="px-3 py-3.5 hidden md:table-cell">
                 <span class="font-mono text-[var(--c-text-3)] text-xs">{{ portsSummary(app) }}</span>
               </td>
 
@@ -364,6 +365,7 @@ async function unpin(app: App) {
             </tr>
           </tbody>
         </table>
+        </div>
 
       </div>
 
@@ -381,44 +383,39 @@ async function unpin(app: App) {
   />
 
   <!-- Pin dialog -->
-  <Teleport to="body">
-    <div
-      v-if="pinDialog"
-      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-      @click.self="pinDialog = null"
-    >
-      <div class="bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
-            Pin <span class="font-mono text-[var(--c-accent)]">{{ pinDialog.name }}</span> to quick access
-          </h3>
-          <button @click="pinDialog = null" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-xs text-[var(--c-text-3)]">URL</label>
-          <input
-            v-model="pinDialogUrl"
-            placeholder="http://192.168.1.x:8080"
-            @keydown.enter.prevent="savePin"
-            @keydown.escape="pinDialog = null"
-            autofocus
-            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
-          />
-          <p v-if="pinDialogErr" class="text-xs text-red-400">{{ pinDialogErr }}</p>
-        </div>
-        <div class="flex justify-end gap-2">
-          <button @click="pinDialog = null" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
-          <button
-            @click="savePin"
-            :disabled="pinDialogBusy || !pinDialogUrl.trim()"
-            class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
-          >{{ pinDialogBusy ? 'Saving…' : 'Pin' }}</button>
-        </div>
-      </div>
+  <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">
+    <template #header>
+      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
+        Pin <span class="font-mono text-[var(--c-accent)]">{{ pinDialog.name }}</span> to quick access
+      </h3>
+      <button @click="pinDialog = null" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </template>
+
+    <div class="p-5 space-y-1.5">
+      <label class="text-xs text-[var(--c-text-3)]">URL</label>
+      <input
+        v-model="pinDialogUrl"
+        placeholder="http://192.168.1.x:8080"
+        @keydown.enter.prevent="savePin"
+        @keydown.escape="pinDialog = null"
+        autofocus
+        class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+      />
+      <p v-if="pinDialogErr" class="text-xs text-red-400">{{ pinDialogErr }}</p>
     </div>
-  </Teleport>
+
+    <template #footer>
+      <div class="flex-1" />
+      <button @click="pinDialog = null" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+      <button
+        @click="savePin"
+        :disabled="pinDialogBusy || !pinDialogUrl.trim()"
+        class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
+      >{{ pinDialogBusy ? 'Saving…' : 'Pin' }}</button>
+    </template>
+  </Modal>
 </template>

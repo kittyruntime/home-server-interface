@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import UserDetailPanel from './UserDetailPanel.vue'
+import Pagination from './ui/Pagination.vue'
+import LoadingSpinner from './ui/LoadingSpinner.vue'
+import { usePagination } from '../lib/usePagination'
 
 type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
 type User = {
@@ -33,12 +36,7 @@ const addError   = ref('')
 const addLoading = ref(false)
 
 // ── Pagination ────────────────────────────────────────────────────────────────
-const PAGE_SIZE = 10
-const page      = ref(1)
-const pageCount = computed(() => Math.max(1, Math.ceil(users.value.length / PAGE_SIZE)))
-const paged     = computed(() => users.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
-
-function goPage(n: number) { page.value = Math.max(1, Math.min(n, pageCount.value)) }
+const { page, pageCount, paged, pageSize, clampPage } = usePagination(users, 10)
 
 async function load() {
   loading.value = true
@@ -50,7 +48,7 @@ async function load() {
     if (selectedUser.value) {
       selectedUser.value = users.value.find(u => u.id === selectedUser.value!.id) ?? null
     }
-    if (page.value > pageCount.value) page.value = pageCount.value
+    clampPage()
   } catch {
     loadError.value = 'Failed to load users'
   } finally {
@@ -146,7 +144,7 @@ onMounted(load)
       <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
         <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New user</h4>
 
-        <div class="grid grid-cols-2 gap-2.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-red-400">*</span></label>
             <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
@@ -180,12 +178,8 @@ onMounted(load)
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm py-6">
-        <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
-        Loading…
+      <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm py-6">
+        <LoadingSpinner />
       </div>
 
       <!-- Error -->
@@ -281,42 +275,7 @@ onMounted(load)
         </div>
 
         <!-- Pagination -->
-        <div v-if="pageCount > 1" class="flex items-center justify-between px-1">
-          <span class="text-xs text-[var(--c-text-3)]">
-            {{ (page - 1) * PAGE_SIZE + 1 }}–{{ Math.min(page * PAGE_SIZE, users.length) }} of {{ users.length }}
-          </span>
-          <div class="flex items-center gap-1">
-            <button
-              @click="goPage(page - 1)"
-              :disabled="page === 1"
-              class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-              </svg>
-            </button>
-            <template v-for="n in pageCount" :key="n">
-              <button
-                @click="goPage(n)"
-                :class="[
-                  'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
-                  n === page
-                    ? 'bg-[var(--c-accent)] text-[var(--c-accent-fg)]'
-                    : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]',
-                ]"
-              >{{ n }}</button>
-            </template>
-            <button
-              @click="goPage(page + 1)"
-              :disabled="page === pageCount"
-              class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        <Pagination :page="page" :page-count="pageCount" :total="users.length" :page-size="pageSize" @update:page="page = $event" />
       </template>
 
     </div>

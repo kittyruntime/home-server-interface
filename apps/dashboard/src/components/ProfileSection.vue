@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
+import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 type Me = {
   id: string
@@ -128,12 +129,8 @@ onMounted(async () => {
   <div class="space-y-8">
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm py-4">
-      <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
-      Loading…
+    <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm py-4">
+      <LoadingSpinner />
     </div>
 
     <template v-else-if="me">
@@ -236,7 +233,7 @@ onMounted(async () => {
               <input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
                 class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
             </div>
-            <div class="grid grid-cols-2 gap-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">New password</label>
                 <input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"

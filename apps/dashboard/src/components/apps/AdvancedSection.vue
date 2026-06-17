@@ -103,7 +103,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
     </div>
 
     <!-- Hostname / User / Command -->
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Hostname</label>
         <input
@@ -131,7 +131,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
     </div>
 
     <!-- CPU / Memory -->
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">CPU Limit</label>
         <input

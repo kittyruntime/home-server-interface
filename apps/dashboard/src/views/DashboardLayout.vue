@@ -11,6 +11,7 @@ import AppsPanel from '../components/apps/AppsPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import NotificationsContainer from '../components/NotificationsContainer.vue'
 import NotificationMenu from '../components/NotificationMenu.vue'
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 
 const router = useRouter()
 const { currentUsername, isAdmin, logout } = useAuth()
@@ -431,6 +432,7 @@ onUnmounted(() => {
   </div>
 
   <NotificationsContainer />
+  <ConfirmDialog />
   <NotificationMenu
     :open="notifMenuOpen"
     :pos="notifPos"

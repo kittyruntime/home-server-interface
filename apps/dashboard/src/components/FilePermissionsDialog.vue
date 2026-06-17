@@ -3,6 +3,8 @@ import { ref, watch, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useNotifications } from '../lib/notifications'
+import Modal from './ui/Modal.vue'
+import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 const props = defineProps<{ path: string }>()
 const emit  = defineEmits<{ (e: 'close'): void }>()
@@ -82,34 +84,26 @@ async function save() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="emit('close')">
-      <div class="w-[420px] bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-2xl overflow-hidden">
+  <Modal panel-class="w-[420px]" @close="emit('close')">
+    <template #header>
+      <div>
+        <div class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ path.split('/').pop() }}</div>
+        <div class="text-xs text-[var(--c-text-3)] font-mono mt-0.5">{{ path }}</div>
+      </div>
+      <button @click="emit('close')" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </template>
 
-        <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--c-border)]">
-          <div>
-            <div class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ path.split('/').pop() }}</div>
-            <div class="text-xs text-[var(--c-text-3)] font-mono mt-0.5">{{ path }}</div>
-          </div>
-          <button @click="emit('close')" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
+    <!-- Loading -->
+    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
+      <LoadingSpinner />
+    </div>
 
-        <!-- Loading -->
-        <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
-          <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-          Loading…
-        </div>
-
-        <template v-else>
-          <div class="p-5 space-y-5">
+    <template v-else>
+      <div class="p-5 space-y-5">
 
             <!-- Mode display -->
             <div class="flex items-center gap-3">
@@ -143,7 +137,7 @@ async function save() {
             </table>
 
             <!-- Owner / Group (admin only) -->
-            <div v-if="isAdmin" class="grid grid-cols-2 gap-3">
+            <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">Owner</label>
                 <input
@@ -166,22 +160,18 @@ async function save() {
               <div><span class="text-[var(--c-text-3)] text-xs mr-1">Group</span><span class="font-mono text-[var(--c-text-2)]">{{ group }}</span></div>
             </div>
 
-          </div>
-
-          <!-- Footer -->
-          <div v-if="isAdmin" class="px-5 py-3.5 border-t border-[var(--c-border)] flex justify-end gap-2">
-            <button @click="emit('close')" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
-            <button
-              @click="save"
-              :disabled="saving"
-              class="px-4 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors"
-            >
-              {{ saving ? 'Applying…' : 'Apply' }}
-            </button>
-          </div>
-        </template>
-
       </div>
-    </div>
-  </Teleport>
+    </template>
+
+    <template v-if="!loading && isAdmin" #footer>
+      <button @click="emit('close')" class="btn btn-ghost btn-sm">Cancel</button>
+      <button
+        @click="save"
+        :disabled="saving"
+        class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {{ saving ? 'Applying…' : 'Apply' }}
+      </button>
+    </template>
+  </Modal>
 </template>
