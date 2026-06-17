@@ -39,12 +39,20 @@ type taskMsg struct {
 	Mode          string   `json:"mode"`
 	Owner         string   `json:"owner"`
 	Group         string   `json:"group"`
+
+	// AllowedRoot scopes Path/ParentPath/Src/DestFile/Chunks/StagingDir to a
+	// directory (the caller's "Place"). DstAllowedRoot scopes DstDir
+	// separately since copy/move can cross two different places. Empty
+	// means unrestricted (admin operations).
+	AllowedRoot    string `json:"allowedRoot"`
+	DstAllowedRoot string `json:"dstAllowedRoot"`
 }
 
 // syncMsg is the payload for request-reply operations.
 type syncMsg struct {
 	LinuxUsername string `json:"linuxUsername"`
 	Path          string `json:"path"`
+	AllowedRoot   string `json:"allowedRoot"`
 }
 
 // syncResponse wraps a successful result for request-reply.
@@ -172,6 +180,7 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		ChunkIndex    int    `json:"chunkIndex"`
 		DestDir       string `json:"destDir"`
 		LinuxUsername string `json:"linuxUsername"`
+		AllowedRoot   string `json:"allowedRoot"`
 	}
 
 	metaJSON := msg.Header.Get("X-Meta")
@@ -184,8 +193,8 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad X-Meta: " + err.Error()})
 		return
 	}
-	if err := validatePath(meta.DestDir); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+	if fsErr := validateScoped(meta.DestDir, meta.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
 		return
 	}
 
@@ -219,8 +228,8 @@ func handleList(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-	if err := validatePath(req.Path); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
 		return
 	}
 	var entries []listEntry
@@ -252,8 +261,8 @@ func handleStat(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-	if err := validatePath(req.Path); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
 		return
 	}
 	var result *statResult
@@ -285,8 +294,8 @@ func handleRead(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-	if err := validatePath(req.Path); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
 		return
 	}
 	var data []byte
@@ -337,7 +346,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 
 	switch subject {
 	case "root.fs.mkdir":
-		fsErr = validatePaths(task.ParentPath)
+		// Also scope the joined target so a Name containing ".." can't be
+		// used to escape AllowedRoot via the parent's own valid prefix.
+		fsErr = validatePathsScoped(task.AllowedRoot, task.ParentPath, filepath.Join(task.ParentPath, task.Name))
 		if fsErr == nil {
 			var res *mkdirResult
 			err := withUser(task.LinuxUsername, func() error {
@@ -354,7 +365,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.copy":
-		fsErr = validatePaths(task.Src, task.DstDir)
+		fsErr = validatePathsScoped(task.AllowedRoot, task.Src)
+		if fsErr == nil {
+			fsErr = validatePathsScoped(task.DstAllowedRoot, task.DstDir)
+		}
 		if fsErr == nil {
 			var res *copyResult
 			err := withUser(task.LinuxUsername, func() error {
@@ -371,7 +385,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.move":
-		fsErr = validatePaths(task.Src, task.DstDir)
+		fsErr = validatePathsScoped(task.AllowedRoot, task.Src)
+		if fsErr == nil {
+			fsErr = validatePathsScoped(task.DstAllowedRoot, task.DstDir)
+		}
 		if fsErr == nil {
 			var res *moveResult
 			err := withUser(task.LinuxUsername, func() error {
@@ -388,7 +405,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.rename":
-		fsErr = validatePaths(task.Path)
+		fsErr = validatePathsScoped(task.AllowedRoot, task.Path, filepath.Join(filepath.Dir(task.Path), task.NewName))
 		if fsErr == nil {
 			var res *renameResult
 			err := withUser(task.LinuxUsername, func() error {
@@ -405,7 +422,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.delete":
-		fsErr = validatePaths(task.Path)
+		fsErr = validatePathsScoped(task.AllowedRoot, task.Path)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
 				fsErr = doDelete(task.Path)
@@ -421,9 +438,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 	case "root.fs.assemble":
-		// Chunks are in /tmp (owned by the backend user) — readable by root.
-		// DestFile is in the user's destination dir — write as linuxUser.
-		fsErr = validatePaths(append([]string{task.DestFile}, task.Chunks...)...)
+		// DestFile, chunks and the staging dir all live under the same
+		// destination directory, so they share AllowedRoot.
+		fsErr = validatePathsScoped(task.AllowedRoot, append([]string{task.DestFile}, task.Chunks...)...)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
 				fsErr = doAssemble(task.DestFile, task.Chunks)
@@ -438,7 +455,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			if fsErr == nil {
 				// Clean up staging dir (owned by the backend user — remove as root).
 				if task.StagingDir != "" {
-					if verr := validatePath(task.StagingDir); verr == nil {
+					if verr := validateScoped(task.StagingDir, task.AllowedRoot); verr == nil {
 						_ = os.RemoveAll(task.StagingDir)
 					}
 				}

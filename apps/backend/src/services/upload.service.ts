@@ -13,6 +13,7 @@ export interface UploadState {
   destDir:     string
   stagingDir:  string
   linuxUser:   string   // guaranteed non-null at creation
+  allowedRoot: string   // Place root destDir was validated against ("" = admin/unrestricted)
   createdAt:   number
 }
 

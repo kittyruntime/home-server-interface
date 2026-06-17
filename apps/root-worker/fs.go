@@ -25,6 +25,76 @@ func validatePath(p string) error {
 	return nil
 }
 
+// resolveExisting walks up from p until it finds an existing ancestor,
+// resolves symlinks on that ancestor, then re-joins the (possibly
+// non-existing) tail. This lets us compute the real target of operations
+// whose final path component doesn't exist yet (mkdir, copy/move/rename
+// destinations).
+func resolveExisting(p string) (string, error) {
+	clean := filepath.Clean(p)
+	if real, err := filepath.EvalSymlinks(clean); err == nil {
+		return real, nil
+	}
+	dir := filepath.Dir(clean)
+	if dir == clean {
+		return "", fmt.Errorf("invalid path: %s", p)
+	}
+	realDir, err := resolveExisting(dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(realDir, filepath.Base(clean)), nil
+}
+
+// containedIn resolves p (following symlinks on its existing ancestors) and
+// verifies the result lies within root (also symlink-resolved). An empty
+// root disables the check — used for admin/root-level operations that are
+// intentionally unrestricted to the whole filesystem.
+//
+// This closes the common case of a user planting a symlink inside their
+// allowed directory to read/write outside it, or using ".." in a supplied
+// name to escape it. It does not eliminate a TOCTOU race where the symlink
+// is swapped between this check and the actual operation; closing that
+// fully would require an openat-based path walk.
+func containedIn(p, root string) error {
+	if root == "" {
+		return nil
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fmt.Errorf("invalid allowed root: %w", err)
+	}
+	real, err := resolveExisting(p)
+	if err != nil {
+		return err
+	}
+	if real != realRoot && !strings.HasPrefix(real, realRoot+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes allowed root")
+	}
+	return nil
+}
+
+// validateScoped runs validatePath plus a containedIn check against root.
+func validateScoped(p, root string) *fsError {
+	if err := validatePath(p); err != nil {
+		return &fsError{Code: "ERR", Message: err.Error()}
+	}
+	if err := containedIn(p, root); err != nil {
+		return &fsError{Code: "EACCES", Message: err.Error()}
+	}
+	return nil
+}
+
+// validatePathsScoped applies validateScoped to every path against the same root.
+func validatePathsScoped(root string, paths ...string) *fsError {
+	for _, p := range paths {
+		if err := validateScoped(p, root); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ── Error mapping ─────────────────────────────────────────────────────────────
 
 type fsError struct {

@@ -131,11 +131,12 @@ export async function requestSync<T>(
 export async function requestRead(
   path: string,
   linuxUsername: string,
+  allowedRoot: string,
   timeout = 30_000,
 ): Promise<Buffer> {
   const msg = await nc.request(
     "root.fs.read",
-    sc.encode(JSON.stringify({ path, linuxUsername })),
+    sc.encode(JSON.stringify({ path, linuxUsername, allowedRoot })),
     { timeout },
   )
   return Buffer.from(msg.data)
@@ -148,6 +149,7 @@ export async function writeChunk(opts: {
   chunkIndex:    number
   destDir:       string
   linuxUsername: string
+  allowedRoot:   string
   data:          Buffer
 }, timeout = 30_000): Promise<void> {
   const { headers } = await import("nats")
@@ -157,6 +159,7 @@ export async function writeChunk(opts: {
     chunkIndex:    opts.chunkIndex,
     destDir:       opts.destDir,
     linuxUsername: opts.linuxUsername,
+    allowedRoot:   opts.allowedRoot,
   }))
   const msg = await nc.request(
     "root.fs.write-chunk",

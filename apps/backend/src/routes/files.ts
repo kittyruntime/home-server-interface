@@ -5,6 +5,7 @@ import { join, basename, normalize } from "node:path"
 import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
+import { isWithinRoot } from "../utils/fs-guard"
 import {
   getUpload, setUpload, deleteUpload, startUploadGc,
   MAX_CHUNKS, type UploadState,
@@ -12,16 +13,18 @@ import {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function hasPermission(
+// Returns the matched Place's root path on success (null when the caller is
+// an admin — unrestricted), or undefined when access is denied.
+async function resolveAllowedRoot(
   userId: string,
   isAdmin: boolean,
   path: string,
   flag: "canRead" | "canWrite",
-): Promise<boolean> {
-  if (isAdmin) return true
+): Promise<string | null | undefined> {
+  if (isAdmin) return null
   const places = await prisma.place.findMany()
   const place  = places.find(p => path === p.path || path.startsWith(p.path + "/"))
-  if (!place) return false
+  if (!place) return undefined
   const roleIds = (
     await prisma.userRole.findMany({ where: { userId }, select: { roleId: true } })
   ).map(r => r.roleId)
@@ -31,7 +34,7 @@ async function hasPermission(
       ? prisma.rolePlacePermission.findFirst({ where: { roleId: { in: roleIds }, placeId: place.id, [flag]: true } })
       : null,
   ])
-  return !!(u || r)
+  return (u || r) ? place.path : undefined
 }
 
 async function getLinuxUser(userId: string): Promise<string | null> {
@@ -63,7 +66,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // Clean up uploads that have been silent for more than UPLOAD_TTL_MS.
   startUploadGc((id, state) => {
     app.log.warn({ uploadId: id }, "Stale upload evicted by GC")
-    publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.stagingDir })
+    publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.stagingDir, allowedRoot: state.allowedRoot })
       .catch(err => app.log.error(err, "Failed to clean up stale upload staging dir"))
   })
 
@@ -81,8 +84,8 @@ export async function fileRoutes(app: FastifyInstance) {
       return reply.status(401).send("Unauthorized")
     }
 
-    if (!await hasPermission(user.userId, user.isAdmin, filePath, "canRead"))
-      return reply.status(403).send("Forbidden")
+    const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, filePath, "canRead")
+    if (allowedRoot === undefined) return reply.status(403).send("Forbidden")
 
     const linuxUser = await getLinuxUser(user.userId)
     const name = basename(filePath)
@@ -92,7 +95,7 @@ export async function fileRoutes(app: FastifyInstance) {
     if (linuxUser) {
       let data: Buffer
       try {
-        data = await requestRead(filePath, linuxUser)
+        data = await requestRead(filePath, linuxUser, allowedRoot ?? "")
       } catch (e: any) {
         if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
         if (e?.code === "ENOENT") return reply.status(404).send("Not found")
@@ -101,6 +104,9 @@ export async function fileRoutes(app: FastifyInstance) {
       reply.header("Content-Length", String(data.length))
       return reply.send(data)
     }
+
+    if (allowedRoot && !(await isWithinRoot(filePath, allowedRoot)))
+      return reply.status(403).send("Forbidden")
 
     let fileSize: number
     try {
@@ -150,8 +156,8 @@ export async function fileRoutes(app: FastifyInstance) {
     if (chunkIndex < 0 || chunkIndex >= totalChunks)
       return reply.status(400).send("chunkIndex out of range")
 
-    if (!await hasPermission(user.userId, user.isAdmin, destDir, "canWrite"))
-      return reply.status(403).send("Forbidden")
+    const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, destDir, "canWrite")
+    if (allowedRoot === undefined) return reply.status(403).send("Forbidden")
 
     // Resolve state (init on first chunk).
     let state = getUpload(uploadId)
@@ -162,7 +168,7 @@ export async function fileRoutes(app: FastifyInstance) {
       const stagingDir = join(destDir, `.uploads-${uploadId}`)
       const newState: UploadState = {
         received: new Set(), totalChunks, fileName, destDir, stagingDir,
-        linuxUser, createdAt: Date.now(),
+        linuxUser, allowedRoot: allowedRoot ?? "", createdAt: Date.now(),
       }
       setUpload(uploadId, newState)
       state = newState
@@ -176,6 +182,7 @@ export async function fileRoutes(app: FastifyInstance) {
         chunkIndex,
         destDir:       state.destDir,
         linuxUsername: state.linuxUser,
+        allowedRoot:   state.allowedRoot,
         data:          req.body as Buffer,
       })
     } catch (e: any) {
@@ -199,6 +206,7 @@ export async function fileRoutes(app: FastifyInstance) {
         destFile,
         chunks,
         stagingDir: state.stagingDir,
+        allowedRoot: state.allowedRoot,
       },
       user.userId,
     )
@@ -222,7 +230,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
     publishJob(
       "fs.delete",
-      { linuxUsername: state.linuxUser, path: state.stagingDir },
+      { linuxUsername: state.linuxUser, path: state.stagingDir, allowedRoot: state.allowedRoot },
     ).catch(err => app.log.error(err, "Failed to clean up upload staging dir on cancel"))
 
     return reply.send({ ok: true })

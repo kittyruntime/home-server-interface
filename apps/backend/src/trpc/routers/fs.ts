@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { accessiblePlaceIds } from "./place"
 import { publishJob, requestSync } from "../../nats"
+import { isWithinRoot } from "../../utils/fs-guard"
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -16,12 +17,15 @@ async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Pro
   return u?.linuxUsername ?? null
 }
 
+// Returns the matched Place's root path so callers can pass it to the
+// worker for symlink-aware containment checks, or null when the caller is
+// an admin (unrestricted — no containment check performed by the worker).
 async function checkPathPerm(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } },
   path: string,
   flag: "canRead" | "canWrite" | "canDelete",
-): Promise<void> {
-  if (ctx.user.isAdmin) return
+): Promise<string | null> {
+  if (ctx.user.isAdmin) return null
 
   const places = await ctx.prisma.place.findMany()
   const place  = places.find(
@@ -46,6 +50,7 @@ async function checkPathPerm(
   ])
 
   if (!userPerm && !rolePerm) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+  return place.path
 }
 
 // Map worker error codes to tRPC errors.
@@ -100,19 +105,24 @@ export const fsRouter = router({
       const p = normalize(input.path)
       if (!p.startsWith("/") || p.includes("\0")) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid path" })
 
+      let allowedRoot: string | null = null
       if (!ctx.user.isAdmin) {
         const ids    = await accessiblePlaceIds(ctx)
         const places = await ctx.prisma.place.findMany({ where: { id: { in: ids } } })
-        const allowed = places.some((pl: { path: string }) => p === pl.path || p.startsWith(pl.path + "/"))
-        if (!allowed) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+        const place  = places.find((pl: { path: string }) => p === pl.path || p.startsWith(pl.path + "/"))
+        if (!place) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+        allowedRoot = place.path
       }
 
       const linuxUser = await getLinuxUser(ctx)
       try {
         if (!linuxUser) {
+          if (allowedRoot && !(await isWithinRoot(p, allowedRoot))) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+          }
           return sortEntries(await listAsProcess(p))
         }
-        const entries = await requestSync<FsEntry[]>("root.fs.list", { path: p, linuxUsername: linuxUser })
+        const entries = await requestSync<FsEntry[]>("root.fs.list", { path: p, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "" })
         return sortEntries(entries)
       } catch (e: any) {
         throw mapWorkerError(e)
@@ -124,12 +134,12 @@ export const fsRouter = router({
     .input(z.object({ path: z.string() }))
     .query(async ({ ctx, input }) => {
       const p = normalize(input.path)
-      await checkPathPerm(ctx, p, "canRead")
+      const allowedRoot = await checkPathPerm(ctx, p, "canRead")
       const linuxUser = await getLinuxUser(ctx)
       try {
         return await requestSync<{
           mode: string; owner: string; group: string; uid: number; gid: number; type: string; size: number | null
-        }>("root.fs.stat", { path: p, linuxUsername: linuxUser ?? "" })
+        }>("root.fs.stat", { path: p, linuxUsername: linuxUser ?? "", allowedRoot: allowedRoot ?? "" })
       } catch (e: any) {
         throw mapWorkerError(e)
       }
@@ -140,9 +150,9 @@ export const fsRouter = router({
     .input(z.object({ parentPath: z.string(), name: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
       const parent = normalize(input.parentPath)
-      await checkPathPerm(ctx, parent, "canWrite")
+      const allowedRoot = await checkPathPerm(ctx, parent, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.mkdir", { linuxUsername: linuxUser ?? "", parentPath: parent, name: input.name }, ctx.user.userId)
+      const jobId = await publishJob("fs.mkdir", { linuxUsername: linuxUser ?? "", parentPath: parent, name: input.name, allowedRoot: allowedRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),
 
@@ -152,10 +162,10 @@ export const fsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const src    = normalize(input.src)
       const dstDir = normalize(input.dstDir)
-      await checkPathPerm(ctx, src,    "canRead")
-      await checkPathPerm(ctx, dstDir, "canWrite")
+      const srcRoot = await checkPathPerm(ctx, src,    "canRead")
+      const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir }, ctx.user.userId)
+      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),
 
@@ -165,10 +175,10 @@ export const fsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const src    = normalize(input.src)
       const dstDir = normalize(input.dstDir)
-      await checkPathPerm(ctx, src,    "canWrite")
-      await checkPathPerm(ctx, dstDir, "canWrite")
+      const srcRoot = await checkPathPerm(ctx, src,    "canWrite")
+      const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir }, ctx.user.userId)
+      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),
 
@@ -180,9 +190,9 @@ export const fsRouter = router({
       if (input.newName.includes("/") || input.newName === "." || input.newName === "..") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid name" })
       }
-      await checkPathPerm(ctx, p, "canWrite")
+      const allowedRoot = await checkPathPerm(ctx, p, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.rename", { linuxUsername: linuxUser ?? "", path: p, newName: input.newName }, ctx.user.userId)
+      const jobId = await publishJob("fs.rename", { linuxUsername: linuxUser ?? "", path: p, newName: input.newName, allowedRoot: allowedRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),
 
@@ -191,9 +201,9 @@ export const fsRouter = router({
     .input(z.object({ path: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const p = normalize(input.path)
-      await checkPathPerm(ctx, p, "canDelete")
+      const allowedRoot = await checkPathPerm(ctx, p, "canDelete")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.delete", { linuxUsername: linuxUser ?? "", path: p }, ctx.user.userId)
+      const jobId = await publishJob("fs.delete", { linuxUsername: linuxUser ?? "", path: p, allowedRoot: allowedRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),
 
