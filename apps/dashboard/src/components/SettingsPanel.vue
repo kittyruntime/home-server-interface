@@ -37,6 +37,12 @@ function showDivider(item: NavItem, index: number): boolean {
 const active = ref<SectionId>('profile')
 
 watch(() => props.focusSection, s => { if (s) active.value = s })
+
+function focusOn(section: SectionId) {
+  active.value = section
+}
+
+defineExpose({ focusOn })
 </script>
 
 <template>

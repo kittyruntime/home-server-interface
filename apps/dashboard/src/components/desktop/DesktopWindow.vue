@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { useDesktop, APP_LABEL, APP_ICON_PATH, type DesktopWindow } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
 import DashboardPanel from '../dashboard/DashboardPanel.vue'
@@ -17,6 +17,11 @@ const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, re
 const { isAdmin } = useAuth()
 
 const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
+const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
+
+watch(() => props.win.focusNonce, () => {
+  if (props.win.focusSection) settingsPanelRef.value?.focusOn(props.win.focusSection)
+})
 
 type DragState = { px: number; py: number; wx: number; wy: number }
 type ResizeState = { px: number; py: number; ww: number; wh: number; wx: number; wy: number; edge: string }
@@ -125,7 +130,7 @@ function onMaximizeClick() {
       <DashboardPanel v-if="win.appId === 'dashboard'" class="h-full" />
       <FileBrowserPanel v-else-if="win.appId === 'files'" class="h-full" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
-      <SettingsPanel v-else-if="win.appId === 'settings'" class="h-full" :focusSection="win.focusSection ?? null" />
+      <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
     </div>
 
     <template v-if="!win.maximized">

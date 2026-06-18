@@ -15,6 +15,7 @@ export interface DesktopWindow {
   prevRect?: { x: number; y: number; w: number; h: number }
   zIndex: number
   focusSection?: SettingsSection
+  focusNonce?: number
 }
 
 export const APP_LABEL: Record<AppId, string> = {
@@ -103,7 +104,10 @@ export function useDesktop() {
     if (!MULTI_INSTANCE.has(appId)) {
       const existing = windows.value.find(w => w.appId === appId)
       if (existing) {
-        if (focusSection !== undefined) existing.focusSection = focusSection
+        if (focusSection !== undefined) {
+          existing.focusSection = focusSection
+          existing.focusNonce = (existing.focusNonce ?? 0) + 1
+        }
         focusWindow(existing.id)
         return
       }
