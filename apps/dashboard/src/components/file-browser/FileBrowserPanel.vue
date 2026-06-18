@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth'
 import { useNotifications } from '../../lib/notifications'
 import { useClipboard } from '../../lib/clipboard'
 import { useUploads } from '../../lib/uploads'
+import { useDesktop } from '../../lib/desktop'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
@@ -17,10 +18,13 @@ type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | 
 type Place = { id: string; name: string; path: string }
 interface Crumb { label: string; path: string; clickable: boolean }
 
+const props = defineProps<{ desktopWindow?: boolean }>()
+
 const { isAdmin, token }    = useAuth()
 const { track, trackBatch } = useNotifications()
 const { clipboard, copy: clipCopy, cut: clipCut, clear: clipClear } = useClipboard()
 const uploads = useUploads()
+const { openFilePreview } = useDesktop()
 
 const BASE_URL   = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/trpc$/, '') : ''
 const CHUNK_SIZE = 2 * 1024 * 1024
@@ -46,7 +50,11 @@ const sidebarOpen = ref(false)
 const previewEntry = ref<Entry | null>(null)
 
 function openFile(entry: Entry) {
-  previewEntry.value = entry
+  if (props.desktopWindow) {
+    openFilePreview({ path: entry.path, name: entry.name, size: entry.size })
+  } else {
+    previewEntry.value = entry
+  }
 }
 
 // ── places ───────────────────────────────────────────────────────────────────
