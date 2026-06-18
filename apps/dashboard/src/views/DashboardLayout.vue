@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useUploads } from '../lib/uploads'
 import { useNotifications } from '../lib/notifications'
+import { useDesktop } from '../lib/desktop'
 import { trpc } from '../lib/trpc'
 import SettingsPanel from '../components/SettingsPanel.vue'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
@@ -12,11 +13,22 @@ import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import NotificationsContainer from '../components/NotificationsContainer.vue'
 import NotificationMenu from '../components/NotificationMenu.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import Dock from '../components/desktop/Dock.vue'
+import Launchpad from '../components/desktop/Launchpad.vue'
+import DesktopShell from '../components/desktop/DesktopShell.vue'
 
 const router = useRouter()
 const { currentUsername, isAdmin, logout } = useAuth()
 const uploads = useUploads()
 const { notifications } = useNotifications()
+const { desktopMode, setDesktopMode, openApp } = useDesktop()
+
+const isMobile = ref(window.innerWidth < 640)
+const launchpadOpen = ref(false)
+
+function updateIsMobile() {
+  isMobile.value = window.innerWidth < 640
+}
 
 const updateAvailable = ref(false)
 
@@ -91,8 +103,12 @@ function toggleUserMenu() {
 }
 
 function goToProfile() {
-  activeApp.value = 'settings'
-  settingsSection.value = 'profile'
+  if (desktopMode.value && !isMobile.value) {
+    openApp('settings', 'profile')
+  } else {
+    activeApp.value = 'settings'
+    settingsSection.value = 'profile'
+  }
   userMenuOpen.value = false
 }
 
@@ -109,11 +125,13 @@ let updateTimer: ReturnType<typeof setInterval>
 
 onMounted(() => {
   document.addEventListener('click', closeUserMenu)
+  window.addEventListener('resize', updateIsMobile)
   checkUpdateBadge()
   updateTimer = setInterval(checkUpdateBadge, 3_600_000) // hourly
 })
 onUnmounted(() => {
   document.removeEventListener('click', closeUserMenu)
+  window.removeEventListener('resize', updateIsMobile)
   clearInterval(updateTimer)
 })
 </script>
@@ -124,17 +142,21 @@ onUnmounted(() => {
     <!-- Sidebar: 64px (desktop only) -->
     <aside class="hidden sm:flex flex-col items-center w-16 bg-[var(--c-sidebar)] border-r border-[var(--c-border)] py-4 flex-shrink-0">
 
-      <!-- Brand mark -->
-      <div class="w-8 h-8 rounded-lg bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] mb-5 select-none">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-      </div>
+      <template v-if="desktopMode && !isMobile">
+        <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
+      </template>
+      <template v-else>
+        <!-- Brand mark -->
+        <div class="w-8 h-8 rounded-lg bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] mb-5 select-none">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
 
-      <div class="w-8 border-t border-[var(--c-border)] mb-3" />
+        <div class="w-8 border-t border-[var(--c-border)] mb-3" />
 
-      <!-- App nav -->
-      <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
+        <!-- App nav -->
+        <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
 
         <!-- Dashboard -->
         <div class="relative flex justify-center py-0.5">
@@ -230,6 +252,7 @@ onUnmounted(() => {
         </div>
 
       </nav>
+      </template>
 
       <!-- Notifications bell -->
       <button
@@ -299,6 +322,24 @@ onUnmounted(() => {
               Profile
             </button>
             <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
+            <div class="w-full flex items-center justify-between gap-2.5 px-3 py-2 text-sm text-[var(--c-text-2)]">
+              <span class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                Desktop mode
+              </span>
+              <button
+                @click="setDesktopMode(!desktopMode)"
+                role="switch"
+                :aria-checked="desktopMode"
+                title="Toggle desktop mode"
+                :class="['relative w-8 h-4.5 rounded-full transition-colors shrink-0', desktopMode ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-border-strong)]']"
+              >
+                <span :class="['absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform', desktopMode ? 'translate-x-[18px]' : 'translate-x-0.5']" />
+              </button>
+            </div>
+            <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
             <button
               @click="handleLogout"
               class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--c-accent)]
@@ -316,38 +357,39 @@ onUnmounted(() => {
 
     <!-- Main area -->
     <main class="flex-1 flex flex-col overflow-hidden">
-
-      <!-- Top bar (hidden for files — FileToolbar acts as the header) -->
-      <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]">
-        <span class="eyebrow">{{ activeAppLabel }}</span>
-        <button
-          v-if="activeApp === 'apps' && isAdmin"
-          @click="appsPanelRef?.openNew()"
-          class="btn btn-primary btn-xs"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-          New App
-        </button>
-      </header>
-
-      <!-- Content -->
-      <div :class="['flex-1', activeApp !== 'dashboard' ? 'overflow-hidden' : 'overflow-auto']">
-        <DashboardPanel v-if="activeApp === 'dashboard'" class="h-full" />
-        <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
-        <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
-        <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
-        <div v-else class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
-          <div class="text-center space-y-3">
-            <svg class="w-12 h-12 mx-auto opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+      <DesktopShell v-if="desktopMode && !isMobile" />
+      <template v-else>
+        <!-- Top bar (hidden for files — FileToolbar acts as the header) -->
+        <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]">
+          <span class="eyebrow">{{ activeAppLabel }}</span>
+          <button
+            v-if="activeApp === 'apps' && isAdmin"
+            @click="appsPanelRef?.openNew()"
+            class="btn btn-primary btn-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
-            <p class="text-sm">Select an app from the sidebar</p>
+            New App
+          </button>
+        </header>
+
+        <!-- Content -->
+        <div :class="['flex-1', activeApp !== 'dashboard' ? 'overflow-hidden' : 'overflow-auto']">
+          <DashboardPanel v-if="activeApp === 'dashboard'" class="h-full" />
+          <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
+          <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
+          <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
+          <div v-else class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
+            <div class="text-center space-y-3">
+              <svg class="w-12 h-12 mx-auto opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              <p class="text-sm">Select an app from the sidebar</p>
+            </div>
           </div>
         </div>
-      </div>
-
+      </template>
     </main>
 
     <!-- Mobile bottom nav -->
@@ -438,6 +480,7 @@ onUnmounted(() => {
     :pos="notifPos"
     @close="notifMenuOpen = false"
   />
+  <Launchpad v-if="launchpadOpen" @close="launchpadOpen = false" />
 </template>
 
 <style scoped>
