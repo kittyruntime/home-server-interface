@@ -48,7 +48,7 @@ function onIconClick(id: string) {
         />
         <button
           @click="onIconClick(w.id)"
-          :title="APP_LABEL[w.appId]"
+          :title="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
           :class="[
             'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
             w.minimized ? 'opacity-40' : '',
