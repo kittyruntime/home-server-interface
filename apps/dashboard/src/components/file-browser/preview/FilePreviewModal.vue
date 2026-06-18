@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed } from 'vue'
 import Modal from '../../ui/Modal.vue'
-import MediaPreview from './MediaPreview.vue'
+import FilePreviewBody from './FilePreviewBody.vue'
 import { detectKind } from '../../../lib/file-kind'
 import { useAuth } from '../../../lib/auth'
 import { downloadUrl } from '../../../lib/file-url'
@@ -15,10 +15,7 @@ const { token } = useAuth()
 const kind = computed(() => detectKind(props.entry.name))
 const ext = computed(() => props.entry.name.includes('.') ? props.entry.name.split('.').pop()!.toUpperCase() : '')
 
-// Code-split: CodeMirror only loads when a text file is actually opened.
-const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
-
-const editorRef = ref<{ save: () => void } | null>(null)
+const bodyRef = ref<{ save: () => void } | null>(null)
 const dirty = ref(false)
 
 function tryClose() {
@@ -47,20 +44,12 @@ function tryClose() {
       </a>
     </template>
 
-    <MediaPreview v-if="kind === 'image' || kind === 'video' || kind === 'audio'" :path="entry.path" :kind="kind" />
-    <CodeEditor
-      v-else
-      ref="editorRef"
-      :path="entry.path"
-      :name="entry.name"
-      :size="entry.size"
-      @dirty="dirty = $event"
-    />
+    <FilePreviewBody :entry="entry" ref="bodyRef" @dirty="dirty = $event" />
 
     <template v-if="kind === 'text'" #footer>
       <div class="flex-1" />
       <button class="btn btn-ghost btn-sm" @click="tryClose">Close</button>
-      <button class="btn btn-primary btn-sm" :disabled="!dirty" @click="editorRef?.save()">Save</button>
+      <button class="btn btn-primary btn-sm" :disabled="!dirty" @click="bodyRef?.save()">Save</button>
     </template>
   </Modal>
 </template>
