@@ -67,20 +67,20 @@ onUnmounted(() => {
 
 function statusDot(status: string) {
   switch (status) {
-    case 'running':       return 'bg-emerald-500'
+    case 'running':       return 'bg-[var(--c-success)]'
     case 'stopped':       return 'bg-[var(--c-text-3)]'
-    case 'error':         return 'bg-red-500'
-    case 'transitioning': return 'bg-amber-400 animate-pulse'
-    default:              return 'bg-amber-500'
+    case 'error':         return 'bg-[var(--c-accent)]'
+    case 'transitioning': return 'bg-[var(--c-warning)] animate-pulse'
+    default:              return 'bg-[var(--c-warning)]'
   }
 }
 
 function statusText(status: string) {
   switch (status) {
-    case 'running':       return { label: 'Running',  cls: 'text-emerald-400' }
+    case 'running':       return { label: 'Running',  cls: 'text-[var(--c-success)]' }
     case 'stopped':       return { label: 'Stopped',  cls: 'text-[var(--c-text-3)]'   }
-    case 'error':         return { label: 'Error',    cls: 'text-red-400'     }
-    case 'transitioning': return { label: 'Updating…',cls: 'text-amber-400'  }
+    case 'error':         return { label: 'Error',    cls: 'text-[var(--c-accent)]'   }
+    case 'transitioning': return { label: 'Updating…',cls: 'text-[var(--c-warning)]'  }
     default:              return { label: 'Unknown',  cls: 'text-[var(--c-text-3)]'   }
   }
 }
@@ -294,7 +294,7 @@ async function unpin(app: App) {
                       @click="runAction(app.id, 'start')"
                       :disabled="!!actionLoading[app.id]"
                       title="Start"
-                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-emerald-400 hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
+                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-success)] hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
                     >
                       <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
@@ -305,7 +305,7 @@ async function unpin(app: App) {
                       @click="runAction(app.id, 'stop')"
                       :disabled="!!actionLoading[app.id]"
                       title="Stop"
-                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-amber-400 hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
+                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-warning)] hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <rect x="6" y="6" width="12" height="12" rx="1"/>
@@ -354,7 +354,7 @@ async function unpin(app: App) {
                     @click="runAction(app.id, 'delete')"
                     :disabled="!!actionLoading[app.id]"
                     title="Delete"
-                    class="p-1.5 text-[var(--c-text-3)] hover:text-red-400 disabled:opacity-30 transition-colors rounded-lg hover:bg-[var(--c-hover)]"
+                    class="p-1.5 text-[var(--c-text-3)] hover:text-[var(--c-accent)] disabled:opacity-30 transition-colors rounded-lg hover:bg-[var(--c-hover)]"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -388,11 +388,6 @@ async function unpin(app: App) {
       <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
         Pin <span class="font-mono text-[var(--c-accent)]">{{ pinDialog.name }}</span> to quick access
       </h3>
-      <button @click="pinDialog = null" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
     </template>
 
     <div class="p-5 space-y-1.5">
@@ -405,7 +400,7 @@ async function unpin(app: App) {
         autofocus
         class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
       />
-      <p v-if="pinDialogErr" class="text-xs text-red-400">{{ pinDialogErr }}</p>
+      <p v-if="pinDialogErr" class="text-xs text-[var(--c-accent)]">{{ pinDialogErr }}</p>
     </div>
 
     <template #footer>

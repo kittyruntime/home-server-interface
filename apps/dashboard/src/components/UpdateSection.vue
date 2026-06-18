@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
+import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 
@@ -87,10 +88,7 @@ onUnmounted(() => clearInterval(timer))
     <!-- Restarting state -->
     <div v-if="restarting" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5">
       <div class="flex items-center gap-3">
-        <svg class="w-5 h-5 text-[var(--c-accent)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-        </svg>
+        <LoadingSpinner label="Restarting" />
         <div>
           <p class="text-sm font-medium text-[var(--c-text-1)]">Update in progress</p>
           <p class="text-xs text-[var(--c-text-3)] mt-0.5">The server is restarting. The page will reload automatically.</p>
@@ -105,7 +103,7 @@ onUnmounted(() => clearInterval(timer))
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="text-sm text-[var(--c-accent)]">{{ error }}</div>
 
     <!-- Status card -->
     <div v-else-if="status" class="space-y-4">
@@ -149,8 +147,8 @@ onUnmounted(() => clearInterval(timer))
         v-else
         class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 flex items-center gap-3"
       >
-        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <div class="w-8 h-8 rounded-lg bg-[var(--c-success)]/10 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4 text-[var(--c-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
         </div>

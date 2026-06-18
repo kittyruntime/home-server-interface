@@ -179,7 +179,7 @@ onMounted(async () => {
           <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-[var(--c-text-3)] text-sm italic'">
             {{ me.displayName || 'Not set' }}
           </span>
-          <span v-if="nameSuccess" class="text-xs text-green-400">Saved</span>
+          <span v-if="nameSuccess" class="text-xs text-[var(--c-success)]">Saved</span>
         </div>
 
         <div v-else class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl p-4 space-y-3">
@@ -191,7 +191,7 @@ onMounted(async () => {
             @keydown.escape="editingName = false"
             class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"
           />
-          <p v-if="nameError" class="text-red-400 text-xs">{{ nameError }}</p>
+          <p v-if="nameError" class="text-[var(--c-accent)] text-xs">{{ nameError }}</p>
           <div class="flex gap-2">
             <button @click="saveName" :disabled="nameLoading"
               class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors">
@@ -220,7 +220,7 @@ onMounted(async () => {
         </div>
 
         <div v-else class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl p-4 space-y-3">
-          <div v-if="pwSuccess" class="flex items-center gap-2 text-green-400 text-sm py-1">
+          <div v-if="pwSuccess" class="flex items-center gap-2 text-[var(--c-success)] text-sm py-1">
             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
@@ -246,7 +246,7 @@ onMounted(async () => {
                   class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
               </div>
             </div>
-            <p v-if="pwError" class="text-red-400 text-xs">{{ pwError }}</p>
+            <p v-if="pwError" class="text-[var(--c-accent)] text-xs">{{ pwError }}</p>
             <div class="flex gap-2">
               <button @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next"
                 class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors">

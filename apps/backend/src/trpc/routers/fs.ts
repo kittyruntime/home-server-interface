@@ -1,11 +1,18 @@
 import { z } from "zod"
-import { readdir, stat } from "node:fs/promises"
-import { join, normalize } from "node:path"
+import crypto from "node:crypto"
+import { readdir, readFile, stat } from "node:fs/promises"
+import { join, normalize, dirname } from "node:path"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { accessiblePlaceIds } from "./place"
-import { publishJob, requestSync } from "../../nats"
+import { publishJob, requestSync, requestRead, writeChunk } from "../../nats"
 import { isWithinRoot } from "../../utils/fs-guard"
+import { looksBinary } from "../../utils/text-sniff"
+
+// Hard cap on what the text/code preview will read into memory and hand to
+// the frontend editor — checked via stat() *before* reading, so an
+// oversized file never gets pulled into memory for this path.
+const MAX_TEXT_PREVIEW_BYTES = 3 * 1024 * 1024
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -143,6 +150,101 @@ export const fsRouter = router({
       } catch (e: any) {
         throw mapWorkerError(e)
       }
+    }),
+
+  // ── readText (sync) — preview/edit content, with a binary + size guard ───────
+  readText: protectedProcedure
+    .input(z.object({ path: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+      const allowedRoot = await checkPathPerm(ctx, p, "canRead")
+      const linuxUser = await getLinuxUser(ctx)
+
+      let size: number | null
+      try {
+        if (linuxUser) {
+          const s = await requestSync<{ type: string; size: number | null }>(
+            "root.fs.stat",
+            { path: p, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "" },
+          )
+          if (s.type !== "file") throw new TRPCError({ code: "BAD_REQUEST", message: "Not a file" })
+          size = s.size
+        } else {
+          if (allowedRoot && !(await isWithinRoot(p, allowedRoot))) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+          }
+          const s = await stat(p)
+          if (!s.isFile()) throw new TRPCError({ code: "BAD_REQUEST", message: "Not a file" })
+          size = s.size
+        }
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+
+      if (size != null && size > MAX_TEXT_PREVIEW_BYTES) {
+        return { ok: false as const, reason: "too-large" as const, size }
+      }
+
+      let data: Buffer
+      try {
+        data = linuxUser
+          ? await requestRead(p, linuxUser, allowedRoot ?? "")
+          : await readFile(p)
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+
+      if (looksBinary(data)) {
+        return { ok: false as const, reason: "binary" as const, size: data.length }
+      }
+
+      return { ok: true as const, content: data.toString("utf-8"), size: data.length }
+    }),
+
+  // ── writeText (async) — save editor content, reusing the upload pipeline ────
+  //
+  // There's no "overwrite whole file" worker command; this reuses the exact
+  // same chunked-upload + assemble path as a real file upload (single
+  // in-memory chunk), which already truncates-and-overwrites an existing
+  // destination file (apps/root-worker/fs.go doAssemble, O_TRUNC). Zero
+  // changes to the root-worker needed.
+  writeText: protectedProcedure
+    .input(z.object({ path: z.string(), content: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+      const allowedRoot = await checkPathPerm(ctx, p, "canWrite")
+      const linuxUser = await getLinuxUser(ctx)
+      if (!linuxUser) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "User has no Linux account configured" })
+      }
+
+      const uploadId   = crypto.randomUUID()
+      const destDir    = dirname(p)
+      const stagingDir = join(destDir, `.uploads-${uploadId}`)
+      const data       = Buffer.from(input.content, "utf-8")
+
+      try {
+        await writeChunk({
+          uploadId, chunkIndex: 0,
+          destDir, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "",
+          data,
+        })
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+
+      const jobId = await publishJob(
+        "fs.assemble",
+        {
+          linuxUsername: linuxUser,
+          destFile:    p,
+          chunks:      [join(stagingDir, "0.part")],
+          stagingDir,
+          allowedRoot: allowedRoot ?? "",
+        },
+        ctx.user.userId,
+      )
+      return { jobId }
     }),
 
   // ── mkdir (async) ────────────────────────────────────────────────────────────

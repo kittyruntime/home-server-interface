@@ -194,7 +194,7 @@ async function toggleMember(userId: string) {
         :class="[
           'text-xs px-2.5 py-1 rounded-lg border transition-colors shrink-0 disabled:opacity-40',
           role.isAdmin
-            ? 'border-[var(--c-border-strong)] text-[var(--c-accent)] hover:border-red-500/40 hover:text-red-400'
+            ? 'border-[var(--c-border-strong)] text-[var(--c-accent)] hover:border-[var(--c-accent)]/40 hover:text-[var(--c-accent)]'
             : 'border-[var(--c-border-strong)] text-[var(--c-text-3)] hover:border-[var(--c-accent)] hover:text-[var(--c-accent)]',
         ]"
       >{{ role.isAdmin ? 'Revoke admin' : 'Grant admin' }}</button>
@@ -203,7 +203,7 @@ async function toggleMember(userId: string) {
       <template v-if="!deleteConfirm">
         <button
           @click="deleteConfirm = true"
-          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors shrink-0"
           title="Delete role"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -212,11 +212,11 @@ async function toggleMember(userId: string) {
         </button>
       </template>
       <template v-else>
-        <span class="text-xs text-red-400 shrink-0">Delete?</span>
+        <span class="text-xs text-[var(--c-accent)] shrink-0">Delete?</span>
         <button
           @click="deleteRole"
           :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors disabled:opacity-40"
+          class="text-xs px-2 py-1 rounded bg-[var(--c-accent)]/15 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/25 transition-colors disabled:opacity-40"
         >Yes</button>
         <button
           @click="deleteConfirm = false"
@@ -225,7 +225,7 @@ async function toggleMember(userId: string) {
       </template>
     </div>
 
-    <p v-if="error" class="text-red-400 text-xs px-0.5">{{ error }}</p>
+    <p v-if="error" class="text-[var(--c-accent)] text-xs px-0.5">{{ error }}</p>
 
     <!-- ── Permissions ─────────────────────────────────────────────────────── -->
     <div class="space-y-5">
@@ -261,7 +261,7 @@ async function toggleMember(userId: string) {
           :class="[
             'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer select-none transition-colors',
             grantedNames.has(perm.name)
-              ? 'bg-emerald-500/8 hover:bg-emerald-500/12'
+              ? 'bg-[var(--c-success)]/8 hover:bg-[var(--c-success)]/12'
               : 'hover:bg-[var(--c-hover)]',
           ]"
         >
@@ -271,7 +271,7 @@ async function toggleMember(userId: string) {
               'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all',
               permBusy[perm.name] ? 'opacity-40' : '',
               grantedNames.has(perm.name)
-                ? 'bg-emerald-600 border-emerald-600'
+                ? 'bg-[var(--c-success)] border-[var(--c-success)]'
                 : 'border-[var(--c-border-strong)] hover:border-[var(--c-border-strong)]',
             ]"
           >
@@ -336,7 +336,7 @@ async function toggleMember(userId: string) {
               @click="user.id !== currentUserId && toggleMember(user.id)"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
                      text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/8
+                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-accent)]/8
                      disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">

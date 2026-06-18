@@ -6,10 +6,40 @@ import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
+import { guessMime, isInlineSafe } from "../utils/mime"
 import {
   getUpload, setUpload, deleteUpload, startUploadGc,
   MAX_CHUNKS, type UploadState,
 } from "../services/upload.service"
+
+// Parses a single-range "bytes=start-end" Range header against a known
+// total size. Returns null when there's no usable range (caller should
+// serve the full body), or { start, end, satisfiable: false } when the
+// range is out of bounds (caller should respond 416).
+function parseRange(
+  rangeHeader: string | undefined,
+  size: number,
+): { start: number; end: number; satisfiable: boolean } | null {
+  if (!rangeHeader) return null
+  const m = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
+  if (!m) return null
+  const [, startStr, endStr] = m
+  if (!startStr && !endStr) return null
+
+  let start = startStr ? parseInt(startStr, 10) : undefined
+  let end   = endStr   ? parseInt(endStr, 10)   : undefined
+
+  if (start === undefined) {
+    // Suffix range: "bytes=-500" = last 500 bytes.
+    start = Math.max(0, size - (end ?? 0))
+    end   = size - 1
+  } else if (end === undefined) {
+    end = size - 1
+  }
+
+  if (start > end || start >= size) return { start, end, satisfiable: false }
+  return { start, end: Math.min(end, size - 1), satisfiable: true }
+}
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -70,9 +100,15 @@ export async function fileRoutes(app: FastifyInstance) {
       .catch(err => app.log.error(err, "Failed to clean up stale upload staging dir"))
   })
 
-  // ── GET /files/download?path=<path>&token=<jwt> ───────────────────────────
+  // ── GET /files/download?path=<path>&token=<jwt>[&inline=1] ───────────────
+  //
+  // Default behavior (no `inline`) is unchanged: forces a save-as download
+  // as application/octet-stream. `inline=1` is used by the in-app preview
+  // (image/video/audio tags) — it sets a real Content-Type and an `inline`
+  // disposition, and both branches below support HTTP Range so `<video>`
+  // seeking works.
   app.get("/files/download", async (req, reply) => {
-    const { path: filePath, token } = req.query as Record<string, string>
+    const { path: filePath, token, inline } = req.query as Record<string, string>
     if (!token || !filePath) return reply.status(400).send("Missing params")
 
     let user: { userId: string; isAdmin: boolean }
@@ -89,8 +125,30 @@ export async function fileRoutes(app: FastifyInstance) {
 
     const linuxUser = await getLinuxUser(user.userId)
     const name = basename(filePath)
-    reply.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(name)}`)
-    reply.header("Content-Type", "application/octet-stream")
+    const mime = guessMime(name)
+    // Only ever honor `inline=1` for passive media we know is safe to render
+    // (image/video/audio, excluding SVG) — anything else silently falls
+    // back to a forced attachment download, regardless of what the caller
+    // requested. See isInlineSafe() for why.
+    const isInline = inline === "1" && isInlineSafe(mime)
+
+    reply.header(
+      "Content-Disposition",
+      isInline
+        ? `inline; filename*=UTF-8''${encodeURIComponent(name)}`
+        : `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+    )
+    reply.header("Content-Type", isInline ? mime : "application/octet-stream")
+    reply.header("Accept-Ranges", "bytes")
+    if (isInline) {
+      // Defense in depth even within the allowlisted media types: stop the
+      // browser from MIME-sniffing its way into treating the response as
+      // HTML, and stop it from ever executing scripts/loading subresources
+      // if it's framed or navigated to directly.
+      reply.header("X-Content-Type-Options", "nosniff")
+      reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
+      reply.header("Cross-Origin-Resource-Policy", "same-origin")
+    }
 
     if (linuxUser) {
       let data: Buffer
@@ -100,6 +158,17 @@ export async function fileRoutes(app: FastifyInstance) {
         if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
         if (e?.code === "ENOENT") return reply.status(404).send("Not found")
         return reply.status(500).send(e?.message ?? "Read failed")
+      }
+
+      const range = parseRange(req.headers.range, data.length)
+      if (range && !range.satisfiable) {
+        reply.header("Content-Range", `bytes */${data.length}`)
+        return reply.status(416).send()
+      }
+      if (range) {
+        reply.header("Content-Range", `bytes ${range.start}-${range.end}/${data.length}`)
+        reply.header("Content-Length", String(range.end - range.start + 1))
+        return reply.status(206).send(data.subarray(range.start, range.end + 1))
       }
       reply.header("Content-Length", String(data.length))
       return reply.send(data)
@@ -115,6 +184,17 @@ export async function fileRoutes(app: FastifyInstance) {
       fileSize = s.size
     } catch {
       return reply.status(404).send("Not found")
+    }
+
+    const range = parseRange(req.headers.range, fileSize)
+    if (range && !range.satisfiable) {
+      reply.header("Content-Range", `bytes */${fileSize}`)
+      return reply.status(416).send()
+    }
+    if (range) {
+      reply.header("Content-Range", `bytes ${range.start}-${range.end}/${fileSize}`)
+      reply.header("Content-Length", String(range.end - range.start + 1))
+      return reply.status(206).send(createReadStream(filePath, { start: range.start, end: range.end }))
     }
     reply.header("Content-Length", String(fileSize))
     return reply.send(createReadStream(filePath))

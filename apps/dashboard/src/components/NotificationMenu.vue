@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useUploads, type UploadTask } from '../lib/uploads'
 import { useNotifications, type Notification } from '../lib/notifications'
+import SegmentedBar from './ui/SegmentedBar.vue'
 
 defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
 defineEmits<{ close: [] }>()
@@ -45,20 +46,20 @@ function uploadStatusLabel(task: UploadTask): string {
 
 function uploadBarColor(status: UploadTask['status']): string {
   switch (status) {
-    case 'done':      return 'bg-green-500'
-    case 'error':     return 'bg-red-500'
-    case 'cancelled': return 'bg-[var(--c-text-3)]'
-    case 'paused':    return 'bg-amber-500'
-    default:          return 'bg-[var(--c-accent)]'
+    case 'done':      return 'var(--c-success)'
+    case 'error':     return 'var(--c-accent)'
+    case 'cancelled': return 'var(--c-text-3)'
+    case 'paused':    return 'var(--c-warning)'
+    default:          return 'var(--c-accent)'
   }
 }
 
 function uploadStatusColor(status: UploadTask['status']): string {
   switch (status) {
-    case 'done':      return 'text-green-400'
-    case 'error':     return 'text-red-400'
+    case 'done':      return 'text-[var(--c-success)]'
+    case 'error':     return 'text-[var(--c-accent)]'
     case 'cancelled': return 'text-[var(--c-text-3)]'
-    case 'paused':    return 'text-amber-400'
+    case 'paused':    return 'text-[var(--c-warning)]'
     default:          return 'text-[var(--c-accent)]'
   }
 }
@@ -75,17 +76,17 @@ function notifIcon(type: Notification['type']): string {
 
 function notifIconColor(type: Notification['type']): string {
   switch (type) {
-    case 'success':  return 'text-green-400'
-    case 'error':    return 'text-red-400'
-    case 'info':     return 'text-blue-400'
+    case 'success':  return 'text-[var(--c-success)]'
+    case 'error':    return 'text-[var(--c-accent)]'
+    case 'info':     return 'text-[var(--c-info)]'
     default:         return 'text-[var(--c-text-3)]'
   }
 }
 
 function notifBorderColor(type: Notification['type']): string {
   switch (type) {
-    case 'success':  return 'border-green-800/40'
-    case 'error':    return 'border-red-800/40'
+    case 'success':  return 'border-[var(--c-success)]/40'
+    case 'error':    return 'border-[var(--c-accent)]/40'
     case 'info':     return 'border-[var(--c-border-strong)]'
     default:         return 'border-[var(--c-border-strong)]'
   }
@@ -105,7 +106,7 @@ function notifBorderColor(type: Notification['type']): string {
     <Transition name="nm">
       <div
         v-if="open"
-        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl flex flex-col overflow-hidden"
         :style="{
           bottom: pos.bottom + 'px',
           left:   pos.left + 'px',
@@ -131,7 +132,7 @@ function notifBorderColor(type: Notification['type']): string {
 
           <!-- Transfers -->
           <section v-if="uploads.tasks.value.length > 0">
-            <div class="text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Transfers</div>
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Transfers</div>
             <div class="flex flex-col gap-2">
               <div
                 v-for="task in uploads.tasks.value"
@@ -144,13 +145,12 @@ function notifBorderColor(type: Notification['type']): string {
                     {{ uploadStatusLabel(task) }}
                   </span>
                 </div>
-                <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden mb-2">
-                  <div
-                    class="h-full rounded-full transition-all duration-300"
-                    :class="uploadBarColor(task.status)"
-                    :style="{ width: progressPct(task) + '%' }"
-                  />
-                </div>
+                <SegmentedBar
+                  class="mb-2"
+                  :percent="progressPct(task)"
+                  :color="uploadBarColor(task.status)"
+                  height="compact"
+                />
                 <div class="flex items-center justify-between">
                   <button
                     v-if="task.status === 'uploading' || task.status === 'paused'"
@@ -186,7 +186,7 @@ function notifBorderColor(type: Notification['type']): string {
                     <button
                       @click="uploads.cancel(task.id)"
                       title="Cancel"
-                      class="p-1 rounded text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors"
                     >
                       <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="4" y="4" width="16" height="16" rx="2"/>
@@ -194,7 +194,7 @@ function notifBorderColor(type: Notification['type']): string {
                     </button>
                   </div>
 
-                  <span v-if="task.error" class="text-[10px] text-red-400 truncate max-w-[140px]" :title="task.error">
+                  <span v-if="task.error" class="text-[10px] text-[var(--c-accent)] truncate max-w-[140px]" :title="task.error">
                     {{ task.error }}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ function notifBorderColor(type: Notification['type']): string {
 
           <!-- Alerts -->
           <section v-if="notifications.length > 0">
-            <div class="text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Alerts</div>
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Alerts</div>
             <div class="flex flex-col gap-2">
               <div
                 v-for="n in notifications"
@@ -224,9 +224,14 @@ function notifBorderColor(type: Notification['type']): string {
                 <div class="flex-1 min-w-0">
                   <p class="text-xs text-[var(--c-text-1)] leading-snug">{{ n.title }}</p>
                   <p v-if="n.detail" class="text-[10px] text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.detail }}</p>
-                  <div v-if="n.progress != null && n.progress >= 0" class="h-0.5 bg-[var(--c-surface-deep)] rounded-full mt-1.5 overflow-hidden">
-                    <div class="h-full bg-[var(--c-accent)] rounded-full transition-all duration-200" :style="{ width: n.progress + '%' }"/>
-                  </div>
+                  <SegmentedBar
+                    v-if="n.progress != null"
+                    class="mt-1.5"
+                    :percent="n.progress >= 0 ? n.progress : 0"
+                    :indeterminate="n.progress < 0"
+                    color="var(--c-accent)"
+                    height="compact"
+                  />
                 </div>
                 <button
                   @click="dismiss(n.id)"

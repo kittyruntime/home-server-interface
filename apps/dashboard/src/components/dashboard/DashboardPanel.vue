@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { trpc } from '../../lib/trpc'
+import SegmentedBar from '../ui/SegmentedBar.vue'
 
 // ---- Types ----------------------------------------------------------------
 
@@ -134,8 +135,8 @@ function spark(
   vals: number[],
   lo = 0,
   hi?: number,
-): { line: string; area: string } {
-  if (vals.length < 2) return { line: '', area: '' }
+): { line: string } {
+  if (vals.length < 2) return { line: '' }
   const max = hi ?? Math.max(...vals, 1)
   const min = lo
   const W = 100
@@ -145,9 +146,13 @@ function spark(
     const y = H - ((v - min) / (max - min || 1)) * H
     return `${x.toFixed(1)},${y.toFixed(1)}`
   })
-  const line = `M${pts.join('L')}`
-  const area = `${line}L${W},${H}L0,${H}Z`
-  return { line, area }
+  return { line: `M${pts.join('L')}` }
+}
+
+function memColor(percent: number): string {
+  if (percent > 85) return 'var(--c-accent)'
+  if (percent > 65) return 'var(--c-warning)'
+  return 'var(--c-success)'
 }
 
 // ---- Widget controls -------------------------------------------------------
@@ -200,7 +205,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
         <Transition name="dropdown">
           <div
             v-if="addOpen"
-            class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl overflow-hidden z-20 min-w-[140px]"
+            class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl overflow-hidden z-20 min-w-[140px]"
           >
             <button
               v-for="cat in CATALOG"
@@ -244,7 +249,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             <button
               @click="removeWidget(w.id)"
               title="Remove"
-              class="w-6 h-6 flex items-center justify-center text-[var(--c-text-3)] hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+              class="w-6 h-6 flex items-center justify-center text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] rounded-md transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -254,12 +259,13 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- CPU ---- -->
           <template v-if="w.type === 'cpu'">
-            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">CPU</p>
+            <p class="eyebrow mb-3">CPU</p>
             <div class="flex items-end gap-4 flex-1">
               <div class="flex-shrink-0">
-                <span class="text-4xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
-                  {{ metrics?.cpu ?? '—' }}
-                </span>
+                <span
+                  class="text-4xl tabular-nums leading-none text-[var(--c-text-display)]"
+                  style="font-family: var(--font-display)"
+                >{{ metrics?.cpu ?? '—' }}</span>
                 <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
               </div>
               <div class="flex-1 min-w-0">
@@ -269,13 +275,6 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                   preserveAspectRatio="none"
                   class="w-full h-10"
                 >
-                  <defs>
-                    <linearGradient id="cpu-grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="var(--c-accent)" stop-opacity="0.25"/>
-                      <stop offset="100%" stop-color="var(--c-accent)" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <path :d="spark(cpuHist, 0, 100).area" fill="url(#cpu-grad)"/>
                   <path :d="spark(cpuHist, 0, 100).line" fill="none" stroke="var(--c-accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
                 </svg>
               </div>
@@ -284,7 +283,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- Memory ---- -->
           <template v-else-if="w.type === 'memory'">
-            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Memory</p>
+            <p class="eyebrow mb-3">Memory</p>
             <div class="flex-1 flex flex-col justify-between">
               <div class="flex items-baseline justify-between mb-3">
                 <span class="text-2xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
@@ -295,13 +294,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                 </span>
               </div>
               <div class="space-y-1.5">
-                <div class="h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-                  <div
-                    class="h-full rounded-full transition-all duration-500"
-                    :class="(metrics?.memory.percent ?? 0) > 85 ? 'bg-red-500' : (metrics?.memory.percent ?? 0) > 65 ? 'bg-amber-400' : 'bg-emerald-500'"
-                    :style="{ width: (metrics?.memory.percent ?? 0) + '%' }"
-                  />
-                </div>
+                <SegmentedBar
+                  :percent="metrics?.memory.percent ?? 0"
+                  :color="memColor(metrics?.memory.percent ?? 0)"
+                  height="compact"
+                />
                 <p class="text-xs text-[var(--c-text-3)] tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
               </div>
             </div>
@@ -309,12 +306,12 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- Network ---- -->
           <template v-else-if="w.type === 'network'">
-            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Network</p>
+            <p class="eyebrow mb-3">Network</p>
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <div class="space-y-0.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest">↓ rx</span>
+                    <span class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-success)]">↓ rx</span>
                     <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.rx) : '—' }}</span>
                   </div>
                   <div class="flex items-center gap-1.5">
@@ -329,21 +326,10 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                     preserveAspectRatio="none"
                     class="w-full h-10"
                   >
-                    <defs>
-                      <linearGradient id="rx-grad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
-                        <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    <path
-                      v-if="rxHist.length >= 2"
-                      :d="spark(rxHist).area"
-                      fill="url(#rx-grad)"
-                    />
                     <path
                       v-if="rxHist.length >= 2"
                       :d="spark(rxHist).line"
-                      fill="none" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
+                      fill="none" stroke="var(--c-success)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
                     />
                     <path
                       v-if="txHist.length >= 2"
@@ -358,10 +344,10 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
           <!-- ---- Containers ---- -->
           <template v-else-if="w.type === 'containers'">
-            <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Containers</p>
+            <p class="eyebrow mb-3">Containers</p>
             <div class="flex-1 flex items-center gap-6">
               <div class="text-center">
-                <p class="text-3xl font-bold text-emerald-400 tabular-nums leading-none">{{ ctrRunning }}</p>
+                <p class="text-3xl font-bold tabular-nums leading-none text-[var(--c-success)]">{{ ctrRunning }}</p>
                 <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Running</p>
               </div>
               <div class="text-center">
@@ -369,7 +355,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                 <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Stopped</p>
               </div>
               <div class="text-center">
-                <p class="text-3xl font-bold tabular-nums leading-none" :class="ctrError > 0 ? 'text-red-400' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
+                <p class="text-3xl font-bold tabular-nums leading-none" :class="ctrError > 0 ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
                 <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Error</p>
               </div>
             </div>

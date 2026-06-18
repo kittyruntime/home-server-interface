@@ -177,7 +177,7 @@ onMounted(load)
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-red-400">*</span></label>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-[var(--c-accent)]">*</span></label>
             <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
           </div>
           <div>
@@ -185,16 +185,16 @@ onMounted(load)
             <input v-model="newUser.displayName" placeholder="John Doe" class="ui-input"/>
           </div>
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Password <span class="text-red-400">*</span></label>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Password <span class="text-[var(--c-accent)]">*</span></label>
             <input v-model="newUser.password" type="password" placeholder="Min. 6 chars" class="ui-input"/>
           </div>
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm password <span class="text-red-400">*</span></label>
+            <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm password <span class="text-[var(--c-accent)]">*</span></label>
             <input v-model="newUser.confirmPassword" type="password" placeholder="Repeat" class="ui-input"/>
           </div>
         </div>
 
-        <p v-if="addError" class="text-red-400 text-xs">{{ addError }}</p>
+        <p v-if="addError" class="text-[var(--c-accent)] text-xs">{{ addError }}</p>
 
         <div class="flex items-center gap-2 pt-1">
           <button
@@ -214,7 +214,7 @@ onMounted(load)
       </div>
 
       <!-- Error -->
-      <div v-else-if="loadError" class="flex items-center gap-2 text-red-400 text-sm py-4">
+      <div v-else-if="loadError" class="flex items-center gap-2 text-[var(--c-accent)] text-sm py-4">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
         </svg>

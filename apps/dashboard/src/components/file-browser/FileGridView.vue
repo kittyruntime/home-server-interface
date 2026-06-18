@@ -16,6 +16,7 @@ const emit = defineEmits<{
   commitRename: []
   cancelRename: []
   'update:renameValue': [value: string]
+  openFile: [entry: Entry]
 }>()
 
 function fileExt(name: string): string {
@@ -29,6 +30,7 @@ function fileExt(name: string): string {
       v-for="entry in entries"
       :key="entry.path"
       @click.stop="emit('cardClick', entry, $event)"
+      @dblclick.stop="entry.type === 'file' && emit('openFile', entry)"
       @contextmenu.prevent.stop="emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
@@ -59,6 +61,16 @@ function fileExt(name: string): string {
         <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-[8px] font-bold text-[var(--c-text-3)] bg-[var(--c-bg)] px-1 rounded leading-tight">
           {{ fileExt(entry.name) }}
         </span>
+        <button
+          @click.stop="emit('openFile', entry)"
+          title="Preview"
+          class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-[var(--c-text-3)] hover:text-[var(--c-accent)] transition-all"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Name / Rename -->

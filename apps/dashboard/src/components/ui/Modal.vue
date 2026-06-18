@@ -5,9 +5,11 @@ withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
   panelClass?: string
   closeOnBackdrop?: boolean
+  showClose?: boolean
 }>(), {
   panelClass: 'w-full max-w-md',
   closeOnBackdrop: true,
+  showClose: true,
 })
 
 const emit = defineEmits<{ close: [] }>()
@@ -22,12 +24,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
       @click.self="closeOnBackdrop && emit('close')"
     >
-      <div :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]', panelClass]">
-        <div v-if="$slots.header" class="flex items-center justify-between px-6 py-4 border-b border-[var(--c-border)] shrink-0">
-          <slot name="header" />
+      <div :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl flex flex-col max-h-[90vh]', panelClass]">
+        <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
+          <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
+            <slot name="header" />
+          </div>
+          <button
+            v-if="showClose"
+            @click="emit('close')"
+            class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors shrink-0"
+          >[X]</button>
         </div>
 
         <!-- Non-scrolling region between header and body, e.g. a tab bar. -->

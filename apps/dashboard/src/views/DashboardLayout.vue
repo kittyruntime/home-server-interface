@@ -224,7 +224,7 @@ onUnmounted(() => {
             </svg>
             <span
               v-if="updateAvailable && !isActive('settings')"
-              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"
+              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]"
             />
           </button>
         </div>
@@ -271,7 +271,7 @@ onUnmounted(() => {
         <div
           v-if="userMenuOpen"
           @click.stop
-          class="fixed z-50 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-2xl overflow-hidden"
+          class="fixed z-50 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl overflow-hidden"
           :style="{
             bottom: dropdownPos.bottom + 'px',
             left: dropdownPos.left + 'px',
@@ -301,8 +301,8 @@ onUnmounted(() => {
             <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
             <button
               @click="handleLogout"
-              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400
-                     hover:bg-red-500/10 rounded-lg transition-colors text-left"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--c-accent)]
+                     hover:bg-[var(--c-accent-subtle)] rounded-lg transition-colors text-left"
             >
               <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -318,12 +318,12 @@ onUnmounted(() => {
     <main class="flex-1 flex flex-col overflow-hidden">
 
       <!-- Top bar (hidden for files — FileToolbar acts as the header) -->
-      <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]/60 backdrop-blur-sm">
-        <span class="text-sm font-medium text-[var(--c-text-2)]">{{ activeAppLabel }}</span>
+      <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]">
+        <span class="eyebrow">{{ activeAppLabel }}</span>
         <button
           v-if="activeApp === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+          class="btn btn-primary btn-xs"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -404,7 +404,7 @@ onUnmounted(() => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span v-if="updateAvailable && !isActive('settings')"
-            class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400" />
+            class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]" />
         </button>
       </div>
 

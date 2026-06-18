@@ -69,10 +69,10 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capDrop" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-amber-600/15 text-amber-300 border border-amber-500/20 rounded px-2 py-0.5"
+          class="inline-flex items-center gap-1 text-xs bg-[var(--c-warning)]/15 text-[var(--c-warning)] border border-[var(--c-warning)]/20 rounded px-2 py-0.5"
         >
           {{ cap }}
-          <button @click="removeCap('capDrop', cap)" class="hover:text-amber-100 transition-colors">×</button>
+          <button @click="removeCap('capDrop', cap)" class="hover:opacity-70 transition-colors">×</button>
         </span>
       </div>
       <div class="flex gap-2">
@@ -82,7 +82,7 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
         />
         <button
           @click="addCap('capDrop', capDropInput as any)"
-          class="px-3 py-1.5 bg-amber-600/20 text-amber-400 rounded-lg text-sm hover:bg-amber-600/30 transition-colors"
+          class="px-3 py-1.5 bg-[var(--c-warning)]/20 text-[var(--c-warning)] rounded-lg text-sm hover:bg-[var(--c-warning)]/30 transition-colors"
         >Add</button>
       </div>
     </div>

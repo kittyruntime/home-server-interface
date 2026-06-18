@@ -1,80 +1,95 @@
 @import "tailwindcss";
 
-/* ── Theme variables ─────────────────────────────────────────────────────────
-   Light mode is the default; dark overrides via prefers-color-scheme.
+/* ── Nothing-inspired design tokens ──────────────────────────────────────────
+   Monochrome, typographically driven. Light mode default; dark via
+   prefers-color-scheme or explicit data-theme override.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* Accent colors (shared across light/dark) */
 :root {
-  --c-accent:        #f97316;
+  --font-display: "Doto", "Space Mono", monospace;
+  --font-body:    "Space Grotesk", "DM Sans", system-ui, sans-serif;
+  --font-mono:    "Space Mono", "JetBrains Mono", "SF Mono", monospace;
+}
+
+/* Accent — signal red by default. User-selectable overrides kept for
+   personalization; treat as the one "interrupt" color, not decoration. */
+:root {
+  --c-accent:        #d71921;
   --c-accent-subtle: color-mix(in srgb, var(--c-accent) 13%, transparent);
   --c-accent-fg:     #ffffff;
+
+  --c-success: #4a9e5c;
+  --c-warning: #d4a843;
+  --c-info:    #007aff;
 }
 
-:root[data-accent="blue"] {
-  --c-accent: #3b82f6;
-}
-:root[data-accent="green"] {
-  --c-accent: #22c55e;
-}
-:root[data-accent="purple"] {
-  --c-accent: #a855f7;
-}
+:root[data-accent="orange"] { --c-accent: #f97316; }
+:root[data-accent="blue"]   { --c-accent: #3b82f6; }
+:root[data-accent="green"]  { --c-accent: #22c55e; }
+:root[data-accent="purple"] { --c-accent: #a855f7; }
 
-/* Light (Adwaita grays) */
+/* Light — "printed technical manual": off-white paper, black ink */
 :root {
-  --c-bg:            #f6f5f4;
-  --c-sidebar:       #ebebeb;
+  --c-bg:            #f5f5f5;
+  --c-sidebar:       #ffffff;
   --c-surface:       #ffffff;
-  --c-surface-alt:   #f6f5f4;
-  --c-surface-deep:  #ededed;
+  --c-surface-alt:   #f0f0f0;
+  --c-surface-deep:  #f0f0f0;
 
-  --c-border:        rgba(0, 0, 0, 0.12);
-  --c-border-strong: rgba(0, 0, 0, 0.20);
+  --c-border:        #e8e8e8;
+  --c-border-strong: #cccccc;
 
-  --c-hover:         rgba(0, 0, 0, 0.05);
+  --c-hover:         rgba(0, 0, 0, 0.04);
 
-  --c-text-1:        #2e2e2e;
-  --c-text-2:        #4a4a4a;
-  --c-text-3:        #6e6e6e;
+  --c-text-1:        #1a1a1a;
+  --c-text-2:        #4d4d4d;
+  --c-text-3:        #666666;
+  --c-text-display:  #000000;
+
+  --c-info: #007aff;
 }
 
-/* Dark — OS preference (unless user forced light) */
+/* Dark — "instrument panel in a dark room": OLED black, glowing data */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-bg:            #141414;
-    --c-sidebar:       #0d0d0d;
-    --c-surface:       #1c1c1c;
-    --c-surface-alt:   #181818;
-    --c-surface-deep:  #111111;
+    --c-bg:            #000000;
+    --c-sidebar:       #111111;
+    --c-surface:       #111111;
+    --c-surface-alt:   #1a1a1a;
+    --c-surface-deep:  #1a1a1a;
 
-    --c-border:        rgba(255, 255, 255, 0.07);
-    --c-border-strong: rgba(255, 255, 255, 0.13);
+    --c-border:        #222222;
+    --c-border-strong: #333333;
 
     --c-hover:         rgba(255, 255, 255, 0.05);
 
     --c-text-1:        #e8e8e8;
-    --c-text-2:        #adadad;
-    --c-text-3:        #888888;
+    --c-text-2:        #999999;
+    --c-text-3:        #666666;
+    --c-text-display:  #ffffff;
+
+    --c-info: #5b9bf6;
   }
 }
 
-/* Dark — forced by user */
 :root[data-theme="dark"] {
-  --c-bg:            #141414;
-  --c-sidebar:       #0d0d0d;
-  --c-surface:       #1c1c1c;
-  --c-surface-alt:   #181818;
-  --c-surface-deep:  #111111;
+  --c-bg:            #000000;
+  --c-sidebar:       #111111;
+  --c-surface:       #111111;
+  --c-surface-alt:   #1a1a1a;
+  --c-surface-deep:  #1a1a1a;
 
-  --c-border:        rgba(255, 255, 255, 0.07);
-  --c-border-strong: rgba(255, 255, 255, 0.13);
+  --c-border:        #222222;
+  --c-border-strong: #333333;
 
   --c-hover:         rgba(255, 255, 255, 0.05);
 
   --c-text-1:        #e8e8e8;
-  --c-text-2:        #adadad;
-  --c-text-3:        #888888;
+  --c-text-2:        #999999;
+  --c-text-3:        #666666;
+  --c-text-display:  #ffffff;
+
+  --c-info: #5b9bf6;
 }
 
 *, *::before, *::after {
@@ -97,59 +112,72 @@ select:not(:disabled),
 
 /* ── Shared UI utilities ─────────────────────────────────────────────────────
    Use these classes in components instead of repeating Tailwind strings.
+   Wrapped in @layer components so Tailwind utility classes (e.g. pl-8 on an
+   input that also has .ui-input) always win the cascade, regardless of
+   source order — otherwise a shorthand like `.ui-input { padding: ... }`
+   silently overrides longhand utilities like `pl-8`/`pr-8`.
    ─────────────────────────────────────────────────────────────────────────── */
+@layer components {
 
-/* Buttons */
+/* Buttons — Space Mono, ALL CAPS, pill (technical anti-pattern rules out
+   shadows/scale on hover: border or text brightens instead). */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms;
   cursor: pointer;
-  border: none;
+  border: 1px solid transparent;
   outline: none;
   white-space: nowrap;
 }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-xs { padding: 0.25rem 0.625rem; font-size: 0.75rem; gap: 0.25rem; border-radius: 0.375rem; }
-.btn-sm { padding: 0.3125rem 0.625rem; font-size: 0.8125rem; }
+.btn-xs { padding: 0.25rem 0.625rem; font-size: 0.6875rem; gap: 0.25rem; }
+.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
 
+/* Primary: punched-out, max contrast */
 .btn-primary {
-  background-color: var(--c-accent);
-  color: var(--c-accent-fg);
+  background-color: var(--c-text-display);
+  color: var(--c-bg);
 }
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-primary:hover:not(:disabled) { opacity: 0.85; }
 
-.btn-ghost {
-  color: var(--c-text-3);
-  background: transparent;
-}
-.btn-ghost:hover:not(:disabled) {
-  color: var(--c-text-1);
-  background-color: var(--c-hover);
-}
-
+/* Secondary (was btn-outline): transparent, visible border */
 .btn-outline {
-  color: var(--c-text-3);
-  border: 1px solid var(--c-border-strong);
+  color: var(--c-text-1);
+  border-color: var(--c-border-strong);
   background: transparent;
 }
 .btn-outline:hover:not(:disabled) {
-  color: var(--c-accent);
-  border-color: color-mix(in srgb, var(--c-accent) 40%, transparent);
-  background-color: var(--c-accent-subtle);
+  border-color: var(--c-text-2);
+  color: var(--c-text-1);
 }
 
+/* Ghost: text only, no box */
+.btn-ghost {
+  color: var(--c-text-3);
+  background: transparent;
+  border-radius: 0.375rem;
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--c-text-1);
+}
+
+/* Destructive: bordered accent */
 .btn-danger {
-  color: #f87171;
+  color: var(--c-accent);
+  border-color: var(--c-accent);
   background: transparent;
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--c-accent-subtle);
 }
 
 /* Inputs */
@@ -160,51 +188,69 @@ select:not(:disabled),
   border-radius: 0.5rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
+  font-family: var(--font-body);
   color: var(--c-text-1);
   outline: none;
   transition: border-color 150ms;
 }
-.ui-input:focus { border-color: var(--c-accent); }
+.ui-input:focus { border-color: var(--c-text-1); }
 
-/* Badges */
+/* Badges / tags — bordered, no fill, mono caps */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-border-strong);
+  font-family: var(--font-mono);
   font-size: 0.625rem;
-  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.badge-accent  { background-color: var(--c-accent-subtle); color: var(--c-accent); }
-.badge-muted   { border: 1px solid var(--c-border-strong); color: var(--c-text-3); }
-.badge-violet  { background-color: rgba(139, 92, 246, 0.1); color: #a78bfa; }
-.badge-admin   { background-color: color-mix(in srgb, #f97316 13%, transparent); color: var(--c-accent); }
+.badge-accent  { border-color: var(--c-accent); color: var(--c-accent); }
+.badge-muted   { border-color: var(--c-border-strong); color: var(--c-text-3); }
+.badge-violet  { border-color: var(--c-border-strong); color: var(--c-text-2); }
+.badge-admin   { border-color: var(--c-accent); color: var(--c-accent); }
 
 /* Dividers */
 .ui-divider { height: 1px; background-color: var(--c-border-strong); margin: 0.25rem 0.5rem; }
 
-/* Eyebrow / section titles */
+/* Eyebrow / section titles — instrument-panel labels */
 .eyebrow {
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--c-text-3);
 }
 
-/* Panel cards */
+/* Panel cards — flat, border-separated, no shadow */
 .panel-card {
   border-radius: 0.75rem;
   border: 1px solid var(--c-border);
   overflow: hidden;
 }
 
+/* Inline status text — replaces toast popups. Space Mono bracket tags. */
+.status-text {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+.status-tag {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+} /* @layer components */
+
 html, body, #app {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--c-bg);
   color: var(--c-text-1);
   color-scheme: light dark;

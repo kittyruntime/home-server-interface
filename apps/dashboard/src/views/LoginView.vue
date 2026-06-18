@@ -26,54 +26,47 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)]">
+  <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)] px-4">
     <div class="w-full max-w-sm">
-      <div class="text-center mb-8">
-        <div class="text-4xl font-bold tracking-widest text-[var(--c-accent)] mb-1">Home</div>
-        <div class="text-[var(--c-text-3)] text-sm">Home Server Interface</div>
+      <div class="text-center mb-10">
+        <div class="text-5xl text-[var(--c-text-display)] mb-2" style="font-family: var(--font-display)">Home</div>
+        <div class="eyebrow">Home Server Interface</div>
       </div>
 
       <form
         @submit.prevent="handleLogin"
-        class="bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl p-8 shadow-2xl"
+        class="bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl p-8"
       >
         <div class="mb-5">
-          <label class="block text-[var(--c-text-3)] text-xs uppercase tracking-wider mb-2">
-            Username
-          </label>
+          <label class="eyebrow block mb-2">Username</label>
           <input
             v-model="username"
             type="text"
             autocomplete="username"
-            class="w-full bg-[var(--c-bg)] border border-[var(--c-border-strong)] rounded-lg px-4 py-2.5 text-[var(--c-text-3)]
-                   focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"
+            class="ui-input"
             placeholder="admin"
           />
         </div>
 
         <div class="mb-6">
-          <label class="block text-[var(--c-text-3)] text-xs uppercase tracking-wider mb-2">
-            Password
-          </label>
+          <label class="eyebrow block mb-2">Password</label>
           <input
             v-model="password"
             type="password"
             autocomplete="current-password"
-            class="w-full bg-[var(--c-bg)] border border-[var(--c-border-strong)] rounded-lg px-4 py-2.5 text-[var(--c-text-3)]
-                   focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"
+            class="ui-input"
             placeholder="••••••••"
           />
         </div>
 
-        <div v-if="error" class="mb-4 text-red-400 text-sm text-center">
-          {{ error }}
+        <div v-if="error" class="mb-4 status-text text-[var(--c-accent)] text-center">
+          [ERR] {{ error }}
         </div>
 
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed
-                 text-[var(--c-accent-fg)] font-medium rounded-lg py-2.5 transition-colors"
+          class="btn btn-primary w-full justify-center"
         >
           {{ loading ? 'Signing in…' : 'Sign In' }}
         </button>

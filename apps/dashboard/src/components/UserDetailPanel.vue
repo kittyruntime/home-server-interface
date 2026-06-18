@@ -154,7 +154,7 @@ async function deleteUser() {
         </div>
       </div>
 
-      <p v-if="saveError" class="text-red-400 text-xs">{{ saveError }}</p>
+      <p v-if="saveError" class="text-[var(--c-accent)] text-xs">{{ saveError }}</p>
 
       <div class="flex items-center gap-3">
         <button
@@ -165,7 +165,7 @@ async function deleteUser() {
           {{ saveLoading ? 'Saving…' : 'Save changes' }}
         </button>
         <transition name="fade">
-          <span v-if="saveSuccess" class="text-xs text-emerald-400 flex items-center gap-1">
+          <span v-if="saveSuccess" class="text-xs text-[var(--c-success)] flex items-center gap-1">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
@@ -202,7 +202,7 @@ async function deleteUser() {
               @click="!isSelf && toggleRole(role.id)"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
                      text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/8
+                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-accent)]/8
                      disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -228,14 +228,14 @@ async function deleteUser() {
         </div>
       </div>
 
-      <p v-if="roleError" class="text-red-400 text-xs">{{ roleError }}</p>
+      <p v-if="roleError" class="text-[var(--c-accent)] text-xs">{{ roleError }}</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-red-400/70">Danger zone</h4>
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-accent)]/70">Danger zone</h4>
 
-      <div class="border border-red-500/20 rounded-xl p-4 bg-red-500/5">
+      <div class="border border-[var(--c-accent)]/20 rounded-xl p-4 bg-[var(--c-accent)]/5">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-medium text-[var(--c-text-1)]">Delete account</p>
@@ -245,16 +245,16 @@ async function deleteUser() {
           <template v-if="!deleteConfirm">
             <button
               @click="deleteConfirm = true"
-              class="btn btn-sm shrink-0 text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-colors"
+              class="btn btn-sm shrink-0 text-[var(--c-accent)] border border-[var(--c-accent)]/30 hover:bg-[var(--c-accent-subtle)] transition-colors"
             >Delete</button>
           </template>
           <template v-else>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="text-xs text-red-400">Are you sure?</span>
+              <span class="text-xs text-[var(--c-accent)]">Are you sure?</span>
               <button
                 @click="deleteUser"
                 :disabled="deleteBusy"
-                class="px-2.5 py-1 text-xs rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 transition-colors"
+                class="px-2.5 py-1 text-xs rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:opacity-85 disabled:opacity-40 transition-colors"
               >{{ deleteBusy ? '…' : 'Yes, delete' }}</button>
               <button
                 @click="deleteConfirm = false"
@@ -263,7 +263,7 @@ async function deleteUser() {
             </div>
           </template>
         </div>
-        <p v-if="deleteError" class="mt-2 text-red-400 text-xs">{{ deleteError }}</p>
+        <p v-if="deleteError" class="mt-2 text-[var(--c-accent)] text-xs">{{ deleteError }}</p>
       </div>
     </div>
 

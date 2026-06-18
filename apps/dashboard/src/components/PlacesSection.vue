@@ -137,7 +137,7 @@ onMounted(async () => {
                      font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
           </div>
         </div>
-        <div v-if="addError" class="text-red-400 text-xs mb-2">{{ addError }}</div>
+        <div v-if="addError" class="text-[var(--c-accent)] text-xs mb-2">{{ addError }}</div>
         <div class="flex gap-2">
           <button @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()"
             class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
@@ -180,8 +180,8 @@ onMounted(async () => {
               </svg>
             </button>
             <button @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--c-text-3)] hover:text-red-400
-                     hover:bg-red-500/10 transition-all shrink-0"
+              class="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-accent)]
+                     hover:bg-[var(--c-accent-subtle)] transition-all shrink-0"
               title="Remove">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

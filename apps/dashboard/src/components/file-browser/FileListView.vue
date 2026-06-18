@@ -18,6 +18,7 @@ const emit = defineEmits<{
   'update:renameValue': [value: string]
   selectAll: []
   clearSelection: []
+  openFile: [entry: Entry]
 }>()
 
 function formatSize(bytes: number | null): string {
@@ -60,6 +61,7 @@ function fileExt(name: string): string {
         v-for="entry in entries"
         :key="entry.path"
         @click.stop="emit('rowClick', entry, $event)"
+        @dblclick.stop="entry.type === 'file' && emit('openFile', entry)"
         @contextmenu.prevent.stop="emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
         :class="['group transition-colors',
@@ -116,6 +118,17 @@ function fileExt(name: string): string {
               <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-[var(--c-text-3)] text-[10px] font-mono shrink-0">
                 {{ fileExt(entry.name) }}
               </span>
+              <button
+                v-if="entry.type === 'file'"
+                @click.stop="emit('openFile', entry)"
+                title="Preview"
+                class="opacity-0 group-hover:opacity-100 text-[var(--c-text-3)] hover:text-[var(--c-accent)] transition-all shrink-0"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </button>
             </template>
           </div>
         </td>

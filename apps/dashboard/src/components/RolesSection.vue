@@ -145,7 +145,7 @@ onMounted(load)
       <div v-if="addingRole" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
         <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New role</h4>
         <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-red-400">*</span></label>
+          <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-[var(--c-accent)]">*</span></label>
           <input
             v-model="newRoleName"
             placeholder="e.g. editor"
@@ -154,7 +154,7 @@ onMounted(load)
             class="ui-input"
           />
         </div>
-        <p v-if="createError" class="text-red-400 text-xs">{{ createError }}</p>
+        <p v-if="createError" class="text-[var(--c-accent)] text-xs">{{ createError }}</p>
         <div class="flex items-center gap-2 pt-1">
           <button
             @click="createRole"

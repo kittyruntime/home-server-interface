@@ -289,11 +289,6 @@ async function save() {
           </svg>
           Import Compose
         </button>
-        <button @click="emit('close')" class="text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
       </div>
     </template>
 
@@ -335,7 +330,7 @@ async function save() {
             Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
           </div>
           <div v-else class="flex-1" />
-          <p v-if="composeError" class="text-xs text-red-400 mr-2">{{ composeError }}</p>
+          <p v-if="composeError" class="text-xs text-[var(--c-accent)] mr-2">{{ composeError }}</p>
           <button
             @click="importCompose"
             :disabled="!composeRaw.trim()"
@@ -431,7 +426,7 @@ async function save() {
     </div>
 
     <template #footer>
-      <p v-if="error" class="text-sm text-red-400 flex-1">{{ error }}</p>
+      <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
       <div v-else class="flex-1" />
       <button
         @click="emit('close')"
