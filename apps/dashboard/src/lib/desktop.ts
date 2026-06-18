@@ -1,7 +1,13 @@
 import { ref } from 'vue'
 
-export type AppId = 'dashboard' | 'files' | 'apps' | 'settings'
+export type AppId = 'dashboard' | 'files' | 'apps' | 'settings' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
+
+export interface FilePreviewPayload {
+  path: string
+  name: string
+  size: number | null
+}
 
 export interface DesktopWindow {
   id: string
@@ -16,6 +22,7 @@ export interface DesktopWindow {
   zIndex: number
   focusSection?: SettingsSection
   focusNonce?: number
+  filePreview?: FilePreviewPayload
 }
 
 export const APP_LABEL: Record<AppId, string> = {
@@ -23,6 +30,7 @@ export const APP_LABEL: Record<AppId, string> = {
   files: 'Files',
   apps: 'Apps',
   settings: 'Settings',
+  'file-preview': 'Preview',
 }
 
 export const APP_ICON_PATH: Record<AppId, string> = {
@@ -30,11 +38,12 @@ export const APP_ICON_PATH: Record<AppId, string> = {
   files: 'M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z',
   apps: 'M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+  'file-preview': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
 }
 
 const STORAGE_KEY = 'desktop'
 const MODE_KEY = 'desktopMode'
-const MULTI_INSTANCE = new Set<AppId>(['files'])
+const MULTI_INSTANCE = new Set<AppId>(['files', 'file-preview'])
 const MIN_W = 320
 const MIN_H = 240
 const MIN_VISIBLE = 80
@@ -44,6 +53,7 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   files: { w: 860, h: 560 },
   apps: { w: 760, h: 540 },
   settings: { w: 860, h: 560 },
+  'file-preview': { w: 760, h: 560 },
 }
 
 function loadWindows(): DesktopWindow[] {
@@ -135,6 +145,30 @@ export function useDesktop() {
     persist()
   }
 
+  function openFilePreview(entry: FilePreviewPayload) {
+    const existing = windows.value.find(w => w.appId === 'file-preview' && w.filePreview?.path === entry.path)
+    if (existing) {
+      focusWindow(existing.id)
+      return
+    }
+    const size = DEFAULT_SIZE['file-preview']
+    const { x, y } = cascadeOffset()
+    const win: DesktopWindow = {
+      id: crypto.randomUUID(),
+      appId: 'file-preview',
+      x,
+      y,
+      w: size.w,
+      h: size.h,
+      minimized: false,
+      maximized: false,
+      zIndex: nextZIndex(),
+      filePreview: entry,
+    }
+    windows.value.push(win)
+    persist()
+  }
+
   function focusWindow(id: string) {
     const w = windows.value.find(w => w.id === id)
     if (!w) return
@@ -204,6 +238,7 @@ export function useDesktop() {
     desktopMode,
     setDesktopMode,
     openApp,
+    openFilePreview,
     closeWindow,
     focusWindow,
     toggleMinimize,
