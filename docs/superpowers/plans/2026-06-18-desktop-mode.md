@@ -651,8 +651,11 @@ const visibleWindows = computed(() =>
 )
 
 function isFocused(id: string): boolean {
-  const maxZ = Math.max(0, ...windows.value.map(w => w.zIndex))
-  return windows.value.find(w => w.id === id)?.zIndex === maxZ
+  const visible = windows.value.filter(w => !w.minimized)
+  if (visible.length === 0) return false
+  const maxZ = Math.max(...visible.map(w => w.zIndex))
+  const w = windows.value.find(w => w.id === id)
+  return !!w && w.zIndex === maxZ && !w.minimized
 }
 </script>
 
