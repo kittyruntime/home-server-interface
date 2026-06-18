@@ -6,8 +6,9 @@ const { windows, focusWindow, toggleMinimize } = useDesktop()
 defineEmits<{ openLaunchpad: [] }>()
 
 function isFocused(id: string): boolean {
-  if (windows.value.length === 0) return false
-  const maxZ = Math.max(...windows.value.map(w => w.zIndex))
+  const visible = windows.value.filter(w => !w.minimized)
+  if (visible.length === 0) return false
+  const maxZ = Math.max(...visible.map(w => w.zIndex))
   const w = windows.value.find(w => w.id === id)
   return !!w && w.zIndex === maxZ && !w.minimized
 }
