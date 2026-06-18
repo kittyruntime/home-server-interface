@@ -23,6 +23,7 @@ export interface DesktopWindow {
   focusSection?: SettingsSection
   focusNonce?: number
   filePreview?: FilePreviewPayload
+  dirty?: boolean
 }
 
 export const APP_LABEL: Record<AppId, string> = {
@@ -61,7 +62,7 @@ function loadWindows(): DesktopWindow[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return parsed as DesktopWindow[]
+      if (Array.isArray(parsed)) return (parsed as DesktopWindow[]).map(w => ({ ...w, dirty: false }))
     }
   } catch { /* ignore */ }
   return []
@@ -143,6 +144,12 @@ export function useDesktop() {
   function closeWindow(id: string) {
     windows.value = windows.value.filter(w => w.id !== id)
     persist()
+  }
+
+  function setDirty(id: string, dirty: boolean) {
+    const w = windows.value.find(w => w.id === id)
+    if (!w) return
+    w.dirty = dirty
   }
 
   function openFilePreview(entry: FilePreviewPayload) {
@@ -246,5 +253,6 @@ export function useDesktop() {
     moveWindow,
     resizeWindow,
     clampToViewport,
+    setDirty,
   }
 }

@@ -15,13 +15,12 @@ const props = defineProps<{
   bounds: { w: number; h: number }
 }>()
 
-const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, resizeWindow } = useDesktop()
+const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, resizeWindow, setDirty } = useDesktop()
 const { isAdmin, token } = useAuth()
 
 const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
 const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
 const filePreviewRef = ref<{ save: () => void } | null>(null)
-const filePreviewDirty = ref(false)
 
 const filePreviewExt = computed(() => {
   const name = props.win.filePreview?.name ?? ''
@@ -33,12 +32,12 @@ watch(() => props.win.focusNonce, () => {
 })
 
 function onCloseClick() {
-  if (props.win.appId === 'file-preview' && filePreviewDirty.value && !confirm('Discard unsaved changes?')) return
+  if (props.win.appId === 'file-preview' && props.win.dirty && !confirm('Discard unsaved changes?')) return
   closeWindow(props.win.id)
 }
 
 function onMinimizeClick() {
-  if (props.win.appId === 'file-preview' && filePreviewDirty.value && !confirm('Discard unsaved changes?')) return
+  if (props.win.appId === 'file-preview' && props.win.dirty && !confirm('Discard unsaved changes?')) return
   toggleMinimize(props.win.id)
 }
 
@@ -129,7 +128,7 @@ function onMaximizeClick() {
       <div v-if="win.appId === 'file-preview'" class="flex items-center gap-2 min-w-0">
         <span class="text-xs text-[var(--c-text-1)] truncate" :title="win.filePreview?.name">{{ win.filePreview?.name }}</span>
         <span v-if="filePreviewExt" class="badge badge-muted shrink-0">{{ filePreviewExt }}</span>
-        <span v-if="filePreviewDirty" class="status-text text-[var(--c-warning)] shrink-0 text-[10px]">[UNSAVED]</span>
+        <span v-if="win.dirty" class="status-text text-[var(--c-warning)] shrink-0 text-[10px]">[UNSAVED]</span>
       </div>
       <div v-else class="flex items-center gap-2 min-w-0">
         <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -149,7 +148,7 @@ function onMaximizeClick() {
           </svg>
         </button>
         <button
-          v-if="win.appId === 'file-preview' && filePreviewDirty"
+          v-if="win.appId === 'file-preview' && win.dirty"
           @click="filePreviewRef?.save()"
           title="Save"
           class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
@@ -195,7 +194,7 @@ function onMaximizeClick() {
       <FileBrowserPanel v-else-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
-      <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="filePreviewDirty = $event" />
+      <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="setDirty(win.id, $event)" />
     </div>
 
     <template v-if="!win.maximized">
