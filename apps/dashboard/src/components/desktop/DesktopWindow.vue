@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onUnmounted, watch } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { useDesktop, APP_LABEL, APP_ICON_PATH, type DesktopWindow } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
+import { downloadUrl } from '../../lib/file-url'
 import DashboardPanel from '../dashboard/DashboardPanel.vue'
 import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
 import AppsPanel from '../apps/AppsPanel.vue'
 import SettingsPanel from '../SettingsPanel.vue'
+import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
 
 const props = defineProps<{
   win: DesktopWindow
@@ -14,14 +16,26 @@ const props = defineProps<{
 }>()
 
 const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, resizeWindow } = useDesktop()
-const { isAdmin } = useAuth()
+const { isAdmin, token } = useAuth()
 
 const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
 const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
+const filePreviewRef = ref<{ save: () => void } | null>(null)
+const filePreviewDirty = ref(false)
+
+const filePreviewExt = computed(() => {
+  const name = props.win.filePreview?.name ?? ''
+  return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
+})
 
 watch(() => props.win.focusNonce, () => {
   if (props.win.focusSection) settingsPanelRef.value?.focusOn(props.win.focusSection)
 })
+
+function onCloseClick() {
+  if (props.win.appId === 'file-preview' && filePreviewDirty.value && !confirm('Discard unsaved changes?')) return
+  closeWindow(props.win.id)
+}
 
 type DragState = { px: number; py: number; wx: number; wy: number }
 type ResizeState = { px: number; py: number; ww: number; wh: number; wx: number; wy: number; edge: string }
@@ -107,7 +121,12 @@ function onMaximizeClick() {
       @pointerdown="startDrag"
       @dblclick="onMaximizeClick"
     >
-      <div class="flex items-center gap-2 min-w-0">
+      <div v-if="win.appId === 'file-preview'" class="flex items-center gap-2 min-w-0">
+        <span class="text-xs text-[var(--c-text-1)] truncate" :title="win.filePreview?.name">{{ win.filePreview?.name }}</span>
+        <span v-if="filePreviewExt" class="badge badge-muted shrink-0">{{ filePreviewExt }}</span>
+        <span v-if="filePreviewDirty" class="status-text text-[var(--c-warning)] shrink-0 text-[10px]">[UNSAVED]</span>
+      </div>
+      <div v-else class="flex items-center gap-2 min-w-0">
         <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
           <path stroke-linecap="round" stroke-linejoin="round" :d="APP_ICON_PATH[win.appId]"/>
         </svg>
@@ -124,6 +143,27 @@ function onMaximizeClick() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
         </button>
+        <button
+          v-if="win.appId === 'file-preview' && filePreviewDirty"
+          @click="filePreviewRef?.save()"
+          title="Save"
+          class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+        <a
+          v-if="win.appId === 'file-preview'"
+          :href="downloadUrl(win.filePreview!.path, token ?? '')"
+          :download="win.filePreview!.name"
+          title="Download"
+          class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+        </a>
         <button @click="toggleMinimize(win.id)" title="Minimize" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
@@ -137,7 +177,7 @@ function onMaximizeClick() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h14v14H5z"/>
           </svg>
         </button>
-        <button @click="closeWindow(win.id)" title="Close" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
+        <button @click="onCloseClick" title="Close" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -147,9 +187,10 @@ function onMaximizeClick() {
 
     <div class="flex-1 overflow-hidden">
       <DashboardPanel v-if="win.appId === 'dashboard'" class="h-full" />
-      <FileBrowserPanel v-else-if="win.appId === 'files'" class="h-full" />
+      <FileBrowserPanel v-else-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
+      <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="filePreviewDirty = $event" />
     </div>
 
     <template v-if="!win.maximized">
