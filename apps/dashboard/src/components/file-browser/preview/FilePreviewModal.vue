@@ -39,8 +39,12 @@ function tryClose() {
         :href="downloadUrl(entry.path, token ?? '')"
         :download="entry.name"
         title="Download"
-        class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors shrink-0"
-      >[DL]</a>
+        class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+      </a>
     </template>
 
     <MediaPreview v-if="kind === 'image' || kind === 'video' || kind === 'audio'" :path="entry.path" :kind="kind" />

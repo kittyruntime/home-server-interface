@@ -113,16 +113,35 @@ function onMaximizeClick() {
         </svg>
         <span class="eyebrow truncate">{{ APP_LABEL[win.appId] }}</span>
       </div>
-      <div class="flex items-center gap-3 shrink-0" @pointerdown.stop>
+      <div class="flex items-center gap-1 shrink-0" @pointerdown.stop>
         <button
           v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
           title="New App"
-          class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-accent)] transition-colors"
-        >[+]</button>
-        <button @click="toggleMinimize(win.id)" title="Minimize" class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">[_]</button>
-        <button @click="onMaximizeClick" title="Maximize" class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">[{{ win.maximized ? '❐' : '□' }}]</button>
-        <button @click="closeWindow(win.id)" title="Close" class="font-mono text-xs text-[var(--c-text-3)] hover:text-[var(--c-accent)] transition-colors">[X]</button>
+          class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+        </button>
+        <button @click="toggleMinimize(win.id)" title="Minimize" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
+          </svg>
+        </button>
+        <button @click="onMaximizeClick" :title="win.maximized ? 'Restore' : 'Maximize'" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+          <svg v-if="win.maximized" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V5a1 1 0 011-1h9a1 1 0 011 1v9a1 1 0 01-1 1h-4M5 9h9a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z"/>
+          </svg>
+          <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h14v14H5z"/>
+          </svg>
+        </button>
+        <button @click="closeWindow(win.id)" title="Close" class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
     </div>
 

@@ -334,9 +334,9 @@ onUnmounted(() => {
                 role="switch"
                 :aria-checked="desktopMode"
                 title="Toggle desktop mode"
-                :class="['relative w-8 h-4.5 rounded-full transition-colors shrink-0', desktopMode ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-border-strong)]']"
+                :class="['relative w-9 h-5 rounded-full transition-colors shrink-0', desktopMode ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-border-strong)]']"
               >
-                <span :class="['absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform', desktopMode ? 'translate-x-[18px]' : 'translate-x-0.5']" />
+                <span :class="['absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform', desktopMode ? 'translate-x-4' : 'translate-x-0']" />
               </button>
             </div>
             <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
