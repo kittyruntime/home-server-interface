@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify"
 import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { join, basename, normalize } from "node:path"
-import { verifyToken, verifyFileToken, isTokenBlacklisted } from "../trpc/auth"
+import { verifyToken, verifyFileToken, verifyWallpaperToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
@@ -11,6 +11,7 @@ import {
   getUpload, setUpload, deleteUpload, startUploadGc,
   MAX_CHUNKS, type UploadState,
 } from "../services/upload.service"
+import { wallpaperPath } from "../services/wallpaper-storage"
 
 // Parses a single-range "bytes=start-end" Range header against a known
 // total size. Returns null when there's no usable range (caller should
@@ -204,6 +205,43 @@ export async function fileRoutes(app: FastifyInstance) {
       reply.header("Content-Length", String(range.end - range.start + 1))
       return reply.status(206).send(createReadStream(filePath, { start: range.start, end: range.end }))
     }
+    reply.header("Content-Length", String(fileSize))
+    return reply.send(createReadStream(filePath))
+  })
+
+  // ── GET /files/wallpaper-image?token=<wallpaper-token> ───────────────────
+  //
+  // Same rationale as /files/download's token: a CSS background-image URL
+  // can't carry an Authorization header, so this is gated by a short-lived
+  // (15m) token scoped to exactly "this user's wallpaper", minted via
+  // wallpaper.createImageToken — never the long-lived session JWT.
+  app.get("/files/wallpaper-image", async (req, reply) => {
+    const { token } = req.query as Record<string, string>
+    if (!token) return reply.status(400).send("Missing token")
+
+    let userId: string
+    try {
+      userId = verifyWallpaperToken(token).userId
+    } catch {
+      return reply.status(401).send("Unauthorized")
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { wallpaper: true } })
+    const w = user?.wallpaper as { kind: string; ext?: string } | null
+    if (w?.kind !== "image" || !w.ext) return reply.status(404).send("Not found")
+
+    const filePath = wallpaperPath(userId, w.ext)
+    let fileSize: number
+    try {
+      const s = await stat(filePath)
+      fileSize = s.size
+    } catch {
+      return reply.status(404).send("Not found")
+    }
+
+    const mime = w.ext === "jpg" ? "image/jpeg" : `image/${w.ext}`
+    reply.header("Content-Type", mime)
+    reply.header("Cache-Control", "private, max-age=300")
     reply.header("Content-Length", String(fileSize))
     return reply.send(createReadStream(filePath))
   })
