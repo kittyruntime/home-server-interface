@@ -1,176 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
-import { trpc } from '../../lib/trpc'
+import { ref, onMounted, onUnmounted } from 'vue'
 import SegmentedBar from '../ui/SegmentedBar.vue'
+import {
+  useDashboardWidgets, CATALOG, spark, fmtBytes, fmtMem, memColor,
+} from '../../lib/dashboard-widgets'
 
-// ---- Types ----------------------------------------------------------------
+const {
+  widgets, metrics,
+  cpuHist, rxHist, txHist,
+  uptimeStr, ctrRunning, ctrStopped, ctrError,
+  toggleCols, removeWidget, addWidget,
+} = useDashboardWidgets()
 
-type WidgetType = 'cpu' | 'memory' | 'network' | 'containers'
-interface Widget { id: string; type: WidgetType; cols: 1 | 2 }
+const addOpen = ref(false)
 
-interface Metrics {
-  cpu:     number
-  memory:  { total: number; used: number; percent: number }
-  network: { rx: number; tx: number }
-  uptime:  number
-}
-
-type ContainerStatus = { status: string }
-
-// ---- Widget catalog -------------------------------------------------------
-
-const CATALOG: { type: WidgetType; label: string }[] = [
-  { type: 'cpu',        label: 'CPU'        },
-  { type: 'memory',     label: 'Memory'     },
-  { type: 'network',    label: 'Network'    },
-  { type: 'containers', label: 'Containers' },
-]
-
-// ---- Persistence ----------------------------------------------------------
-
-const SK = 'dashboard'
-
-const DEFAULT_WIDGETS: Widget[] = [
-  { id: 'w-cpu',  type: 'cpu',        cols: 1 },
-  { id: 'w-mem',  type: 'memory',     cols: 1 },
-  { id: 'w-net',  type: 'network',    cols: 1 },
-  { id: 'w-ctr',  type: 'containers', cols: 1 },
-]
-
-function loadWidgets(): Widget[] {
-  try {
-    const raw = localStorage.getItem(SK)
-    if (raw) return JSON.parse(raw) as Widget[]
-  } catch { /* ignore */ }
-  return DEFAULT_WIDGETS.map(w => ({ ...w }))
-}
-
-function saveWidgets(ws: Widget[]) {
-  localStorage.setItem(SK, JSON.stringify(ws))
-}
-
-// ---- State ----------------------------------------------------------------
-
-const widgets   = ref<Widget[]>(loadWidgets())
-const metrics   = ref<Metrics | null>(null)
-const containers = ref<ContainerStatus[]>([])
-const addOpen   = ref(false)
-
-// history (30 pts)
-const HIST = 30
-const cpuHist = ref<number[]>([])
-const rxHist  = ref<number[]>([])
-const txHist  = ref<number[]>([])
-
-function pushHist(arr: Ref<number[]>, val: number) {
-  arr.value.push(val)
-  if (arr.value.length > HIST) arr.value.shift()
-}
-
-// ---- Polling --------------------------------------------------------------
-
-let timer: ReturnType<typeof setInterval> | null = null
-
-async function fetchMetrics() {
-  try {
-    const m = await trpc.system.metrics.query()
-    metrics.value = m as Metrics
-    pushHist(cpuHist, m.cpu)
-    pushHist(rxHist,  m.network.rx)
-    pushHist(txHist,  m.network.tx)
-  } catch { /* ignore */ }
-}
-
-async function fetchContainers() {
-  try {
-    containers.value = (await trpc.container.app.list.query()) as ContainerStatus[]
-  } catch { /* ignore */ }
-}
-
-onMounted(() => {
-  fetchMetrics()
-  fetchContainers()
-  timer = setInterval(fetchMetrics, 3000)
-})
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
-
-// ---- Uptime format --------------------------------------------------------
-
-const uptimeStr = computed(() => {
-  const s = metrics.value?.uptime ?? 0
-  const d = Math.floor(s / 86400)
-  const h = Math.floor((s % 86400) / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  if (d > 0) return `up ${d}d ${h}h`
-  if (h > 0) return `up ${h}h ${m}m`
-  return `up ${m}m`
-})
-
-// ---- Byte formatting ------------------------------------------------------
-
-function fmtBytes(b: number): string {
-  if (b >= 1_048_576) return (b / 1_048_576).toFixed(1) + ' MB/s'
-  if (b >= 1024)      return (b / 1024).toFixed(1) + ' KB/s'
-  return b + ' B/s'
-}
-
-function fmtMem(b: number): string {
-  if (b >= 1_073_741_824) return (b / 1_073_741_824).toFixed(1) + ' GB'
-  if (b >= 1_048_576)     return (b / 1_048_576).toFixed(0) + ' MB'
-  return (b / 1024).toFixed(0) + ' KB'
-}
-
-// ---- Container counters ---------------------------------------------------
-
-const ctrRunning = computed(() => containers.value.filter(c => c.status === 'running').length)
-const ctrStopped = computed(() => containers.value.filter(c => c.status === 'stopped').length)
-const ctrError   = computed(() => containers.value.filter(c => c.status === 'error').length)
-
-// ---- Sparkline ------------------------------------------------------------
-
-function spark(
-  vals: number[],
-  lo = 0,
-  hi?: number,
-): { line: string } {
-  if (vals.length < 2) return { line: '' }
-  const max = hi ?? Math.max(...vals, 1)
-  const min = lo
-  const W = 100
-  const H = 40
-  const pts = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * W
-    const y = H - ((v - min) / (max - min || 1)) * H
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  return { line: `M${pts.join('L')}` }
-}
-
-function memColor(percent: number): string {
-  if (percent > 85) return 'var(--c-accent)'
-  if (percent > 65) return 'var(--c-warning)'
-  return 'var(--c-success)'
-}
-
-// ---- Widget controls -------------------------------------------------------
-
-function toggleCols(w: Widget) {
-  w.cols = w.cols === 1 ? 2 : 1
-  saveWidgets(widgets.value)
-}
-
-function removeWidget(id: string) {
-  widgets.value = widgets.value.filter(w => w.id !== id)
-  saveWidgets(widgets.value)
-}
-
-function addWidget(type: WidgetType) {
-  const id = `w-${type}-${Date.now()}`
-  widgets.value.push({ id, type, cols: 1 })
-  saveWidgets(widgets.value)
+function onAddWidget(type: Parameters<typeof addWidget>[0]) {
+  addWidget(type)
   addOpen.value = false
 }
 
@@ -210,7 +55,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             <button
               v-for="cat in CATALOG"
               :key="cat.type"
-              @click.stop="addWidget(cat.type)"
+              @click.stop="onAddWidget(cat.type)"
               class="w-full text-left px-4 py-2.5 text-sm text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors"
             >
               {{ cat.label }}
