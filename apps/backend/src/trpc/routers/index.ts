@@ -9,6 +9,7 @@ import { tasksRouter } from "./tasks"
 import { containerRouter } from "./container"
 import { systemRouter } from "./system"
 import { updateRouter } from "./update"
+import { wallpaperRouter } from "./wallpaper"
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   container: containerRouter,
   system: systemRouter,
   update: updateRouter,
+  wallpaper: wallpaperRouter,
 })
 
 export type AppRouter = typeof appRouter
