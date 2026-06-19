@@ -4,6 +4,7 @@ model User {
   password         String
   displayName      String?
   linuxUsername    String?
+  wallpaper        Json?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   userRoles        UserRole[]
