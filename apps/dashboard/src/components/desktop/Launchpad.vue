@@ -5,7 +5,7 @@ import { useDesktop, APP_LABEL, APP_ICON_PATH, type AppId } from '../../lib/desk
 const emit = defineEmits<{ close: [] }>()
 const { openApp } = useDesktop()
 
-const APP_IDS: AppId[] = ['dashboard', 'files', 'apps', 'settings']
+const APP_IDS: AppId[] = ['files', 'apps', 'settings']
 
 function launch(id: AppId) {
   openApp(id)

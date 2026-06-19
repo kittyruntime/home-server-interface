@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export type AppId = 'dashboard' | 'files' | 'apps' | 'settings' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
 
 export interface FilePreviewPayload {
@@ -27,7 +27,6 @@ export interface DesktopWindow {
 }
 
 export const APP_LABEL: Record<AppId, string> = {
-  dashboard: 'Overview',
   files: 'Files',
   apps: 'Apps',
   settings: 'Settings',
@@ -35,7 +34,6 @@ export const APP_LABEL: Record<AppId, string> = {
 }
 
 export const APP_ICON_PATH: Record<AppId, string> = {
-  dashboard: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z',
   files: 'M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z',
   apps: 'M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
@@ -50,7 +48,6 @@ const MIN_H = 240
 const MIN_VISIBLE = 80
 
 const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
-  dashboard: { w: 720, h: 520 },
   files: { w: 860, h: 560 },
   apps: { w: 760, h: 540 },
   settings: { w: 860, h: 560 },
@@ -62,7 +59,11 @@ function loadWindows(): DesktopWindow[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return (parsed as DesktopWindow[]).map(w => ({ ...w, dirty: false }))
+      if (Array.isArray(parsed)) {
+        return (parsed as DesktopWindow[])
+          .filter(w => (w.appId as string) !== 'dashboard')
+          .map(w => ({ ...w, dirty: false }))
+      }
     }
   } catch { /* ignore */ }
   return []

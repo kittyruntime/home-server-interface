@@ -3,7 +3,6 @@ import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import { useDesktop, APP_LABEL, APP_ICON_PATH, type DesktopWindow } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
 import { downloadUrl } from '../../lib/file-url'
-import DashboardPanel from '../dashboard/DashboardPanel.vue'
 import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
 import AppsPanel from '../apps/AppsPanel.vue'
 import SettingsPanel from '../SettingsPanel.vue'
@@ -198,8 +197,7 @@ function onMaximizeClick() {
     </div>
 
     <div class="flex-1 overflow-hidden">
-      <DashboardPanel v-if="win.appId === 'dashboard'" class="h-full" />
-      <FileBrowserPanel v-else-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
+      <FileBrowserPanel v-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
       <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="setDirty(win.id, $event)" />
