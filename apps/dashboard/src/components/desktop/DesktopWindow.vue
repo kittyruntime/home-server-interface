@@ -126,6 +126,7 @@ function onMaximizeClick() {
     :class="focused ? 'border-[var(--c-accent)]' : 'border-[var(--c-border-strong)]'"
     :style="{ left: win.x + 'px', top: win.y + 'px', width: win.w + 'px', height: win.h + 'px', zIndex: win.zIndex }"
     @pointerdown="focusWindow(win.id)"
+    @contextmenu.stop
   >
     <div
       class="h-9 flex items-center justify-between px-3 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)] flex-shrink-0 select-none cursor-default"
