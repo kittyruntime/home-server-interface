@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify"
 import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { join, basename, normalize } from "node:path"
-import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
+import { verifyToken, verifyFileToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
 import { publishJob, requestRead, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
@@ -100,7 +100,14 @@ export async function fileRoutes(app: FastifyInstance) {
       .catch(err => app.log.error(err, "Failed to clean up stale upload staging dir"))
   })
 
-  // ── GET /files/download?path=<path>&token=<jwt>[&inline=1] ───────────────
+  // ── GET /files/download?path=<path>&token=<file-token>[&inline=1] ────────
+  //
+  // `token` here is a short-lived (15m), single-path-scoped token minted via
+  // fs.createFileToken — NOT the long-lived session JWT. <img>/<video> tags
+  // and download links can't carry an Authorization header, so this keeps
+  // the powerful 7-day session credential out of URLs, browser history, and
+  // server access logs; a leaked file token only grants read access to the
+  // one path it was minted for, for a few minutes.
   //
   // Default behavior (no `inline`) is unchanged: forces a save-as download
   // as application/octet-stream. `inline=1` is used by the in-app preview
@@ -108,13 +115,14 @@ export async function fileRoutes(app: FastifyInstance) {
   // disposition, and both branches below support HTTP Range so `<video>`
   // seeking works.
   app.get("/files/download", async (req, reply) => {
-    const { path: filePath, token, inline } = req.query as Record<string, string>
-    if (!token || !filePath) return reply.status(400).send("Missing params")
+    const { path: rawPath, token, inline } = req.query as Record<string, string>
+    if (!token || !rawPath) return reply.status(400).send("Missing params")
+    const filePath = normalize(rawPath)
 
     let user: { userId: string; isAdmin: boolean }
     try {
-      const payload = verifyToken(token)
-      if (isTokenBlacklisted(payload.jti)) return reply.status(401).send("Unauthorized")
+      const payload = verifyFileToken(token)
+      if (payload.path !== filePath) return reply.status(403).send("Forbidden")
       user = payload
     } catch {
       return reply.status(401).send("Unauthorized")

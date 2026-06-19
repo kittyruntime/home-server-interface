@@ -8,6 +8,7 @@ import { accessiblePlaceIds } from "./place"
 import { publishJob, requestSync, requestRead, writeChunk } from "../../nats"
 import { isWithinRoot } from "../../utils/fs-guard"
 import { looksBinary } from "../../utils/text-sniff"
+import { signFileToken } from "../auth"
 
 // Hard cap on what the text/code preview will read into memory and hand to
 // the frontend editor — checked via stat() *before* reading, so an
@@ -150,6 +151,16 @@ export const fsRouter = router({
       } catch (e: any) {
         throw mapWorkerError(e)
       }
+    }),
+
+  // ── createFileToken (sync) — mint a short-lived, path-scoped token for the
+  // /files/download URL (img/video/audio src, download links) ─────────────────
+  createFileToken: protectedProcedure
+    .input(z.object({ path: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+      await checkPathPerm(ctx, p, "canRead")
+      return { token: signFileToken(ctx.user.userId, ctx.user.isAdmin, p) }
     }),
 
   // ── readText (sync) — preview/edit content, with a binary + size guard ───────

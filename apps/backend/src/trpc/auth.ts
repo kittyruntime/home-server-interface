@@ -26,6 +26,29 @@ export function verifyToken(token: string): TokenPayload {
   return jwt.verify(token, JWT_SECRET) as TokenPayload
 }
 
+// ── File access tokens ────────────────────────────────────────────────────────
+// Short-lived, single-path-scoped tokens for the `<img>`/`<video>`/download
+// URLs that have to carry auth in the query string (can't set an Authorization
+// header on those tags). Minted just-in-time via fs.createFileToken, never the
+// long-lived session JWT — keeps that 7-day full-account credential out of
+// URLs, browser history, and server access logs.
+export interface FileTokenPayload {
+  userId: string
+  isAdmin: boolean
+  path: string
+  scope: "file-read"
+}
+
+export function signFileToken(userId: string, isAdmin: boolean, path: string): string {
+  return jwt.sign({ userId, isAdmin, path, scope: "file-read" }, JWT_SECRET, { expiresIn: "15m" })
+}
+
+export function verifyFileToken(token: string): FileTokenPayload {
+  const payload = jwt.verify(token, JWT_SECRET) as FileTokenPayload
+  if (payload.scope !== "file-read") throw new Error("Invalid token scope")
+  return payload
+}
+
 // ── In-memory token blacklist ─────────────────────────────────────────────────
 // Holds JTIs of logged-out tokens until they expire.
 // Lost on restart — acceptable since restarts already invalidate all jobs.

@@ -6,6 +6,7 @@ import { useNotifications } from '../../lib/notifications'
 import { useClipboard } from '../../lib/clipboard'
 import { useUploads } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
+import { downloadUrl } from '../../lib/file-url'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
@@ -227,10 +228,10 @@ async function doDelete() {
   refresh()
 }
 
-function downloadSelected() {
+async function downloadSelected() {
   const entry = selectedEntries.value[0]
   if (!entry || entry.type !== 'file') return
-  const url = `${BASE_URL}/files/download?path=${encodeURIComponent(entry.path)}&token=${encodeURIComponent(token.value ?? '')}`
+  const url = await downloadUrl(entry.path)
   const a = document.createElement('a')
   a.href = url
   a.download = entry.name

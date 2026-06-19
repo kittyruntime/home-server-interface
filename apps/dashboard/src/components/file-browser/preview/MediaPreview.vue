@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useAuth } from '../../../lib/auth'
+import { ref, onMounted } from 'vue'
 import { previewUrl } from '../../../lib/file-url'
 
 const props = defineProps<{ path: string; kind: 'image' | 'video' | 'audio' }>()
 
-const { token } = useAuth()
-const url = previewUrl(props.path, token.value ?? '')
+const url = ref<string | null>(null)
 const failed = ref(false)
+
+onMounted(async () => {
+  try {
+    url.value = await previewUrl(props.path)
+  } catch {
+    failed.value = true
+  }
+})
 </script>
 
 <template>
@@ -17,10 +23,10 @@ const failed = ref(false)
       <p class="status-text">[ERR] {{ path.split('/').pop() }}</p>
     </div>
 
-    <img v-else-if="kind === 'image'" :src="url" :alt="path" class="max-w-full max-h-full object-contain" @error="failed = true" />
+    <img v-else-if="kind === 'image'" :src="url ?? undefined" :alt="path" class="max-w-full max-h-full object-contain" @error="failed = true" />
 
-    <video v-else-if="kind === 'video'" :src="url" controls autoplay class="max-w-full max-h-full" @error="failed = true" />
+    <video v-else-if="kind === 'video'" :src="url ?? undefined" controls autoplay class="max-w-full max-h-full" @error="failed = true" />
 
-    <audio v-else :src="url" controls class="w-full max-w-md" @error="failed = true" />
+    <audio v-else :src="url ?? undefined" controls class="w-full max-w-md" @error="failed = true" />
   </div>
 </template>

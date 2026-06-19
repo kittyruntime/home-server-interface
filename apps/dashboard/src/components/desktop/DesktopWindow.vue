@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import { useDesktop, APP_LABEL, APP_ICON_PATH, type DesktopWindow } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
 import { downloadUrl } from '../../lib/file-url'
@@ -16,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, resizeWindow, setDirty } = useDesktop()
-const { isAdmin, token } = useAuth()
+const { isAdmin } = useAuth()
 
 const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
 const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
@@ -25,6 +25,14 @@ const filePreviewRef = ref<{ save: () => void } | null>(null)
 const filePreviewExt = computed(() => {
   const name = props.win.filePreview?.name ?? ''
   return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
+})
+
+const downloadHref = ref<string | null>(null)
+onMounted(async () => {
+  if (props.win.appId !== 'file-preview') return
+  try {
+    downloadHref.value = await downloadUrl(props.win.filePreview!.path)
+  } catch { /* link stays inert until a token is available */ }
 })
 
 watch(() => props.win.focusNonce, () => {
@@ -159,7 +167,7 @@ function onMaximizeClick() {
         </button>
         <a
           v-if="win.appId === 'file-preview'"
-          :href="downloadUrl(win.filePreview!.path, token ?? '')"
+          :href="downloadHref ?? undefined"
           :download="win.filePreview!.name"
           title="Download"
           class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"

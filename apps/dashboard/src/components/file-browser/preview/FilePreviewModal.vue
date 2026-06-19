@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Modal from '../../ui/Modal.vue'
 import FilePreviewBody from './FilePreviewBody.vue'
 import { detectKind } from '../../../lib/file-kind'
-import { useAuth } from '../../../lib/auth'
 import { downloadUrl } from '../../../lib/file-url'
 
 type Entry = { name: string; path: string; size: number | null }
@@ -11,7 +10,13 @@ type Entry = { name: string; path: string; size: number | null }
 const props = defineProps<{ entry: Entry }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { token } = useAuth()
+const downloadHref = ref<string | null>(null)
+onMounted(async () => {
+  try {
+    downloadHref.value = await downloadUrl(props.entry.path)
+  } catch { /* link stays inert until a token is available */ }
+})
+
 const kind = computed(() => detectKind(props.entry.name))
 const ext = computed(() => props.entry.name.includes('.') ? props.entry.name.split('.').pop()!.toUpperCase() : '')
 
@@ -33,7 +38,7 @@ function tryClose() {
         <span v-if="dirty" class="status-text text-[var(--c-warning)] shrink-0">[UNSAVED]</span>
       </div>
       <a
-        :href="downloadUrl(entry.path, token ?? '')"
+        :href="downloadHref ?? undefined"
         :download="entry.name"
         title="Download"
         class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
