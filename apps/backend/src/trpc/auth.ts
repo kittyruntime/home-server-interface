@@ -49,6 +49,26 @@ export function verifyFileToken(token: string): FileTokenPayload {
   return payload
 }
 
+// ── Wallpaper image tokens ───────────────────────────────────────────────────
+// Same rationale as the file-read tokens above: the desktop background's
+// CSS background-image URL can't carry an Authorization header, so a
+// short-lived token scoped to "this user's wallpaper, nothing else" is
+// minted on demand instead of putting the session JWT in that URL.
+export interface WallpaperTokenPayload {
+  userId: string
+  scope: "wallpaper-read"
+}
+
+export function signWallpaperToken(userId: string): string {
+  return jwt.sign({ userId, scope: "wallpaper-read" }, JWT_SECRET, { expiresIn: "15m" })
+}
+
+export function verifyWallpaperToken(token: string): WallpaperTokenPayload {
+  const payload = jwt.verify(token, JWT_SECRET) as WallpaperTokenPayload
+  if (payload.scope !== "wallpaper-read") throw new Error("Invalid token scope")
+  return payload
+}
+
 // ── In-memory token blacklist ─────────────────────────────────────────────────
 // Holds JTIs of logged-out tokens until they expire.
 // Lost on restart — acceptable since restarts already invalidate all jobs.
