@@ -65,12 +65,14 @@ header.
   `<img src>` can't carry an `Authorization` header, so a long-lived session JWT must never
   end up in that URL).
 
-**New route** `POST /files/wallpaper-upload` (new handler in `apps/backend/src/routes/files.ts`,
-authenticated the same way as the existing upload routes via `authFromRequest()`) — a single
-non-chunked multipart upload (this is a few-MB image, not a multi-GB NAS file, so it doesn't
-need the chunked pipeline): validates size/type, writes to
-`apps/backend/data/wallpapers/<userId>.<ext>`, updates `User.wallpaper` to
-`{ kind: 'image', ext }`.
+**Image upload** — superseded during implementation: rather than a separate
+`POST /files/wallpaper-upload` multipart route, the image is uploaded through the same
+`wallpaper` tRPC router as a `setImage` mutation (`{ data: base64, mimeType }`), validated
+server-side by magic-byte sniff (not the client-sent `mimeType`), capped at 8MB, and written to
+`apps/backend/data/wallpapers/<userId>.<ext>` before updating `User.wallpaper` to
+`{ kind: 'image', ext }`. This keeps upload validation co-located with the other wallpaper
+procedures instead of introducing a second auth/validation path; the ~33% base64 overhead is
+negligible at this size.
 
 **New route** `GET /files/wallpaper-image?token=...` — verifies the token via a new
 `verifyWallpaperToken`, looks up that user's `User.wallpaper` row to confirm it's still
