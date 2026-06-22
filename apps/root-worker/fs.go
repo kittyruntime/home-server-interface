@@ -230,6 +230,25 @@ func doRead(path string) ([]byte, *fsError) {
 	return data, nil
 }
 
+const maxReadChunkBytes = 4 * 1024 * 1024 // 4 MB hard cap, independent of caller-requested length
+
+func doReadChunk(path string, offset int64, length int) ([]byte, *fsError) {
+	if length <= 0 || length > maxReadChunkBytes {
+		length = maxReadChunkBytes
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, mapOsErr(err)
+	}
+	defer f.Close()
+	buf := make([]byte, length)
+	n, err := f.ReadAt(buf, offset)
+	if err != nil && err != io.EOF {
+		return nil, mapOsErr(err)
+	}
+	return buf[:n], nil
+}
+
 // ── mkdir ─────────────────────────────────────────────────────────────────────
 
 type mkdirResult struct {

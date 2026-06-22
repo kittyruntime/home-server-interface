@@ -323,6 +323,50 @@ func handleRead(nc *nats.Conn, msg *nats.Msg) {
 	_ = nc.Publish(msg.Reply, data)
 }
 
+type readChunkReq struct {
+	Path          string `json:"path"`
+	Offset        int64  `json:"offset"`
+	Length        int    `json:"length"`
+	LinuxUsername string `json:"linuxUsername"`
+	AllowedRoot   string `json:"allowedRoot"`
+}
+
+func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
+	var req readChunkReq
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	var data []byte
+	var fsErr *fsError
+	if err := withUser(req.LinuxUsername, func() error {
+		data, fsErr = doReadChunk(req.Path, req.Offset, req.Length)
+		if fsErr != nil {
+			return fsErr
+		}
+		return nil
+	}); err != nil {
+		if fe, ok := err.(*fsError); ok {
+			replyErr(nc, msg.Reply, fe)
+		} else {
+			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		}
+		return
+	}
+	if fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	// Raw bytes, not JSON-wrapped — same convention as handleRead. May be
+	// shorter than req.Length (EOF) or empty (offset at/past EOF); neither
+	// is an error, the caller's stat-derived end offset is authoritative.
+	_ = nc.Publish(msg.Reply, data)
+}
+
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
@@ -550,6 +594,7 @@ func main() {
 		"root.fs.list":                     handleList,
 		"root.fs.stat":                     handleStat,
 		"root.fs.read":                     handleRead,
+		"root.fs.read-chunk":               handleReadChunk,
 		"root.fs.write-chunk":              handleWriteChunk,
 		"root.docker.container.inspect":    handleDockerInspect,
 	} {
