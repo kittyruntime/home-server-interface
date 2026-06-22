@@ -7,6 +7,7 @@ import { useClipboard } from '../../lib/clipboard'
 import { useUploads } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
+import { randomId } from '../../lib/uuid'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
@@ -273,10 +274,7 @@ async function uploadFiles(files: FileList | File[]) {
   const dest = currentPath.value
 
   for (const file of Array.from(files)) {
-    const id = crypto.randomUUID?.() ?? Array.from(
-      crypto.getRandomValues(new Uint8Array(16)),
-      b => b.toString(16).padStart(2, '0')
-    ).join('').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5')
+    const id = randomId()
 
     const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE))
     const ac = new AbortController()

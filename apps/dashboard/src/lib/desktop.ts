@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { randomId } from './uuid'
 
 export type AppId = 'files' | 'apps' | 'settings' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
@@ -127,7 +128,7 @@ export function useDesktop() {
     const size = DEFAULT_SIZE[appId]
     const { x, y } = cascadeOffset()
     const win: DesktopWindow = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       appId,
       x,
       y,
@@ -162,7 +163,7 @@ export function useDesktop() {
     const size = DEFAULT_SIZE['file-preview']
     const { x, y } = cascadeOffset()
     const win: DesktopWindow = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       appId: 'file-preview',
       x,
       y,
