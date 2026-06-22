@@ -7,6 +7,7 @@ import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { useConfirm } from '../../lib/confirm'
+import { pollJob } from '../../lib/jobs'
 
 const { confirm } = useConfirm()
 
@@ -89,17 +90,6 @@ function portsSummary(app: App): string {
   if (!app.ports.length) return '—'
   return app.ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ')
     + (app.ports.length > 2 ? ` +${app.ports.length - 2}` : '')
-}
-
-async function pollJob(jobId: string): Promise<void> {
-  const deadline = Date.now() + 30_000
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500))
-    try {
-      const j = await trpc.tasks.get.query({ jobId })
-      if (j.status === 'completed' || j.status === 'failed') return
-    } catch { return }
-  }
 }
 
 async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'delete') {

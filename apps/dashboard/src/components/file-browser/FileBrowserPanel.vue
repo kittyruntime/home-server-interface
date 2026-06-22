@@ -8,6 +8,7 @@ import { useUploads } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
 import { randomId } from '../../lib/uuid'
+import { pollJob } from '../../lib/jobs'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
@@ -187,7 +188,8 @@ const selectedEntries = computed(() =>
 async function createFolder() {
   if (!currentPath.value) return
   await track('Creating folder', async () => {
-    await trpc.fs.mkdir.mutate({ parentPath: currentPath.value!, name: 'New Folder' })
+    const { jobId } = await trpc.fs.mkdir.mutate({ parentPath: currentPath.value!, name: 'New Folder' })
+    await pollJob(jobId)
   })
   refresh()
 }
@@ -209,8 +211,10 @@ async function doPaste() {
   await trackBatch(
     mode === 'copy' ? `Copying ${paths.length} item(s)` : `Moving ${paths.length} item(s)`,
     paths.map(src => async () => {
-      if (mode === 'copy') await trpc.fs.copy.mutate({ src, dstDir: dst })
-      else                 await trpc.fs.move.mutate({ src, dstDir: dst })
+      const { jobId } = mode === 'copy'
+        ? await trpc.fs.copy.mutate({ src, dstDir: dst })
+        : await trpc.fs.move.mutate({ src, dstDir: dst })
+      await pollJob(jobId)
     })
   )
   if (mode === 'cut') clipClear()
@@ -223,7 +227,10 @@ async function doDelete() {
   const paths = [...selected.value]
   await trackBatch(
     `Deleting ${paths.length} item(s)`,
-    paths.map(p => () => trpc.fs.delete.mutate({ path: p }))
+    paths.map(p => async () => {
+      const { jobId } = await trpc.fs.delete.mutate({ path: p })
+      await pollJob(jobId)
+    })
   )
   clearSelection()
   refresh()
@@ -257,9 +264,10 @@ async function commitRename() {
   const path = renamingPath.value
   const name = renameValue.value.trim()
   renamingPath.value = null
-  await track(`Renaming to "${name}"`, () =>
-    trpc.fs.rename.mutate({ path, newName: name })
-  )
+  await track(`Renaming to "${name}"`, async () => {
+    const { jobId } = await trpc.fs.rename.mutate({ path, newName: name })
+    await pollJob(jobId)
+  })
   refresh()
 }
 
@@ -302,7 +310,13 @@ async function uploadFiles(files: FileList | File[]) {
           body: file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
         })
         if (!resp.ok) throw new Error(await resp.text())
+        const body = await resp.json() as { ok: true; done: boolean; jobId?: string }
         uploads.updateProgress(id, i + 1, Math.min(CHUNK_SIZE, file.size - i * CHUNK_SIZE))
+
+        // The last chunk's response carries the fs.assemble jobId — wait for
+        // it to actually finish writing the destination file before treating
+        // the upload as done, same reason as the other fs mutations below.
+        if (body.done && body.jobId) await pollJob(body.jobId)
       }
 
       uploads.setStatus(id, 'done')
