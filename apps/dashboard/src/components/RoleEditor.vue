@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
+import RolePicker, { type PickerItem } from './ui/RolePicker.vue'
 
 type Role = {
   id: string
@@ -141,6 +142,40 @@ async function deleteRole() {
 function userHasRole(user: User) {
   return user.userRoles.some(ur => ur.role.id === props.role.id)
 }
+
+const palette = [
+  'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
+  'from-emerald-500 to-emerald-700', 'from-amber-500 to-amber-700',
+  'from-rose-500 to-rose-700', 'from-cyan-500 to-cyan-700',
+]
+function avatarGradient(username: string) {
+  let hash = 0
+  for (const ch of username) hash = (hash * 31 + ch.charCodeAt(0)) % palette.length
+  return palette[hash]
+}
+
+const assignedMembers = computed<PickerItem[]>(() =>
+  sortedUsers.value
+    .filter(u => userHasRole(u))
+    .map(u => ({
+      id: u.id,
+      label: u.username,
+      sublabel: u.id === currentUserId.value ? 'you' : undefined,
+      disabled: u.id === currentUserId.value,
+      avatarText: u.username.slice(0, 2).toUpperCase(),
+      avatarClass: avatarGradient(u.username),
+    })),
+)
+const availableMembers = computed<PickerItem[]>(() =>
+  sortedUsers.value
+    .filter(u => !userHasRole(u))
+    .map(u => ({
+      id: u.id,
+      label: u.username,
+      avatarText: u.username.slice(0, 2).toUpperCase(),
+      avatarClass: avatarGradient(u.username),
+    })),
+)
 
 async function toggleMember(userId: string) {
   if (memberBusy.value[userId]) return
@@ -300,68 +335,16 @@ async function toggleMember(userId: string) {
         <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => userHasRole(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <div class="divide-y divide-[var(--c-border)] border border-[var(--c-border)] rounded-xl overflow-hidden">
+      <p v-if="users.length === 0" class="text-xs text-[var(--c-text-3)] italic px-0.5">No users</p>
 
-        <div v-if="users.length === 0" class="px-4 py-4 text-xs text-[var(--c-text-3)] italic">No users</div>
-
-        <div
-          v-for="user in sortedUsers"
-          :key="user.id"
-          class="flex items-center gap-3 px-4 py-2.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
-        >
-          <!-- Avatar -->
-          <div :class="[
-            'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0',
-            userHasRole(user) ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]',
-          ]">
-            {{ user.username.slice(0, 2).toUpperCase() }}
-          </div>
-
-          <!-- Name -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-1.5">
-              <span :class="['text-sm font-medium truncate', userHasRole(user) ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-3)]']">
-                {{ user.username }}
-              </span>
-              <span v-if="user.id === currentUserId" class="text-[10px] text-[var(--c-text-3)]">(you)</span>
-            </div>
-            <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate">{{ user.displayName }}</div>
-          </div>
-
-          <!-- Action -->
-          <div class="shrink-0">
-            <button
-              v-if="userHasRole(user)"
-              :disabled="user.id === currentUserId || memberBusy[user.id]"
-              @click="user.id !== currentUserId && toggleMember(user.id)"
-              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-accent)]/8
-                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              Remove
-            </button>
-            <button
-              v-else
-              :disabled="memberBusy[user.id]"
-              @click="toggleMember(user.id)"
-              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)]
-                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
-              Add
-            </button>
-          </div>
-        </div>
-
-      </div>
+      <RolePicker
+        v-else
+        :assigned="assignedMembers"
+        :available="availableMembers"
+        :busy="memberBusy"
+        @add="toggleMember"
+        @remove="toggleMember"
+      />
     </div>
 
   </div>
