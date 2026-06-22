@@ -262,7 +262,13 @@ export async function fileRoutes(app: FastifyInstance) {
   // so no /tmp staging and no double disk usage.
   //
   // The last-chunk response includes { done: true, jobId } for polling.
-  app.post("/files/upload/chunk", async (req, reply) => {
+  //
+  // Exempt from the global rate limiter: one request per CHUNK_SIZE (2MB,
+  // see FileBrowserPanel.vue), so a large file alone can need thousands of
+  // requests inside a minute — request-count throttling doesn't apply to an
+  // already-authenticated, already-permission-checked transfer whose volume
+  // scales with file size by design.
+  app.post("/files/upload/chunk", { config: { rateLimit: false } }, async (req, reply) => {
     const user = authFromRequest(req)
     if (!user) return reply.status(401).send("Unauthorized")
 
