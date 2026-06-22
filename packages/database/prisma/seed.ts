@@ -32,11 +32,6 @@ async function main() {
     create: { userId: adminUser.id, roleId: adminRole.id },
   })
 
-  // Standard roles
-  for (const name of ["readonly", "readwrite"]) {
-    await prisma.role.upsert({ where: { name }, update: {}, create: { name } })
-  }
-
   // Well-known permissions (glob notation)
   const wellKnown = [
     "*.*",              // all permissions
