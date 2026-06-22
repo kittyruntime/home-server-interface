@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify"
 import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
+import { Readable } from "node:stream"
 import { join, basename, normalize } from "node:path"
 import { verifyToken, verifyFileToken, verifyWallpaperToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
-import { publishJob, requestRead, writeChunk } from "../nats"
+import { publishJob, requestRead, requestReadChunk, requestSync, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
 import { guessMime, isInlineSafe } from "../utils/mime"
 import {
@@ -85,6 +86,48 @@ function authFromRequest(req: { headers: { authorization?: string } }) {
   }
 }
 
+// Pulls one 4 MB chunk at a time from the worker via requestReadChunk and
+// feeds it to whoever is reading the stream (Fastify, in this route) —
+// bytes reach the HTTP response as they arrive instead of only after the
+// whole file has been read into memory. Mirrors the existing chunked
+// upload path (writeChunk / root.fs.write-chunk) in the opposite direction.
+function chunkedReadStream(
+  filePath: string,
+  linuxUser: string,
+  allowedRoot: string,
+  start: number,
+  end: number,
+): Readable {
+  const READ_CHUNK = 4 * 1024 * 1024
+  let offset = start
+  return new Readable({
+    async read() {
+      if (offset > end) {
+        this.push(null)
+        return
+      }
+      try {
+        const len = Math.min(READ_CHUNK, end - offset + 1)
+        const chunk = await requestReadChunk(filePath, offset, len, linuxUser, allowedRoot)
+        if (chunk.length === 0) {
+          // EOF reached earlier than the stat-derived `end` (file shrank
+          // mid-download) — end the stream early rather than erroring.
+          this.push(null)
+          return
+        }
+        offset += chunk.length
+        this.push(chunk)
+      } catch (err) {
+        // Headers are already sent by this point, so the response can't
+        // fail with a clean status code — destroying the stream aborts
+        // the connection. Same failure mode the direct/createReadStream
+        // branch below already has if the file disappears mid-stream.
+        this.destroy(err as Error)
+      }
+    },
+  })
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 export async function fileRoutes(app: FastifyInstance) {
@@ -160,27 +203,36 @@ export async function fileRoutes(app: FastifyInstance) {
     }
 
     if (linuxUser) {
-      let data: Buffer
+      let fileSize: number
       try {
-        data = await requestRead(filePath, linuxUser, allowedRoot ?? "")
+        const s = await requestSync<{ type: string; size: number | null }>(
+          "root.fs.stat",
+          { path: filePath, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "" },
+        )
+        if (s.type !== "file" || s.size == null) return reply.status(400).send("Not a file")
+        fileSize = s.size
       } catch (e: any) {
         if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
         if (e?.code === "ENOENT") return reply.status(404).send("Not found")
-        return reply.status(500).send(e?.message ?? "Read failed")
+        return reply.status(500).send(e?.message ?? "Stat failed")
       }
 
-      const range = parseRange(req.headers.range, data.length)
+      const range = parseRange(req.headers.range, fileSize)
       if (range && !range.satisfiable) {
-        reply.header("Content-Range", `bytes */${data.length}`)
+        reply.header("Content-Range", `bytes */${fileSize}`)
         return reply.status(416).send()
       }
+
+      const start = range ? range.start : 0
+      const end   = range ? range.end   : fileSize - 1
       if (range) {
-        reply.header("Content-Range", `bytes ${range.start}-${range.end}/${data.length}`)
-        reply.header("Content-Length", String(range.end - range.start + 1))
-        return reply.status(206).send(data.subarray(range.start, range.end + 1))
+        reply.header("Content-Range", `bytes ${start}-${end}/${fileSize}`)
+        reply.header("Content-Length", String(end - start + 1))
+        reply.status(206)
+      } else {
+        reply.header("Content-Length", String(fileSize))
       }
-      reply.header("Content-Length", String(data.length))
-      return reply.send(data)
+      return reply.send(chunkedReadStream(filePath, linuxUser, allowedRoot ?? "", start, end))
     }
 
     if (allowedRoot && !(await isWithinRoot(filePath, allowedRoot)))
