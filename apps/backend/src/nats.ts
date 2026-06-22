@@ -142,6 +142,28 @@ export async function requestRead(
   return Buffer.from(msg.data)
 }
 
+// Chunked counterpart to requestRead — fetches at most `length` bytes
+// starting at `offset` (the worker caps this at 4 MB server-side
+// regardless of what's requested). Binary reply, same as requestRead.
+// May return fewer bytes than requested (EOF) or an empty buffer (offset
+// at/past EOF) — both are valid; the caller's own end-offset bookkeeping
+// decides when to stop asking for more.
+export async function requestReadChunk(
+  path: string,
+  offset: number,
+  length: number,
+  linuxUsername: string,
+  allowedRoot: string,
+  timeout = 10_000,
+): Promise<Buffer> {
+  const msg = await nc.request(
+    "root.fs.read-chunk",
+    sc.encode(JSON.stringify({ path, offset, length, linuxUsername, allowedRoot })),
+    { timeout },
+  )
+  return Buffer.from(msg.data)
+}
+
 // Write a chunk directly into destDir via the worker (no /tmp involved).
 // Binary chunk data is sent as the raw message body; metadata goes in a header.
 export async function writeChunk(opts: {
