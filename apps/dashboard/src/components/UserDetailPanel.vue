@@ -2,6 +2,7 @@
 import { ref, reactive, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
+import RolePicker, { type PickerItem } from './ui/RolePicker.vue'
 
 type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
 type User = {
@@ -49,6 +50,17 @@ function hasRole(roleId: string) {
 }
 
 function userIsAdmin() { return props.user.userRoles.some(ur => ur.role.isAdmin) }
+
+const assignedRoles = computed<PickerItem[]>(() =>
+  props.roles
+    .filter(r => hasRole(r.id))
+    .map(r => ({ id: r.id, label: r.name, sublabel: r.isAdmin ? 'admin' : undefined, disabled: isSelf.value })),
+)
+const availableRoles = computed<PickerItem[]>(() =>
+  props.roles
+    .filter(r => !hasRole(r.id))
+    .map(r => ({ id: r.id, label: r.name, sublabel: r.isAdmin ? 'admin' : undefined })),
+)
 
 async function save() {
   saveError.value = ''
@@ -179,56 +191,15 @@ async function deleteUser() {
     <div v-if="roles.length > 0" class="space-y-3">
       <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</h4>
 
-      <div class="divide-y divide-[var(--c-border)] border border-[var(--c-border)] rounded-xl overflow-hidden">
-        <div
-          v-for="role in roles"
-          :key="role.id"
-          class="flex items-center gap-3 px-4 py-2.5 bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
-        >
-          <div class="flex-1 min-w-0 flex items-center gap-2">
-            <span :class="['text-sm font-medium truncate', hasRole(role.id) ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-3)]']">
-              {{ role.name }}
-            </span>
-            <span v-if="role.isAdmin"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
-              admin
-            </span>
-          </div>
+      <RolePicker
+        :assigned="assignedRoles"
+        :available="availableRoles"
+        :busy="roleToggleBusy"
+        @add="toggleRole"
+        @remove="toggleRole"
+      />
 
-          <div class="shrink-0">
-            <button
-              v-if="hasRole(role.id)"
-              :disabled="isSelf || roleToggleBusy[role.id]"
-              @click="!isSelf && toggleRole(role.id)"
-              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)]/40 hover:bg-[var(--c-accent)]/8
-                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              Remove
-            </button>
-            <button
-              v-else
-              :disabled="roleToggleBusy[role.id]"
-              @click="toggleRole(role.id)"
-              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
-                     text-[var(--c-text-3)] border border-[var(--c-border-strong)]
-                     hover:text-[var(--c-accent)] hover:border-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)]
-                     disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <p v-if="roleError" class="text-[var(--c-accent)] text-xs">{{ roleError }}</p>
+      <p v-if="roleError" class="text-[var(--c-accent)] text-xs px-3">{{ roleError }}</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
