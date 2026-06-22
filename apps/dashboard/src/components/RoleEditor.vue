@@ -263,7 +263,7 @@ async function toggleMember(userId: string) {
     <p v-if="error" class="text-[var(--c-accent)] text-xs px-0.5">{{ error }}</p>
 
     <!-- ── Permissions ─────────────────────────────────────────────────────── -->
-    <div class="space-y-5">
+    <div class="space-y-6">
       <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Permissions</h4>
 
       <!-- Admin notice -->
@@ -294,7 +294,7 @@ async function toggleMember(userId: string) {
           :key="perm.name"
           @click="togglePermission(perm.name)"
           :class="[
-            'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer select-none transition-colors',
+            'flex items-center gap-3.5 px-3 py-2 rounded-lg cursor-pointer select-none transition-colors',
             grantedNames.has(perm.name)
               ? 'bg-[var(--c-success)]/8 hover:bg-[var(--c-success)]/12'
               : 'hover:bg-[var(--c-hover)]',
@@ -320,9 +320,9 @@ async function toggleMember(userId: string) {
           </span>
 
           <!-- Permission name + description -->
-          <div class="flex-1 min-w-0 flex items-baseline gap-2.5">
+          <div class="flex-1 min-w-0 flex items-baseline justify-between gap-3">
             <code class="text-xs font-mono text-[var(--c-text-2)] shrink-0">{{ perm.name }}</code>
-            <span class="text-xs text-[var(--c-text-3)] truncate">{{ perm.desc }}</span>
+            <span class="text-[11px] text-[var(--c-text-3)]/80 truncate text-right">{{ perm.desc }}</span>
           </div>
         </div>
       </div>
