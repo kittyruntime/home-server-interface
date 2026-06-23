@@ -161,6 +161,15 @@ export async function requestReadChunk(
     sc.encode(JSON.stringify({ path, offset, length, linuxUsername, allowedRoot })),
     { timeout },
   )
+  if (msg.headers?.get("X-Chunk-Error")) {
+    let resp: { error?: string; code?: string }
+    try {
+      resp = JSON.parse(sc.decode(msg.data)) as { error?: string; code?: string }
+    } catch {
+      throw new Error("Invalid worker error response")
+    }
+    throw Object.assign(new Error(resp.error ?? "read-chunk failed"), { code: resp.code })
+  }
   return Buffer.from(msg.data)
 }
 

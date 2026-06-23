@@ -331,14 +331,26 @@ type readChunkReq struct {
 	AllowedRoot   string `json:"allowedRoot"`
 }
 
+// replyChunkErr replies to a root.fs.read-chunk request with an error,
+// marked via the X-Chunk-Error header so the backend can tell it apart
+// from a raw-bytes success reply (read-chunk's success body is arbitrary
+// file content, unlike replyErr's JSON-bodied callers, so the error can't
+// be distinguished by content alone).
+func replyChunkErr(nc *nats.Conn, replySubject string, e *fsError) {
+	data, _ := json.Marshal(syncResponse{Ok: false, Error: e.Message, Code: e.Code})
+	h := nats.Header{}
+	h.Set("X-Chunk-Error", "1")
+	_ = nc.PublishMsg(&nats.Msg{Subject: replySubject, Data: data, Header: h})
+}
+
 func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 	var req readChunkReq
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		replyChunkErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
 	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
-		replyErr(nc, msg.Reply, fsErr)
+		replyChunkErr(nc, msg.Reply, fsErr)
 		return
 	}
 	var data []byte
@@ -351,14 +363,14 @@ func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 		return nil
 	}); err != nil {
 		if fe, ok := err.(*fsError); ok {
-			replyErr(nc, msg.Reply, fe)
+			replyChunkErr(nc, msg.Reply, fe)
 		} else {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+			replyChunkErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		}
 		return
 	}
 	if fsErr != nil {
-		replyErr(nc, msg.Reply, fsErr)
+		replyChunkErr(nc, msg.Reply, fsErr)
 		return
 	}
 	// Raw bytes, not JSON-wrapped — same convention as handleRead. May be

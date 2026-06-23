@@ -5,7 +5,7 @@ import { Readable } from "node:stream"
 import { join, basename, normalize } from "node:path"
 import { verifyToken, verifyFileToken, verifyWallpaperToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
-import { publishJob, requestRead, requestReadChunk, requestSync, writeChunk } from "../nats"
+import { publishJob, requestReadChunk, requestSync, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
 import { guessMime, isInlineSafe } from "../utils/mime"
 import {
