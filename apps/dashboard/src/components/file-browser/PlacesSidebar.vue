@@ -6,7 +6,7 @@ defineProps<{
   activePlaceId: string | null
 }>()
 
-defineEmits<{ select: [place: Place] }>()
+defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
 </script>
 
 <template>
@@ -20,7 +20,7 @@ defineEmits<{ select: [place: Place] }>()
         :key="place.id"
         @click.stop="$emit('select', place)"
         :class="[
-          'flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left text-sm transition-colors',
+          'group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left text-sm transition-colors',
           activePlaceId === place.id
             ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
             : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
@@ -32,7 +32,16 @@ defineEmits<{ select: [place: Place] }>()
         <svg v-else class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
         </svg>
-        <span class="truncate">{{ place.name }}</span>
+        <span class="truncate flex-1">{{ place.name }}</span>
+        <span
+          class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-black/10"
+          @click.stop="$emit('openProperties', place)"
+          title="Properties"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
       </button>
       <p v-if="places.length === 0" class="text-xs text-[var(--c-text-3)] italic px-2.5 py-2">No places configured.</p>
     </nav>

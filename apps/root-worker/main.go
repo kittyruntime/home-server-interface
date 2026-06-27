@@ -288,6 +288,29 @@ func handleStat(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, result)
 }
 
+type diskUsageReq struct {
+	Path        string `json:"path"`
+	AllowedRoot string `json:"allowedRoot"`
+}
+
+func handleDiskUsage(nc *nats.Conn, msg *nats.Msg) {
+	var req diskUsageReq
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	result, fsErr := doDiskUsage(req.Path)
+	if fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	replyOk(nc, msg.Reply, result)
+}
+
 func handleRead(nc *nats.Conn, msg *nats.Msg) {
 	var req syncMsg
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
@@ -605,6 +628,7 @@ func main() {
 	for subj, handler := range map[string]func(*nats.Conn, *nats.Msg){
 		"root.fs.list":                     handleList,
 		"root.fs.stat":                     handleStat,
+		"root.fs.diskusage":                handleDiskUsage,
 		"root.fs.read":                     handleRead,
 		"root.fs.read-chunk":               handleReadChunk,
 		"root.fs.write-chunk":              handleWriteChunk,

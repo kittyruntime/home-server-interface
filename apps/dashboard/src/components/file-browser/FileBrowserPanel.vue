@@ -16,6 +16,7 @@ import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
+import FilePropertiesModal from './FilePropertiesModal.vue'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -44,6 +45,8 @@ const selectionAnchor = ref<string | null>(null)
 const renamingPath    = ref<string | null>(null)
 const renameValue     = ref('')
 const permDialogPath  = ref<string | null>(null)
+const propertiesEntry = ref<Entry | null>(null)
+const propertiesPlace = ref<Place | null>(null)
 const activePlaceId   = ref<string | null>(null)
 const dragOver        = ref(false)
 let   dragDepth = 0
@@ -253,6 +256,11 @@ function openPermissions() {
   permDialogPath.value = [...selected.value][0]!
 }
 
+function openProperties() {
+  if (selected.value.size !== 1) return
+  propertiesEntry.value = selectedEntries.value[0] ?? null
+}
+
 // ── rename ───────────────────────────────────────────────────────────────────
 function startRename(entry: Entry) {
   renamingPath.value = entry.path
@@ -392,6 +400,7 @@ onMounted(async () => {
       :places="allPlaces"
       :active-place-id="activePlaceId"
       @select="selectPlace($event); sidebarOpen = false"
+      @open-properties="propertiesPlace = $event"
     />
 
     <div class="flex-1 flex flex-col min-w-0">
@@ -564,6 +573,13 @@ onMounted(async () => {
               </svg>
               Permissions
             </button>
+            <button @click="openProperties(); closeContextMenu()"
+              class="ctx-item">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Properties
+            </button>
           </template>
           <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
           <button @click="doDelete(); closeContextMenu()"
@@ -617,6 +633,19 @@ onMounted(async () => {
     v-if="previewEntry"
     :entry="previewEntry"
     @close="previewEntry = null"
+  />
+
+  <FilePropertiesModal
+    v-if="propertiesEntry"
+    :entry="propertiesEntry"
+    @close="propertiesEntry = null"
+    @open-permissions="propertiesEntry = null; openPermissions()"
+  />
+
+  <FilePropertiesModal
+    v-if="propertiesPlace"
+    :place="propertiesPlace"
+    @close="propertiesPlace = null"
   />
 </template>
 

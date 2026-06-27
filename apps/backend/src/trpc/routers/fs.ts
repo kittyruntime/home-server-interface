@@ -147,7 +147,24 @@ export const fsRouter = router({
       try {
         return await requestSync<{
           mode: string; owner: string; group: string; uid: number; gid: number; type: string; size: number | null
+          mtime: string; ctime: string
         }>("root.fs.stat", { path: p, linuxUsername: linuxUser ?? "", allowedRoot: allowedRoot ?? "" })
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+    }),
+
+  // ── diskUsage (sync) — filesystem capacity for a Place path ─────────────────
+  diskUsage: protectedProcedure
+    .input(z.object({ path: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+      const allowedRoot = await checkPathPerm(ctx, p, "canRead")
+      try {
+        return await requestSync<{ total: number; free: number }>(
+          "root.fs.diskusage",
+          { path: p, allowedRoot: allowedRoot ?? "" },
+        )
       } catch (e: any) {
         throw mapWorkerError(e)
       }
