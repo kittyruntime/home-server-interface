@@ -100,6 +100,31 @@ function memoryInfo(): { total: number; used: number; percent: number } {
   }
 }
 
+// --- Static system info ---
+function sysinfoSnapshot() {
+  const cpus = os.cpus()
+  const rawIfaces = os.networkInterfaces()
+  const ifaces = Object.entries(rawIfaces)
+    .map(([name, addrs]) => ({
+      name,
+      addrs: (addrs ?? [])
+        .filter(a => a.family === "IPv4" || a.family === "IPv6")
+        .map(a => ({ addr: a.address, family: a.family as string })),
+    }))
+    .filter(i => i.addrs.length > 0)
+    .sort((a, b) => (a.name === "lo" ? 1 : b.name === "lo" ? -1 : a.name.localeCompare(b.name)))
+  return {
+    hostname: os.hostname(),
+    platform: os.platform() as string,
+    arch:     os.arch() as string,
+    release:  os.release(),
+    cpuModel: cpus[0]?.model?.replace(/\s+/g, " ").trim() ?? "Unknown",
+    cpuCount: cpus.length,
+    loadavg:  os.loadavg() as [number, number, number],
+    ifaces,
+  }
+}
+
 // --- Router ---
 export const systemRouter = router({
   metrics: protectedProcedure.query(() => {
@@ -110,6 +135,8 @@ export const systemRouter = router({
       uptime:  Math.floor(os.uptime()),
     }
   }),
+
+  sysinfo: adminProcedure.query(() => sysinfoSnapshot()),
 
   disks: adminProcedure.query(async () => {
     return await requestSync<{

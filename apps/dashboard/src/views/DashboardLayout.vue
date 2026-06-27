@@ -10,7 +10,6 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import AppsPanel from '../components/apps/AppsPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
-import NotificationsContainer from '../components/NotificationsContainer.vue'
 import NotificationMenu from '../components/NotificationMenu.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import Dock from '../components/desktop/Dock.vue'
@@ -473,7 +472,6 @@ onUnmounted(() => {
 
   </div>
 
-  <NotificationsContainer />
   <ConfirmDialog />
   <NotificationMenu
     :open="notifMenuOpen"

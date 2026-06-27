@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-06-27
+
+### Added
+- Settings → System: new admin section showing live host information — hostname, platform, architecture, kernel version, uptime, CPU model and core count with usage bar and 1/5/15-minute load averages, memory usage bar, and network interfaces with per-address IPv4/IPv6 badges and live RX/TX throughput. Metrics refresh every 3 seconds.
+- Settings → Disks: RAID arrays now rendered as a visual drive bay — each member disk drawn as an illustrated HDD (platter rings, arm, activity LED) with green/red coloring per active/degraded state, chevrons between drives, and an arrow showing the logical RAID output and mount point. Usage bar appears at the bottom when the array is mounted.
+
+### Fixed
+- Activity notifications were displayed twice — once as bottom-right toasts (`NotificationsContainer`) and once in the bell menu. `NotificationsContainer` is now removed; the bell panel is the single source.
+
 ## [1.10.2] - 2026-06-27
 
 ### Changed
@@ -175,7 +184,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.2...v1.11.0
 [1.10.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.9.0...v1.10.0
