@@ -44,8 +44,9 @@ type taskMsg struct {
 	// directory (the caller's "Place"). DstAllowedRoot scopes DstDir
 	// separately since copy/move can cross two different places. Empty
 	// means unrestricted (admin operations).
-	AllowedRoot    string `json:"allowedRoot"`
-	DstAllowedRoot string `json:"dstAllowedRoot"`
+	AllowedRoot    string   `json:"allowedRoot"`
+	DstAllowedRoot string   `json:"dstAllowedRoot"`
+	Paths          []string `json:"paths"`
 }
 
 // syncMsg is the payload for request-reply operations.
@@ -124,6 +125,8 @@ var taskSubjects = []string{
 	"root.fs.assemble",
 	"root.fs.chmod",
 	"root.fs.chown",
+	"root.fs.zip",
+	"root.fs.unzip",
 	// Container (Docker) operations
 	"root.docker.container.create",
 	"root.docker.container.recreate",
@@ -304,6 +307,15 @@ func handleDiskUsage(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	result, fsErr := doDiskUsage(req.Path)
+	if fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	replyOk(nc, msg.Reply, result)
+}
+
+func handleDisks(nc *nats.Conn, msg *nats.Msg) {
+	result, fsErr := doListDisks()
 	if fsErr != nil {
 		replyErr(nc, msg.Reply, fsErr)
 		return
@@ -558,6 +570,42 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			result = map[string]bool{"ok": true}
 		}
 
+	case "root.fs.zip":
+		allPaths := append(task.Paths, task.DstDir)
+		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
+		if fsErr == nil {
+			err := withUser(task.LinuxUsername, func() error {
+				fsErr = doZip(task.Paths, task.DstDir, task.Name)
+				if fsErr != nil {
+					return fsErr
+				}
+				return nil
+			})
+			if err != nil {
+				fsErr = toFsErr(err)
+			}
+			result = map[string]bool{"ok": true}
+		}
+
+	case "root.fs.unzip":
+		fsErr = validatePathsScoped(task.AllowedRoot, task.Src)
+		if fsErr == nil {
+			fsErr = validatePathsScoped(task.DstAllowedRoot, task.DstDir)
+		}
+		if fsErr == nil {
+			err := withUser(task.LinuxUsername, func() error {
+				fsErr = doUnzip(task.Src, task.DstDir)
+				if fsErr != nil {
+					return fsErr
+				}
+				return nil
+			})
+			if err != nil {
+				fsErr = toFsErr(err)
+			}
+			result = map[string]bool{"ok": true}
+		}
+
 	default:
 		log.Printf("unknown subject: %s", subject)
 		_ = msg.Term()
@@ -630,6 +678,7 @@ func main() {
 		"root.fs.stat":                     handleStat,
 		"root.fs.diskusage":                handleDiskUsage,
 		"root.fs.read":                     handleRead,
+		"root.sys.disks":                   handleDisks,
 		"root.fs.read-chunk":               handleReadChunk,
 		"root.fs.write-chunk":              handleWriteChunk,
 		"root.docker.container.inspect":    handleDockerInspect,

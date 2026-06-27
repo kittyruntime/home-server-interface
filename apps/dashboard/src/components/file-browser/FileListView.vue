@@ -1,11 +1,14 @@
 <script setup lang="ts">
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
+type SortField = 'name' | 'size' | 'date'
 
 const props = defineProps<{
   entries: Entry[]
   selected: Set<string>
   renamingPath: string | null
   renameValue: string
+  sortField?: SortField
+  sortDir?: 'asc' | 'desc'
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +22,7 @@ const emit = defineEmits<{
   selectAll: []
   clearSelection: []
   openFile: [entry: Entry]
+  setSort: [field: SortField]
 }>()
 
 function formatSize(bytes: number | null): string {
@@ -51,9 +55,36 @@ function fileExt(name: string): string {
             class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer opacity-40 hover:opacity-90 transition-opacity"
           />
         </th>
-        <th class="px-3 py-2.5 font-medium">Name</th>
-        <th class="px-3 py-2.5 font-medium text-right">Size</th>
-        <th class="px-3 py-2.5 font-medium text-right">Modified</th>
+        <th class="px-3 py-2.5 font-medium">
+          <button @click="emit('setSort', 'name')" class="flex items-center gap-1 hover:text-[var(--c-text-1)] transition-colors">
+            Name
+            <span class="w-3 inline-flex justify-center">
+              <svg v-if="sortField === 'name'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
+              </svg>
+            </span>
+          </button>
+        </th>
+        <th class="px-3 py-2.5 font-medium text-right">
+          <button @click="emit('setSort', 'size')" class="flex items-center gap-1 ml-auto hover:text-[var(--c-text-1)] transition-colors">
+            <span class="w-3 inline-flex justify-center">
+              <svg v-if="sortField === 'size'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
+              </svg>
+            </span>
+            Size
+          </button>
+        </th>
+        <th class="px-3 py-2.5 font-medium text-right">
+          <button @click="emit('setSort', 'date')" class="flex items-center gap-1 ml-auto hover:text-[var(--c-text-1)] transition-colors">
+            <span class="w-3 inline-flex justify-center">
+              <svg v-if="sortField === 'date'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
+              </svg>
+            </span>
+            Modified
+          </button>
+        </th>
       </tr>
     </thead>
     <tbody class="divide-y divide-[var(--c-border)]">

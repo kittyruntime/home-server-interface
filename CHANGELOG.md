@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-06-27
+
+### Added
+- File browser: sort controls on list-view column headers (Name / Size / Modified); directories always sort above files; clicking the active column toggles ascending/descending order.
+- File browser: Cmd/Ctrl+K filter bar for real-time name filtering within the current directory; shows match count and dismisses on Escape.
+- File browser: "Compress to ZIP" context menu action for any selection (single file, folder, or multi-select); creates a `.zip` archive in the current directory.
+- File browser: "Extract Here" context menu action for `.zip` files; extracts to a new subdirectory named after the archive with zip-slip path-traversal protection.
+- Settings → Disks: new admin section listing all mounted block-device filesystems with per-disk usage bars (turns yellow >75%, red >90%) and a RAID section that parses `/proc/mdstat` to show array health, level, and member devices.
+- Go worker: `root.fs.zip` and `root.fs.unzip` JetStream subjects for async archive creation and extraction, running under user impersonation.
+- Go worker: `root.sys.disks` request-reply subject returning mounted filesystems (`/proc/mounts` + `syscall.Statfs`) and RAID array info (`/proc/mdstat`).
+
+### Fixed
+- Wallpaper image upload failed for real-world images larger than ~64 KB due to `String.fromCharCode(...largeTypedArray)` exceeding V8's maximum argument count; upload now slices the byte array into 8 KB chunks before base64-encoding.
+
 ## [1.9.0] - 2026-06-23
 
 ### Added

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useNotifications } from '../../lib/notifications'
@@ -54,6 +54,72 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const ctxMenu     = ref<{ x: number; y: number } | null>(null)
 const sidebarOpen = ref(false)
 const previewEntry = ref<Entry | null>(null)
+
+// ── sort ─────────────────────────────────────────────────────────────────────
+type SortField = 'name' | 'size' | 'date'
+const sortField = ref<SortField>('name')
+const sortDir   = ref<'asc' | 'desc'>('asc')
+
+const sortedEntries = computed(() => {
+  const arr = [...entries.value]
+  arr.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+    let cmp = 0
+    if (sortField.value === 'name') {
+      cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    } else if (sortField.value === 'size') {
+      cmp = (a.size ?? -1) - (b.size ?? -1)
+    } else {
+      cmp = new Date(a.mtime).getTime() - new Date(b.mtime).getTime()
+    }
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+  return arr
+})
+
+function setSort(field: SortField) {
+  if (sortField.value === field) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortDir.value = 'asc'
+  }
+}
+
+// ── filter (Cmd/Ctrl+K) ──────────────────────────────────────────────────────
+const showFilter  = ref(false)
+const filterQuery = ref('')
+const filterInput = ref<HTMLInputElement | null>(null)
+
+const displayEntries = computed(() => {
+  const q = filterQuery.value.trim().toLowerCase()
+  if (!q) return sortedEntries.value
+  return sortedEntries.value.filter(e => e.name.toLowerCase().includes(q))
+})
+
+function openFilter() {
+  showFilter.value = true
+  nextTick(() => filterInput.value?.focus())
+}
+
+function closeFilter() {
+  showFilter.value = false
+  filterQuery.value = ''
+}
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
+    if (tag === 'textarea') return
+    if (tag === 'input' && document.activeElement !== filterInput.value) return
+    e.preventDefault()
+    if (showFilter.value) filterInput.value?.focus()
+    else openFilter()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 
 function openFile(entry: Entry) {
   if (props.desktopWindow) {
@@ -259,6 +325,41 @@ function openPermissions() {
 function openProperties() {
   if (selected.value.size !== 1) return
   propertiesEntry.value = selectedEntries.value[0] ?? null
+}
+
+// ── archive ──────────────────────────────────────────────────────────────────
+async function doZip() {
+  if (!currentPath.value || selected.value.size === 0) return
+  const paths = [...selected.value]
+
+  let name: string
+  if (paths.length === 1) {
+    const base = paths[0]!.split('/').pop() ?? 'archive'
+    name = base + '.zip'
+  } else {
+    const folder = currentPath.value.split('/').filter(Boolean).pop() ?? 'archive'
+    name = folder + '.zip'
+  }
+
+  await track(`Compressing ${paths.length} item(s)`, async () => {
+    const { jobId } = await trpc.fs.zip.mutate({ paths, destDir: currentPath.value!, name })
+    await pollJob(jobId)
+  })
+  refresh()
+}
+
+async function doUnzip() {
+  if (!currentPath.value || selected.value.size !== 1) return
+  const archivePath = [...selected.value][0]!
+  const base = archivePath.split('/').pop() ?? 'archive'
+  const destName = base.replace(/\.zip$/i, '')
+  const destDir = currentPath.value + '/' + destName
+
+  await track(`Extracting ${base}`, async () => {
+    const { jobId } = await trpc.fs.unzip.mutate({ path: archivePath, destDir })
+    await pollJob(jobId)
+  })
+  refresh()
 }
 
 // ── rename ───────────────────────────────────────────────────────────────────
@@ -477,10 +578,30 @@ onMounted(async () => {
           <p class="text-sm">Empty directory</p>
         </div>
 
+        <!-- Filter bar (Cmd/Ctrl+K) -->
+        <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-[var(--c-bg)] border-b border-[var(--c-border)] flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+          <input
+            ref="filterInput"
+            v-model="filterQuery"
+            placeholder="Filter by name…"
+            @keydown.escape="closeFilter"
+            class="flex-1 bg-transparent text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] outline-none"
+          />
+          <span v-if="filterQuery" class="text-[10px] text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+          <button @click="closeFilter" class="text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors p-0.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
         <!-- Grid view -->
         <FileGridView
           v-else-if="viewMode === 'grid'"
-          :entries="entries"
+          :entries="displayEntries"
           :selected="selected"
           :renaming-path="renamingPath"
           :rename-value="renameValue"
@@ -497,7 +618,10 @@ onMounted(async () => {
         <!-- List view -->
         <FileListView
           v-else
-          :entries="entries"
+          :entries="displayEntries"
+          :sort-field="sortField"
+          :sort-dir="sortDir"
+          @set-sort="setSort"
           :selected="selected"
           :renaming-path="renamingPath"
           :rename-value="renameValue"
@@ -581,6 +705,26 @@ onMounted(async () => {
               Properties
             </button>
           </template>
+          <!-- Compress to ZIP — any selection -->
+          <button @click="doZip(); closeContextMenu()" class="ctx-item">
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+            </svg>
+            Compress to ZIP
+          </button>
+
+          <!-- Extract Here — only for a single .zip file -->
+          <button
+            v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
+            @click="doUnzip(); closeContextMenu()"
+            class="ctx-item"
+          >
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5m0 0l5-5m-5 5V4"/>
+            </svg>
+            Extract Here
+          </button>
+
           <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
           <button @click="doDelete(); closeContextMenu()"
             class="ctx-item ctx-item-danger">

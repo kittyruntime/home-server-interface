@@ -22,6 +22,8 @@ const TASK_STREAM = {
     "root.fs.assemble",
     "root.fs.chmod",
     "root.fs.chown",
+    "root.fs.zip",
+    "root.fs.unzip",
     "root.container.create",
     "root.container.recreate",
     "root.container.start",

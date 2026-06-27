@@ -1,6 +1,7 @@
 import * as os from "os"
 import * as fs from "fs"
-import { router, protectedProcedure } from "../index"
+import { router, protectedProcedure, adminProcedure } from "../index"
+import { requestSync } from "../../nats"
 
 // --- CPU delta ---
 let cpuPrev: { idle: number; total: number }[] | null = null
@@ -108,5 +109,12 @@ export const systemRouter = router({
       network: netRates(),
       uptime:  Math.floor(os.uptime()),
     }
+  }),
+
+  disks: adminProcedure.query(async () => {
+    return await requestSync<{
+      disks: Array<{ device: string; mountPoint: string; fsType: string; total: number; used: number; free: number }>
+      raids: Array<{ name: string; level: string; state: string; devices: string[]; active: number; total: number }>
+    }>("root.sys.disks", {})
   }),
 })

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"errors"
 	"fmt"
 	"io"
@@ -504,4 +505,269 @@ func doChown(path, ownerStr, groupStr string) *fsError {
 		return mapOsErr(err)
 	}
 	return nil
+}
+
+// ── zip ───────────────────────────────────────────────────────────────────────
+
+func doZip(paths []string, destDir, name string) *fsError {
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return mapOsErr(err)
+	}
+	zipPath := filepath.Join(destDir, name)
+	f, err := os.Create(zipPath)
+	if err != nil {
+		return mapOsErr(err)
+	}
+	defer f.Close()
+
+	zw := zip.NewWriter(f)
+	defer zw.Close()
+
+	for _, src := range paths {
+		info, err := os.Lstat(src)
+		if err != nil {
+			return mapOsErr(err)
+		}
+		parentDir := filepath.Dir(src)
+		if info.IsDir() {
+			if walkErr := filepath.Walk(src, func(walkPath string, fi fs.FileInfo, err error) error {
+				if err != nil || fi.IsDir() {
+					return err
+				}
+				rel, err := filepath.Rel(parentDir, walkPath)
+				if err != nil {
+					return err
+				}
+				w, err := zw.Create(rel)
+				if err != nil {
+					return err
+				}
+				in, err := os.Open(walkPath)
+				if err != nil {
+					return err
+				}
+				defer in.Close()
+				_, err = io.Copy(w, in)
+				return err
+			}); walkErr != nil {
+				return mapOsErr(walkErr)
+			}
+		} else {
+			w, err := zw.Create(filepath.Base(src))
+			if err != nil {
+				return mapOsErr(err)
+			}
+			in, err := os.Open(src)
+			if err != nil {
+				return mapOsErr(err)
+			}
+			if _, err := io.Copy(w, in); err != nil {
+				in.Close()
+				return mapOsErr(err)
+			}
+			in.Close()
+		}
+	}
+	return nil
+}
+
+// ── unzip ─────────────────────────────────────────────────────────────────────
+
+func doUnzip(archivePath, destDir string) *fsError {
+	r, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return mapOsErr(err)
+	}
+	defer r.Close()
+
+	cleanDest := filepath.Clean(destDir) + string(filepath.Separator)
+
+	for _, f := range r.File {
+		// Prevent zip-slip: reject any path that escapes destDir
+		target := filepath.Join(destDir, filepath.Clean("/"+f.Name))
+		if target != filepath.Clean(destDir) && !strings.HasPrefix(target, cleanDest) {
+			return &fsError{Code: "ERR", Message: "zip entry escapes destination: " + f.Name}
+		}
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(target, f.Mode()|0111); err != nil {
+				return mapOsErr(err)
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return mapOsErr(err)
+		}
+
+		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return mapOsErr(err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			return mapOsErr(err)
+		}
+
+		_, copyErr := io.Copy(out, rc)
+		out.Close()
+		rc.Close()
+
+		if copyErr != nil {
+			return mapOsErr(copyErr)
+		}
+	}
+	return nil
+}
+
+// ── disk listing ──────────────────────────────────────────────────────────────
+
+type diskInfo struct {
+	Device     string `json:"device"`
+	MountPoint string `json:"mountPoint"`
+	FsType     string `json:"fsType"`
+	Total      int64  `json:"total"`
+	Used       int64  `json:"used"`
+	Free       int64  `json:"free"`
+}
+
+type raidArray struct {
+	Name    string   `json:"name"`
+	Level   string   `json:"level"`
+	State   string   `json:"state"`
+	Devices []string `json:"devices"`
+	Active  int      `json:"active"`
+	Total   int      `json:"total"`
+}
+
+type disksResult struct {
+	Disks []diskInfo  `json:"disks"`
+	Raids []raidArray `json:"raids"`
+}
+
+var skipFsTypes = map[string]bool{
+	"proc": true, "sysfs": true, "devtmpfs": true, "devpts": true,
+	"cgroup": true, "cgroup2": true, "pstore": true, "securityfs": true,
+	"debugfs": true, "hugetlbfs": true, "mqueue": true, "fusectl": true,
+	"configfs": true, "efivarfs": true, "bpf": true, "tracefs": true,
+	"autofs": true, "ramfs": true,
+}
+
+func doListDisks() (*disksResult, *fsError) {
+	data, err := os.ReadFile("/proc/mounts")
+	if err != nil {
+		return nil, mapOsErr(err)
+	}
+
+	var disks []diskInfo
+	seenMount := map[string]bool{}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		device, mountpoint, fstype := fields[0], fields[1], fields[2]
+
+		if skipFsTypes[fstype] {
+			continue
+		}
+		// Only real block devices and RAID arrays
+		if !strings.HasPrefix(device, "/dev/") {
+			continue
+		}
+		// Skip loop devices (snaps, flatpaks, etc.) and devpts
+		if strings.HasPrefix(device, "/dev/loop") {
+			continue
+		}
+		if seenMount[mountpoint] {
+			continue
+		}
+		seenMount[mountpoint] = true
+
+		var st syscall.Statfs_t
+		if err := syscall.Statfs(mountpoint, &st); err != nil {
+			continue
+		}
+
+		bsize := int64(st.Bsize)
+		total := int64(st.Blocks) * bsize
+		free  := int64(st.Bavail) * bsize
+		used  := total - int64(st.Bfree)*bsize
+
+		disks = append(disks, diskInfo{
+			Device:     device,
+			MountPoint: mountpoint,
+			FsType:     fstype,
+			Total:      total,
+			Used:       used,
+			Free:       free,
+		})
+	}
+	if disks == nil {
+		disks = []diskInfo{}
+	}
+
+	mdData, _ := os.ReadFile("/proc/mdstat")
+	raids := parseMdstat(string(mdData))
+
+	return &disksResult{Disks: disks, Raids: raids}, nil
+}
+
+func parseMdstat(content string) []raidArray {
+	lines := strings.Split(content, "\n")
+	var raids []raidArray
+
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "md") || !strings.Contains(line, " : ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+
+		name  := fields[0]
+		state := fields[2]
+		level := fields[3]
+
+		var devs []string
+		for _, f := range fields[4:] {
+			if idx := strings.Index(f, "["); idx > 0 {
+				devs = append(devs, f[:idx])
+			}
+		}
+
+		active, total := 0, 0
+		// Next line: "   NNNNN blocks ... [T/A] [UU_...]"
+		for j := i + 1; j < len(lines) && j <= i+3; j++ {
+			next := lines[j]
+			if start := strings.Index(next, "["); start >= 0 {
+				if end := strings.Index(next[start:], "]"); end >= 0 {
+					parts := strings.SplitN(next[start+1:start+end], "/", 2)
+					if len(parts) == 2 {
+						total, _ = strconv.Atoi(strings.TrimSpace(parts[0]))
+						active, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
+					}
+					break
+				}
+			}
+		}
+
+		raids = append(raids, raidArray{
+			Name:    name,
+			Level:   level,
+			State:   state,
+			Devices: devs,
+			Active:  active,
+			Total:   total,
+		})
+	}
+
+	if raids == nil {
+		return []raidArray{}
+	}
+	return raids
 }

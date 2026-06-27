@@ -337,6 +337,47 @@ export const fsRouter = router({
       return { jobId }
     }),
 
+  // ── zip (async) ──────────────────────────────────────────────────────────────
+  zip: protectedProcedure
+    .input(z.object({
+      paths:   z.array(z.string()).min(1),
+      destDir: z.string(),
+      name:    z.string().min(1).max(255),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const destDir = normalize(input.destDir)
+      const paths   = input.paths.map(p => normalize(p))
+      const allowedRoot = await checkPathPerm(ctx, destDir, "canWrite")
+      for (const p of paths) await checkPathPerm(ctx, p, "canRead")
+      const linuxUser = await getLinuxUser(ctx)
+      const jobId = await publishJob(
+        "fs.zip",
+        { linuxUsername: linuxUser ?? "", paths, dstDir: destDir, name: input.name, allowedRoot: allowedRoot ?? "" },
+        ctx.user.userId,
+      )
+      return { jobId }
+    }),
+
+  // ── unzip (async) ────────────────────────────────────────────────────────────
+  unzip: protectedProcedure
+    .input(z.object({
+      path:    z.string(),
+      destDir: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const src     = normalize(input.path)
+      const destDir = normalize(input.destDir)
+      const allowedRoot    = await checkPathPerm(ctx, src,     "canRead")
+      const dstAllowedRoot = await checkPathPerm(ctx, destDir, "canWrite")
+      const linuxUser = await getLinuxUser(ctx)
+      const jobId = await publishJob(
+        "fs.unzip",
+        { linuxUsername: linuxUser ?? "", src, dstDir: destDir, allowedRoot: allowedRoot ?? "", dstAllowedRoot: dstAllowedRoot ?? "" },
+        ctx.user.userId,
+      )
+      return { jobId }
+    }),
+
   // ── chmod (async, admin) ──────────────────────────────────────────────────────
   chmod: adminProcedure
     .input(z.object({ path: z.string(), mode: z.string().regex(/^[0-7]{3,4}$/) }))
