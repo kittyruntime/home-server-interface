@@ -510,6 +510,13 @@ func doChown(path, ownerStr, groupStr string) *fsError {
 // ── zip ───────────────────────────────────────────────────────────────────────
 
 func doZip(paths []string, destDir, name string) *fsError {
+	// Reject any name that tries to escape destDir via separators or dot-segments.
+	clean := filepath.Base(filepath.Clean(name))
+	if clean == "." || clean == ".." || strings.ContainsAny(clean, "/\\\x00") {
+		return &fsError{Code: "ERR", Message: "invalid archive name"}
+	}
+	name = clean
+
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return mapOsErr(err)
 	}

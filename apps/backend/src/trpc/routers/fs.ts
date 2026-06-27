@@ -342,7 +342,8 @@ export const fsRouter = router({
     .input(z.object({
       paths:   z.array(z.string()).min(1),
       destDir: z.string(),
-      name:    z.string().min(1).max(255),
+      name:    z.string().min(1).max(255)
+        .refine(n => !n.includes('/') && !n.includes('\\') && n !== '.' && n !== '..' && !n.includes('\x00'), 'invalid archive name'),
     }))
     .mutation(async ({ ctx, input }) => {
       const destDir = normalize(input.destDir)

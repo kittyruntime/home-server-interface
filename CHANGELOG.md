@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-06-27
+
+### Security
+- Fixed path traversal in `doZip`: a user-supplied archive name containing `..` or path separators could write the zip file outside the intended destination directory. The name is now sanitized to its base component in the Go worker and rejected by the tRPC input schema before reaching the worker.
+
 ## [1.10.0] - 2026-06-27
 
 ### Added
@@ -160,7 +165,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.1...v1.8.2
