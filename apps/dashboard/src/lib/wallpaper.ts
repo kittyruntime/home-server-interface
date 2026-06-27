@@ -55,8 +55,12 @@ export function useWallpaper() {
   }
 
   async function setImage(file: File) {
-    const buf = await file.arrayBuffer()
-    const data = btoa(String.fromCharCode(...new Uint8Array(buf)))
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    let binary = ''
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+    }
+    const data = btoa(binary)
     await trpc.wallpaper.setImage.mutate({ data, mimeType: file.type })
     state.value = { kind: 'image', url: await loadImageUrl() }
   }
