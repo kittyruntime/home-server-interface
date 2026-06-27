@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   rowClick: [entry: Entry, event: MouseEvent]
+  rowDblClick: [entry: Entry]
   selectEntry: [entry: Entry, event: MouseEvent]
   contextmenu: [entry: Entry, event: MouseEvent]
   startRename: [entry: Entry]
@@ -92,7 +93,7 @@ function fileExt(name: string): string {
         v-for="entry in entries"
         :key="entry.path"
         @click.stop="emit('rowClick', entry, $event)"
-        @dblclick.stop="entry.type === 'file' && emit('openFile', entry)"
+        @dblclick.stop="emit('rowDblClick', entry)"
         @contextmenu.prevent.stop="emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
         :class="['group transition-colors',

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useUploads, type UploadTask } from '../lib/uploads'
-import { useNotifications, type Notification } from '../lib/notifications'
-import SegmentedBar from './ui/SegmentedBar.vue'
+import { useNotifications } from '../lib/notifications'
 
 defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
 defineEmits<{ close: [] }>()
@@ -10,260 +9,193 @@ defineEmits<{ close: [] }>()
 const uploads = useUploads()
 const { notifications, dismiss, dismissAll } = useNotifications()
 
-// ── stat mode toggle ──────────────────────────────────────────────────────────
-const statMode = ref<'throughput' | 'chunks'>('throughput')
-function toggleStatMode() {
-  statMode.value = statMode.value === 'throughput' ? 'chunks' : 'throughput'
-}
-
-function formatThroughput(bps: number): string {
-  if (bps <= 0)          return '—'
-  if (bps >= 1_048_576)  return `${(bps / 1_048_576).toFixed(1)} MB/s`
-  if (bps >= 1_024)      return `${(bps / 1_024).toFixed(1)} KB/s`
-  return `${Math.round(bps)} B/s`
-}
-
 // ── upload helpers ────────────────────────────────────────────────────────────
-function togglePause(task: UploadTask) {
-  if (task.status === 'uploading') uploads.pause(task.id)
-  else if (task.status === 'paused') uploads.resume(task.id)
+function pct(t: UploadTask) {
+  return t.totalChunks ? Math.round(t.sentChunks / t.totalChunks * 100) : 0
 }
 
-function progressPct(task: UploadTask): number {
-  if (!task.totalChunks) return 0
-  return Math.round((task.sentChunks / task.totalChunks) * 100)
+function speed(bps: number) {
+  if (bps >= 1_048_576) return `${(bps / 1_048_576).toFixed(1)} MB/s`
+  if (bps >= 1_024)     return `${(bps / 1_024).toFixed(0)} KB/s`
+  return bps > 0 ? `${Math.round(bps)} B/s` : ''
 }
 
-function uploadStatusLabel(task: UploadTask): string {
-  switch (task.status) {
-    case 'uploading':  return `${progressPct(task)}%`
-    case 'paused':     return 'Paused'
-    case 'done':       return 'Done'
-    case 'error':      return 'Failed'
-    case 'cancelled':  return 'Cancelled'
-  }
+function togglePause(t: UploadTask) {
+  t.status === 'paused' ? uploads.resume(t.id) : uploads.pause(t.id)
 }
 
-function uploadBarColor(status: UploadTask['status']): string {
-  switch (status) {
-    case 'done':      return 'var(--c-success)'
-    case 'error':     return 'var(--c-accent)'
-    case 'cancelled': return 'var(--c-text-3)'
-    case 'paused':    return 'var(--c-warning)'
-    default:          return 'var(--c-accent)'
-  }
-}
-
-function uploadStatusColor(status: UploadTask['status']): string {
-  switch (status) {
-    case 'done':      return 'text-[var(--c-success)]'
-    case 'error':     return 'text-[var(--c-accent)]'
-    case 'cancelled': return 'text-[var(--c-text-3)]'
-    case 'paused':    return 'text-[var(--c-warning)]'
-    default:          return 'text-[var(--c-accent)]'
-  }
-}
-
-// ── notification helpers ──────────────────────────────────────────────────────
-function notifIcon(type: Notification['type']): string {
-  switch (type) {
-    case 'success':  return 'M5 13l4 4L19 7'
-    case 'error':    return 'M6 18L18 6M6 6l12 12'
-    case 'info':     return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-    default:         return 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-  }
-}
-
-function notifIconColor(type: Notification['type']): string {
-  switch (type) {
-    case 'success':  return 'text-[var(--c-success)]'
-    case 'error':    return 'text-[var(--c-accent)]'
-    case 'info':     return 'text-[var(--c-info)]'
-    default:         return 'text-[var(--c-text-3)]'
-  }
-}
-
-function notifBorderColor(type: Notification['type']): string {
-  switch (type) {
-    case 'success':  return 'border-[var(--c-success)]/40'
-    case 'error':    return 'border-[var(--c-accent)]/40'
-    case 'info':     return 'border-[var(--c-border-strong)]'
-    default:         return 'border-[var(--c-border-strong)]'
-  }
-}
+// ── combined list ─────────────────────────────────────────────────────────────
+// Uploads and notifications rendered together; uploads first when active
+const hasItems = computed(
+  () => uploads.tasks.value.length > 0 || notifications.value.length > 0
+)
+const hasDismissible = computed(
+  () => notifications.value.some(n => n.type !== 'progress')
+)
 </script>
 
 <template>
   <Teleport to="body">
-    <!-- Backdrop transparent pour fermer au clic extérieur -->
-    <div
-      v-if="open"
-      class="fixed inset-0 z-40"
-      @click="$emit('close')"
-    />
+    <div v-if="open" class="fixed inset-0 z-40" @click="$emit('close')" />
 
-    <!-- Panel -->
     <Transition name="nm">
       <div
         v-if="open"
-        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl flex flex-col overflow-hidden"
-        :style="{
-          bottom: pos.bottom + 'px',
-          left:   pos.left + 'px',
-          maxHeight: '500px',
-        }"
+        class="fixed z-50 w-72 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl overflow-hidden flex flex-col"
+        :style="{ bottom: pos.bottom + 'px', left: pos.left + 'px', maxHeight: '420px' }"
         @click.stop
       >
         <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--c-border)] flex-shrink-0">
-          <span class="text-sm font-semibold text-[var(--c-text-1)]">Activity</span>
-          <button
-            @click="$emit('close')"
-            class="p-1 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
-          >
+        <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--c-border)] shrink-0">
+          <span class="text-xs font-semibold text-[var(--c-text-2)] uppercase tracking-wider">Activity</span>
+          <button @click="$emit('close')" class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
 
-        <!-- Scrollable body -->
-        <div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
+        <!-- Task list -->
+        <div class="flex-1 overflow-y-auto divide-y divide-[var(--c-border)]">
 
-          <!-- Transfers -->
-          <section v-if="uploads.tasks.value.length > 0">
-            <div class="font-mono text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Transfers</div>
-            <div class="flex flex-col gap-2">
-              <div
-                v-for="task in uploads.tasks.value"
-                :key="task.id"
-                class="bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl px-3 py-2.5"
-              >
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                  <span class="text-xs text-[var(--c-text-2)] truncate min-w-0" :title="task.name">{{ task.name }}</span>
-                  <span class="text-[10px] shrink-0 tabular-nums font-medium" :class="uploadStatusColor(task.status)">
-                    {{ uploadStatusLabel(task) }}
-                  </span>
-                </div>
-                <SegmentedBar
-                  class="mb-2"
-                  :percent="progressPct(task)"
-                  :color="uploadBarColor(task.status)"
-                  height="compact"
-                />
-                <div class="flex items-center justify-between">
-                  <button
-                    v-if="task.status === 'uploading' || task.status === 'paused'"
-                    @click.stop="toggleStatMode()"
-                    :title="statMode === 'throughput' ? 'Switch to chunks' : 'Switch to throughput'"
-                    class="text-[10px] tabular-nums text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors cursor-pointer"
-                  >
-                    <template v-if="statMode === 'throughput' && task.status === 'uploading'">
-                      {{ formatThroughput(task.bytesPerSec) }}
-                    </template>
-                    <template v-else>
-                      {{ task.sentChunks }} / {{ task.totalChunks }} chunks
-                    </template>
-                  </button>
-                  <span v-else class="text-[10px] text-[var(--c-text-3)] tabular-nums">
-                    {{ task.sentChunks }} / {{ task.totalChunks }} chunks
-                  </span>
-
-                  <div v-if="task.status === 'uploading' || task.status === 'paused'" class="flex items-center gap-1">
-                    <button
-                      @click="togglePause(task)"
-                      :title="task.status === 'uploading' ? 'Pause' : 'Resume'"
-                      class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
-                    >
-                      <svg v-if="task.status === 'uploading'" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="6" y="4" width="4" height="16" rx="1"/>
-                        <rect x="14" y="4" width="4" height="16" rx="1"/>
-                      </svg>
-                      <svg v-else class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </button>
-                    <button
-                      @click="uploads.cancel(task.id)"
-                      title="Cancel"
-                      class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="4" y="4" width="16" height="16" rx="2"/>
-                      </svg>
-                    </button>
-                  </div>
-
-                  <span v-if="task.error" class="text-[10px] text-[var(--c-accent)] truncate max-w-[140px]" :title="task.error">
-                    {{ task.error }}
-                  </span>
-                </div>
+          <!-- ── Upload tasks ───────────────────────────────────────────── -->
+          <div
+            v-for="t in uploads.tasks.value"
+            :key="t.id"
+            class="px-3.5 py-2.5"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <!-- Icon -->
+              <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
+                :class="t.status === 'done'      ? 'bg-green-500/10 text-green-500'
+                      : t.status === 'error'     ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
+                      : t.status === 'cancelled' ? 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'
+                      : t.status === 'paused'    ? 'bg-[var(--c-warning)]/10 text-[var(--c-warning)]'
+                      :                            'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
+                <svg v-if="t.status === 'done'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                <svg v-else-if="t.status === 'error'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
               </div>
-            </div>
-          </section>
 
-          <!-- Alerts -->
-          <section v-if="notifications.length > 0">
-            <div class="font-mono text-[10px] uppercase tracking-widest text-[var(--c-text-3)] px-1 mb-2 select-none">Alerts</div>
-            <div class="flex flex-col gap-2">
-              <div
-                v-for="n in notifications"
-                :key="n.id"
-                class="bg-[var(--c-surface)] border rounded-xl px-3 py-2.5 flex items-start gap-2.5"
-                :class="notifBorderColor(n.type)"
-              >
-                <div class="shrink-0 mt-0.5" :class="notifIconColor(n.type)">
-                  <svg v-if="n.type === 'progress'" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                  </svg>
-                  <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" :d="notifIcon(n.type)"/>
-                  </svg>
+              <!-- Name + status -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
+                  <span class="text-[10px] tabular-nums shrink-0"
+                    :class="t.status === 'done'      ? 'text-green-500'
+                          : t.status === 'error'     ? 'text-[var(--c-danger)]'
+                          : t.status === 'cancelled' ? 'text-[var(--c-text-3)]'
+                          : t.status === 'paused'    ? 'text-[var(--c-warning)]'
+                          :                            'text-[var(--c-text-3)]'">
+                    {{ t.status === 'uploading' ? pct(t) + '%' : t.status === 'paused' ? 'paused' : t.status }}
+                  </span>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-[var(--c-text-1)] leading-snug">{{ n.title }}</p>
-                  <p v-if="n.detail" class="text-[10px] text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.detail }}</p>
-                  <SegmentedBar
-                    v-if="n.progress != null"
-                    class="mt-1.5"
-                    :percent="n.progress >= 0 ? n.progress : 0"
-                    :indeterminate="n.progress < 0"
-                    color="var(--c-accent)"
-                    height="compact"
-                  />
+
+                <!-- Progress bar -->
+                <div v-if="t.status === 'uploading' || t.status === 'paused'" class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all"
+                    :class="t.status === 'paused' ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-accent)]'"
+                    :style="{ width: pct(t) + '%' }" />
                 </div>
-                <button
-                  @click="dismiss(n.id)"
-                  class="shrink-0 p-0.5 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
-                >
-                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+
+                <!-- Speed + error -->
+                <div v-if="t.status === 'uploading' && t.bytesPerSec > 0" class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
+                  {{ speed(t.bytesPerSec) }}
+                </div>
+                <div v-if="t.error" class="text-[10px] text-[var(--c-danger)] mt-0.5 truncate">{{ t.error }}</div>
+              </div>
+
+              <!-- Actions -->
+              <div v-if="t.status === 'uploading' || t.status === 'paused'" class="flex gap-0.5 shrink-0">
+                <button @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
+                  class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+                  <svg v-if="t.status === 'uploading'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+                  </svg>
+                  <svg v-else class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </button>
+                <button @click="uploads.cancel(t.id)" title="Cancel"
+                  class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-danger)] hover:bg-[var(--c-danger)]/10 transition-colors">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
                   </svg>
                 </button>
               </div>
             </div>
-          </section>
+          </div>
+
+          <!-- ── Job notifications ─────────────────────────────────────── -->
+          <div
+            v-for="n in notifications"
+            :key="n.id"
+            class="px-3.5 py-2.5"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <!-- Icon -->
+              <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
+                :class="n.type === 'success' ? 'bg-green-500/10 text-green-500'
+                      : n.type === 'error'   ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
+                      : n.type === 'info'    ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                      :                        'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'">
+                <!-- Spinner for progress -->
+                <svg v-if="n.type === 'progress'" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <svg v-else-if="n.type === 'success'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                <svg v-else-if="n.type === 'error'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+
+              <!-- Title + detail -->
+              <div class="flex-1 min-w-0">
+                <span class="text-xs text-[var(--c-text-1)] leading-snug">{{ n.title }}</span>
+                <p v-if="n.detail" class="text-[10px] text-[var(--c-text-3)] mt-0.5 truncate">{{ n.detail }}</p>
+                <!-- Progress bar -->
+                <div v-if="n.progress != null" class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                  <div v-if="n.progress < 0" class="h-full w-1/3 bg-[var(--c-accent)] rounded-full animate-[slide_1.2s_ease-in-out_infinite]" />
+                  <div v-else class="h-full rounded-full bg-[var(--c-accent)] transition-all" :style="{ width: n.progress + '%' }" />
+                </div>
+              </div>
+
+              <!-- Dismiss -->
+              <button v-if="n.type !== 'progress'" @click="dismiss(n.id)"
+                class="shrink-0 p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
 
           <!-- Empty state -->
-          <div
-            v-if="uploads.tasks.value.length === 0 && notifications.length === 0"
-            class="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--c-text-3)] select-none py-10"
-          >
-            <svg class="w-7 h-7 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          <div v-if="!hasItems" class="flex flex-col items-center justify-center gap-1.5 text-[var(--c-text-3)] py-10 select-none">
+            <svg class="w-6 h-6 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
-            <p class="text-sm">All clear</p>
+            <p class="text-xs">Nothing in progress</p>
           </div>
+
         </div>
 
-        <!-- Footer -->
-        <div v-if="notifications.length > 0" class="px-4 py-2.5 border-t border-[var(--c-border)] flex-shrink-0">
-          <button
-            @click="dismissAll()"
-            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
-          >
-            Clear all alerts
+        <!-- Footer: clear done -->
+        <div v-if="hasDismissible" class="px-3.5 py-2 border-t border-[var(--c-border)] shrink-0">
+          <button @click="dismissAll()" class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide">
+            Clear all
           </button>
         </div>
       </div>
@@ -272,13 +204,11 @@ function notifBorderColor(type: Notification['type']): string {
 </template>
 
 <style scoped>
-.nm-enter-active,
-.nm-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.nm-enter-from,
-.nm-leave-to {
-  opacity: 0;
-  transform: translateX(-6px);
+.nm-enter-active, .nm-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.nm-enter-from, .nm-leave-to { opacity: 0; transform: translateX(-4px); }
+
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 </style>

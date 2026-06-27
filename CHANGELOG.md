@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-06-27
+
+### Changed
+- File browser: folders now require a double-click to navigate into them; single click selects the item (consistent with files). Applies to both list and grid views.
+- File browser: activity panel (bell menu) redesigned — uploads and job notifications unified into a single flat list with inline progress bars, replacing the previous two-section card layout.
+
+### Fixed
+- File browser: filter bar (Cmd/Ctrl+K) was rendering but hiding the file list due to a Vue v-if chain bug; the filter bar and views are now correctly independent.
+- File browser: "Paste" option persisted in the context menu after a copy+paste; clipboard is now always cleared after any paste operation.
+
 ## [1.10.1] - 2026-06-27
 
 ### Security
@@ -165,7 +175,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.2...HEAD
+[1.10.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.2...v1.9.0

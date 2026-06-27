@@ -229,14 +229,21 @@ function selectEntry(entry: Entry, e: MouseEvent) {
 }
 
 function handleRowClick(entry: Entry, e: MouseEvent) {
-  if (e.shiftKey || e.ctrlKey || e.metaKey) selectEntry(entry, e)
-  else if (entry.type === 'dir') navigate(entry.path)
+  selectEntry(entry, e)
+}
+
+function handleRowDblClick(entry: Entry) {
+  if (entry.type === 'dir') navigate(entry.path)
+  else openFile(entry)
 }
 
 function handleGridCardClick(entry: Entry, e: MouseEvent) {
-  if (e.shiftKey || e.ctrlKey || e.metaKey) selectEntry(entry, e)
-  else if (entry.type === 'dir') navigate(entry.path)
-  else selectEntry(entry, e)
+  selectEntry(entry, e)
+}
+
+function handleGridCardDblClick(entry: Entry) {
+  if (entry.type === 'dir') navigate(entry.path)
+  else openFile(entry)
 }
 
 function selectAll() {
@@ -286,7 +293,7 @@ async function doPaste() {
       await pollJob(jobId)
     })
   )
-  if (mode === 'cut') clipClear()
+  clipClear()
   clearSelection()
   refresh()
 }
@@ -578,64 +585,69 @@ onMounted(async () => {
           <p class="text-sm">Empty directory</p>
         </div>
 
-        <!-- Filter bar (Cmd/Ctrl+K) -->
-        <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-[var(--c-bg)] border-b border-[var(--c-border)] flex items-center gap-2">
-          <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-          </svg>
-          <input
-            ref="filterInput"
-            v-model="filterQuery"
-            placeholder="Filter by name…"
-            @keydown.escape="closeFilter"
-            class="flex-1 bg-transparent text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] outline-none"
-          />
-          <span v-if="filterQuery" class="text-[10px] text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
-          <button @click="closeFilter" class="text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors p-0.5">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        <!-- Has entries: filter bar (optional) + view -->
+        <template v-else>
+          <!-- Filter bar (Cmd/Ctrl+K) -->
+          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-[var(--c-bg)] border-b border-[var(--c-border)] flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
             </svg>
-          </button>
-        </div>
+            <input
+              ref="filterInput"
+              v-model="filterQuery"
+              placeholder="Filter by name…"
+              @keydown.escape="closeFilter"
+              class="flex-1 bg-transparent text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] outline-none"
+            />
+            <span v-if="filterQuery" class="text-[10px] text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+            <button @click="closeFilter" class="text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors p-0.5">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
 
-        <!-- Grid view -->
-        <FileGridView
-          v-else-if="viewMode === 'grid'"
-          :entries="displayEntries"
-          :selected="selected"
-          :renaming-path="renamingPath"
-          :rename-value="renameValue"
-          @card-click="handleGridCardClick"
-          @select-entry="selectEntry"
-          @contextmenu="openContextMenu"
-          @start-rename="startRename"
-          @commit-rename="commitRename"
-          @cancel-rename="cancelRename"
-          @update:rename-value="renameValue = $event"
-          @open-file="openFile"
-        />
+          <!-- Grid view -->
+          <FileGridView
+            v-if="viewMode === 'grid'"
+            :entries="displayEntries"
+            :selected="selected"
+            :renaming-path="renamingPath"
+            :rename-value="renameValue"
+            @card-click="handleGridCardClick"
+            @card-dbl-click="handleGridCardDblClick"
+            @select-entry="selectEntry"
+            @contextmenu="openContextMenu"
+            @start-rename="startRename"
+            @commit-rename="commitRename"
+            @cancel-rename="cancelRename"
+            @update:rename-value="renameValue = $event"
+            @open-file="openFile"
+          />
 
-        <!-- List view -->
-        <FileListView
-          v-else
-          :entries="displayEntries"
-          :sort-field="sortField"
-          :sort-dir="sortDir"
-          @set-sort="setSort"
-          :selected="selected"
-          :renaming-path="renamingPath"
-          :rename-value="renameValue"
-          @row-click="handleRowClick"
-          @select-entry="selectEntry"
-          @contextmenu="openContextMenu"
-          @start-rename="startRename"
-          @commit-rename="commitRename"
-          @cancel-rename="cancelRename"
-          @update:rename-value="renameValue = $event"
-          @select-all="selectAll"
-          @clear-selection="clearSelection"
-          @open-file="openFile"
-        />
+          <!-- List view -->
+          <FileListView
+            v-else
+            :entries="displayEntries"
+            :sort-field="sortField"
+            :sort-dir="sortDir"
+            @set-sort="setSort"
+            :selected="selected"
+            :renaming-path="renamingPath"
+            :rename-value="renameValue"
+            @row-click="handleRowClick"
+            @row-dbl-click="handleRowDblClick"
+            @select-entry="selectEntry"
+            @contextmenu="openContextMenu"
+            @start-rename="startRename"
+            @commit-rename="commitRename"
+            @cancel-rename="cancelRename"
+            @update:rename-value="renameValue = $event"
+            @select-all="selectAll"
+            @clear-selection="clearSelection"
+            @open-file="openFile"
+          />
+        </template>
       </div>
     </div>
   </div>
