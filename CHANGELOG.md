@@ -1,0 +1,169 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.9.0] - 2026-06-23
+
+### Added
+- Chunked large-file downloads for impersonated users: a new `root.fs.read-chunk` NATS subject reads files in 4 MB slices (mirroring the existing chunked-upload path), and the backend streams those slices directly into the HTTP response via a Node `Readable` — no full-file buffering, no NATS payload limit.
+
+### Fixed
+- Impersonated file downloads were silently truncated at 64 MB due to the existing `root.fs.read` NATS payload cap; files larger than that now download completely.
+- Worker error replies on the new `read-chunk` subject are now correctly distinguished from raw file bytes via a NATS header, so a mid-stream error aborts the connection instead of silently writing JSON into the downloaded file.
+- HTTP `Range` requests (used by video seek) are now properly forwarded through the chunked path, so only the requested byte span is fetched from disk.
+
+## [1.8.2] - 2026-06-23
+
+### Fixed
+- File list failed to refresh after async filesystem jobs (rename, delete, move) completed.
+
+## [1.8.1] - 2026-06-23
+
+### Fixed
+- Crash in environments where `crypto.randomUUID` is unavailable; the app now falls back to `getRandomValues`.
+
+## [1.8.0] - 2026-06-23
+
+### Added
+- `RolePicker` chip+dropdown component: clicking a role chip opens an inline picker to reassign a user's role or a role's member list without navigating away.
+
+### Changed
+- User role assignment and role member assignment now use `RolePicker` instead of plain dropdowns.
+
+### Fixed
+- Default `readonly` and `readwrite` roles were being seeded on every startup even though they are unused.
+- Permission list visual hierarchy in the role editor was inconsistent.
+
+## [1.7.1] - 2026-06-22
+
+### Fixed
+- Refresh icon in the unmanaged-containers panel now matches the icon used everywhere else in the app.
+
+## [1.7.0] - 2026-06-21
+
+### Added
+- Desktop wallpaper: admins can set a personal background image (uploaded via the new wallpaper picker) or a solid color from the accent palette.
+- Background widget grid in desktop mode: dashboard widgets render as a decorative layer behind open windows.
+- `User.wallpaper` database column and wallpaper tRPC router; wallpaper images are served via scoped read tokens, not session JWTs.
+
+## [1.6.1] - 2026-06-17
+
+### Fixed
+- Global rate limiter was incorrectly applied to the chunked upload route, causing large uploads to be throttled; the upload route is now exempt.
+
+## [1.6.0] - 2026-06-17
+
+### Added
+- File preview and editor: double-clicking a file in the browser opens it in-place as an image viewer, video/audio player, or text/code editor with syntax highlighting (CodeMirror 6, language auto-detected from filename). Text files can be edited and saved back.
+- Binary detection before opening text files: an 8 KB NUL-byte and UTF-8 replacement-character heuristic prevents garbage bytes from being rendered in the editor.
+- Desktop mode: a full windowing environment with draggable/resizable windows, a Dock for open applications, and a Launchpad overlay for launching apps.
+- File previews open as first-class desktop windows in desktop mode.
+
+### Fixed
+- **Security:** closed a sandbox escape in the Go root-worker where a crafted path containing `..` or a symlink could break out of a Place's allowed root.
+- File-preview dirty state is now tracked in a shared store, so minimizing a window via the Dock correctly prompts to save unsaved changes.
+- File preview and download URLs now use short-lived scoped tokens instead of embedding the long-lived session JWT in the query string.
+
+## [1.5.0] - 2026-06-17
+
+### Added
+- User detail panel with full profile view.
+- Pagination for the user list and role list.
+
+## [1.4.0] - 2026-06-16
+
+### Fixed
+- Theme-aware colors were missing across file browser components and the user/role management screens; all hardcoded slate colors replaced with CSS design tokens.
+
+## [1.3.0] - 2026-06-16
+
+### Added
+- Manual "Check for updates" button in settings.
+
+## [1.2.0] - 2026-06-16
+
+### Added
+- Maximum upload size raised to 256 GB.
+
+### Changed
+- Application renamed to HSI; database file renamed to `hsi.db`.
+
+### Fixed
+- UI contrast, container layout, and unmanaged-containers panel redesigned for clarity.
+
+## [1.1.0] - 2026-06-16
+
+### Added
+- Responsive layout that adapts to smaller viewports.
+
+### Removed
+- Brand name removed from the main UI chrome.
+
+## [1.0.0] - 2026-06-16
+
+First stable release.
+
+## [0.2.0] - 2026-03-13
+
+### Added
+- Unmanaged containers: discover and import containers that were started outside the app.
+- Automatic daily update check with an in-app notification when a new version is available.
+- Profile settings panel with theme toggle and configurable accent color.
+- Neutral gray dark theme; accent color is now user-selectable.
+
+## [0.1.2] - 2026-03-06
+
+### Fixed
+- `bcryptjs` was missing from runtime dependencies, breaking password hashing after a clean install.
+
+## [0.1.1] - 2026-03-06
+
+### Fixed
+- Database seed now always runs on update to keep default data in sync.
+- Database is backed up before running migrations.
+
+## [0.1.0] - 2026-03-06
+
+### Added
+- Container management: start, stop, view logs; pin custom endpoints per container.
+- Docker Compose YAML import for adding apps.
+- Container status polling every 10 seconds.
+- System overview panel with CPU, memory, and disk metrics.
+- Role editor for fine-grained permission management.
+
+## [0.0.2] - 2026-02-21
+
+### Added
+- Upload throughput display with a toggle to switch between single and chunked transfer modes.
+
+## [0.0.1] - 2026-02-19
+
+### Added
+- Initial release.
+
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.2...v1.9.0
+[1.8.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.1...v1.8.2
+[1.8.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.8.0...v1.8.1
+[1.8.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.7.1...v1.8.0
+[1.7.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.6.1...v1.7.0
+[1.6.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/kittyruntime/home-server-interface/compare/v0.2.0...v1.0.0
+[0.2.0]: https://github.com/kittyruntime/home-server-interface/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/kittyruntime/home-server-interface/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/kittyruntime/home-server-interface/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/kittyruntime/home-server-interface/compare/v0.0.2...v0.1.0
+[0.0.2]: https://github.com/kittyruntime/home-server-interface/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/kittyruntime/home-server-interface/releases/tag/v0.0.1
