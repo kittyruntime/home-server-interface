@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [minor] - 2026-06-29
+
 ### Added
 - LVM management: create Volume Groups from one or more physical devices, with a 3-step wizard (select PV devices → name VG/LV/optional size → confirm). Logical Volumes appear as manageable entries with Format, Mount/Unmount, and Delete actions. Per-VG controls: Add LV and Remove VG (with typed confirmation). LVM info is loaded in parallel with block devices on page open.
 - Partition management: each non-system disk now has an inline partition toolbar with "Init GPT" (wipes partition table — requires typed confirmation) and "+ Partition" (creates a partition spanning all free space). Each partition row gains a "Delete" button (when unmounted and not a system partition).
@@ -267,7 +269,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/vminor...HEAD
+[minor]: https://github.com/kittyruntime/home-server-interface/compare/v1.14.0...vminor
 [1.14.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...v1.13.0
 [1.12.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.2...v1.12.3
