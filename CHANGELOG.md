@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-06-29
+
 ### Added
 - Storage management panel: full disk/RAID/mount management UI in Settings → Disks, replacing the read-only disk view.
 - Physical drive tree built from `lsblk`, showing every disk and partition with size, filesystem type, mount point, and usage bars.
@@ -259,7 +261,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...v1.13.0
 [1.12.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.1...v1.12.2
