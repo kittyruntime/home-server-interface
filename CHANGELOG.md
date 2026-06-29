@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.14.0] - 2026-06-29
-
 ### Added
 - Storage management panel: full disk/RAID/mount management UI in Settings → Disks, replacing the read-only disk view.
 - Physical drive tree built from `lsblk`, showing every disk and partition with size, filesystem type, mount point, and usage bars.
