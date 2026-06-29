@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Container management: editing a container now opens an inline view within the app panel instead of a full-screen modal. The form replaces the list in-place with a back arrow to return.
+
+### Fixed
+- Start/Restart on a container that no longer exists in Docker now prompts "Recreate it?" instead of showing a raw error. Confirming triggers a `recreate` job using the stored configuration.
+
 ## [1.11.2] - 2026-06-29
 
 ### Added

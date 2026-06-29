@@ -113,7 +113,37 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     }
   } catch (e: any) {
     if (app) app.status = 'unknown'
-    alert(e.message ?? `Failed: ${action}`)
+    const notFound = (e?.message ?? '').includes('No such container')
+    if (notFound && (action === 'start' || action === 'restart')) {
+      const ok = await confirm(
+        `Container "${app?.name}" doesn't exist on Docker. Recreate it from the stored configuration?`,
+        { confirmLabel: 'Recreate' },
+      )
+      if (ok) { delete actionLoading.value[id]; await recreateApp(id); return }
+    } else {
+      alert(e.message ?? `Failed: ${action}`)
+    }
+  } finally {
+    delete actionLoading.value[id]
+  }
+}
+
+async function recreateApp(id: string) {
+  actionLoading.value[id] = 'recreate'
+  const app = apps.value.find(a => a.id === id)
+  if (app) app.status = 'transitioning'
+  try {
+    const { jobId } = await trpc.container.app.recreate.mutate({ id })
+    await pollJob(jobId)
+    try {
+      const result = await trpc.container.app.inspect.query({ id })
+      if (app) app.status = (result as any).status ?? 'unknown'
+    } catch {
+      if (app) app.status = 'running'
+    }
+  } catch (e: any) {
+    if (app) app.status = 'error'
+    alert(e?.message ?? 'Failed to recreate container')
   } finally {
     delete actionLoading.value[id]
   }
@@ -168,7 +198,15 @@ async function unpin(app: App) {
   <div class="flex flex-col h-full w-full">
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto flex flex-col min-w-0">
+    <!-- Inline form (create / edit) — replaces the list when active -->
+  <AppFormModal
+    v-if="showModal"
+    :edit-app="editApp"
+    @close="showModal = false"
+    @saved="onSaved"
+  />
+
+  <div v-else class="flex-1 overflow-y-auto flex flex-col min-w-0">
 
       <!-- Loading -->
       <div v-if="loading" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
@@ -364,13 +402,6 @@ async function unpin(app: App) {
       <UnmanagedContainers v-if="!loading" @imported="load" />
     </div>
   </div>
-
-  <AppFormModal
-    v-if="showModal"
-    :edit-app="editApp"
-    @close="showModal = false"
-    @saved="onSaved"
-  />
 
   <!-- Pin dialog -->
   <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">

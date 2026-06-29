@@ -200,6 +200,31 @@ const appRouter = router({
       return { jobId }
     }),
 
+  recreate: protectedProcedure.use(canManage)
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const app = await getApp(ctx.prisma, input.id)
+      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, app.volumes as any[])
+      const jobId = await publishJob("container.recreate", {
+        containerName: app.name,
+        image:         app.image,
+        ports:         app.ports,
+        envs:          app.envs,
+        volumes:       resolvedVolumes,
+        networkNames:  app.networkNames,
+        labels:        app.labels,
+        capAdd:        app.capAdd,
+        capDrop:       app.capDrop,
+        restartPolicy: app.restartPolicy,
+        hostname:      app.hostname,
+        user:          app.user,
+        command:       app.command,
+        cpuLimit:      app.cpuLimit,
+        memoryLimit:   app.memoryLimit,
+      }, ctx.user.userId)
+      return { jobId }
+    }),
+
   inspect: protectedProcedure.use(canView)
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {

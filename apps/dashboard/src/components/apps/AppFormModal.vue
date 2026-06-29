@@ -2,7 +2,6 @@
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
-import Modal from '../ui/Modal.vue'
 import PortsTable,      { type PortMapping }    from './PortsTable.vue'
 import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
@@ -96,10 +95,8 @@ function importCompose() {
   const svc = services[composeSelectedService.value]
   if (!svc) { composeError.value = `Service "${composeSelectedService.value}" not found.`; return }
 
-  // image
   if (svc.image) form.image = svc.image
 
-  // ports
   if (Array.isArray(svc.ports)) {
     const parsed: PortMapping[] = []
     for (const p of svc.ports) {
@@ -113,7 +110,6 @@ function importCompose() {
     if (parsed.length) form.ports = parsed
   }
 
-  // environment
   if (svc.environment) {
     const envs: EnvVar[] = []
     if (Array.isArray(svc.environment)) {
@@ -127,7 +123,6 @@ function importCompose() {
     if (envs.length) form.envs = envs
   }
 
-  // volumes
   if (Array.isArray(svc.volumes)) {
     const vols: VolumeMount[] = []
     for (const v of svc.volumes) {
@@ -141,13 +136,11 @@ function importCompose() {
     if (vols.length) form.volumes = vols
   }
 
-  // networks
   if (svc.networks) {
     const nets: string[] = Array.isArray(svc.networks) ? svc.networks : Object.keys(svc.networks)
     if (nets.length) form.networkNames = nets
   }
 
-  // labels
   if (svc.labels) {
     const lbls: LabelEntry[] = []
     if (Array.isArray(svc.labels)) {
@@ -158,21 +151,15 @@ function importCompose() {
     if (lbls.length) form.labels = lbls
   }
 
-  // cap_add / cap_drop
   if (Array.isArray(svc.cap_add))  form.capAdd  = svc.cap_add
   if (Array.isArray(svc.cap_drop)) form.capDrop = svc.cap_drop
-
-  // restart
   if (svc.restart) form.restartPolicy = svc.restart
-
-  // hostname / user / command
   if (svc.hostname) form.hostname = svc.hostname
   if (svc.user)     form.user     = String(svc.user)
   if (svc.command != null) {
     form.command = Array.isArray(svc.command) ? svc.command.join(' ') : String(svc.command)
   }
 
-  // deploy resource limits
   const limits = svc.deploy?.resources?.limits
   if (limits?.cpus)   form.cpuLimit    = parseFloat(limits.cpus)
   if (limits?.memory) form.memoryLimit = String(limits.memory).toLowerCase()
@@ -268,164 +255,171 @@ async function save() {
 </script>
 
 <template>
-  <Modal panel-class="w-full max-w-2xl" @close="emit('close')">
-    <template #header>
-      <h2 class="text-base font-semibold text-[var(--c-text-1)]">
-        {{ editApp ? 'Edit App' : 'New App' }}
+  <div class="flex flex-col h-full">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-5 py-3 border-b border-[var(--c-border)] shrink-0">
+      <button
+        @click="emit('close')"
+        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+        title="Back"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h2 class="text-sm font-semibold text-[var(--c-text-1)] flex-1">
+        {{ editApp ? `Edit — ${editApp.name}` : 'New App' }}
       </h2>
-      <div class="flex items-center gap-2">
+      <button
+        @click="showCompose = !showCompose"
+        :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
+        :class="[
+          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+          showCompose
+            ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)] hover:opacity-80'
+            : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)]',
+        ]"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Import Compose
+      </button>
+    </div>
+
+    <!-- Compose import panel -->
+    <div v-if="showCompose" class="px-6 py-4 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]/60 space-y-3 shrink-0">
+      <p class="text-xs text-[var(--c-text-3)]">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
+      <textarea
+        v-model="composeRaw"
+        placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
+        rows="8"
+        class="w-full bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--c-text-2)] focus:outline-none focus:border-[var(--c-accent)] resize-none"
+      />
+      <div class="flex items-center gap-3">
+        <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
+          <label class="text-xs text-[var(--c-text-3)] whitespace-nowrap">Service:</label>
+          <select
+            v-model="composeSelectedService"
+            class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          >
+            <option v-for="s in composeServices" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-[var(--c-text-3)]">
+          Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
+        </div>
+        <div v-else class="flex-1" />
+        <p v-if="composeError" class="text-xs text-[var(--c-accent)] mr-2">{{ composeError }}</p>
         <button
-          @click="showCompose = !showCompose"
-          :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
-          :class="[
-            'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
-            showCompose
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)] hover:opacity-80'
-              : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)]',
-          ]"
+          @click="importCompose"
+          :disabled="!composeRaw.trim()"
+          class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-          </svg>
-          Import Compose
+          Import &amp; fill form
         </button>
       </div>
-    </template>
+    </div>
 
-    <template #subheader>
-      <!-- Tabs -->
-      <div class="flex border-b border-[var(--c-border)] px-6 overflow-x-auto">
-        <button
-          v-for="tab in tabs" :key="tab.id"
-          @click="activeTab = tab.id"
-          :class="[
-            'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-            activeTab === tab.id
-              ? 'border-[var(--c-accent)] text-[var(--c-accent)]'
-              : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
-          ]"
-        >{{ tab.label }}</button>
-      </div>
+    <!-- Tabs -->
+    <div class="flex border-b border-[var(--c-border)] px-5 overflow-x-auto shrink-0">
+      <button
+        v-for="tab in tabs" :key="tab.id"
+        @click="activeTab = tab.id"
+        :class="[
+          'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+          activeTab === tab.id
+            ? 'border-[var(--c-accent)] text-[var(--c-accent)]'
+            : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
+        ]"
+      >{{ tab.label }}</button>
+    </div>
 
-      <!-- Compose import panel -->
-      <div v-if="showCompose" class="px-6 py-4 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]/60 space-y-3">
-        <p class="text-xs text-[var(--c-text-3)]">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
-        <textarea
-          v-model="composeRaw"
-          placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
-          rows="8"
-          class="w-full bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--c-text-2)] focus:outline-none focus:border-[var(--c-accent)] resize-none"
-        />
-        <div class="flex items-center gap-3">
-          <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-            <label class="text-xs text-[var(--c-text-3)] whitespace-nowrap">Service:</label>
-            <select
-              v-model="composeSelectedService"
-              class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
-            >
-              <option v-for="s in composeServices" :key="s" :value="s">{{ s }}</option>
-            </select>
-          </div>
-          <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-[var(--c-text-3)]">
-            Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
-          </div>
-          <div v-else class="flex-1" />
-          <p v-if="composeError" class="text-xs text-[var(--c-accent)] mr-2">{{ composeError }}</p>
-          <button
-            @click="importCompose"
-            :disabled="!composeRaw.trim()"
-            class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            Import &amp; fill form
-          </button>
-        </div>
-      </div>
-    </template>
-
-    <!-- Content -->
-    <div class="px-6 py-5">
+    <!-- Tab content -->
+    <div class="flex-1 overflow-y-auto px-6 py-5">
 
       <!-- Basic -->
-          <div v-if="activeTab === 'basic'" class="space-y-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
-              <input
-                v-model="form.name" placeholder="my-app" :disabled="!!editApp"
-                class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
-              />
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Image *</label>
-              <input
-                v-model="form.image" placeholder="nginx:alpine"
-                class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
-              />
-            </div>
-            <!-- Sidebar pin URL -->
-            <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
-              <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">URL sidebar (optional)</label>
-              <input
-                v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
-                class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
-              />
-              <p class="text-xs text-[var(--c-text-3)]">Pins the app in the sidebar if set.</p>
-            </div>
-          </div>
+      <div v-if="activeTab === 'basic'" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
+          <input
+            v-model="form.name" placeholder="my-app" :disabled="!!editApp"
+            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Image *</label>
+          <input
+            v-model="form.image" placeholder="nginx:alpine"
+            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          />
+        </div>
+        <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">URL sidebar (optional)</label>
+          <input
+            v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
+            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          />
+          <p class="text-xs text-[var(--c-text-3)]">Pins the app in the sidebar if set.</p>
+        </div>
+      </div>
 
-          <!-- Ports -->
-          <div v-else-if="activeTab === 'ports'">
-            <PortsTable v-model="form.ports" />
-          </div>
+      <!-- Ports -->
+      <div v-else-if="activeTab === 'ports'">
+        <PortsTable v-model="form.ports" />
+      </div>
 
-          <!-- Envs -->
-          <div v-else-if="activeTab === 'envs'">
-            <EnvsEditor v-model="form.envs" />
-          </div>
+      <!-- Envs -->
+      <div v-else-if="activeTab === 'envs'">
+        <EnvsEditor v-model="form.envs" />
+      </div>
 
-          <!-- Volumes -->
-          <div v-else-if="activeTab === 'volumes'">
-            <VolumesTable v-model="form.volumes" :places="places" />
-          </div>
+      <!-- Volumes -->
+      <div v-else-if="activeTab === 'volumes'">
+        <VolumesTable v-model="form.volumes" :places="places" />
+      </div>
 
-          <!-- Networks -->
-          <div v-else-if="activeTab === 'networks'" class="space-y-3">
-            <p class="text-xs text-[var(--c-text-3)]">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
-            <div class="flex gap-2">
-              <input
-                v-model="networkInput" placeholder="network-name"
-                @keydown.enter.prevent="addNetwork"
-                class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
-              />
-              <button
-                @click="addNetwork"
-                class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
-              >Add</button>
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="n in form.networkNames" :key="n"
-                class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded px-2 py-0.5 font-mono"
-              >
-                {{ n }}
-                <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>
-              </span>
-              <span v-if="form.networkNames.length === 0" class="text-xs text-[var(--c-text-3)]">No networks attached.</span>
-            </div>
-          </div>
+      <!-- Networks -->
+      <div v-else-if="activeTab === 'networks'" class="space-y-3">
+        <p class="text-xs text-[var(--c-text-3)]">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
+        <div class="flex gap-2">
+          <input
+            v-model="networkInput" placeholder="network-name"
+            @keydown.enter.prevent="addNetwork"
+            class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          />
+          <button
+            @click="addNetwork"
+            class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
+          >Add</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span
+            v-for="n in form.networkNames" :key="n"
+            class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded px-2 py-0.5 font-mono"
+          >
+            {{ n }}
+            <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>
+          </span>
+          <span v-if="form.networkNames.length === 0" class="text-xs text-[var(--c-text-3)]">No networks attached.</span>
+        </div>
+      </div>
 
-          <!-- Labels -->
-          <div v-else-if="activeTab === 'labels'">
-            <LabelsTable v-model="form.labels" />
-          </div>
+      <!-- Labels -->
+      <div v-else-if="activeTab === 'labels'">
+        <LabelsTable v-model="form.labels" />
+      </div>
 
-          <!-- Advanced -->
-          <div v-else-if="activeTab === 'advanced'">
-            <AdvancedSection v-model="advanced" />
-          </div>
+      <!-- Advanced -->
+      <div v-else-if="activeTab === 'advanced'">
+        <AdvancedSection v-model="advanced" />
+      </div>
 
     </div>
 
-    <template #footer>
+    <!-- Footer -->
+    <div class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
       <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
       <div v-else class="flex-1" />
       <button
@@ -438,6 +432,7 @@ async function save() {
       >
         {{ loading ? 'Saving…' : 'Save' }}
       </button>
-    </template>
-  </Modal>
+    </div>
+
+  </div>
 </template>
