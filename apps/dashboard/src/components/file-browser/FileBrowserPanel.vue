@@ -44,6 +44,8 @@ const selected        = ref<Set<string>>(new Set())
 const selectionAnchor = ref<string | null>(null)
 const renamingPath    = ref<string | null>(null)
 const renameValue     = ref('')
+const pendingPaths    = ref<string[]>([])
+const creatingFolder  = ref(false)
 const permDialogPath  = ref<string | null>(null)
 const propertiesEntry = ref<Entry | null>(null)
 const propertiesPlace = ref<Place | null>(null)
@@ -263,10 +265,15 @@ const selectedEntries = computed(() =>
 // ── file operations ──────────────────────────────────────────────────────────
 async function createFolder() {
   if (!currentPath.value) return
-  await track('Creating folder', async () => {
-    const { jobId } = await trpc.fs.mkdir.mutate({ parentPath: currentPath.value!, name: 'New Folder' })
-    await pollJob(jobId)
-  })
+  creatingFolder.value = true
+  try {
+    await track('Creating folder', async () => {
+      const { jobId } = await trpc.fs.mkdir.mutate({ parentPath: currentPath.value!, name: 'New Folder' })
+      await pollJob(jobId)
+    })
+  } finally {
+    creatingFolder.value = false
+  }
   refresh()
 }
 
@@ -284,15 +291,20 @@ async function doPaste() {
   if (!clipboard.value || !currentPath.value) return
   const { paths, mode } = clipboard.value
   const dst = currentPath.value
-  await trackBatch(
-    mode === 'copy' ? `Copying ${paths.length} item(s)` : `Moving ${paths.length} item(s)`,
-    paths.map(src => async () => {
-      const { jobId } = mode === 'copy'
-        ? await trpc.fs.copy.mutate({ src, dstDir: dst })
-        : await trpc.fs.move.mutate({ src, dstDir: dst })
-      await pollJob(jobId)
-    })
-  )
+  if (mode === 'cut') pendingPaths.value = [...paths]
+  try {
+    await trackBatch(
+      mode === 'copy' ? `Copying ${paths.length} item(s)` : `Moving ${paths.length} item(s)`,
+      paths.map(src => async () => {
+        const { jobId } = mode === 'copy'
+          ? await trpc.fs.copy.mutate({ src, dstDir: dst })
+          : await trpc.fs.move.mutate({ src, dstDir: dst })
+        await pollJob(jobId)
+      })
+    )
+  } finally {
+    pendingPaths.value = []
+  }
   clipClear()
   clearSelection()
   refresh()
@@ -301,13 +313,18 @@ async function doPaste() {
 async function doDelete() {
   if (!selected.value.size) return
   const paths = [...selected.value]
-  await trackBatch(
-    `Deleting ${paths.length} item(s)`,
-    paths.map(p => async () => {
-      const { jobId } = await trpc.fs.delete.mutate({ path: p })
-      await pollJob(jobId)
-    })
-  )
+  pendingPaths.value = [...paths]
+  try {
+    await trackBatch(
+      `Deleting ${paths.length} item(s)`,
+      paths.map(p => async () => {
+        const { jobId } = await trpc.fs.delete.mutate({ path: p })
+        await pollJob(jobId)
+      })
+    )
+  } finally {
+    pendingPaths.value = []
+  }
   clearSelection()
   refresh()
 }
@@ -380,10 +397,15 @@ async function commitRename() {
   const path = renamingPath.value
   const name = renameValue.value.trim()
   renamingPath.value = null
-  await track(`Renaming to "${name}"`, async () => {
-    const { jobId } = await trpc.fs.rename.mutate({ path, newName: name })
-    await pollJob(jobId)
-  })
+  pendingPaths.value = [path]
+  try {
+    await track(`Renaming to "${name}"`, async () => {
+      const { jobId } = await trpc.fs.rename.mutate({ path, newName: name })
+      await pollJob(jobId)
+    })
+  } finally {
+    pendingPaths.value = []
+  }
   refresh()
 }
 
@@ -614,6 +636,8 @@ onMounted(async () => {
             :selected="selected"
             :renaming-path="renamingPath"
             :rename-value="renameValue"
+            :pending-paths="pendingPaths"
+            :creating-folder="creatingFolder"
             @card-click="handleGridCardClick"
             @card-dbl-click="handleGridCardDblClick"
             @select-entry="selectEntry"
@@ -635,6 +659,8 @@ onMounted(async () => {
             :selected="selected"
             :renaming-path="renamingPath"
             :rename-value="renameValue"
+            :pending-paths="pendingPaths"
+            :creating-folder="creatingFolder"
             @row-click="handleRowClick"
             @row-dbl-click="handleRowDblClick"
             @select-entry="selectEntry"

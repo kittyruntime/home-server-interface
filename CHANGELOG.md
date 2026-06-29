@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- File browser: inline loading state on file/folder rows and cards during operations. Deleting, moving, or renaming an item dims its row/card and shows a spinner directly on it. Creating a folder shows a ghost "New Folder…" placeholder at the top of the list/grid while the operation runs.
+
 ## [1.12.0] - 2026-06-29
 
 ### Added

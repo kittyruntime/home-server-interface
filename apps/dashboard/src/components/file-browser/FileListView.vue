@@ -7,6 +7,8 @@ const props = defineProps<{
   selected: Set<string>
   renamingPath: string | null
   renameValue: string
+  pendingPaths?: string[]
+  creatingFolder?: boolean
   sortField?: SortField
   sortDir?: 'asc' | 'desc'
 }>()
@@ -89,16 +91,36 @@ function fileExt(name: string): string {
       </tr>
     </thead>
     <tbody class="divide-y divide-[var(--c-border)]">
+      <!-- Ghost row while creating a folder -->
+      <tr v-if="creatingFolder" class="opacity-60">
+        <td class="pl-3 pr-1 py-2.5 w-7" />
+        <td class="px-3 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+            </svg>
+            <span class="text-[var(--c-text-3)] text-sm italic select-none">New Folder…</span>
+            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+          </div>
+        </td>
+        <td /><td />
+      </tr>
+
       <tr
         v-for="entry in entries"
         :key="entry.path"
-        @click.stop="emit('rowClick', entry, $event)"
-        @dblclick.stop="emit('rowDblClick', entry)"
-        @contextmenu.prevent.stop="emit('contextmenu', entry, $event)"
+        @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
+        @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowDblClick', entry)"
+        @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
         :class="['group transition-colors',
-          entry.type === 'dir' ? 'cursor-pointer hover:bg-[var(--c-hover)]' : 'cursor-default hover:bg-[var(--c-hover)]',
-          selected.has(entry.path) ? 'bg-[var(--c-accent-subtle)]' : '']"
+          pendingPaths?.includes(entry.path)
+            ? 'opacity-40 pointer-events-none'
+            : entry.type === 'dir' ? 'cursor-pointer hover:bg-[var(--c-hover)]' : 'cursor-default hover:bg-[var(--c-hover)]',
+          selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-[var(--c-accent-subtle)]' : '']"
       >
         <!-- Checkbox -->
         <td class="pl-3 pr-1 py-2.5 w-7" @click.stop>
@@ -165,7 +187,13 @@ function fileExt(name: string): string {
           </div>
         </td>
 
-        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] font-mono text-xs tabular-nums">{{ formatSize(entry.size) }}</td>
+        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] font-mono text-xs tabular-nums">
+          <svg v-if="pendingPaths?.includes(entry.path)" class="w-3.5 h-3.5 animate-spin ml-auto text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+          <template v-else>{{ formatSize(entry.size) }}</template>
+        </td>
         <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] text-xs tabular-nums">{{ formatDate(entry.mtime) }}</td>
       </tr>
     </tbody>

@@ -6,6 +6,8 @@ defineProps<{
   selected: Set<string>
   renamingPath: string | null
   renameValue: string
+  pendingPaths?: string[]
+  creatingFolder?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,18 +29,47 @@ function fileExt(name: string): string {
 
 <template>
   <div class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
+    <!-- Ghost card while creating a folder -->
+    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] opacity-60 select-none pointer-events-none">
+      <svg class="w-11 h-11 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z"/>
+      </svg>
+      <span class="text-xs text-[var(--c-text-3)] italic">New Folder…</span>
+      <!-- Centered spinner overlay -->
+      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/30">
+        <svg class="w-5 h-5 animate-spin text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+      </div>
+    </div>
+
     <div
       v-for="entry in entries"
       :key="entry.path"
-      @click.stop="emit('cardClick', entry, $event)"
-      @dblclick.stop="emit('cardDblClick', entry)"
-      @contextmenu.prevent.stop="emit('contextmenu', entry, $event)"
+      @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardClick', entry, $event)"
+      @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardDblClick', entry)"
+      @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
-        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl transition-colors cursor-pointer select-none',
-        selected.has(entry.path) ? 'bg-[var(--c-accent-subtle)] ring-1 ring-[var(--c-accent)]' : 'hover:bg-[var(--c-hover)]',
+        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl transition-colors select-none',
+        pendingPaths?.includes(entry.path)
+          ? 'cursor-default pointer-events-none'
+          : 'cursor-pointer',
+        selected.has(entry.path) && !pendingPaths?.includes(entry.path)
+          ? 'bg-[var(--c-accent-subtle)] ring-1 ring-[var(--c-accent)]'
+          : 'hover:bg-[var(--c-hover)]',
       ]"
     >
+      <!-- Pending overlay -->
+      <div v-if="pendingPaths?.includes(entry.path)"
+        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/60">
+        <svg class="w-5 h-5 animate-spin text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+      </div>
+
       <!-- Checkbox -->
       <div
         @click.stop="emit('selectEntry', entry, $event)"
