@@ -58,41 +58,68 @@ const raidBlockDevs = computed(() =>
   devices.value.filter(d => d.type === 'md' || raids.value.find(r => r.name === d.name))
 )
 
-// Eligible for RAID: exclude system, mounted, RAID members, existing md devices, and PV devices
+// lsblk reports RAID devices as type "raid0", "raid1", "raid5", "raid10" — not "md".
+// A device or any of its descendants is "committed to RAID" if its name is a known
+// RAID member or array name. We check recursively so parent disks of RAID-member
+// partitions are also excluded.
+function makeRaidChecker(inRaid: Set<string>, mdNames: Set<string>) {
+  function committedToRaid(dev: BlockDev): boolean {
+    if (inRaid.has(dev.name) || mdNames.has(dev.name)) return true
+    return (dev.children ?? []).some(committedToRaid)
+  }
+  return committedToRaid
+}
+
+// Walk the full device tree and return a flat list of all devices.
+function allDevices(): BlockDev[] {
+  const out: BlockDev[] = []
+  function walk(d: BlockDev) { out.push(d); d.children?.forEach(walk) }
+  devices.value.forEach(walk)
+  return out
+}
+
+// Eligible for RAID creation: free disks/partitions with no RAID commitment anywhere in their subtree
 const eligibleForRaid = computed<BlockDev[]>(() => {
-  const inRaid   = new Set(raids.value.flatMap(r => r.devices))
-  const mdNames  = new Set(raids.value.map(r => r.name))
-  const pvDevs   = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const inRaid  = new Set(raids.value.flatMap(r => r.devices))
+  const mdNames = new Set(raids.value.map(r => r.name))
+  const pvDevs  = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const committed = makeRaidChecker(inRaid, mdNames)
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
-    if (
-      !dev.isSystem && !dev.mountpoint &&
-      !inRaid.has(dev.name) && !mdNames.has(dev.name) && !pvDevs.has(dev.name) &&
-      dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'md' && dev.type !== 'lvm'
-    ) out.push(dev)
+    if (committed(dev)) return  // skip device AND its subtree
+    if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
+        dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
+      out.push(dev)
+    }
     dev.children?.forEach(collect)
   }
   devices.value.forEach(collect)
   return out
 })
 
-// Eligible for LVM PV: physical disks/partitions (not RAID members) + assembled RAID arrays (md)
+// Eligible for LVM PV: free disks/partitions (not RAID-committed) + assembled RAID arrays (once each)
 const eligibleForLvm = computed<BlockDev[]>(() => {
   const inRaid  = new Set(raids.value.flatMap(r => r.devices))
+  const mdNames = new Set(raids.value.map(r => r.name))
   const pvDevs  = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const committed = makeRaidChecker(inRaid, mdNames)
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
-    if (
-      !dev.isSystem && !dev.mountpoint &&
-      !inRaid.has(dev.name) && !pvDevs.has(dev.name) &&
-      dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm' && dev.type !== 'md'
-    ) out.push(dev)
+    if (committed(dev)) return  // skip RAID-committed devices and their subtrees
+    if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
+        dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
+      out.push(dev)
+    }
     dev.children?.forEach(collect)
   }
   devices.value.forEach(collect)
-  // Also offer assembled RAID arrays (md devices) as PV candidates
+  // Add each assembled RAID array exactly once as a PV candidate
+  const flat = allDevices()
+  const seen = new Set<string>()
   for (const r of raids.value) {
-    const md = devices.value.find(d => d.name === r.name && d.type === 'md')
+    if (seen.has(r.name)) continue
+    seen.add(r.name)
+    const md = flat.find(d => d.name === r.name)
     if (md && !md.mountpoint && !md.isSystem && !pvDevs.has(md.name)) out.push(md)
   }
   return out
