@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-06-29
+
 ### Added
 - File browser: inline loading state on file/folder rows and cards during operations. Deleting, moving, or renaming an item dims its row/card and shows a spinner directly on it. Creating a folder shows a ghost "New Folder…" placeholder at the top of the list/grid while the operation runs.
 
@@ -228,7 +230,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.5...v1.12.0
 [1.11.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.4...v1.11.5
 [1.11.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...v1.11.4
