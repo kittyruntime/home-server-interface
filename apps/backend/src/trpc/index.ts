@@ -38,14 +38,23 @@ function extractTarget(input: unknown): string | undefined {
   return v != null ? String(v) : undefined
 }
 
+const SENSITIVE_KEY = /pass(word|wd)?|secret|token|key|auth|credential/i
+
+function redact(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(redact)
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      out[k] = SENSITIVE_KEY.test(k) ? "[REDACTED]" : redact(val)
+    }
+    return out
+  }
+  return v
+}
+
 function sanitizeMeta(input: unknown): string | undefined {
   if (input == null) return undefined
-  if (typeof input !== "object") return String(input)
-  const copy: Record<string, unknown> = { ...(input as Record<string, unknown>) }
-  for (const key of ["password", "token", "secret", "key", "currentPassword", "newPassword"]) {
-    if (key in copy) copy[key] = "[REDACTED]"
-  }
-  return JSON.stringify(copy)
+  return JSON.stringify(redact(input))
 }
 
 const auditLog = t.middleware(async (opts) => {
