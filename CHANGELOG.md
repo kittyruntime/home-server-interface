@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-06-29
+
 ### Added
 - **S.M.A.R.T. health panel** for physical disks: each disk card now has a color-coded health badge (Healthy / Warning / Failed) with live temperature. Clicking the badge expands a panel showing:
   - Overall health status, temperature, power-on hours, and power cycle count.
@@ -298,7 +300,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/kittyruntime/home-server-interface/releases/tag/v1.15.1
 [minor]: https://github.com/kittyruntime/home-server-interface/compare/v1.14.0...vminor
