@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
-import type { inferRouterOutputs } from '@trpc/server'
-import type { AppRouter } from '@app/shared-types'
 
-type AuditEntry = inferRouterOutputs<AppRouter>['audit']['list']['entries'][number]
+type AuditEntry = Awaited<ReturnType<typeof trpc.audit.list.query>>['entries'][number]
 
 const PAGE_SIZE = 50
 
