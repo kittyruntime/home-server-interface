@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.5] - 2026-06-29
+
 ### Fixed
 - Places: creating a directory (via the "Create directory" link) and validating a place path now route through the Go root-worker (`root.fs.mkdirp` / `root.fs.stat`) instead of the Node process, fixing `ENOENT` errors when the target is outside Node's accessible paths (e.g. `/mnt/`).
 - Container form: `extraHosts` field was missing from the local `App` type in `AppFormModal.vue`, causing a TypeScript build error.
@@ -213,7 +215,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.4...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.5...HEAD
+[1.11.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.4...v1.11.5
 [1.11.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...v1.11.4
 [1.11.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.2...v1.11.3
 [1.11.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.1...v1.11.2
