@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-06-29
+
 ### Added
 - **Audit Log**: every authenticated mutation is now recorded in a persistent SQLite table (`AuditLog`). Captured fields: user, action (tRPC path), primary target resource, sanitized input (sensitive fields redacted recursively), client IP, success/failure, timestamp.
 - Failed login attempts are also logged (with the attempted username as target) even though they originate from a public procedure.
@@ -313,7 +315,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...v1.18.0
 [1.17.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.15.1...v1.16.0
