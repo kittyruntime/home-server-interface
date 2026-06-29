@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-06-29
+
 <!-- next release here -->
 
 ## [1.15.1] - 2026-06-29
@@ -278,7 +280,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/vminor...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.15.1...HEAD
+[1.15.1]: https://github.com/kittyruntime/home-server-interface/releases/tag/v1.15.1
 [minor]: https://github.com/kittyruntime/home-server-interface/compare/v1.14.0...vminor
 [1.14.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...v1.13.0
