@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { TRPCError } from "@trpc/server"
 import { router, publicProcedure, protectedProcedure } from "../index"
 import { blacklistToken } from "../auth"
 import { loginUser } from "../../services/auth.service"
