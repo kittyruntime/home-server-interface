@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.11.1] - 2026-06-29
-
 ### Fixed
 - Container management broken: NATS subject mismatch between backend (`root.container.*` / `root.network.*` / `root.volume.*`) and root-worker (`root.docker.container.*` etc.) caused all container create/start/stop/restart/remove/network/volume operations to be silently dropped with "unknown subject" errors.
 - `container.inspect` and `container.listAll` incorrectly listed as JetStream stream subjects in the backend, causing sync request-reply messages to be intercepted by the pull consumer instead of the registered subscriber.
