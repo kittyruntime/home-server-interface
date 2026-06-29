@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -227,9 +228,9 @@ func doVolumeRemove(name string) error {
 	return err
 }
 
-// ── Inspect (sync request-reply) ──────────────────────────────────────────────
+// ── Inspect / ListAll (sync request-reply) ────────────────────────────────────
 
-// handleDockerInspect handles root.docker.container.inspect (request-reply).
+// handleDockerInspect handles root.container.inspect (request-reply).
 // Returns {"status":"running","running":true,"exitCode":0} or similar.
 func handleDockerInspect(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
@@ -259,6 +260,128 @@ func handleDockerInspect(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, state)
 }
 
+// handleDockerListAll handles root.container.listAll (request-reply).
+// Returns all Docker containers with name, image, status, ports, labels, volumes, networkNames.
+func handleDockerListAll(nc *nats.Conn, msg *nats.Msg) {
+	idsOut, err := runDocker("ps", "-aq")
+	if err != nil || strings.TrimSpace(idsOut) == "" {
+		replyOk(nc, msg.Reply, []interface{}{})
+		return
+	}
+
+	ids := strings.Fields(idsOut)
+	args := append([]string{"inspect"}, ids...)
+	out, err := runDocker(args...)
+	if err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+
+	var inspects []struct {
+		Name   string `json:"Name"`
+		Config struct {
+			Image  string            `json:"Image"`
+			Labels map[string]string `json:"Labels"`
+		} `json:"Config"`
+		State struct {
+			Status string `json:"Status"`
+		} `json:"State"`
+		NetworkSettings struct {
+			Ports map[string][]struct {
+				HostPort string `json:"HostPort"`
+			} `json:"Ports"`
+			Networks map[string]json.RawMessage `json:"Networks"`
+		} `json:"NetworkSettings"`
+		Mounts []struct {
+			Type        string `json:"Type"`
+			Source      string `json:"Source"`
+			Destination string `json:"Destination"`
+		} `json:"Mounts"`
+	}
+	if err := json.Unmarshal([]byte(out), &inspects); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "parse inspect: " + err.Error()})
+		return
+	}
+
+	type portEntry struct {
+		HostPort      int    `json:"hostPort"`
+		ContainerPort int    `json:"containerPort"`
+		Protocol      string `json:"protocol"`
+	}
+	type volumeEntry struct {
+		Type   string `json:"type"`
+		Source string `json:"source"`
+		Target string `json:"target"`
+	}
+	type containerEntry struct {
+		Name         string            `json:"name"`
+		Image        string            `json:"image"`
+		Status       string            `json:"status"`
+		Ports        []portEntry       `json:"ports"`
+		Labels       map[string]string `json:"labels"`
+		Volumes      []volumeEntry     `json:"volumes"`
+		NetworkNames []string          `json:"networkNames"`
+	}
+
+	result := make([]containerEntry, 0, len(inspects))
+	for _, c := range inspects {
+		entry := containerEntry{
+			Name:   strings.TrimPrefix(c.Name, "/"),
+			Image:  c.Config.Image,
+			Status: c.State.Status,
+			Labels: c.Config.Labels,
+		}
+		if entry.Labels == nil {
+			entry.Labels = map[string]string{}
+		}
+
+		entry.Ports = []portEntry{}
+		for portProto, bindings := range c.NetworkSettings.Ports {
+			if len(bindings) == 0 {
+				continue
+			}
+			parts := strings.SplitN(portProto, "/", 2)
+			containerPort, _ := strconv.Atoi(parts[0])
+			proto := "tcp"
+			if len(parts) > 1 {
+				proto = parts[1]
+			}
+			for _, b := range bindings {
+				hostPort, _ := strconv.Atoi(b.HostPort)
+				if hostPort > 0 {
+					entry.Ports = append(entry.Ports, portEntry{
+						HostPort:      hostPort,
+						ContainerPort: containerPort,
+						Protocol:      proto,
+					})
+				}
+			}
+		}
+
+		entry.NetworkNames = make([]string, 0, len(c.NetworkSettings.Networks))
+		for name := range c.NetworkSettings.Networks {
+			entry.NetworkNames = append(entry.NetworkNames, name)
+		}
+
+		entry.Volumes = []volumeEntry{}
+		for _, m := range c.Mounts {
+			mountType := strings.ToLower(m.Type)
+			if mountType == "" {
+				mountType = "bind"
+			}
+			entry.Volumes = append(entry.Volumes, volumeEntry{
+				Type:   mountType,
+				Source: m.Source,
+				Target: m.Destination,
+			})
+		}
+
+		result = append(result, entry)
+	}
+
+	replyOk(nc, msg.Reply, result)
+}
+
 // ── Async task dispatcher ─────────────────────────────────────────────────────
 
 // handleDockerTask handles all root.docker.*  JetStream messages.
@@ -272,25 +395,25 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 
 	var err error
 	switch subject {
-	case "root.docker.container.create":
+	case "root.container.create":
 		err = doContainerCreate(&task)
-	case "root.docker.container.recreate":
+	case "root.container.recreate":
 		err = doContainerRecreate(&task)
-	case "root.docker.container.start":
+	case "root.container.start":
 		err = doContainerStart(task.ContainerName)
-	case "root.docker.container.stop":
+	case "root.container.stop":
 		err = doContainerStop(task.ContainerName)
-	case "root.docker.container.restart":
+	case "root.container.restart":
 		err = doContainerRestart(task.ContainerName)
-	case "root.docker.container.remove":
+	case "root.container.remove":
 		err = doContainerRemove(task.ContainerName)
-	case "root.docker.network.create":
+	case "root.network.create":
 		err = doNetworkCreate(&task)
-	case "root.docker.network.remove":
+	case "root.network.remove":
 		err = doNetworkRemove(task.NetworkName)
-	case "root.docker.volume.create":
+	case "root.volume.create":
 		err = doVolumeCreate(task.VolumeName)
-	case "root.docker.volume.remove":
+	case "root.volume.remove":
 		err = doVolumeRemove(task.VolumeName)
 	default:
 		log.Printf("docker task: unknown subject %s", subject)

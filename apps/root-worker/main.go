@@ -128,16 +128,16 @@ var taskSubjects = []string{
 	"root.fs.zip",
 	"root.fs.unzip",
 	// Container (Docker) operations
-	"root.docker.container.create",
-	"root.docker.container.recreate",
-	"root.docker.container.start",
-	"root.docker.container.stop",
-	"root.docker.container.restart",
-	"root.docker.container.remove",
-	"root.docker.network.create",
-	"root.docker.network.remove",
-	"root.docker.volume.create",
-	"root.docker.volume.remove",
+	"root.container.create",
+	"root.container.recreate",
+	"root.container.start",
+	"root.container.stop",
+	"root.container.restart",
+	"root.container.remove",
+	"root.network.create",
+	"root.network.remove",
+	"root.volume.create",
+	"root.volume.remove",
 }
 
 func ensureStream(js nats.JetStreamContext) error {
@@ -417,9 +417,10 @@ func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
-	// Route docker subjects to the docker handler before parsing the FS taskMsg.
-	if strings.HasPrefix(msg.Subject, "root.docker.") {
-		handleDockerTask(nc, msg, msg.Subject)
+	// Route container/network/volume subjects to the docker handler.
+	subj := msg.Subject
+	if strings.HasPrefix(subj, "root.container.") || strings.HasPrefix(subj, "root.network.") || strings.HasPrefix(subj, "root.volume.") {
+		handleDockerTask(nc, msg, subj)
 		return
 	}
 
@@ -681,7 +682,8 @@ func main() {
 		"root.sys.disks":                   handleDisks,
 		"root.fs.read-chunk":               handleReadChunk,
 		"root.fs.write-chunk":              handleWriteChunk,
-		"root.docker.container.inspect":    handleDockerInspect,
+		"root.container.inspect":            handleDockerInspect,
+		"root.container.listAll":            handleDockerListAll,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {

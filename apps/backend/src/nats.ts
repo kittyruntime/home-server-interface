@@ -30,8 +30,6 @@ const TASK_STREAM = {
     "root.container.stop",
     "root.container.restart",
     "root.container.remove",
-    "root.container.inspect",
-    "root.container.listAll",
     "root.network.create",
     "root.network.remove",
     "root.volume.create",
