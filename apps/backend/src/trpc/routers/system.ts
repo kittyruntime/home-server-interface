@@ -155,7 +155,8 @@ export const systemRouter = router({
 
   formatDisk: adminProcedure
     .input(z.object({
-      device: z.string().regex(/^[a-z][a-z0-9]+$/),
+      // Bare name (sda1, md0) or relative LVM path (ubuntu-vg/ubuntu-lv)
+      device: z.string().regex(/^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/),
       fstype: z.enum(['ext4', 'xfs', 'btrfs', 'fat32']),
       label:  z.string().max(64).optional(),
     }))
@@ -165,7 +166,7 @@ export const systemRouter = router({
 
   mountDevice: adminProcedure
     .input(z.object({
-      device:     z.string().regex(/^[a-z][a-z0-9]+$/),
+      device:     z.string().regex(/^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/),
       // Disallow whitespace and # to prevent fstab field injection
       mountpoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
       options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),

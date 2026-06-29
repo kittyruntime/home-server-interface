@@ -47,57 +47,92 @@ const lvmPVs  = ref<LvmPV[]>([])
 const lvmVGs  = ref<LvmVG[]>([])
 const lvmLVs  = ref<LvmLV[]>([])
 
+// Tab selection
+const activeTab = ref<'disks' | 'raid' | 'lvm'>('disks')
+
 const physicalDisks = computed(() =>
-  devices.value.filter(d => d.type === 'disk' || (d.type === 'md' && !raids.value.find(r => r.name === d.name)))
+  devices.value.filter(d => d.type === 'disk')
 )
 
 const raidBlockDevs = computed(() =>
   devices.value.filter(d => d.type === 'md' || raids.value.find(r => r.name === d.name))
 )
 
-// All non-system, unmounted, non-rom devices for RAID selection (excludes PV devices)
+// Eligible for RAID: exclude system, mounted, RAID members, existing md devices, and PV devices
 const eligibleForRaid = computed<BlockDev[]>(() => {
-  const inRaid = new Set(raids.value.flatMap(r => r.devices))
-  const pvDevs = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const inRaid   = new Set(raids.value.flatMap(r => r.devices))
+  const mdNames  = new Set(raids.value.map(r => r.name))
+  const pvDevs   = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
-    if (!dev.isSystem && !dev.mountpoint && !inRaid.has(dev.name) && !pvDevs.has(dev.name) && dev.type !== 'rom' && dev.type !== 'loop') {
-      out.push(dev)
-    }
+    if (
+      !dev.isSystem && !dev.mountpoint &&
+      !inRaid.has(dev.name) && !mdNames.has(dev.name) && !pvDevs.has(dev.name) &&
+      dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'md' && dev.type !== 'lvm'
+    ) out.push(dev)
     dev.children?.forEach(collect)
   }
   devices.value.forEach(collect)
   return out
 })
 
-// Devices eligible to become LVM Physical Volumes
+// Eligible for LVM PV: physical disks/partitions (not RAID members) + assembled RAID arrays (md)
 const eligibleForLvm = computed<BlockDev[]>(() => {
-  const inRaid = new Set(raids.value.flatMap(r => r.devices))
-  const pvDevs = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const inRaid  = new Set(raids.value.flatMap(r => r.devices))
+  const pvDevs  = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
-    if (!dev.isSystem && !dev.mountpoint && !inRaid.has(dev.name) && !pvDevs.has(dev.name) && dev.type !== 'rom' && dev.type !== 'loop') {
-      out.push(dev)
-    }
+    if (
+      !dev.isSystem && !dev.mountpoint &&
+      !inRaid.has(dev.name) && !pvDevs.has(dev.name) &&
+      dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm' && dev.type !== 'md'
+    ) out.push(dev)
     dev.children?.forEach(collect)
   }
   devices.value.forEach(collect)
+  // Also offer assembled RAID arrays (md devices) as PV candidates
+  for (const r of raids.value) {
+    const md = devices.value.find(d => d.name === r.name && d.type === 'md')
+    if (md && !md.mountpoint && !md.isSystem && !pvDevs.has(md.name)) out.push(md)
+  }
   return out
 })
+
+// Convert lv.path (/dev/ubuntu-vg/ubuntu-lv) to the kernel dm-mapper device name
+// LVM doubles hyphens in VG/LV names: ubuntu-vg → ubuntu--vg
+function lvToDmName(lv: LvmLV): string {
+  return lv.path
+    .replace('/dev/', '')
+    .split('/')
+    .map((p: string) => p.replace(/-/g, '--'))
+    .join('-')
+}
 
 // LV as a pseudo-BlockDev so Format/Mount/Unmount reuse existing dialogs
 function lvToBlockDev(lv: LvmLV): BlockDev {
-  const lvDevName = lv.path.replace('/dev/', '').replace(/\//g, '-')
-  const mountInfo = devices.value
-    .flatMap(d => [d, ...(d.children ?? [])])
-    .find(d => d.path === lv.path || d.name === lvDevName)
+  const dmName = lvToDmName(lv)
+  // Walk full device tree (including children) to find the dm device
+  const allDevs: BlockDev[] = []
+  function walk(d: BlockDev) { allDevs.push(d); d.children?.forEach(walk) }
+  devices.value.forEach(walk)
+  const mountInfo = allDevs.find(d => d.name === dmName)
+  const mp = mountInfo?.mountpoint ?? ''
+  const isSystemLv = mountInfo?.isSystem === true || (mp !== '' && mp in criticalMountPoints)
   return {
-    name: lvDevName, path: lv.path, size: lv.size, type: 'lvm',
-    fstype: mountInfo?.fstype ?? '', mountpoint: mountInfo?.mountpoint ?? '',
-    model: '', uuid: mountInfo?.uuid ?? '',
-    isSystem: false, isRemovable: false,
-    usageTotal: mountInfo?.usageTotal ?? 0, usageUsed: mountInfo?.usageUsed ?? 0, usageFree: mountInfo?.usageFree ?? 0,
-    children: [],
+    name:        dmName,     // ubuntu--vg-ubuntu--lv (shown in format confirm)
+    path:        lv.path,    // /dev/ubuntu-vg/ubuntu-lv — the valid symlink used for ops
+    size:        lv.size,
+    type:        'lvm',
+    fstype:      mountInfo?.fstype ?? '',
+    mountpoint:  mp,
+    model:       '',
+    uuid:        mountInfo?.uuid ?? '',
+    isSystem:    isSystemLv,
+    isRemovable: false,
+    usageTotal:  mountInfo?.usageTotal ?? 0,
+    usageUsed:   mountInfo?.usageUsed ?? 0,
+    usageFree:   mountInfo?.usageFree ?? 0,
+    children:    [],
   }
 }
 
@@ -403,7 +438,9 @@ async function doFormat() {
   w.busy = true
   w.err  = ''
   try {
-    await trpc.system.formatDisk.mutate({ device: w.dev.name, fstype: w.fstype, label: w.label || undefined })
+    // Use path-relative device (/dev/vg/lv → vg/lv) so LVM symlinks resolve correctly
+    const device = w.dev.path.replace(/^\/dev\//, '')
+    await trpc.system.formatDisk.mutate({ device, fstype: w.fstype, label: w.label || undefined })
     formatWiz.value = null
     await load()
   } catch (e: any) {
@@ -434,7 +471,8 @@ async function doMount() {
   d.busy = true
   d.err  = ''
   try {
-    await trpc.system.mountDevice.mutate({ device: d.dev.name, mountpoint: d.mp, options: d.options || undefined, persist: d.persist })
+    const device = d.dev.path.replace(/^\/dev\//, '')
+    await trpc.system.mountDevice.mutate({ device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist })
     mountDlg.value = null
     await load()
   } catch (e: any) {
@@ -595,20 +633,36 @@ async function doDestroyRaid() {
   <div>
 
     <!-- ── Header ──────────────────────────────────────────────────────────── -->
-    <div class="flex items-start justify-between mb-2">
+    <div class="flex items-start justify-between mb-4">
       <div>
         <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Storage &amp; Disks</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage physical drives, RAID arrays, and mount points.</p>
+        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage physical drives, RAID arrays, and LVM volumes.</p>
       </div>
-      <button
-        @click="load"
-        :disabled="loading"
-        title="Refresh"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
-      >
+      <button @click="load" :disabled="loading" title="Refresh"
+        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
         <svg :class="['w-4 h-4', loading && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
+      </button>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="flex border-b border-[var(--c-border)] mb-5">
+      <button v-for="t in ([
+        { id: 'disks', label: 'Disks',        count: physicalDisks.length },
+        { id: 'raid',  label: 'RAID',          count: raids.length },
+        { id: 'lvm',   label: 'LVM',           count: lvmVGs.length },
+      ] as const)" :key="t.id"
+        @click="activeTab = t.id"
+        :class="['flex items-center gap-1.5 px-3 pb-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+          activeTab === t.id
+            ? 'border-[var(--c-accent)] text-[var(--c-accent)]'
+            : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
+        {{ t.label }}
+        <span v-if="t.count > 0" class="text-[10px] px-1.5 py-0.5 rounded-full tabular-nums"
+          :class="activeTab === t.id ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'">
+          {{ t.count }}
+        </span>
       </button>
     </div>
 
@@ -627,12 +681,13 @@ async function doDestroyRaid() {
 
     <template v-if="!loading && !error">
 
-      <!-- ── RAID Arrays ───────────────────────────────────────────────────── -->
-      <section class="mt-6">
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <!-- TAB: RAID                                                              -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <section v-if="activeTab === 'raid'">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Software RAID</h3>
-            <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }}</span>
+            <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
           </div>
           <button @click="openRaidWizard"
             class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
@@ -774,13 +829,12 @@ async function doDestroyRaid() {
         </div>
       </section>
 
-      <!-- ── LVM Volume Groups ─────────────────────────────────────────────── -->
-      <section class="mt-8">
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <!-- TAB: LVM                                                               -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <section v-if="activeTab === 'lvm'">
         <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">LVM Volumes</h3>
-            <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }}</span>
-          </div>
+          <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
           <button @click="openLvmWizard"
             class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -909,16 +963,11 @@ async function doDestroyRaid() {
         </div>
       </section>
 
-      <!-- ── Physical Drives ───────────────────────────────────────────────── -->
-      <section class="mt-8">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Physical Drives</h3>
-            <span v-if="physicalDisks.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ physicalDisks.length }}</span>
-          </div>
-        </div>
-
-        <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No block devices found.</div>
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <!-- TAB: DISKS                                                             -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <section v-if="activeTab === 'disks'">
+        <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No physical drives detected.</div>
 
         <div class="space-y-3">
           <div v-for="disk in physicalDisks" :key="disk.name"
@@ -1338,7 +1387,7 @@ async function doDestroyRaid() {
 
             <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
               No eligible drives available.<br>
-              <span class="text-xs">Drives must be unmounted, unformatted, and not part of the OS.</span>
+              <span class="text-xs">Drives must be unmounted, not already in a RAID or LVM, and not a system disk.</span>
             </div>
 
             <div v-else class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
@@ -1471,7 +1520,7 @@ async function doDestroyRaid() {
             </div>
             <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
               No eligible devices available.<br>
-              <span class="text-xs">Devices must be unmounted, not in a RAID, and not a system disk.</span>
+              <span class="text-xs">Devices must be unmounted, not already a PV, and not a system disk.</span>
             </div>
             <div v-else class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
               <label v-for="dev in eligibleForLvm" :key="dev.name"
@@ -1488,7 +1537,8 @@ async function doDestroyRaid() {
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
+                  <span v-if="dev.type === 'md'" class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
+                  <span v-else-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
                 </div>
                 <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
               </label>

@@ -20,8 +20,10 @@ import (
 // ── Validation patterns ───────────────────────────────────────────────────────
 
 var (
-	reBlockDev = regexp.MustCompile(`^[a-z][a-z0-9]+$`)    // sda, sda1, md0, nvme0n1p1
-	reMdDev    = regexp.MustCompile(`^md[0-9]{1,3}$`)      // md0 … md999
+	// Bare name (sda1, md0) or relative LVM path (ubuntu-vg/ubuntu-lv).
+	// Hyphens and one forward slash are allowed; ".." and leading "/" are rejected.
+	reBlockDev = regexp.MustCompile(`^[a-z][a-z0-9_-]*(?:/[a-z][a-z0-9_-]*)?$`)
+	reMdDev    = regexp.MustCompile(`^md[0-9]{1,3}$`) // md0 … md999
 )
 
 // criticalMountPoints must never be unmounted or shadowed by a new mount.
@@ -287,7 +289,12 @@ func handleDiskFormat(nc *nats.Conn, msg *nats.Msg) {
 			args = append(args, "-L", label)
 		}
 	case "fat32", "vfat":
-		args = []string{"mkfs.vfat", "-F", "32"}
+		// Prefer mkfs.fat (newer name); fall back to mkfs.vfat.
+		bin := "mkfs.fat"
+		if _, err := exec.LookPath(bin); err != nil {
+			bin = "mkfs.vfat"
+		}
+		args = []string{bin, "-F", "32"}
 		if label != "" {
 			l := label
 			if len(l) > 11 {
