@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-06-29
+
+### Added
+- Storage management panel: full disk/RAID/mount management UI in Settings → Disks, replacing the read-only disk view.
+- Physical drive tree built from `lsblk`, showing every disk and partition with size, filesystem type, mount point, and usage bars.
+- Format wizard (3 steps): danger warning → filesystem choice (ext4, xfs, btrfs, FAT32 with descriptions) → type device name to confirm. Runs `mkfs` on the worker.
+- Create RAID wizard (3 steps): level selection (0/1/5/10) with redundancy explanations and capacity hints → disk picker → type `CREATE RAID` to confirm. Persists mdadm config for auto-assemble on reboot.
+- Destroy RAID dialog: stops the array with `mdadm --stop` and zeroes superblocks on member drives; requires typing the array name to confirm.
+- Mount dialog: configurable mount point and options, optional `/etc/fstab` UUID entry for persistence across reboots. Mount directory is created automatically.
+- Unmount dialog: optional fstab entry removal.
+- System disk protection: the disk containing `/` (and all its partitions) is auto-detected via `/proc/mounts` + `lsblk --pkname`, shown with an orange SYSTEM DISK badge, and all destructive actions are disabled.
+
+### Fixed
+- Security: reject fstab structural characters (`\n`, `\r`, `\t`, space, `#`) in mount point and options at both the tRPC Zod schema and Go handler layers, preventing fstab injection that could bypass the system-mount guard.
+- TypeScript: removed unused `watch` import in `ContainerLogsPanel.vue` that was causing a build error.
+
 ## [1.13.0] - 2026-06-29
 
 ### Added
