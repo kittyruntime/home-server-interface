@@ -892,6 +892,189 @@ func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
+// ── S.M.A.R.T. ───────────────────────────────────────────────────────────────
+
+// criticalAttrIDs are ATA SMART attribute IDs where a non-zero raw value
+// indicates a problem (reallocated sectors, pending sectors, uncorrectables…).
+var criticalAttrIDs = map[int]bool{
+	5: true, 10: true, 187: true, 188: true, 197: true, 198: true, 199: true,
+}
+
+// smartctlJSON is a partial mapping of `smartctl -j -a` output.
+type smartctlJSON struct {
+	Smartctl struct {
+		ExitStatus int `json:"exit_status"`
+	} `json:"smartctl"`
+	ModelFamily     string `json:"model_family"`
+	ModelName       string `json:"model_name"`
+	SerialNumber    string `json:"serial_number"`
+	FirmwareVersion string `json:"firmware_version"`
+	RotationRate    int    `json:"rotation_rate"`
+	SmartStatus     struct {
+		Passed bool `json:"passed"`
+	} `json:"smart_status"`
+	Temperature struct {
+		Current int `json:"current"`
+	} `json:"temperature"`
+	PowerOnTime struct {
+		Hours int64 `json:"hours"`
+	} `json:"power_on_time"`
+	PowerCycleCount    int64 `json:"power_cycle_count"`
+	AtaSmartAttributes struct {
+		Table []struct {
+			ID         int    `json:"id"`
+			Name       string `json:"name"`
+			Value      int    `json:"value"`
+			Worst      int    `json:"worst"`
+			Thresh     int    `json:"thresh"`
+			WhenFailed string `json:"when_failed"`
+			Raw        struct {
+				Value int64 `json:"value"`
+			} `json:"raw"`
+		} `json:"table"`
+	} `json:"ata_smart_attributes"`
+	NvmeLog struct {
+		CriticalWarning      int   `json:"critical_warning"`
+		Temperature          int   `json:"temperature"`
+		AvailableSpare       int   `json:"available_spare"`
+		AvailableSpareThresh int   `json:"available_spare_threshold"`
+		PercentageUsed       int   `json:"percentage_used"`
+		DataUnitsRead        int64 `json:"data_units_read"`
+		DataUnitsWritten     int64 `json:"data_units_written"`
+		MediaErrors          int64 `json:"media_errors"`
+		NumErrLogEntries     int64 `json:"num_err_log_entries"`
+	} `json:"nvme_smart_health_information_log"`
+}
+
+type SmartAttr struct {
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	Value      int    `json:"value"`
+	Worst      int    `json:"worst"`
+	Thresh     int    `json:"thresh"`
+	Raw        int64  `json:"raw"`
+	Failed     bool   `json:"failed"`
+	IsCritical bool   `json:"isCritical"`
+}
+
+type NvmeInfo struct {
+	CriticalWarning      int     `json:"criticalWarning"`
+	Temperature          int     `json:"temperature"`
+	AvailableSpare       int     `json:"availableSpare"`
+	AvailableSpareThresh int     `json:"availableSpareThresh"`
+	PercentageUsed       int     `json:"percentageUsed"`
+	DataReadTiB          float64 `json:"dataReadTiB"`
+	DataWrittenTiB       float64 `json:"dataWrittenTiB"`
+	MediaErrors          int64   `json:"mediaErrors"`
+	ErrorLogEntries      int64   `json:"errorLogEntries"`
+}
+
+type SmartResult struct {
+	Device       string      `json:"device"`
+	Available    bool        `json:"available"`
+	ModelFamily  string      `json:"modelFamily,omitempty"`
+	ModelName    string      `json:"modelName,omitempty"`
+	SerialNumber string      `json:"serialNumber,omitempty"`
+	Firmware     string      `json:"firmware,omitempty"`
+	RotationRate int         `json:"rotationRate"` // 0 = SSD/NVMe
+	HealthPassed bool        `json:"healthPassed"`
+	Temperature  int         `json:"temperature"`
+	PowerOnHours int64       `json:"powerOnHours"`
+	PowerCycles  int64       `json:"powerCycles"`
+	Attributes   []SmartAttr `json:"attributes"`
+	Nvme         *NvmeInfo   `json:"nvme,omitempty"`
+}
+
+// handleSmartInfo queries S.M.A.R.T. data for a single block device.
+func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Device string `json:"device"` // bare name: sda, sdb, nvme0n1
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil || !reBlockDev.MatchString(req.Device) {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device"})
+		return
+	}
+
+	result := SmartResult{
+		Device:     req.Device,
+		Attributes: []SmartAttr{},
+	}
+
+	// Check smartctl is available
+	smartctlPath, err := exec.LookPath("smartctl")
+	if err != nil {
+		replyOk(nc, msg.Reply, result) // available=false, no error
+		return
+	}
+
+	raw, err := exec.Command(smartctlPath, "-j", "-a", "/dev/"+req.Device).Output()
+	if err != nil && len(raw) == 0 {
+		replyOk(nc, msg.Reply, result)
+		return
+	}
+
+	var sc smartctlJSON
+	if err := json.Unmarshal(raw, &sc); err != nil {
+		replyOk(nc, msg.Reply, result)
+		return
+	}
+
+	// Exit status bit 1 = open failed, bit 7 = no device
+	if sc.Smartctl.ExitStatus&0x82 != 0 {
+		replyOk(nc, msg.Reply, result)
+		return
+	}
+
+	result.Available    = true
+	result.ModelFamily  = strings.TrimSpace(sc.ModelFamily)
+	result.ModelName    = strings.TrimSpace(sc.ModelName)
+	result.SerialNumber = strings.TrimSpace(sc.SerialNumber)
+	result.Firmware     = strings.TrimSpace(sc.FirmwareVersion)
+	result.RotationRate = sc.RotationRate
+	result.HealthPassed = sc.SmartStatus.Passed
+	result.Temperature  = sc.Temperature.Current
+	result.PowerOnHours = sc.PowerOnTime.Hours
+	result.PowerCycles  = sc.PowerCycleCount
+
+	// ATA attributes
+	for _, a := range sc.AtaSmartAttributes.Table {
+		result.Attributes = append(result.Attributes, SmartAttr{
+			ID:         a.ID,
+			Name:       a.Name,
+			Value:      a.Value,
+			Worst:      a.Worst,
+			Thresh:     a.Thresh,
+			Raw:        a.Raw.Value,
+			Failed:     a.WhenFailed != "" && a.WhenFailed != "-",
+			IsCritical: criticalAttrIDs[a.ID],
+		})
+	}
+
+	// NVMe health log
+	if sc.NvmeLog.Temperature > 0 || sc.NvmeLog.PercentageUsed > 0 || sc.NvmeLog.MediaErrors > 0 {
+		// NVMe data units are in 512,000-byte blocks; convert to TiB
+		const blockBytes = 512_000.0
+		const tiB = 1024.0 * 1024.0 * 1024.0 * 1024.0
+		result.Nvme = &NvmeInfo{
+			CriticalWarning:      sc.NvmeLog.CriticalWarning,
+			Temperature:          sc.NvmeLog.Temperature,
+			AvailableSpare:       sc.NvmeLog.AvailableSpare,
+			AvailableSpareThresh: sc.NvmeLog.AvailableSpareThresh,
+			PercentageUsed:       sc.NvmeLog.PercentageUsed,
+			DataReadTiB:          float64(sc.NvmeLog.DataUnitsRead) * blockBytes / tiB,
+			DataWrittenTiB:       float64(sc.NvmeLog.DataUnitsWritten) * blockBytes / tiB,
+			MediaErrors:          sc.NvmeLog.MediaErrors,
+			ErrorLogEntries:      sc.NvmeLog.NumErrLogEntries,
+		}
+		// NVMe temperature overrides (ATA Temperature attr is absent for NVMe)
+		if result.Temperature == 0 && sc.NvmeLog.Temperature > 0 {
+			result.Temperature = sc.NvmeLog.Temperature
+		}
+	}
+
+	replyOk(nc, msg.Reply, result)
+}
+
 // handlePartitionDelete removes a partition by its number.
 func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {

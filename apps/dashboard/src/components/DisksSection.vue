@@ -47,7 +47,82 @@ const lvmPVs  = ref<LvmPV[]>([])
 const lvmVGs  = ref<LvmVG[]>([])
 const lvmLVs  = ref<LvmLV[]>([])
 
-// Tab selection
+// ── Types (SMART) ─────────────────────────────────────────────────────────────
+
+type SmartAttr = {
+  id: number; name: string; value: number; worst: number; thresh: number
+  raw: number; failed: boolean; isCritical: boolean
+}
+type NvmeInfo = {
+  criticalWarning: number; temperature: number
+  availableSpare: number; availableSpareThresh: number; percentageUsed: number
+  dataReadTiB: number; dataWrittenTiB: number; mediaErrors: number; errorLogEntries: number
+}
+type SmartResult = {
+  device: string; available: boolean
+  modelFamily?: string; modelName?: string; serialNumber?: string; firmware?: string
+  rotationRate: number; healthPassed: boolean; temperature: number
+  powerOnHours: number; powerCycles: number
+  attributes: SmartAttr[]; nvme?: NvmeInfo
+  _loading?: boolean; _error?: string
+}
+
+// ── State (SMART) ─────────────────────────────────────────────────────────────
+
+const smartCache = ref<Record<string, SmartResult>>({})
+const smartOpen  = ref<Set<string>>(new Set())
+
+function toggleSmart(diskName: string) {
+  const s = new Set(smartOpen.value)
+  if (s.has(diskName)) { s.delete(diskName) } else {
+    s.add(diskName)
+    if (!smartCache.value[diskName] || smartCache.value[diskName]._error) fetchSmart(diskName)
+  }
+  smartOpen.value = s
+}
+
+async function fetchSmart(diskName: string) {
+  smartCache.value = {
+    ...smartCache.value,
+    [diskName]: { device: diskName, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [], _loading: true },
+  }
+  try {
+    const res = await trpc.system.smartInfo.query({ device: diskName }) as SmartResult
+    smartCache.value = { ...smartCache.value, [diskName]: res }
+  } catch (e: any) {
+    smartCache.value = {
+      ...smartCache.value,
+      [diskName]: { device: diskName, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [], _error: e?.message ?? 'SMART query failed' },
+    }
+  }
+}
+
+function smartStatus(diskName: string): 'unknown' | 'loading' | 'passed' | 'warning' | 'failed' {
+  const s = smartCache.value[diskName]
+  if (!s) return 'unknown'
+  if (s._loading) return 'loading'
+  if (!s.available) return 'unknown'
+  if (!s.healthPassed) return 'failed'
+  if (s.attributes.some(a => a.isCritical && a.raw > 0)) return 'warning'
+  if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return 'warning'
+  return 'passed'
+}
+
+function fmtHours(h: number): string {
+  if (h < 24) return `${h} h`
+  if (h < 24 * 365) return `${Math.round(h / 24)} days`
+  const y = Math.floor(h / (24 * 365))
+  const d = Math.round((h % (24 * 365)) / 24)
+  return `${y} yr ${d} d`
+}
+
+function fmtTiB(v: number): string {
+  if (v < 1) return `${(v * 1024).toFixed(0)} GiB`
+  return `${v.toFixed(1)} TiB`
+}
+
+// ── Tab selection ─────────────────────────────────────────────────────────────
+
 const activeTab = ref<'disks' | 'raid' | 'lvm'>('disks')
 
 const physicalDisks = computed(() =>
@@ -1020,11 +1095,186 @@ async function doDestroyRaid() {
                   </div>
                   <div v-if="disk.isSystem" class="text-[10px] text-orange-400/70 mt-0.5">Operating system disk — no modifications allowed</div>
                 </div>
-                <!-- + Partition button (non-system only) -->
-                <button v-if="!disk.isSystem" @click="partCreateDlg = { disk, busy: false, err: '' }"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors shrink-0">
-                  + Partition
-                </button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <!-- Health badge -->
+                  <button @click="toggleSmart(disk.name)" title="S.M.A.R.T. health"
+                    :class="['inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
+                      smartStatus(disk.name) === 'passed'  ? 'bg-green-500/10 border-green-500/25 text-green-400 hover:bg-green-500/20' :
+                      smartStatus(disk.name) === 'warning' ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400 hover:bg-yellow-500/20' :
+                      smartStatus(disk.name) === 'failed'  ? 'bg-red-500/10 border-red-500/25 text-red-400 hover:bg-red-500/20' :
+                      smartStatus(disk.name) === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
+                      'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-text-2)]']">
+                    <!-- Spinner when loading -->
+                    <svg v-if="smartStatus(disk.name) === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <!-- Status dot otherwise -->
+                    <span v-else class="w-1.5 h-1.5 rounded-full"
+                      :class="smartStatus(disk.name) === 'passed' ? 'bg-green-400' : smartStatus(disk.name) === 'warning' ? 'bg-yellow-400' : smartStatus(disk.name) === 'failed' ? 'bg-red-400 animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
+                    <span v-if="smartStatus(disk.name) === 'passed'">Healthy</span>
+                    <span v-else-if="smartStatus(disk.name) === 'warning'">Warning</span>
+                    <span v-else-if="smartStatus(disk.name) === 'failed'">Failed</span>
+                    <span v-else-if="smartStatus(disk.name) === 'loading'">…</span>
+                    <span v-else>SMART</span>
+                    <!-- Temperature (when data loaded) -->
+                    <template v-if="smartCache[disk.name]?.available && smartCache[disk.name]?.temperature">
+                      <span class="opacity-50">·</span>
+                      <span :class="smartCache[disk.name].temperature >= 55 ? 'text-red-400' : smartCache[disk.name].temperature >= 40 ? 'text-yellow-400' : ''">{{ smartCache[disk.name].temperature }}°C</span>
+                    </template>
+                  </button>
+                  <!-- + Partition button (non-system only) -->
+                  <button v-if="!disk.isSystem" @click="partCreateDlg = { disk, busy: false, err: '' }"
+                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                    + Partition
+                  </button>
+                </div>
+              </div>
+
+              <!-- SMART health panel (expandable) -->
+              <div v-if="smartOpen.has(disk.name)" class="border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/40">
+                <!-- Loading -->
+                <div v-if="smartCache[disk.name]?._loading" class="flex items-center gap-2 px-4 py-4 text-sm text-[var(--c-text-3)]">
+                  <svg class="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  Reading S.M.A.R.T. data…
+                </div>
+
+                <!-- Error -->
+                <div v-else-if="smartCache[disk.name]?._error" class="px-4 py-3 text-sm text-red-400">
+                  {{ smartCache[disk.name]._error }}
+                </div>
+
+                <!-- Unavailable -->
+                <div v-else-if="smartCache[disk.name] && !smartCache[disk.name].available" class="px-4 py-3 text-sm text-[var(--c-text-3)] italic">
+                  S.M.A.R.T. not available for this device (smartctl may not be installed or the device may not support it).
+                </div>
+
+                <!-- Data -->
+                <template v-else-if="smartCache[disk.name]?.available">
+                  <!-- Overview row -->
+                  <div class="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--c-border)]">
+                    <!-- Health -->
+                    <div class="flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full shrink-0"
+                        :class="smartStatus(disk.name) === 'passed' ? 'bg-green-400' : smartStatus(disk.name) === 'warning' ? 'bg-yellow-400' : 'bg-red-400'"/>
+                      <span class="text-xs font-semibold"
+                        :class="smartStatus(disk.name) === 'passed' ? 'text-green-400' : smartStatus(disk.name) === 'warning' ? 'text-yellow-400' : 'text-red-400'">
+                        {{ smartCache[disk.name].healthPassed ? 'PASSED' : 'FAILED' }}
+                      </span>
+                    </div>
+                    <!-- Temperature -->
+                    <div v-if="smartCache[disk.name].temperature" class="flex items-center gap-1 text-xs">
+                      <svg class="w-3 h-3 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                      </svg>
+                      <span :class="smartCache[disk.name].temperature >= 55 ? 'text-red-400 font-semibold' : smartCache[disk.name].temperature >= 40 ? 'text-yellow-400' : 'text-[var(--c-text-2)]'">
+                        {{ smartCache[disk.name].temperature }}°C
+                      </span>
+                    </div>
+                    <!-- Power-on hours -->
+                    <div v-if="smartCache[disk.name].powerOnHours" class="flex items-center gap-1 text-xs text-[var(--c-text-3)]">
+                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      {{ fmtHours(smartCache[disk.name].powerOnHours) }} powered on
+                    </div>
+                    <!-- Power cycles -->
+                    <div v-if="smartCache[disk.name].powerCycles" class="text-xs text-[var(--c-text-3)]">
+                      {{ smartCache[disk.name].powerCycles.toLocaleString() }} power cycles
+                    </div>
+                    <!-- Drive type -->
+                    <div class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-[var(--c-text-3)]">
+                      {{ smartCache[disk.name].nvme ? 'NVMe' : smartCache[disk.name].rotationRate === 0 ? 'SSD' : `HDD ${smartCache[disk.name].rotationRate} RPM` }}
+                    </div>
+                  </div>
+
+                  <!-- Device info row -->
+                  <div v-if="smartCache[disk.name].serialNumber || smartCache[disk.name].firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--c-text-3)] border-b border-[var(--c-border)]">
+                    <span v-if="smartCache[disk.name].modelFamily"><span class="text-[var(--c-text-2)]">Family</span> {{ smartCache[disk.name].modelFamily }}</span>
+                    <span v-if="smartCache[disk.name].serialNumber"><span class="text-[var(--c-text-2)]">S/N</span> <span class="font-mono">{{ smartCache[disk.name].serialNumber }}</span></span>
+                    <span v-if="smartCache[disk.name].firmware"><span class="text-[var(--c-text-2)]">FW</span> <span class="font-mono">{{ smartCache[disk.name].firmware }}</span></span>
+                  </div>
+
+                  <!-- NVMe health log -->
+                  <div v-if="smartCache[disk.name].nvme" class="px-4 py-3 space-y-2">
+                    <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">NVMe Health Log</div>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                      <div class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Critical Warning</span>
+                        <span :class="smartCache[disk.name].nvme!.criticalWarning > 0 ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ smartCache[disk.name].nvme!.criticalWarning }}</span>
+                      </div>
+                      <div class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Media Errors</span>
+                        <span :class="smartCache[disk.name].nvme!.mediaErrors > 0 ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ smartCache[disk.name].nvme!.mediaErrors }}</span>
+                      </div>
+                      <div class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Available Spare</span>
+                        <span :class="smartCache[disk.name].nvme!.availableSpare <= smartCache[disk.name].nvme!.availableSpareThresh ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ smartCache[disk.name].nvme!.availableSpare }}% <span class="text-[var(--c-text-3)]">(min {{ smartCache[disk.name].nvme!.availableSpareThresh }}%)</span></span>
+                      </div>
+                      <div class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Percentage Used</span>
+                        <span :class="smartCache[disk.name].nvme!.percentageUsed >= 90 ? 'text-red-400 font-semibold' : smartCache[disk.name].nvme!.percentageUsed >= 70 ? 'text-yellow-400' : 'text-[var(--c-text-2)]'">{{ smartCache[disk.name].nvme!.percentageUsed }}%</span>
+                      </div>
+                      <div v-if="smartCache[disk.name].nvme!.dataReadTiB > 0" class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Data Read</span>
+                        <span class="text-[var(--c-text-2)] font-mono">{{ fmtTiB(smartCache[disk.name].nvme!.dataReadTiB) }}</span>
+                      </div>
+                      <div v-if="smartCache[disk.name].nvme!.dataWrittenTiB > 0" class="flex justify-between gap-2">
+                        <span class="text-[var(--c-text-3)]">Data Written</span>
+                        <span class="text-[var(--c-text-2)] font-mono">{{ fmtTiB(smartCache[disk.name].nvme!.dataWrittenTiB) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ATA attributes table -->
+                  <div v-if="smartCache[disk.name].attributes.length > 0" class="px-4 pb-4 pt-3">
+                    <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">ATA Attributes</div>
+                    <div class="rounded-lg overflow-hidden border border-[var(--c-border)]">
+                      <table class="w-full text-[11px] border-collapse">
+                        <thead>
+                          <tr class="bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
+                            <th class="text-left px-2.5 py-1.5 font-medium w-8">ID</th>
+                            <th class="text-left px-2.5 py-1.5 font-medium">Attribute</th>
+                            <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Value</th>
+                            <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Worst</th>
+                            <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Thresh</th>
+                            <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Raw</th>
+                            <th class="text-center px-2.5 py-1.5 font-medium w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[var(--c-border)]">
+                          <tr v-for="attr in smartCache[disk.name].attributes" :key="attr.id"
+                            :class="['transition-colors', attr.failed ? 'bg-red-500/8' : attr.isCritical && attr.raw > 0 ? 'bg-yellow-500/6' : '']">
+                            <td class="px-2.5 py-1.5 font-mono text-[var(--c-text-3)]">{{ attr.id }}</td>
+                            <td class="px-2.5 py-1.5 font-mono"
+                              :class="attr.failed ? 'text-red-400 font-semibold' : attr.isCritical ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">
+                              {{ attr.name.replace(/_/g, ' ') }}
+                            </td>
+                            <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-2)]">{{ attr.value }}</td>
+                            <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.worst }}</td>
+                            <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.thresh }}</td>
+                            <td class="px-2.5 py-1.5 tabular-nums text-right font-mono"
+                              :class="attr.failed ? 'text-red-400 font-semibold' : attr.isCritical && attr.raw > 0 ? 'text-yellow-400 font-semibold' : 'text-[var(--c-text-2)]'">
+                              {{ attr.raw.toLocaleString() }}
+                            </td>
+                            <td class="px-2.5 py-1.5 text-center">
+                              <svg v-if="attr.failed" class="w-3 h-3 text-red-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                              </svg>
+                              <svg v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-yellow-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                              </svg>
+                              <svg v-else-if="attr.isCritical" class="w-3 h-3 text-green-400/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                              </svg>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </template>
               </div>
 
               <!-- Partitions -->

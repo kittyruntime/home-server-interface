@@ -203,6 +203,14 @@ export const systemRouter = router({
       return await requestSync("root.sys.raid.stop", input, 30_000)
     }),
 
+  smartInfo: adminProcedure
+    .input(z.object({
+      device: z.string().regex(/^[a-z][a-z0-9]+$/), // bare name only: sda, nvme0n1
+    }))
+    .query(async ({ input }) => {
+      return await requestSync("root.sys.smart", input, 15_000)
+    }),
+
   // ── LVM ────────────────────────────────────────────────────────────────────
 
   lvmInfo: adminProcedure.query(async () => {

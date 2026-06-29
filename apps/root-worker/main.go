@@ -743,6 +743,7 @@ func main() {
 		"root.sys.part.init":               handlePartitionInit,
 		"root.sys.part.create":             handlePartitionCreate,
 		"root.sys.part.delete":             handlePartitionDelete,
+		"root.sys.smart":                   handleSmartInfo,
 		"root.fs.read-chunk":               handleReadChunk,
 		"root.fs.write-chunk":              handleWriteChunk,
 		"root.container.inspect":           handleDockerInspect,
