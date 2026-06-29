@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Container logs: each app row now has a "Logs" button that opens a live terminal overlay streaming `docker logs --follow`. Lines include parsed timestamps, auto-scroll with a "Follow" toggle that pauses when you scroll up, a Clear button, and a line counter. The stream runs through a dedicated NATS inbox so the worker pushes lines directly and the SSE route relays them to the browser.
+- File browser: the first available place (Root for admins, first assigned place for users) is now automatically selected when opening the file browser, eliminating the blank "Select a place" screen on first load.
+
 ## [1.12.3] - 2026-06-29
 
 - File browser: the first available place is now automatically selected when opening the file browser, so the panel never shows a blank "Select a place" screen on first load.
