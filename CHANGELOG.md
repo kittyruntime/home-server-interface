@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Build: AuditLogSection used `useQuery` from `@trpc/vue-query` which is not in this project; replaced with vanilla proxy client calls. Removed unused `TRPCError` import in auth router.
+
 ## [1.18.0] - 2026-06-29
 
 ### Added
