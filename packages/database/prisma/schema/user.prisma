@@ -9,4 +9,5 @@ model User {
   updatedAt        DateTime              @updatedAt
   userRoles        UserRole[]
   placePermissions UserPlacePermission[]
+  auditLogs        AuditLog[]
 }

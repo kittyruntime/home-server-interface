@@ -28,9 +28,46 @@ const isUserManager = t.middleware(({ ctx, next }) => {
   return next()
 })
 
-export const protectedProcedure   = t.procedure.use(isAuthed)
-export const adminProcedure       = t.procedure.use(isAuthed).use(isAdmin)
-export const userManagerProcedure = t.procedure.use(isAuthed).use(isUserManager)
+// ── Audit logging ────────────────────────────────────────────────────────────
+
+function extractTarget(input: unknown): string | undefined {
+  if (!input || typeof input !== "object") return undefined
+  const i = input as Record<string, unknown>
+  const v = i["path"] ?? i["device"] ?? i["mountpoint"] ?? i["name"] ??
+    i["username"] ?? i["vgName"] ?? i["lvName"] ?? i["id"] ?? i["url"]
+  return v != null ? String(v) : undefined
+}
+
+function sanitizeMeta(input: unknown): string | undefined {
+  if (input == null) return undefined
+  if (typeof input !== "object") return String(input)
+  const copy: Record<string, unknown> = { ...(input as Record<string, unknown>) }
+  for (const key of ["password", "token", "secret", "key", "currentPassword", "newPassword"]) {
+    if (key in copy) copy[key] = "[REDACTED]"
+  }
+  return JSON.stringify(copy)
+}
+
+const auditLog = t.middleware(async (opts) => {
+  const result = await opts.next()
+  if (opts.type === "mutation" && opts.ctx.user) {
+    void opts.ctx.prisma.auditLog.create({
+      data: {
+        userId:  opts.ctx.user.userId,
+        action:  opts.path,
+        target:  extractTarget(opts.rawInput),
+        meta:    sanitizeMeta(opts.rawInput),
+        ip:      opts.ctx.req.ip ?? opts.ctx.req.headers["x-forwarded-for"]?.toString(),
+        success: result.ok,
+      },
+    }).catch(() => {})
+  }
+  return result
+})
+
+export const protectedProcedure   = t.procedure.use(isAuthed).use(auditLog)
+export const adminProcedure       = t.procedure.use(isAuthed).use(isAdmin).use(auditLog)
+export const userManagerProcedure = t.procedure.use(isAuthed).use(isUserManager).use(auditLog)
 
 /**
  * Returns a middleware that allows admins unconditionally, and checks

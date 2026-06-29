@@ -1,0 +1,11 @@
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "fs.delete", "system.formatDisk", "auth.login"
+  target    String?  // primary affected resource (path, device name, username…)
+  meta      String?  // JSON — sanitized input for context
+  ip        String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
