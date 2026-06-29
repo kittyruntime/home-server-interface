@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.3] - 2026-06-29
+
 ### Changed
 - Container management: editing a container now opens an inline view within the app panel instead of a full-screen modal. The form replaces the list in-place with a back arrow to return.
 
@@ -202,7 +204,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...HEAD
+[1.11.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.2...v1.11.3
 [1.11.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.10.2...v1.11.0
