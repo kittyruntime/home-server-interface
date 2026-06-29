@@ -8,6 +8,7 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify"
 
 import { healthRoutes } from "./routes/health"
 import { fileRoutes } from "./routes/files"
+import { containerRoutes } from "./routes/containers"
 import { appRouter } from "./trpc/routers/index"
 import { createContext } from "./trpc/context"
 export { connectNats, startEventSubscriber } from "./nats"
@@ -53,6 +54,7 @@ export function buildApp() {
 
     app.register(healthRoutes)
     app.register(fileRoutes)
+    app.register(containerRoutes)
 
     app.register(fastifyTRPCPlugin, {
         prefix: "/trpc",

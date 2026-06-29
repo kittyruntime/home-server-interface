@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppFormModal from './AppFormModal.vue'
+import ContainerLogsPanel from './ContainerLogsPanel.vue'
 import UnmanagedContainers from './UnmanagedContainers.vue'
 import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
@@ -164,8 +165,11 @@ async function recreateApp(id: string) {
   }
 }
 
-function openNew()        { editApp.value = null;  showModal.value = true }
-function openEdit(a: App) { editApp.value = a;     showModal.value = true }
+const logsApp = ref<App | null>(null)
+
+function openNew()        { editApp.value = null; showModal.value = true }
+function openEdit(a: App) { editApp.value = a;    showModal.value = true }
+function openLogs(a: App) { logsApp.value = a }
 
 defineExpose({ openNew })
 
@@ -367,6 +371,17 @@ async function unpin(app: App) {
                     </button>
                   </div>
 
+                  <!-- Logs -->
+                  <button
+                    @click="openLogs(app)"
+                    title="Logs"
+                    class="p-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-lg hover:bg-[var(--c-hover)]"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h8"/>
+                    </svg>
+                  </button>
+
                   <!-- Pin -->
                   <button
                     @click="app.pinnedUrl ? unpin(app) : openPinDialog(app)"
@@ -417,6 +432,13 @@ async function unpin(app: App) {
       <UnmanagedContainers v-if="!loading" @imported="load" />
     </div>
   </div>
+
+  <!-- Container logs -->
+  <ContainerLogsPanel
+    v-if="logsApp"
+    :name="logsApp.name"
+    @close="logsApp = null"
+  />
 
   <!-- Pin dialog -->
   <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">

@@ -1,5 +1,5 @@
 import { connect, StringCodec, NatsError } from "nats"
-import type { NatsConnection, JetStreamClient, JetStreamManager } from "nats"
+import type { NatsConnection, JetStreamClient, JetStreamManager, Subscription } from "nats"
 import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
@@ -206,6 +206,12 @@ export async function writeChunk(opts: {
   if (!resp.ok) {
     throw Object.assign(new Error(resp.error ?? "write-chunk failed"), { code: resp.code })
   }
+}
+
+// ── Raw subscription (used by SSE streaming routes) ───────────────────────────
+
+export function natsSubscribe(subject: string): Subscription {
+  return nc.subscribe(subject)
 }
 
 // ── Event subscriber ──────────────────────────────────────────────────────────

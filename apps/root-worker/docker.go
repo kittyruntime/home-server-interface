@@ -1,16 +1,26 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
+)
+
+// ── Log streaming sessions ────────────────────────────────────────────────────
+
+var (
+	logMu      sync.Mutex
+	logCancels = map[string]context.CancelFunc{}
 )
 
 // ── Message types ─────────────────────────────────────────────────────────────
@@ -385,6 +395,101 @@ func handleDockerListAll(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	replyOk(nc, msg.Reply, result)
+}
+
+// ── Log streaming ─────────────────────────────────────────────────────────────
+
+// handleDockerLogs starts streaming docker logs for a container to a NATS inbox.
+// The caller subscribes to inbox before sending this request to avoid missing early lines.
+// Each published message is JSON: {"line":"..."} or {"done":true} at the end.
+func handleDockerLogs(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		ContainerName string `json:"containerName"`
+		Tail          int    `json:"tail"`
+		Inbox         string `json:"inbox"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
+		return
+	}
+	if req.ContainerName == "" || req.Inbox == "" {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "containerName and inbox required"})
+		return
+	}
+	tail := req.Tail
+	if tail <= 0 {
+		tail = 300
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+
+	inbox := req.Inbox
+	containerName := req.ContainerName
+
+	logMu.Lock()
+	logCancels[inbox] = cancel
+	logMu.Unlock()
+
+	go func() {
+		defer func() {
+			cancel()
+			logMu.Lock()
+			delete(logCancels, inbox)
+			logMu.Unlock()
+			done, _ := json.Marshal(map[string]any{"done": true})
+			_ = nc.Publish(inbox, done)
+		}()
+
+		cmd := exec.CommandContext(ctx, "docker", "logs", "--follow", "--timestamps",
+			"--tail", strconv.Itoa(tail), containerName)
+
+		pr, pw := io.Pipe()
+		cmd.Stdout = pw
+		cmd.Stderr = pw
+
+		if err := cmd.Start(); err != nil {
+			log.Printf("docker logs %s: start failed: %v", containerName, err)
+			return
+		}
+
+		go func() {
+			_ = cmd.Wait()
+			pw.Close()
+		}()
+
+		scanner := bufio.NewScanner(pr)
+		scanner.Buffer(make([]byte, 256*1024), 256*1024)
+		for scanner.Scan() {
+			line := scanner.Text()
+			data, _ := json.Marshal(map[string]any{"line": line})
+			if err := nc.Publish(inbox, data); err != nil {
+				break
+			}
+		}
+	}()
+
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
+// handleDockerLogsStop cancels an active log stream started by handleDockerLogs.
+func handleDockerLogsStop(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Inbox string `json:"inbox"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyOk(nc, msg.Reply, map[string]any{"ok": true})
+		return
+	}
+	logMu.Lock()
+	cancel, ok := logCancels[req.Inbox]
+	if ok {
+		delete(logCancels, req.Inbox)
+	}
+	logMu.Unlock()
+	if ok {
+		cancel()
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
 // ── Async task dispatcher ─────────────────────────────────────────────────────

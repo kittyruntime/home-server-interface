@@ -732,6 +732,8 @@ func main() {
 		"root.fs.write-chunk":              handleWriteChunk,
 		"root.container.inspect":            handleDockerInspect,
 		"root.container.listAll":            handleDockerListAll,
+		"root.container.logs":               handleDockerLogs,
+		"root.container.logs.stop":          handleDockerLogsStop,
 		"root.fs.mkdirp":                    handleMkdirp,
 		"root.linux.user.create":             handleLinuxUserCreate,
 	} {
