@@ -9,6 +9,7 @@ model ContainerApp {
   labels        String   @default("[]") // JSON: LabelEntry[]
   capAdd        String   @default("[]") // JSON: string[]
   capDrop       String   @default("[]") // JSON: string[]
+  extraHosts    String   @default("[]") // JSON: string[]  ("hostname:ip")
   restartPolicy String   @default("no")
   hostname      String?
   user          String?

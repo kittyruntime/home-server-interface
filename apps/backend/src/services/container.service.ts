@@ -35,6 +35,7 @@ export interface AppConfig {
   labels:        LabelEntry[]
   capAdd:        string[]
   capDrop:       string[]
+  extraHosts:    string[]
   restartPolicy: string
   hostname?:     string | null
   user?:         string | null
@@ -171,7 +172,7 @@ type AppRow = {
   id: string; name: string; image: string
   ports: string; envs: string; volumes: string
   networkNames: string; labels: string
-  capAdd: string; capDrop: string
+  capAdd: string; capDrop: string; extraHosts: string
   restartPolicy: string
   hostname: string | null; user: string | null; command: string | null
   cpuLimit: number | null; memoryLimit: string | null
@@ -190,6 +191,7 @@ function serializeApp(config: AppConfig) {
     labels:        enc(config.labels        ?? []),
     capAdd:        enc(config.capAdd        ?? []),
     capDrop:       enc(config.capDrop       ?? []),
+    extraHosts:    enc(config.extraHosts    ?? []),
     restartPolicy: config.restartPolicy ?? "no",
     hostname:      config.hostname    ?? null,
     user:          config.user        ?? null,
@@ -212,6 +214,7 @@ function deserializeApp(row: AppRow) {
     labels:        dec<LabelEntry[]>(row.labels,       []),
     capAdd:        dec<string[]>(row.capAdd,           []),
     capDrop:       dec<string[]>(row.capDrop,          []),
+    extraHosts:    dec<string[]>(row.extraHosts,       []),
     restartPolicy: row.restartPolicy,
     hostname:      row.hostname,
     user:          row.user,

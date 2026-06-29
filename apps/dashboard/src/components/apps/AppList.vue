@@ -15,7 +15,7 @@ type App = {
   id: string; name: string; image: string; status: string
   ports: Array<{ hostPort: number; containerPort: number; protocol: 'tcp' | 'udp' }>
   envs: any[]; volumes: any[]; networkNames: string[]; labels: any[]
-  capAdd: string[]; capDrop: string[]; restartPolicy: string
+  capAdd: string[]; capDrop: string[]; extraHosts: string[]; restartPolicy: string
   hostname: string | null; user: string | null; command: string | null
   cpuLimit: number | null; memoryLimit: string | null
   pinnedUrl: string | null

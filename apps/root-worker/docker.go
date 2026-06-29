@@ -51,6 +51,7 @@ type dockerTaskMsg struct {
 	Labels        []labelEntry  `json:"labels"`
 	CapAdd        []string      `json:"capAdd"`
 	CapDrop       []string      `json:"capDrop"`
+	ExtraHosts    []string      `json:"extraHosts"`
 	RestartPolicy string        `json:"restartPolicy"`
 	Hostname      *string       `json:"hostname"`
 	User          *string       `json:"user"`
@@ -123,6 +124,10 @@ func buildCreateArgs(msg *dockerTaskMsg) []string {
 	}
 	for _, c := range msg.CapDrop {
 		args = append(args, "--cap-drop", c)
+	}
+
+	for _, h := range msg.ExtraHosts {
+		args = append(args, "--add-host", h)
 	}
 
 	if msg.RestartPolicy != "" && msg.RestartPolicy != "no" {

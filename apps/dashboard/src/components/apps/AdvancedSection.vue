@@ -4,6 +4,7 @@ import { ref } from 'vue'
 export interface AdvancedConfig {
   capAdd:        string[]
   capDrop:       string[]
+  extraHosts:    string[]
   restartPolicy: string
   hostname:      string | null
   user:          string | null
@@ -15,8 +16,10 @@ export interface AdvancedConfig {
 const props = defineProps<{ modelValue: AdvancedConfig }>()
 const emit  = defineEmits<{ 'update:modelValue': [v: AdvancedConfig] }>()
 
-const capAddInput  = ref('')
-const capDropInput = ref('')
+const capAddInput     = ref('')
+const capDropInput    = ref('')
+const extraHostInput  = ref('')
+const extraHostError  = ref('')
 
 function update(field: keyof AdvancedConfig, val: unknown) {
   emit('update:modelValue', { ...props.modelValue, [field]: val })
@@ -33,6 +36,21 @@ function addCap(field: 'capAdd' | 'capDrop', inputRef: { value: string }) {
 
 function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
   update(field, props.modelValue[field].filter(c => c !== cap))
+}
+
+function addExtraHost() {
+  extraHostError.value = ''
+  const h = extraHostInput.value.trim()
+  if (!h) return
+  if (!/^[^:]+:[^:]+$/.test(h)) { extraHostError.value = 'Format: hostname:ip'; return }
+  if (!props.modelValue.extraHosts.includes(h)) {
+    update('extraHosts', [...props.modelValue.extraHosts, h])
+  }
+  extraHostInput.value = ''
+}
+
+function removeExtraHost(h: string) {
+  update('extraHosts', props.modelValue.extraHosts.filter(x => x !== h))
 }
 </script>
 
@@ -85,6 +103,33 @@ function removeCap(field: 'capAdd' | 'capDrop', cap: string) {
           class="px-3 py-1.5 bg-[var(--c-warning)]/20 text-[var(--c-warning)] rounded-lg text-sm hover:bg-[var(--c-warning)]/30 transition-colors"
         >Add</button>
       </div>
+    </div>
+
+    <!-- Extra Hosts -->
+    <div class="space-y-2">
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Extra Hosts</label>
+      <div class="flex flex-wrap gap-1.5 mb-2">
+        <span
+          v-for="h in modelValue.extraHosts" :key="h"
+          class="inline-flex items-center gap-1 text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded px-2 py-0.5 font-mono"
+        >
+          {{ h }}
+          <button @click="removeExtraHost(h)" class="hover:opacity-60 transition-colors">×</button>
+        </span>
+      </div>
+      <div class="flex gap-2">
+        <input
+          v-model="extraHostInput" placeholder="myhost:192.168.1.10"
+          @keydown.enter.prevent="addExtraHost"
+          class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        />
+        <button
+          @click="addExtraHost"
+          class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
+        >Add</button>
+      </div>
+      <p v-if="extraHostError" class="text-xs text-[var(--c-accent)]">{{ extraHostError }}</p>
+      <p class="text-xs text-[var(--c-text-3)]">Adds <span class="font-mono">--add-host</span> entries (maps to <span class="font-mono">/etc/hosts</span> inside the container).</p>
     </div>
 
     <!-- Restart policy -->

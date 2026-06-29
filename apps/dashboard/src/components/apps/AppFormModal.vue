@@ -50,6 +50,7 @@ function emptyForm() {
     labels:        [] as LabelEntry[],
     capAdd:        [] as string[],
     capDrop:       [] as string[],
+    extraHosts:    [] as string[],
     restartPolicy: 'no',
     hostname:      null as string | null,
     user:          null as string | null,
@@ -153,6 +154,17 @@ function importCompose() {
 
   if (Array.isArray(svc.cap_add))  form.capAdd  = svc.cap_add
   if (Array.isArray(svc.cap_drop)) form.capDrop = svc.cap_drop
+
+  // extra_hosts: ["host:ip"] or { host: "ip" }
+  if (svc.extra_hosts) {
+    const hosts: string[] = []
+    if (Array.isArray(svc.extra_hosts)) {
+      for (const h of svc.extra_hosts) hosts.push(String(h))
+    } else {
+      for (const [k, v] of Object.entries(svc.extra_hosts)) hosts.push(`${k}:${v}`)
+    }
+    if (hosts.length) form.extraHosts = hosts
+  }
   if (svc.restart) form.restartPolicy = svc.restart
   if (svc.hostname) form.hostname = svc.hostname
   if (svc.user)     form.user     = String(svc.user)
@@ -188,6 +200,7 @@ watch(() => props.editApp, (app) => {
       labels:        [...app.labels],
       capAdd:        [...app.capAdd],
       capDrop:       [...app.capDrop],
+      extraHosts:    [...(app.extraHosts ?? [])],
       restartPolicy: app.restartPolicy,
       hostname:      app.hostname,
       user:          app.user,
@@ -206,7 +219,7 @@ watch(() => props.editApp, (app) => {
 }, { immediate: true })
 
 const advanced = computed<AdvancedConfig>({
-  get:  () => ({ capAdd: form.capAdd, capDrop: form.capDrop, restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user, command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit }),
+  get:  () => ({ capAdd: form.capAdd, capDrop: form.capDrop, extraHosts: form.extraHosts, restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user, command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit }),
   set:  (v) => { Object.assign(form, v) },
 })
 
@@ -230,6 +243,7 @@ async function save() {
       labels:        form.labels,
       capAdd:        form.capAdd,
       capDrop:       form.capDrop,
+      extraHosts:    form.extraHosts,
       restartPolicy: form.restartPolicy as any,
       hostname:      form.hostname,
       user:          form.user,

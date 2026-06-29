@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Container form: new "Extra Hosts" field in the Advanced tab — adds `--add-host hostname:ip` entries that map to `/etc/hosts` inside the container. Supports tag-based input with `hostname:ip` format validation. Compose import parses `extra_hosts` (array or map form).
+
 ## [1.11.3] - 2026-06-29
 
 ### Changed
