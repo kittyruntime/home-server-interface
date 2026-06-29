@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-06-29
+
 ### Fixed
 - Build: resolved `TS2532` (Object is possibly undefined) errors in SMART panel template; CI now passes vue-tsc strict checks.
 
@@ -303,7 +305,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...HEAD
+[1.17.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/kittyruntime/home-server-interface/releases/tag/v1.15.1
