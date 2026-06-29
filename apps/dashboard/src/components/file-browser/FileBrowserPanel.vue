@@ -62,6 +62,12 @@ type SortField = 'name' | 'size' | 'date'
 const sortField = ref<SortField>('name')
 const sortDir   = ref<'asc' | 'desc'>('asc')
 
+const activeUploads = computed(() =>
+  uploads.tasks.value.filter(
+    t => t.destDir === currentPath.value && t.status !== 'done' && t.status !== 'cancelled'
+  )
+)
+
 const sortedEntries = computed(() => {
   const arr = [...entries.value]
   arr.sort((a, b) => {
@@ -602,12 +608,12 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Empty directory -->
-        <div v-else-if="entries.length === 0" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
+        <!-- Empty directory (and no uploads in progress) -->
+        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
           <p class="text-sm">Empty directory</p>
         </div>
 
-        <!-- Has entries: filter bar (optional) + view -->
+        <!-- Has entries (or uploads in progress) -->
         <template v-else>
           <!-- Filter bar (Cmd/Ctrl+K) -->
           <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-[var(--c-bg)] border-b border-[var(--c-border)] flex items-center gap-2">
@@ -638,6 +644,7 @@ onMounted(async () => {
             :rename-value="renameValue"
             :pending-paths="pendingPaths"
             :creating-folder="creatingFolder"
+            :upload-tasks="activeUploads"
             @card-click="handleGridCardClick"
             @card-dbl-click="handleGridCardDblClick"
             @select-entry="selectEntry"
@@ -661,6 +668,7 @@ onMounted(async () => {
             :rename-value="renameValue"
             :pending-paths="pendingPaths"
             :creating-folder="creatingFolder"
+            :upload-tasks="activeUploads"
             @row-click="handleRowClick"
             @row-dbl-click="handleRowDblClick"
             @select-entry="selectEntry"

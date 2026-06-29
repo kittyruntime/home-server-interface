@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- File browser: uploads now appear inline as ghost rows/cards in the directory they're targeting. Each shows a live progress bar, transfer speed, and a spinner on the icon — visible immediately when the upload starts, before the file exists on disk. Works for all uploads in the current browser session (any logged-in user). The ghost disappears and is replaced by the real entry once the upload completes.
+
 ## [1.12.1] - 2026-06-29
 
 ### Added

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { UploadTask } from '../../lib/uploads'
+
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
 defineProps<{
@@ -8,6 +10,7 @@ defineProps<{
   renameValue: string
   pendingPaths?: string[]
   creatingFolder?: boolean
+  uploadTasks?: UploadTask[]
 }>()
 
 const emit = defineEmits<{
@@ -25,10 +28,65 @@ const emit = defineEmits<{
 function fileExt(name: string): string {
   return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
 }
+
+function uploadPct(t: UploadTask) {
+  return t.totalBytes > 0 ? Math.round(t.sentBytes / t.totalBytes * 100) : 0
+}
+function uploadSpeed(bps: number) {
+  if (bps >= 1_048_576) return `${(bps / 1_048_576).toFixed(1)} MB/s`
+  if (bps >= 1_024)     return `${(bps / 1_024).toFixed(0)} KB/s`
+  return bps > 0 ? `${Math.round(bps)} B/s` : ''
+}
 </script>
 
 <template>
   <div class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
+    <!-- Upload cards -->
+    <div
+      v-for="t in uploadTasks"
+      :key="t.id"
+      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] select-none pointer-events-none overflow-hidden"
+    >
+      <!-- File icon -->
+      <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
+        <svg class="w-9 h-11 shrink-0"
+          :class="t.status === 'error' ? 'text-[var(--c-danger)]' : t.status === 'paused' ? 'text-[var(--c-warning)]' : 'text-[var(--c-accent)]'"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+        </svg>
+        <!-- Spinner overlay on icon -->
+        <div v-if="t.status === 'uploading'" class="absolute inset-0 flex items-center justify-center">
+          <svg class="w-5 h-5 animate-spin text-[var(--c-accent)] drop-shadow" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Name -->
+      <span class="text-xs leading-tight w-full text-center truncate px-1"
+        :class="t.status === 'error' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-2)]'"
+        :title="t.name">
+        {{ t.name }}
+      </span>
+
+      <!-- Speed badge -->
+      <span v-if="t.status === 'uploading' && t.bytesPerSec > 0"
+        class="text-[9px] text-[var(--c-text-3)] tabular-nums leading-none">
+        {{ uploadSpeed(t.bytesPerSec) }}
+      </span>
+      <span v-else-if="t.status === 'paused'" class="text-[9px] text-[var(--c-warning)]">Paused</span>
+      <span v-else-if="t.status === 'error'" class="text-[9px] text-[var(--c-danger)]">Failed</span>
+
+      <!-- Progress bar at bottom -->
+      <div v-if="t.status === 'uploading' || t.status === 'paused'"
+        class="absolute bottom-0 left-0 right-0 h-1 bg-[var(--c-border)]">
+        <div class="h-full transition-all duration-300"
+          :class="t.status === 'paused' ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-accent)]'"
+          :style="{ width: uploadPct(t) + '%' }" />
+      </div>
+    </div>
+
     <!-- Ghost card while creating a folder -->
     <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] opacity-60 select-none pointer-events-none">
       <svg class="w-11 h-11 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 24 24">
