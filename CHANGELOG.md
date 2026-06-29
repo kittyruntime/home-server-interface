@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Build: AuditLogSection imported `inferRouterOutputs` from `@trpc/server` which is not a dashboard dependency; replaced with `Awaited<ReturnType<...>>` derived from the proxy client.
+
 ## [1.18.1] - 2026-06-29
 
 ### Fixed
