@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.16.0] - 2026-06-29
 
-<!-- next release here -->
-
-## [1.16.0] - 2026-06-29
-
 ### Added
 - Storage section is now split into three focused tabs: **Disks**, **RAID**, and **LVM** — each with a live count badge.
 - LVM wizard: assembled RAID arrays (md devices) can now be selected as Physical Volume candidates, enabling LVM-over-RAID setups. They appear in the picker with a RAID badge.
