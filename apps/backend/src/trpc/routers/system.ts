@@ -201,4 +201,65 @@ export const systemRouter = router({
     .mutation(async ({ input }) => {
       return await requestSync("root.sys.raid.stop", input, 30_000)
     }),
+
+  // ── LVM ────────────────────────────────────────────────────────────────────
+
+  lvmInfo: adminProcedure.query(async () => {
+    return await requestSync<{
+      pvs: Array<{ name: string; vgName: string; size: number; free: number }>
+      vgs: Array<{ name: string; size: number; free: number; pvCount: number; lvCount: number }>
+      lvs: Array<{ name: string; vgName: string; size: number; path: string }>
+    }>("root.sys.lvm.info", {}, 10_000)
+  }),
+
+  createPv: adminProcedure
+    .input(z.object({ devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1) }))
+    .mutation(async ({ input }) => requestSync("root.sys.lvm.pv.create", input, 30_000)),
+
+  createVg: adminProcedure
+    .input(z.object({
+      name:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
+      devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1),
+    }))
+    .mutation(async ({ input }) => requestSync("root.sys.lvm.vg.create", input, 30_000)),
+
+  createLv: adminProcedure
+    .input(z.object({
+      vgName:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
+      lvName:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
+      sizeBytes: z.number().int().min(0),
+    }))
+    .mutation(async ({ input }) => requestSync("root.sys.lvm.lv.create", input, 30_000)),
+
+  removeLv: adminProcedure
+    .input(z.object({
+      vgName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
+      lvName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
+    }))
+    .mutation(async ({ input }) => requestSync("root.sys.lvm.lv.remove", input, 20_000)),
+
+  removeVg: adminProcedure
+    .input(z.object({ vgName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.lvm.vg.remove", input, 20_000)),
+
+  // ── Partitions ─────────────────────────────────────────────────────────────
+
+  initPartitionTable: adminProcedure
+    .input(z.object({ device: z.string().regex(/^[a-z][a-z0-9]+$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.part.init", input, 15_000)),
+
+  createPartition: adminProcedure
+    .input(z.object({
+      device:   z.string().regex(/^[a-z][a-z0-9]+$/),
+      startPct: z.number().int().min(0).max(99).default(0),
+      endPct:   z.number().int().min(1).max(100).default(100),
+    }))
+    .mutation(async ({ input }) => requestSync("root.sys.part.create", input, 15_000)),
+
+  deletePartition: adminProcedure
+    .input(z.object({
+      device:  z.string().regex(/^[a-z][a-z0-9]+$/),
+      partNum: z.string().regex(/^[1-9][0-9]?$/),
+    }))
+    .mutation(async ({ input }) => requestSync("root.sys.part.delete", input, 15_000)),
 })

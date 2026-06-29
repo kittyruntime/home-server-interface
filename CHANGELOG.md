@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- LVM management: create Volume Groups from one or more physical devices, with a 3-step wizard (select PV devices → name VG/LV/optional size → confirm). Logical Volumes appear as manageable entries with Format, Mount/Unmount, and Delete actions. Per-VG controls: Add LV and Remove VG (with typed confirmation). LVM info is loaded in parallel with block devices on page open.
+- Partition management: each non-system disk now has an inline partition toolbar with "Init GPT" (wipes partition table — requires typed confirmation) and "+ Partition" (creates a partition spanning all free space). Each partition row gains a "Delete" button (when unmounted and not a system partition).
+- Seven new dialogs for all LVM and partition operations: LVM Create Wizard, Add LV, Remove LV, Remove VG, Init GPT, Add Partition, Delete Partition — all include warnings and typed or explicit confirmation before any destructive action.
+- LVM Logical Volumes behave as first-class block devices: they show filesystem type, mount point, and usage bar if mounted, and reuse the existing Format/Mount/Unmount wizards.
+
 ## [1.14.0] - 2026-06-29
 
 ### Added

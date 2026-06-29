@@ -31,12 +31,21 @@ type RaidArray = {
   total:   number
 }
 
+// ── Types (LVM) ───────────────────────────────────────────────────────────────
+
+type LvmPV = { name: string; vgName: string; size: number; free: number }
+type LvmVG = { name: string; size: number; free: number; pvCount: number; lvCount: number }
+type LvmLV = { name: string; vgName: string; size: number; path: string }
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const loading = ref(true)
 const error   = ref('')
 const devices = ref<BlockDev[]>([])
 const raids   = ref<RaidArray[]>([])
+const lvmPVs  = ref<LvmPV[]>([])
+const lvmVGs  = ref<LvmVG[]>([])
+const lvmLVs  = ref<LvmLV[]>([])
 
 const physicalDisks = computed(() =>
   devices.value.filter(d => d.type === 'disk' || (d.type === 'md' && !raids.value.find(r => r.name === d.name)))
@@ -46,12 +55,13 @@ const raidBlockDevs = computed(() =>
   devices.value.filter(d => d.type === 'md' || raids.value.find(r => r.name === d.name))
 )
 
-// All non-system, unmounted, non-rom devices (disks AND partitions) for RAID selection
+// All non-system, unmounted, non-rom devices for RAID selection (excludes PV devices)
 const eligibleForRaid = computed<BlockDev[]>(() => {
   const inRaid = new Set(raids.value.flatMap(r => r.devices))
+  const pvDevs = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
-    if (!dev.isSystem && !dev.mountpoint && !inRaid.has(dev.name) && dev.type !== 'rom' && dev.type !== 'loop') {
+    if (!dev.isSystem && !dev.mountpoint && !inRaid.has(dev.name) && !pvDevs.has(dev.name) && dev.type !== 'rom' && dev.type !== 'loop') {
       out.push(dev)
     }
     dev.children?.forEach(collect)
@@ -60,13 +70,220 @@ const eligibleForRaid = computed<BlockDev[]>(() => {
   return out
 })
 
+// Devices eligible to become LVM Physical Volumes
+const eligibleForLvm = computed<BlockDev[]>(() => {
+  const inRaid = new Set(raids.value.flatMap(r => r.devices))
+  const pvDevs = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
+  const out: BlockDev[] = []
+  function collect(dev: BlockDev) {
+    if (!dev.isSystem && !dev.mountpoint && !inRaid.has(dev.name) && !pvDevs.has(dev.name) && dev.type !== 'rom' && dev.type !== 'loop') {
+      out.push(dev)
+    }
+    dev.children?.forEach(collect)
+  }
+  devices.value.forEach(collect)
+  return out
+})
+
+// LV as a pseudo-BlockDev so Format/Mount/Unmount reuse existing dialogs
+function lvToBlockDev(lv: LvmLV): BlockDev {
+  const lvDevName = lv.path.replace('/dev/', '').replace(/\//g, '-')
+  const mountInfo = devices.value
+    .flatMap(d => [d, ...d.children])
+    .find(d => d.path === lv.path || d.name === lvDevName)
+  return {
+    name: lvDevName, path: lv.path, size: lv.size, type: 'lvm',
+    fstype: mountInfo?.fstype ?? '', mountpoint: mountInfo?.mountpoint ?? '',
+    model: '', uuid: mountInfo?.uuid ?? '',
+    isSystem: false, isRemovable: false,
+    usageTotal: mountInfo?.usageTotal ?? 0, usageUsed: mountInfo?.usageUsed ?? 0, usageFree: mountInfo?.usageFree ?? 0,
+    children: [],
+  }
+}
+
+// VG free space as percentage
+function vgFreePct(vg: LvmVG): number {
+  return vg.size > 0 ? Math.min(100, (vg.free / vg.size) * 100) : 0
+}
+
+// ── LVM wizard ────────────────────────────────────────────────────────────────
+
+const lvmWiz = ref<{
+  step:      1 | 2 | 3
+  pvDevs:    string[]   // selected device names for PV creation
+  vgName:    string
+  lvName:    string
+  lvSizeGB:  number     // 0 = all free
+  busy:      boolean
+  err:       string
+} | null>(null)
+
+function openLvmWizard() {
+  lvmWiz.value = { step: 1, pvDevs: [], vgName: '', lvName: 'lv0', lvSizeGB: 0, busy: false, err: '' }
+}
+
+function toggleLvmDev(name: string) {
+  if (!lvmWiz.value) return
+  const i = lvmWiz.value.pvDevs.indexOf(name)
+  if (i >= 0) lvmWiz.value.pvDevs.splice(i, 1)
+  else lvmWiz.value.pvDevs.push(name)
+}
+
+async function doCreateLvm() {
+  if (!lvmWiz.value) return
+  const w = lvmWiz.value
+  w.busy = true; w.err = ''
+  try {
+    // 1. pvcreate on selected devices
+    await trpc.system.createPv.mutate({ devices: w.pvDevs })
+    // 2. vgcreate
+    await trpc.system.createVg.mutate({ name: w.vgName, devices: w.pvDevs })
+    // 3. lvcreate
+    const sizeBytes = w.lvSizeGB > 0 ? Math.floor(w.lvSizeGB * 1024 ** 3) : 0
+    await trpc.system.createLv.mutate({ vgName: w.vgName, lvName: w.lvName, sizeBytes })
+    lvmWiz.value = null
+    await load()
+  } catch (e: any) {
+    w.err = e?.message ?? 'LVM creation failed'
+  } finally {
+    if (lvmWiz.value) w.busy = false
+  }
+}
+
+// Add LV to existing VG
+const addLvDlg = ref<{
+  vg:       LvmVG
+  lvName:   string
+  lvSizeGB: number
+  busy:     boolean
+  err:      string
+} | null>(null)
+
+async function doAddLv() {
+  if (!addLvDlg.value) return
+  const d = addLvDlg.value
+  d.busy = true; d.err = ''
+  try {
+    const sizeBytes = d.lvSizeGB > 0 ? Math.floor(d.lvSizeGB * 1024 ** 3) : 0
+    await trpc.system.createLv.mutate({ vgName: d.vg.name, lvName: d.lvName, sizeBytes })
+    addLvDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to create LV'
+  } finally {
+    if (addLvDlg.value) d.busy = false
+  }
+}
+
+// Remove LV confirmation
+const removeLvDlg = ref<{ lv: LvmLV; confirm: string; busy: boolean; err: string } | null>(null)
+
+async function doRemoveLv() {
+  if (!removeLvDlg.value || removeLvDlg.value.confirm !== removeLvDlg.value.lv.name) return
+  const d = removeLvDlg.value
+  d.busy = true; d.err = ''
+  try {
+    await trpc.system.removeLv.mutate({ vgName: d.lv.vgName, lvName: d.lv.name })
+    removeLvDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to remove LV'
+  } finally {
+    if (removeLvDlg.value) d.busy = false
+  }
+}
+
+// Remove VG confirmation
+const removeVgDlg = ref<{ vg: LvmVG; confirm: string; busy: boolean; err: string } | null>(null)
+
+async function doRemoveVg() {
+  if (!removeVgDlg.value || removeVgDlg.value.confirm !== removeVgDlg.value.vg.name) return
+  const d = removeVgDlg.value
+  d.busy = true; d.err = ''
+  try {
+    await trpc.system.removeVg.mutate({ vgName: d.vg.name })
+    removeVgDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to remove VG'
+  } finally {
+    if (removeVgDlg.value) d.busy = false
+  }
+}
+
+// ── Partition dialogs ─────────────────────────────────────────────────────────
+
+const partInitDlg = ref<{ disk: BlockDev; confirm: string; busy: boolean; err: string } | null>(null)
+
+async function doPartInit() {
+  if (!partInitDlg.value || partInitDlg.value.confirm !== partInitDlg.value.disk.name) return
+  const d = partInitDlg.value
+  d.busy = true; d.err = ''
+  try {
+    await trpc.system.initPartitionTable.mutate({ device: d.disk.name })
+    partInitDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to initialise partition table'
+  } finally {
+    if (partInitDlg.value) d.busy = false
+  }
+}
+
+const partCreateDlg = ref<{ disk: BlockDev; busy: boolean; err: string } | null>(null)
+
+async function doPartCreate() {
+  if (!partCreateDlg.value) return
+  const d = partCreateDlg.value
+  d.busy = true; d.err = ''
+  try {
+    await trpc.system.createPartition.mutate({ device: d.disk.name, startPct: 0, endPct: 100 })
+    partCreateDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to create partition'
+  } finally {
+    if (partCreateDlg.value) d.busy = false
+  }
+}
+
+const partDeleteDlg = ref<{ disk: BlockDev; part: BlockDev; busy: boolean; err: string } | null>(null)
+
+function partNumOf(diskName: string, partName: string): string {
+  // sda1 → 1, nvme0n1p2 → 2
+  const suffix = partName.replace(diskName, '')
+  return suffix.replace(/^p/, '')
+}
+
+async function doPartDelete() {
+  if (!partDeleteDlg.value) return
+  const d = partDeleteDlg.value
+  const num = partNumOf(d.disk.name, d.part.name)
+  d.busy = true; d.err = ''
+  try {
+    await trpc.system.deletePartition.mutate({ device: d.disk.name, partNum: num })
+    partDeleteDlg.value = null
+    await load()
+  } catch (e: any) {
+    d.err = e?.message ?? 'Failed to delete partition'
+  } finally {
+    if (partDeleteDlg.value) d.busy = false
+  }
+}
+
 async function load() {
   loading.value = true
   error.value   = ''
   try {
-    const res     = await trpc.system.blockDevices.query() as { devices: BlockDev[]; raids: RaidArray[] }
-    devices.value = res.devices ?? []
-    raids.value   = res.raids   ?? []
+    const [blk, lvm] = await Promise.all([
+      trpc.system.blockDevices.query() as Promise<{ devices: BlockDev[]; raids: RaidArray[] }>,
+      trpc.system.lvmInfo.query().catch(() => ({ pvs: [], vgs: [], lvs: [] })),
+    ])
+    devices.value = blk.devices ?? []
+    raids.value   = blk.raids   ?? []
+    lvmPVs.value  = lvm.pvs ?? []
+    lvmVGs.value  = lvm.vgs ?? []
+    lvmLVs.value  = lvm.lvs ?? []
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to load storage info'
   } finally {
@@ -529,6 +746,115 @@ async function doDestroyRaid() {
         </div>
       </section>
 
+      <!-- ── LVM Volume Groups ─────────────────────────────────────────────── -->
+      <section class="mt-8">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">LVM Volumes</h3>
+          </div>
+          <button @click="openLvmWizard"
+            class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Create VG
+          </button>
+        </div>
+
+        <div v-if="lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
+          No LVM volume groups. Create one to get resizable logical volumes from one or more physical drives.
+        </div>
+
+        <div v-else class="space-y-4">
+          <div v-for="vg in lvmVGs" :key="vg.name" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
+            <!-- VG header -->
+            <div class="flex items-center gap-3 px-4 py-3 bg-[var(--c-surface-deep)]/40">
+              <div class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
+                  <span class="text-xs text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                </div>
+                <!-- VG capacity bar -->
+                <div class="mt-1.5 flex items-center gap-2">
+                  <div class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-xs">
+                    <div class="h-full rounded-full bg-purple-400" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
+                  </div>
+                  <span class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(vg.free) }} free</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
+                  class="text-xs px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-purple-500/50 hover:text-purple-400 transition-colors">
+                  + LV
+                </button>
+                <button @click="removeVgDlg = { vg, confirm: '', busy: false, err: '' }"
+                  class="text-xs px-2 py-0.5 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            <!-- PVs list -->
+            <div class="px-4 py-2 border-b border-[var(--c-border)]">
+              <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-1.5">Physical Volumes</div>
+              <div class="flex flex-wrap gap-2">
+                <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
+                  class="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">
+                  {{ pv.name }}
+                  <span class="text-[var(--c-text-3)]">{{ fmtBytes(pv.size) }}</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- LVs list -->
+            <div class="divide-y divide-[var(--c-border)]">
+              <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
+                class="px-4 py-2.5 text-xs italic text-[var(--c-text-3)]">
+                No logical volumes yet — click "+ LV" to create one.
+              </div>
+              <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
+                class="flex items-center gap-3 px-4 py-2.5">
+                <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                  :class="lvToBlockDev(lv).mountpoint ? 'bg-green-400/70' : 'bg-purple-400/50'"/>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
+                    <span class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(lv.size) }}</span>
+                    <span v-if="lvToBlockDev(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lvToBlockDev(lv).fstype }}</span>
+                    <span v-else class="text-[10px] italic text-[var(--c-text-3)]">unformatted</span>
+                  </div>
+                  <div v-if="lvToBlockDev(lv).mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">→ {{ lvToBlockDev(lv).mountpoint }}</div>
+                  <!-- Usage bar -->
+                  <div v-if="lvToBlockDev(lv).usageTotal > 0" class="mt-1.5 space-y-0.5">
+                    <div class="w-full h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-xs">
+                      <div class="h-full rounded-full" :class="usageBarClass(usagePct(lvToBlockDev(lv)))" :style="{ width: usagePct(lvToBlockDev(lv)) + '%' }"/>
+                    </div>
+                    <div class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(lvToBlockDev(lv).usageFree) }} free</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button v-if="!lvToBlockDev(lv).mountpoint" @click="openFormat(lvToBlockDev(lv))"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                  <button v-if="lvToBlockDev(lv).fstype && !lvToBlockDev(lv).mountpoint" @click="openMount(lvToBlockDev(lv))"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                  <button v-if="lvToBlockDev(lv).mountpoint" @click="openUmount(lvToBlockDev(lv))"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                  <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
+                    class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ── Physical Drives ───────────────────────────────────────────────── -->
       <section class="mt-8">
         <div class="flex items-center gap-2 mb-3">
@@ -583,6 +909,20 @@ async function doDestroyRaid() {
               This disk is in use by the operating system. It cannot be formatted, partitioned, or added to a RAID array.
             </div>
 
+            <!-- Partition management toolbar (non-system disks only) -->
+            <div v-if="!disk.isSystem" class="flex items-center gap-1.5 px-4 py-2 border-t border-[var(--c-border)]">
+              <span class="text-[10px] text-[var(--c-text-3)] flex-1">Partition table</span>
+              <button @click="partCreateDlg = { disk, busy: false, err: '' }"
+                class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                + Partition
+              </button>
+              <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
+                title="Initialize a new GPT partition table — this will erase all existing partitions"
+                class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">
+                Init GPT
+              </button>
+            </div>
+
             <!-- Partitions / children -->
             <div v-if="disk.children && disk.children.length > 0" class="divide-y divide-[var(--c-border)]">
               <div
@@ -625,6 +965,10 @@ async function doDestroyRaid() {
                     <button v-if="part.mountpoint" @click="openUmount(part)"
                       class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
                       Unmount
+                    </button>
+                    <button v-if="!part.mountpoint" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
+                      class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -1060,6 +1404,367 @@ async function doDestroyRaid() {
             </div>
           </div>
 
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- LVM CREATE WIZARD                                                     -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="lvmWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!lvmWiz.busy && (lvmWiz = null)">
+        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-2xl overflow-hidden">
+
+          <!-- Step indicator -->
+          <div class="flex items-center border-b border-[var(--c-border)]">
+            <div v-for="(label, i) in ['Select Devices', 'Configure', 'Confirm']" :key="i"
+              :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
+                lvmWiz.step === i + 1 ? 'text-purple-400 border-b-2 border-purple-400'
+                : lvmWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
+                : 'text-[var(--c-text-3)]/50']"
+            >{{ i + 1 }}. {{ label }}</div>
+          </div>
+
+          <!-- Step 1: Select devices -->
+          <div v-if="lvmWiz.step === 1" class="p-5 space-y-3">
+            <p class="text-sm text-[var(--c-text-2)]">
+              Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
+            </p>
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/20 text-[11px] text-yellow-400">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              All data on the selected devices will be permanently destroyed.
+            </div>
+            <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
+              No eligible devices available.<br>
+              <span class="text-xs">Devices must be unmounted, not in a RAID, and not a system disk.</span>
+            </div>
+            <div v-else class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              <label v-for="dev in eligibleForLvm" :key="dev.name"
+                :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                  lvmWiz.pvDevs.includes(dev.name)
+                    ? 'border-purple-400 bg-purple-400/5'
+                    : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
+                @click="toggleLvmDev(dev.name)">
+                <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                  lvmWiz.pvDevs.includes(dev.name) ? 'border-purple-400 bg-purple-400' : 'border-[var(--c-border-strong)]']">
+                  <svg v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
+                  <span v-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
+                </div>
+                <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
+              </label>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button @click="lvmWiz = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
+                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                Next →
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Configure VG + LV -->
+          <div v-else-if="lvmWiz.step === 2" class="p-5 space-y-4">
+            <p class="text-sm text-[var(--c-text-2)]">Name the Volume Group and its first Logical Volume.</p>
+            <div>
+              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Volume Group name</label>
+              <input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+              <p class="text-[10px] text-[var(--c-text-3)] mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">First Logical Volume name</label>
+              <input v-model="lvmWiz.lvName" type="text" placeholder="lv0"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
+                Size (GB) <span class="text-[var(--c-text-3)] font-normal">— leave 0 to use all available space</span>
+              </label>
+              <input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button @click="lvmWiz.step = 1" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">← Back</button>
+              <button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
+                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                Next →
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Confirm -->
+          <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+              <svg class="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              <div>
+                <div class="font-semibold text-yellow-400 text-sm mb-1">All data on selected devices will be erased</div>
+                <div class="text-xs text-yellow-300/80">LVM will overwrite the beginning of each device to write PV headers.</div>
+              </div>
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Devices</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">VG name</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
+            </div>
+            <div v-if="lvmWiz.err" class="text-xs text-red-400 px-1">{{ lvmWiz.err }}</div>
+            <div class="flex gap-2">
+              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
+              <button @click="doCreateLvm" :disabled="lvmWiz.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="lvmWiz.busy">Creating…</span>
+                <span v-else>Create LVM</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- ADD LV DIALOG                                                         -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="addLvDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!addLvDlg.busy && (addLvDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)]">
+            <h3 class="font-semibold text-[var(--c-text-1)]">Add Logical Volume</h3>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
+          </div>
+          <div class="p-5 space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Logical Volume name</label>
+              <input v-model="addLvDlg.lvName" type="text" placeholder="lv0"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
+                Size (GB) <span class="text-[var(--c-text-3)] font-normal">— 0 = all remaining free space</span>
+              </label>
+              <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+            </div>
+            <div v-if="addLvDlg.err" class="text-xs text-red-400">{{ addLvDlg.err }}</div>
+            <div class="flex gap-2 pt-1">
+              <button @click="addLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="addLvDlg.busy">Creating…</span>
+                <span v-else>Create LV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- REMOVE LV DIALOG                                                      -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="removeLvDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeLvDlg.busy && (removeLvDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
+            <h3 class="font-semibold text-red-400">Delete Logical Volume</h3>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              All data on <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> will be permanently destroyed.
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
+                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeLvDlg.lv.name }}</span> to confirm
+              </label>
+              <input v-model="removeLvDlg.confirm" type="text" :placeholder="removeLvDlg.lv.name"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+            </div>
+            <div v-if="removeLvDlg.err" class="text-xs text-red-400">{{ removeLvDlg.err }}</div>
+            <div class="flex gap-2">
+              <button @click="removeLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doRemoveLv" :disabled="removeLvDlg.confirm !== removeLvDlg.lv.name || removeLvDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="removeLvDlg.busy">Deleting…</span>
+                <span v-else>Delete LV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- REMOVE VG DIALOG                                                      -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="removeVgDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeVgDlg.busy && (removeVgDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
+            <h3 class="font-semibold text-red-400">Remove Volume Group</h3>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will delete the VG and all its Logical Volumes.</p>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              Removing <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
+                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeVgDlg.vg.name }}</span> to confirm
+              </label>
+              <input v-model="removeVgDlg.confirm" type="text" :placeholder="removeVgDlg.vg.name"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+            </div>
+            <div v-if="removeVgDlg.err" class="text-xs text-red-400">{{ removeVgDlg.err }}</div>
+            <div class="flex gap-2">
+              <button @click="removeVgDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doRemoveVg" :disabled="removeVgDlg.confirm !== removeVgDlg.vg.name || removeVgDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="removeVgDlg.busy">Removing…</span>
+                <span v-else>Remove VG</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- INIT GPT DIALOG                                                       -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="partInitDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partInitDlg.busy && (partInitDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
+            <h3 class="font-semibold text-red-400">Initialize GPT partition table</h3>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will erase all existing partitions and data on the disk.</p>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              <span>Writing a new GPT label to <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will permanently destroy all partitions and data currently on the disk.</span>
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
+              <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
+                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ partInitDlg.disk.name }}</span> to confirm
+              </label>
+              <input v-model="partInitDlg.confirm" type="text" :placeholder="partInitDlg.disk.name"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+            </div>
+            <div v-if="partInitDlg.err" class="text-xs text-red-400">{{ partInitDlg.err }}</div>
+            <div class="flex gap-2">
+              <button @click="partInitDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doPartInit" :disabled="partInitDlg.confirm !== partInitDlg.disk.name || partInitDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="partInitDlg.busy">Initializing…</span>
+                <span v-else>Init GPT</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- ADD PARTITION DIALOG                                                  -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="partCreateDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partCreateDlg.busy && (partCreateDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)]">
+            <h3 class="font-semibold text-[var(--c-text-1)]">Add partition</h3>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Creates a new partition spanning all available free space on <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-xs text-[var(--c-text-3)]">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              The partition will use the entire free space (0% → 100%). After creation you can format and mount it.
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
+            </div>
+            <div v-if="partCreateDlg.err" class="text-xs text-red-400">{{ partCreateDlg.err }}</div>
+            <div class="flex gap-2 pt-1">
+              <button @click="partCreateDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doPartCreate" :disabled="partCreateDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 font-medium">
+                <span v-if="partCreateDlg.busy">Creating…</span>
+                <span v-else>Create partition</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- DELETE PARTITION DIALOG                                               -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <div v-if="partDeleteDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partDeleteDlg.busy && (partDeleteDlg = null)">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
+            <h3 class="font-semibold text-red-400">Delete partition</h3>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+              </svg>
+              Deleting <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> will permanently destroy all data in that partition.
+            </div>
+            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
+              <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
+            </div>
+            <div v-if="partDeleteDlg.err" class="text-xs text-red-400">{{ partDeleteDlg.err }}</div>
+            <div class="flex gap-2">
+              <button @click="partDeleteDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="doPartDelete" :disabled="partDeleteDlg.busy"
+                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                <span v-if="partDeleteDlg.busy">Deleting…</span>
+                <span v-else>Delete partition</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>
