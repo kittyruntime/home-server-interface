@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Places: when creating a place with a path that doesn't exist, a "Create directory and add place" link appears below the error — clicking it runs `mkdir -p` on the path and automatically retries the creation.
+
 ## [1.11.1] - 2026-06-29
 
 ### Fixed

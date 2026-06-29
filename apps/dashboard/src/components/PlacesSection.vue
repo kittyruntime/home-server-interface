@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../lib/trpc'
 
 type Place = { id: string; name: string; path: string }
@@ -18,6 +18,9 @@ const newName      = ref('')
 const newPath      = ref('')
 const addError     = ref('')
 const addLoading   = ref(false)
+const pathMissing  = ref(false)
+
+watch(newPath, () => { pathMissing.value = false })
 
 function userIsAdmin(u: User) { return u.userRoles.some(ur => ur.role.isAdmin) }
 
@@ -39,7 +42,8 @@ async function load() {
 }
 
 async function addPlace() {
-  addError.value  = ''
+  addError.value   = ''
+  pathMissing.value = false
   addLoading.value = true
   try {
     const created = await trpc.place.create.mutate({ name: newName.value.trim(), path: newPath.value.trim() })
@@ -48,10 +52,26 @@ async function addPlace() {
     newPath.value = ''
     adding.value  = false
   } catch (e: any) {
+    if (e?.message === 'Path does not exist') pathMissing.value = true
     addError.value = e?.message ?? 'Failed to add place'
   } finally {
     addLoading.value = false
   }
+}
+
+async function createDir() {
+  addError.value   = ''
+  addLoading.value = true
+  try {
+    await trpc.place.mkdir.mutate({ path: newPath.value.trim() })
+    pathMissing.value = false
+  } catch (e: any) {
+    addError.value = e?.message ?? 'Failed to create directory'
+    addLoading.value = false
+    return
+  }
+  addLoading.value = false
+  await addPlace()
 }
 
 async function deletePlace(id: string) {
@@ -137,14 +157,20 @@ onMounted(async () => {
                      font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
           </div>
         </div>
-        <div v-if="addError" class="text-[var(--c-accent)] text-xs mb-2">{{ addError }}</div>
+        <div v-if="addError" class="text-[var(--c-accent)] text-xs mb-1">{{ addError }}</div>
+        <div v-if="pathMissing" class="mb-2">
+          <button @click="createDir" :disabled="addLoading"
+            class="text-xs text-[var(--c-accent)] underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+            {{ addLoading ? 'Creating…' : 'Create directory and add place' }}
+          </button>
+        </div>
         <div class="flex gap-2">
           <button @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()"
             class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
                    text-[var(--c-accent-fg)] text-sm rounded-lg transition-colors">
             {{ addLoading ? 'Adding…' : 'Add Place' }}
           </button>
-          <button @click="adding = false; addError = ''"
+          <button @click="adding = false; addError = ''; pathMissing = false"
             class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
             Cancel
           </button>

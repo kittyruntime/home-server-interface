@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { stat } from "node:fs/promises"
+import { stat, mkdir } from "node:fs/promises"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 
@@ -59,6 +59,17 @@ export const placeRouter = router({
       }
 
       return ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
+    }),
+
+  mkdir: adminProcedure
+    .input(z.object({ path: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      try {
+        await mkdir(input.path, { recursive: true })
+      } catch (e: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Failed to create directory" })
+      }
+      return { ok: true }
     }),
 
   delete: adminProcedure
