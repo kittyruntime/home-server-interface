@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **S.M.A.R.T. health panel** for physical disks: each disk card now has a color-coded health badge (Healthy / Warning / Failed) with live temperature. Clicking the badge expands a panel showing:
+  - Overall health status, temperature, power-on hours, and power cycle count.
+  - Device info: model family, serial number, firmware version, drive type (NVMe / SSD / HDD + RPM).
+  - ATA attribute table with critical attributes highlighted; failed attributes shown in red.
+  - NVMe health log: critical warning, available spare, percentage used, media errors, and lifetime data read/written in TiB.
+
 ## [1.16.0] - 2026-06-29
 
 ### Added
