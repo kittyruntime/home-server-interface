@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-06-29
+
+### Added
+- Storage section is now split into three focused tabs: **Disks**, **RAID**, and **LVM** — each with a live count badge.
+- LVM wizard: assembled RAID arrays (md devices) can now be selected as Physical Volume candidates, enabling LVM-over-RAID setups. They appear in the picker with a RAID badge.
+
+### Fixed
+- RAID wizard: already-assembled md devices and disks that are already RAID members are now excluded from the drive picker.
+- LVM wizard: disks that are RAID members are now excluded from the PV picker.
+- LVM format and mount operations now send the correct `/dev/vg-name/lv-name` symlink path to the worker instead of a constructed dm name that does not exist as a device file.
+- `lvToBlockDev` now correctly resolves the dm device using the LVM double-hyphen naming convention, so filesystem type, mount point, and usage data appear correctly for logical volumes.
+- System LVM protection: Volume Groups whose Logical Volumes are mounted at critical paths (`/`, `/boot`, `/var`, etc.) are now correctly detected as system VGs — all destructive actions (Remove VG, Remove LV) are hidden.
+- FAT32 formatting now tries `mkfs.fat` first (modern name) before falling back to `mkfs.vfat`.
+- Device name validation in Go and tRPC now accepts hyphens and one forward slash, allowing relative LVM paths (`ubuntu-vg/ubuntu-lv`) to pass through.
+
 ## [1.15.1] - 2026-06-29
 
 ### Fixed
