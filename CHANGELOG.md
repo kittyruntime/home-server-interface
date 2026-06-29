@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-06-29
+
 ### Fixed
 - Build: AuditLogSection imported `inferRouterOutputs` from `@trpc/server` which is not a dashboard dependency; replaced with `Awaited<ReturnType<...>>` derived from the proxy client.
 
@@ -323,7 +325,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.2...HEAD
+[1.18.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...v1.18.0
 [1.17.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...v1.17.1
