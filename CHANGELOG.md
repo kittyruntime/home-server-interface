@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.15.1] - 2026-06-29
 
-<!-- next release here -->
-
-## [1.15.1] - 2026-06-29
-
 ### Fixed
 - Disk management UI: redesigned storage section to be more professional and less error-prone. Destructive actions (Destroy RAID, Remove VG) are now hidden behind a ⋯ dropdown menu instead of inline red buttons. Per-partition and per-LV Delete buttons are now invisible by default and only appear on row hover. "Init GPT" (wipes partition table) is now collapsed inside an expandable "Advanced" section at the bottom of each disk card rather than shown inline next to "+ Partition". Cards now have colored left-edge accent stripes for visual type identification.
 - Disk management UI: system VGs (Volume Groups that contain a mounted system partition) are now protected — the ⋯ menu and all destructive actions are hidden, and a SYSTEM badge is shown in orange.
