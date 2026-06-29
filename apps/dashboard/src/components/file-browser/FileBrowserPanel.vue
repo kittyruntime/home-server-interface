@@ -514,6 +514,7 @@ function closeContextMenu() { ctxMenu.value = null }
 // ── init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   dbPlaces.value = (await trpc.place.list.query()) as Place[]
+  if (allPlaces.value.length > 0) selectPlace(allPlaces.value[0]!)
 })
 </script>
 

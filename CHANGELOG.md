@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- File browser: the first available place is now automatically selected when opening the file browser, so the panel never shows a blank "Select a place" screen on first load.
+
 ## [1.12.2] - 2026-06-29
 
 ### Added
