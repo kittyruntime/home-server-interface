@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-06-29
+
 ### Added
 - Container logs: each app row now has a "Logs" button that opens a live terminal overlay streaming `docker logs --follow`. Lines include parsed timestamps, auto-scroll with a "Follow" toggle that pauses when you scroll up, a Clear button, and a line counter. The stream runs through a dedicated NATS inbox so the worker pushes lines directly and the SSE route relays them to the browser.
 - File browser: the first available place (Root for admins, first assigned place for users) is now automatically selected when opening the file browser, eliminating the blank "Select a place" screen on first load.
@@ -243,7 +245,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...v1.13.0
 [1.12.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.0...v1.12.1
