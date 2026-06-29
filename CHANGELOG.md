@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [minor] - 2026-06-29
+## [1.15.0] - 2026-06-29
 
 ### Added
 - LVM management: create Volume Groups from one or more physical devices, with a 3-step wizard (select PV devices → name VG/LV/optional size → confirm). Logical Volumes appear as manageable entries with Format, Mount/Unmount, and Delete actions. Per-VG controls: Add LV and Remove VG (with typed confirmation). LVM info is loaded in parallel with block devices on page open.
