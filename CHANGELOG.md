@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Build: resolved `TS2532` (Object is possibly undefined) errors in SMART panel template; CI now passes vue-tsc strict checks.
+
 ## [1.17.0] - 2026-06-29
 
 ### Added
