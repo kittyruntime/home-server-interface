@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-06-29
+
 ### Fixed
 - Build: AuditLogSection used `useQuery` from `@trpc/vue-query` which is not in this project; replaced with vanilla proxy client calls. Removed unused `TRPCError` import in auth router.
 
@@ -318,7 +320,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...HEAD
+[1.18.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...v1.18.0
 [1.17.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.16.0...v1.17.0
