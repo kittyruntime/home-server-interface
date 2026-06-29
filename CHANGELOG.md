@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Audit Log**: every authenticated mutation is now recorded in a persistent SQLite table (`AuditLog`). Captured fields: user, action (tRPC path), primary target resource, sanitized input (sensitive fields redacted recursively), client IP, success/failure, timestamp.
+- Failed login attempts are also logged (with the attempted username as target) even though they originate from a public procedure.
+- New **Settings → Audit Log** section (admins only): paginated table (50 entries/page) with colour-coded action badges by category (auth, filesystem, system, admin), expandable row detail showing sanitized input JSON, and a free-text action filter.
+
+### Fixed
+- Audit meta sanitization now recurses into nested objects/arrays and applies a case-insensitive regex (`password`, `secret`, `token`, `key`, `auth`, `credential`) instead of a flat denylist.
+
 ## [1.17.1] - 2026-06-29
 
 ### Fixed
