@@ -1,5 +1,6 @@
 import * as os from "os"
 import * as fs from "fs"
+import { z } from "zod"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { requestSync } from "../../nats"
 
@@ -144,4 +145,60 @@ export const systemRouter = router({
       raids: Array<{ name: string; level: string; state: string; devices: string[]; active: number; total: number }>
     }>("root.sys.disks", {})
   }),
+
+  blockDevices: adminProcedure.query(async () => {
+    return await requestSync<{
+      devices: unknown[]
+      raids: Array<{ name: string; level: string; state: string; devices: string[]; active: number; total: number }>
+    }>("root.sys.blockdevices", {}, 15_000)
+  }),
+
+  formatDisk: adminProcedure
+    .input(z.object({
+      device: z.string().regex(/^[a-z][a-z0-9]+$/),
+      fstype: z.enum(['ext4', 'xfs', 'btrfs', 'fat32']),
+      label:  z.string().max(64).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return await requestSync("root.sys.format", input, 120_000)
+    }),
+
+  mountDevice: adminProcedure
+    .input(z.object({
+      device:     z.string().regex(/^[a-z][a-z0-9]+$/),
+      // Disallow whitespace and # to prevent fstab field injection
+      mountpoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
+      options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
+      persist:    z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      return await requestSync("root.sys.mount", input, 20_000)
+    }),
+
+  umountDevice: adminProcedure
+    .input(z.object({
+      mountpoint:      z.string().min(2),
+      removeFromFstab: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      return await requestSync("root.sys.umount", input, 20_000)
+    }),
+
+  createRaid: adminProcedure
+    .input(z.object({
+      name:    z.string().regex(/^md[0-9]{1,3}$/),
+      level:   z.number().int().refine(n => [0, 1, 5, 10].includes(n), { message: 'Invalid RAID level' }),
+      devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(2),
+    }))
+    .mutation(async ({ input }) => {
+      return await requestSync("root.sys.raid.create", input, 120_000)
+    }),
+
+  stopRaid: adminProcedure
+    .input(z.object({
+      name: z.string().regex(/^md[0-9]{1,3}$/),
+    }))
+    .mutation(async ({ input }) => {
+      return await requestSync("root.sys.raid.stop", input, 30_000)
+    }),
 })
