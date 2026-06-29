@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../../lib/trpc'
 import { useConfirm } from '../../../lib/confirm'
+import { useToast } from '../../../lib/toast'
+
+const toast = useToast()
 import EmptyState from '../../ui/EmptyState.vue'
 import LoadingSpinner from '../../ui/LoadingSpinner.vue'
 
@@ -52,7 +55,7 @@ async function deleteVolume(id: string) {
     await trpc.container.volume.delete.mutate({ id })
     volumes.value = volumes.value.filter(v => v.id !== id)
   } catch (e: any) {
-    alert(e?.message ?? 'Failed to delete volume')
+    toast.error(e?.message ?? 'Failed to delete volume')
   }
 }
 

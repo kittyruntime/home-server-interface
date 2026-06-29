@@ -8,8 +8,12 @@ import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { useConfirm } from '../../lib/confirm'
 import { pollJob } from '../../lib/jobs'
+import { useNotifications } from '../../lib/notifications'
+import { useToast } from '../../lib/toast'
 
 const { confirm } = useConfirm()
+const { push: pushNotif, update: updateNotif, dismiss: dismissNotif } = useNotifications()
+const toast = useToast()
 
 type App = {
   id: string; name: string; image: string; status: string
@@ -95,6 +99,10 @@ function portsSummary(app: App): string {
 async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'delete') {
   actionLoading.value[id] = action
   const app = apps.value.find(a => a.id === id)
+  const actionLabel = { start: 'Starting', stop: 'Stopping', restart: 'Restarting', delete: 'Deleting' }[action]
+  const notifId = action !== 'delete'
+    ? pushNotif({ type: 'progress', title: `${actionLabel} ${app?.name ?? ''}…`, progress: -1 })
+    : null
   try {
     if (action === 'delete') {
       if (!await confirm('Delete this app? The container will be removed.', { danger: true, confirmLabel: 'Delete' })) return
@@ -111,17 +119,20 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     } catch {
       if (app) app.status = action === 'start' ? 'running' : 'stopped'
     }
+    if (notifId) { updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'}`, progress: undefined }); setTimeout(() => dismissNotif(notifId), 3000) }
   } catch (e: any) {
     if (app) app.status = 'unknown'
     const notFound = (e?.message ?? '').includes('No such container')
     if (notFound && (action === 'start' || action === 'restart')) {
+      if (notifId) dismissNotif(notifId)
       const ok = await confirm(
         `Container "${app?.name}" doesn't exist on Docker. Recreate it from the stored configuration?`,
         { confirmLabel: 'Recreate' },
       )
       if (ok) { delete actionLoading.value[id]; await recreateApp(id); return }
     } else {
-      alert(e.message ?? `Failed: ${action}`)
+      if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
+      toast.error(e.message ?? `Failed: ${action}`)
     }
   } finally {
     delete actionLoading.value[id]
@@ -132,6 +143,7 @@ async function recreateApp(id: string) {
   actionLoading.value[id] = 'recreate'
   const app = apps.value.find(a => a.id === id)
   if (app) app.status = 'transitioning'
+  const notifId = pushNotif({ type: 'progress', title: `Recreating ${app?.name ?? ''}…`, progress: -1 })
   try {
     const { jobId } = await trpc.container.app.recreate.mutate({ id })
     await pollJob(jobId)
@@ -141,9 +153,12 @@ async function recreateApp(id: string) {
     } catch {
       if (app) app.status = 'running'
     }
+    updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} recreated`, progress: undefined })
+    setTimeout(() => dismissNotif(notifId), 3000)
   } catch (e: any) {
     if (app) app.status = 'error'
-    alert(e?.message ?? 'Failed to recreate container')
+    updateNotif(notifId, { type: 'error', title: `Recreate ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
+    toast.error(e?.message ?? 'Failed to recreate container')
   } finally {
     delete actionLoading.value[id]
   }
@@ -189,7 +204,7 @@ async function unpin(app: App) {
     await trpc.container.app.pin.mutate({ id: app.id, pinnedUrl: null })
     app.pinnedUrl = null
   } catch (e: any) {
-    alert(e?.message ?? 'Failed to unpin')
+    toast.error(e?.message ?? 'Failed to unpin')
   }
 }
 </script>

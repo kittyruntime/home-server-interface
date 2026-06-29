@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Toast notifications: errors and confirmations now appear as floating overlays in the top-right corner, auto-dismissing after a few seconds. Errors persist 7 s; successes 3.5 s.
+- Container actions (start, stop, restart, recreate) now show live progress in the Activity bell — a spinner while the job runs, then a green check or red cross on completion.
+- Creating an HSI user now automatically provisions a Linux system user (`useradd -M -s /sbin/nologin`) with the same username. The Linux username is stored in `linuxUsername` and shown in the user table. No home directory and no SSH login are created by default.
+
+### Fixed
+- All `alert()` browser dialogs (container action errors, network/volume delete failures, unmanaged-container import errors) replaced with toast notifications — no more browser-native popups blocking the page.
+
 ## [1.11.5] - 2026-06-29
 
 ### Fixed

@@ -12,6 +12,7 @@ import AppsPanel from '../components/apps/AppsPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import NotificationMenu from '../components/NotificationMenu.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import ToastContainer from '../components/ui/ToastContainer.vue'
 import Dock from '../components/desktop/Dock.vue'
 import Launchpad from '../components/desktop/Launchpad.vue'
 import DesktopShell from '../components/desktop/DesktopShell.vue'
@@ -472,6 +473,7 @@ onUnmounted(() => {
 
   </div>
 
+  <ToastContainer />
   <ConfirmDialog />
   <NotificationMenu
     :open="notifMenuOpen"

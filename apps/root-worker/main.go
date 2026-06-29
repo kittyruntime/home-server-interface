@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
 )
+
+var reLinuxUsername = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
 
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -433,6 +437,31 @@ func handleMkdirp(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]bool{"ok": true})
 }
 
+func handleLinuxUserCreate(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
+		return
+	}
+	if !reLinuxUsername.MatchString(req.Username) {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid linux username: must match ^[a-z_][a-z0-9_-]{0,31}$"})
+		return
+	}
+	out, err := exec.Command("useradd", "-M", "-s", "/sbin/nologin", req.Username).CombinedOutput()
+	if err != nil {
+		if x, ok := err.(*exec.ExitError); ok && x.ExitCode() == 9 {
+			// exit 9 = user already exists, treat as success
+			replyOk(nc, msg.Reply, map[string]any{"ok": true, "existed": true})
+			return
+		}
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: strings.TrimSpace(string(out))})
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
@@ -704,6 +733,7 @@ func main() {
 		"root.container.inspect":            handleDockerInspect,
 		"root.container.listAll":            handleDockerListAll,
 		"root.fs.mkdirp":                    handleMkdirp,
+		"root.linux.user.create":             handleLinuxUserCreate,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {

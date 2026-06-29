@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../../lib/trpc'
 import { useConfirm } from '../../../lib/confirm'
+import { useToast } from '../../../lib/toast'
+
+const toast = useToast()
 import EmptyState from '../../ui/EmptyState.vue'
 import LoadingSpinner from '../../ui/LoadingSpinner.vue'
 
@@ -52,7 +55,7 @@ async function deleteNetwork(id: string) {
     await trpc.container.network.delete.mutate({ id })
     networks.value = networks.value.filter(n => n.id !== id)
   } catch (e: any) {
-    alert(e?.message ?? 'Failed to delete network')
+    toast.error(e?.message ?? 'Failed to delete network')
   }
 }
 </script>

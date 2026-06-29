@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
+import { useToast } from '../lib/toast'
 import UserDetailPanel from './UserDetailPanel.vue'
 import Pagination from './ui/Pagination.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
@@ -23,6 +24,7 @@ type RoleBasic = { id: string; name: string; isAdmin: boolean }
 function userIsAdmin(u: User) { return u.userRoles.some(ur => ur.role.isAdmin) }
 
 const { canManageUsers, currentUserId } = useAuth()
+const toast = useToast()
 
 const users     = ref<User[]>([])
 const roles     = ref<RoleBasic[]>([])
@@ -118,10 +120,12 @@ async function submitAdd() {
       displayName: newUser.displayName.trim() || undefined,
     })
     addingUser.value = false
+    toast.success(`User "${newUser.username.trim()}" created`)
     await load()
     page.value = pageCount.value
   } catch (e: any) {
     addError.value = e?.message ?? 'Failed to create user'
+    toast.error(e?.message ?? 'Failed to create user')
   } finally {
     addLoading.value = false
   }

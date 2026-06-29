@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { useToast } from '../../lib/toast'
+
+const toast = useToast()
 
 type UnmanagedContainer = {
   name:           string
@@ -68,7 +71,7 @@ async function importContainer(c: UnmanagedContainer) {
     containers.value = containers.value.filter(x => x.name !== c.name)
     emit('imported')
   } catch (e: any) {
-    alert(e?.message ?? 'Import failed')
+    toast.error(e?.message ?? 'Import failed')
   } finally {
     const next = new Set(importing.value)
     next.delete(c.name)
