@@ -110,7 +110,7 @@ type BlockDev struct {
 	UsageTotal  int64      `json:"usageTotal"`
 	UsageUsed   int64      `json:"usageUsed"`
 	UsageFree   int64      `json:"usageFree"`
-	Children    []BlockDev `json:"children,omitempty"`
+	Children    []BlockDev `json:"children"`
 }
 
 // Helpers for lsblkRaw fields that can be null/bool/string/number.
@@ -168,6 +168,7 @@ func convertDev(r lsblkRaw, sysDevs map[string]bool, parentSys bool) BlockDev {
 		UUID:        ifaceStr(r.UUID),
 		IsSystem:    isSys,
 		IsRemovable: ifaceBool(r.RM),
+		Children:    []BlockDev{},
 	}
 
 	if mp != "" {

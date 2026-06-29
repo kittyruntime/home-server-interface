@@ -89,7 +89,7 @@ const eligibleForLvm = computed<BlockDev[]>(() => {
 function lvToBlockDev(lv: LvmLV): BlockDev {
   const lvDevName = lv.path.replace('/dev/', '').replace(/\//g, '-')
   const mountInfo = devices.value
-    .flatMap(d => [d, ...d.children])
+    .flatMap(d => [d, ...(d.children ?? [])])
     .find(d => d.path === lv.path || d.name === lvDevName)
   return {
     name: lvDevName, path: lv.path, size: lv.size, type: 'lvm',
@@ -269,6 +269,33 @@ async function doPartDelete() {
   } finally {
     if (partDeleteDlg.value) d.busy = false
   }
+}
+
+// ── UI state: dropdown menus + expandable danger zones ────────────────────────
+
+const openMenu    = ref<string | null>(null)
+const dangerDisks = ref(new Set<string>())
+
+function toggleDanger(name: string) {
+  const s = new Set(dangerDisks.value)
+  if (s.has(name)) s.delete(name)
+  else s.add(name)
+  dangerDisks.value = s
+}
+
+// Whether a VG is system-owned (has an LV mounted at a critical path)
+function isSystemVg(vgName: string): boolean {
+  return lvmLVs.value
+    .filter(l => l.vgName === vgName)
+    .some(l => {
+      const bd = lvToBlockDev(l)
+      return bd.isSystem || Object.keys(criticalMountPoints).some(mp => bd.mountpoint === mp)
+    })
+}
+
+const criticalMountPoints = {
+  '/': true, '/boot': true, '/boot/efi': true, '/boot/grub': true,
+  '/usr': true, '/var': true, '/home': true, '/etc': true,
 }
 
 async function load() {
@@ -595,21 +622,20 @@ async function doDestroyRaid() {
       {{ error }}
     </div>
 
-    <template v-else>
+    <!-- backdrop to close ⋯ menus -->
+    <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
+
+    <template v-if="!loading && !error">
 
       <!-- ── RAID Arrays ───────────────────────────────────────────────────── -->
       <section class="mt-6">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-            </svg>
             <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Software RAID</h3>
+            <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }}</span>
           </div>
-          <button
-            @click="openRaidWizard"
-            class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors"
-          >
+          <button @click="openRaidWizard"
+            class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
@@ -621,127 +647,129 @@ async function doDestroyRaid() {
           No RAID arrays configured. Create one to combine multiple drives for redundancy or performance.
         </div>
 
-        <div v-else class="space-y-4">
-          <div
-            v-for="r in raids"
-            :key="r.name"
-            class="rounded-xl border overflow-hidden bg-[var(--c-surface)]"
-            :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-red-500/30'"
-          >
-            <!-- Header -->
-            <div class="flex items-center gap-3 px-4 pt-4 pb-2">
-              <span
-                class="text-[11px] font-bold px-2.5 py-1 rounded-md tracking-wide"
-                :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-red-500/10 text-red-400'"
-              >{{ raidLevelLabel(r.level) }}</span>
-              <span class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
-              <div class="ml-auto flex items-center gap-3">
-                <span class="text-xs text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
-                <span class="inline-flex items-center gap-1.5 text-xs font-medium" :class="isRaidHealthy(r) ? 'text-green-400' : 'text-red-400'">
-                  <span class="w-1.5 h-1.5 rounded-full" :class="isRaidHealthy(r) ? 'bg-green-400' : 'bg-red-400'" />
-                  {{ isRaidHealthy(r) ? 'Healthy' : r.state }}
+        <div v-else class="space-y-3">
+          <div v-for="r in raids" :key="r.name"
+            class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
+            :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-red-500/20'">
+            <!-- Left accent stripe -->
+            <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/50' : 'bg-red-500'"/>
+            <div class="flex-1 min-w-0">
+              <!-- Header -->
+              <div class="flex items-center gap-3 px-4 pt-3.5 pb-2">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded tracking-wide shrink-0"
+                  :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-red-500/10 text-red-400'">
+                  {{ raidLevelLabel(r.level) }}
                 </span>
-                <!-- Destroy -->
-                <button
-                  @click="openDestroy(r)"
-                  title="Destroy array"
-                  class="text-xs px-2 py-0.5 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
-                >Destroy</button>
-              </div>
-            </div>
-            <p v-if="raidDescription(r.level)" class="text-[11px] text-[var(--c-text-3)] px-4 pb-3">{{ raidDescription(r.level) }}</p>
-
-            <!-- Drive bay (reuse existing visualization) -->
-            <div class="px-4 pb-4">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <template v-for="(dev, idx) in r.devices" :key="dev">
-                  <div class="flex flex-col items-center gap-1.5">
-                    <div class="relative rounded-lg border transition-colors"
-                      :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-red-500/40 bg-red-500/5'"
-                    >
-                      <svg viewBox="0 0 52 68" class="w-12 h-16">
-                        <rect x="3" y="3" width="46" height="62" rx="5"
-                          :fill="idx < r.active ? 'var(--c-surface-deep)' : 'rgba(239,68,68,0.06)'"
-                          :stroke="idx < r.active ? 'var(--c-border-strong)' : 'rgba(239,68,68,0.5)'"
-                          stroke-width="1.5"
-                        />
-                        <circle cx="9"  cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                        <circle cx="43" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                        <circle cx="9"  cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                        <circle cx="43" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                        <circle cx="26" cy="32" r="12"
-                          fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'"
-                          stroke-width="1" opacity="0.35"
-                        />
-                        <circle cx="26" cy="32" r="6"
-                          fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'"
-                          stroke-width="1" opacity="0.35"
-                        />
-                        <line x1="26" y1="32" x2="35" y2="21"
-                          :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.6)'"
-                          stroke-width="1.5" opacity="0.5" stroke-linecap="round"
-                        />
-                        <circle cx="26" cy="32" r="2.5" :fill="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.7)'" opacity="0.8"/>
-                        <circle cx="40" cy="50" r="2" :fill="idx < r.active ? '#4ade80' : '#ef4444'" opacity="0.9"/>
-                        <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
+                <span class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
+                <div class="ml-auto flex items-center gap-3 shrink-0">
+                  <span class="text-[11px] text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
+                  <span class="inline-flex items-center gap-1.5 text-[11px] font-medium" :class="isRaidHealthy(r) ? 'text-green-400' : 'text-red-400'">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-green-400' : 'bg-red-400 animate-pulse'"/>
+                    {{ isRaidHealthy(r) ? 'Healthy' : r.state }}
+                  </span>
+                  <!-- ⋯ menu -->
+                  <div class="relative z-30">
+                    <button @click.stop="openMenu = openMenu === r.name ? null : r.name"
+                      :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === r.name ? 'bg-[var(--c-hover)] text-[var(--c-text-1)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]']">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
                       </svg>
-                    </div>
-                    <span class="text-[10px] font-mono" :class="idx < r.active ? 'text-[var(--c-text-3)]' : 'text-red-400'">/dev/{{ dev }}</span>
-                  </div>
-                  <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-[var(--c-text-3)] self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                  </svg>
-                </template>
-                <!-- Result -->
-                <div class="flex items-center self-center mb-5 gap-2 ml-1">
-                  <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                  </svg>
-                  <div>
-                    <div class="text-[11px] font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
-                    <div class="text-[10px] text-[var(--c-text-3)] font-mono">
-                      {{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}
+                    </button>
+                    <div v-if="openMenu === r.name"
+                      class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-2xl overflow-hidden min-w-[176px]">
+                      <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
+                        <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
+                      </div>
+                      <button @click="openDestroy(r); openMenu = null"
+                        class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                        </svg>
+                        Destroy array…
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+              <p v-if="raidDescription(r.level)" class="text-[11px] text-[var(--c-text-3)] px-4 pb-3">{{ raidDescription(r.level) }}</p>
 
-            <!-- Usage & mount actions (if the md device is in our lsblk tree) -->
-            <template v-if="raidBlockDev(r.name)">
-              <div class="border-t border-[var(--c-border)] px-4 py-3 flex items-center gap-3">
-                <div class="flex-1">
-                  <div v-if="raidBlockDev(r.name)!.mountpoint">
-                    <div class="flex justify-between items-baseline mb-1.5">
-                      <span class="text-[11px] font-mono text-[var(--c-text-3)]">{{ raidBlockDev(r.name)!.mountpoint }}</span>
-                      <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
+              <!-- Drive bay -->
+              <div class="px-4 pb-4">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <template v-for="(dev, idx) in r.devices" :key="dev">
+                    <div class="flex flex-col items-center gap-1.5">
+                      <div class="relative rounded-lg border transition-colors"
+                        :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-red-500/40 bg-red-500/5'">
+                        <svg viewBox="0 0 52 68" class="w-12 h-16">
+                          <rect x="3" y="3" width="46" height="62" rx="5"
+                            :fill="idx < r.active ? 'var(--c-surface-deep)' : 'rgba(239,68,68,0.06)'"
+                            :stroke="idx < r.active ? 'var(--c-border-strong)' : 'rgba(239,68,68,0.5)'" stroke-width="1.5"/>
+                          <circle cx="9" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
+                          <circle cx="43" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
+                          <circle cx="9" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
+                          <circle cx="43" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
+                          <circle cx="26" cy="32" r="12" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'" stroke-width="1" opacity="0.35"/>
+                          <circle cx="26" cy="32" r="6" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'" stroke-width="1" opacity="0.35"/>
+                          <line x1="26" y1="32" x2="35" y2="21" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.6)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+                          <circle cx="26" cy="32" r="2.5" :fill="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.7)'" opacity="0.8"/>
+                          <circle cx="40" cy="50" r="2" :fill="idx < r.active ? '#4ade80' : '#ef4444'" opacity="0.9"/>
+                          <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
+                        </svg>
+                      </div>
+                      <span class="text-[10px] font-mono" :class="idx < r.active ? 'text-[var(--c-text-3)]' : 'text-red-400'">/dev/{{ dev }}</span>
                     </div>
-                    <div class="w-full h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-                      <div class="h-full rounded-full" :class="usageBarClass(usagePct(raidBlockDev(r.name)!))" :style="{ width: usagePct(raidBlockDev(r.name)!) + '%' }"/>
+                    <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-[var(--c-text-3)] self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  </template>
+                  <div class="flex items-center self-center mb-5 gap-2 ml-1">
+                    <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <div>
+                      <div class="text-[11px] font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
+                      <div class="text-[10px] text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}</div>
                     </div>
-                    <div class="text-[10px] text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                   </div>
-                  <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-[11px] text-[var(--c-text-3)]">
-                    Formatted as <span class="font-mono">{{ raidBlockDev(r.name)!.fstype }}</span> — not mounted
-                  </div>
-                  <div v-else class="text-[11px] text-[var(--c-text-3)]">No filesystem — format before mounting</div>
-                </div>
-                <div class="flex gap-1.5 shrink-0">
-                  <button v-if="!raidBlockDev(r.name)!.mountpoint && raidBlockDev(r.name)!.fstype" @click="openMount(raidBlockDev(r.name)!)"
-                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                    Mount
-                  </button>
-                  <button v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
-                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
-                    Unmount
-                  </button>
-                  <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
-                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                    Format
-                  </button>
                 </div>
               </div>
-            </template>
+
+              <!-- Usage & mount actions -->
+              <template v-if="raidBlockDev(r.name)">
+                <div class="border-t border-[var(--c-border)] px-4 py-3 flex items-center gap-3">
+                  <div class="flex-1 min-w-0">
+                    <div v-if="raidBlockDev(r.name)!.mountpoint">
+                      <div class="flex justify-between items-baseline mb-1.5">
+                        <span class="text-[11px] font-mono text-[var(--c-text-3)]">{{ raidBlockDev(r.name)!.mountpoint }}</span>
+                        <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
+                      </div>
+                      <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                        <div class="h-full rounded-full" :class="usageBarClass(usagePct(raidBlockDev(r.name)!))" :style="{ width: usagePct(raidBlockDev(r.name)!) + '%' }"/>
+                      </div>
+                      <div class="text-[10px] text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
+                    </div>
+                    <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-[11px] text-[var(--c-text-3)]">
+                      Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span> — not mounted
+                    </div>
+                    <div v-else class="text-[11px] text-[var(--c-text-3)] italic">No filesystem — format before mounting</div>
+                  </div>
+                  <div class="flex gap-1.5 shrink-0">
+                    <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
+                      class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                      Format
+                    </button>
+                    <button v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
+                      class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-green-500/50 hover:text-green-400 transition-colors">
+                      Mount
+                    </button>
+                    <button v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
+                      class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
+                      Unmount
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </section>
@@ -750,10 +778,8 @@ async function doDestroyRaid() {
       <section class="mt-8">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
             <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">LVM Volumes</h3>
+            <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }}</span>
           </div>
           <button @click="openLvmWizard"
             class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
@@ -766,88 +792,116 @@ async function doDestroyRaid() {
           No LVM volume groups. Create one to get resizable logical volumes from one or more physical drives.
         </div>
 
-        <div v-else class="space-y-4">
-          <div v-for="vg in lvmVGs" :key="vg.name" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
-            <!-- VG header -->
-            <div class="flex items-center gap-3 px-4 py-3 bg-[var(--c-surface-deep)]/40">
-              <div class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
-                  <span class="text-xs text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
-                </div>
-                <!-- VG capacity bar -->
-                <div class="mt-1.5 flex items-center gap-2">
-                  <div class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-xs">
-                    <div class="h-full rounded-full bg-purple-400" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
-                  </div>
-                  <span class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(vg.free) }} free</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
-                  class="text-xs px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-purple-500/50 hover:text-purple-400 transition-colors">
-                  + LV
-                </button>
-                <button @click="removeVgDlg = { vg, confirm: '', busy: false, err: '' }"
-                  class="text-xs px-2 py-0.5 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                  Remove
-                </button>
-              </div>
-            </div>
-
-            <!-- PVs list -->
-            <div class="px-4 py-2 border-b border-[var(--c-border)]">
-              <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-1.5">Physical Volumes</div>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
-                  class="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">
-                  {{ pv.name }}
-                  <span class="text-[var(--c-text-3)]">{{ fmtBytes(pv.size) }}</span>
-                </span>
-              </div>
-            </div>
-
-            <!-- LVs list -->
-            <div class="divide-y divide-[var(--c-border)]">
-              <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
-                class="px-4 py-2.5 text-xs italic text-[var(--c-text-3)]">
-                No logical volumes yet — click "+ LV" to create one.
-              </div>
-              <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
-                class="flex items-center gap-3 px-4 py-2.5">
-                <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                  :class="lvToBlockDev(lv).mountpoint ? 'bg-green-400/70' : 'bg-purple-400/50'"/>
+        <div v-else class="space-y-3">
+          <div v-for="vg in lvmVGs" :key="vg.name"
+            class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
+            :class="isSystemVg(vg.name) ? 'border-orange-500/20' : 'border-[var(--c-border)]'">
+            <!-- Left stripe -->
+            <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-orange-500/60' : 'bg-purple-500/50'"/>
+            <div class="flex-1 min-w-0">
+              <!-- VG header -->
+              <div class="flex items-center gap-3 px-4 py-3">
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
-                    <span class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(lv.size) }}</span>
-                    <span v-if="lvToBlockDev(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lvToBlockDev(lv).fstype }}</span>
-                    <span v-else class="text-[10px] italic text-[var(--c-text-3)]">unformatted</span>
+                    <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
+                    <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                    <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                      <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                      SYSTEM
+                    </span>
                   </div>
-                  <div v-if="lvToBlockDev(lv).mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">→ {{ lvToBlockDev(lv).mountpoint }}</div>
-                  <!-- Usage bar -->
-                  <div v-if="lvToBlockDev(lv).usageTotal > 0" class="mt-1.5 space-y-0.5">
-                    <div class="w-full h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-xs">
-                      <div class="h-full rounded-full" :class="usageBarClass(usagePct(lvToBlockDev(lv)))" :style="{ width: usagePct(lvToBlockDev(lv)) + '%' }"/>
+                  <!-- Capacity bar -->
+                  <div class="mt-2 flex items-center gap-2">
+                    <div class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-[200px]">
+                      <div class="h-full rounded-full bg-purple-400/70" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
                     </div>
-                    <div class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(lvToBlockDev(lv).usageFree) }} free</div>
+                    <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
                   </div>
                 </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button v-if="!lvToBlockDev(lv).mountpoint" @click="openFormat(lvToBlockDev(lv))"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                  <button v-if="lvToBlockDev(lv).fstype && !lvToBlockDev(lv).mountpoint" @click="openMount(lvToBlockDev(lv))"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
-                  <button v-if="lvToBlockDev(lv).mountpoint" @click="openUmount(lvToBlockDev(lv))"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
-                  <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
-                    class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">Delete</button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
+                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-purple-500/50 hover:text-purple-400 transition-colors">
+                    + Add LV
+                  </button>
+                  <!-- ⋯ menu for VG -->
+                  <div v-if="!isSystemVg(vg.name)" class="relative z-30">
+                    <button @click.stop="openMenu = openMenu === ('vg:' + vg.name) ? null : ('vg:' + vg.name)"
+                      :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === ('vg:' + vg.name) ? 'bg-[var(--c-hover)] text-[var(--c-text-1)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]']">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                      </svg>
+                    </button>
+                    <div v-if="openMenu === ('vg:' + vg.name)"
+                      class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-2xl overflow-hidden min-w-[176px]">
+                      <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
+                        <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
+                      </div>
+                      <button @click="removeVgDlg = { vg, confirm: '', busy: false, err: '' }; openMenu = null"
+                        class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                        </svg>
+                        Remove VG…
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PVs -->
+              <div class="px-4 py-2 border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/30">
+                <div class="flex flex-wrap gap-1.5">
+                  <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
+                    class="inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border border-[var(--c-border)]">
+                    {{ pv.name }} <span class="text-[var(--c-text-3)]/60">{{ fmtBytes(pv.size) }}</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- LVs -->
+              <div class="divide-y divide-[var(--c-border)]">
+                <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
+                  class="px-4 py-3 text-[11px] italic text-[var(--c-text-3)]">
+                  No logical volumes — click "+ Add LV" to create one.
+                </div>
+                <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
+                  class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
+                  <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                    :class="lvToBlockDev(lv).isSystem ? 'bg-orange-400/70' : lvToBlockDev(lv).mountpoint ? 'bg-green-400/70' : 'bg-purple-400/40'"/>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
+                      <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
+                      <span v-if="lvToBlockDev(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lvToBlockDev(lv).fstype }}</span>
+                      <span v-else class="text-[10px] italic text-[var(--c-text-3)]">unformatted</span>
+                    </div>
+                    <div v-if="lvToBlockDev(lv).mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lvToBlockDev(lv).mountpoint }}</div>
+                    <div v-if="lvToBlockDev(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
+                      <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                        <div class="h-full rounded-full" :class="usageBarClass(usagePct(lvToBlockDev(lv)))" :style="{ width: usagePct(lvToBlockDev(lv)) + '%' }"/>
+                      </div>
+                      <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lvToBlockDev(lv).usageFree) }} free</span>
+                    </div>
+                  </div>
+                  <!-- LV actions — revealed on hover, hidden by default -->
+                  <div v-if="!lvToBlockDev(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
+                    <button v-if="!lvToBlockDev(lv).mountpoint" @click="openFormat(lvToBlockDev(lv))"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                    <button v-if="lvToBlockDev(lv).fstype && !lvToBlockDev(lv).mountpoint" @click="openMount(lvToBlockDev(lv))"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                    <button v-if="lvToBlockDev(lv).mountpoint" @click="openUmount(lvToBlockDev(lv))"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                    <!-- Thin separator before destructive -->
+                    <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
+                    <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
+                      title="Delete this logical volume"
+                      class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -857,153 +911,132 @@ async function doDestroyRaid() {
 
       <!-- ── Physical Drives ───────────────────────────────────────────────── -->
       <section class="mt-8">
-        <div class="flex items-center gap-2 mb-3">
-          <svg class="w-3.5 h-3.5 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
-          </svg>
-          <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Physical Drives</h3>
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Physical Drives</h3>
+            <span v-if="physicalDisks.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ physicalDisks.length }}</span>
+          </div>
         </div>
 
-        <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">
-          No block devices found.
-        </div>
+        <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No block devices found.</div>
 
-        <div class="space-y-4">
-          <div
-            v-for="disk in physicalDisks"
-            :key="disk.name"
-            class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden"
-          >
-            <!-- Disk header -->
-            <div class="flex items-center gap-3 px-4 py-3 bg-[var(--c-surface-deep)]/40">
-              <div class="p-1.5 rounded-lg" :class="disk.isSystem ? 'bg-orange-500/10 text-orange-400' : 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">/dev/{{ disk.name }}</span>
-                  <span v-if="disk.model" class="text-xs text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
-                  <span class="text-xs text-[var(--c-text-3)]">{{ fmtBytes(disk.size) }}</span>
+        <div class="space-y-3">
+          <div v-for="disk in physicalDisks" :key="disk.name"
+            class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
+            :class="disk.isSystem ? 'border-orange-500/20' : 'border-[var(--c-border)]'">
+            <!-- Left stripe by type -->
+            <div class="w-0.5 shrink-0"
+              :class="disk.isSystem ? 'bg-orange-500/60' : disk.isRemovable ? 'bg-blue-500/50' : 'bg-[var(--c-border-strong)]'"/>
+            <div class="flex-1 min-w-0">
+
+              <!-- Disk header -->
+              <div class="flex items-center gap-3 px-4 py-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">/dev/{{ disk.name }}</span>
+                    <span v-if="disk.model" class="text-[11px] text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
+                    <span class="text-[11px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(disk.size) }}</span>
+                    <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                      <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                      SYSTEM
+                    </span>
+                    <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">USB</span>
+                  </div>
+                  <div v-if="disk.isSystem" class="text-[10px] text-orange-400/70 mt-0.5">Operating system disk — no modifications allowed</div>
                 </div>
+                <!-- + Partition button (non-system only) -->
+                <button v-if="!disk.isSystem" @click="partCreateDlg = { disk, busy: false, err: '' }"
+                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors shrink-0">
+                  + Partition
+                </button>
               </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span v-if="disk.isSystem"
-                  class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                >
-                  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                  </svg>
-                  SYSTEM DISK
-                </span>
-                <span v-if="disk.isRemovable" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">REMOVABLE</span>
-              </div>
-            </div>
 
-            <!-- System disk warning -->
-            <div v-if="disk.isSystem" class="flex items-start gap-2 mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-orange-500/5 border border-orange-500/15 text-xs text-orange-400">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              This disk is in use by the operating system. It cannot be formatted, partitioned, or added to a RAID array.
-            </div>
-
-            <!-- Partition management toolbar (non-system disks only) -->
-            <div v-if="!disk.isSystem" class="flex items-center gap-1.5 px-4 py-2 border-t border-[var(--c-border)]">
-              <span class="text-[10px] text-[var(--c-text-3)] flex-1">Partition table</span>
-              <button @click="partCreateDlg = { disk, busy: false, err: '' }"
-                class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                + Partition
-              </button>
-              <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
-                title="Initialize a new GPT partition table — this will erase all existing partitions"
-                class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">
-                Init GPT
-              </button>
-            </div>
-
-            <!-- Partitions / children -->
-            <div v-if="disk.children && disk.children.length > 0" class="divide-y divide-[var(--c-border)]">
-              <div
-                v-for="part in disk.children.filter(c => c.type !== 'swap')"
-                :key="part.name"
-                class="flex items-center gap-3 px-4 py-2.5"
-              >
-                <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="part.isSystem ? 'bg-orange-400/60' : part.mountpoint ? 'bg-green-400/70' : 'bg-[var(--c-text-3)]/30'"/>
-
-                <div class="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-4 items-start">
-                  <!-- Left side: name, fstype, mountpoint, usage -->
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
+              <!-- Partitions -->
+              <div v-if="disk.children && disk.children.length > 0" class="border-t border-[var(--c-border)] divide-y divide-[var(--c-border)]">
+                <div v-for="part in disk.children.filter(c => c.type !== 'swap')" :key="part.name"
+                  class="group/part flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
+                  <!-- Status dot -->
+                  <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                    :class="part.isSystem ? 'bg-orange-400/60' : part.mountpoint ? 'bg-green-400/70' : 'bg-[var(--c-text-3)]/25'"/>
+                  <!-- Info -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
                       <span class="font-mono text-xs text-[var(--c-text-2)]">/dev/{{ part.name }}</span>
-                      <span class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(part.size) }}</span>
-                      <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ part.fstype }}</span>
-                      <span v-else class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] italic">unformatted</span>
+                      <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
+                      <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
+                      <span v-else class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
                     </div>
-                    <div v-if="part.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">→ {{ part.mountpoint }}</div>
-
-                    <!-- Usage bar if mounted -->
-                    <div v-if="part.usageTotal > 0" class="mt-2 space-y-0.5">
-                      <div class="w-full h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-xs">
+                    <div v-if="part.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ part.mountpoint }}</div>
+                    <div v-if="part.usageTotal > 0" class="mt-1.5 flex items-center gap-2">
+                      <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                         <div class="h-full rounded-full" :class="usageBarClass(usagePct(part))" :style="{ width: usagePct(part) + '%' }"/>
                       </div>
-                      <div class="text-[10px] text-[var(--c-text-3)]">{{ fmtBytes(part.usageFree) }} free · {{ usagePct(part).toFixed(1) }}%</div>
+                      <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
                     </div>
                   </div>
-
-                  <!-- Actions -->
-                  <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0">
+                  <!-- Actions — revealed on hover, hidden by default -->
+                  <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
                     <button v-if="!part.mountpoint" @click="openFormat(part)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                      Format
-                    </button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                     <button v-if="part.fstype && !part.mountpoint" @click="openMount(part)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">
-                      Mount
-                    </button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
                     <button v-if="part.mountpoint" @click="openUmount(part)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
-                      Unmount
-                    </button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                    <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
                     <button v-if="!part.mountpoint" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
-                      class="text-[11px] px-2 py-0.5 rounded border border-red-500/20 text-red-400/70 hover:border-red-500/50 hover:text-red-400 transition-colors">
-                      Delete
+                      title="Delete this partition"
+                      class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                      </svg>
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Unpartitioned disk (no children) -->
-            <div v-else-if="!disk.isSystem" class="flex items-center gap-3 px-4 py-2.5">
-              <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="disk.fstype ? 'bg-[var(--c-accent)]/60' : 'bg-[var(--c-text-3)]/30'"/>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span v-if="disk.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ disk.fstype }}</span>
-                  <span v-else class="text-xs italic text-[var(--c-text-3)]">No partitions — raw disk</span>
+              <!-- Unpartitioned raw disk -->
+              <div v-else-if="!disk.isSystem" class="border-t border-[var(--c-border)] flex items-center gap-3 px-4 py-2.5">
+                <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="disk.fstype ? 'bg-[var(--c-accent)]/60' : 'bg-[var(--c-text-3)]/20'"/>
+                <div class="flex-1 min-w-0">
+                  <span v-if="disk.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
+                  <span v-else class="text-[11px] italic text-[var(--c-text-3)]/60">Raw disk — no partition table</span>
+                  <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
                 </div>
-                <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">→ {{ disk.mountpoint }}</div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button v-if="!disk.mountpoint" @click="openFormat(disk)"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                  <button v-if="disk.fstype && !disk.mountpoint" @click="openMount(disk)"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                  <button v-if="disk.mountpoint" @click="openUmount(disk)"
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                </div>
               </div>
-              <div class="flex items-center gap-1 shrink-0">
-                <button v-if="!disk.mountpoint" @click="openFormat(disk)"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                  Format
-                </button>
-                <button v-if="disk.fstype && !disk.mountpoint" @click="openMount(disk)"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">
-                  Mount
-                </button>
-                <button v-if="disk.mountpoint" @click="openUmount(disk)"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
-                  Unmount
-                </button>
-              </div>
-            </div>
 
-            <!-- No partitions, is system -->
-            <div v-else-if="disk.isSystem && !disk.children?.length" class="px-4 py-2.5 text-[11px] text-[var(--c-text-3)] italic">
-              System disk — no actions available
+              <!-- Expandable danger zone (non-system disks only) -->
+              <div v-if="!disk.isSystem" class="border-t border-[var(--c-border)]">
+                <button @click="toggleDanger(disk.name)"
+                  class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
+                  <svg class="w-3 h-3 shrink-0 transition-transform" :class="dangerDisks.has(disk.name) ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  Advanced
+                </button>
+                <div v-if="dangerDisks.has(disk.name)" class="px-4 pb-3 pt-0.5">
+                  <div class="flex items-start gap-3 p-3 rounded-lg border border-red-500/20 bg-red-500/5">
+                    <svg class="w-3.5 h-3.5 text-red-400/70 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Initialize GPT partition table</p>
+                      <p class="text-[10px] text-[var(--c-text-3)]">Completely erases all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Use only to prepare a blank disk.</p>
+                      <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
+                        class="mt-2 text-[11px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/80 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                        Init GPT…
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
