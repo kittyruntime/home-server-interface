@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.5] - 2026-06-29
+
+### Fixed
+- Places: creating a directory (via the "Create directory" link) and validating a place path now route through the Go root-worker (`root.fs.mkdirp` / `root.fs.stat`) instead of the Node process, fixing `ENOENT` errors when the target is outside Node's accessible paths (e.g. `/mnt/`).
+- Container form: `extraHosts` field was missing from the local `App` type in `AppFormModal.vue`, causing a TypeScript build error.
+
 ## [1.11.4] - 2026-06-29
 
 ### Added

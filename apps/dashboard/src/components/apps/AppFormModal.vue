@@ -12,7 +12,7 @@ type App = {
   id: string; name: string; image: string
   ports: PortMapping[]; envs: EnvVar[]; volumes: VolumeMount[]
   networkNames: string[]; labels: LabelEntry[]
-  capAdd: string[]; capDrop: string[]
+  capAdd: string[]; capDrop: string[]; extraHosts: string[]
   restartPolicy: string
   hostname: string | null; user: string | null; command: string | null
   cpuLimit: number | null; memoryLimit: string | null

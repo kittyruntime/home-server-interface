@@ -414,6 +414,25 @@ func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 	_ = nc.Publish(msg.Reply, data)
 }
 
+func handleMkdirp(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
+		return
+	}
+	if req.Path == "" {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "path required"})
+		return
+	}
+	if err := os.MkdirAll(req.Path, 0755); err != nil {
+		replyErr(nc, msg.Reply, toFsErr(err))
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]bool{"ok": true})
+}
+
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
@@ -684,6 +703,7 @@ func main() {
 		"root.fs.write-chunk":              handleWriteChunk,
 		"root.container.inspect":            handleDockerInspect,
 		"root.container.listAll":            handleDockerListAll,
+		"root.fs.mkdirp":                    handleMkdirp,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {

@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { stat, mkdir } from "node:fs/promises"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
+import { requestSync } from "../../nats"
 
 async function accessiblePlaceIds(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
@@ -49,8 +49,8 @@ export const placeRouter = router({
     .input(z.object({ name: z.string().min(1), path: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const s = await stat(input.path)
-        if (!s.isDirectory()) {
+        const result = await requestSync<{ type: string }>("root.fs.stat", { path: input.path })
+        if (result.type !== "dir") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Path is not a directory" })
         }
       } catch (e) {
@@ -65,7 +65,7 @@ export const placeRouter = router({
     .input(z.object({ path: z.string().min(1) }))
     .mutation(async ({ input }) => {
       try {
-        await mkdir(input.path, { recursive: true })
+        await requestSync("root.fs.mkdirp", { path: input.path })
       } catch (e: any) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Failed to create directory" })
       }
