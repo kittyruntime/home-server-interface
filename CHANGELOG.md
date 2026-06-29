@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.4] - 2026-06-29
+
 ### Added
 - Container form: new "Extra Hosts" field in the Advanced tab — adds `--add-host hostname:ip` entries that map to `/etc/hosts` inside the container. Supports tag-based input with `hostname:ip` format validation. Compose import parses `extra_hosts` (array or map form).
 
@@ -207,7 +209,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.4...HEAD
+[1.11.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...v1.11.4
 [1.11.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.2...v1.11.3
 [1.11.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.0...v1.11.1
