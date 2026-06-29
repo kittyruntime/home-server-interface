@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-06-29
+
 ### Added
 - Toast notifications: errors and confirmations now appear as floating overlays in the top-right corner, auto-dismissing after a few seconds. Errors persist 7 s; successes 3.5 s.
 - Container actions (start, stop, restart, recreate) now show live progress in the Activity bell — a spinner while the job runs, then a green check or red cross on completion.
@@ -223,7 +225,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.5...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.5...v1.12.0
 [1.11.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.4...v1.11.5
 [1.11.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.3...v1.11.4
 [1.11.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.2...v1.11.3
