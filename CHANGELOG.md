@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.3] - 2026-06-29
+
 - File browser: the first available place is now automatically selected when opening the file browser, so the panel never shows a blank "Select a place" screen on first load.
 
 ## [1.12.2] - 2026-06-29
@@ -237,7 +239,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.3...HEAD
+[1.12.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.11.5...v1.12.0
