@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-06-30
+
 ### Added
 - **Storage split**: replaced the monolithic `DisksSection.vue` (2191 lines, 3 internal tabs) with four independent nav sections under Settings → admin:
   - **Disques** (`PhysicalDisksSection`) — physical disk cards, S.M.A.R.T. health, partition management.
@@ -334,7 +336,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.0...HEAD
+[1.19.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.2...v1.19.0
 [1.18.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.17.1...v1.18.0
