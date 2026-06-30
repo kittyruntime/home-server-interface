@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Storage nav labels were in French ("Disques", "Montages"); renamed to English ("Disks", "Mounts").
+
 ## [1.19.0] - 2026-06-30
 
 ### Added
