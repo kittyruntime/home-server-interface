@@ -6,13 +6,16 @@ import UserListPanel from './UserListPanel.vue'
 import PlacesSection from './PlacesSection.vue'
 import RolesSection from './RolesSection.vue'
 import UpdateSection from './UpdateSection.vue'
-import DisksSection from './DisksSection.vue'
+import PhysicalDisksSection from './storage/PhysicalDisksSection.vue'
+import RaidSection           from './storage/RaidSection.vue'
+import LvmSection            from './storage/LvmSection.vue'
+import MountsSection         from './storage/MountsSection.vue'
 import SystemSection from './SystemSection.vue'
 import AuditLogSection from './AuditLogSection.vue'
 
 const { isAdmin, canManageUsers } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'roles' | 'updates' | 'disks' | 'system' | 'audit'
+type SectionId = 'profile' | 'users' | 'places' | 'roles' | 'updates' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'system' | 'audit'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -29,7 +32,10 @@ const nav: NavItem[] = [
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'admin' },
   { id: 'roles',       label: 'Roles',       show: () => isAdmin.value, group: 'admin' },
   { id: 'system',      label: 'System',      show: () => isAdmin.value, group: 'admin' },
-  { id: 'disks',       label: 'Disks',       show: () => isAdmin.value, group: 'admin' },
+  { id: 'disks',  label: 'Disques',  show: () => isAdmin.value, group: 'admin' },
+  { id: 'raid',   label: 'RAID',     show: () => isAdmin.value, group: 'admin' },
+  { id: 'lvm',    label: 'LVM',      show: () => isAdmin.value, group: 'admin' },
+  { id: 'mounts', label: 'Montages', show: () => isAdmin.value, group: 'admin' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'admin' },
   { id: 'audit',       label: 'Audit Log',   show: () => isAdmin.value, group: 'admin' },
 ]
@@ -107,6 +113,18 @@ defineExpose({ focusOn })
             <svg v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
             </svg>
+            <!-- RAID icon -->
+            <svg v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+            </svg>
+            <!-- LVM icon -->
+            <svg v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/>
+            </svg>
+            <!-- Mounts icon -->
+            <svg v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+            </svg>
             <!-- Updates icon -->
             <svg v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -125,14 +143,17 @@ defineExpose({ focusOn })
 
     <!-- ── Content area ───────────────────────────────────────────────── -->
     <div class="flex-1 overflow-y-auto">
-      <div :class="['p-8', active === 'users' || active === 'roles' || active === 'audit' ? 'max-w-5xl' : 'max-w-2xl']">
+      <div :class="['p-8', ['users','roles','audit','disks','raid','lvm','mounts'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
         <ProfileSection     v-if="active === 'profile'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
         <RolesSection       v-else-if="active === 'roles'" />
         <SystemSection      v-else-if="active === 'system'" />
-        <DisksSection       v-else-if="active === 'disks'" />
+        <PhysicalDisksSection v-else-if="active === 'disks'"  @navigate="focusOn" />
+        <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn" />
+        <LvmSection           v-else-if="active === 'lvm'" />
+        <MountsSection        v-else-if="active === 'mounts'" @navigate="focusOn" />
         <UpdateSection      v-else-if="active === 'updates'" />
         <AuditLogSection    v-else-if="active === 'audit'" />
 
