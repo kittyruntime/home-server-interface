@@ -462,6 +462,76 @@ func handleLinuxUserCreate(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
+type searchMsg struct {
+	LinuxUsername string `json:"linuxUsername"`
+	Path          string `json:"path"`
+	AllowedRoot   string `json:"allowedRoot"`
+	Query         string `json:"query"`
+}
+
+type searchResult struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	IsDir bool   `json:"isDir"`
+	Size  int64  `json:"size"`
+}
+
+func handleSearch(nc *nats.Conn, msg *nats.Msg) {
+	var req searchMsg
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	if req.Query == "" {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "query is required"})
+		return
+	}
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+
+	queryLower := strings.ToLower(req.Query)
+	var results []searchResult
+	const maxResults = 500
+
+	walkErr := filepath.Walk(req.Path, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // skip unreadable entries
+		}
+		name := info.Name()
+		// skip hidden files/dirs
+		if strings.HasPrefix(name, ".") && p != req.Path {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if p == req.Path {
+			return nil // skip root itself
+		}
+		if strings.Contains(strings.ToLower(name), queryLower) {
+			results = append(results, searchResult{
+				Path:  p,
+				Name:  name,
+				IsDir: info.IsDir(),
+				Size:  info.Size(),
+			})
+			if len(results) >= maxResults {
+				return filepath.SkipAll
+			}
+		}
+		return nil
+	})
+	if walkErr != nil && walkErr != filepath.SkipAll {
+		// non-fatal, return what we have
+	}
+	if results == nil {
+		results = []searchResult{}
+	}
+	replyOk(nc, msg.Reply, results)
+}
+
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
@@ -752,6 +822,7 @@ func main() {
 		"root.container.logs.stop":         handleDockerLogsStop,
 		"root.fs.mkdirp":                   handleMkdirp,
 		"root.linux.user.create":           handleLinuxUserCreate,
+		"root.fs.search":                   handleSearch,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {

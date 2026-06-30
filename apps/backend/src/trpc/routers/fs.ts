@@ -379,6 +379,32 @@ export const fsRouter = router({
       return { jobId }
     }),
 
+  // ── search (sync) — recursive filename search within a place ─────────────────
+  search: protectedProcedure
+    .input(z.object({
+      placeId: z.string(),
+      query:   z.string().min(1).max(100).trim(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const linuxUser = await getLinuxUser(ctx)
+      const place = await ctx.prisma.place.findUnique({ where: { id: input.placeId } })
+      if (!place) throw new TRPCError({ code: 'NOT_FOUND', message: 'Place not found' })
+      const allowedRoot = await checkPathPerm(ctx, place.path, 'canRead')
+      try {
+        const results = await requestSync<Array<{ path: string; name: string; isDir: boolean; size: number }>>(
+          'root.fs.search',
+          { path: place.path, query: input.query, linuxUsername: linuxUser ?? '', allowedRoot: allowedRoot ?? '' },
+          15_000,
+        )
+        return results.map(r => ({
+          ...r,
+          relativePath: r.path.startsWith(place.path + '/') ? r.path.slice(place.path.length + 1) : r.path,
+        }))
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+    }),
+
   // ── chmod (async, admin) ──────────────────────────────────────────────────────
   chmod: adminProcedure
     .input(z.object({ path: z.string(), mode: z.string().regex(/^[0-7]{3,4}$/) }))

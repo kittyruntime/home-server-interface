@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Crumb = { label: string; path: string; clickable: boolean }
 
@@ -29,7 +31,19 @@ const emit = defineEmits<{
   refresh: []
   'update:viewMode': [mode: 'list' | 'grid']
   toggleSidebar: []
+  search: [query: string]
 }>()
+
+const searchQuery = ref('')
+
+function submitSearch() {
+  if (searchQuery.value.trim()) emit('search', searchQuery.value.trim())
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  emit('search', '')
+}
 </script>
 
 <template>
@@ -173,6 +187,29 @@ const emit = defineEmits<{
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
           </svg>
         </button>
+      </div>
+
+      <!-- Search -->
+      <div v-if="currentPath" class="flex items-center gap-1 ml-1 border-l border-[var(--c-border)] pl-2">
+        <div class="relative">
+          <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            v-model="searchQuery"
+            @keydown.enter="submitSearch"
+            @keydown.escape="clearSearch"
+            type="text"
+            placeholder="Search…"
+            class="pl-6 pr-2 py-1 text-xs rounded border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]/50 w-36 transition-colors"
+          />
+          <button v-if="searchQuery" @click="clearSearch"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
