@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-06-30
+
 ### Fixed
 - Storage nav labels were in French ("Disques", "Montages"); renamed to English ("Disks", "Mounts").
 
@@ -339,7 +341,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.1...HEAD
+[1.19.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.2...v1.19.0
 [1.18.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.0...v1.18.1
