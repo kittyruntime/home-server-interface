@@ -6,7 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'raid' | 'lvm'] }>()
 
-const { loading, error, devices, raids, lvmPVs, lvmLVs, refresh } = useStorageData()
+const { loading, error, devices, raids, lvmLVs, refresh } = useStorageData()
 
 // ── Aggregated mount data ─────────────────────────────────────────────────────
 
@@ -273,9 +273,6 @@ async function doUmount() {
     if (umountDlg.value) d.busy = false
   }
 }
-
-// lvmPVs is consumed by useStorageData internally; suppress unused warning
-void lvmPVs
 </script>
 
 <template>
