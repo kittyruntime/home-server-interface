@@ -8,7 +8,7 @@ import {
 } from '../../composables/useStorageData'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
-const emit = defineEmits<{ navigate: [section: 'lvm'] }>()
+const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 
@@ -392,7 +392,11 @@ const openMenu = ref<string | null>(null)
                       <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
                     </svg>
                   </div>
-                  <span class="text-[10px] font-mono" :class="idx < r.active ? 'text-[var(--c-text-3)]' : 'text-red-400'">/dev/{{ dev }}</span>
+                  <button @click="emit('navigate', 'disks')"
+                    class="text-[10px] font-mono hover:underline transition-colors"
+                    :class="idx < r.active ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-red-400'">
+                    /dev/{{ dev }}
+                  </button>
                 </div>
                 <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-[var(--c-text-3)] self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>

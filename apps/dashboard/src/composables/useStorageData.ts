@@ -175,6 +175,6 @@ export function useStorageData() {
     if (!inflight) inflight = fetchAll()
     return inflight
   }
-  onMounted(() => { if (!state.loaded) refresh() })
+  onMounted(() => { refresh() })
   return { ...toRefs(state), refresh }
 }
