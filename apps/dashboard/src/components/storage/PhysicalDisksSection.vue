@@ -560,25 +560,38 @@ async function doUmount() {
               </div>
 
               <!-- Unpartitioned raw disk -->
-              <div v-else-if="!disk.isSystem" class="border-t border-[var(--c-border)] flex items-center gap-3 px-4 py-2.5">
-                <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="disk.fstype ? 'bg-[var(--c-accent)]/60' : 'bg-[var(--c-text-3)]/20'"/>
-                <div class="flex-1 min-w-0">
-                  <span v-if="disk.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
-                  <span v-else class="text-[11px] italic text-[var(--c-text-3)]/60">Raw disk — no partition table</span>
-                  <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
+              <div v-else-if="!disk.isSystem" class="border-t border-[var(--c-border)]">
+                <!-- Has a filesystem directly on the raw disk -->
+                <div v-if="disk.fstype" class="flex items-center gap-3 px-4 py-2.5">
+                  <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-accent)]/60"/>
+                  <div class="flex-1 min-w-0">
+                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
+                    <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button v-if="!disk.mountpoint" @click="openFormat(disk)"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                    <button v-if="!disk.mountpoint" @click="openMount(disk)"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                    <button v-if="disk.mountpoint" @click="openUmount(disk)"
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button v-if="!disk.mountpoint" @click="openFormat(disk)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                  <button v-if="disk.fstype && !disk.mountpoint" @click="openMount(disk)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
-                  <button v-if="disk.mountpoint" @click="openUmount(disk)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                <!-- Truly blank disk — no partition table, no filesystem -->
+                <div v-else class="flex items-center gap-3 px-4 py-2.5">
+                  <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-text-3)]/20"/>
+                  <div class="flex-1 min-w-0">
+                    <span class="text-[11px] text-[var(--c-text-3)]">No partition table — create one to start using this disk.</span>
+                  </div>
+                  <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
+                    class="shrink-0 text-[11px] px-2.5 py-1 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                    Create partition table…
+                  </button>
                 </div>
               </div>
 
-              <!-- Expandable danger zone (non-system disks only) -->
-              <div v-if="!disk.isSystem" class="border-t border-[var(--c-border)]">
+              <!-- Expandable danger zone — only for disks that already have partitions -->
+              <div v-if="!disk.isSystem && disk.children && disk.children.length > 0" class="border-t border-[var(--c-border)]">
                 <button @click="toggleDanger(disk.name)"
                   class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
                   <svg class="w-3 h-3 shrink-0 transition-transform" :class="dangerDisks.has(disk.name) ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -592,11 +605,11 @@ async function doUmount() {
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
                     </svg>
                     <div class="flex-1 min-w-0">
-                      <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Initialize GPT partition table</p>
-                      <p class="text-[10px] text-[var(--c-text-3)]">Completely erases all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Use only to prepare a blank disk.</p>
+                      <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
+                      <p class="text-[10px] text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
                       <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
                         class="mt-2 text-[11px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/80 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                        Init GPT…
+                        Create partition table…
                       </button>
                     </div>
                   </div>
@@ -834,21 +847,21 @@ async function doUmount() {
     </Teleport>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- INIT GPT DIALOG                                                       -->
+    <!-- CREATE PARTITION TABLE DIALOG                                          -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="partInitDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partInitDlg.busy && (partInitDlg = null)">
         <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Initialize GPT partition table</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will erase all existing partitions and data on the disk.</p>
+            <h3 class="font-semibold text-red-400">Create partition table</h3>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Writes a new GPT partition table — all existing data on the disk will be lost.</p>
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
-              <span>Writing a new GPT label to <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will permanently destroy all partitions and data currently on the disk.</span>
+              <span>All partitions and data on <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will be permanently destroyed. This cannot be undone.</span>
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
               <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
@@ -867,8 +880,8 @@ async function doUmount() {
               <button @click="partInitDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doPartInit" :disabled="partInitDlg.confirm !== partInitDlg.disk.name || partInitDlg.busy"
                 class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="partInitDlg.busy">Initializing…</span>
-                <span v-else>Init GPT</span>
+                <span v-if="partInitDlg.busy">Creating…</span>
+                <span v-else>Create partition table</span>
               </button>
             </div>
           </div>

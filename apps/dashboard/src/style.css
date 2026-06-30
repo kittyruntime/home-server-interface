@@ -7,7 +7,7 @@
 
 :root {
   --font-display: "Doto", "Space Mono", monospace;
-  --font-body:    "Space Grotesk", "DM Sans", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, sans-serif;
   --font-mono:    "Space Mono", "JetBrains Mono", "SF Mono", monospace;
 }
 
