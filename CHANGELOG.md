@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-06-30
+
+### Added
+- **Storage split**: replaced the monolithic `DisksSection.vue` (2191 lines, 3 internal tabs) with four independent nav sections under Settings → admin:
+  - **Disques** (`PhysicalDisksSection`) — physical disk cards, S.M.A.R.T. health, partition management.
+  - **RAID** (`RaidSection`) — RAID array creation, destruction, live status, device bay.
+  - **LVM** (`LvmSection`) — PV / VG / LV lifecycle (create, remove, resize).
+  - **Montages** (`MountsSection`) — centralized view of all mounted and unmounted filesystems across disks, RAID arrays, and LVM logical volumes, with mount/unmount/format actions and clickable source badges that navigate to the owning section.
+- Shared `useStorageData` singleton composable: one reactive store, one fetch cycle, one `refresh()` shared across all four sections. Navigating between storage sections never triggers duplicate API calls.
+- Cross-section navigation: disk used as RAID member → badge links to RAID; disk or RAID used as LVM PV → badge links to LVM; RAID member drives clickable → links to Disques.
+
 ## [1.18.2] - 2026-06-29
 
 ### Fixed
