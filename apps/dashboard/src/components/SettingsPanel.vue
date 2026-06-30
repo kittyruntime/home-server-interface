@@ -13,10 +13,11 @@ import MountsSection         from './storage/MountsSection.vue'
 import SystemSection from './SystemSection.vue'
 import AuditLogSection from './AuditLogSection.vue'
 import PermissionsSection from './PermissionsSection.vue'
+import OverviewSection from './OverviewSection.vue'
 
 const { isAdmin, canManageUsers } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'roles' | 'updates' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'system' | 'audit'
+type SectionId = 'overview' | 'profile' | 'users' | 'places' | 'permissions' | 'roles' | 'updates' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'system' | 'audit'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -30,6 +31,7 @@ interface NavItem {
 const nav: NavItem[] = [
   { id: 'profile',     label: 'My Profile',  show: () => true },
   { id: 'users',       label: 'Users',       show: () => canManageUsers.value },
+  { id: 'overview',    label: 'Overview',    show: () => isAdmin.value, group: 'admin' },
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'admin' },
   { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'admin' },
   { id: 'roles',       label: 'Roles',       show: () => isAdmin.value, group: 'admin' },
@@ -99,6 +101,10 @@ defineExpose({ focusOn })
             <svg v-else-if="item.id === 'users'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5.916-3.5M9 20H4v-2a4 4 0 015.916-3.5M15 7a3 3 0 11-6 0 3 3 0 016 0zM21 10a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
             </svg>
+            <!-- Overview icon -->
+            <svg v-else-if="item.id === 'overview'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+            </svg>
             <!-- Places icon -->
             <svg v-else-if="item.id === 'places'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
@@ -149,9 +155,10 @@ defineExpose({ focusOn })
 
     <!-- ── Content area ───────────────────────────────────────────────── -->
     <div class="flex-1 overflow-y-auto">
-      <div :class="['p-8', ['users','roles','permissions','audit','disks','raid','lvm','mounts'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
+      <div :class="['p-8', ['overview','users','roles','permissions','audit','disks','raid','lvm','mounts'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
-        <ProfileSection     v-if="active === 'profile'" />
+        <OverviewSection    v-if="active === 'overview'" />
+        <ProfileSection     v-else-if="active === 'profile'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection       v-else-if="active === 'places'" />
         <PermissionsSection  v-else-if="active === 'permissions'" />
