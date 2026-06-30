@@ -1,0 +1,10 @@
+model MetricSnapshot {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  cpuPct    Float
+  ramUsed   Int
+  ramTotal  Int
+  netRxBps  Int
+  netTxBps  Int
+  uptime    Int
+}

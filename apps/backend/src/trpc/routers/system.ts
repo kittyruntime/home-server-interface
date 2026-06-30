@@ -128,6 +128,16 @@ function sysinfoSnapshot() {
 
 // --- Router ---
 export const systemRouter = router({
+  metricsHistory: adminProcedure
+    .input(z.object({ period: z.enum(['1h', '6h', '24h', '7d']) }))
+    .query(async ({ ctx, input }) => {
+      const ms = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800 }[input.period] * 1000
+      return ctx.prisma.metricSnapshot.findMany({
+        where: { timestamp: { gte: new Date(Date.now() - ms) } },
+        orderBy: { timestamp: 'asc' },
+      })
+    }),
+
   metrics: protectedProcedure.query(() => {
     return {
       cpu:     cpuPercent(),

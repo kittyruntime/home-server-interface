@@ -16,8 +16,10 @@
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.1",
     "@trpc/client": "^10.45.2",
+    "chart.js": "^4.5.1",
     "codemirror": "^6.0.2",
     "vue": "^3.5.25",
+    "vue-chartjs": "^5.3.3",
     "vue-router": "^4.5.0",
     "yaml": "^2.7.0"
   },
