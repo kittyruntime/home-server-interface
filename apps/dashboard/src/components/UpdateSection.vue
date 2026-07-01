@@ -59,7 +59,8 @@ function pollRestart() {
   let serverWentDown = false
   const interval = setInterval(async () => {
     try {
-      await fetch('/health')
+      const res = await fetch('/health')
+      if (!res.ok) throw new Error('not ok')
       if (serverWentDown) {
         clearInterval(interval)
         restartStep.value = 'done'
