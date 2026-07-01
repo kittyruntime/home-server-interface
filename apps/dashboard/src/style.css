@@ -141,13 +141,11 @@ select:not(:disabled),
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-family: var(--font-mono);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
   font-size: 0.8125rem;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms;
+  font-weight: 500;
+  transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms, box-shadow 150ms;
   cursor: pointer;
   border: 1px solid transparent;
   outline: none;
@@ -179,7 +177,7 @@ select:not(:disabled),
 .btn-ghost {
   color: var(--c-text-3);
   background: transparent;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
 }
 .btn-ghost:hover:not(:disabled) {
   color: var(--c-text-1);
@@ -187,12 +185,12 @@ select:not(:disabled),
 
 /* Destructive: bordered accent */
 .btn-danger {
-  color: var(--c-accent);
-  border-color: var(--c-accent);
+  color: var(--c-danger);
+  border-color: var(--c-danger);
   background: transparent;
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: var(--c-accent-subtle);
+  background-color: var(--c-danger-subtle);
 }
 
 /* Inputs */
