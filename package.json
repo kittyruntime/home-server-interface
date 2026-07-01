@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "1.19.1",
+  "version": "1.20.0",
   "description": "A modern home server dashboard for self-hosting apps, media and storage.",
   "type": "module",
   "scripts": {

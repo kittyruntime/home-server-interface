@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-07-01
+
 ### Added
 - **Permissions**: new Settings → Permissions section — per-place access control matrix (read/write/delete) for every role and user.
 - **Overview**: new Settings → Overview dashboard — live summary cards for system health (CPU/RAM/uptime), storage (disks, RAID status), containers (running/stopped), LVM, and recent audit activity.
@@ -347,7 +349,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.20.0...HEAD
+[1.20.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.1...v1.20.0
 [1.19.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.2...v1.19.0
 [1.18.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.18.1...v1.18.2
