@@ -11,12 +11,27 @@
   --font-mono:    "Space Mono", "JetBrains Mono", "SF Mono", monospace;
 }
 
+/* Shape & elevation — moderate rounding, two subtle shadow levels paired
+   with the existing border (never shadow-only, to avoid glassmorphism). */
+:root {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 /* Accent — signal red by default. User-selectable overrides kept for
    personalization; treat as the one "interrupt" color, not decoration. */
 :root {
   --c-accent:        #d71921;
   --c-accent-subtle: color-mix(in srgb, var(--c-accent) 13%, transparent);
   --c-accent-fg:     #ffffff;
+
+  --c-danger:        #d71921;
+  --c-danger-subtle: color-mix(in srgb, var(--c-danger) 13%, transparent);
 
   --c-success: #4a9e5c;
   --c-warning: #d4a843;
@@ -30,7 +45,7 @@
 
 /* Light — "printed technical manual": off-white paper, black ink */
 :root {
-  --c-bg:            #f5f5f5;
+  --c-bg:            #f7f7f8;
   --c-sidebar:       #ffffff;
   --c-surface:       #ffffff;
   --c-surface-alt:   #f0f0f0;
@@ -52,11 +67,11 @@
 /* Dark — "instrument panel in a dark room": OLED black, glowing data */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-bg:            #000000;
-    --c-sidebar:       #111111;
-    --c-surface:       #111111;
-    --c-surface-alt:   #1a1a1a;
-    --c-surface-deep:  #1a1a1a;
+    --c-bg:            #0a0a0b;
+    --c-sidebar:       #141416;
+    --c-surface:       #141416;
+    --c-surface-alt:   #1c1c1f;
+    --c-surface-deep:  #1c1c1f;
 
     --c-border:        #222222;
     --c-border-strong: #333333;
@@ -73,11 +88,11 @@
 }
 
 :root[data-theme="dark"] {
-  --c-bg:            #000000;
-  --c-sidebar:       #111111;
-  --c-surface:       #111111;
-  --c-surface-alt:   #1a1a1a;
-  --c-surface-deep:  #1a1a1a;
+  --c-bg:            #0a0a0b;
+  --c-sidebar:       #141416;
+  --c-surface:       #141416;
+  --c-surface-alt:   #1c1c1f;
+  --c-surface-deep:  #1c1c1f;
 
   --c-border:        #222222;
   --c-border-strong: #333333;
