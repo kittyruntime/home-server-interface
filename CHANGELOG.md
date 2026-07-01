@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.1] - 2026-07-01
+
 ### Fixed
 - Translated remaining French UI text and code comments to English (Storage → Mounts/Physical Disks/RAID titles, subtitles, and table headers; VolumesTable comments).
 
@@ -369,7 +371,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...HEAD
+[1.23.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.20.0...v1.21.0
