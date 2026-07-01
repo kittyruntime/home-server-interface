@@ -362,21 +362,21 @@ const chartOptions = {
       <template v-else>
         <!-- CPU chart -->
         <div class="mb-6">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-2">CPU %</div>
+          <div class="eyebrow mb-2">CPU %</div>
           <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
             <Line :data="cpuChartData" :options="chartOptions" />
           </div>
         </div>
         <!-- RAM chart -->
         <div class="mb-6">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-2">RAM (GB)</div>
+          <div class="eyebrow mb-2">RAM (GB)</div>
           <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
             <Line :data="ramChartData" :options="chartOptions" />
           </div>
         </div>
         <!-- Network chart -->
         <div class="mb-6">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-2">Network (MB/s)</div>
+          <div class="eyebrow mb-2">Network (MB/s)</div>
           <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
             <Line :data="netChartData" :options="chartOptions" />
           </div>

@@ -166,7 +166,7 @@ function relTime(d: string | Date): string {
 
         <!-- System card -->
         <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-3">System</div>
+          <div class="eyebrow mb-3">System</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs text-[var(--c-text-3)]">Hostname</span>
@@ -202,7 +202,7 @@ function relTime(d: string | Date): string {
 
         <!-- Storage card -->
         <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-3">Storage</div>
+          <div class="eyebrow mb-3">Storage</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs text-[var(--c-text-3)]">Used / Total</span>
@@ -228,7 +228,7 @@ function relTime(d: string | Date): string {
 
         <!-- Containers card -->
         <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-3">Containers</div>
+          <div class="eyebrow mb-3">Containers</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
               <div class="text-2xl font-bold text-[var(--c-text-1)] tabular-nums">{{ containerTotal }}</div>
@@ -247,7 +247,7 @@ function relTime(d: string | Date): string {
 
         <!-- LVM card -->
         <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-3">LVM</div>
+          <div class="eyebrow mb-3">LVM</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
               <div class="text-2xl font-bold text-[var(--c-text-1)] tabular-nums">{{ lvmVGs.length }}</div>
@@ -262,7 +262,7 @@ function relTime(d: string | Date): string {
 
         <!-- Recent Activity card (full width) -->
         <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)] lg:col-span-2">
-          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--c-text-3)] mb-3">Recent Activity</div>
+          <div class="eyebrow mb-3">Recent Activity</div>
           <div v-if="!recentAudit.length" class="text-xs text-[var(--c-text-3)] italic">No recent activity.</div>
           <div v-else class="divide-y divide-[var(--c-border)]">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
