@@ -198,7 +198,7 @@ select:not(:disabled),
   width: 100%;
   background-color: var(--c-surface);
   border: 1px solid var(--c-border-strong);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   font-family: var(--font-body);
@@ -230,9 +230,9 @@ select:not(:disabled),
 
 /* Eyebrow / section titles — instrument-panel labels */
 .eyebrow {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.6875rem;
-  font-weight: 400;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--c-text-3);
@@ -240,9 +240,14 @@ select:not(:disabled),
 
 /* Panel cards — flat, border-separated, no shadow */
 .panel-card {
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
+  transition: box-shadow 150ms;
+}
+.panel-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 /* Inline status text — replaces toast popups. Space Mono bracket tags. */
