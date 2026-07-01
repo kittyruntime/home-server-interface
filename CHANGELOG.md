@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Permissions**: new Settings → Permissions section — per-place access control matrix (read/write/delete) for every role and user.
+- **Overview**: new Settings → Overview dashboard — live summary cards for system health (CPU/RAM/uptime), storage (disks, RAID status), containers (running/stopped), LVM, and recent audit activity.
+- **File search**: search bar in the file browser — searches by filename within the current place, results navigate to the containing directory.
+- **Historical metrics**: Settings → System → History tab — CPU %, RAM, and network charts (Chart.js) with 1h/6h/24h/7d periods; metrics sampled every 60 seconds and retained for 30 days.
+
 ## [1.19.1] - 2026-06-30
 
 ### Fixed
