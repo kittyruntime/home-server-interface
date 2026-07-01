@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 
@@ -10,7 +9,10 @@ const loading  = ref(true)
 const applying = ref(false)
 const checking = ref(false)
 const error    = ref<string | null>(null)
-const restarting = ref(false)
+
+type RestartStep = 'scheduled' | 'restarting' | 'reconnecting' | 'done'
+const restartStep     = ref<RestartStep | null>(null)
+const reloadCountdown = ref(3)
 
 async function fetchStatus() {
   try {
@@ -42,8 +44,11 @@ async function applyUpdate() {
   error.value = null
   try {
     await trpc.update.apply.mutate({ version: status.value.latest })
-    restarting.value = true
-    pollRestart()
+    restartStep.value = 'scheduled'
+    setTimeout(() => {
+      restartStep.value = 'restarting'
+      pollRestart()
+    }, 1000)
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to schedule update'
     applying.value = false
@@ -57,18 +62,52 @@ function pollRestart() {
       await fetch('/health')
       if (serverWentDown) {
         clearInterval(interval)
-        window.location.reload()
+        restartStep.value = 'done'
+        startReloadCountdown()
       }
     } catch {
-      serverWentDown = true
+      if (!serverWentDown) {
+        serverWentDown = true
+        restartStep.value = 'reconnecting'
+      }
     }
-  }, 3000)
+  }, 2000)
+}
+
+function startReloadCountdown() {
+  reloadCountdown.value = 3
+  const t = setInterval(() => {
+    reloadCountdown.value--
+    if (reloadCountdown.value <= 0) {
+      clearInterval(t)
+      window.location.reload()
+    }
+  }, 1000)
 }
 
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium', timeStyle: 'short',
   }).format(new Date(iso))
+}
+
+const STEPS: { key: RestartStep; label: string }[] = [
+  { key: 'scheduled',   label: 'Update scheduled' },
+  { key: 'restarting',  label: 'Server restarting' },
+  { key: 'reconnecting', label: 'Reconnecting' },
+  { key: 'done',        label: 'Ready' },
+]
+
+const STEP_ORDER: RestartStep[] = ['scheduled', 'restarting', 'reconnecting', 'done']
+
+function stepState(key: RestartStep): 'done' | 'active' | 'pending' {
+  const current = restartStep.value
+  if (!current) return 'pending'
+  const ci = STEP_ORDER.indexOf(current)
+  const ki = STEP_ORDER.indexOf(key)
+  if (ki < ci) return 'done'
+  if (ki === ci) return 'active'
+  return 'pending'
 }
 
 let timer: ReturnType<typeof setInterval>
@@ -85,92 +124,125 @@ onUnmounted(() => clearInterval(timer))
     <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Updates</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">Manage software updates for this server.</p>
 
-    <!-- Restarting state -->
-    <div v-if="restarting" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-5">
-      <div class="flex items-center gap-3">
-        <LoadingSpinner label="Restarting" />
-        <div>
-          <p class="text-sm font-medium text-[var(--c-text-1)]">Update in progress</p>
-          <p class="text-xs text-[var(--c-text-3)] mt-0.5">The server is restarting. The page will reload automatically.</p>
+    <!-- ── Restart timeline ─────────────────────────────────────────────── -->
+    <div v-if="restartStep" class="space-y-6">
+      <div class="panel-card p-6">
+        <p class="eyebrow mb-6">Installing update</p>
+        <div class="space-y-5">
+          <div v-for="step in STEPS" :key="step.key" class="flex items-center gap-3">
+            <!-- Icon -->
+            <div
+              :class="[
+                'w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors',
+                stepState(step.key) === 'done'   ? 'bg-[var(--c-success)]/15 text-[var(--c-success)]' :
+                stepState(step.key) === 'active' ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]'   :
+                'bg-[var(--c-hover)] text-[var(--c-text-3)]'
+              ]"
+            >
+              <!-- Done -->
+              <svg v-if="stepState(step.key) === 'done'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              <!-- Active spinning -->
+              <svg v-else-if="stepState(step.key) === 'active'" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              <!-- Pending dot -->
+              <span v-else class="w-1.5 h-1.5 rounded-full bg-current" />
+            </div>
+            <!-- Label -->
+            <span
+              :class="[
+                'text-sm transition-colors',
+                stepState(step.key) === 'done'   ? 'text-[var(--c-text-2)]' :
+                stepState(step.key) === 'active' ? 'text-[var(--c-text-1)] font-medium' :
+                'text-[var(--c-text-3)]'
+              ]"
+            >{{ step.label }}</span>
+            <!-- Countdown on done -->
+            <span v-if="step.key === 'done' && restartStep === 'done'" class="ml-auto text-xs text-[var(--c-text-3)] font-mono">
+              reloading in {{ reloadCountdown }}…
+            </span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Loading -->
+    <!-- ── Loading skeleton ─────────────────────────────────────────────── -->
     <div v-else-if="loading" class="space-y-3">
       <div class="h-4 bg-[var(--c-hover)] rounded animate-pulse w-40" />
       <div class="h-4 bg-[var(--c-hover)] rounded animate-pulse w-64" />
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="text-sm text-[var(--c-accent)]">{{ error }}</div>
+    <!-- ── Error ────────────────────────────────────────────────────────── -->
+    <p v-else-if="error" class="text-sm text-[var(--c-accent)]">{{ error }}</p>
 
-    <!-- Status card -->
-    <div v-else-if="status" class="space-y-4">
+    <!-- ── Main content ─────────────────────────────────────────────────── -->
+    <div v-else-if="status" class="space-y-5">
 
-      <!-- Update available banner -->
-      <div
-        v-if="status.hasUpdate"
-        class="rounded-xl border border-[var(--c-accent)]/30 bg-[var(--c-accent)]/5 p-4 flex items-start justify-between gap-4"
-      >
-        <div class="flex items-start gap-3 min-w-0">
-          <div class="w-8 h-8 rounded-lg bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0 mt-0.5">
-            <svg class="w-4 h-4 text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-[var(--c-text-1)]">
-              Version {{ status.latest }} available
-            </p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">
-              You are on {{ status.current }}.
-              The server will restart after installation.
-            </p>
-          </div>
+      <!-- Version row -->
+      <div class="panel-card p-5 flex items-center justify-between gap-6">
+        <div>
+          <p class="eyebrow mb-1">Current version</p>
+          <p class="font-mono text-xl text-[var(--c-text-1)]">{{ status.current }}</p>
         </div>
+        <template v-if="status.hasUpdate">
+          <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+          </svg>
+          <div class="text-right">
+            <p class="eyebrow mb-1">Available</p>
+            <p class="font-mono text-xl text-[var(--c-accent)]">{{ status.latest }}</p>
+          </div>
+        </template>
+        <template v-else>
+          <div class="flex items-center gap-2 text-[var(--c-success)]">
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="text-sm">Up to date</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Release notes -->
+      <div v-if="status.hasUpdate && status.releaseNotes" class="panel-card overflow-hidden">
+        <div class="px-4 py-3 border-b border-[var(--c-border)]">
+          <p class="eyebrow">What's new in {{ status.latest }}</p>
+        </div>
+        <pre class="px-4 py-3 text-xs text-[var(--c-text-2)] whitespace-pre-wrap font-mono leading-relaxed max-h-52 overflow-y-auto">{{ status.releaseNotes }}</pre>
+      </div>
+
+      <!-- Install CTA -->
+      <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
+        <p class="text-xs text-[var(--c-text-3)]">The server will restart after installation (~30s downtime).</p>
         <button
           @click="applyUpdate"
           :disabled="applying || status.pending"
-          class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-xs font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn btn-primary btn-sm shrink-0"
         >
           <svg v-if="applying || status.pending" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
           </svg>
-          {{ applying || status.pending ? 'Scheduling…' : 'Install' }}
+          {{ applying || status.pending ? 'Scheduling…' : 'Install update' }}
         </button>
       </div>
 
-      <!-- Up to date -->
-      <div
-        v-else
-        class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 flex items-center gap-3"
-      >
-        <div class="w-8 h-8 rounded-lg bg-[var(--c-success)]/10 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4 text-[var(--c-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-[var(--c-text-1)]">Up to date</p>
-          <p class="text-xs text-[var(--c-text-3)] mt-0.5">Running version {{ status.current }}</p>
-        </div>
-      </div>
-
-      <!-- Meta + manual check -->
-      <div class="flex items-center justify-between gap-4">
+      <!-- Footer: last checked + manual check -->
+      <div class="flex items-center justify-between pt-1 border-t border-[var(--c-border)]">
         <p class="text-xs text-[var(--c-text-3)]">
-          <template v-if="status.checkedAt">Last checked: {{ formatDate(status.checkedAt) }}</template>
-          <template v-else>Never checked — check runs daily via systemd timer.</template>
+          <template v-if="status.checkedAt">Last checked {{ formatDate(status.checkedAt) }}</template>
+          <template v-else>Never checked — runs daily via systemd timer</template>
         </p>
         <button
           @click="checkNow"
-          :disabled="checking || applying || status.pending"
-          class="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="checking || applying || !!status.pending"
+          class="btn btn-outline btn-xs"
         >
           <svg
-            class="w-3.5 h-3.5"
+            class="w-3 h-3"
             :class="checking ? 'animate-spin' : ''"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
           >

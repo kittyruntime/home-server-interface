@@ -21,7 +21,7 @@ function readCurrentVersion(): string {
   } catch { return "unknown" }
 }
 
-type CheckResult = { latestVersion: string; checkedAt: string }
+type CheckResult = { latestVersion: string; checkedAt: string; releaseNotes?: string }
 
 function readCheck(): CheckResult | null {
   try {
@@ -48,9 +48,10 @@ export const updateRouter = router({
     const hasUpdate = check ? isNewer(check.latestVersion, current) : false
     return {
       current,
-      latest:    check?.latestVersion ?? null,
+      latest:       check?.latestVersion  ?? null,
       hasUpdate,
-      checkedAt: check?.checkedAt    ?? null,
+      checkedAt:    check?.checkedAt      ?? null,
+      releaseNotes: check?.releaseNotes   ?? null,
       pending,
     }
   }),
@@ -61,10 +62,11 @@ export const updateRouter = router({
       { headers: { "User-Agent": "hsi-update-checker", Accept: "application/vnd.github+json" } }
     )
     if (!res.ok) throw new Error(`GitHub API returned ${res.status}`)
-    const data = await res.json() as { tag_name: string }
+    const data = await res.json() as { tag_name: string; body?: string }
     const result: CheckResult = {
       latestVersion: data.tag_name,
       checkedAt: new Date().toISOString(),
+      releaseNotes: data.body?.slice(0, 4000),
     }
     fs.writeFileSync(
       path.join(installDir(), ".update-check.json"),
