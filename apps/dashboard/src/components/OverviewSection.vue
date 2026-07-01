@@ -165,7 +165,7 @@ function relTime(d: string | Date): string {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         <!-- System card -->
-        <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
+        <div class="panel-card p-5 bg-[var(--c-surface)]">
           <div class="eyebrow mb-3">System</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
@@ -201,7 +201,7 @@ function relTime(d: string | Date): string {
         </div>
 
         <!-- Storage card -->
-        <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
+        <div class="panel-card p-5 bg-[var(--c-surface)]">
           <div class="eyebrow mb-3">Storage</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
@@ -214,7 +214,7 @@ function relTime(d: string | Date): string {
               <div class="text-[10px] uppercase tracking-wider text-[var(--c-text-3)]">RAID Arrays</div>
               <div v-for="r in raids" :key="r.name" class="flex items-center justify-between">
                 <span class="text-xs font-mono text-[var(--c-text-2)]">{{ r.name }}</span>
-                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full border',
+                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border',
                   isRaidHealthy(r)
                     ? 'bg-green-500/10 text-green-400 border-green-500/20'
                     : 'bg-red-500/10 text-red-400 border-red-500/20']">
@@ -227,7 +227,7 @@ function relTime(d: string | Date): string {
         </div>
 
         <!-- Containers card -->
-        <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
+        <div class="panel-card p-5 bg-[var(--c-surface)]">
           <div class="eyebrow mb-3">Containers</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
@@ -246,7 +246,7 @@ function relTime(d: string | Date): string {
         </div>
 
         <!-- LVM card -->
-        <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)]">
+        <div class="panel-card p-5 bg-[var(--c-surface)]">
           <div class="eyebrow mb-3">LVM</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
@@ -261,14 +261,14 @@ function relTime(d: string | Date): string {
         </div>
 
         <!-- Recent Activity card (full width) -->
-        <div class="border border-[var(--c-border)] rounded-xl p-5 bg-[var(--c-surface)] lg:col-span-2">
+        <div class="panel-card p-5 bg-[var(--c-surface)] lg:col-span-2">
           <div class="eyebrow mb-3">Recent Activity</div>
           <div v-if="!recentAudit.length" class="text-xs text-[var(--c-text-3)] italic">No recent activity.</div>
           <div v-else class="divide-y divide-[var(--c-border)]">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
               <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-green-400' : 'bg-red-400']" />
               <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0 w-16">{{ relTime(entry.createdAt) }}</span>
-              <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0', categoryClass[actionCategory(entry.action)]]">
+              <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border shrink-0', categoryClass[actionCategory(entry.action)]]">
                 {{ actionLabel(entry.action) }}
               </span>
               <span class="text-xs text-[var(--c-text-2)] truncate">

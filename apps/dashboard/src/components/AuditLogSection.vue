@@ -173,7 +173,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-else class="text-[var(--c-text-3)] text-xs italic">—</span>
                 </td>
                 <td class="px-4 py-2.5">
-                  <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border', categoryClass[actionCategory(entry.action)]]">
+                  <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border', categoryClass[actionCategory(entry.action)]]">
                     {{ actionLabel(entry.action) }}
                   </span>
                 </td>
@@ -188,11 +188,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 </td>
                 <td class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400">
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-green-500/10 text-green-400">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400">
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-red-500/10 text-red-400">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-400"/>Fail
                   </span>
                 </td>
