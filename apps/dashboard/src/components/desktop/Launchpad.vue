@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useDesktop, APP_LABEL, APP_ICON_PATH, type AppId } from '../../lib/desktop'
+import { useAuth } from '../../lib/auth'
 
 const emit = defineEmits<{ close: [] }>()
 const { openApp } = useDesktop()
+const { isAdmin } = useAuth()
 
-const APP_IDS: AppId[] = ['files', 'apps', 'settings']
+const allApps: { id: AppId; adminOnly: boolean }[] = [
+  { id: 'files',   adminOnly: false },
+  { id: 'apps',    adminOnly: false },
+  { id: 'storage', adminOnly: true },
+  { id: 'monitor', adminOnly: true },
+  { id: 'settings', adminOnly: false },
+]
+
+const visibleApps = computed(() =>
+  allApps.filter(a => !a.adminOnly || isAdmin.value).map(a => a.id)
+)
 
 function launch(id: AppId) {
   openApp(id)
@@ -27,7 +39,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     >
       <div class="grid grid-cols-4 gap-8 p-8">
         <button
-          v-for="id in APP_IDS"
+          v-for="id in visibleApps"
           :key="id"
           @click="launch(id)"
           class="flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-[var(--c-hover)] transition-colors"
