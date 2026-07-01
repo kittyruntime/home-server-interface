@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Design system refresh**: moved away from the flat/monochrome "Nothing" look toward a warmer, softer balance — Inter replaces Space Mono for buttons, badges, labels, and nav (Space Mono now scoped to technical data values only: metrics, file sizes, IPs, hashes); buttons and badges lose their pill shape for a moderate rounded radius; cards and modals gain a subtle resting/hover shadow; destructive actions now use a fixed danger color independent of the accent picker; backgrounds are slightly warmed in both light and dark mode.
+
 ## [1.22.0] - 2026-07-01
 
 ### Changed
