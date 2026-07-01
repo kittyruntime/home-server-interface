@@ -29,7 +29,7 @@ async function handleLogin() {
   <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)] px-4">
     <div class="w-full max-w-sm">
       <div class="text-center mb-10">
-        <div class="text-5xl text-[var(--c-text-display)] mb-2" style="font-family: var(--font-display)">Home</div>
+        <div class="text-5xl font-semibold text-[var(--c-text-display)] mb-2">Home</div>
         <div class="eyebrow">Home Server Interface</div>
       </div>
 

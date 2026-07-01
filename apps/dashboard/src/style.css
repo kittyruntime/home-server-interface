@@ -6,9 +6,8 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --font-display: "Doto", "Space Mono", monospace;
-  --font-body:    "Inter", system-ui, sans-serif;
-  --font-mono:    "Space Mono", "JetBrains Mono", "SF Mono", monospace;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "Space Mono", "JetBrains Mono", "SF Mono", monospace;
 }
 
 /* Shape & elevation — moderate rounding, two subtle shadow levels paired

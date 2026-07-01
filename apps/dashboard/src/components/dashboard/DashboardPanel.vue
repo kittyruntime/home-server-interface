@@ -108,8 +108,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             <div class="flex items-end gap-4 flex-1">
               <div class="flex-shrink-0">
                 <span
-                  class="text-4xl tabular-nums leading-none text-[var(--c-text-display)]"
-                  style="font-family: var(--font-display)"
+                  class="text-4xl font-semibold tabular-nums leading-none text-[var(--c-text-display)]"
                 >{{ metrics?.cpu ?? '—' }}</span>
                 <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
               </div>
