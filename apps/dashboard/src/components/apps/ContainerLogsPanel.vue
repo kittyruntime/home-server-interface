@@ -139,7 +139,7 @@ onUnmounted(() => controller?.abort())
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" @click.self="emit('close')">
-      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-2xl overflow-hidden shadow-2xl">
+      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-2xl overflow-hidden shadow-[var(--shadow-md)]">
 
         <!-- Header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">

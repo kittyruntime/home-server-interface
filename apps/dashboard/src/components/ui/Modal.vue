@@ -27,7 +27,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
       @click.self="closeOnBackdrop && emit('close')"
     >
-      <div :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl flex flex-col max-h-[90vh]', panelClass]">
+      <div :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] flex flex-col max-h-[90vh]', panelClass]">
         <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
           <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
             <slot name="header" />
