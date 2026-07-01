@@ -10,7 +10,7 @@ const props = defineProps<{
 }>()
 defineEmits<{ 'update:modelValue': [v: VolumeMount[]] }>()
 
-/** Retrouve le chemin réel d'un place à partir de son id. */
+/** Resolves a place's real filesystem path from its id. */
 function placePath(id: string): string | null {
   return props.places.find(p => p.id === id)?.path ?? null
 }
@@ -37,14 +37,14 @@ function placePath(id: string): string | null {
       </select>
 
       <!-- Source -->
-      <!-- bind: chemin hôte libre -->
+      <!-- bind: free-form host path -->
       <input
         v-if="item.type === 'bind'"
         :value="item.source" placeholder="/host/path"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
         class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
       />
-      <!-- named: nom du volume container -->
+      <!-- named: container volume name -->
       <input
         v-else-if="item.type === 'named'"
         :value="item.source" placeholder="my-volume"
@@ -64,7 +64,7 @@ function placePath(id: string): string | null {
 
       <span class="text-[var(--c-text-3)] text-sm shrink-0">→</span>
 
-      <!-- Target (chemin dans le container) -->
+      <!-- Target (path inside the container) -->
       <input
         :value="item.target" placeholder="/container/path"
         @input="update({ target: ($event.target as HTMLInputElement).value })"

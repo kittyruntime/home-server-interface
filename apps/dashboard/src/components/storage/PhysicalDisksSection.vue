@@ -272,8 +272,8 @@ async function doUmount() {
   <div>
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Disques physiques</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Disques, partitions et état S.M.A.R.T.</p>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Physical disks</h2>
+        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Disks, partitions, and S.M.A.R.T. health.</p>
       </div>
       <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
         <svg :class="['w-4 h-4', loading && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

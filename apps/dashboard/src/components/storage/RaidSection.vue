@@ -287,7 +287,7 @@ const openMenu = ref<string | null>(null)
     <div class="flex items-start justify-between mb-4">
       <div>
         <h2 class="text-lg font-semibold text-[var(--c-text-1)]">RAID</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Gérer les arrays RAID logiciels (mdadm).</p>
+        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
         <button @click="openRaidWizard" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">

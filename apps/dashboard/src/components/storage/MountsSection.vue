@@ -279,8 +279,8 @@ async function doUmount() {
   <div>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Montages</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Tous les systèmes de fichiers montés, toutes sources.</p>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Mounts</h2>
+        <p class="text-sm text-[var(--c-text-3)] mt-0.5">All mounted filesystems, across all sources.</p>
       </div>
       <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
         <svg :class="['w-4 h-4', loading && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -301,11 +301,11 @@ async function doUmount() {
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-wide">
-              <th class="text-left px-4 py-3 font-medium">Point de montage</th>
+              <th class="text-left px-4 py-3 font-medium">Mount point</th>
               <th class="text-left px-4 py-3 font-medium">Device</th>
               <th class="text-left px-4 py-3 font-medium w-28">Source</th>
               <th class="text-left px-4 py-3 font-medium w-16">FS</th>
-              <th class="text-left px-4 py-3 font-medium w-44">Utilisé / Total</th>
+              <th class="text-left px-4 py-3 font-medium w-44">Used / Total</th>
               <th class="text-right px-4 py-3 font-medium w-24">Actions</th>
             </tr>
           </thead>
@@ -329,7 +329,7 @@ async function doUmount() {
                   <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{ width: usagePct(e.bd) + '%' }"/>
                   </div>
-                  <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">{{ fmtBytes(e.usageFree) }} libre</div>
+                  <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
                 </div>
                 <span v-else class="text-[10px] text-[var(--c-text-3)] italic">—</span>
               </td>
@@ -346,7 +346,7 @@ async function doUmount() {
 
       <!-- Unmounted with filesystem -->
       <template v-if="unmounted.length > 0">
-        <h3 class="text-sm font-medium text-[var(--c-text-2)] mb-3">Non montés</h3>
+        <h3 class="text-sm font-medium text-[var(--c-text-2)] mb-3">Not mounted</h3>
         <div class="rounded-xl border border-[var(--c-border)] overflow-hidden">
           <table class="w-full text-sm border-collapse">
             <thead>
