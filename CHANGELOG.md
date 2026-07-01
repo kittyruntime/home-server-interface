@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.2] - 2026-07-01
+
 ### Fixed
 - **Updates**: fixed the update UI getting permanently stuck on "Restarting" — it only detected a thrown `fetch()` exception as "server down," so it missed nginx's 502 (backend port closed) and the backend's own 503 (NATS not yet reconnected), both successful HTTP responses. A manual page reload was required after every update; now the UI correctly detects the restart and reloads automatically.
 - **Design system**: finished the refresh consistency pass — Overview summary cards now use the shared `.panel-card` (elevation/radius), remaining pill-shaped badges (audit categories, RAID/LVM tags and counters) moved to the moderate radius token, and destructive UI (delete confirmations, danger zone) now uses the fixed `--c-danger` color instead of the user's accent color.
@@ -375,7 +377,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...HEAD
+[1.23.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...v1.23.2
 [1.23.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.21.0...v1.22.0
