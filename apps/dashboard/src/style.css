@@ -208,22 +208,22 @@ select:not(:disabled),
 }
 .ui-input:focus { border-color: var(--c-text-1); }
 
-/* Badges / tags — bordered, no fill, mono caps */
+/* Badges / tags — soft tinted backgrounds, moderate radius */
 .badge {
   display: inline-flex;
   align-items: center;
   padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--c-border-strong);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
-.badge-accent  { border-color: var(--c-accent); color: var(--c-accent); }
-.badge-muted   { border-color: var(--c-border-strong); color: var(--c-text-3); }
-.badge-violet  { border-color: var(--c-border-strong); color: var(--c-text-2); }
-.badge-admin   { border-color: var(--c-accent); color: var(--c-accent); }
+.badge-accent  { background-color: var(--c-accent-subtle); color: var(--c-accent); }
+.badge-muted   { background-color: var(--c-hover); color: var(--c-text-3); }
+.badge-violet  { background-color: var(--c-hover); color: var(--c-text-2); }
+.badge-admin   { background-color: var(--c-accent-subtle); color: var(--c-accent); }
 
 /* Dividers */
 .ui-divider { height: 1px; background-color: var(--c-border-strong); margin: 0.25rem 0.5rem; }
