@@ -133,8 +133,8 @@ select:not(:disabled),
    ─────────────────────────────────────────────────────────────────────────── */
 @layer components {
 
-/* Buttons — Space Mono, ALL CAPS, pill (technical anti-pattern rules out
-   shadows/scale on hover: border or text brightens instead). */
+/* Buttons — Inter, sentence case, moderate radius (--radius-md); hover
+   changes color/border/background rather than scale. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -182,7 +182,7 @@ select:not(:disabled),
   color: var(--c-text-1);
 }
 
-/* Destructive: bordered accent */
+/* Destructive: bordered danger color (--c-danger), independent of the accent picker */
 .btn-danger {
   color: var(--c-danger);
   border-color: var(--c-danger);
@@ -237,7 +237,7 @@ select:not(:disabled),
   color: var(--c-text-3);
 }
 
-/* Panel cards — flat, border-separated, no shadow */
+/* Panel cards — border + subtle resting shadow (--shadow-sm), elevated on hover (--shadow-md) */
 .panel-card {
   border-radius: var(--radius-lg);
   border: 1px solid var(--c-border);
