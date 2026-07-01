@@ -166,7 +166,7 @@ async function deleteUser() {
         </div>
       </div>
 
-      <p v-if="saveError" class="text-[var(--c-accent)] text-xs">{{ saveError }}</p>
+      <p v-if="saveError" class="text-[var(--c-danger)] text-xs">{{ saveError }}</p>
 
       <div class="flex items-center gap-3">
         <button
@@ -199,14 +199,14 @@ async function deleteUser() {
         @remove="toggleRole"
       />
 
-      <p v-if="roleError" class="text-[var(--c-accent)] text-xs px-3">{{ roleError }}</p>
+      <p v-if="roleError" class="text-[var(--c-danger)] text-xs px-3">{{ roleError }}</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-accent)]/70">Danger zone</h4>
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-danger)]/70">Danger zone</h4>
 
-      <div class="border border-[var(--c-accent)]/20 rounded-xl p-4 bg-[var(--c-accent)]/5">
+      <div class="border border-[var(--c-danger)]/20 rounded-xl p-4 bg-[var(--c-danger)]/5">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-medium text-[var(--c-text-1)]">Delete account</p>
@@ -216,16 +216,16 @@ async function deleteUser() {
           <template v-if="!deleteConfirm">
             <button
               @click="deleteConfirm = true"
-              class="btn btn-sm shrink-0 text-[var(--c-accent)] border border-[var(--c-accent)]/30 hover:bg-[var(--c-accent-subtle)] transition-colors"
+              class="btn btn-sm shrink-0 text-[var(--c-danger)] border border-[var(--c-danger)]/30 hover:bg-[var(--c-danger-subtle)] transition-colors"
             >Delete</button>
           </template>
           <template v-else>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="text-xs text-[var(--c-accent)]">Are you sure?</span>
+              <span class="text-xs text-[var(--c-danger)]">Are you sure?</span>
               <button
                 @click="deleteUser"
                 :disabled="deleteBusy"
-                class="px-2.5 py-1 text-xs rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:opacity-85 disabled:opacity-40 transition-colors"
+                class="px-2.5 py-1 text-xs rounded-lg bg-[var(--c-danger)] text-[var(--c-accent-fg)] hover:opacity-85 disabled:opacity-40 transition-colors"
               >{{ deleteBusy ? '…' : 'Yes, delete' }}</button>
               <button
                 @click="deleteConfirm = false"
@@ -234,7 +234,7 @@ async function deleteUser() {
             </div>
           </template>
         </div>
-        <p v-if="deleteError" class="mt-2 text-[var(--c-accent)] text-xs">{{ deleteError }}</p>
+        <p v-if="deleteError" class="mt-2 text-[var(--c-danger)] text-xs">{{ deleteError }}</p>
       </div>
     </div>
 

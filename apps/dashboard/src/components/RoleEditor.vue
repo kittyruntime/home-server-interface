@@ -247,11 +247,11 @@ async function toggleMember(userId: string) {
         </button>
       </template>
       <template v-else>
-        <span class="text-xs text-[var(--c-accent)] shrink-0">Delete?</span>
+        <span class="text-xs text-[var(--c-danger)] shrink-0">Delete?</span>
         <button
           @click="deleteRole"
           :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded bg-[var(--c-accent)]/15 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/25 transition-colors disabled:opacity-40"
+          class="text-xs px-2 py-1 rounded bg-[var(--c-danger)]/15 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/25 transition-colors disabled:opacity-40"
         >Yes</button>
         <button
           @click="deleteConfirm = false"

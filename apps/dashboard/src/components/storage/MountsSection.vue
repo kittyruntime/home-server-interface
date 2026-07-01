@@ -452,7 +452,7 @@ async function doUmount() {
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
                       :class="fs.tag === 'Recommended' ? 'bg-green-500/15 text-green-400' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
