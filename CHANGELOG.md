@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-07-01
+
 ### Changed
 - **Design system refresh**: moved away from the flat/monochrome "Nothing" look toward a warmer, softer balance — Inter replaces Space Mono for buttons, badges, labels, and nav (Space Mono now scoped to technical data values only: metrics, file sizes, IPs, hashes); buttons and badges lose their pill shape for a moderate rounded radius; cards and modals gain a subtle resting/hover shadow; destructive actions now use a fixed danger color independent of the accent picker; backgrounds are slightly warmed in both light and dark mode.
 
@@ -364,7 +366,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.22.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.19.1...v1.20.0
