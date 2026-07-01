@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.21.0] - 2026-07-01
-
 ### Changed
 - **Storage** is now a dedicated desktop app (Disks, RAID, LVM, Mounts) — accessible from the Launchpad and the non-desktop sidebar (admin only).
 - **Monitor** is now a dedicated desktop app (Overview, System, Audit Log) — accessible from the Launchpad and the non-desktop sidebar (admin only).
