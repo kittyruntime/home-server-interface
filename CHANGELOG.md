@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Updates**: reworked update UI — version comparison card, release notes panel (populated after "Check now"), 4-step restart timeline (Scheduled → Restarting → Reconnecting → Ready), and auto-reload countdown once the server is back up.
+
 ## [1.21.0] - 2026-07-01
 
 ### Changed
