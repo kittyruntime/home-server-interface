@@ -7,6 +7,8 @@ import { useNotifications } from '../lib/notifications'
 import { useDesktop } from '../lib/desktop'
 import { trpc } from '../lib/trpc'
 import SettingsPanel from '../components/SettingsPanel.vue'
+import StoragePanel from '../components/storage/StoragePanel.vue'
+import MonitorPanel from '../components/monitor/MonitorPanel.vue'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import AppsPanel from '../components/apps/AppsPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
@@ -65,6 +67,8 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'files') return 'Files'
   if (activeApp.value === 'settings') return 'Settings'
   if (activeApp.value === 'apps') return 'Apps'
+  if (activeApp.value === 'storage') return 'Storage'
+  if (activeApp.value === 'monitor') return 'Monitor'
   return 'Overview'
 })
 
@@ -251,6 +255,50 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <!-- Storage -->
+        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
+          <span
+            v-if="isActive('storage')"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
+          />
+          <button
+            @click="selectApp('storage')"
+            title="Storage"
+            :class="[
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+              isActive('storage')
+                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+            ]"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Monitor -->
+        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
+          <span
+            v-if="isActive('monitor')"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
+          />
+          <button
+            @click="selectApp('monitor')"
+            title="Monitor"
+            :class="[
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+              isActive('monitor')
+                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+            ]"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </button>
+        </div>
+
       </nav>
       </template>
 
@@ -380,6 +428,8 @@ onUnmounted(() => {
           <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
           <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
           <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
+          <StoragePanel v-else-if="activeApp === 'storage'" class="h-full" />
+          <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <div v-else class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
             <div class="text-center space-y-3">
               <svg class="w-12 h-12 mx-auto opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
@@ -447,6 +497,32 @@ onUnmounted(() => {
           </svg>
           <span v-if="updateAvailable && !isActive('settings')"
             class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]" />
+        </button>
+      </div>
+
+      <!-- Storage -->
+      <div v-if="isAdmin" class="relative flex justify-center">
+        <span v-if="isActive('storage')"
+          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
+        <button @click="selectApp('storage')" title="Storage"
+          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
+            isActive('storage') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Monitor -->
+      <div v-if="isAdmin" class="relative flex justify-center">
+        <span v-if="isActive('monitor')"
+          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
+        <button @click="selectApp('monitor')" title="Monitor"
+          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
+            isActive('monitor') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
         </button>
       </div>
 
