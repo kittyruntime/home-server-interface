@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'monitor' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
 
 export interface FilePreviewPayload {
@@ -31,6 +31,8 @@ export const APP_LABEL: Record<AppId, string> = {
   files: 'Files',
   apps: 'Apps',
   settings: 'Settings',
+  storage: 'Storage',
+  monitor: 'Monitor',
   'file-preview': 'Preview',
 }
 
@@ -38,6 +40,8 @@ export const APP_ICON_PATH: Record<AppId, string> = {
   files: 'M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z',
   apps: 'M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+  storage: 'M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z',
+  monitor: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
   'file-preview': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
 }
 
@@ -52,6 +56,8 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   files: { w: 860, h: 560 },
   apps: { w: 760, h: 540 },
   settings: { w: 860, h: 560 },
+  storage: { w: 900, h: 580 },
+  monitor: { w: 860, h: 580 },
   'file-preview': { w: 760, h: 560 },
 }
 
