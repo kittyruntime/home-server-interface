@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Translated remaining French UI text and code comments to English (Storage → Mounts/Physical Disks/RAID titles, subtitles, and table headers; VolumesTable comments).
+
 ## [1.23.0] - 2026-07-01
 
 ### Changed
