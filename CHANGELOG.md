@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-07-01
+
 ### Fixed
 - **Wallpaper upload**: fixed `ENOENT` failure on every wallpaper image upload in production installs. The backend's bundled `server.js` sits directly at `INSTALL_DIR`'s root, so the storage path fallback (relative to the *unbundled* dev source tree) walked two directories above `INSTALL_DIR` and tried to write to `/data` at the filesystem root — outside the systemd sandbox's writable paths. Now resolves against `INSTALL_DIR` directly.
 
@@ -380,7 +382,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...HEAD
+[1.24.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...v1.24.0
 [1.23.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...v1.23.2
 [1.23.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.22.0...v1.23.0
