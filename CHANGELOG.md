@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-07-02
+
 ### Added
 
 - SMB network sharing: share any place over the network via Samba, managed from the new admin-only Sharing desktop app (share list with per-place permissions mapping, live connections view, guest access and read-only options). Passwords are kept in sync NAS-style across web, Linux, and Samba accounts. Requires `samba` to be installed on the host; the app detects it and shows the install command otherwise.
@@ -386,7 +388,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...HEAD
+[1.25.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...v1.24.0
 [1.23.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...v1.23.2
 [1.23.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.0...v1.23.1
