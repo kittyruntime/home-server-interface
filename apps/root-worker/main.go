@@ -823,6 +823,10 @@ func main() {
 		"root.fs.mkdirp":                   handleMkdirp,
 		"root.linux.user.create":           handleLinuxUserCreate,
 		"root.fs.search":                   handleSearch,
+		"root.sharing.checkPrereqs":        handleSharingCheckPrereqs,
+		"root.sharing.sync":                handleSharingSync,
+		"root.sharing.setPassword":         handleSharingSetPassword,
+		"root.sharing.status":              handleSharingStatus,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {
