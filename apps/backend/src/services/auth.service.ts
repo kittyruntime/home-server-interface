@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
 import type { PrismaClient } from "@app/database"
 import { signToken, hasPermission } from "../trpc/auth"
+import { syncSystemPassword } from "./user.service"
 
 export async function loginUser(
   prisma: PrismaClient,
@@ -29,6 +30,10 @@ export async function loginUser(
   if (!user || !(await bcrypt.compare(password, user.password))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" })
   }
+
+  // Fire-and-forget: keeps Linux/Samba passwords in sync for accounts that
+  // never changed their password since the sharing feature shipped.
+  void syncSystemPassword(prisma, user.id, password)
 
   const isAdmin = user.userRoles.some(ur => ur.role.isAdmin)
   const allPerms = user.userRoles.flatMap(ur =>

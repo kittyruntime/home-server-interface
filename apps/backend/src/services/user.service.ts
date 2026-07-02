@@ -53,6 +53,7 @@ export async function createUser(
   if (linuxUsername) {
     try {
       await requestSync("root.linux.user.create", { username: linuxUsername })
+      await syncSystemPassword(prisma, user.id, input.password)
     } catch (e) {
       console.warn("[user.create] Linux user creation failed (non-fatal):", e)
     }
@@ -74,9 +75,37 @@ export async function changePassword(
   if (!(await bcrypt.compare(currentPassword, user.password)))
     throw new TRPCError({ code: "FORBIDDEN", message: "Current password is incorrect" })
   const newHashed = await bcrypt.hash(newPassword, 12)
-  return prisma.user.update({
+  const result = await prisma.user.update({
     where: { id: userId },
     data: { password: newHashed },
     select: { id: true, username: true },
   })
+  void syncSystemPassword(prisma, userId, newPassword)
+  return result
+}
+
+/** NAS-style single password: pushes the plaintext to the root-worker which
+ *  sets it on the Linux account (chpasswd — shell stays /sbin/nologin, no
+ *  login access) and the Samba account (smbpasswd). Called at the only
+ *  moments plaintext exists: user creation, password change, and login
+ *  (login backfills accounts that predate this feature). Best-effort by
+ *  design — a sync failure must never break the calling flow. */
+export async function syncSystemPassword(
+  prisma: PrismaClient,
+  userId: string,
+  plainPassword: string,
+): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { linuxUsername: true },
+    })
+    if (!user?.linuxUsername) return
+    await requestSync("root.sharing.setPassword", {
+      linuxUsername: user.linuxUsername,
+      password: plainPassword,
+    })
+  } catch (e) {
+    console.warn("[password-sync] failed (non-fatal):", e)
+  }
 }
