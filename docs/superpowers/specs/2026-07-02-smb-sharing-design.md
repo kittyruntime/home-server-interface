@@ -15,7 +15,8 @@ The feature exposes Places as SMB shares, reusing the existing Place permission 
 
 1. **No dpkg-divert, no conffile conflicts** (user requirement: "attention dpkg/apt, je veux pas avoir a faire de divert"). The app must never modify `/etc/samba/smb.conf` (owned by the `samba` package). Instead, a systemd drop-in `/etc/systemd/system/smbd.service.d/nasui.conf` overrides `ExecStart=` to point `smbd` at a fully app-owned config file (`/etc/nasui/samba/smb.conf`). Drop-ins are the OS-sanctioned override mechanism: `apt upgrade` never touches `/etc/systemd/system/`, and removing the drop-in restores stock behavior.
 2. **No automatic package installation.** The app detects whether Samba is installed and, if missing, shows the exact command to run (`apt install samba`) — it never runs `apt` itself.
-3. **Web passwords are stored as irreversible hashes**, so they cannot be copied into Samba after the fact. The only sync point is the moment the user sets/changes/enters their password in plaintext. User accepted this tradeoff ("Oui, c'est acceptable").
+3. **Web passwords are stored as irreversible hashes**, so they cannot be copied into Samba/Linux after the fact. The only sync point is the moment the user sets/changes/enters their password in plaintext. User accepted this tradeoff ("Oui, c'est acceptable").
+4. **One password everywhere, NAS-style** (user requirement: "l'idée c'est de sync le mdp user/smb/linux comme sur un NAS"). The same password is propagated to the web account, the Samba account, and the Linux system account. Linux accounts are created with `-s /sbin/nologin` (see `handleLinuxUserCreate`), so setting a Linux password grants no shell/SSH access — it only keeps the accounts consistent.
 
 ## Section 1 — Data model
 
@@ -44,7 +45,7 @@ model Share {
 ### root-worker (Go), new NATS handlers under `root.sharing.*`
 
 - **`root.sharing.sync`** — receives the complete desired state (list of enabled shares with their resolved user lists), regenerates `/etc/nasui/samba/smb.conf`, then `systemctl reload smbd`. Idempotent: replayable with no side effects. Samba always reflects the current DB/permission state; there is no incremental diffing.
-- **`root.sharing.smbSetPassword`** — receives `{linuxUsername, password}` (plaintext, never stored), runs `smbpasswd -s -a <user>` feeding the password via stdin — never written to disk in plaintext.
+- **`root.sharing.setPassword`** — receives `{linuxUsername, password}` (plaintext, never stored) and syncs it to both accounts: `chpasswd` for the Linux system password (shell stays `/sbin/nologin`, so no login access is granted) and `smbpasswd -s -a <user>` for Samba. Both fed via stdin — never written to disk in plaintext.
 - **`root.sharing.status`** — runs `smbstatus --json`, returns active SMB connections (user, client IP, share, connected-since).
 - **`root.sharing.checkPrereqs`** — detects whether `smbd` (binary + systemd unit) is present. Returns installed/missing. **No apt install** — detection only.
 
@@ -57,7 +58,7 @@ When the first share is created, root-worker writes the systemd drop-in `/etc/sy
 - **`list` / `create` / `update` / `remove`** — CRUD on `Share`, admin-only (like Storage). After every mutation, resolve the authorized users from the Place's permissions, then call `root.sharing.sync`.
 - **`status`** — proxy to `root.sharing.status` for the connections view.
 - **`checkPrereqs`** — proxy to `root.sharing.checkPrereqs` for the UI's missing-prerequisites state.
-- **Password hook** in the existing password-change path (`user.service.ts`): if the user has a `linuxUsername`, call `root.sharing.smbSetPassword` with the plaintext password just before it is hashed. Best-effort: a Samba failure (e.g. not installed) must not fail the password update. Same hook applies at account creation and login-time capture points where the plaintext is available.
+- **Password hook** in the existing password-change path (`user.service.ts`): if the user has a `linuxUsername`, call `root.sharing.setPassword` with the plaintext password just before it is hashed — syncing web, Linux, and Samba passwords in one step (NAS-style single password). Best-effort: a sync failure (e.g. Samba not installed) must not fail the password update. Same hook applies at account creation and login-time capture points where the plaintext is available (login-time capture backfills existing users who never changed their password after the feature ships).
 
 ## Section 3 — Permission mapping
 
