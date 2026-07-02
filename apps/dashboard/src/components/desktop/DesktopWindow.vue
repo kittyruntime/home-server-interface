@@ -8,6 +8,7 @@ import AppsPanel from '../apps/AppsPanel.vue'
 import SettingsPanel from '../SettingsPanel.vue'
 import StoragePanel from '../storage/StoragePanel.vue'
 import MonitorPanel from '../monitor/MonitorPanel.vue'
+import SharingPanel from '../sharing/SharingPanel.vue'
 import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
 
 const props = defineProps<{
@@ -205,6 +206,7 @@ function onMaximizeClick() {
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
       <StoragePanel v-else-if="win.appId === 'storage'" class="h-full" />
       <MonitorPanel v-else-if="win.appId === 'monitor'" class="h-full" />
+      <SharingPanel v-else-if="win.appId === 'sharing'" class="h-full" />
       <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="setDirty(win.id, $event)" />
     </div>
 

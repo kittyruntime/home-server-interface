@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- SMB network sharing: share any place over the network via Samba, managed from the new admin-only Sharing desktop app (share list with per-place permissions mapping, live connections view, guest access and read-only options). Passwords are kept in sync NAS-style across web, Linux, and Samba accounts. Requires `samba` to be installed on the host; the app detects it and shows the install command otherwise.
+
 ## [1.24.0] - 2026-07-01
 
 ### Fixed

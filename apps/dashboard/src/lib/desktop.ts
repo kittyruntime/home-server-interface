@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'monitor' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'monitor' | 'sharing' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
 
 export interface FilePreviewPayload {
@@ -33,6 +33,7 @@ export const APP_LABEL: Record<AppId, string> = {
   settings: 'Settings',
   storage: 'Storage',
   monitor: 'Monitor',
+  sharing: 'Sharing',
   'file-preview': 'Preview',
 }
 
@@ -42,6 +43,7 @@ export const APP_ICON_PATH: Record<AppId, string> = {
   settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
   storage: 'M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z',
   monitor: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+  sharing: 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z',
   'file-preview': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
 }
 
@@ -58,6 +60,7 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   settings: { w: 860, h: 560 },
   storage: { w: 900, h: 580 },
   monitor: { w: 860, h: 580 },
+  sharing: { w: 860, h: 560 },
   'file-preview': { w: 760, h: 560 },
 }
 
