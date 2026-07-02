@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure, userManagerProcedure } from "../index"
+import { syncSharesBestEffort } from "../../services/sharing.service"
 
 export const roleRouter = router({
   list: protectedProcedure.query(({ ctx }) => {
@@ -81,20 +82,24 @@ export const roleRouter = router({
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" })
       const role = await ctx.prisma.role.findUnique({ where: { id: input.roleId } })
       if (!role) throw new TRPCError({ code: "NOT_FOUND", message: "Role not found" })
-      return ctx.prisma.userRole.upsert({
+      const result = await ctx.prisma.userRole.upsert({
         where: { userId_roleId: { userId: input.userId, roleId: input.roleId } },
         update: {},
         create: { userId: input.userId, roleId: input.roleId },
       })
+      void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 
   removeUser: userManagerProcedure
     .input(z.object({ userId: z.string(), roleId: z.string() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       if (input.userId === ctx.user.userId)
         throw new TRPCError({ code: "FORBIDDEN", message: "You cannot remove roles from yourself" })
-      return ctx.prisma.userRole.delete({
+      const result = await ctx.prisma.userRole.delete({
         where: { userId_roleId: { userId: input.userId, roleId: input.roleId } },
       })
+      void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 })

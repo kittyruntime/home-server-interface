@@ -2,6 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { requestSync } from "../../nats"
+import { syncSharesBestEffort } from "../../services/sharing.service"
 
 async function accessiblePlaceIds(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
@@ -74,8 +75,12 @@ export const placeRouter = router({
 
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.place.delete({ where: { id: input.id } })
+    .mutation(async ({ ctx, input }) => {
+      // Cascade removes the Place's Share row; the follow-up sync drops it
+      // from Samba as well.
+      const result = await ctx.prisma.place.delete({ where: { id: input.id } })
+      void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 })
 

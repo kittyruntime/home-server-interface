@@ -2,6 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure } from "../index"
 import { userSelect, createUser, changePassword } from "../../services/user.service"
+import { syncSharesBestEffort } from "../../services/sharing.service"
 
 export const userRouter = router({
   list: protectedProcedure.query(({ ctx }) => {
@@ -38,7 +39,7 @@ export const userRouter = router({
       })).some(ur => ur.role.isAdmin)
       if (targetIsAdmin && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
-      return ctx.prisma.user.update({
+      const result = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
           ...(input.displayName  !== undefined && { displayName:  input.displayName }),
@@ -46,6 +47,8 @@ export const userRouter = router({
         },
         select: userSelect,
       })
+      if (input.linuxUsername !== undefined) void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 
   updateSelf: protectedProcedure
@@ -82,6 +85,8 @@ export const userRouter = router({
       })).some(ur => ur.role.isAdmin)
       if (targetIsAdmin && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
-      return ctx.prisma.user.delete({ where: { id: input.userId } })
+      const result = await ctx.prisma.user.delete({ where: { id: input.userId } })
+      void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 })
