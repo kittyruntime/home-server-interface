@@ -6,4 +6,5 @@ model Place {
   updatedAt       DateTime              @updatedAt
   rolePermissions RolePlacePermission[] @relation("RolePerms")
   userPermissions UserPlacePermission[] @relation("UserPerms")
+  share           Share?
 }

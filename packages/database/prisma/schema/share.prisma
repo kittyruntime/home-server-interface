@@ -1,0 +1,11 @@
+model Share {
+  id        String   @id @default(uuid())
+  placeId   String   @unique
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  enabled   Boolean  @default(true)
+  readOnly  Boolean  @default(false)
+  smbName   String? // name shown to SMB clients (default: sanitized place.name)
+  guestOk   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
