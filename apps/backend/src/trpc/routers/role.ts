@@ -69,8 +69,13 @@ export const roleRouter = router({
 
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.role.delete({ where: { id: input.id } })
+    .mutation(async ({ ctx, input }) => {
+      // Cascade removes the role's RolePlacePermission rows, so users who had
+      // share access only through this role lose it — resync so smb.conf drops
+      // them from valid/write lists instead of leaving stale network access.
+      const result = await ctx.prisma.role.delete({ where: { id: input.id } })
+      void syncSharesBestEffort(ctx.prisma)
+      return result
     }),
 
   assignUser: userManagerProcedure
