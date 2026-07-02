@@ -85,7 +85,9 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		if !reSmbShareName.MatchString(s.Name) {
 			return "", fmt.Errorf("invalid share name %q", s.Name)
 		}
-		if !filepath.IsAbs(s.Path) || strings.ContainsAny(s.Path, "\n\r") {
+		// Samba expands %-variables (%u, %m, …) inside path values at connect
+		// time, so a literal % in a share path could redirect what gets served.
+		if !filepath.IsAbs(s.Path) || strings.ContainsAny(s.Path, "\n\r%") {
 			return "", fmt.Errorf("invalid share path %q", s.Path)
 		}
 		for _, u := range append(append([]string(nil), s.ValidUsers...), s.WriteUsers...) {
