@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useDesktop, APP_LABEL, APP_ICON_PATH } from '../../lib/desktop'
+import { useDesktop, APP_LABEL } from '../../lib/desktop'
+import AppIcon from './AppIcon.vue'
 
 const { windows, focusWindow, toggleMinimize } = useDesktop()
 
@@ -34,8 +35,11 @@ function onIconClick(id: string) {
       title="Launchpad"
       class="w-8 h-8 rounded-lg bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] mb-5 select-none"
     >
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="8" cy="8" r="2.2"/>
+        <circle cx="16" cy="8" r="2.2"/>
+        <circle cx="8" cy="16" r="2.2"/>
+        <circle cx="16" cy="16" r="2.2"/>
       </svg>
     </button>
 
@@ -58,9 +62,7 @@ function onIconClick(id: string) {
               : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
           ]"
         >
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" :d="APP_ICON_PATH[w.appId]"/>
-          </svg>
+          <AppIcon :app="w.appId" class="w-5 h-5" />
         </button>
       </div>
     </nav>

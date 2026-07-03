@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
-import { useDesktop, APP_LABEL, APP_ICON_PATH, type DesktopWindow } from '../../lib/desktop'
+import { useDesktop, APP_LABEL, type DesktopWindow } from '../../lib/desktop'
+import AppIcon from './AppIcon.vue'
 import { useAuth } from '../../lib/auth'
 import { downloadUrl } from '../../lib/file-url'
 import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
@@ -142,9 +143,7 @@ function onMaximizeClick() {
         <span v-if="win.dirty" class="status-text text-[var(--c-warning)] shrink-0 text-[10px]">[UNSAVED]</span>
       </div>
       <div v-else class="flex items-center gap-2 min-w-0">
-        <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-          <path stroke-linecap="round" stroke-linejoin="round" :d="APP_ICON_PATH[win.appId]"/>
-        </svg>
+        <AppIcon :app="win.appId" :stroke-width="2" class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" />
         <span class="eyebrow truncate">{{ APP_LABEL[win.appId] }}</span>
       </div>
       <div class="flex items-center gap-1 shrink-0" @pointerdown.stop>

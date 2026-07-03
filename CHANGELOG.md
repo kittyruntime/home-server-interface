@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **App icons**: redesigned the seven desktop app glyphs (Dock, Launchpad, window title bars) as a custom monochrome family — consistent rounded stroke on a 24px grid with filled-dot details (drive LEDs, share nodes, slider knobs); Settings trades the cog for three sliders and the dock's Launchpad button becomes a four-dot grid. Icons are now rendered by a shared `AppIcon` component instead of three inline SVG copies.
+
 ## [1.25.0] - 2026-07-02
 
 ### Added
