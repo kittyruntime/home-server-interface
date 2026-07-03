@@ -106,6 +106,20 @@
   --c-info: #5b9bf6;
 }
 
+/* ── Tailwind utility bridge ─────────────────────────────────────────────────
+   Expose semantic tokens as Tailwind v4 colors so components write
+   `text-danger` / `bg-success/10` instead of raw palette classes or
+   verbose `text-[var(--c-danger)]`. `inline` keeps the var() reference,
+   so utilities follow the light/dark theme and the accent picker.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-danger:  var(--c-danger);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-info:    var(--c-info);
+  --color-accent:  var(--c-accent);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }

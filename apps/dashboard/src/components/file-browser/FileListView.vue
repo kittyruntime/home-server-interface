@@ -67,7 +67,7 @@ function fileExt(name: string): string {
             :checked="selected.size === entries.length && entries.length > 0"
             :indeterminate="selected.size > 0 && selected.size < entries.length"
             @change="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
-            class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer opacity-40 hover:opacity-90 transition-opacity"
+            class="w-3.5 h-3.5 rounded accent-accent cursor-pointer opacity-40 hover:opacity-90 transition-opacity"
           />
         </th>
         <th class="px-3 py-2.5 font-medium">
