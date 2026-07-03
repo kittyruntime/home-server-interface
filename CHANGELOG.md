@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-07-03
+
 ### Changed
 - **App icons**: redesigned the seven desktop app glyphs (Dock, Launchpad, window title bars) as a custom monochrome family — consistent rounded stroke on a 24px grid with filled-dot details (drive LEDs, share nodes, slider knobs); Settings trades the cog for three sliders and the dock's Launchpad button becomes a four-dot grid. Icons are now rendered by a shared `AppIcon` component instead of three inline SVG copies.
 
@@ -391,7 +393,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...v1.24.0
 [1.23.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.1...v1.23.2
