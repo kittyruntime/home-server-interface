@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
 import AppIcon from './AppIcon.vue'
@@ -7,6 +7,9 @@ import AppIcon from './AppIcon.vue'
 const emit = defineEmits<{ close: [] }>()
 const { openApp } = useDesktop()
 const { isAdmin } = useAuth()
+
+const visible = ref(true)
+function requestClose() { visible.value = false }
 
 const allApps: { id: AppId; adminOnly: boolean }[] = [
   { id: 'files',   adminOnly: false },
@@ -23,11 +26,11 @@ const visibleApps = computed(() =>
 
 function launch(id: AppId) {
   openApp(id)
-  emit('close')
+  requestClose()
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape') requestClose()
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
@@ -35,10 +38,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <Teleport to="body">
-    <div
-      class="fixed inset-0 z-50 bg-[var(--c-bg)] flex items-center justify-center"
-      @click.self="emit('close')"
-    >
+    <Transition name="ui-pop" appear @after-leave="emit('close')">
+      <div
+        v-if="visible"
+        class="fixed inset-0 z-50 bg-[var(--c-bg)] flex items-center justify-center"
+        style="--ui-dur: var(--dur-slow)"
+        @click.self="requestClose"
+      >
       <div class="grid grid-cols-4 gap-8 p-8">
         <button
           v-for="id in visibleApps"
@@ -52,6 +58,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <span class="eyebrow">{{ APP_LABEL[id] }}</span>
         </button>
       </div>
-    </div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
