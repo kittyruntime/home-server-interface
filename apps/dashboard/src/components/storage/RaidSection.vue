@@ -303,7 +303,7 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <div v-if="loading && !raids.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
-    <div v-else-if="error" class="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
@@ -321,21 +321,21 @@ const openMenu = ref<string | null>(null)
     <div v-else class="space-y-3">
       <div v-for="r in raids" :key="r.name"
         class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-        :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-red-500/20'">
+        :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-danger/20'">
         <!-- Left accent stripe -->
-        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/50' : 'bg-red-500'"/>
+        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/50' : 'bg-danger'"/>
         <div class="flex-1 min-w-0">
           <!-- Header -->
           <div class="flex items-center gap-3 px-4 pt-3.5 pb-2">
             <span class="text-[11px] font-bold px-2 py-0.5 rounded tracking-wide shrink-0"
-              :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-red-500/10 text-red-400'">
+              :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-danger/10 text-danger'">
               {{ raidLevelLabel(r.level) }}
             </span>
             <span class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
               <span class="text-[11px] text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-medium" :class="isRaidHealthy(r) ? 'text-green-400' : 'text-red-400'">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-green-400' : 'bg-red-400 animate-pulse'"/>
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-danger animate-pulse'"/>
                 {{ isRaidHealthy(r) ? 'Healthy' : r.state }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
@@ -357,7 +357,7 @@ const openMenu = ref<string | null>(null)
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
                   </div>
                   <button @click="openDestroy(r); openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left">
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                     </svg>
@@ -375,7 +375,7 @@ const openMenu = ref<string | null>(null)
               <template v-for="(dev, idx) in r.devices" :key="dev">
                 <div class="flex flex-col items-center gap-1.5">
                   <div class="relative rounded-lg border transition-colors"
-                    :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-red-500/40 bg-red-500/5'">
+                    :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-danger/40 bg-danger/5'">
                     <svg viewBox="0 0 52 68" class="w-12 h-16">
                       <rect x="3" y="3" width="46" height="62" rx="5"
                         :fill="idx < r.active ? 'var(--c-surface-deep)' : 'rgba(239,68,68,0.06)'"
@@ -394,7 +394,7 @@ const openMenu = ref<string | null>(null)
                   </div>
                   <button @click="emit('navigate', 'disks')"
                     class="text-[10px] font-mono hover:underline transition-colors"
-                    :class="idx < r.active ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-red-400'">
+                    :class="idx < r.active ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
                     /dev/{{ dev }}
                   </button>
                 </div>
@@ -439,11 +439,11 @@ const openMenu = ref<string | null>(null)
                   Format
                 </button>
                 <button v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-green-500/50 hover:text-green-400 transition-colors">
+                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-success/50 hover:text-success transition-colors">
                   Mount
                 </button>
                 <button v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
+                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-warning/50 hover:text-warning transition-colors">
                   Unmount
                 </button>
               </div>
@@ -472,13 +472,13 @@ const openMenu = ref<string | null>(null)
 
           <!-- Step 1: Warning -->
           <div v-if="formatWiz.step === 1" class="p-6 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <svg class="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
+              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-red-400 text-sm mb-1">All data will be permanently erased</div>
-                <div class="text-xs text-red-300/80">
+                <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
+                <div class="text-xs text-danger/80">
                   Formatting <span class="font-mono font-bold">/dev/{{ formatWiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
                 </div>
               </div>
@@ -520,7 +520,7 @@ const openMenu = ref<string | null>(null)
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
-                      :class="fs.tag === 'Recommended' ? 'bg-green-500/15 text-green-400' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
+                      :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
                   <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
@@ -562,18 +562,18 @@ const openMenu = ref<string | null>(null)
                 v-model="formatWiz.confirm"
                 type="text"
                 :placeholder="formatWiz.dev.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="formatWiz.err" class="text-xs text-red-400 px-1">{{ formatWiz.err }}</div>
+            <div v-if="formatWiz.err" class="text-xs text-danger px-1">{{ formatWiz.err }}</div>
 
             <div class="flex gap-2">
               <button @click="formatWiz.step = 2" :disabled="formatWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button
                 @click="doFormat"
                 :disabled="formatWiz.confirm !== formatWiz.dev.name || formatWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="formatWiz.busy">Formatting…</span>
                 <span v-else>Format now</span>
@@ -625,7 +625,7 @@ const openMenu = ref<string | null>(null)
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
               </div>
             </label>
-            <div v-if="mountDlg.err" class="text-xs text-red-400">{{ mountDlg.err }}</div>
+            <div v-if="mountDlg.err" class="text-xs text-danger">{{ mountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="mountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doMount" :disabled="!mountDlg.mp || mountDlg.busy"
@@ -649,7 +649,7 @@ const openMenu = ref<string | null>(null)
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="p-3 rounded-lg bg-orange-500/5 border border-orange-500/15 text-xs text-orange-400">
+            <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
               Make sure no application is using files on <span class="font-mono font-bold">{{ umountDlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
@@ -663,11 +663,11 @@ const openMenu = ref<string | null>(null)
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
               </div>
             </label>
-            <div v-if="umountDlg.err" class="text-xs text-red-400">{{ umountDlg.err }}</div>
+            <div v-if="umountDlg.err" class="text-xs text-danger">{{ umountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="umountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doUmount" :disabled="umountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-warning text-white hover:bg-warning/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="umountDlg.busy">Unmounting…</span>
                 <span v-else>Unmount</span>
               </button>
@@ -714,7 +714,7 @@ const openMenu = ref<string | null>(null)
                 <div class="text-[11px] text-[var(--c-text-3)] leading-relaxed">{{ lvl.desc }}</div>
                 <div class="flex items-center gap-3 mt-2 text-[10px]">
                   <span class="text-[var(--c-text-3)]">Min: {{ lvl.minDev }} drives</span>
-                  <span :class="lvl.redundancy === 'None' ? 'text-red-400' : 'text-green-400'">
+                  <span :class="lvl.redundancy === 'None' ? 'text-danger' : 'text-success'">
                     Redundancy: {{ lvl.redundancy }}
                   </span>
                 </div>
@@ -722,7 +722,7 @@ const openMenu = ref<string | null>(null)
             </div>
 
             <!-- Selected level danger notice -->
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/20 text-[11px] text-yellow-400">
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-[11px] text-warning">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -773,7 +773,7 @@ const openMenu = ref<string | null>(null)
               </label>
             </div>
 
-            <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-[11px] text-yellow-400 px-1">
+            <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-[11px] text-warning px-1">
               {{ selectedRaidLevel.name }} requires at least {{ selectedRaidLevel.minDev }} drives ({{ raidWiz.devs.length }} selected).
             </div>
 
@@ -800,13 +800,13 @@ const openMenu = ref<string | null>(null)
 
           <!-- Step 3: Confirm -->
           <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <svg class="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
+              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-red-400 text-sm mb-1">All data on selected drives will be erased</div>
-                <div class="text-xs text-red-300/80">
+                <div class="font-semibold text-danger text-sm mb-1">All data on selected drives will be erased</div>
+                <div class="text-xs text-danger/80">
                   Creating this RAID array will permanently destroy all existing data on the selected drives. This cannot be undone.
                 </div>
               </div>
@@ -827,18 +827,18 @@ const openMenu = ref<string | null>(null)
                 v-model="raidWiz.confirm"
                 type="text"
                 placeholder="CREATE RAID"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="raidWiz.err" class="text-xs text-red-400 px-1">{{ raidWiz.err }}</div>
+            <div v-if="raidWiz.err" class="text-xs text-danger px-1">{{ raidWiz.err }}</div>
 
             <div class="flex gap-2">
               <button @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button
                 @click="doCreateRaid"
                 :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="raidWiz.busy">Creating…</span>
                 <span v-else>Create RAID</span>
@@ -855,13 +855,13 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="destroyDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="destroyDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Destroy RAID array</h3>
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
+            <h3 class="font-semibold text-danger">Destroy RAID array</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will stop the array and erase RAID metadata from all member drives.</p>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -882,18 +882,18 @@ const openMenu = ref<string | null>(null)
                 v-model="destroyDlg.confirm"
                 type="text"
                 :placeholder="destroyDlg.raid.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="destroyDlg.err" class="text-xs text-red-400">{{ destroyDlg.err }}</div>
+            <div v-if="destroyDlg.err" class="text-xs text-danger">{{ destroyDlg.err }}</div>
 
             <div class="flex gap-2">
               <button @click="destroyDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button
                 @click="doDestroyRaid"
                 :disabled="destroyDlg.confirm !== destroyDlg.raid.name || destroyDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="destroyDlg.busy">Destroying…</span>
                 <span v-else>Destroy array</span>

@@ -166,7 +166,7 @@ const sourceNavTarget: Record<MountSource, 'disks' | 'raid' | 'lvm'> = {
 
 const sourceBadgeClass: Record<MountSource, string> = {
   disk:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)] hover:border-[var(--c-border-strong)]',
-  raid:  'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20',
+  raid:  'bg-info/10 text-info border-info/20 hover:bg-info/20',
   lvm:   'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20',
 }
 
@@ -290,7 +290,7 @@ async function doUmount() {
     </div>
 
     <div v-if="loading && !mounted.length && !unmounted.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
-    <div v-else-if="error" class="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else>
       <!-- Mounted filesystems -->
@@ -335,7 +335,7 @@ async function doUmount() {
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">
+                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">
                   Unmount
                 </button>
               </td>
@@ -375,7 +375,7 @@ async function doUmount() {
                     Format
                   </button>
                   <button @click="openMount(e.bd)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">
+                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">
                     Mount
                   </button>
                 </td>
@@ -405,13 +405,13 @@ async function doUmount() {
 
           <!-- Step 1: Warning -->
           <div v-if="formatWiz.step === 1" class="p-6 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <svg class="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
+              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-red-400 text-sm mb-1">All data will be permanently erased</div>
-                <div class="text-xs text-red-300/80">
+                <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
+                <div class="text-xs text-danger/80">
                   Formatting <span class="font-mono font-bold">/dev/{{ formatWiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
                 </div>
               </div>
@@ -453,7 +453,7 @@ async function doUmount() {
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
-                      :class="fs.tag === 'Recommended' ? 'bg-green-500/15 text-green-400' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
+                      :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
                   <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
@@ -495,18 +495,18 @@ async function doUmount() {
                 v-model="formatWiz.confirm"
                 type="text"
                 :placeholder="formatWiz.dev.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="formatWiz.err" class="text-xs text-red-400 px-1">{{ formatWiz.err }}</div>
+            <div v-if="formatWiz.err" class="text-xs text-danger px-1">{{ formatWiz.err }}</div>
 
             <div class="flex gap-2">
               <button @click="formatWiz.step = 2" :disabled="formatWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button
                 @click="doFormat"
                 :disabled="formatWiz.confirm !== formatWiz.dev.name || formatWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="formatWiz.busy">Formatting…</span>
                 <span v-else>Format now</span>
@@ -558,7 +558,7 @@ async function doUmount() {
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
               </div>
             </label>
-            <div v-if="mountDlg.err" class="text-xs text-red-400">{{ mountDlg.err }}</div>
+            <div v-if="mountDlg.err" class="text-xs text-danger">{{ mountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="mountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doMount" :disabled="!mountDlg.mp || mountDlg.busy"
@@ -582,7 +582,7 @@ async function doUmount() {
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="p-3 rounded-lg bg-orange-500/5 border border-orange-500/15 text-xs text-orange-400">
+            <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
               Make sure no application is using files on <span class="font-mono font-bold">{{ umountDlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
@@ -596,11 +596,11 @@ async function doUmount() {
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
               </div>
             </label>
-            <div v-if="umountDlg.err" class="text-xs text-red-400">{{ umountDlg.err }}</div>
+            <div v-if="umountDlg.err" class="text-xs text-danger">{{ umountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="umountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doUmount" :disabled="umountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-warning text-white hover:bg-warning/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="umountDlg.busy">Unmounting…</span>
                 <span v-else>Unmount</span>
               </button>

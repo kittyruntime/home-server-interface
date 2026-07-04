@@ -285,7 +285,7 @@ async function doUmount() {
     <div v-if="loading && !devices.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6">
       <LoadingSpinner /> Loading…
     </div>
-    <div v-else-if="error" class="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
@@ -300,10 +300,10 @@ async function doUmount() {
         <div class="space-y-3">
           <div v-for="disk in physicalDisks" :key="disk.name"
             class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-            :class="disk.isSystem ? 'border-orange-500/20' : 'border-[var(--c-border)]'">
+            :class="disk.isSystem ? 'border-warning/20' : 'border-[var(--c-border)]'">
             <!-- Left stripe by type -->
             <div class="w-0.5 shrink-0"
-              :class="disk.isSystem ? 'bg-orange-500/60' : disk.isRemovable ? 'bg-blue-500/50' : 'bg-[var(--c-border-strong)]'"/>
+              :class="disk.isSystem ? 'bg-warning/60' : disk.isRemovable ? 'bg-info/50' : 'bg-[var(--c-border-strong)]'"/>
             <div class="flex-1 min-w-0">
 
               <!-- Disk header -->
@@ -313,14 +313,14 @@ async function doUmount() {
                     <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">/dev/{{ disk.name }}</span>
                     <span v-if="disk.model" class="text-[11px] text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
                     <span class="text-[11px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(disk.size) }}</span>
-                    <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">
                       <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                       SYSTEM
                     </span>
-                    <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">USB</span>
+                    <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded bg-info/10 text-info border border-info/20">USB</span>
                     <!-- Cross-nav: RAID membership badge -->
                     <button v-if="diskRaidName(disk.name)" @click="emit('navigate', 'raid')"
-                      class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors">
+                      class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
                       RAID {{ diskRaidName(disk.name) }} →
                     </button>
                     <!-- Cross-nav: LVM PV badge -->
@@ -329,15 +329,15 @@ async function doUmount() {
                       LVM {{ diskPvVg(disk.name) }} →
                     </button>
                   </div>
-                  <div v-if="disk.isSystem" class="text-[10px] text-orange-400/70 mt-0.5">Operating system disk — no modifications allowed</div>
+                  <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk — no modifications allowed</div>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                   <!-- Health badge -->
                   <button @click="toggleSmart(disk.name)" title="S.M.A.R.T. health"
                     :class="['inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
-                      smartStatus(disk.name) === 'passed'  ? 'bg-green-500/10 border-green-500/25 text-green-400 hover:bg-green-500/20' :
-                      smartStatus(disk.name) === 'warning' ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400 hover:bg-yellow-500/20' :
-                      smartStatus(disk.name) === 'failed'  ? 'bg-red-500/10 border-red-500/25 text-red-400 hover:bg-red-500/20' :
+                      smartStatus(disk.name) === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
+                      smartStatus(disk.name) === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
+                      smartStatus(disk.name) === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
                       smartStatus(disk.name) === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
                       'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-text-2)]']">
                     <!-- Spinner when loading -->
@@ -346,7 +346,7 @@ async function doUmount() {
                     </svg>
                     <!-- Status dot otherwise -->
                     <span v-else class="w-1.5 h-1.5 rounded-full"
-                      :class="smartStatus(disk.name) === 'passed' ? 'bg-green-400' : smartStatus(disk.name) === 'warning' ? 'bg-yellow-400' : smartStatus(disk.name) === 'failed' ? 'bg-red-400 animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
+                      :class="smartStatus(disk.name) === 'passed' ? 'bg-success' : smartStatus(disk.name) === 'warning' ? 'bg-warning' : smartStatus(disk.name) === 'failed' ? 'bg-danger animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
                     <span v-if="smartStatus(disk.name) === 'passed'">Healthy</span>
                     <span v-else-if="smartStatus(disk.name) === 'warning'">Warning</span>
                     <span v-else-if="smartStatus(disk.name) === 'failed'">Failed</span>
@@ -355,7 +355,7 @@ async function doUmount() {
                     <!-- Temperature (when data loaded) -->
                     <template v-if="smartCache[disk.name]?.available && smartCache[disk.name]?.temperature">
                       <span class="opacity-50">·</span>
-                      <span :class="(smartCache[disk.name]?.temperature ?? 0) >= 55 ? 'text-red-400' : (smartCache[disk.name]?.temperature ?? 0) >= 40 ? 'text-yellow-400' : ''">{{ smartCache[disk.name]?.temperature }}°C</span>
+                      <span :class="(smartCache[disk.name]?.temperature ?? 0) >= 55 ? 'text-danger' : (smartCache[disk.name]?.temperature ?? 0) >= 40 ? 'text-warning' : ''">{{ smartCache[disk.name]?.temperature }}°C</span>
                     </template>
                   </button>
                   <!-- + Partition button (non-system only) -->
@@ -379,7 +379,7 @@ async function doUmount() {
                   </div>
 
                   <!-- Error -->
-                  <div v-else-if="sc?._error" class="px-4 py-3 text-sm text-red-400">
+                  <div v-else-if="sc?._error" class="px-4 py-3 text-sm text-danger">
                     {{ sc._error }}
                   </div>
 
@@ -395,9 +395,9 @@ async function doUmount() {
                       <!-- Health -->
                       <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full shrink-0"
-                          :class="smartStatus(disk.name) === 'passed' ? 'bg-green-400' : smartStatus(disk.name) === 'warning' ? 'bg-yellow-400' : 'bg-red-400'"/>
+                          :class="smartStatus(disk.name) === 'passed' ? 'bg-success' : smartStatus(disk.name) === 'warning' ? 'bg-warning' : 'bg-danger'"/>
                         <span class="text-xs font-semibold"
-                          :class="smartStatus(disk.name) === 'passed' ? 'text-green-400' : smartStatus(disk.name) === 'warning' ? 'text-yellow-400' : 'text-red-400'">
+                          :class="smartStatus(disk.name) === 'passed' ? 'text-success' : smartStatus(disk.name) === 'warning' ? 'text-warning' : 'text-danger'">
                           {{ sc.healthPassed ? 'PASSED' : 'FAILED' }}
                         </span>
                       </div>
@@ -406,7 +406,7 @@ async function doUmount() {
                         <svg class="w-3 h-3 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
                         </svg>
-                        <span :class="sc.temperature >= 55 ? 'text-red-400 font-semibold' : sc.temperature >= 40 ? 'text-yellow-400' : 'text-[var(--c-text-2)]'">
+                        <span :class="sc.temperature >= 55 ? 'text-danger font-semibold' : sc.temperature >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'">
                           {{ sc.temperature }}°C
                         </span>
                       </div>
@@ -440,19 +440,19 @@ async function doUmount() {
                       <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
                         <div class="flex justify-between gap-2">
                           <span class="text-[var(--c-text-3)]">Critical Warning</span>
-                          <span :class="sc.nvme.criticalWarning > 0 ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.criticalWarning }}</span>
+                          <span :class="sc.nvme.criticalWarning > 0 ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.criticalWarning }}</span>
                         </div>
                         <div class="flex justify-between gap-2">
                           <span class="text-[var(--c-text-3)]">Media Errors</span>
-                          <span :class="sc.nvme.mediaErrors > 0 ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.mediaErrors }}</span>
+                          <span :class="sc.nvme.mediaErrors > 0 ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.mediaErrors }}</span>
                         </div>
                         <div class="flex justify-between gap-2">
                           <span class="text-[var(--c-text-3)]">Available Spare</span>
-                          <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-red-400 font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.availableSpare }}% <span class="text-[var(--c-text-3)]">(min {{ sc.nvme.availableSpareThresh }}%)</span></span>
+                          <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.availableSpare }}% <span class="text-[var(--c-text-3)]">(min {{ sc.nvme.availableSpareThresh }}%)</span></span>
                         </div>
                         <div class="flex justify-between gap-2">
                           <span class="text-[var(--c-text-3)]">Percentage Used</span>
-                          <span :class="sc.nvme.percentageUsed >= 90 ? 'text-red-400 font-semibold' : sc.nvme.percentageUsed >= 70 ? 'text-yellow-400' : 'text-[var(--c-text-2)]'">{{ sc.nvme.percentageUsed }}%</span>
+                          <span :class="sc.nvme.percentageUsed >= 90 ? 'text-danger font-semibold' : sc.nvme.percentageUsed >= 70 ? 'text-warning' : 'text-[var(--c-text-2)]'">{{ sc.nvme.percentageUsed }}%</span>
                         </div>
                         <div v-if="sc.nvme.dataReadTiB > 0" class="flex justify-between gap-2">
                           <span class="text-[var(--c-text-3)]">Data Read</span>
@@ -483,27 +483,27 @@ async function doUmount() {
                           </thead>
                           <tbody class="divide-y divide-[var(--c-border)]">
                             <tr v-for="attr in sc.attributes" :key="attr.id"
-                              :class="['transition-colors', attr.failed ? 'bg-red-500/8' : attr.isCritical && attr.raw > 0 ? 'bg-yellow-500/6' : '']">
+                              :class="['transition-colors', attr.failed ? 'bg-danger/8' : attr.isCritical && attr.raw > 0 ? 'bg-warning/6' : '']">
                               <td class="px-2.5 py-1.5 font-mono text-[var(--c-text-3)]">{{ attr.id }}</td>
                               <td class="px-2.5 py-1.5 font-mono"
-                                :class="attr.failed ? 'text-red-400 font-semibold' : attr.isCritical ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">
+                                :class="attr.failed ? 'text-danger font-semibold' : attr.isCritical ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">
                                 {{ attr.name.replace(/_/g, ' ') }}
                               </td>
                               <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-2)]">{{ attr.value }}</td>
                               <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.worst }}</td>
                               <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.thresh }}</td>
                               <td class="px-2.5 py-1.5 tabular-nums text-right font-mono"
-                                :class="attr.failed ? 'text-red-400 font-semibold' : attr.isCritical && attr.raw > 0 ? 'text-yellow-400 font-semibold' : 'text-[var(--c-text-2)]'">
+                                :class="attr.failed ? 'text-danger font-semibold' : attr.isCritical && attr.raw > 0 ? 'text-warning font-semibold' : 'text-[var(--c-text-2)]'">
                                 {{ attr.raw.toLocaleString() }}
                               </td>
                               <td class="px-2.5 py-1.5 text-center">
-                                <svg v-if="attr.failed" class="w-3 h-3 text-red-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <svg v-if="attr.failed" class="w-3 h-3 text-danger mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
-                                <svg v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-yellow-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <svg v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-warning mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                   <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                 </svg>
-                                <svg v-else-if="attr.isCritical" class="w-3 h-3 text-green-400/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <svg v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                 </svg>
                               </td>
@@ -522,7 +522,7 @@ async function doUmount() {
                   class="group/part flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
                   <!-- Status dot -->
                   <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                    :class="part.isSystem ? 'bg-orange-400/60' : part.mountpoint ? 'bg-green-400/70' : 'bg-[var(--c-text-3)]/25'"/>
+                    :class="part.isSystem ? 'bg-warning/60' : part.mountpoint ? 'bg-success/70' : 'bg-[var(--c-text-3)]/25'"/>
                   <!-- Info -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 flex-wrap">
@@ -544,13 +544,13 @@ async function doUmount() {
                     <button v-if="!part.mountpoint" @click="openFormat(part)"
                       class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                     <button v-if="part.fstype && !part.mountpoint" @click="openMount(part)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                     <button v-if="part.mountpoint" @click="openUmount(part)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                     <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
                     <button v-if="!part.mountpoint" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
                       title="Delete this partition"
-                      class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                      class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
                       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                       </svg>
@@ -572,9 +572,9 @@ async function doUmount() {
                     <button v-if="!disk.mountpoint" @click="openFormat(disk)"
                       class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                     <button v-if="!disk.mountpoint" @click="openMount(disk)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                     <button v-if="disk.mountpoint" @click="openUmount(disk)"
-                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                      class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                   </div>
                 </div>
                 <!-- Truly blank disk — no partition table, no filesystem -->
@@ -600,15 +600,15 @@ async function doUmount() {
                   Advanced
                 </button>
                 <div v-if="dangerDisks.has(disk.name)" class="px-4 pb-3 pt-0.5">
-                  <div class="flex items-start gap-3 p-3 rounded-lg border border-red-500/20 bg-red-500/5">
-                    <svg class="w-3.5 h-3.5 text-red-400/70 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <div class="flex items-start gap-3 p-3 rounded-lg border border-danger/20 bg-danger/5">
+                    <svg class="w-3.5 h-3.5 text-danger/70 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
                     </svg>
                     <div class="flex-1 min-w-0">
                       <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
                       <p class="text-[10px] text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
                       <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
-                        class="mt-2 text-[11px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/80 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                        class="mt-2 text-[11px] px-2.5 py-1 rounded border border-danger/30 text-danger/80 hover:border-danger/60 hover:text-danger hover:bg-danger/10 transition-colors">
                         Create partition table…
                       </button>
                     </div>
@@ -641,13 +641,13 @@ async function doUmount() {
 
           <!-- Step 1: Warning -->
           <div v-if="formatWiz.step === 1" class="p-6 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <svg class="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
+              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-red-400 text-sm mb-1">All data will be permanently erased</div>
-                <div class="text-xs text-red-300/80">
+                <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
+                <div class="text-xs text-danger/80">
                   Formatting <span class="font-mono font-bold">/dev/{{ formatWiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
                 </div>
               </div>
@@ -689,7 +689,7 @@ async function doUmount() {
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
-                      :class="fs.tag === 'Recommended' ? 'bg-green-500/15 text-green-400' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
+                      :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
                   <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
@@ -731,18 +731,18 @@ async function doUmount() {
                 v-model="formatWiz.confirm"
                 type="text"
                 :placeholder="formatWiz.dev.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="formatWiz.err" class="text-xs text-red-400 px-1">{{ formatWiz.err }}</div>
+            <div v-if="formatWiz.err" class="text-xs text-danger px-1">{{ formatWiz.err }}</div>
 
             <div class="flex gap-2">
               <button @click="formatWiz.step = 2" :disabled="formatWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button
                 @click="doFormat"
                 :disabled="formatWiz.confirm !== formatWiz.dev.name || formatWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="formatWiz.busy">Formatting…</span>
                 <span v-else>Format now</span>
@@ -794,7 +794,7 @@ async function doUmount() {
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
               </div>
             </label>
-            <div v-if="mountDlg.err" class="text-xs text-red-400">{{ mountDlg.err }}</div>
+            <div v-if="mountDlg.err" class="text-xs text-danger">{{ mountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="mountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doMount" :disabled="!mountDlg.mp || mountDlg.busy"
@@ -818,7 +818,7 @@ async function doUmount() {
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="p-3 rounded-lg bg-orange-500/5 border border-orange-500/15 text-xs text-orange-400">
+            <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
               Make sure no application is using files on <span class="font-mono font-bold">{{ umountDlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
@@ -832,11 +832,11 @@ async function doUmount() {
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
               </div>
             </label>
-            <div v-if="umountDlg.err" class="text-xs text-red-400">{{ umountDlg.err }}</div>
+            <div v-if="umountDlg.err" class="text-xs text-danger">{{ umountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="umountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doUmount" :disabled="umountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-warning text-white hover:bg-warning/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="umountDlg.busy">Unmounting…</span>
                 <span v-else>Unmount</span>
               </button>
@@ -851,13 +851,13 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="partInitDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partInitDlg.busy && (partInitDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Create partition table</h3>
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
+            <h3 class="font-semibold text-danger">Create partition table</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">Writes a new GPT partition table — all existing data on the disk will be lost.</p>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -873,13 +873,13 @@ async function doUmount() {
                 Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ partInitDlg.disk.name }}</span> to confirm
               </label>
               <input v-model="partInitDlg.confirm" type="text" :placeholder="partInitDlg.disk.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
             </div>
-            <div v-if="partInitDlg.err" class="text-xs text-red-400">{{ partInitDlg.err }}</div>
+            <div v-if="partInitDlg.err" class="text-xs text-danger">{{ partInitDlg.err }}</div>
             <div class="flex gap-2">
               <button @click="partInitDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doPartInit" :disabled="partInitDlg.confirm !== partInitDlg.disk.name || partInitDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="partInitDlg.busy">Creating…</span>
                 <span v-else>Create partition table</span>
               </button>
@@ -910,7 +910,7 @@ async function doUmount() {
               <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
               <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
             </div>
-            <div v-if="partCreateDlg.err" class="text-xs text-red-400">{{ partCreateDlg.err }}</div>
+            <div v-if="partCreateDlg.err" class="text-xs text-danger">{{ partCreateDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="partCreateDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doPartCreate" :disabled="partCreateDlg.busy"
@@ -929,12 +929,12 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="partDeleteDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partDeleteDlg.busy && (partDeleteDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Delete partition</h3>
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
+            <h3 class="font-semibold text-danger">Delete partition</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -947,11 +947,11 @@ async function doUmount() {
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
             </div>
-            <div v-if="partDeleteDlg.err" class="text-xs text-red-400">{{ partDeleteDlg.err }}</div>
+            <div v-if="partDeleteDlg.err" class="text-xs text-danger">{{ partDeleteDlg.err }}</div>
             <div class="flex gap-2">
               <button @click="partDeleteDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doPartDelete" :disabled="partDeleteDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="partDeleteDlg.busy">Deleting…</span>
                 <span v-else>Delete partition</span>
               </button>

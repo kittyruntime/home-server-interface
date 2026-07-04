@@ -307,7 +307,7 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <div v-if="loading && !lvmVGs.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
-    <div v-else-if="error" class="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
@@ -323,9 +323,9 @@ const openMenu = ref<string | null>(null)
     <div v-else class="space-y-3">
       <div v-for="vg in lvmVGs" :key="vg.name"
         class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-        :class="isSystemVg(vg.name) ? 'border-orange-500/20' : 'border-[var(--c-border)]'">
+        :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-[var(--c-border)]'">
         <!-- Left stripe -->
-        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-orange-500/60' : 'bg-purple-500/50'"/>
+        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-purple-500/50'"/>
         <div class="flex-1 min-w-0">
           <!-- VG header -->
           <div class="flex items-center gap-3 px-4 py-3">
@@ -334,7 +334,7 @@ const openMenu = ref<string | null>(null)
                 <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
                 <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
-                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">
                   <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                   SYSTEM
                 </span>
@@ -366,7 +366,7 @@ const openMenu = ref<string | null>(null)
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
                   </div>
                   <button @click="removeVgDlg = { vg, confirm: '', busy: false, err: '' }; openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left">
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                     </svg>
@@ -396,7 +396,7 @@ const openMenu = ref<string | null>(null)
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
               class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
               <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                :class="lv2bd(lv).isSystem ? 'bg-orange-400/70' : lv2bd(lv).mountpoint ? 'bg-green-400/70' : 'bg-purple-400/40'"/>
+                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-purple-400/40'"/>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
@@ -417,14 +417,14 @@ const openMenu = ref<string | null>(null)
                 <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
                   class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                 <button v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-green-500/50 hover:text-green-400 transition-colors">Mount</button>
+                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                 <button v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-orange-500/50 hover:text-orange-400 transition-colors">Unmount</button>
+                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
                 <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
                   title="Delete this logical volume"
-                  class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                   </svg>
@@ -455,13 +455,13 @@ const openMenu = ref<string | null>(null)
 
           <!-- Step 1: Warning -->
           <div v-if="formatWiz.step === 1" class="p-6 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <svg class="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
+              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-red-400 text-sm mb-1">All data will be permanently erased</div>
-                <div class="text-xs text-red-300/80">
+                <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
+                <div class="text-xs text-danger/80">
                   Formatting <span class="font-mono font-bold">/dev/{{ formatWiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
                 </div>
               </div>
@@ -503,7 +503,7 @@ const openMenu = ref<string | null>(null)
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
-                      :class="fs.tag === 'Recommended' ? 'bg-green-500/15 text-green-400' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
+                      :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
                   <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
@@ -545,18 +545,18 @@ const openMenu = ref<string | null>(null)
                 v-model="formatWiz.confirm"
                 type="text"
                 :placeholder="formatWiz.dev.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
               />
             </div>
 
-            <div v-if="formatWiz.err" class="text-xs text-red-400 px-1">{{ formatWiz.err }}</div>
+            <div v-if="formatWiz.err" class="text-xs text-danger px-1">{{ formatWiz.err }}</div>
 
             <div class="flex gap-2">
               <button @click="formatWiz.step = 2" :disabled="formatWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button
                 @click="doFormat"
                 :disabled="formatWiz.confirm !== formatWiz.dev.name || formatWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
               >
                 <span v-if="formatWiz.busy">Formatting…</span>
                 <span v-else>Format now</span>
@@ -608,7 +608,7 @@ const openMenu = ref<string | null>(null)
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
               </div>
             </label>
-            <div v-if="mountDlg.err" class="text-xs text-red-400">{{ mountDlg.err }}</div>
+            <div v-if="mountDlg.err" class="text-xs text-danger">{{ mountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="mountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doMount" :disabled="!mountDlg.mp || mountDlg.busy"
@@ -632,7 +632,7 @@ const openMenu = ref<string | null>(null)
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="p-3 rounded-lg bg-orange-500/5 border border-orange-500/15 text-xs text-orange-400">
+            <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
               Make sure no application is using files on <span class="font-mono font-bold">{{ umountDlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
@@ -646,11 +646,11 @@ const openMenu = ref<string | null>(null)
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
               </div>
             </label>
-            <div v-if="umountDlg.err" class="text-xs text-red-400">{{ umountDlg.err }}</div>
+            <div v-if="umountDlg.err" class="text-xs text-danger">{{ umountDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="umountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doUmount" :disabled="umountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-warning text-white hover:bg-warning/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="umountDlg.busy">Unmounting…</span>
                 <span v-else>Unmount</span>
               </button>
@@ -682,7 +682,7 @@ const openMenu = ref<string | null>(null)
             <p class="text-sm text-[var(--c-text-2)]">
               Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
             </p>
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/20 text-[11px] text-yellow-400">
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-[11px] text-warning">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -754,13 +754,13 @@ const openMenu = ref<string | null>(null)
 
           <!-- Step 3: Confirm -->
           <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-              <svg class="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+              <svg class="w-5 h-5 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-yellow-400 text-sm mb-1">All data on selected devices will be erased</div>
-                <div class="text-xs text-yellow-300/80">LVM will overwrite the beginning of each device to write PV headers.</div>
+                <div class="font-semibold text-warning text-sm mb-1">All data on selected devices will be erased</div>
+                <div class="text-xs text-warning/80">LVM will overwrite the beginning of each device to write PV headers.</div>
               </div>
             </div>
             <div class="space-y-1 text-xs text-[var(--c-text-3)]">
@@ -769,7 +769,7 @@ const openMenu = ref<string | null>(null)
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
             </div>
-            <div v-if="lvmWiz.err" class="text-xs text-red-400 px-1">{{ lvmWiz.err }}</div>
+            <div v-if="lvmWiz.err" class="text-xs text-danger px-1">{{ lvmWiz.err }}</div>
             <div class="flex gap-2">
               <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
               <button @click="doCreateLvm" :disabled="lvmWiz.busy"
@@ -807,7 +807,7 @@ const openMenu = ref<string | null>(null)
               <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
             </div>
-            <div v-if="addLvDlg.err" class="text-xs text-red-400">{{ addLvDlg.err }}</div>
+            <div v-if="addLvDlg.err" class="text-xs text-danger">{{ addLvDlg.err }}</div>
             <div class="flex gap-2 pt-1">
               <button @click="addLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
@@ -826,12 +826,12 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="removeLvDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeLvDlg.busy && (removeLvDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Delete Logical Volume</h3>
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
+            <h3 class="font-semibold text-danger">Delete Logical Volume</h3>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -847,13 +847,13 @@ const openMenu = ref<string | null>(null)
                 Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeLvDlg.lv.name }}</span> to confirm
               </label>
               <input v-model="removeLvDlg.confirm" type="text" :placeholder="removeLvDlg.lv.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
             </div>
-            <div v-if="removeLvDlg.err" class="text-xs text-red-400">{{ removeLvDlg.err }}</div>
+            <div v-if="removeLvDlg.err" class="text-xs text-danger">{{ removeLvDlg.err }}</div>
             <div class="flex gap-2">
               <button @click="removeLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doRemoveLv" :disabled="removeLvDlg.confirm !== removeLvDlg.lv.name || removeLvDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="removeLvDlg.busy">Deleting…</span>
                 <span v-else>Delete LV</span>
               </button>
@@ -868,13 +868,13 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="removeVgDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeVgDlg.busy && (removeVgDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-red-500/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-red-500/5">
-            <h3 class="font-semibold text-red-400">Remove Volume Group</h3>
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
+            <h3 class="font-semibold text-danger">Remove Volume Group</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will delete the VG and all its Logical Volumes.</p>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -891,13 +891,13 @@ const openMenu = ref<string | null>(null)
                 Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeVgDlg.vg.name }}</span> to confirm
               </label>
               <input v-model="removeVgDlg.confirm" type="text" :placeholder="removeVgDlg.vg.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-red-500 transition-colors"/>
+                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
             </div>
-            <div v-if="removeVgDlg.err" class="text-xs text-red-400">{{ removeVgDlg.err }}</div>
+            <div v-if="removeVgDlg.err" class="text-xs text-danger">{{ removeVgDlg.err }}</div>
             <div class="flex gap-2">
               <button @click="removeVgDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
               <button @click="doRemoveVg" :disabled="removeVgDlg.confirm !== removeVgDlg.vg.name || removeVgDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 font-medium">
+                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
                 <span v-if="removeVgDlg.busy">Removing…</span>
                 <span v-else>Remove VG</span>
               </button>
