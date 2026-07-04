@@ -48,7 +48,7 @@ const hasDismissible = computed(
         <!-- Header -->
         <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--c-border)] shrink-0">
           <span class="text-xs font-semibold text-[var(--c-text-2)] uppercase tracking-wider">Activity</span>
-          <button @click="$emit('close')" class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">
+          <button @click="$emit('close')" class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -114,7 +114,7 @@ const hasDismissible = computed(
               <!-- Actions -->
               <div v-if="t.status === 'uploading' || t.status === 'paused'" class="flex gap-0.5 shrink-0">
                 <button @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
-                  class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
                   <svg v-if="t.status === 'uploading'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
                   </svg>
@@ -123,7 +123,7 @@ const hasDismissible = computed(
                   </svg>
                 </button>
                 <button @click="uploads.cancel(t.id)" title="Cancel"
-                  class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-danger)] hover:bg-[var(--c-danger)]/10 transition-colors">
+                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-danger)] hover:bg-[var(--c-danger)]/10 transition-colors">
                   <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="4" y="4" width="16" height="16" rx="2"/>
                   </svg>
@@ -174,7 +174,7 @@ const hasDismissible = computed(
 
               <!-- Dismiss -->
               <button v-if="n.type !== 'progress'" @click="dismiss(n.id)"
-                class="shrink-0 p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+                class="shrink-0 p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>

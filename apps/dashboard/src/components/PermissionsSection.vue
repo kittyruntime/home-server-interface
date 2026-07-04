@@ -133,7 +133,7 @@ onMounted(load)
               <tr v-for="user in users.filter(u => !u.userRoles.some(ur => ur.role.isAdmin))" :key="'user-' + user.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                     <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                   </div>
                 </td>

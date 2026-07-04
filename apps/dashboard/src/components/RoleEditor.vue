@@ -218,7 +218,7 @@ async function toggleMember(userId: string) {
         <span class="text-base font-semibold text-[var(--c-text-1)] truncate">{{ role.name }}</span>
         <span
           v-if="role.isAdmin"
-          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0"
+          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0"
         >admin</span>
       </div>
 
@@ -251,11 +251,11 @@ async function toggleMember(userId: string) {
         <button
           @click="deleteRole"
           :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded bg-[var(--c-danger)]/15 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/25 transition-colors disabled:opacity-40"
+          class="text-xs px-2 py-1 rounded-sm bg-[var(--c-danger)]/15 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/25 transition-colors disabled:opacity-40"
         >Yes</button>
         <button
           @click="deleteConfirm = false"
-          class="text-xs px-2 py-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
+          class="text-xs px-2 py-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
         >No</button>
       </template>
     </div>

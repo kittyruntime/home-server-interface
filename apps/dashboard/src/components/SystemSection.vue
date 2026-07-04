@@ -216,7 +216,7 @@ const chartOptions = {
               <!-- Model + core count -->
               <div class="flex items-baseline gap-2">
                 <span class="text-sm text-[var(--c-text-1)] leading-snug">{{ sysinfo.cpuModel }}</span>
-                <span class="shrink-0 text-[11px] px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] font-mono">×{{ sysinfo.cpuCount }}</span>
+                <span class="shrink-0 text-[11px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] font-mono">×{{ sysinfo.cpuCount }}</span>
               </div>
 
               <!-- Usage bar -->
@@ -326,7 +326,7 @@ const chartOptions = {
                     class="font-mono text-xs text-[var(--c-text-2)] flex items-center gap-1.5"
                   >
                     <span
-                      class="text-[9px] px-1 py-0.5 rounded border font-sans"
+                      class="text-[9px] px-1 py-0.5 rounded-sm border font-sans"
                       :class="a.family === 'IPv6'
                         ? 'text-[var(--c-text-3)] border-[var(--c-border)]'
                         : 'text-[var(--c-accent)] border-[var(--c-accent)]/30 bg-[var(--c-accent-subtle)]'"

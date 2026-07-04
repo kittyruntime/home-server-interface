@@ -63,7 +63,7 @@ function removeExtraHost(h: string) {
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capAdd" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded px-2 py-0.5"
+          class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5"
         >
           {{ cap }}
           <button @click="removeCap('capAdd', cap)" class="hover:opacity-60 transition-colors">×</button>
@@ -87,7 +87,7 @@ function removeExtraHost(h: string) {
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capDrop" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-warning)]/15 text-[var(--c-warning)] border border-[var(--c-warning)]/20 rounded px-2 py-0.5"
+          class="inline-flex items-center gap-1 text-xs bg-[var(--c-warning)]/15 text-[var(--c-warning)] border border-[var(--c-warning)]/20 rounded-sm px-2 py-0.5"
         >
           {{ cap }}
           <button @click="removeCap('capDrop', cap)" class="hover:opacity-70 transition-colors">×</button>
@@ -111,7 +111,7 @@ function removeExtraHost(h: string) {
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="h in modelValue.extraHosts" :key="h"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded px-2 py-0.5 font-mono"
+          class="inline-flex items-center gap-1 text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
         >
           {{ h }}
           <button @click="removeExtraHost(h)" class="hover:opacity-60 transition-colors">×</button>

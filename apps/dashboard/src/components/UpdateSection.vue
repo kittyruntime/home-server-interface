@@ -172,8 +172,8 @@ onUnmounted(() => clearInterval(timer))
 
     <!-- ── Loading skeleton ─────────────────────────────────────────────── -->
     <div v-else-if="loading" class="space-y-3">
-      <div class="h-4 bg-[var(--c-hover)] rounded animate-pulse w-40" />
-      <div class="h-4 bg-[var(--c-hover)] rounded animate-pulse w-64" />
+      <div class="h-4 bg-[var(--c-hover)] rounded-sm animate-pulse w-40" />
+      <div class="h-4 bg-[var(--c-hover)] rounded-sm animate-pulse w-64" />
     </div>
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->

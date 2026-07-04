@@ -139,7 +139,7 @@ onUnmounted(() => controller?.abort())
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" @click.self="emit('close')">
-      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-2xl overflow-hidden shadow-[var(--shadow-md)]">
+      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-xl overflow-hidden shadow-[var(--shadow-md)]">
 
         <!-- Header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
@@ -206,7 +206,7 @@ onUnmounted(() => controller?.abort())
           <div
             v-for="(line, i) in lines"
             :key="i"
-            class="flex gap-3 hover:bg-white/5 px-1 rounded leading-6"
+            class="flex gap-3 hover:bg-white/5 px-1 rounded-sm leading-6"
           >
             <span v-if="line.ts" class="text-[#484f58] shrink-0 tabular-nums select-none">{{ line.ts }}</span>
             <span class="break-all whitespace-pre-wrap min-w-0">{{ line.text }}</span>

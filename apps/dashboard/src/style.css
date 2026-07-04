@@ -13,11 +13,6 @@
 /* Shape & elevation — moderate rounding, two subtle shadow levels paired
    with the existing border (never shadow-only, to avoid glassmorphism). */
 :root {
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1rem;
-
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
@@ -118,6 +113,17 @@
   --color-warning: var(--c-warning);
   --color-info:    var(--c-info);
   --color-accent:  var(--c-accent);
+}
+
+/* Radius scale — token-backed so Tailwind's rounded-* utilities and the
+   var(--radius-*) references in @layer components share one source.
+   Element mapping: sm = inputs/badges/small buttons · md = buttons/controls
+   · lg = cards/panels/rows · xl = modals/desktop windows. */
+@theme {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
 }
 
 *, *::before, *::after {

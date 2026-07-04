@@ -44,9 +44,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           v-for="id in visibleApps"
           :key="id"
           @click="launch(id)"
-          class="flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-[var(--c-hover)] transition-colors"
+          class="flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-[var(--c-hover)] transition-colors"
         >
-          <div class="w-16 h-16 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border-strong)] flex items-center justify-center text-[var(--c-text-2)]">
+          <div class="w-16 h-16 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border-strong)] flex items-center justify-center text-[var(--c-text-2)]">
             <AppIcon :app="id" :stroke-width="1.5" class="w-7 h-7" />
           </div>
           <span class="eyebrow">{{ APP_LABEL[id] }}</span>

@@ -36,7 +36,7 @@ const { toasts, dismiss } = useToast()
           <span class="flex-1 text-sm leading-snug">{{ t.message }}</span>
 
           <!-- Dismiss -->
-          <button @click="dismiss(t.id)" class="shrink-0 p-0.5 -mr-1 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded">
+          <button @click="dismiss(t.id)" class="shrink-0 p-0.5 -mr-1 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-sm">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>

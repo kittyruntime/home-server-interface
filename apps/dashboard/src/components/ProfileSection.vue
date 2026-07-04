@@ -138,7 +138,7 @@ onMounted(async () => {
       <!-- ── Identity card ── -->
       <div class="flex items-center gap-4">
         <!-- Avatar -->
-        <div :class="['w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white text-lg font-bold shrink-0 select-none', avatarGradient(me.username)]">
+        <div :class="['w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white text-lg font-bold shrink-0 select-none', avatarGradient(me.username)]">
           {{ me.username.slice(0, 2).toUpperCase() }}
         </div>
 
@@ -149,7 +149,7 @@ onMounted(async () => {
               {{ me.displayName || me.username }}
             </span>
             <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
-            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
             <span v-if="!meIsAdmin && meCanManage" class="badge badge-violet">manager</span>
           </div>
           <!-- Roles -->
@@ -158,7 +158,7 @@ onMounted(async () => {
               class="badge badge-violet">
               {{ ur.role.name }}
             </span>
-            <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
+            <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
               {{ me.linuxUsername }}
             </span>
           </div>

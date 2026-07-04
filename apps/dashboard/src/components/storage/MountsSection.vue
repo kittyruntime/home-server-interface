@@ -315,7 +315,7 @@ async function doUmount() {
               <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-3)] truncate max-w-0 w-40">{{ e.device }}</td>
               <td class="px-4 py-2.5">
                 <button @click="emit('navigate', sourceNavTarget[e.source])"
-                  :class="['inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border transition-colors', sourceBadgeClass[e.source]]">
+                  :class="['inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                   {{ e.sourceLabel }} →
                 </button>
               </td>
@@ -335,7 +335,7 @@ async function doUmount() {
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">
+                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">
                   Unmount
                 </button>
               </td>
@@ -363,7 +363,7 @@ async function doUmount() {
                 <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-2)]">{{ e.device }}</td>
                 <td class="px-4 py-2.5">
                   <button @click="emit('navigate', sourceNavTarget[e.source])"
-                    :class="['inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border transition-colors', sourceBadgeClass[e.source]]">
+                    :class="['inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                     {{ e.sourceLabel }} →
                   </button>
                 </td>
@@ -371,11 +371,11 @@ async function doUmount() {
                 <td class="px-4 py-2.5 text-xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(e.size) }}</td>
                 <td class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
                   <button @click="openFormat(e.bd)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                    class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
                     Format
                   </button>
                   <button @click="openMount(e.bd)"
-                    class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">
+                    class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">
                     Mount
                   </button>
                 </td>
@@ -391,7 +391,7 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="formatWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="formatWiz = null">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -523,7 +523,7 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="mountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="mountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">
@@ -577,7 +577,7 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="umountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="umountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>

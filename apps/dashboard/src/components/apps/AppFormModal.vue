@@ -411,7 +411,7 @@ async function save() {
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="n in form.networkNames" :key="n"
-            class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded px-2 py-0.5 font-mono"
+            class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
           >
             {{ n }}
             <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>

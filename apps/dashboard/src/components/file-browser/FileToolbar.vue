@@ -73,7 +73,7 @@ function clearSearch() {
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
         <span v-if="i > 0" class="text-[var(--c-text-3)] select-none mx-0.5 flex-shrink-0">›</span>
         <button v-if="crumb.clickable" @click="emit('navigate', crumb.path)"
-          class="px-1 py-0.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] rounded hover:bg-[var(--c-hover)] transition-colors whitespace-nowrap flex-shrink-0">
+          class="px-1 py-0.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] rounded-sm hover:bg-[var(--c-hover)] transition-colors whitespace-nowrap flex-shrink-0">
           {{ crumb.label }}
         </button>
         <span v-else class="px-1 text-[var(--c-text-1)] whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>
@@ -88,7 +88,7 @@ function clearSearch() {
       <template v-if="selectedCount > 0">
         <span class="text-xs tabular-nums text-[var(--c-text-3)] select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
         <button @click="emit('clearSelection')" title="Clear selection"
-          class="p-1 rounded text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+          class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -201,7 +201,7 @@ function clearSearch() {
             @keydown.escape="clearSearch"
             type="text"
             placeholder="Search…"
-            class="pl-6 pr-2 py-1 text-xs rounded border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]/50 w-36 transition-colors"
+            class="pl-6 pr-2 py-1 text-xs rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]/50 w-36 transition-colors"
           />
           <button v-if="searchQuery" @click="clearSearch"
             class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">

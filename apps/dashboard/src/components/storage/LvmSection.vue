@@ -333,8 +333,8 @@ const openMenu = ref<string | null>(null)
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
                 <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
-                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning border border-warning/20">
+                <span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
                   <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                   SYSTEM
                 </span>
@@ -401,7 +401,7 @@ const openMenu = ref<string | null>(null)
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
                   <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
-                  <span v-if="lv2bd(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
+                  <span v-if="lv2bd(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
                   <span v-else class="text-[10px] italic text-[var(--c-text-3)]">unformatted</span>
                 </div>
                 <div v-if="lv2bd(lv).mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
@@ -415,16 +415,16 @@ const openMenu = ref<string | null>(null)
               <!-- LV actions — revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
                 <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                 <button v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
+                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                 <button v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
                 <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
                   title="Delete this logical volume"
-                  class="w-6 h-6 flex items-center justify-center rounded text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
+                  class="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                   </svg>
@@ -441,7 +441,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="formatWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="formatWiz = null">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -573,7 +573,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="mountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="mountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">
@@ -627,7 +627,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="umountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="umountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
@@ -665,7 +665,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="lvmWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!lvmWiz.busy && (lvmWiz = null)">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
 
           <!-- Step indicator -->
           <div class="flex items-center border-b border-[var(--c-border)]">
@@ -707,7 +707,7 @@ const openMenu = ref<string | null>(null)
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.type === 'md'" class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
+                  <span v-if="dev.type === 'md'" class="ml-2 text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
                   <span v-else-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
                 </div>
                 <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
@@ -789,7 +789,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="addLvDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!addLvDlg.busy && (addLvDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Add Logical Volume</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
@@ -826,7 +826,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="removeLvDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeLvDlg.busy && (removeLvDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
             <h3 class="font-semibold text-danger">Delete Logical Volume</h3>
           </div>
@@ -868,7 +868,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Teleport to="body">
       <div v-if="removeVgDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!removeVgDlg.busy && (removeVgDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
             <h3 class="font-semibold text-danger">Remove Volume Group</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will delete the VG and all its Logical Volumes.</p>

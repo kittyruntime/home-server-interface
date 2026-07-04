@@ -205,7 +205,7 @@ function fileExt(name: string): string {
                 @blur="emit('cancelRename')"
                 @focus="($event.target as HTMLInputElement).select()"
                 autofocus
-                class="bg-[var(--c-bg)] border border-[var(--c-accent)] rounded px-2 py-0.5 text-sm text-[var(--c-text-1)] focus:outline-none flex-1 min-w-0"
+                class="bg-[var(--c-bg)] border border-[var(--c-accent)] rounded-sm px-2 py-0.5 text-sm text-[var(--c-text-1)] focus:outline-none flex-1 min-w-0"
               />
             </template>
             <template v-else>

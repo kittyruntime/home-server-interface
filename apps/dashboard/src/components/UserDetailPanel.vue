@@ -135,9 +135,9 @@ async function deleteUser() {
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-base font-semibold text-[var(--c-text-1)]">{{ user.username }}</span>
           <span v-if="isSelf"
-            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
           <span v-if="userIsAdmin()"
-            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
         </div>
         <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] mt-0.5">{{ user.displayName }}</div>
       </div>

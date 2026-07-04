@@ -258,9 +258,9 @@ onMounted(load)
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
                         <span v-if="user.id === currentUserId"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
                         <span v-if="userIsAdmin(user)"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
                       </div>
                       <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>
                     </div>

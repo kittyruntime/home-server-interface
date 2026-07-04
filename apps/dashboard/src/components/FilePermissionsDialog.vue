@@ -103,7 +103,7 @@ async function save() {
             <!-- Mode display -->
             <div class="flex items-center gap-3">
               <span class="font-mono text-lg text-[var(--c-text-1)] tracking-widest">{{ modeDisplay }}</span>
-              <span class="font-mono text-xs text-[var(--c-text-3)] bg-[var(--c-surface-deep)] px-2 py-0.5 rounded">{{ serializeMode() }}</span>
+              <span class="font-mono text-xs text-[var(--c-text-3)] bg-[var(--c-surface-deep)] px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
             </div>
 
             <!-- Permission grid -->

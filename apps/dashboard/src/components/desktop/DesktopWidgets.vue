@@ -27,7 +27,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
     <div
       v-for="w in widgets" :key="w.id"
-      :class="['relative bg-[var(--c-surface-alt)]/90 border border-[var(--c-border)] rounded-2xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
+      :class="['relative bg-[var(--c-surface-alt)]/90 border border-[var(--c-border)] rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
       @contextmenu.prevent.stop="$emit('contextmenu-widget', w, $event)"
     >
       <!-- ---- CPU ---- -->

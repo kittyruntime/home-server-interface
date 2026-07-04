@@ -197,11 +197,11 @@ onMounted(load)
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-medium text-[var(--c-text-1)]">{{ role.name }}</span>
                   <span v-if="role.isAdmin"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
                     admin
                   </span>
                   <span v-if="isPersonal(role)"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
                     personal
                   </span>
                 </div>

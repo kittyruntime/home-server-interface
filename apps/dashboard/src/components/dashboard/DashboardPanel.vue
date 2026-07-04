@@ -77,7 +77,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           v-for="w in widgets" :key="w.id"
-          :class="['relative group/card bg-[var(--c-surface-alt)] border border-[var(--c-border)] rounded-2xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
+          :class="['relative group/card bg-[var(--c-surface-alt)] border border-[var(--c-border)] rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
         >
           <!-- Widget controls -->
           <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">

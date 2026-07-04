@@ -92,7 +92,7 @@ onUnmounted(() => {
           @click="emit('remove', item.id)"
           :title="item.disabled ? 'Cannot remove' : 'Remove'"
           :class="[
-            'p-1 rounded transition-all shrink-0',
+            'p-1 rounded-sm transition-all shrink-0',
             item.disabled
               ? 'opacity-30 cursor-not-allowed text-[var(--c-text-3)]'
               : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] disabled:opacity-30 disabled:cursor-not-allowed',

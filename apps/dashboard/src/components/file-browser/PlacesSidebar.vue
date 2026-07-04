@@ -34,7 +34,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
         </svg>
         <span class="truncate flex-1">{{ place.name }}</span>
         <span
-          class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-black/10"
+          class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded-sm hover:bg-black/10"
           @click.stop="$emit('openProperties', place)"
           title="Properties"
         >
