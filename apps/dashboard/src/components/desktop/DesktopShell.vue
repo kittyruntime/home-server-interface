@@ -96,13 +96,15 @@ function isFocused(id: string): boolean {
       @contextmenu-widget="onContextmenuWidget"
     />
 
-    <DesktopWindow
-      v-for="w in visibleWindows"
-      :key="w.id"
-      :win="w"
-      :focused="isFocused(w.id)"
-      :bounds="bounds"
-    />
+    <TransitionGroup name="ui-pop">
+      <DesktopWindow
+        v-for="w in visibleWindows"
+        :key="w.id"
+        :win="w"
+        :focused="isFocused(w.id)"
+        :bounds="bounds"
+      />
+    </TransitionGroup>
 
     <Teleport to="body">
       <template v-if="ctxMenu">
