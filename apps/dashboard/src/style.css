@@ -10,11 +10,27 @@
   --font-mono: "Space Mono", "JetBrains Mono", "SF Mono", monospace;
 }
 
-/* Shape & elevation — moderate rounding, two subtle shadow levels paired
-   with the existing border (never shadow-only, to avoid glassmorphism). */
+/* Elevation — two subtle shadow levels paired with the existing border
+   (never shadow-only, to avoid glassmorphism). */
 :root {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Motion — short, functional; no bounces. Components override the default
+   duration by setting --ui-dur on the transitioned element. */
+:root {
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
 }
 
 /* Accent — signal red by default. User-selectable overrides kept for
@@ -281,6 +297,36 @@ select:not(:disabled),
 }
 
 } /* @layer components */
+
+/* ── Named Vue transitions ───────────────────────────────────────────────────
+   <Transition name="ui-fade|ui-pop|ui-slide-up">. Duration defaults to
+   --dur-base; override with --ui-dur on the element.
+   ─────────────────────────────────────────────────────────────────────────── */
+.ui-fade-enter-active,
+.ui-fade-leave-active {
+  transition: opacity var(--ui-dur, var(--dur-base)) var(--ease-out);
+}
+.ui-fade-enter-from,
+.ui-fade-leave-to { opacity: 0; }
+
+.ui-pop-enter-active,
+.ui-pop-leave-active {
+  transition:
+    opacity   var(--ui-dur, var(--dur-base)) var(--ease-out),
+    transform var(--ui-dur, var(--dur-base)) var(--ease-out);
+}
+.ui-pop-enter-from,
+.ui-pop-leave-to { opacity: 0; transform: scale(0.97); }
+.ui-pop-move { transition: transform var(--ui-dur, var(--dur-base)) var(--ease-out); }
+
+.ui-slide-up-enter-active,
+.ui-slide-up-leave-active {
+  transition:
+    opacity   var(--ui-dur, var(--dur-base)) var(--ease-out),
+    transform var(--ui-dur, var(--dur-base)) var(--ease-out);
+}
+.ui-slide-up-enter-from,
+.ui-slide-up-leave-to { opacity: 0; transform: translateY(6px); }
 
 html, body, #app {
   margin: 0;
