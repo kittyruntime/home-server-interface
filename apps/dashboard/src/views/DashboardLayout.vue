@@ -141,6 +141,9 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- Single root wrapper: required so the route <Transition> in App.vue can
+       animate this view and its style fallthrough (--ui-dur) merges here. -->
+  <div>
   <div class="flex flex-col sm:flex-row h-screen w-screen bg-[var(--c-bg)]">
 
     <!-- Sidebar: 64px (desktop only) -->
@@ -557,6 +560,7 @@ onUnmounted(() => {
     @close="notifMenuOpen = false"
   />
   <Launchpad v-if="launchpadOpen" @close="launchpadOpen = false" />
+  </div>
 </template>
 
 <style scoped>
