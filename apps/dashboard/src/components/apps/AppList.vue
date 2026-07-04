@@ -264,7 +264,7 @@ async function unpin(app: App) {
         <!-- Quick access -->
         <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-[var(--c-border)]">
           <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Quick access</p>
-          <div class="flex flex-wrap gap-2.5">
+          <TransitionGroup tag="div" name="ui-pop" class="flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="app.pinnedUrl!" target="_blank" rel="noopener"
@@ -279,7 +279,7 @@ async function unpin(app: App) {
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
               </svg>
             </a>
-          </div>
+          </TransitionGroup>
         </div>
 
         <!-- Table -->
