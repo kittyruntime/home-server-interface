@@ -271,7 +271,7 @@ onMounted(load)
                 <td class="px-5 py-3.5">
                   <div class="flex flex-wrap gap-1">
                     <span v-for="ur in user.userRoles" :key="ur.role.id"
-                      class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
+                      class="badge badge-violet">
                       {{ ur.role.name }}
                     </span>
                     <span v-if="user.userRoles.length === 0" class="text-[var(--c-text-3)] text-xs">—</span>

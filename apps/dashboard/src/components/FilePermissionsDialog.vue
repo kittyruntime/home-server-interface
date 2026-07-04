@@ -124,7 +124,7 @@ async function save() {
                       type="checkbox"
                       v-model="(bits[key as keyof typeof bits] as any)[bit]"
                       :disabled="!isAdmin"
-                      class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer disabled:cursor-default"
+                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:cursor-default"
                     />
                   </td>
                 </tr>

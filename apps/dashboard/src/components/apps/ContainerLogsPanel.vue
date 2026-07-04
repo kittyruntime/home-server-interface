@@ -145,7 +145,7 @@ onUnmounted(() => controller?.abort())
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
           <div class="flex items-center gap-2 flex-1 min-w-0">
             <!-- Status dot -->
-            <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-green-400 animate-pulse' : 'bg-[var(--c-text-3)]']" />
+            <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-[var(--c-text-3)]']" />
             <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
             <span class="text-[11px] text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
           </div>
@@ -196,7 +196,7 @@ onUnmounted(() => controller?.abort())
           style="color: #e6edf3"
         >
           <!-- Error -->
-          <div v-if="error" class="text-red-400 mb-2">{{ error }}</div>
+          <div v-if="error" class="text-danger mb-2">{{ error }}</div>
 
           <!-- Empty -->
           <div v-if="lines.length === 0 && !error && connected"

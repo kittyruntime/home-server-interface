@@ -94,9 +94,9 @@ function actionCategory(action: string): Category {
 }
 
 const categoryClass: Record<Category, string> = {
-  auth:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  auth:   'bg-info/10 text-info border-info/20',
   fs:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  system: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  system: 'bg-warning/10 text-warning border-warning/20',
   admin:  'bg-[var(--c-accent)]/10 text-[var(--c-accent)] border-[var(--c-accent)]/20',
   other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
 }
@@ -161,7 +161,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
               <tr @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
                 :class="['cursor-pointer transition-colors hover:bg-[var(--c-hover)]/40',
                   selectedEntry?.id === entry.id ? 'bg-[var(--c-accent)]/5' : '',
-                  !entry.success ? 'bg-red-500/4' : '']">
+                  !entry.success ? 'bg-danger/4' : '']">
 
                 <td class="px-4 py-2.5 text-xs text-[var(--c-text-3)] font-mono whitespace-nowrap">
                   {{ fmtDate(entry.createdAt) }}
@@ -188,12 +188,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 </td>
                 <td class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-green-500/10 text-green-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"/>OK
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-success/10 text-success">
+                    <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-red-500/10 text-red-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"/>Fail
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-danger/10 text-danger">
+                    <span class="w-1.5 h-1.5 rounded-full bg-danger"/>Fail
                   </span>
                 </td>
               </tr>

@@ -67,7 +67,7 @@ const hasDismissible = computed(
             <div class="flex items-center gap-2.5 min-w-0">
               <!-- Icon -->
               <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                :class="t.status === 'done'      ? 'bg-green-500/10 text-green-500'
+                :class="t.status === 'done'      ? 'bg-success/10 text-success'
                       : t.status === 'error'     ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
                       : t.status === 'cancelled' ? 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'
                       : t.status === 'paused'    ? 'bg-[var(--c-warning)]/10 text-[var(--c-warning)]'
@@ -88,7 +88,7 @@ const hasDismissible = computed(
                 <div class="flex items-baseline justify-between gap-2">
                   <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
                   <span class="text-[10px] tabular-nums shrink-0"
-                    :class="t.status === 'done'      ? 'text-green-500'
+                    :class="t.status === 'done'      ? 'text-success'
                           : t.status === 'error'     ? 'text-[var(--c-danger)]'
                           : t.status === 'cancelled' ? 'text-[var(--c-text-3)]'
                           : t.status === 'paused'    ? 'text-[var(--c-warning)]'
@@ -141,7 +141,7 @@ const hasDismissible = computed(
             <div class="flex items-center gap-2.5 min-w-0">
               <!-- Icon -->
               <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                :class="n.type === 'success' ? 'bg-green-500/10 text-green-500'
+                :class="n.type === 'success' ? 'bg-success/10 text-success'
                       : n.type === 'error'   ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
                       : n.type === 'info'    ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
                       :                        'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'">

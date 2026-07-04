@@ -160,7 +160,7 @@ const chartOptions = {
     <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm">
       <LoadingSpinner /> Loading…
     </div>
-    <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="text-sm text-danger">{{ error }}</div>
 
     <div v-else-if="viewMode === 'live'">
       <template v-if="sysinfo && metrics">
@@ -224,13 +224,13 @@ const chartOptions = {
                 <div class="flex justify-between text-xs text-[var(--c-text-3)]">
                   <span>Usage</span>
                   <span class="font-medium tabular-nums"
-                    :class="metrics.cpu > 80 ? 'text-red-400' : metrics.cpu > 60 ? 'text-yellow-400' : 'text-[var(--c-text-1)]'"
+                    :class="metrics.cpu > 80 ? 'text-danger' : metrics.cpu > 60 ? 'text-warning' : 'text-[var(--c-text-1)]'"
                   >{{ metrics.cpu }}%</span>
                 </div>
                 <div class="w-full h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-700"
-                    :class="metrics.cpu > 80 ? 'bg-red-500' : metrics.cpu > 60 ? 'bg-yellow-500' : 'bg-[var(--c-accent)]'"
+                    :class="metrics.cpu > 80 ? 'bg-danger' : metrics.cpu > 60 ? 'bg-warning' : 'bg-[var(--c-accent)]'"
                     :style="{ width: metrics.cpu + '%' }"
                   />
                 </div>
@@ -270,7 +270,7 @@ const chartOptions = {
               <div class="w-full h-2 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all duration-700"
-                  :class="metrics.memory.percent > 90 ? 'bg-red-500' : metrics.memory.percent > 75 ? 'bg-yellow-500' : 'bg-[var(--c-accent)]'"
+                  :class="metrics.memory.percent > 90 ? 'bg-danger' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-[var(--c-accent)]'"
                   :style="{ width: metrics.memory.percent + '%' }"
                 />
               </div>
@@ -278,7 +278,7 @@ const chartOptions = {
                 <span>{{ fmtBytes(metrics.memory.total - metrics.memory.used) }} free</span>
                 <span
                   class="font-medium tabular-nums"
-                  :class="metrics.memory.percent > 90 ? 'text-red-400' : metrics.memory.percent > 75 ? 'text-yellow-400' : ''"
+                  :class="metrics.memory.percent > 90 ? 'text-danger' : metrics.memory.percent > 75 ? 'text-warning' : ''"
                 >{{ metrics.memory.percent }}%</span>
               </div>
             </div>
@@ -296,13 +296,13 @@ const chartOptions = {
               <!-- Live throughput -->
               <div class="flex items-center gap-3 text-xs tabular-nums text-[var(--c-text-3)]">
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <svg class="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                   </svg>
                   {{ fmtBytes(metrics.network.rx) }}/s
                 </span>
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <svg class="w-3 h-3 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
                   </svg>
                   {{ fmtBytes(metrics.network.tx) }}/s

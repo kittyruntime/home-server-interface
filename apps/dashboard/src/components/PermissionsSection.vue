@@ -115,7 +115,7 @@ onMounted(load)
               <tr v-for="role in roles" :key="'role-' + role.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/15 text-violet-400">role</span>
+                    <span class="badge badge-violet">role</span>
                     <span class="text-[var(--c-text-2)]">{{ role.name }}</span>
                   </div>
                 </td>
@@ -124,7 +124,7 @@ onMounted(load)
                     type="checkbox"
                     :checked="getPerm(place.id, 'role', role.id)?.[field] ?? false"
                     @change="togglePerm(place.id, 'role', role.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"
                   />
                 </td>
               </tr>
@@ -142,7 +142,7 @@ onMounted(load)
                     type="checkbox"
                     :checked="getPerm(place.id, 'user', user.id)?.[field] ?? false"
                     @change="togglePerm(place.id, 'user', user.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"
                   />
                 </td>
               </tr>

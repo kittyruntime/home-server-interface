@@ -13,13 +13,13 @@ const { toasts, dismiss } = useToast()
           :key="t.id"
           class="flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border pointer-events-auto"
           :class="t.type === 'error'   ? 'bg-[var(--c-surface-alt)] border-[var(--c-danger)]/40 text-[var(--c-text-1)]'
-                : t.type === 'success' ? 'bg-[var(--c-surface-alt)] border-green-500/30 text-[var(--c-text-1)]'
+                : t.type === 'success' ? 'bg-[var(--c-surface-alt)] border-success/30 text-[var(--c-text-1)]'
                 :                        'bg-[var(--c-surface-alt)] border-[var(--c-border-strong)] text-[var(--c-text-1)]'"
         >
           <!-- Icon -->
           <div class="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center"
             :class="t.type === 'error'   ? 'bg-[var(--c-danger)]/15 text-[var(--c-danger)]'
-                  : t.type === 'success' ? 'bg-green-500/15 text-green-500'
+                  : t.type === 'success' ? 'bg-success/15 text-success'
                   :                        'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
             <svg v-if="t.type === 'error'" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

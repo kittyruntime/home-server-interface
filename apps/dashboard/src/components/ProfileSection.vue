@@ -150,12 +150,12 @@ onMounted(async () => {
             </span>
             <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
             <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
-            <span v-if="!meIsAdmin && meCanManage" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/15 text-violet-400">manager</span>
+            <span v-if="!meIsAdmin && meCanManage" class="badge badge-violet">manager</span>
           </div>
           <!-- Roles -->
           <div class="flex flex-wrap gap-1 mt-1.5">
             <span v-for="ur in me.userRoles.filter(ur => ur.role.name !== me!.username)" :key="ur.role.id"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
+              class="badge badge-violet">
               {{ ur.role.name }}
             </span>
             <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">

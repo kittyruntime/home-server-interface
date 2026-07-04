@@ -129,9 +129,9 @@ function actionCategory(action: string): Category {
 }
 
 const categoryClass: Record<Category, string> = {
-  auth:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  auth:   'bg-info/10 text-info border-info/20',
   fs:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  system: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  system: 'bg-warning/10 text-warning border-warning/20',
   admin:  'bg-[var(--c-accent)]/10 text-[var(--c-accent)] border-[var(--c-accent)]/20',
   other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
 }
@@ -159,7 +159,7 @@ function relTime(d: string | Date): string {
       </svg>
       Loading…
     </div>
-    <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+    <div v-else-if="error" class="text-sm text-danger">{{ error }}</div>
 
     <template v-else>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -180,13 +180,13 @@ function relTime(d: string | Date): string {
               <div class="flex justify-between text-xs">
                 <span class="text-[var(--c-text-3)]">CPU</span>
                 <span class="tabular-nums font-medium"
-                  :class="metrics.cpu >= 80 ? 'text-red-400' : metrics.cpu >= 60 ? 'text-yellow-400' : 'text-[var(--c-text-1)]'"
+                  :class="metrics.cpu >= 80 ? 'text-danger' : metrics.cpu >= 60 ? 'text-warning' : 'text-[var(--c-text-1)]'"
                 >{{ metrics.cpu }}%</span>
               </div>
               <div class="w-full h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all duration-700"
-                  :class="metrics.cpu >= 80 ? 'bg-red-500' : metrics.cpu >= 60 ? 'bg-yellow-500' : 'bg-[var(--c-accent)]'"
+                  :class="metrics.cpu >= 80 ? 'bg-danger' : metrics.cpu >= 60 ? 'bg-warning' : 'bg-[var(--c-accent)]'"
                   :style="{ width: metrics.cpu + '%' }"
                 />
               </div>
@@ -216,8 +216,8 @@ function relTime(d: string | Date): string {
                 <span class="text-xs font-mono text-[var(--c-text-2)]">{{ r.name }}</span>
                 <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border',
                   isRaidHealthy(r)
-                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                    : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                    ? 'bg-success/10 text-success border-success/20'
+                    : 'bg-danger/10 text-danger border-danger/20']">
                   {{ isRaidHealthy(r) ? 'Healthy' : 'Degraded' }}
                 </span>
               </div>
@@ -235,7 +235,7 @@ function relTime(d: string | Date): string {
               <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Total</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-green-400 tabular-nums">{{ containerRunning }}</div>
+              <div class="text-2xl font-bold text-success tabular-nums">{{ containerRunning }}</div>
               <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Running</div>
             </div>
             <div class="text-center">
@@ -266,7 +266,7 @@ function relTime(d: string | Date): string {
           <div v-if="!recentAudit.length" class="text-xs text-[var(--c-text-3)] italic">No recent activity.</div>
           <div v-else class="divide-y divide-[var(--c-border)]">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
-              <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-green-400' : 'bg-red-400']" />
+              <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-success' : 'bg-danger']" />
               <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0 w-16">{{ relTime(entry.createdAt) }}</span>
               <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border shrink-0', categoryClass[actionCategory(entry.action)]]">
                 {{ actionLabel(entry.action) }}
