@@ -1,7 +1,9 @@
 <template>
   <RouterView v-slot="{ Component }">
     <Transition name="ui-fade" mode="out-in">
-      <component :is="Component" style="--ui-dur: var(--dur-fast)" />
+      <!-- .route-fade scopes the fast duration to the fade itself; an inline
+           --ui-dur here would inherit into every descendant transition. -->
+      <component :is="Component" class="route-fade" />
     </Transition>
   </RouterView>
 </template>

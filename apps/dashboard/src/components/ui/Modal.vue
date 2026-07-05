@@ -35,7 +35,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         @click.self="closeOnBackdrop && requestClose()"
       >
         <Transition name="ui-pop" appear>
-          <div :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[90vh]', panelClass]">
+          <!-- v-if mirrors the backdrop's so the panel plays its own leave pop
+               (unmounting via the parent alone would skip it). -->
+          <div v-if="visible" :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[90vh]', panelClass]">
             <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
               <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
                 <slot name="header" />
