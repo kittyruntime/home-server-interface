@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.1] - 2026-07-06
+
 ### Added
 - **Sharing in classic mode**: the SMB Sharing app is now reachable outside desktop mode — admin-only entry in the classic sidebar and the mobile bottom nav.
 
@@ -414,7 +416,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...HEAD
+[1.27.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...v1.27.1
 [1.27.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...v1.25.0
