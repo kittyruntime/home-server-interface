@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useUploads } from '../lib/uploads'
 import { useNotifications } from '../lib/notifications'
 import { useDesktop } from '../lib/desktop'
 import { trpc } from '../lib/trpc'
-import SettingsPanel from '../components/SettingsPanel.vue'
-import StoragePanel from '../components/storage/StoragePanel.vue'
-import MonitorPanel from '../components/monitor/MonitorPanel.vue'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
-import AppsPanel from '../components/apps/AppsPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
-import SharingPanel from '../components/sharing/SharingPanel.vue'
 import AppIcon from '../components/desktop/AppIcon.vue'
+// Dashboard + Files stay eager (default view / most-used); the rest split into
+// their own chunks and load when their app is first opened.
+import type AppsPanelT from '../components/apps/AppsPanel.vue'
+const SettingsPanel = defineAsyncComponent(() => import('../components/SettingsPanel.vue'))
+const StoragePanel = defineAsyncComponent(() => import('../components/storage/StoragePanel.vue'))
+const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/MonitorPanel.vue'))
+const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
+const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
 import NotificationMenu from '../components/NotificationMenu.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import ToastContainer from '../components/ui/ToastContainer.vue'
@@ -48,7 +51,7 @@ const activeApp        = ref<string>('dashboard')
 const notifMenuOpen    = ref(false)
 const userMenuOpen     = ref(false)
 const settingsSection  = ref<'profile' | 'users' | 'places' | 'roles' | null>(null)
-const appsPanelRef     = ref<InstanceType<typeof AppsPanel> | null>(null)
+const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 const badgeCount = computed(() =>
   uploads.tasks.value.filter(t => t.status === 'uploading' || t.status === 'paused').length

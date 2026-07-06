@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, provide, watch } from 'vue'
+import { ref, computed, onUnmounted, onMounted, provide, watch, defineAsyncComponent } from 'vue'
 import { useDesktop, APP_LABEL, type DesktopWindow } from '../../lib/desktop'
 import { modalHostKey } from '../../lib/modal-host'
 import AppIcon from './AppIcon.vue'
 import { useAuth } from '../../lib/auth'
 import { downloadUrl } from '../../lib/file-url'
 import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
-import AppsPanel from '../apps/AppsPanel.vue'
-import SettingsPanel from '../SettingsPanel.vue'
-import StoragePanel from '../storage/StoragePanel.vue'
-import MonitorPanel from '../monitor/MonitorPanel.vue'
-import SharingPanel from '../sharing/SharingPanel.vue'
 import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
+// Type-only imports keep the async chunks split while typing the template refs.
+import type AppsPanelT from '../apps/AppsPanel.vue'
+import type SettingsPanelT from '../SettingsPanel.vue'
+
+// Split the heavier per-app panels into their own chunks — only the window's
+// active app is ever mounted, so they need not weigh down the initial bundle.
+const AppsPanel = defineAsyncComponent(() => import('../apps/AppsPanel.vue'))
+const SettingsPanel = defineAsyncComponent(() => import('../SettingsPanel.vue'))
+const StoragePanel = defineAsyncComponent(() => import('../storage/StoragePanel.vue'))
+const MonitorPanel = defineAsyncComponent(() => import('../monitor/MonitorPanel.vue'))
+const SharingPanel = defineAsyncComponent(() => import('../sharing/SharingPanel.vue'))
 
 const props = defineProps<{
   win: DesktopWindow
@@ -27,8 +33,8 @@ const { isAdmin } = useAuth()
 const bodyEl = ref<HTMLElement | null>(null)
 provide(modalHostKey, bodyEl)
 
-const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
-const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
+const appsPanelRef = ref<InstanceType<typeof AppsPanelT> | null>(null)
+const settingsPanelRef = ref<InstanceType<typeof SettingsPanelT> | null>(null)
 const filePreviewRef = ref<{ save: () => void } | null>(null)
 
 const filePreviewExt = computed(() => {
