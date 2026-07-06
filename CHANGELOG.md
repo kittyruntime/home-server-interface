@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-07-06
+
 ### Changed
 - **Navigation**: reordered the app nav to a more natural flow — Overview, Files, Apps, then the admin tools (Storage, Monitor, Sharing), with Settings last, consistent across the classic sidebar, mobile bar and Launchpad. The Storage → Disks tab also gets a clearer hard-drive icon.
 
@@ -432,7 +434,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...HEAD
+[1.28.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...v1.28.0
 [1.27.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...v1.27.2
 [1.27.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...v1.27.1
