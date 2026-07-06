@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-07-06
+
 ### Added
 - **Motion system**: the dashboard now animates on design-token durations/easing — modals and confirm dialogs pop in and out, the launchpad zooms, desktop windows animate on open/close/minimize, pinned apps slide into place when added or removed, and route changes cross-fade. Everything collapses to instant under `prefers-reduced-motion`.
 
@@ -403,7 +405,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...HEAD
+[1.27.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.23.2...v1.24.0
