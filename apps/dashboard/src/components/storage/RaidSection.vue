@@ -7,6 +7,9 @@ import {
   type BlockDev, type RaidArray,
 } from '../../composables/useStorageData'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
+import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
+import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
@@ -61,107 +64,14 @@ const eligibleForRaid = computed<BlockDev[]>(() => {
 
 // ── Format wizard ─────────────────────────────────────────────────────────────
 
-type FsType = 'ext4' | 'xfs' | 'btrfs' | 'fat32'
-
-const FS_OPTIONS: { id: FsType; name: string; tag: string; desc: string }[] = [
-  { id: 'ext4',  name: 'ext4',  tag: 'Recommended', desc: 'Stable, journaled filesystem. Widely supported on Linux. Best for general use and NAS data.' },
-  { id: 'xfs',   name: 'XFS',   tag: 'Large files',  desc: 'High-performance filesystem. Excellent for large media files and backups. Cannot be shrunk once created.' },
-  { id: 'btrfs', name: 'Btrfs', tag: 'Advanced',    desc: 'Modern copy-on-write filesystem with built-in checksums and snapshot support. More complex to manage.' },
-  { id: 'fat32', name: 'FAT32', tag: 'Cross-platform', desc: 'Compatible with Windows and macOS without drivers. No file permissions, 4 GB file size limit. For USB/external drives only.' },
-]
-
-const formatWiz = ref<{
-  dev:     BlockDev
-  step:    1 | 2 | 3
-  fstype:  FsType
-  label:   string
-  confirm: string
-  busy:    boolean
-  err:     string
-} | null>(null)
-
-function openFormat(dev: BlockDev) {
-  formatWiz.value = { dev, step: 1, fstype: 'ext4', label: '', confirm: '', busy: false, err: '' }
-}
-
-async function doFormat() {
-  if (!formatWiz.value) return
-  const w = formatWiz.value
-  if (w.confirm !== w.dev.name) return
-  w.busy = true
-  w.err  = ''
-  try {
-    const device = w.dev.path.replace(/^\/dev\//, '')
-    await trpc.system.formatDisk.mutate({ device, fstype: w.fstype, label: w.label || undefined })
-    formatWiz.value = null
-    await refresh()
-  } catch (e: any) {
-    w.err = e?.message ?? 'Format failed'
-  } finally {
-    if (formatWiz.value) w.busy = false
-  }
-}
-
-// ── Mount dialog ──────────────────────────────────────────────────────────────
-
-const mountDlg = ref<{
-  dev:     BlockDev
-  mp:      string
-  options: string
-  persist: boolean
-  busy:    boolean
-  err:     string
-} | null>(null)
-
-function openMount(dev: BlockDev) {
-  mountDlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, busy: false, err: '' }
-}
-
-async function doMount() {
-  if (!mountDlg.value) return
-  const d = mountDlg.value
-  d.busy = true
-  d.err  = ''
-  try {
-    const device = d.dev.path.replace(/^\/dev\//, '')
-    await trpc.system.mountDevice.mutate({ device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist })
-    mountDlg.value = null
-    await refresh()
-  } catch (e: any) {
-    d.err = e?.message ?? 'Mount failed'
-  } finally {
-    if (mountDlg.value) d.busy = false
-  }
-}
-
-// ── Unmount dialog ────────────────────────────────────────────────────────────
-
-const umountDlg = ref<{
-  dev:     BlockDev
-  rmFstab: boolean
-  busy:    boolean
-  err:     string
-} | null>(null)
-
-function openUmount(dev: BlockDev) {
-  umountDlg.value = { dev, rmFstab: false, busy: false, err: '' }
-}
-
-async function doUmount() {
-  if (!umountDlg.value) return
-  const d = umountDlg.value
-  d.busy = true
-  d.err  = ''
-  try {
-    await trpc.system.umountDevice.mutate({ mountpoint: d.dev.mountpoint, removeFromFstab: d.rmFstab })
-    umountDlg.value = null
-    await refresh()
-  } catch (e: any) {
-    d.err = e?.message ?? 'Unmount failed'
-  } finally {
-    if (umountDlg.value) d.busy = false
-  }
-}
+// Device format/mount/unmount dialogs are shared components (see ./dialogs);
+// these thin wrappers open them via template refs and refresh on success.
+const formatWiz = ref<InstanceType<typeof DeviceFormatWizard> | null>(null)
+const mountDlg  = ref<InstanceType<typeof DeviceMountDialog>  | null>(null)
+const umountDlg = ref<InstanceType<typeof DeviceUnmountDialog> | null>(null)
+function openFormat(dev: BlockDev) { formatWiz.value?.open(dev) }
+function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
+function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
 // ── Create RAID wizard ────────────────────────────────────────────────────────
 
@@ -454,217 +364,10 @@ const openMenu = ref<string | null>(null)
       </div>
     </div>
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- FORMAT WIZARD                                                        -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="formatWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!formatWiz.busy" @close="formatWiz = null">
-
-          <!-- Step indicator -->
-          <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
-            <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
-              :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
-                formatWiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
-                : formatWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
-                : 'text-[var(--c-text-3)]/50']"
-            >{{ i + 1 }}. {{ label }}</div>
-          </div>
-
-          <!-- Step 1: Warning -->
-          <div v-if="formatWiz.step === 1" class="p-6 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
-              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              <div>
-                <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
-                <div class="text-xs text-danger/80">
-                  Formatting <span class="font-mono font-bold">/dev/{{ formatWiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Device</span><span class="font-mono">/dev/{{ formatWiz.dev.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(formatWiz.dev.size) }}</span></div>
-              <div v-if="formatWiz.dev.fstype" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Current FS</span><span class="font-mono">{{ formatWiz.dev.fstype }}</span></div>
-              <div v-if="formatWiz.dev.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ formatWiz.dev.model }}</span></div>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-              <button @click="formatWiz = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="formatWiz.step = 2" class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity">I understand, continue →</button>
-            </div>
-          </div>
-
-          <!-- Step 2: Choose filesystem -->
-          <div v-else-if="formatWiz.step === 2" class="p-6 space-y-3">
-            <p class="text-sm text-[var(--c-text-2)] font-medium mb-2">Choose a filesystem for <span class="font-mono text-[var(--c-text-1)]">/dev/{{ formatWiz.dev.name }}</span></p>
-
-            <div class="space-y-2">
-              <label
-                v-for="fs in FS_OPTIONS" :key="fs.id"
-                :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                  formatWiz.fstype === fs.id
-                    ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-                    : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
-                @click="formatWiz.fstype = fs.id"
-              >
-                <div class="mt-0.5">
-                  <div :class="['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
-                    formatWiz.fstype === fs.id ? 'border-[var(--c-accent)]' : 'border-[var(--c-border-strong)]']">
-                    <div v-if="formatWiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-[var(--c-accent)]"/>
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-sm"
-                      :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
-                    >{{ fs.tag }}</span>
-                  </div>
-                  <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
-                </div>
-              </label>
-            </div>
-
-            <div class="pt-1">
-              <label class="block text-xs text-[var(--c-text-2)] mb-1">Volume label <span class="text-[var(--c-text-3)]">(optional)</span></label>
-              <input
-                v-model="formatWiz.label"
-                type="text"
-                placeholder="e.g. Data, Backup, Media"
-                maxlength="64"
-                class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
-              />
-            </div>
-
-            <div class="flex gap-2 pt-1">
-              <button @click="formatWiz.step = 1" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">← Back</button>
-              <button @click="formatWiz.step = 3" class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity">Next →</button>
-            </div>
-          </div>
-
-          <!-- Step 3: Confirm -->
-          <div v-else-if="formatWiz.step === 3" class="p-6 space-y-4">
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Device</span><span class="font-mono">/dev/{{ formatWiz.dev.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(formatWiz.dev.size) }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ formatWiz.fstype }}</span></div>
-              <div v-if="formatWiz.label" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Label</span><span>{{ formatWiz.label }}</span></div>
-            </div>
-
-            <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ formatWiz.dev.name }}</span> to confirm
-              </label>
-              <input
-                v-model="formatWiz.confirm"
-                type="text"
-                :placeholder="formatWiz.dev.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
-              />
-            </div>
-
-            <div v-if="formatWiz.err" class="text-xs text-danger px-1">{{ formatWiz.err }}</div>
-
-            <div class="flex gap-2">
-              <button @click="formatWiz.step = 2" :disabled="formatWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
-              <button
-                @click="doFormat"
-                :disabled="formatWiz.confirm !== formatWiz.dev.name || formatWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-              >
-                <span v-if="formatWiz.busy">Formatting…</span>
-                <span v-else>Format now</span>
-              </button>
-            </div>
-          </div>
-
-    </Modal>
-
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- MOUNT DIALOG                                                         -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="mountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!mountDlg.busy" @close="mountDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)]">
-            <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">
-              <span class="font-mono">{{ mountDlg.dev.path }}</span>
-              <span v-if="mountDlg.dev.fstype"> · {{ mountDlg.dev.fstype }}</span>
-              · {{ fmtBytes(mountDlg.dev.size) }}
-            </p>
-          </div>
-          <div class="p-5 space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Mount point</label>
-              <input
-                v-model="mountDlg.mp"
-                type="text"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
-              />
-              <p class="text-[10px] text-[var(--c-text-3)] mt-1">Directory will be created if it doesn't exist.</p>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Mount options</label>
-              <input
-                v-model="mountDlg.options"
-                type="text"
-                placeholder="defaults"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
-              />
-            </div>
-            <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="mountDlg.persist" type="checkbox" class="mt-0.5 accent-accent"/>
-              <div>
-                <div class="text-xs font-medium text-[var(--c-text-2)]">Persist across reboots</div>
-                <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
-              </div>
-            </label>
-            <div v-if="mountDlg.err" class="text-xs text-danger">{{ mountDlg.err }}</div>
-            <div class="flex gap-2 pt-1">
-              <button @click="mountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doMount" :disabled="!mountDlg.mp || mountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed font-medium">
-                <span v-if="mountDlg.busy">Mounting…</span>
-                <span v-else>Mount</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
-
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- UNMOUNT DIALOG                                                       -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="umountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!umountDlg.busy" @close="umountDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)]">
-            <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
-              Make sure no application is using files on <span class="font-mono font-bold">{{ umountDlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
-            </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Device</span><span class="font-mono">/dev/{{ umountDlg.dev.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Mount point</span><span class="font-mono">{{ umountDlg.dev.mountpoint }}</span></div>
-            </div>
-            <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="umountDlg.rmFstab" type="checkbox" class="mt-0.5 accent-accent"/>
-              <div>
-                <div class="text-xs font-medium text-[var(--c-text-2)]">Remove from /etc/fstab</div>
-                <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
-              </div>
-            </label>
-            <div v-if="umountDlg.err" class="text-xs text-danger">{{ umountDlg.err }}</div>
-            <div class="flex gap-2 pt-1">
-              <button @click="umountDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doUmount" :disabled="umountDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-warning text-white hover:bg-warning/85 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="umountDlg.busy">Unmounting…</span>
-                <span v-else>Unmount</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Shared device dialogs (format / mount / unmount) -->
+    <DeviceFormatWizard  ref="formatWiz" @done="refresh" />
+    <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
+    <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- CREATE RAID WIZARD                                                   -->
