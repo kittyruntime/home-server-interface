@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated dependencies to clear all 25 known vulnerabilities (12 high) reported by `pnpm audit` / Dependabot — notably fastify, vite, rollup and Prisma patch/minor bumps, and `@fastify/static` 8 → 9 which fixes a path traversal and a route-guard bypass in the layer that serves the dashboard.
+
 ## [1.27.1] - 2026-07-06
 
 ### Added
