@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.2] - 2026-07-06
+
 ### Security
 - Updated dependencies to clear all 25 known vulnerabilities (12 high) reported by `pnpm audit` / Dependabot — notably fastify, vite, rollup and Prisma patch/minor bumps, and `@fastify/static` 8 → 9 which fixes a path traversal and a route-guard bypass in the layer that serves the dashboard.
 
@@ -419,7 +421,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...HEAD
+[1.27.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...v1.27.2
 [1.27.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...v1.27.1
 [1.27.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.25.0...v1.26.0
