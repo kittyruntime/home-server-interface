@@ -237,33 +237,6 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- Settings -->
-        <div class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('settings')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('settings')"
-            title="Settings"
-            :class="[
-              'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('settings')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span
-              v-if="updateAvailable && !isActive('settings')"
-              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]"
-            />
-          </button>
-        </div>
-
         <!-- Storage -->
         <div v-if="isAdmin" class="relative flex justify-center py-0.5">
           <span
@@ -325,6 +298,33 @@ onUnmounted(() => {
             ]"
           >
             <AppIcon app="sharing" :stroke-width="1.75" class="w-5 h-5" />
+          </button>
+        </div>
+
+        <!-- Settings -->
+        <div class="relative flex justify-center py-0.5">
+          <span
+            v-if="isActive('settings')"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
+          />
+          <button
+            @click="selectApp('settings')"
+            title="Settings"
+            :class="[
+              'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+              isActive('settings')
+                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+            ]"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span
+              v-if="updateAvailable && !isActive('settings')"
+              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]"
+            />
           </button>
         </div>
 
@@ -519,22 +519,6 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- Settings -->
-      <div class="relative flex justify-center">
-        <span v-if="isActive('settings')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('settings')" title="Settings"
-          :class="['relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('settings') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span v-if="updateAvailable && !isActive('settings')"
-            class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]" />
-        </button>
-      </div>
-
       <!-- Storage -->
       <div v-if="isAdmin" class="relative flex justify-center">
         <span v-if="isActive('storage')"
@@ -569,6 +553,22 @@ onUnmounted(() => {
           :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
             isActive('sharing') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <AppIcon app="sharing" :stroke-width="1.75" class="w-5 h-5" />
+        </button>
+      </div>
+
+      <!-- Settings -->
+      <div class="relative flex justify-center">
+        <span v-if="isActive('settings')"
+          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
+        <button @click="selectApp('settings')" title="Settings"
+          :class="['relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
+            isActive('settings') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span v-if="updateAvailable && !isActive('settings')"
+            class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]" />
         </button>
       </div>
 

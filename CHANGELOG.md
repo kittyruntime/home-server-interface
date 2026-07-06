@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Navigation**: reordered the app nav to a more natural flow — Overview, Files, Apps, then the admin tools (Storage, Monitor, Sharing), with Settings last, consistent across the classic sidebar, mobile bar and Launchpad. The Storage → Disks tab also gets a clearer hard-drive icon.
+
 ## [1.28.0] - 2026-07-06
 
 ### Changed
