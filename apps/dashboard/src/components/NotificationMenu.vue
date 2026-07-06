@@ -68,7 +68,7 @@ const hasDismissible = computed(
               <!-- Icon -->
               <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
                 :class="t.status === 'done'      ? 'bg-success/10 text-success'
-                      : t.status === 'error'     ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
+                      : t.status === 'error'     ? 'bg-danger/10 text-danger'
                       : t.status === 'cancelled' ? 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'
                       : t.status === 'paused'    ? 'bg-[var(--c-warning)]/10 text-[var(--c-warning)]'
                       :                            'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
@@ -89,7 +89,7 @@ const hasDismissible = computed(
                   <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
                   <span class="text-[10px] tabular-nums shrink-0"
                     :class="t.status === 'done'      ? 'text-success'
-                          : t.status === 'error'     ? 'text-[var(--c-danger)]'
+                          : t.status === 'error'     ? 'text-danger'
                           : t.status === 'cancelled' ? 'text-[var(--c-text-3)]'
                           : t.status === 'paused'    ? 'text-[var(--c-warning)]'
                           :                            'text-[var(--c-text-3)]'">
@@ -108,7 +108,7 @@ const hasDismissible = computed(
                 <div v-if="t.status === 'uploading' && t.bytesPerSec > 0" class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
                   {{ speed(t.bytesPerSec) }}
                 </div>
-                <div v-if="t.error" class="text-[10px] text-[var(--c-danger)] mt-0.5 truncate">{{ t.error }}</div>
+                <div v-if="t.error" class="text-[10px] text-danger mt-0.5 truncate">{{ t.error }}</div>
               </div>
 
               <!-- Actions -->
@@ -123,7 +123,7 @@ const hasDismissible = computed(
                   </svg>
                 </button>
                 <button @click="uploads.cancel(t.id)" title="Cancel"
-                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-danger)] hover:bg-[var(--c-danger)]/10 transition-colors">
+                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-danger hover:bg-danger/10 transition-colors">
                   <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="4" y="4" width="16" height="16" rx="2"/>
                   </svg>
@@ -142,7 +142,7 @@ const hasDismissible = computed(
               <!-- Icon -->
               <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
                 :class="n.type === 'success' ? 'bg-success/10 text-success'
-                      : n.type === 'error'   ? 'bg-[var(--c-danger)]/10 text-[var(--c-danger)]'
+                      : n.type === 'error'   ? 'bg-danger/10 text-danger'
                       : n.type === 'info'    ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
                       :                        'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'">
                 <!-- Spinner for progress -->

@@ -313,7 +313,7 @@ const openMenu = ref<string | null>(null)
 
     <!-- VG list -->
     <div class="flex items-center justify-between mb-3">
-      <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
+      <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
     </div>
 
     <div v-if="!loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
@@ -502,7 +502,7 @@ const openMenu = ref<string | null>(null)
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-sm"
                       :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
@@ -602,7 +602,7 @@ const openMenu = ref<string | null>(null)
               />
             </div>
             <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="mountDlg.persist" type="checkbox" class="mt-0.5 accent-[var(--c-accent)]"/>
+              <input v-model="mountDlg.persist" type="checkbox" class="mt-0.5 accent-accent"/>
               <div>
                 <div class="text-xs font-medium text-[var(--c-text-2)]">Persist across reboots</div>
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
@@ -640,7 +640,7 @@ const openMenu = ref<string | null>(null)
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Mount point</span><span class="font-mono">{{ umountDlg.dev.mountpoint }}</span></div>
             </div>
             <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="umountDlg.rmFstab" type="checkbox" class="mt-0.5 accent-[var(--c-accent)]"/>
+              <input v-model="umountDlg.rmFstab" type="checkbox" class="mt-0.5 accent-accent"/>
               <div>
                 <div class="text-xs font-medium text-[var(--c-text-2)]">Remove from /etc/fstab</div>
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>

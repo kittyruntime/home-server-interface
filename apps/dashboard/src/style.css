@@ -46,6 +46,7 @@
   --c-success: #4a9e5c;
   --c-warning: #d4a843;
   --c-info:    #007aff;
+  --c-violet:  #a855f7;
 }
 
 :root[data-accent="orange"] { --c-accent: #f97316; }
@@ -93,7 +94,8 @@
     --c-text-3:        #666666;
     --c-text-display:  #ffffff;
 
-    --c-info: #5b9bf6;
+    --c-info:   #5b9bf6;
+    --c-violet: #c084fc;
   }
 }
 
@@ -114,7 +116,8 @@
   --c-text-3:        #666666;
   --c-text-display:  #ffffff;
 
-  --c-info: #5b9bf6;
+  --c-info:   #5b9bf6;
+  --c-violet: #c084fc;
 }
 
 /* ── Tailwind utility bridge ─────────────────────────────────────────────────
@@ -128,6 +131,7 @@
   --color-success: var(--c-success);
   --color-warning: var(--c-warning);
   --color-info:    var(--c-info);
+  --color-violet:  var(--c-violet);
   --color-accent:  var(--c-accent);
 }
 

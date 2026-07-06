@@ -264,7 +264,7 @@ async function unpin(app: App) {
         <!-- Quick access -->
         <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-[var(--c-border)]">
           <p class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest mb-3">Quick access</p>
-          <TransitionGroup tag="div" name="ui-pop" class="flex flex-wrap gap-2.5">
+          <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="app.pinnedUrl!" target="_blank" rel="noopener"
@@ -472,3 +472,11 @@ async function unpin(app: App) {
     </template>
   </Modal>
 </template>
+
+<style scoped>
+/* Take leaving cards out of the flow so the remaining ones reflow (ui-pop-move)
+   immediately instead of waiting for the leave animation to finish. */
+.pinned-grid > .ui-pop-leave-active {
+  position: absolute;
+}
+</style>

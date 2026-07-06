@@ -130,9 +130,9 @@ function actionCategory(action: string): Category {
 
 const categoryClass: Record<Category, string> = {
   auth:   'bg-info/10 text-info border-info/20',
-  fs:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  fs:     'bg-violet/10 text-violet border-violet/20',
   system: 'bg-warning/10 text-warning border-warning/20',
-  admin:  'bg-[var(--c-accent)]/10 text-[var(--c-accent)] border-[var(--c-accent)]/20',
+  admin:  'bg-accent/10 text-accent border-accent/20',
   other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
 }
 
@@ -214,7 +214,7 @@ function relTime(d: string | Date): string {
               <div class="text-[10px] uppercase tracking-wider text-[var(--c-text-3)]">RAID Arrays</div>
               <div v-for="r in raids" :key="r.name" class="flex items-center justify-between">
                 <span class="text-xs font-mono text-[var(--c-text-2)]">{{ r.name }}</span>
-                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border',
+                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-sm border',
                   isRaidHealthy(r)
                     ? 'bg-success/10 text-success border-success/20'
                     : 'bg-danger/10 text-danger border-danger/20']">
@@ -268,7 +268,7 @@ function relTime(d: string | Date): string {
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
               <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-success' : 'bg-danger']" />
               <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0 w-16">{{ relTime(entry.createdAt) }}</span>
-              <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border shrink-0', categoryClass[actionCategory(entry.action)]]">
+              <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border shrink-0', categoryClass[actionCategory(entry.action)]]">
                 {{ actionLabel(entry.action) }}
               </span>
               <span class="text-xs text-[var(--c-text-2)] truncate">

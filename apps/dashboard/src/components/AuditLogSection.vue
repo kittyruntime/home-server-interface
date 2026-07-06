@@ -95,9 +95,9 @@ function actionCategory(action: string): Category {
 
 const categoryClass: Record<Category, string> = {
   auth:   'bg-info/10 text-info border-info/20',
-  fs:     'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  fs:     'bg-violet/10 text-violet border-violet/20',
   system: 'bg-warning/10 text-warning border-warning/20',
-  admin:  'bg-[var(--c-accent)]/10 text-[var(--c-accent)] border-[var(--c-accent)]/20',
+  admin:  'bg-accent/10 text-accent border-accent/20',
   other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
 }
 
@@ -173,7 +173,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-else class="text-[var(--c-text-3)] text-xs italic">—</span>
                 </td>
                 <td class="px-4 py-2.5">
-                  <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] border', categoryClass[actionCategory(entry.action)]]">
+                  <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
                     {{ actionLabel(entry.action) }}
                   </span>
                 </td>
@@ -188,11 +188,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 </td>
                 <td class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-success/10 text-success">
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
                     <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-danger/10 text-danger">
+                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-danger/10 text-danger">
                     <span class="w-1.5 h-1.5 rounded-full bg-danger"/>Fail
                   </span>
                 </td>

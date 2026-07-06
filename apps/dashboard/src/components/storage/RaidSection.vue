@@ -310,7 +310,7 @@ const openMenu = ref<string | null>(null)
     <!-- RAID arrays list -->
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
+        <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
       </div>
     </div>
 
@@ -378,17 +378,17 @@ const openMenu = ref<string | null>(null)
                     :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-danger/40 bg-danger/5'">
                     <svg viewBox="0 0 52 68" class="w-12 h-16">
                       <rect x="3" y="3" width="46" height="62" rx="5"
-                        :fill="idx < r.active ? 'var(--c-surface-deep)' : 'rgba(239,68,68,0.06)'"
-                        :stroke="idx < r.active ? 'var(--c-border-strong)' : 'rgba(239,68,68,0.5)'" stroke-width="1.5"/>
+                        :fill="idx < r.active ? 'var(--c-surface-deep)' : 'color-mix(in srgb, var(--c-danger) 6%, transparent)'"
+                        :stroke="idx < r.active ? 'var(--c-border-strong)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1.5"/>
                       <circle cx="9" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="43" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="9" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="43" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="26" cy="32" r="12" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'" stroke-width="1" opacity="0.35"/>
-                      <circle cx="26" cy="32" r="6" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.5)'" stroke-width="1" opacity="0.35"/>
-                      <line x1="26" y1="32" x2="35" y2="21" :stroke="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.6)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
-                      <circle cx="26" cy="32" r="2.5" :fill="idx < r.active ? 'var(--c-accent)' : 'rgba(239,68,68,0.7)'" opacity="0.8"/>
-                      <circle cx="40" cy="50" r="2" :fill="idx < r.active ? '#4ade80' : '#ef4444'" opacity="0.9"/>
+                      <circle cx="26" cy="32" r="12" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <circle cx="26" cy="32" r="6" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <line x1="26" y1="32" x2="35" y2="21" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+                      <circle cx="26" cy="32" r="2.5" :fill="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 70%, transparent)'" opacity="0.8"/>
+                      <circle cx="40" cy="50" r="2" :fill="idx < r.active ? 'var(--c-success)' : 'var(--c-danger)'" opacity="0.9"/>
                       <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
                     </svg>
                   </div>
@@ -519,7 +519,7 @@ const openMenu = ref<string | null>(null)
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-sm"
                       :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
                     >{{ fs.tag }}</span>
                   </div>
@@ -619,7 +619,7 @@ const openMenu = ref<string | null>(null)
               />
             </div>
             <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="mountDlg.persist" type="checkbox" class="mt-0.5 accent-[var(--c-accent)]"/>
+              <input v-model="mountDlg.persist" type="checkbox" class="mt-0.5 accent-accent"/>
               <div>
                 <div class="text-xs font-medium text-[var(--c-text-2)]">Persist across reboots</div>
                 <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
@@ -657,7 +657,7 @@ const openMenu = ref<string | null>(null)
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Mount point</span><span class="font-mono">{{ umountDlg.dev.mountpoint }}</span></div>
             </div>
             <label class="flex items-start gap-2.5 cursor-pointer">
-              <input v-model="umountDlg.rmFstab" type="checkbox" class="mt-0.5 accent-[var(--c-accent)]"/>
+              <input v-model="umountDlg.rmFstab" type="checkbox" class="mt-0.5 accent-accent"/>
               <div>
                 <div class="text-xs font-medium text-[var(--c-text-2)]">Remove from /etc/fstab</div>
                 <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
