@@ -7,6 +7,7 @@ import {
   type BlockDev, type RaidArray,
 } from '../../composables/useStorageData'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
 
@@ -456,9 +457,7 @@ const openMenu = ref<string | null>(null)
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- FORMAT WIZARD                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="formatWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="formatWiz = null">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="formatWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!formatWiz.busy" @close="formatWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -581,16 +580,12 @@ const openMenu = ref<string | null>(null)
             </div>
           </div>
 
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- MOUNT DIALOG                                                         -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="mountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="mountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="mountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!mountDlg.busy" @close="mountDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">
@@ -635,16 +630,12 @@ const openMenu = ref<string | null>(null)
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- UNMOUNT DIALOG                                                       -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="umountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="umountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="umountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!umountDlg.busy" @close="umountDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
@@ -673,16 +664,12 @@ const openMenu = ref<string | null>(null)
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- CREATE RAID WIZARD                                                   -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="raidWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="raidWiz = null">
-        <div class="w-full max-w-lg bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -846,16 +833,12 @@ const openMenu = ref<string | null>(null)
             </div>
           </div>
 
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- DESTROY RAID DIALOG                                                  -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="destroyDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="destroyDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="destroyDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!destroyDlg.busy" @close="destroyDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
             <h3 class="font-semibold text-danger">Destroy RAID array</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will stop the array and erase RAID metadata from all member drives.</p>
@@ -900,9 +883,7 @@ const openMenu = ref<string | null>(null)
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
   </div>
 </template>

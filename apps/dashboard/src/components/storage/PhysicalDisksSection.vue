@@ -6,6 +6,7 @@ import {
   type BlockDev,
 } from '../../composables/useStorageData'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'raid' | 'lvm'] }>()
 
@@ -625,9 +626,7 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- FORMAT WIZARD                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="formatWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="formatWiz = null">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="formatWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!formatWiz.busy" @close="formatWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -750,16 +749,12 @@ async function doUmount() {
             </div>
           </div>
 
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- MOUNT DIALOG                                                         -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="mountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="mountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="mountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!mountDlg.busy" @close="mountDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">
@@ -804,16 +799,12 @@ async function doUmount() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- UNMOUNT DIALOG                                                       -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="umountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="umountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="umountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!umountDlg.busy" @close="umountDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
@@ -842,16 +833,12 @@ async function doUmount() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- CREATE PARTITION TABLE DIALOG                                          -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="partInitDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partInitDlg.busy && (partInitDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="partInitDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partInitDlg.busy" @close="partInitDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
             <h3 class="font-semibold text-danger">Create partition table</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">Writes a new GPT partition table — all existing data on the disk will be lost.</p>
@@ -885,16 +872,12 @@ async function doUmount() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- ADD PARTITION DIALOG                                                  -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="partCreateDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partCreateDlg.busy && (partCreateDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Add partition</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">Creates a new partition spanning all available free space on <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
@@ -920,16 +903,12 @@ async function doUmount() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- DELETE PARTITION DIALOG                                               -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="partDeleteDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="!partDeleteDlg.busy && (partDeleteDlg = null)">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-danger/30 rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="partDeleteDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partDeleteDlg.busy" @close="partDeleteDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
             <h3 class="font-semibold text-danger">Delete partition</h3>
           </div>
@@ -957,9 +936,7 @@ async function doUmount() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
   </div>
 </template>

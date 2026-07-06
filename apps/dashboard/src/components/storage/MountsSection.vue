@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, raidLevelLabel, type BlockDev } from '../../composables/useStorageData'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'raid' | 'lvm'] }>()
 
@@ -389,9 +390,7 @@ async function doUmount() {
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- FORMAT WIZARD                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="formatWiz" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="formatWiz = null">
-        <div class="w-full max-w-md bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="formatWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!formatWiz.busy" @close="formatWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
@@ -514,16 +513,13 @@ async function doUmount() {
             </div>
           </div>
 
-        </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- MOUNT DIALOG                                                         -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="mountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="mountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="mountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!mountDlg.busy" @close="mountDlg = null">
+        <div>
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">
@@ -569,15 +565,13 @@ async function doUmount() {
             </div>
           </div>
         </div>
-      </div>
-    </Teleport>
+    </Modal>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- UNMOUNT DIALOG                                                       -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <div v-if="umountDlg" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="umountDlg = null">
-        <div class="w-full max-w-sm bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden">
+    <Modal v-if="umountDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!umountDlg.busy" @close="umountDlg = null">
+        <div>
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
             <h3 class="font-semibold text-[var(--c-text-1)]">Unmount device</h3>
           </div>
@@ -607,8 +601,7 @@ async function doUmount() {
             </div>
           </div>
         </div>
-      </div>
-    </Teleport>
+    </Modal>
 
   </div>
 </template>

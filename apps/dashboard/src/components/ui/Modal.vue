@@ -3,15 +3,18 @@ import { computed, inject, ref } from 'vue'
 import { useEscLayer } from '../../lib/escLayer'
 import { modalHostKey } from '../../lib/modal-host'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
   panelClass?: string
   closeOnBackdrop?: boolean
   showClose?: boolean
+  /** Block Escape/backdrop/X while a critical operation runs (e.g. formatting). */
+  preventClose?: boolean
 }>(), {
   panelClass: 'w-full max-w-md',
   closeOnBackdrop: true,
   showClose: true,
+  preventClose: false,
 })
 
 const emit = defineEmits<{ close: [] }>()
@@ -19,7 +22,10 @@ const emit = defineEmits<{ close: [] }>()
 /* Owns enter/leave animation: parents keep using v-if + @close, but the
    leave transition must finish before the parent is told to unmount us. */
 const visible = ref(true)
-function requestClose() { visible.value = false }
+function requestClose() {
+  if (props.preventClose) return
+  visible.value = false
+}
 
 useEscLayer(requestClose)
 
