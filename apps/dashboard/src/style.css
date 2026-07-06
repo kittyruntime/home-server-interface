@@ -312,7 +312,8 @@ select:not(:disabled),
 }
 .ui-fade-enter-from,
 .ui-fade-leave-to { opacity: 0; }
-/* Route fade (App.vue) runs at --dur-fast. Scoped via class instead of an
+/* View fade — route changes (App.vue) and classic-mode app switches
+   (DashboardLayout) run at --dur-fast. Scoped via class instead of an
    inline --ui-dur, which would inherit to every descendant transition. */
 .route-fade.ui-fade-enter-active,
 .route-fade.ui-fade-leave-active { transition-duration: var(--dur-fast); }
