@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.0] - 2026-07-06
+
 ### Changed
 - **Storage dialogs**: the format wizard, mount/unmount, LVM/RAID wizards and partition/destroy confirmations now use the shared modal component — so they animate in and out, join the layered-Escape stack, and (in desktop mode) render inside their window instead of covering the whole screen, matching every other dialog in the app.
 
@@ -427,7 +429,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...HEAD
+[1.28.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...v1.28.0
 [1.27.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...v1.27.2
 [1.27.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.0...v1.27.1
 [1.27.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.26.0...v1.27.0
