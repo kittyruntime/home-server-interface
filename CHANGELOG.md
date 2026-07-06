@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Motion system**: the dashboard now animates on design-token durations/easing — modals and confirm dialogs pop in and out, the launchpad zooms, desktop windows animate on open/close/minimize, pinned apps slide into place when added or removed, and route changes cross-fade. Everything collapses to instant under `prefers-reduced-motion`.
+
+### Changed
+- **Design tokens**: finished migrating the remaining raw palette colors to semantic status tokens (storage sections, overview, audit log, notifications, profile, permissions, RAID drive-bay illustration), exposed them as Tailwind utilities, and moved all radii to the shared token scale. Destructive/confirm buttons keep a visible hover state; the audit-log `fs` category gets a proper violet token with a dark-mode variant.
+
+### Fixed
+- **Escape key**: with stacked overlays (a confirm dialog over the launchpad, or an open role picker inside a modal), Escape now closes only the topmost layer instead of everything at once.
+- **Confirm dialogs**: a confirmation requested while the previous one was still animating out could be silently auto-cancelled; it now shows correctly. Confirm/Cancel also play the dialog's leave animation instead of snapping it away.
+
 ## [1.26.0] - 2026-07-03
 
 ### Changed
