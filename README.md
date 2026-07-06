@@ -22,8 +22,12 @@ A modern home server dashboard for self-hosting apps, media and storage.
 
 ## Features
 
+### Two ways to work
+- **Classic layout** — a fixed sidebar with one panel at a time; ideal on mobile.
+- **Desktop mode** — a windowed desktop with a dock, launchpad, draggable/resizable app windows and a customizable wallpaper. Toggle it from the account menu.
+
 ### Overview
-The home panel surfaces live system metrics at a glance: CPU, memory, disk usage and running services.
+The home panel surfaces live system metrics at a glance: CPU, memory, disk usage, container status and recent activity.
 
 ### File browser
 - Navigate folders, rename, move, copy, delete files and directories
@@ -38,6 +42,19 @@ The home panel surfaces live system metrics at a glance: CPU, memory, disk usage
 - Import a **compose YAML** to prefill the form automatically
 - Manage container networks and volumes
 
+### Storage (admin)
+Dedicated app to manage the machine's block storage:
+- **Disks** — list physical disks and partitions, view S.M.A.R.T. health, format, create/delete partition tables
+- **RAID** — assemble and destroy `mdadm` arrays, monitor sync state
+- **LVM** — create physical volumes, volume groups and logical volumes
+- **Mounts** — mount/unmount devices, with optional persistent `/etc/fstab` entries
+
+### Monitor (admin)
+Live and historical system metrics (CPU %, RAM, network — 1h/6h/24h/7d), system information, and a filterable **audit log** of every privileged action.
+
+### Network sharing (admin)
+Share any Place over SMB via Samba, managed from the **Sharing** app: per-place read-only/guest options, live connections view, and NAS-style password sync across web, Linux and Samba accounts. Requires `samba` on the host.
+
 ### Places
 Administrators define **Places** — named mount points that map a server path to a share visible in the browser. Users only see the shares they have access to.
 
@@ -51,7 +68,21 @@ Administrators define **Places** — named mount points that map a server path t
 Heavy operations (copy, move, assemble large uploads) run as background jobs executed by a privileged worker process. The UI polls for completion and notifies you when done — no browser tab needs to stay open.
 
 ### Privilege isolation
-The backend runs as an unprivileged user. A separate **root worker** process communicates over NATS JetStream and performs privileged filesystem operations (ownership-preserving copies, `chmod`, `chown`, user-impersonated writes) in isolation. No `sudo` required at runtime.
+The backend runs as an unprivileged user. A separate **root worker** process communicates over NATS JetStream and performs privileged operations (ownership-preserving copies, `chmod`, `chown`, user-impersonated writes, disk/RAID/LVM management, Samba config) in isolation. No `sudo` required at runtime.
+
+### Consistent, animated UI
+A token-based design system (semantic colors, radius scale, motion tokens with `prefers-reduced-motion` support) drives a coherent look in light and dark themes, with a user-selectable accent color.
+
+---
+
+## Documentation
+
+Developer and operator documentation lives in [`docs/`](docs/):
+
+- [Architecture](docs/architecture.md) — processes, privilege isolation, data flow, tech stack
+- [Development](docs/development.md) — local setup, build, project layout, release process
+- [Configuration](docs/configuration.md) — environment variables, services, install/update options
+- [Design system](docs/design-system.md) — tokens, shared components and frontend conventions
 
 ---
 
@@ -92,7 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/
 ### Pin a version
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.2.0 bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.28.1 bash
 ```
 
 ---
@@ -114,13 +145,15 @@ journalctl -u app -f
 
 ## Build from source
 
-Requirements: Node.js ≥ 18, pnpm, Go ≥ 1.21, curl, openssl.
+Requirements: Node.js ≥ 20, pnpm, Go ≥ 1.21, curl, openssl.
 
 ```bash
 git clone https://github.com/kittyruntime/home-server-interface
 cd home-server-interface
 sudo bash scripts/install.sh
 ```
+
+For a local development environment (dev servers, hot reload, project layout, release process) see [docs/development.md](docs/development.md).
 
 ---
 
