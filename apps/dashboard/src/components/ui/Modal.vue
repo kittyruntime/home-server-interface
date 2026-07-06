@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
+import { useEscLayer } from '../../lib/escLayer'
 
 withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
@@ -19,11 +20,11 @@ const emit = defineEmits<{ close: [] }>()
 const visible = ref(true)
 function requestClose() { visible.value = false }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') requestClose()
-}
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+useEscLayer(requestClose)
+
+/* Lets wrappers (ConfirmDialog) close with the leave animation instead of
+   unmounting abruptly via their own v-if. */
+defineExpose({ requestClose })
 </script>
 
 <template>

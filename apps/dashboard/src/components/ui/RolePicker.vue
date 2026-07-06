@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { pushEscLayer } from '../../lib/escLayer'
 
 export type PickerItem = {
   id: string
@@ -33,12 +34,19 @@ function isBusy(id: string) {
   return props.busy?.[id] ?? false
 }
 
+/* The open dropdown registers as an Escape layer so Escape closes it without
+   also dismissing the modal it lives in. */
+let releaseEsc: (() => void) | null = null
+
 function openPicker() {
   open.value = true
   search.value = ''
+  releaseEsc ??= pushEscLayer(closePicker)
 }
 function closePicker() {
   open.value = false
+  releaseEsc?.()
+  releaseEsc = null
 }
 function togglePicker() {
   if (open.value) closePicker()
@@ -54,17 +62,13 @@ function onDocMousedown(e: MouseEvent) {
   if (!open.value) return
   if (rootRef.value && !rootRef.value.contains(e.target as Node)) closePicker()
 }
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && open.value) closePicker()
-}
-
 onMounted(() => {
   document.addEventListener('mousedown', onDocMousedown)
-  document.addEventListener('keydown', onKeydown)
 })
 onUnmounted(() => {
   document.removeEventListener('mousedown', onDocMousedown)
-  document.removeEventListener('keydown', onKeydown)
+  releaseEsc?.()
+  releaseEsc = null
 })
 </script>
 

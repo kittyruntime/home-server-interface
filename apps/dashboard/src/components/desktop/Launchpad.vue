@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
+import { useEscLayer } from '../../lib/escLayer'
 import AppIcon from './AppIcon.vue'
 
 const emit = defineEmits<{ close: [] }>()
@@ -29,11 +30,7 @@ function launch(id: AppId) {
   requestClose()
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') requestClose()
-}
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+useEscLayer(requestClose)
 </script>
 
 <template>
