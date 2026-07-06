@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { useEscLayer } from '../../lib/escLayer'
+import { modalHostKey } from '../../lib/modal-host'
 
 withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
@@ -22,23 +23,28 @@ function requestClose() { visible.value = false }
 
 useEscLayer(requestClose)
 
+/* Inside a desktop window the modal stays within the window frame. */
+const host = inject(modalHostKey, null)
+const teleportTarget = computed(() => host?.value ?? 'body')
+
 /* Lets wrappers (ConfirmDialog) close with the leave animation instead of
    unmounting abruptly via their own v-if. */
 defineExpose({ requestClose })
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="teleportTarget">
     <Transition name="ui-fade" appear @after-leave="emit('close')">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+        :class="[host ? 'absolute' : 'fixed', 'inset-0 z-50 bg-black/80 flex items-center justify-center p-4']"
         @click.self="closeOnBackdrop && requestClose()"
       >
         <Transition name="ui-pop" appear>
           <!-- v-if mirrors the backdrop's so the panel plays its own leave pop
                (unmounting via the parent alone would skip it). -->
-          <div v-if="visible" :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[90vh]', panelClass]">
+          <!-- max-h is a % so it tracks the host (window body or viewport). -->
+          <div v-if="visible" :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[90%]', panelClass]">
             <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
               <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
                 <slot name="header" />

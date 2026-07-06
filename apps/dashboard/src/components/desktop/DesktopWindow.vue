@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
+import { ref, computed, onUnmounted, onMounted, provide, watch } from 'vue'
 import { useDesktop, APP_LABEL, type DesktopWindow } from '../../lib/desktop'
+import { modalHostKey } from '../../lib/modal-host'
 import AppIcon from './AppIcon.vue'
 import { useAuth } from '../../lib/auth'
 import { downloadUrl } from '../../lib/file-url'
@@ -20,6 +21,11 @@ const props = defineProps<{
 
 const { closeWindow, focusWindow, toggleMinimize, toggleMaximize, moveWindow, resizeWindow, setDirty } = useDesktop()
 const { isAdmin } = useAuth()
+
+/* Modals opened by the app inside this window render within its body
+   instead of covering the whole screen. */
+const bodyEl = ref<HTMLElement | null>(null)
+provide(modalHostKey, bodyEl)
 
 const appsPanelRef = ref<InstanceType<typeof AppsPanel> | null>(null)
 const settingsPanelRef = ref<InstanceType<typeof SettingsPanel> | null>(null)
@@ -199,7 +205,7 @@ function onMaximizeClick() {
       </div>
     </div>
 
-    <div class="flex-1 overflow-hidden">
+    <div ref="bodyEl" class="relative flex-1 overflow-hidden">
       <FileBrowserPanel v-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
