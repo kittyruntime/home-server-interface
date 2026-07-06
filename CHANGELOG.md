@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sharing in classic mode**: the SMB Sharing app is now reachable outside desktop mode — admin-only entry in the classic sidebar and the mobile bottom nav.
+
+### Changed
+- **Classic mode animations**: switching apps in classic (non-desktop) mode now cross-fades, matching the motion system introduced in 1.27.0.
+
+### Fixed
+- **Windowed modals**: dialogs opened by an app running in a desktop window (file properties, permissions, pin/edit forms…) now display inside that window instead of covering the whole screen. System-level dialogs (confirmations, wallpaper picker) stay fullscreen.
+
 ## [1.27.0] - 2026-07-06
 
 ### Added
