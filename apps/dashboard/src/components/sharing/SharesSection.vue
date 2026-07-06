@@ -2,6 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
+import { useConfirm } from '../../lib/confirm'
+
+const { confirm } = useConfirm()
 
 type ShareRow = {
   id: string
@@ -124,7 +127,7 @@ async function toggleEnabled(s: ShareRow) {
 }
 
 async function removeShare(s: ShareRow) {
-  if (!confirm(`Stop sharing "${s.effectiveName}"? Clients will lose access.`)) return
+  if (!await confirm(`Stop sharing "${s.effectiveName}"? Clients will lose access.`, { danger: true, confirmLabel: 'Stop sharing' })) return
   deleting.value = s.id
   error.value = ''
   try {
