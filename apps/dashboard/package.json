@@ -10,27 +10,27 @@
   },
   "dependencies": {
     "@app/shared-types": "workspace:*",
-    "@codemirror/commands": "^6.10.3",
-    "@codemirror/language": "^6.12.3",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/language": "^6.12.4",
     "@codemirror/language-data": "^6.5.2",
-    "@codemirror/state": "^6.6.0",
-    "@codemirror/view": "^6.43.1",
-    "@trpc/client": "^10.45.2",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@trpc/client": "^10.45.4",
     "chart.js": "^4.5.1",
     "codemirror": "^6.0.2",
-    "vue": "^3.5.25",
+    "vue": "^3.5.39",
     "vue-chartjs": "^5.3.3",
-    "vue-router": "^4.5.0",
-    "yaml": "^2.7.0"
+    "vue-router": "^4.6.4",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
-    "@types/node": "^24.10.1",
-    "@vitejs/plugin-vue": "^6.0.2",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/node": "^24.13.2",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.8.1",
-    "tailwindcss": "^4.0.0",
+    "tailwindcss": "^4.3.2",
     "typescript": "~5.9.3",
-    "vite": "^7.3.1",
-    "vue-tsc": "^3.1.5"
+    "vite": "^7.3.6",
+    "vue-tsc": "^3.3.6"
   }
 }

@@ -19,6 +19,9 @@
       "@prisma/engines",
       "prisma",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "tsx": "^4.23.0"
+    }
   }
 }
