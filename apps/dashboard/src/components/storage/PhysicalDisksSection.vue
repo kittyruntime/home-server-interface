@@ -9,6 +9,7 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
+import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'raid' | 'lvm'] }>()
@@ -109,10 +110,10 @@ function toggleDanger(name: string) {
 
 // ── Partition dialogs ─────────────────────────────────────────────────────────
 
-const partInitDlg = ref<{ disk: BlockDev; confirm: string; busy: boolean; err: string } | null>(null)
+const partInitDlg = ref<{ disk: BlockDev; busy: boolean; err: string } | null>(null)
 
 async function doPartInit() {
-  if (!partInitDlg.value || partInitDlg.value.confirm !== partInitDlg.value.disk.name) return
+  if (!partInitDlg.value) return
   const d = partInitDlg.value
   d.busy = true; d.err = ''
   try {
@@ -494,7 +495,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   <div class="flex-1 min-w-0">
                     <span class="text-[11px] text-[var(--c-text-3)]">No partition table — create one to start using this disk.</span>
                   </div>
-                  <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
+                  <button @click="partInitDlg = { disk, busy: false, err: '' }"
                     class="shrink-0 text-[11px] px-2.5 py-1 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
                     Create partition table…
                   </button>
@@ -518,7 +519,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     <div class="flex-1 min-w-0">
                       <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
                       <p class="text-[10px] text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
-                      <button @click="partInitDlg = { disk, confirm: '', busy: false, err: '' }"
+                      <button @click="partInitDlg = { disk, busy: false, err: '' }"
                         class="mt-2 text-[11px] px-2.5 py-1 rounded-sm border border-danger/30 text-danger/80 hover:border-danger/60 hover:text-danger hover:bg-danger/10 transition-colors">
                         Create partition table…
                       </button>
@@ -538,44 +539,26 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- CREATE PARTITION TABLE DIALOG                                          -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="partInitDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partInitDlg.busy" @close="partInitDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-            <h3 class="font-semibold text-danger">Create partition table</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Writes a new GPT partition table — all existing data on the disk will be lost.</p>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              <span>All partitions and data on <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will be permanently destroyed. This cannot be undone.</span>
-            </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
-              <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
-            </div>
-            <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ partInitDlg.disk.name }}</span> to confirm
-              </label>
-              <input v-model="partInitDlg.confirm" type="text" :placeholder="partInitDlg.disk.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
-            </div>
-            <div v-if="partInitDlg.err" class="text-xs text-danger">{{ partInitDlg.err }}</div>
-            <div class="flex gap-2">
-              <button @click="partInitDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doPartInit" :disabled="partInitDlg.confirm !== partInitDlg.disk.name || partInitDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="partInitDlg.busy">Creating…</span>
-                <span v-else>Create partition table</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Create partition table -->
+    <ConfirmDestroyDialog
+      v-if="partInitDlg"
+      title="Create partition table"
+      subtitle="Writes a new GPT partition table — all existing data on the disk will be lost."
+      :confirm-word="partInitDlg.disk.name"
+      action-label="Create partition table"
+      busy-label="Creating…"
+      :busy="partInitDlg.busy"
+      :error="partInitDlg.err"
+      @confirm="doPartInit"
+      @close="partInitDlg = null"
+    >
+      <template #warning>All partitions and data on <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will be permanently destroyed. This cannot be undone.</template>
+      <template #details>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
+        <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
+      </template>
+    </ConfirmDestroyDialog>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- ADD PARTITION DIALOG                                                  -->
@@ -608,38 +591,26 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </div>
     </Modal>
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- DELETE PARTITION DIALOG                                               -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="partDeleteDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partDeleteDlg.busy" @close="partDeleteDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-            <h3 class="font-semibold text-danger">Delete partition</h3>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              Deleting <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> will permanently destroy all data in that partition.
-            </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
-              <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
-            </div>
-            <div v-if="partDeleteDlg.err" class="text-xs text-danger">{{ partDeleteDlg.err }}</div>
-            <div class="flex gap-2">
-              <button @click="partDeleteDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doPartDelete" :disabled="partDeleteDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="partDeleteDlg.busy">Deleting…</span>
-                <span v-else>Delete partition</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Delete partition -->
+    <ConfirmDestroyDialog
+      v-if="partDeleteDlg"
+      title="Delete partition"
+      action-label="Delete partition"
+      busy-label="Deleting…"
+      :busy="partDeleteDlg.busy"
+      :error="partDeleteDlg.err"
+      @confirm="doPartDelete"
+      @close="partDeleteDlg = null"
+    >
+      <template #warning>Deleting <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> will permanently destroy all data in that partition.</template>
+      <template #details>
+        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
+        <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
+      </template>
+    </ConfirmDestroyDialog>
 
   </div>
 </template>

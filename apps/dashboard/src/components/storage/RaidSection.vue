@@ -10,6 +10,7 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
+import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
@@ -164,19 +165,17 @@ async function doCreateRaid() {
 
 const destroyDlg = ref<{
   raid:    RaidArray
-  confirm: string
   busy:    boolean
   err:     string
 } | null>(null)
 
 function openDestroy(raid: RaidArray) {
-  destroyDlg.value = { raid, confirm: '', busy: false, err: '' }
+  destroyDlg.value = { raid, busy: false, err: '' }
 }
 
 async function doDestroyRaid() {
   if (!destroyDlg.value) return
   const d = destroyDlg.value
-  if (d.confirm !== d.raid.name) return
   d.busy = true
   d.err  = ''
   try {
@@ -538,55 +537,26 @@ const openMenu = ref<string | null>(null)
 
     </Modal>
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- DESTROY RAID DIALOG                                                  -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="destroyDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!destroyDlg.busy" @close="destroyDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-            <h3 class="font-semibold text-danger">Destroy RAID array</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will stop the array and erase RAID metadata from all member drives.</p>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              <span>All data on <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> will be permanently lost. Make sure you have a backup.</span>
-            </div>
-
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Array</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Level</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Members</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
-            </div>
-
-            <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ destroyDlg.raid.name }}</span> to confirm
-              </label>
-              <input
-                v-model="destroyDlg.confirm"
-                type="text"
-                :placeholder="destroyDlg.raid.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
-              />
-            </div>
-
-            <div v-if="destroyDlg.err" class="text-xs text-danger">{{ destroyDlg.err }}</div>
-
-            <div class="flex gap-2">
-              <button @click="destroyDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button
-                @click="doDestroyRaid"
-                :disabled="destroyDlg.confirm !== destroyDlg.raid.name || destroyDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-              >
-                <span v-if="destroyDlg.busy">Destroying…</span>
-                <span v-else>Destroy array</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Destroy RAID array -->
+    <ConfirmDestroyDialog
+      v-if="destroyDlg"
+      title="Destroy RAID array"
+      subtitle="This will stop the array and erase RAID metadata from all member drives."
+      :confirm-word="destroyDlg.raid.name"
+      action-label="Destroy array"
+      busy-label="Destroying…"
+      :busy="destroyDlg.busy"
+      :error="destroyDlg.err"
+      @confirm="doDestroyRaid"
+      @close="destroyDlg = null"
+    >
+      <template #warning>All data on <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> will be permanently lost. Make sure you have a backup.</template>
+      <template #details>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Array</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Level</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Members</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
+      </template>
+    </ConfirmDestroyDialog>
 
   </div>
 </template>

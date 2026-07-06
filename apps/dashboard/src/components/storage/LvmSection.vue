@@ -6,6 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
+import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 
 const { loading, error, devices, raids, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
@@ -146,10 +147,10 @@ async function doAddLv() {
 
 // ── Remove LV confirmation ────────────────────────────────────────────────────
 
-const removeLvDlg = ref<{ lv: LvmLV; confirm: string; busy: boolean; err: string } | null>(null)
+const removeLvDlg = ref<{ lv: LvmLV; busy: boolean; err: string } | null>(null)
 
 async function doRemoveLv() {
-  if (!removeLvDlg.value || removeLvDlg.value.confirm !== removeLvDlg.value.lv.name) return
+  if (!removeLvDlg.value) return
   const d = removeLvDlg.value
   d.busy = true; d.err = ''
   try {
@@ -165,10 +166,10 @@ async function doRemoveLv() {
 
 // ── Remove VG confirmation ────────────────────────────────────────────────────
 
-const removeVgDlg = ref<{ vg: LvmVG; confirm: string; busy: boolean; err: string } | null>(null)
+const removeVgDlg = ref<{ vg: LvmVG; busy: boolean; err: string } | null>(null)
 
 async function doRemoveVg() {
-  if (!removeVgDlg.value || removeVgDlg.value.confirm !== removeVgDlg.value.vg.name) return
+  if (!removeVgDlg.value) return
   const d = removeVgDlg.value
   d.busy = true; d.err = ''
   try {
@@ -276,7 +277,7 @@ const openMenu = ref<string | null>(null)
                   <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
                   </div>
-                  <button @click="removeVgDlg = { vg, confirm: '', busy: false, err: '' }; openMenu = null"
+                  <button @click="removeVgDlg = { vg, busy: false, err: '' }; openMenu = null"
                     class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
@@ -333,7 +334,7 @@ const openMenu = ref<string | null>(null)
                   class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
-                <button @click="removeLvDlg = { lv, confirm: '', busy: false, err: '' }"
+                <button @click="removeLvDlg = { lv, busy: false, err: '' }"
                   title="Delete this logical volume"
                   class="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -505,82 +506,46 @@ const openMenu = ref<string | null>(null)
           </div>
     </Modal>
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- REMOVE LV DIALOG                                                     -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="removeLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!removeLvDlg.busy" @close="removeLvDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-            <h3 class="font-semibold text-danger">Delete Logical Volume</h3>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              All data on <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> will be permanently destroyed.
-            </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
-            </div>
-            <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeLvDlg.lv.name }}</span> to confirm
-              </label>
-              <input v-model="removeLvDlg.confirm" type="text" :placeholder="removeLvDlg.lv.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
-            </div>
-            <div v-if="removeLvDlg.err" class="text-xs text-danger">{{ removeLvDlg.err }}</div>
-            <div class="flex gap-2">
-              <button @click="removeLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doRemoveLv" :disabled="removeLvDlg.confirm !== removeLvDlg.lv.name || removeLvDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="removeLvDlg.busy">Deleting…</span>
-                <span v-else>Delete LV</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Remove LV -->
+    <ConfirmDestroyDialog
+      v-if="removeLvDlg"
+      title="Delete Logical Volume"
+      :confirm-word="removeLvDlg.lv.name"
+      action-label="Delete LV"
+      busy-label="Deleting…"
+      :busy="removeLvDlg.busy"
+      :error="removeLvDlg.err"
+      @confirm="doRemoveLv"
+      @close="removeLvDlg = null"
+    >
+      <template #warning>All data on <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> will be permanently destroyed.</template>
+      <template #details>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
+      </template>
+    </ConfirmDestroyDialog>
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- REMOVE VG DIALOG                                                     -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="removeVgDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!removeVgDlg.busy" @close="removeVgDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-            <h3 class="font-semibold text-danger">Remove Volume Group</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">This will delete the VG and all its Logical Volumes.</p>
-          </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
-              Removing <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.
-            </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
-            </div>
-            <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ removeVgDlg.vg.name }}</span> to confirm
-              </label>
-              <input v-model="removeVgDlg.confirm" type="text" :placeholder="removeVgDlg.vg.name"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
-            </div>
-            <div v-if="removeVgDlg.err" class="text-xs text-danger">{{ removeVgDlg.err }}</div>
-            <div class="flex gap-2">
-              <button @click="removeVgDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="doRemoveVg" :disabled="removeVgDlg.confirm !== removeVgDlg.vg.name || removeVgDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
-                <span v-if="removeVgDlg.busy">Removing…</span>
-                <span v-else>Remove VG</span>
-              </button>
-            </div>
-          </div>
-    </Modal>
+    <!-- Remove VG -->
+    <ConfirmDestroyDialog
+      v-if="removeVgDlg"
+      title="Remove Volume Group"
+      subtitle="This will delete the VG and all its Logical Volumes."
+      :confirm-word="removeVgDlg.vg.name"
+      action-label="Remove VG"
+      busy-label="Removing…"
+      :busy="removeVgDlg.busy"
+      :error="removeVgDlg.err"
+      @confirm="doRemoveVg"
+      @close="removeVgDlg = null"
+    >
+      <template #warning>Removing <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.</template>
+      <template #details>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
+      </template>
+    </ConfirmDestroyDialog>
   </div>
 </template>
