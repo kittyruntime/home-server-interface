@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Storage dialogs**: the format wizard, mount/unmount, LVM/RAID wizards and partition/destroy confirmations now use the shared modal component — so they animate in and out, join the layered-Escape stack, and (in desktop mode) render inside their window instead of covering the whole screen, matching every other dialog in the app.
+
+### Performance
+- **Smaller initial load**: the Storage, Monitor, Apps, Settings and Sharing panels are now code-split into separate chunks loaded on first open. The initial JavaScript bundle drops from ~865 KB to ~274 KB.
+
 ## [1.27.2] - 2026-07-06
 
 ### Security
