@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.2] - 2026-07-07
+
 ### Security
 - **Dependencies**: removed two stale per-app `pnpm-lock.yaml` files left over from the initial import. The repo is a pnpm workspace that only uses the root lockfile (already on patched versions), so these files carried only fossilised vulnerable versions and were the sole source of 24 phantom Dependabot alerts (11 high, 11 moderate, 2 low). Alert count is now 0.
 
@@ -437,7 +439,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...HEAD
+[1.28.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...v1.28.2
 [1.28.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...v1.28.0
 [1.27.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.1...v1.27.2
