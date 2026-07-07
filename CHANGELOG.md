@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependencies**: removed two stale per-app `pnpm-lock.yaml` files left over from the initial import. The repo is a pnpm workspace that only uses the root lockfile (already on patched versions), so these files carried only fossilised vulnerable versions and were the sole source of 24 phantom Dependabot alerts (11 high, 11 moderate, 2 low). Alert count is now 0.
+
 ## [1.28.1] - 2026-07-06
 
 ### Changed
