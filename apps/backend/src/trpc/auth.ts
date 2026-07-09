@@ -1,14 +1,25 @@
 import jwt from "jsonwebtoken"
 import crypto from "node:crypto"
 
+const DEV_SECRET = "dev-secret"
+const isProd = process.env.NODE_ENV === "production"
+
+// In production, refuse to start with a missing or weak signing key rather than
+// silently falling back to a public default that would let anyone forge tokens.
+if (isProd && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
+  throw new Error(
+    "[security] JWT_SECRET must be set to a strong value (>= 32 chars) in production. " +
+    "Refusing to start with an insecure signing key. The install script generates one for you.",
+  )
+}
 if (!process.env.JWT_SECRET) {
   console.warn(
-    "[security] JWT_SECRET is not set — using insecure default. " +
+    "[security] JWT_SECRET is not set — using an insecure development default. " +
     "Set JWT_SECRET in your environment before deploying to production.",
   )
 }
 
-export const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret"
+export const JWT_SECRET = process.env.JWT_SECRET ?? DEV_SECRET
 
 export interface TokenPayload {
   userId: string

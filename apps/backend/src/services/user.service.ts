@@ -3,6 +3,10 @@ import { TRPCError } from "@trpc/server"
 import type { PrismaClient, Prisma } from "@app/database"
 import { requestSync } from "../nats"
 
+/** Seeded default password for the initial `admin` account. Surfaced so the
+ *  dashboard can warn while it's still in use (see user.securityStatus). */
+export const DEFAULT_PASSWORD = "admin"
+
 export const userSelect = {
   id: true,
   username: true,

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **JWT signing key**: the backend now refuses to start in production (`NODE_ENV=production`) when `JWT_SECRET` is missing or shorter than 32 characters, instead of silently falling back to a public development default that would let anyone forge session tokens. Development keeps the warn-and-fallback behaviour. (The install script already generates a 64-char secret, so existing installs are unaffected.)
+- **Default-password warning**: when an account is still signed in with the seeded default password, the dashboard now shows a dismissible banner linking straight to the password-change screen. The check runs server-side (`user.securityStatus`) and never exposes the password hash.
+
+### Changed
+- **Linting**: added ESLint (flat config, Vue `flat/essential` + typescript-eslint) over all TS/Vue code and a `gofmt` + `go vet` gate for the Go root-worker, wired into a new CI `lint` job. Fixed the handful of real issues this surfaced (a `String` wrapper type, an unused-expression ternary, a useless assignment, an unused prop binding) and normalised the root-worker's Go formatting. Run locally with `pnpm lint`.
+
+### Fixed
+- **Expired sessions**: when a stored session token is rejected (expired or revoked), the dashboard now clears it and redirects to the login screen instead of leaving the user on a silently-failing page. A failed login attempt is unaffected (no redirect loop).
+- **Error states**: the Audit Log and the System → History charts now show a distinct error message with a Retry button when their data fails to load, instead of falling through to their "no data" empty state (which misrepresented a failure as an absence of activity).
+
 ## [1.28.2] - 2026-07-07
 
 ### Security

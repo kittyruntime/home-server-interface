@@ -47,6 +47,18 @@ async function checkUpdateBadge() {
   } catch { /* non-critical */ }
 }
 
+// Default-credentials nudge: shown once per session (re-checked on every boot)
+// until the account moves off the seeded default password.
+const usingDefaultPassword = ref(false)
+const defaultPwDismissed = ref(false)
+
+async function checkDefaultPassword() {
+  try {
+    const s = await trpc.user.securityStatus.query()
+    usingDefaultPassword.value = s.usingDefaultPassword
+  } catch { /* non-critical */ }
+}
+
 const activeApp        = ref<string>('dashboard')
 const notifMenuOpen    = ref(false)
 const userMenuOpen     = ref(false)
@@ -137,6 +149,7 @@ onMounted(() => {
   document.addEventListener('click', closeUserMenu)
   window.addEventListener('resize', updateIsMobile)
   checkUpdateBadge()
+  checkDefaultPassword()
   updateTimer = setInterval(checkUpdateBadge, 3_600_000) // hourly
 })
 onUnmounted(() => {
@@ -434,6 +447,30 @@ onUnmounted(() => {
 
     <!-- Main area -->
     <main class="flex-1 flex flex-col overflow-hidden">
+      <!-- Default-password warning: dismissible, links straight to the profile
+           where the password can be changed. -->
+      <div
+        v-if="usingDefaultPassword && !defaultPwDismissed"
+        class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-[var(--c-warning-subtle)] border-b border-[var(--c-border)] text-sm flex-shrink-0"
+      >
+        <svg class="w-4 h-4 shrink-0 text-[var(--c-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <span class="text-[var(--c-text-1)] flex-1 min-w-0">
+          You're signed in with the default password.
+          <button @click="goToProfile" class="font-medium underline underline-offset-2 hover:opacity-80">Change it now</button>
+          to keep your server secure.
+        </span>
+        <button
+          @click="defaultPwDismissed = true"
+          title="Dismiss"
+          class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)] transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
       <DesktopShell v-if="desktopMode && !isMobile" />
       <template v-else>
         <!-- Top bar (hidden for files — FileToolbar acts as the header) -->

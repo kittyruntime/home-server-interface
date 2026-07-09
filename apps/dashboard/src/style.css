@@ -45,6 +45,7 @@
 
   --c-success: #4a9e5c;
   --c-warning: #d4a843;
+  --c-warning-subtle: color-mix(in srgb, var(--c-warning) 15%, transparent);
   --c-info:    #007aff;
   --c-violet:  #a855f7;
 }
