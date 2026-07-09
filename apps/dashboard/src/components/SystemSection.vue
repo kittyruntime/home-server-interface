@@ -80,11 +80,17 @@ const period   = ref<Period>('1h')
 type Snapshot = { timestamp: string | Date; cpuPct: number; ramUsed: number; ramTotal: number; netRxBps: number; netTxBps: number }
 const historyData    = ref<Snapshot[]>([])
 const historyLoading = ref(false)
+const historyError   = ref('')
 
 async function loadHistory() {
   historyLoading.value = true
+  historyError.value   = ''
   try {
     historyData.value = await trpc.system.metricsHistory.query({ period: period.value })
+  } catch (e: unknown) {
+    // Distinguish a failed fetch from the genuine "no data recorded yet" case
+    // below, which otherwise looks identical to the user.
+    historyError.value = (e as { message?: string })?.message ?? 'Failed to load metrics history'
   } finally {
     historyLoading.value = false
   }
@@ -356,6 +362,12 @@ const chartOptions = {
       </div>
 
       <div v-if="historyLoading" class="flex justify-center py-12 text-[var(--c-text-3)] text-sm">Loading…</div>
+      <div v-else-if="historyError" class="flex flex-col items-center gap-3 py-12 text-center">
+        <div class="text-sm text-danger">{{ historyError }}</div>
+        <button @click="loadHistory" class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">
+          Retry
+        </button>
+      </div>
       <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-[var(--c-text-3)]">
         No data yet — history is recorded every minute.
       </div>

@@ -9,6 +9,7 @@ const PAGE_SIZE = 50
 const page          = ref(0)
 const filterAction  = ref('')
 const loading       = ref(false)
+const error         = ref('')
 const entries       = ref<AuditEntry[]>([])
 const total         = ref(0)
 const pages         = ref(1)
@@ -16,6 +17,7 @@ const selectedEntry = ref<AuditEntry | null>(null)
 
 async function load() {
   loading.value = true
+  error.value   = ''
   try {
     const res = await trpc.audit.list.query({
       page:   page.value,
@@ -25,6 +27,10 @@ async function load() {
     entries.value = res.entries
     total.value   = res.total
     pages.value   = Math.max(1, Math.ceil(res.total / PAGE_SIZE))
+  } catch (e: unknown) {
+    // Surface the failure instead of falling through to the empty state, which
+    // would misrepresent a load error as "no activity".
+    error.value = (e as { message?: string })?.message ?? 'Failed to load the audit log'
   } finally {
     loading.value = false
   }
@@ -135,6 +141,14 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
       </svg>
       Loading…
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="flex flex-col items-center gap-3 py-16 text-center">
+      <div class="text-sm text-danger">{{ error }}</div>
+      <button @click="load" class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">
+        Retry
+      </button>
     </div>
 
     <!-- Empty -->
