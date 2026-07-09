@@ -21,7 +21,8 @@ function speed(bps: number) {
 }
 
 function togglePause(t: UploadTask) {
-  t.status === 'paused' ? uploads.resume(t.id) : uploads.pause(t.id)
+  if (t.status === 'paused') uploads.resume(t.id)
+  else uploads.pause(t.id)
 }
 
 // ── combined list ─────────────────────────────────────────────────────────────

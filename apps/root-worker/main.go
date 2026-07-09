@@ -206,8 +206,8 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	stagingDir := filepath.Join(meta.DestDir, ".uploads-"+meta.UploadID)
-	chunkPath  := filepath.Join(stagingDir, fmt.Sprintf("%d.part", meta.ChunkIndex))
-	data       := msg.Data
+	chunkPath := filepath.Join(stagingDir, fmt.Sprintf("%d.part", meta.ChunkIndex))
+	data := msg.Data
 
 	var fsErr *fsError
 	if err := withUser(meta.LinuxUsername, func() error {
@@ -759,7 +759,7 @@ func toFsErr(err error) *fsError {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 func main() {
-	natsURL  := getenv("NATS_URL", "nats://127.0.0.1:4222")
+	natsURL := getenv("NATS_URL", "nats://127.0.0.1:4222")
 	natsUser := getenv("NATS_USER", "worker")
 	natsPass := getenv("NATS_PASS", "worker-dev")
 
@@ -793,40 +793,40 @@ func main() {
 
 	// ── Request-reply subscriptions (sync ops) ─────────────────────────────
 	for subj, handler := range map[string]func(*nats.Conn, *nats.Msg){
-		"root.fs.list":                     handleList,
-		"root.fs.stat":                     handleStat,
-		"root.fs.diskusage":                handleDiskUsage,
-		"root.fs.read":                     handleRead,
-		"root.sys.disks":                   handleDisks,
-		"root.sys.blockdevices":            handleBlockDevices,
-		"root.sys.format":                  handleDiskFormat,
-		"root.sys.mount":                   handleDiskMount,
-		"root.sys.umount":                  handleDiskUmount,
-		"root.sys.raid.create":             handleRaidCreate,
-		"root.sys.raid.stop":               handleRaidStop,
-		"root.sys.lvm.info":                handleLvmInfo,
-		"root.sys.lvm.pv.create":           handlePvCreate,
-		"root.sys.lvm.vg.create":           handleVgCreate,
-		"root.sys.lvm.lv.create":           handleLvCreate,
-		"root.sys.lvm.lv.remove":           handleLvRemove,
-		"root.sys.lvm.vg.remove":           handleVgRemove,
-		"root.sys.part.init":               handlePartitionInit,
-		"root.sys.part.create":             handlePartitionCreate,
-		"root.sys.part.delete":             handlePartitionDelete,
-		"root.sys.smart":                   handleSmartInfo,
-		"root.fs.read-chunk":               handleReadChunk,
-		"root.fs.write-chunk":              handleWriteChunk,
-		"root.container.inspect":           handleDockerInspect,
-		"root.container.listAll":           handleDockerListAll,
-		"root.container.logs":              handleDockerLogs,
-		"root.container.logs.stop":         handleDockerLogsStop,
-		"root.fs.mkdirp":                   handleMkdirp,
-		"root.linux.user.create":           handleLinuxUserCreate,
-		"root.fs.search":                   handleSearch,
-		"root.sharing.checkPrereqs":        handleSharingCheckPrereqs,
-		"root.sharing.sync":                handleSharingSync,
-		"root.sharing.setPassword":         handleSharingSetPassword,
-		"root.sharing.status":              handleSharingStatus,
+		"root.fs.list":              handleList,
+		"root.fs.stat":              handleStat,
+		"root.fs.diskusage":         handleDiskUsage,
+		"root.fs.read":              handleRead,
+		"root.sys.disks":            handleDisks,
+		"root.sys.blockdevices":     handleBlockDevices,
+		"root.sys.format":           handleDiskFormat,
+		"root.sys.mount":            handleDiskMount,
+		"root.sys.umount":           handleDiskUmount,
+		"root.sys.raid.create":      handleRaidCreate,
+		"root.sys.raid.stop":        handleRaidStop,
+		"root.sys.lvm.info":         handleLvmInfo,
+		"root.sys.lvm.pv.create":    handlePvCreate,
+		"root.sys.lvm.vg.create":    handleVgCreate,
+		"root.sys.lvm.lv.create":    handleLvCreate,
+		"root.sys.lvm.lv.remove":    handleLvRemove,
+		"root.sys.lvm.vg.remove":    handleVgRemove,
+		"root.sys.part.init":        handlePartitionInit,
+		"root.sys.part.create":      handlePartitionCreate,
+		"root.sys.part.delete":      handlePartitionDelete,
+		"root.sys.smart":            handleSmartInfo,
+		"root.fs.read-chunk":        handleReadChunk,
+		"root.fs.write-chunk":       handleWriteChunk,
+		"root.container.inspect":    handleDockerInspect,
+		"root.container.listAll":    handleDockerListAll,
+		"root.container.logs":       handleDockerLogs,
+		"root.container.logs.stop":  handleDockerLogsStop,
+		"root.fs.mkdirp":            handleMkdirp,
+		"root.linux.user.create":    handleLinuxUserCreate,
+		"root.fs.search":            handleSearch,
+		"root.sharing.checkPrereqs": handleSharingCheckPrereqs,
+		"root.sharing.sync":         handleSharingSync,
+		"root.sharing.setPassword":  handleSharingSetPassword,
+		"root.sharing.status":       handleSharingStatus,
 	} {
 		h := handler // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {

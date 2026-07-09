@@ -280,7 +280,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
               <!-- SMART health panel (expandable) -->
               <div v-if="smartOpen.has(disk.name)" class="border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/40">
-                <!-- sc = SmartResult | undefined, scoped for TS narrowing -->
+                <!-- sc = SmartResult | undefined, scoped for TS narrowing.
+                     Single-element array: disk.name is a valid unique key here. -->
+                <!-- eslint-disable-next-line vue/valid-v-for -->
                 <template v-for="sc in [smartCache[disk.name]]" :key="disk.name">
                   <!-- Loading -->
                   <div v-if="sc?._loading" class="flex items-center gap-2 px-4 py-4 text-sm text-[var(--c-text-3)]">

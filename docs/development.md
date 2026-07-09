@@ -54,8 +54,15 @@ There is **no unit-test suite yet**; verification is build + typecheck.
 ```bash
 pnpm -r build                              # build all workspaces
 pnpm --filter @app/dashboard exec vue-tsc -b   # dashboard type check
-cd apps/root-worker && go build ./...      # root-worker compiles
+pnpm lint                                  # ESLint over all TS/Vue (pnpm lint:fix to auto-fix)
+cd apps/root-worker && gofmt -l . && go vet ./...   # Go format check + vet
 ```
+
+Linting is enforced in CI (`.github/workflows/ci.yml`, `lint` job): ESLint for
+the TS/Vue code, plus `gofmt` and `go vet` for the root-worker. The ESLint config
+(`eslint.config.js`) uses the correctness-focused rules only (Vue `flat/essential`
++ typescript-eslint recommended) and deliberately leaves template formatting to the
+editor.
 
 CI (`.github/workflows/ci.yml`) builds the root-worker, generates the Prisma
 client, bundles the backend with esbuild, and builds the dashboard on every push

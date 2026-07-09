@@ -701,8 +701,8 @@ func doListDisks() (*disksResult, *fsError) {
 
 		bsize := int64(st.Bsize)
 		total := int64(st.Blocks) * bsize
-		free  := int64(st.Bavail) * bsize
-		used  := total - int64(st.Bfree)*bsize
+		free := int64(st.Bavail) * bsize
+		used := total - int64(st.Bfree)*bsize
 
 		disks = append(disks, diskInfo{
 			Device:     device,
@@ -736,7 +736,7 @@ func parseMdstat(content string) []raidArray {
 			continue
 		}
 
-		name  := fields[0]
+		name := fields[0]
 		state := fields[2]
 		level := fields[3]
 

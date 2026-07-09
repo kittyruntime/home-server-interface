@@ -115,7 +115,7 @@ const sortedEntries = computed(() => {
   const arr = [...entries.value]
   arr.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
-    let cmp = 0
+    let cmp: number
     if (sortField.value === 'name') {
       cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     } else if (sortField.value === 'size') {

@@ -4,7 +4,7 @@ import type { UploadTask } from '../../lib/uploads'
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type SortField = 'name' | 'size' | 'date'
 
-const props = defineProps<{
+defineProps<{
   entries: Entry[]
   selected: Set<string>
   renamingPath: string | null

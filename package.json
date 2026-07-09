@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "start": "pnpm -r start"
@@ -23,5 +25,12 @@
     "overrides": {
       "tsx": "^4.23.0"
     }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-vue": "^10.9.2",
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.63.0"
   }
 }

@@ -7,6 +7,43 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/root-worker/go.mod
+          cache: false
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint (ESLint)
+        run: pnpm lint
+
+      - name: Check Go formatting
+        run: |
+          cd apps/root-worker
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet Go
+        run: cd apps/root-worker && go vet ./...
+
   build:
     runs-on: ubuntu-latest
 

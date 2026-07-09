@@ -1,5 +1,5 @@
 export type Task = {
-    id: String
+    id: string
 }
 
 export type { AppRouter } from "../../../apps/backend/src/trpc/routers/index"

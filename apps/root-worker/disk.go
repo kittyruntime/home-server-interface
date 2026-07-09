@@ -1025,16 +1025,16 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	result.Available    = true
-	result.ModelFamily  = strings.TrimSpace(sc.ModelFamily)
-	result.ModelName    = strings.TrimSpace(sc.ModelName)
+	result.Available = true
+	result.ModelFamily = strings.TrimSpace(sc.ModelFamily)
+	result.ModelName = strings.TrimSpace(sc.ModelName)
 	result.SerialNumber = strings.TrimSpace(sc.SerialNumber)
-	result.Firmware     = strings.TrimSpace(sc.FirmwareVersion)
+	result.Firmware = strings.TrimSpace(sc.FirmwareVersion)
 	result.RotationRate = sc.RotationRate
 	result.HealthPassed = sc.SmartStatus.Passed
-	result.Temperature  = sc.Temperature.Current
+	result.Temperature = sc.Temperature.Current
 	result.PowerOnHours = sc.PowerOnTime.Hours
-	result.PowerCycles  = sc.PowerCycleCount
+	result.PowerCycles = sc.PowerCycleCount
 
 	// ATA attributes
 	for _, a := range sc.AtaSmartAttributes.Table {
@@ -1116,4 +1116,3 @@ func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) {
 	exec.Command("udevadm", "settle").Run()
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
-
