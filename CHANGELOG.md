@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.3] - 2026-07-09
+
 ### Security
 - **JWT signing key**: the backend now refuses to start in production (`NODE_ENV=production`) when `JWT_SECRET` is missing or shorter than 32 characters, instead of silently falling back to a public development default that would let anyone forge session tokens. Development keeps the warn-and-fallback behaviour. (The install script already generates a 64-char secret, so existing installs are unaffected.)
 - **Default-password warning**: when an account is still signed in with the seeded default password, the dashboard now shows a dismissible banner linking straight to the password-change screen. The check runs server-side (`user.securityStatus`) and never exposes the password hash.
@@ -450,7 +452,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...HEAD
+[1.28.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...v1.28.3
 [1.28.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...v1.28.2
 [1.28.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.27.2...v1.28.0
