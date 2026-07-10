@@ -80,6 +80,25 @@ export function verifyWallpaperToken(token: string): WallpaperTokenPayload {
   return payload
 }
 
+// ── Share access tokens ───────────────────────────────────────────────────────
+// Minted after a public share link is unlocked (password entered). Scopes the
+// bearer to ONE ShareLink for a short window, so folder listing and downloads
+// on a password-protected link don't re-send the password in every URL.
+export interface ShareTokenPayload {
+  shareLinkId: string
+  scope: "share"
+}
+
+export function signShareToken(shareLinkId: string): string {
+  return jwt.sign({ shareLinkId, scope: "share" }, JWT_SECRET, { expiresIn: "30m" })
+}
+
+export function verifyShareToken(token: string): ShareTokenPayload {
+  const payload = jwt.verify(token, JWT_SECRET) as ShareTokenPayload
+  if (payload.scope !== "share") throw new Error("Invalid token scope")
+  return payload
+}
+
 // ── In-memory token blacklist ─────────────────────────────────────────────────
 // Holds JTIs of logged-out tokens until they expire.
 // Lost on restart — acceptable since restarts already invalidate all jobs.
