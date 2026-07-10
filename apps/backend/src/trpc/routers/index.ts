@@ -12,6 +12,7 @@ import { updateRouter } from "./update"
 import { wallpaperRouter } from "./wallpaper"
 import { auditRouter } from "./audit"
 import { sharingRouter } from "./sharing"
+import { shareLinkRouter } from "./shareLink"
 
 export const appRouter = router({
   auth: authRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   wallpaper: wallpaperRouter,
   audit: auditRouter,
   sharing: sharingRouter,
+  shareLink: shareLinkRouter,
 })
 
 export type AppRouter = typeof appRouter

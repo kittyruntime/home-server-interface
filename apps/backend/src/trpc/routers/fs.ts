@@ -28,7 +28,7 @@ async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Pro
 // Returns the matched Place's root path so callers can pass it to the
 // worker for symlink-aware containment checks, or null when the caller is
 // an admin (unrestricted — no containment check performed by the worker).
-async function checkPathPerm(
+export async function checkPathPerm(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } },
   path: string,
   flag: "canRead" | "canWrite" | "canDelete" | "canShare",
