@@ -1,33 +1,69 @@
-Brume Software License
-Copyright (c) 2025 kittyruntime
+HSI Software License
+Copyright (c) 2025-2026 kittyruntime
+All rights reserved.
+
+This is a source-available, NON-COMMERCIAL license. The Software may be used
+free of charge by private individuals for personal, non-commercial purposes
+only. ANY COMMERCIAL USE IS PROHIBITED unless you first obtain a separate
+written commercial license from the copyright holder.
 
 TERMS AND CONDITIONS
 
-1. INDIVIDUAL USE
-   This software is free to use, copy, modify, and self-host for personal,
-   non-commercial purposes by private individuals at no cost and without
-   prior permission.
+1. DEFINITIONS
+   "The Software" means HSI (Home Server Interface), together with its source
+   code, binaries, and any derivative works.
+   "Commercial use" means any use of the Software that is primarily intended for
+   or directed toward commercial advantage or monetary compensation, including,
+   without limitation:
+   - offering the Software or a derivative as a hosted or managed service (SaaS);
+   - bundling or integrating the Software with any product or service that is
+     sold, licensed, or otherwise monetised;
+   - using the Software to provide paid services to third parties;
+   - using the Software in the internal operations of any for-profit company,
+     organisation, or other legal entity; or
+   - any use that directly or indirectly generates revenue.
 
-2. COMPANY AND ORGANISATIONAL USE
-   Any use by a company, organisation, government body, or other legal entity
-   — including internal tools, intranet deployments, or employee-facing
-   services — requires prior written permission from the copyright holder.
+2. PERMITTED USE (NON-COMMERCIAL, INDIVIDUALS)
+   Subject to this license, private individuals are granted a free, worldwide,
+   non-exclusive, revocable license to use, copy, modify, and self-host the
+   Software for personal, non-commercial purposes, at no cost and without prior
+   permission.
 
-3. COMMERCIAL USE
-   Commercial use of any kind is strictly prohibited without a separate written
-   agreement with the copyright holder. Commercial use includes, but is not
-   limited to:
-   - Offering Brume or a derivative as a hosted or managed service (SaaS)
-   - Bundling Brume with a commercial product or service
-   - Using Brume to directly or indirectly generate revenue
+3. COMMERCIAL USE PROHIBITED
+   Commercial use of the Software, in whole or in part, in original or modified
+   form, is strictly prohibited unless and until you obtain a separate written
+   commercial license from the copyright holder. No commercial right is granted
+   by implication, estoppel, or otherwise. To request a commercial license,
+   contact the copyright holder (kittyruntime) via the project's GitHub
+   repository.
 
-4. REDISTRIBUTION
+4. ORGANISATIONAL USE
+   Any use by a company, organisation, government body, or other legal entity —
+   including internal tools, intranet deployments, or employee-facing services —
+   requires prior written permission from the copyright holder, whether or not
+   that use is directly commercial.
+
+5. REDISTRIBUTION
    Redistribution of the source code or binaries, with or without modification,
-   is permitted provided that this license and copyright notice are preserved
-   and that no commercial use as defined in section 3 is made.
+   is permitted for non-commercial purposes only, and only provided that this
+   license and the above copyright notice are preserved in full in all copies.
+   You may not sublicense the Software or grant any rights beyond those you hold
+   under this license.
 
-5. NO WARRANTY
-   THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM,
-   DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THIS SOFTWARE.
+6. TRADEMARKS
+   This license does not grant permission to use the trade names, trademarks, or
+   product names of the copyright holder, except as required for reasonable and
+   customary attribution.
 
+7. TERMINATION
+   Any breach of this license — in particular any commercial use without a
+   written commercial license — automatically and immediately terminates the
+   rights granted to you under it.
+
+8. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+   IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
