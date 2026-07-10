@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.5] - 2026-07-10
+
 ### Changed
 - **Places settings**: reworked the Places screen to explain what a place is and guide setup — a descriptive header, per-field hints on the add form, a guided empty state, and a short explanation of the read / write / delete permissions (with per-column tooltips and a note that admins always have full access). The "Add place" trigger now uses the shared button style.
 
@@ -464,7 +466,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.4...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.5...HEAD
+[1.28.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.4...v1.28.5
 [1.28.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...v1.28.4
 [1.28.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...v1.28.3
 [1.28.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...v1.28.2
