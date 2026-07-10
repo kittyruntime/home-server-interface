@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.4] - 2026-07-10
+
 ### Changed
 - **Button consistency**: unified every call-to-action on the shared `.btn` design-token classes (`.btn-primary`/`.btn-outline`/`.btn-ghost`/`.btn-danger`). The primary button is now solid accent (following the accent-colour picker) instead of a mix of punched-out and inline accent styles; LVM wizard CTAs are no longer a stray purple, and destructive confirmations (Format, Create RAID, Destroy…) share one danger style. 82 buttons now use the shared system (was 36); no more inline accent or hard-coded-colour CTAs.
 - **Storage app icon**: replaced the single cylinder glyph with a clearer three-bay disk rack (with drive LEDs), in the desktop launcher, sidebar and mobile nav.
@@ -456,7 +458,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.4...HEAD
+[1.28.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...v1.28.4
 [1.28.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...v1.28.3
 [1.28.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.1...v1.28.2
 [1.28.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.0...v1.28.1
