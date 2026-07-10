@@ -43,11 +43,15 @@ export async function shareRoutes(app: FastifyInstance) {
       return reply.status(404).send("Not found")
     }
 
-    // Atomic download-limit guard: only count/serve if under the cap.
+    // Atomic download-limit guard: only count/serve if under the cap and not expired.
     const updated = await prisma.shareLink.updateMany({
       where: {
-        id: link.id, disabled: false,
-        OR: [{ maxDownloads: null }, { downloads: { lt: link.maxDownloads ?? Number.MAX_SAFE_INTEGER } }],
+        id: link.id,
+        disabled: false,
+        AND: [
+          { OR: [{ maxDownloads: null }, { downloads: { lt: link.maxDownloads ?? Number.MAX_SAFE_INTEGER } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+        ],
       },
       data: { downloads: { increment: 1 }, lastAccessAt: new Date() },
     })
@@ -61,7 +65,7 @@ export async function shareRoutes(app: FastifyInstance) {
       `${isInline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(name)}`,
     )
     reply.header("Content-Type", isInline ? mime : "application/octet-stream")
-    reply.header("Accept-Ranges", "bytes")
+    reply.header("Cache-Control", "private, no-store")
     if (isInline) {
       reply.header("X-Content-Type-Options", "nosniff")
       reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
