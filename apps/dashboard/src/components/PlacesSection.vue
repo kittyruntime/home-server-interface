@@ -5,7 +5,7 @@ import { trpc } from '../lib/trpc'
 type Place = { id: string; name: string; path: string }
 type Role  = { id: string; name: string; userRoles: { userId: string }[] }
 type User  = { id: string; username: string; userRoles: { role: { isAdmin: boolean } }[] }
-type Perm  = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean }
+type Perm  = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
 
 const places       = ref<Place[]>([])
 const roles        = ref<Role[]>([])
@@ -99,16 +99,17 @@ async function togglePerm(
   placeId: string,
   subjectType: 'user' | 'role',
   subjectId: string,
-  field: 'canRead' | 'canWrite' | 'canDelete',
+  field: 'canRead' | 'canWrite' | 'canDelete' | 'canShare',
 ) {
   const current = getPerm(placeId, subjectType, subjectId)
   const next = {
     canRead:   current?.canRead   ?? false,
     canWrite:  current?.canWrite  ?? false,
     canDelete: current?.canDelete ?? false,
+    canShare:  current?.canShare  ?? false,
   }
   next[field] = !next[field]
-  if (!next.canRead && !next.canWrite && !next.canDelete) {
+  if (!next.canRead && !next.canWrite && !next.canDelete && !next.canShare) {
     await trpc.permission.remove.mutate({ placeId, subjectType, subjectId })
   } else {
     await trpc.permission.upsert.mutate({ placeId, subjectType, subjectId, ...next })
@@ -250,6 +251,7 @@ onMounted(async () => {
                   <th class="px-3 py-2 text-center font-medium w-16" title="List and download files">Read</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="Upload, rename and modify files">Write</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="Remove files and folders">Delete</th>
+                  <th class="px-3 py-2 text-center font-medium w-16" title="Create public share links for this folder">Share</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[var(--c-border)]">
@@ -261,7 +263,7 @@ onMounted(async () => {
                       <span class="text-[var(--c-text-2)]">{{ role.name }}</span>
                     </div>
                   </td>
-                  <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
+                  <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
                     <input type="checkbox"
                       :checked="getPerm(place.id, 'role', role.id)?.[field] ?? false"
                       @change="togglePerm(place.id, 'role', role.id, field)"
@@ -277,7 +279,7 @@ onMounted(async () => {
                       <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                     </div>
                   </td>
-                  <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
+                  <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
                     <input type="checkbox"
                       :checked="getPerm(place.id, 'user', user.id)?.[field] ?? false"
                       @change="togglePerm(place.id, 'user', user.id, field)"
@@ -286,7 +288,7 @@ onMounted(async () => {
                 </tr>
 
                 <tr v-if="visibleRoles.length === 0 && !users.some(u => !userIsAdmin(u))">
-                  <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
+                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
                 </tr>
               </tbody>
             </table>

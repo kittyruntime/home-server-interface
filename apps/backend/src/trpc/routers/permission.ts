@@ -29,6 +29,7 @@ export const permissionRouter = router({
         canRead: z.boolean(),
         canWrite: z.boolean(),
         canDelete: z.boolean(),
+        canShare: z.boolean(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -36,24 +37,26 @@ export const permissionRouter = router({
         input.subjectType === "role"
           ? await ctx.prisma.rolePlacePermission.upsert({
               where: { roleId_placeId: { roleId: input.subjectId, placeId: input.placeId } },
-              update: { canRead: input.canRead, canWrite: input.canWrite, canDelete: input.canDelete },
+              update: { canRead: input.canRead, canWrite: input.canWrite, canDelete: input.canDelete, canShare: input.canShare },
               create: {
                 roleId: input.subjectId,
                 placeId: input.placeId,
                 canRead: input.canRead,
                 canWrite: input.canWrite,
                 canDelete: input.canDelete,
+                canShare: input.canShare,
               },
             })
           : await ctx.prisma.userPlacePermission.upsert({
               where: { userId_placeId: { userId: input.subjectId, placeId: input.placeId } },
-              update: { canRead: input.canRead, canWrite: input.canWrite, canDelete: input.canDelete },
+              update: { canRead: input.canRead, canWrite: input.canWrite, canDelete: input.canDelete, canShare: input.canShare },
               create: {
                 userId: input.subjectId,
                 placeId: input.placeId,
                 canRead: input.canRead,
                 canWrite: input.canWrite,
                 canDelete: input.canDelete,
+                canShare: input.canShare,
               },
             })
       void syncSharesBestEffort(ctx.prisma)

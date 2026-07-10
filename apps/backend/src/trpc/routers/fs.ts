@@ -31,7 +31,7 @@ async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Pro
 async function checkPathPerm(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } },
   path: string,
-  flag: "canRead" | "canWrite" | "canDelete",
+  flag: "canRead" | "canWrite" | "canDelete" | "canShare",
 ): Promise<string | null> {
   if (ctx.user.isAdmin) return null
 

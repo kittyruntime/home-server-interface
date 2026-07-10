@@ -5,7 +5,7 @@ import { trpc } from '../lib/trpc'
 type Place = { id: string; name: string; path: string }
 type Role = { id: string; name: string; userRoles: { userId: string }[] }
 type User = { id: string; username: string; userRoles: { role: { id: string; name: string; isAdmin: boolean } }[] }
-type Perm = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean }
+type Perm = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
 
 const places = ref<Place[]>([])
 const roles = ref<Role[]>([])
@@ -48,18 +48,19 @@ async function togglePerm(
   placeId: string,
   subjectType: 'user' | 'role',
   subjectId: string,
-  field: 'canRead' | 'canWrite' | 'canDelete',
+  field: 'canRead' | 'canWrite' | 'canDelete' | 'canShare',
 ) {
   const current = getPerm(placeId, subjectType, subjectId)
   const next = {
     canRead: current?.canRead ?? false,
     canWrite: current?.canWrite ?? false,
     canDelete: current?.canDelete ?? false,
+    canShare: current?.canShare ?? false,
   }
   next[field] = !next[field]
 
   // If all are false, remove the record
-  if (!next.canRead && !next.canWrite && !next.canDelete) {
+  if (!next.canRead && !next.canWrite && !next.canDelete && !next.canShare) {
     await trpc.permission.remove.mutate({ placeId, subjectType, subjectId })
   } else {
     await trpc.permission.upsert.mutate({ placeId, subjectType, subjectId, ...next })
