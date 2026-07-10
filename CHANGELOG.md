@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.6] - 2026-07-10
+
 ### Changed
 - **License**: strengthened the non-commercial license — an explicit "source-available, NON-COMMERCIAL" header, a definitions section (notably a broad definition of "commercial use"), a clear commercial-use prohibition that reserves a written commercial-license option, and added trademark, termination and full no-warranty clauses. Renamed the project from "Brume" to **HSI (Home Server Interface)** in the license and NATS config (the rest of the codebase already used the current name).
 
@@ -469,7 +471,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.5...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.6...HEAD
+[1.28.6]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.5...v1.28.6
 [1.28.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.4...v1.28.5
 [1.28.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...v1.28.4
 [1.28.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.2...v1.28.3
