@@ -26,7 +26,10 @@ export function resolveShareState(link: {
 export type LoadedLink = {
   id: string; path: string; isDir: boolean; passwordHash: string | null
   maxDownloads: number | null; downloads: number
-  creatorId: string; linuxUser: string; allowedRoot: string | null
+  creatorId: string; linuxUser: string
+  // Worker containment root for root.fs.* calls: always the shared path itself,
+  // for every creator (including admins) — nothing outside it is reachable.
+  allowedRoot: string
 }
 
 // Returns the link + resolved creator context, or a typed failure. Does NOT
@@ -43,15 +46,19 @@ export async function loadLink(prisma: any, token: string):
     where: { id: row.creatorId }, select: { linuxUsername: true },
   })
   if (!creator) return { ok: false, reason: "creator" }
-  const allowedRoot = await creatorAllowedRoot(prisma, row.creatorId, row.path)
-  if (allowedRoot === undefined) return { ok: false, reason: "creator" }
+  // Authorization only — does not determine the worker containment root.
+  const authRoot = await creatorAllowedRoot(prisma, row.creatorId, row.path)
+  if (authRoot === undefined) return { ok: false, reason: "creator" }
 
   return {
     ok: true,
     link: {
       id: row.id, path: row.path, isDir: row.isDir, passwordHash: row.passwordHash,
       maxDownloads: row.maxDownloads, downloads: row.downloads,
-      creatorId: row.creatorId, linuxUser: creator.linuxUsername ?? "", allowedRoot,
+      creatorId: row.creatorId, linuxUser: creator.linuxUsername ?? "",
+      // Containment root is always the shared path itself, never the admin
+      // "no root" sentinel — the worker must not allow escaping this dir.
+      allowedRoot: row.path,
     },
   }
 }
@@ -188,10 +195,15 @@ export const shareLinkRouter = router({
       requireAccess(res.link, input.accessToken)
       const abs = resolveSubPath(res.link, input.subPath)
       if (!abs) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid path" })
-      const entries = await requestSync<{ name: string; type: "dir" | "file"; size: number | null }[]>(
-        "root.fs.list",
-        { path: abs, linuxUsername: res.link.linuxUser, allowedRoot: res.link.allowedRoot ?? "" },
-      )
+      let entries: { name: string; type: "dir" | "file"; size: number | null }[]
+      try {
+        entries = await requestSync<{ name: string; type: "dir" | "file"; size: number | null }[]>(
+          "root.fs.list",
+          { path: abs, linuxUsername: res.link.linuxUser, allowedRoot: res.link.allowedRoot ?? "" },
+        )
+      } catch {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Not available" })
+      }
       return { entries }
     }),
 })
@@ -200,15 +212,24 @@ export const shareLinkRouter = router({
 function requireAccess(link: LoadedLink, accessToken?: string) {
   if (!link.passwordHash) return
   if (!accessToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Password required" })
-  const payload = verifyShareToken(accessToken)
+  let payload: ReturnType<typeof verifyShareToken>
+  try {
+    payload = verifyShareToken(accessToken)
+  } catch {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid token" })
+  }
   if (payload.shareLinkId !== link.id) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid token" })
 }
 
 async function statSize(link: LoadedLink): Promise<number | null> {
-  const s = await requestSync<{ type: string; size: number | null }>(
-    "root.fs.stat", { path: link.path, linuxUsername: link.linuxUser, allowedRoot: link.allowedRoot ?? "" },
-  )
-  return s.size
+  try {
+    const s = await requestSync<{ type: string; size: number | null }>(
+      "root.fs.stat", { path: link.path, linuxUsername: link.linuxUser, allowedRoot: link.allowedRoot ?? "" },
+    )
+    return s.size
+  } catch {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Not available" })
+  }
 }
 
 async function assertOwnerOrAdmin(ctx: any, id: string) {
