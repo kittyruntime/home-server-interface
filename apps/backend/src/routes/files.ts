@@ -91,7 +91,7 @@ function authFromRequest(req: { headers: { authorization?: string } }) {
 // bytes reach the HTTP response as they arrive instead of only after the
 // whole file has been read into memory. Mirrors the existing chunked
 // upload path (writeChunk / root.fs.write-chunk) in the opposite direction.
-function chunkedReadStream(
+export function chunkedReadStream(
   filePath: string,
   linuxUser: string,
   allowedRoot: string,
