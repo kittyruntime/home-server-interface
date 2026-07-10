@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Places settings**: reworked the Places screen to explain what a place is and guide setup — a descriptive header, per-field hints on the add form, a guided empty state, and a short explanation of the read / write / delete permissions (with per-column tooltips and a note that admins always have full access). The "Add place" trigger now uses the shared button style.
+
+### Fixed
+- **Update release notes**: the "What's new" panel now renders release notes as formatted text (headings, lists, bold, inline code, links) instead of raw Markdown. The Updates screen also links out to the specific release and to the project on GitHub.
+
 ## [1.28.4] - 2026-07-10
 
 ### Changed

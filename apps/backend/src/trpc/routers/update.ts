@@ -53,6 +53,7 @@ export const updateRouter = router({
       checkedAt:    check?.checkedAt      ?? null,
       releaseNotes: check?.releaseNotes   ?? null,
       pending,
+      repoUrl:      `https://github.com/${GITHUB_REPO}`,
     }
   }),
 

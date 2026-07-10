@@ -122,18 +122,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section>
-    <div class="flex items-center justify-between mb-3 px-1">
-      <h3 class="text-xs font-medium uppercase tracking-widest text-[var(--c-text-3)]">Places</h3>
+  <section class="space-y-4">
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Places</h2>
+        <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-md leading-relaxed">
+          Folders on your NAS that you share with people. Each place maps a friendly name to a path on
+          the server, then grants read, write or delete access per user or role.
+        </p>
+      </div>
       <button
         v-if="!adding"
         @click="adding = true"
-        class="flex items-center gap-1 text-xs text-[var(--c-accent)] hover:opacity-80 transition-colors"
+        class="btn btn-primary btn-xs shrink-0"
       >
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
-        Add
+        Add place
       </button>
     </div>
 
@@ -142,32 +149,32 @@ onMounted(async () => {
 
     <template v-else>
       <!-- Add form -->
-      <div v-if="adding" class="rounded-xl border border-[var(--c-border-strong)] bg-[var(--c-surface)] p-4 mb-3">
-        <div class="flex gap-3 mb-3">
+      <div v-if="adding" class="rounded-xl border border-[var(--c-border-strong)] bg-[var(--c-surface)] p-4 space-y-3">
+        <h4 class="eyebrow">New place</h4>
+        <div class="flex gap-3">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Name</label>
-            <input v-model="newName" type="text" placeholder="Media"
-              class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-3)]
-                     focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
+            <label class="block text-xs text-[var(--c-text-2)] mb-1">Name</label>
+            <input v-model="newName" type="text" placeholder="Media" class="ui-input"/>
+            <p class="text-[11px] text-[var(--c-text-3)] mt-1 leading-relaxed">Shown to users in the file browser.</p>
           </div>
           <div class="flex-[2]">
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Path</label>
-            <input v-model="newPath" type="text" placeholder="/mnt/data"
-              class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-3)]
-                     font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors placeholder:text-[var(--c-text-3)]"/>
+            <label class="block text-xs text-[var(--c-text-2)] mb-1">Path</label>
+            <input v-model="newPath" type="text" placeholder="/mnt/data" class="ui-input font-mono"/>
+            <p class="text-[11px] text-[var(--c-text-3)] mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
           </div>
         </div>
-        <div v-if="addError" class="text-[var(--c-accent)] text-xs mb-1">{{ addError }}</div>
-        <div v-if="pathMissing" class="mb-2">
+        <div v-if="addError" class="text-[var(--c-accent)] text-xs">{{ addError }}</div>
+        <div v-if="pathMissing" class="rounded-lg bg-[var(--c-surface-alt)] border border-[var(--c-border)] px-3 py-2">
+          <p class="text-xs text-[var(--c-text-2)]">This folder doesn't exist yet.</p>
           <button @click="createDir" :disabled="addLoading"
-            class="text-xs text-[var(--c-accent)] underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
-            {{ addLoading ? 'Creating…' : 'Create directory and add place' }}
+            class="text-xs text-[var(--c-accent)] underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-0.5">
+            {{ addLoading ? 'Creating…' : 'Create it and add the place' }}
           </button>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 pt-1">
           <button @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()"
             class="btn btn-primary btn-sm">
-            {{ addLoading ? 'Adding…' : 'Add Place' }}
+            {{ addLoading ? 'Adding…' : 'Add place' }}
           </button>
           <button @click="adding = false; addError = ''; pathMissing = false"
             class="btn btn-ghost btn-sm">
@@ -177,8 +184,22 @@ onMounted(async () => {
       </div>
 
       <!-- Empty state -->
-      <div v-if="places.length === 0 && !adding" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-5 py-4">
-        <p class="text-sm text-[var(--c-text-3)] italic">No places configured yet.</p>
+      <div v-if="places.length === 0 && !adding"
+        class="rounded-xl border border-dashed border-[var(--c-border-strong)] bg-[var(--c-surface)] px-6 py-10 text-center">
+        <svg class="w-10 h-10 mx-auto text-[var(--c-text-3)] opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        </svg>
+        <h4 class="text-sm font-medium text-[var(--c-text-1)] mt-3">No places yet</h4>
+        <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-xs mx-auto leading-relaxed">
+          A place shares a folder on your NAS with users and roles — you decide exactly who can read,
+          write or delete its contents.
+        </p>
+        <button @click="adding = true" class="btn btn-primary btn-sm mt-4 mx-auto">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Add your first place
+        </button>
       </div>
 
       <!-- Places list -->
@@ -216,16 +237,19 @@ onMounted(async () => {
 
           <!-- Permissions matrix (expanded) -->
           <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
-            <div class="px-4 py-2 bg-[var(--c-surface-alt)]">
-              <span class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Permissions</span>
+            <div class="px-4 py-2.5 bg-[var(--c-surface-alt)]">
+              <span class="eyebrow">Permissions</span>
+              <p class="text-[11px] text-[var(--c-text-3)] mt-0.5 leading-relaxed">
+                Choose what each user or role can do in this folder. Administrators always have full access.
+              </p>
             </div>
             <table class="w-full text-xs">
               <thead>
                 <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
                   <th class="px-4 py-2 text-left font-medium">Subject</th>
-                  <th class="px-3 py-2 text-center font-medium w-16">Read</th>
-                  <th class="px-3 py-2 text-center font-medium w-16">Write</th>
-                  <th class="px-3 py-2 text-center font-medium w-16">Delete</th>
+                  <th class="px-3 py-2 text-center font-medium w-16" title="List and download files">Read</th>
+                  <th class="px-3 py-2 text-center font-medium w-16" title="Upload, rename and modify files">Write</th>
+                  <th class="px-3 py-2 text-center font-medium w-16" title="Remove files and folders">Delete</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[var(--c-border)]">

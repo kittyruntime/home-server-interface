@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
+import ReleaseNotes from './ReleaseNotes.vue'
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 
@@ -209,10 +210,22 @@ onUnmounted(() => clearInterval(timer))
 
       <!-- Release notes -->
       <div v-if="status.hasUpdate && status.releaseNotes" class="panel-card overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--c-border)]">
+        <div class="px-4 py-3 border-b border-[var(--c-border)] flex items-center justify-between gap-3">
           <p class="eyebrow">What's new in {{ status.latest }}</p>
+          <a
+            :href="`${status.repoUrl}/releases/tag/${status.latest}`"
+            target="_blank" rel="noopener noreferrer"
+            class="text-xs text-[var(--c-accent)] hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            View on GitHub
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5m0 0v5m0-5L10 14M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-3"/>
+            </svg>
+          </a>
         </div>
-        <pre class="px-4 py-3 text-xs text-[var(--c-text-2)] whitespace-pre-wrap font-mono leading-relaxed max-h-52 overflow-y-auto">{{ status.releaseNotes }}</pre>
+        <div class="px-4 py-3 max-h-72 overflow-y-auto">
+          <ReleaseNotes :source="status.releaseNotes" />
+        </div>
       </div>
 
       <!-- Install CTA -->
@@ -233,10 +246,22 @@ onUnmounted(() => clearInterval(timer))
 
       <!-- Footer: last checked + manual check -->
       <div class="flex items-center justify-between pt-1 border-t border-[var(--c-border)]">
-        <p class="text-xs text-[var(--c-text-3)]">
-          <template v-if="status.checkedAt">Last checked {{ formatDate(status.checkedAt) }}</template>
-          <template v-else>Never checked — runs daily via systemd timer</template>
-        </p>
+        <div>
+          <p class="text-xs text-[var(--c-text-3)]">
+            <template v-if="status.checkedAt">Last checked {{ formatDate(status.checkedAt) }}</template>
+            <template v-else>Never checked — runs daily via systemd timer</template>
+          </p>
+          <a
+            :href="`${status.repoUrl}/releases`"
+            target="_blank" rel="noopener noreferrer"
+            class="text-xs text-[var(--c-accent)] hover:underline inline-flex items-center gap-1 mt-0.5"
+          >
+            View all releases on GitHub
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5m0 0v5m0-5L10 14M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-3"/>
+            </svg>
+          </a>
+        </div>
         <button
           @click="checkNow"
           :disabled="checking || applying || !!status.pending"
