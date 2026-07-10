@@ -1,5 +1,6 @@
 import { z } from "zod"
 import crypto from "node:crypto"
+import { normalize } from "node:path"
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../index"
@@ -29,8 +30,10 @@ export const shareLinkRouter = router({
       maxDownloads: z.number().int().positive().max(1_000_000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+
       // Authorize: caller must have canShare on the place containing `path`.
-      await checkPathPerm(ctx, input.path, "canShare")
+      const allowedRoot = await checkPathPerm(ctx, p, "canShare")
 
       // Determine file vs dir via the privileged stat (same channel fs uses).
       const linuxUser = await ctx.prisma.user
@@ -38,21 +41,21 @@ export const shareLinkRouter = router({
         .then((u: { linuxUsername: string | null } | null) => u?.linuxUsername ?? "")
       let isDir: boolean
       try {
-        const s = await requestStat(input.path, linuxUser)
+        const s = await requestStat(p, linuxUser, allowedRoot ?? "")
         isDir = s.type === "dir"
       } catch {
         throw new TRPCError({ code: "NOT_FOUND", message: "Path not found" })
       }
 
       const token = randomToken()
-      const passwordHash = input.password ? await bcrypt.hash(input.password, 10) : null
+      const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : null
       const expiresAt = input.expiresInDays
         ? new Date(Date.now() + input.expiresInDays * 86_400_000)
         : null
 
       await ctx.prisma.shareLink.create({
         data: {
-          token, path: input.path, isDir,
+          token, path: p, isDir,
           creatorId: ctx.user.userId,
           passwordHash, expiresAt,
           maxDownloads: input.maxDownloads ?? null,
@@ -100,10 +103,10 @@ async function assertOwnerOrAdmin(ctx: any, id: string) {
 }
 
 // Privileged stat helper (mirrors fs.ts readText's stat call).
-async function requestStat(path: string, linuxUsername: string): Promise<{ type: string; size: number | null }> {
+async function requestStat(path: string, linuxUsername: string, allowedRoot: string): Promise<{ type: string; size: number | null }> {
   const { requestSync } = await import("../../nats")
   return requestSync<{ type: string; size: number | null }>(
     "root.fs.stat",
-    { path, linuxUsername, allowedRoot: "" },
+    { path, linuxUsername, allowedRoot },
   )
 }
