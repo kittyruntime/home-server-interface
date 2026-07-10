@@ -22,6 +22,7 @@ model RolePlacePermission {
   canRead   Boolean @default(false)
   canWrite  Boolean @default(false)
   canDelete Boolean @default(false)
+  canShare  Boolean @default(false)
 
   role  Role  @relation(fields: [roleId],  references: [id], onDelete: Cascade)
   place Place @relation("RolePerms", fields: [placeId], references: [id], onDelete: Cascade)
@@ -36,6 +37,7 @@ model UserPlacePermission {
   canRead   Boolean @default(false)
   canWrite  Boolean @default(false)
   canDelete Boolean @default(false)
+  canShare  Boolean @default(false)
 
   user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
   place Place @relation("UserPerms", fields: [placeId], references: [id], onDelete: Cascade)

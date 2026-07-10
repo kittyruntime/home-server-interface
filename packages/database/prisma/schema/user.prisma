@@ -10,4 +10,5 @@ model User {
   userRoles        UserRole[]
   placePermissions UserPlacePermission[]
   auditLogs        AuditLog[]
+  shareLinks       ShareLink[] @relation("UserShareLinks")
 }

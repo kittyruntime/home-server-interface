@@ -1,0 +1,17 @@
+model ShareLink {
+  id           String    @id @default(uuid())
+  token        String    @unique
+  path         String
+  isDir        Boolean
+  creatorId    String
+  creator      User      @relation("UserShareLinks", fields: [creatorId], references: [id], onDelete: Cascade)
+  passwordHash String?
+  expiresAt    DateTime?
+  maxDownloads Int?
+  downloads    Int       @default(0)
+  disabled     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastAccessAt DateTime?
+
+  @@index([creatorId])
+}
