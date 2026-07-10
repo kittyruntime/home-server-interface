@@ -19,6 +19,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
+    { path: '/s/:token', component: () => import('./views/SharePublicView.vue') },
     {
       path: '/',
       component: DashboardLayout,
