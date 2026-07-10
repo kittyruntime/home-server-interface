@@ -49,9 +49,9 @@ const canConfirm = computed(() =>
       </div>
       <div v-if="error" class="text-xs text-danger">{{ error }}</div>
       <div class="flex gap-2">
-        <button @click="emit('close')" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+        <button @click="emit('close')" class="btn btn-outline flex-1 justify-center">Cancel</button>
         <button @click="emit('confirm')" :disabled="!canConfirm"
-          class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 font-medium">
+          class="btn btn-danger flex-1 justify-center">
           <span v-if="busy">{{ busyLabel }}</span>
           <span v-else>{{ actionLabel }}</span>
         </button>

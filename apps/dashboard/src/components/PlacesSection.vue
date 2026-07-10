@@ -166,12 +166,11 @@ onMounted(async () => {
         </div>
         <div class="flex gap-2">
           <button @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()"
-            class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed
-                   text-[var(--c-accent-fg)] text-sm rounded-lg transition-colors">
+            class="btn btn-primary btn-sm">
             {{ addLoading ? 'Adding…' : 'Add Place' }}
           </button>
           <button @click="adding = false; addError = ''; pathMissing = false"
-            class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
+            class="btn btn-ghost btn-sm">
             Cancel
           </button>
         </div>

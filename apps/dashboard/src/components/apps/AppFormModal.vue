@@ -329,7 +329,7 @@ async function save() {
         <button
           @click="importCompose"
           :disabled="!composeRaw.trim()"
-          class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          class="btn btn-primary btn-sm whitespace-nowrap"
         >
           Import &amp; fill form
         </button>
@@ -438,11 +438,11 @@ async function save() {
       <div v-else class="flex-1" />
       <button
         @click="emit('close')"
-        class="px-4 py-2 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors"
+        class="btn btn-ghost"
       >Cancel</button>
       <button
         @click="save" :disabled="loading || !form.name || !form.image"
-        class="px-4 py-2 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="btn btn-primary"
       >
         {{ loading ? 'Saving…' : 'Save' }}
       </button>

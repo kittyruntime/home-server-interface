@@ -88,8 +88,8 @@ defineExpose({ open })
       </div>
 
       <div class="flex gap-2 pt-2">
-        <button @click="wiz = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-        <button @click="wiz.step = 2" class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity">I understand, continue →</button>
+        <button @click="wiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
+        <button @click="wiz.step = 2" class="btn btn-primary flex-1 justify-center">I understand, continue →</button>
       </div>
     </div>
 
@@ -136,8 +136,8 @@ defineExpose({ open })
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button @click="wiz.step = 1" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">← Back</button>
-        <button @click="wiz.step = 3" class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity">Next →</button>
+        <button @click="wiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
+        <button @click="wiz.step = 3" class="btn btn-primary flex-1 justify-center">Next →</button>
       </div>
     </div>
 
@@ -165,11 +165,11 @@ defineExpose({ open })
       <div v-if="wiz.err" class="text-xs text-danger px-1">{{ wiz.err }}</div>
 
       <div class="flex gap-2">
-        <button @click="wiz.step = 2" :disabled="wiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
+        <button @click="wiz.step = 2" :disabled="wiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
         <button
           @click="doFormat"
           :disabled="wiz.confirm !== wiz.dev.name || wiz.busy"
-          class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+          class="btn btn-danger flex-1 justify-center"
         >
           <span v-if="wiz.busy">Formatting…</span>
           <span v-else>Format now</span>

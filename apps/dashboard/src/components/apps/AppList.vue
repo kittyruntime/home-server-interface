@@ -248,7 +248,7 @@ async function unpin(app: App) {
           <template #action>
             <button
               @click="openNew"
-              class="flex items-center gap-1.5 px-4 py-2 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              class="btn btn-primary"
             >
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -463,11 +463,11 @@ async function unpin(app: App) {
 
     <template #footer>
       <div class="flex-1" />
-      <button @click="pinDialog = null" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+      <button @click="pinDialog = null" class="btn btn-ghost btn-sm">Cancel</button>
       <button
         @click="savePin"
         :disabled="pinDialogBusy || !pinDialogUrl.trim()"
-        class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
+        class="btn btn-primary btn-sm"
       >{{ pinDialogBusy ? 'Saving…' : 'Pin' }}</button>
     </template>
   </Modal>

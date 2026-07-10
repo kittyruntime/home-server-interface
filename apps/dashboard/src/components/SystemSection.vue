@@ -364,7 +364,7 @@ const chartOptions = {
       <div v-if="historyLoading" class="flex justify-center py-12 text-[var(--c-text-3)] text-sm">Loading…</div>
       <div v-else-if="historyError" class="flex flex-col items-center gap-3 py-12 text-center">
         <div class="text-sm text-danger">{{ historyError }}</div>
-        <button @click="loadHistory" class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">
+        <button @click="loadHistory" class="btn btn-outline btn-sm">
           Retry
         </button>
       </div>

@@ -267,7 +267,10 @@ onUnmounted(() => {
             ]"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 6.5a2 2 0 012-2h13a2 2 0 012 2v11a2 2 0 01-2 2h-13a2 2 0 01-2-2v-11zM3.5 9.5h17M3.5 14.5h17M6.5 7h4.5M6.5 12h4.5M6.5 17h4.5"/>
+              <circle cx="16.9" cy="7" r="0.9" fill="currentColor" stroke="none"/>
+              <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+              <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
             </svg>
           </button>
         </div>
@@ -564,7 +567,10 @@ onUnmounted(() => {
           :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
             isActive('storage') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 6.5a2 2 0 012-2h13a2 2 0 012 2v11a2 2 0 01-2 2h-13a2 2 0 01-2-2v-11zM3.5 9.5h17M3.5 14.5h17M6.5 7h4.5M6.5 12h4.5M6.5 17h4.5"/>
+            <circle cx="16.9" cy="7" r="0.9" fill="currentColor" stroke="none"/>
+            <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+            <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
           </svg>
         </button>
       </div>

@@ -194,7 +194,7 @@ onMounted(async () => {
           <p v-if="nameError" class="text-[var(--c-accent)] text-xs">{{ nameError }}</p>
           <div class="flex gap-2">
             <button @click="saveName" :disabled="nameLoading"
-              class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors">
+              class="btn btn-primary btn-sm">
               {{ nameLoading ? 'Saving…' : 'Save' }}
             </button>
             <button @click="editingName = false"
@@ -249,7 +249,7 @@ onMounted(async () => {
             <p v-if="pwError" class="text-[var(--c-accent)] text-xs">{{ pwError }}</p>
             <div class="flex gap-2">
               <button @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next"
-                class="px-3 py-1.5 bg-[var(--c-accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-[var(--c-accent-fg)] text-sm font-medium rounded-lg transition-colors">
+                class="btn btn-primary btn-sm">
                 {{ pwLoading ? 'Saving…' : 'Update password' }}
               </button>
               <button @click="pwOpen = false"

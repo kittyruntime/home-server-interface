@@ -583,9 +583,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </div>
             <div v-if="partCreateDlg.err" class="text-xs text-danger">{{ partCreateDlg.err }}</div>
             <div class="flex gap-2 pt-1">
-              <button @click="partCreateDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="partCreateDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
               <button @click="doPartCreate" :disabled="partCreateDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 font-medium">
+                class="btn btn-primary flex-1 justify-center">
                 <span v-if="partCreateDlg.busy">Creating…</span>
                 <span v-else>Create partition</span>
               </button>

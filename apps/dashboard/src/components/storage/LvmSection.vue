@@ -405,9 +405,9 @@ const openMenu = ref<string | null>(null)
               </label>
             </div>
             <div class="flex gap-2 pt-1">
-              <button @click="lvmWiz = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="lvmWiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
               <button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
-                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                class="btn btn-primary flex-1 justify-center">
                 Next →
               </button>
             </div>
@@ -435,9 +435,9 @@ const openMenu = ref<string | null>(null)
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
             </div>
             <div class="flex gap-2 pt-1">
-              <button @click="lvmWiz.step = 1" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">← Back</button>
+              <button @click="lvmWiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
               <button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
-                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                class="btn btn-primary flex-1 justify-center">
                 Next →
               </button>
             </div>
@@ -462,9 +462,9 @@ const openMenu = ref<string | null>(null)
             </div>
             <div v-if="lvmWiz.err" class="text-xs text-danger px-1">{{ lvmWiz.err }}</div>
             <div class="flex gap-2">
-              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
+              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
               <button @click="doCreateLvm" :disabled="lvmWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 font-medium">
+                class="btn btn-primary flex-1 justify-center">
                 <span v-if="lvmWiz.busy">Creating…</span>
                 <span v-else>Create LVM</span>
               </button>
@@ -496,9 +496,9 @@ const openMenu = ref<string | null>(null)
             </div>
             <div v-if="addLvDlg.err" class="text-xs text-danger">{{ addLvDlg.err }}</div>
             <div class="flex gap-2 pt-1">
-              <button @click="addLvDlg = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
+              <button @click="addLvDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
               <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-40 font-medium">
+                class="btn btn-primary flex-1 justify-center">
                 <span v-if="addLvDlg.busy">Creating…</span>
                 <span v-else>Create LV</span>
               </button>

@@ -71,7 +71,7 @@ function typeLabel(t: string) {
       <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Volumes</h3>
       <button
         @click="adding = !adding"
-        class="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--c-accent)] text-[var(--c-accent-fg)] text-sm rounded-lg hover:opacity-90 transition-colors"
+        class="btn btn-primary btn-sm"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -105,9 +105,9 @@ function typeLabel(t: string) {
       </div>
       <p v-if="addError" class="text-xs text-[var(--c-accent)]">{{ addError }}</p>
       <div class="flex justify-end gap-2">
-        <button @click="adding = false" class="px-3 py-1.5 text-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">Cancel</button>
+        <button @click="adding = false" class="btn btn-ghost btn-sm">Cancel</button>
         <button @click="addVolume" :disabled="addLoading || !form.name"
-          class="px-3 py-1.5 text-sm bg-[var(--c-accent)] text-[var(--c-accent-fg)] rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors">
+          class="btn btn-primary btn-sm">
           {{ addLoading ? 'Creating…' : 'Create' }}
         </button>
       </div>

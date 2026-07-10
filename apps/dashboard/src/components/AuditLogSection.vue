@@ -146,7 +146,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <!-- Error -->
     <div v-else-if="error" class="flex flex-col items-center gap-3 py-16 text-center">
       <div class="text-sm text-danger">{{ error }}</div>
-      <button @click="load" class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">
+      <button @click="load" class="btn btn-outline btn-sm">
         Retry
       </button>
     </div>

@@ -419,8 +419,8 @@ const openMenu = ref<string | null>(null)
             </div>
 
             <div class="flex gap-2 pt-1">
-              <button @click="raidWiz = null" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">Cancel</button>
-              <button @click="raidWiz.step = 2" class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity">Next →</button>
+              <button @click="raidWiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
+              <button @click="raidWiz.step = 2" class="btn btn-primary flex-1 justify-center">Next →</button>
             </div>
           </div>
 
@@ -479,9 +479,9 @@ const openMenu = ref<string | null>(null)
             </div>
 
             <div class="flex gap-2 pt-1">
-              <button @click="raidWiz.step = 1" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors">← Back</button>
+              <button @click="raidWiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
               <button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
-                class="flex-1 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
+                class="btn btn-primary flex-1 justify-center">
                 Next →
               </button>
             </div>
@@ -523,11 +523,11 @@ const openMenu = ref<string | null>(null)
             <div v-if="raidWiz.err" class="text-xs text-danger px-1">{{ raidWiz.err }}</div>
 
             <div class="flex gap-2">
-              <button @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">← Back</button>
+              <button @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
               <button
                 @click="doCreateRaid"
                 :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
-                class="flex-1 py-2 text-sm rounded-lg bg-danger text-white hover:bg-danger/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                class="btn btn-danger flex-1 justify-center"
               >
                 <span v-if="raidWiz.busy">Creating…</span>
                 <span v-else>Create RAID</span>
