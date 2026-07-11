@@ -35,13 +35,15 @@ async function create() {
 }
 
 async function copy() {
-  await navigator.clipboard.writeText(url.value)
-  copied.value = true; setTimeout(() => (copied.value = false), 1500)
+  try {
+    await navigator.clipboard.writeText(url.value)
+    copied.value = true; setTimeout(() => (copied.value = false), 1500)
+  } catch { /* clipboard unavailable (non-secure context) — the URL stays selectable in the field */ }
 }
 </script>
 
 <template>
-  <Modal panel-class="w-full max-w-md" @close="emit('close')">
+  <Modal panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
     <div class="p-6 space-y-4">
       <h3 class="text-base font-semibold text-[var(--c-text-1)]">Share "{{ name }}"</h3>
 
@@ -66,7 +68,7 @@ async function copy() {
         </label>
         <input v-if="useLimit" v-model.number="maxDownloads" type="number" min="1" class="ui-input" />
 
-        <p v-if="error" class="text-[var(--c-accent)] text-xs">{{ error }}</p>
+        <p v-if="error" class="text-[var(--c-danger)] text-xs">{{ error }}</p>
         <div class="flex gap-2 pt-1">
           <button @click="create" :disabled="busy" class="btn btn-primary btn-sm">
             {{ busy ? 'Creating…' : 'Create link' }}
@@ -76,7 +78,7 @@ async function copy() {
       </template>
 
       <template v-else>
-        <p class="text-xs text-[var(--c-text-3)]">Anyone with this link can access the file.</p>
+        <p class="text-xs text-[var(--c-text-3)]">Anyone with this link can access it.</p>
         <div class="flex gap-2">
           <input :value="url" readonly class="ui-input font-mono text-xs" />
           <button @click="copy" class="btn btn-outline btn-sm shrink-0">{{ copied ? 'Copied' : 'Copy' }}</button>
