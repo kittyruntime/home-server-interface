@@ -32,24 +32,28 @@ export function buildApp() {
     // Global rate limit — high ceiling to accommodate chunked file uploads.
     app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
 
-    // Stricter rate limit on the login endpoint: 20 req/min per IP.
-    // Implemented via a simple in-memory sliding-window counter keyed by IP.
-    const loginAttempts = new Map<string, { count: number; resetAt: number }>()
-    const LOGIN_MAX  = 20
-    const LOGIN_WINDOW_MS = 60_000
+    // Stricter rate limit on sensitive credential-guessing endpoints — the
+    // login form and the public share-link password unlock: 20 req/min per IP,
+    // via a simple in-memory sliding-window counter keyed by endpoint + IP.
+    const sensitiveAttempts = new Map<string, { count: number; resetAt: number }>()
+    const SENSITIVE_MAX  = 20
+    const SENSITIVE_WINDOW_MS = 60_000
 
     app.addHook("onRequest", async (req, reply) => {
-        if (!req.url.startsWith("/trpc/auth.login")) return
+        let scope: string | null = null
+        if (req.url.startsWith("/trpc/auth.login")) scope = "login"
+        else if (req.url.startsWith("/trpc/shareLink.unlock")) scope = "unlock"
+        if (!scope) return
         const now = Date.now()
-        const key = req.ip
-        let entry = loginAttempts.get(key)
+        const key = scope + ":" + req.ip
+        let entry = sensitiveAttempts.get(key)
         if (!entry || now >= entry.resetAt) {
-            entry = { count: 0, resetAt: now + LOGIN_WINDOW_MS }
-            loginAttempts.set(key, entry)
+            entry = { count: 0, resetAt: now + SENSITIVE_WINDOW_MS }
+            sensitiveAttempts.set(key, entry)
         }
         entry.count++
-        if (entry.count > LOGIN_MAX) {
-            reply.status(429).send({ message: "Too many login attempts. Try again later." })
+        if (entry.count > SENSITIVE_MAX) {
+            reply.status(429).send({ message: "Too many attempts. Try again later." })
         }
     })
 
