@@ -132,10 +132,20 @@ export const systemRouter = router({
     .input(z.object({ period: z.enum(['1h', '6h', '24h', '7d']) }))
     .query(async ({ ctx, input }) => {
       const ms = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800 }[input.period] * 1000
-      return ctx.prisma.metricSnapshot.findMany({
+      const rows = await ctx.prisma.metricSnapshot.findMany({
         where: { timestamp: { gte: new Date(Date.now() - ms) } },
         orderBy: { timestamp: 'asc' },
       })
+      // The byte/rate columns are BigInt in the DB; convert to Number for the
+      // client (values are well within Number's safe range) since tRPC has no
+      // BigInt-aware transformer and JSON can't serialize a bigint.
+      return rows.map((r) => ({
+        ...r,
+        ramUsed:  Number(r.ramUsed),
+        ramTotal: Number(r.ramTotal),
+        netRxBps: Number(r.netRxBps),
+        netTxBps: Number(r.netTxBps),
+      }))
     }),
 
   metrics: protectedProcedure.query(() => {

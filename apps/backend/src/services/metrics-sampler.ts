@@ -86,10 +86,12 @@ export function startMetricsSampler(): void {
       await prisma.metricSnapshot.create({
         data: {
           cpuPct:   cpu,
-          ramUsed:  mem - free,
-          ramTotal: mem,
-          netRxBps: net.rx,
-          netTxBps: net.tx,
+          // RAM/net are byte counts that exceed a 32-bit INT on any machine
+          // with >2 GB RAM, so these columns are BigInt (see metric.prisma).
+          ramUsed:  BigInt(Math.round(mem - free)),
+          ramTotal: BigInt(Math.round(mem)),
+          netRxBps: BigInt(Math.round(net.rx)),
+          netTxBps: BigInt(Math.round(net.tx)),
           uptime:   Math.floor(os.uptime()),
         },
       })

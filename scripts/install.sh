@@ -297,10 +297,14 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   success "Database backed up → $BACKUP"
   ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
 
+  # --accept-data-loss is required for column-type changes (e.g. Int -> BigInt);
+  # Prisma flags those as lossy even when SQLite preserves the values. The DB was
+  # just backed up above, so this is safe — and without the flag such schema
+  # changes silently fail on update, leaving the running DB stale.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && npx prisma db push"
+    sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && npx prisma db push --accept-data-loss"
   else
-    app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' '$PRISMA_BIN' db push"
+    app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' '$PRISMA_BIN' db push --accept-data-loss"
   fi
   success "Schema migrated (existing data preserved)"
 else

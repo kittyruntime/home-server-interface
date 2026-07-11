@@ -2,9 +2,9 @@ model MetricSnapshot {
   id        Int      @id @default(autoincrement())
   timestamp DateTime @default(now())
   cpuPct    Float
-  ramUsed   Int
-  ramTotal  Int
-  netRxBps  Int
-  netTxBps  Int
+  ramUsed   BigInt
+  ramTotal  BigInt
+  netRxBps  BigInt
+  netTxBps  BigInt
   uptime    Int
 }
