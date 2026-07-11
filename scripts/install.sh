@@ -448,6 +448,25 @@ success "Backend NATS credentials → $ENV_FILE"
 # =============================================================================
 step "Installing systemd services"
 
+# Backend + worker write their stdout/stderr to files here instead of the
+# systemd journal, so operators have plain log files to tail/ship.
+LOG_DIR="/var/log/hsi"
+install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$LOG_DIR"
+
+# Keep those files from growing unbounded. copytruncate because systemd holds
+# the file open (StandardOutput=append:) — no service restart needed to rotate.
+cat > /etc/logrotate.d/${APP_NAME} <<ROTATE
+$LOG_DIR/*.log {
+  weekly
+  rotate 8
+  compress
+  delaycompress
+  missingok
+  notifempty
+  copytruncate
+}
+ROTATE
+
 cat > /etc/systemd/system/${APP_NAME}-nats.service <<EOF
 [Unit]
 Description=${APP_NAME} NATS JetStream Server
@@ -481,8 +500,8 @@ PrivateTmp=yes
 NoNewPrivileges=no
 Restart=on-failure
 RestartSec=5
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:$LOG_DIR/root-worker.log
+StandardError=append:$LOG_DIR/root-worker.log
 SyslogIdentifier=${APP_NAME}-root-worker
 
 [Install]
@@ -512,14 +531,14 @@ $SOURCE_EXTRA
 ExecStart=$NODE_BIN $BACKEND_DIST
 Restart=on-failure
 RestartSec=5
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:$LOG_DIR/app.log
+StandardError=append:$LOG_DIR/app.log
 SyslogIdentifier=${APP_NAME}
 
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$DB_DIR $APP_DIR /tmp
+ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR
 
 [Install]
 WantedBy=multi-user.target
@@ -719,7 +738,8 @@ echo -e "  ${BOLD}Useful commands:${NC}"
 echo -e "    systemctl status ${APP_NAME}               # backend"
 echo -e "    systemctl status ${APP_NAME}-root-worker   # privilege worker"
 echo -e "    systemctl status ${APP_NAME}-nats          # message bus"
-echo -e "    journalctl -u ${APP_NAME} -f               # live logs"
+echo -e "    tail -f /var/log/hsi/app.log               # backend logs"
+echo -e "    tail -f /var/log/hsi/root-worker.log       # worker logs"
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   echo -e "    sudo $0 --from-source        # re-run to update"
 else
