@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **CodeQL hardening**: bounded the root worker's uid/gid parsing with `strconv.ParseUint(…, 32)` instead of `Atoi` + an unchecked `uint32` cast (clears `go/incorrect-integer-conversion`), and restricted the CI workflow's `GITHUB_TOKEN` to `contents: read` (clears `actions/missing-workflow-permissions`).
+
 ## [1.29.1] - 2026-07-11
 
 ### Fixed

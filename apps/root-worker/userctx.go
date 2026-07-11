@@ -20,11 +20,13 @@ func resolveUser(username string) (userCtx, error) {
 	if err != nil {
 		return userCtx{}, fmt.Errorf("user %q: %w", username, err)
 	}
-	uid, err := strconv.Atoi(u.Uid)
+	// ParseUint with bitSize 32 bounds the result to uint32, so the casts below
+	// cannot overflow (uid/gid are always small positive system IDs anyway).
+	uid, err := strconv.ParseUint(u.Uid, 10, 32)
 	if err != nil {
 		return userCtx{}, fmt.Errorf("uid parse: %w", err)
 	}
-	gid, err := strconv.Atoi(u.Gid)
+	gid, err := strconv.ParseUint(u.Gid, 10, 32)
 	if err != nil {
 		return userCtx{}, fmt.Errorf("gid parse: %w", err)
 	}
