@@ -7,10 +7,11 @@ import PlacesSection from './PlacesSection.vue'
 import RolesSection from './RolesSection.vue'
 import UpdateSection from './UpdateSection.vue'
 import PermissionsSection from './PermissionsSection.vue'
+import SharedLinksSection from './SharedLinksSection.vue'
 
 const { isAdmin, canManageUsers } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'roles' | 'updates'
+type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'roles' | 'updates' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -23,6 +24,7 @@ interface NavItem {
 
 const nav: NavItem[] = [
   { id: 'profile',     label: 'My Profile',  show: () => true },
+  { id: 'shares',      label: 'Shared links', show: () => true },
   { id: 'users',       label: 'Users',       show: () => canManageUsers.value },
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'admin' },
   { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'admin' },
@@ -83,6 +85,10 @@ defineExpose({ focusOn })
             <svg v-if="item.id === 'profile'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
+            <!-- Shared links icon -->
+            <svg v-else-if="item.id === 'shares'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
+            </svg>
             <!-- Users icon -->
             <svg v-else-if="item.id === 'users'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5.916-3.5M9 20H4v-2a4 4 0 015.916-3.5M15 7a3 3 0 11-6 0 3 3 0 016 0zM21 10a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -116,6 +122,7 @@ defineExpose({ focusOn })
       <div :class="['p-8', ['users','roles','permissions'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
         <ProfileSection     v-if="active === 'profile'" />
+        <SharedLinksSection v-else-if="active === 'shares'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
         <PermissionsSection v-else-if="active === 'permissions'" />
