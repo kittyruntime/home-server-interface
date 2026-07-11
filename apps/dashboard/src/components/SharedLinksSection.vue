@@ -47,7 +47,7 @@ onMounted(load)
           </p>
         </div>
         <button v-if="!l.disabled" @click="revoke(l.id)" class="btn btn-outline btn-xs shrink-0">Revoke</button>
-        <button @click="remove(l.id)" class="btn btn-ghost btn-xs shrink-0">Delete</button>
+        <button @click="remove(l.id)" class="btn btn-danger btn-xs shrink-0">Delete</button>
       </div>
     </div>
   </div>
