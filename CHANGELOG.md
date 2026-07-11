@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Share action missing from the right-click menu**: the file browser's "Share" action was only on the selection toolbar, not the right-click context menu. It's now in both (for files and folders), acting on the right-clicked item via the same dialog.
 - **Metrics history broke on machines with ≥2 GB RAM**: the `MetricSnapshot` RAM and network columns were 32-bit `Int`, so a RAM total in bytes (≥2 GB) overflowed and every metrics sample failed to write (`P2023`), leaving the Monitor → History charts empty. Those columns are now `BigInt`. The updater also now runs `prisma db push --accept-data-loss` (right after its existing automatic DB backup) so column-type changes actually apply on update instead of silently failing.
 
 ## [1.29.0] - 2026-07-11
