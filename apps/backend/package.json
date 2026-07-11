@@ -1,6 +1,7 @@
 {
   "name": "@app/backend",
   "private": true,
+  "license": "MPL-2.0",
   "type": "module",
   "scripts": {
     "dev": "DASHBOARD_PATH=../dashboard/dist vite-node src/server.ts",

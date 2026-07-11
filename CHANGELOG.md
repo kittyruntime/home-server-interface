@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Relicense the project under the Mozilla Public License 2.0 (`MPL-2.0`), replacing the previous source-available, non-commercial license.
+
 ## [1.29.2] - 2026-07-11
 
 ### Security

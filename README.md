@@ -159,5 +159,10 @@ For a local development environment (dev servers, hot reload, project layout, re
 
 ## License
 
-Free for personal, non-commercial use by private individuals.
-Company and commercial use requires prior written agreement — see [LICENSE](LICENSE) for details.
+Home Server Interface is open-source software licensed under the
+[Mozilla Public License 2.0](LICENSE).
+
+You may use, modify, distribute and use the software commercially. Modifications
+to files covered by the MPL must remain available under the MPL-2.0.
+
+© 2025–2026 kittyruntime

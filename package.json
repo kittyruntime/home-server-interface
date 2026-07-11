@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": "kittyruntime",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MPL-2.0",
   "packageManager": "pnpm@10.18.0",
   "pnpm": {
     "onlyBuiltDependencies": [
