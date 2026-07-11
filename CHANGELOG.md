@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.29.2] - 2026-07-11
+
 ### Security
 - **CodeQL hardening**: bounded the root worker's uid/gid parsing with `strconv.ParseUint(…, 32)` instead of `Atoi` + an unchecked `uint32` cast (clears `go/incorrect-integer-conversion`), and restricted the CI workflow's `GITHUB_TOKEN` to `contents: read` (clears `actions/missing-workflow-permissions`).
 
@@ -491,7 +493,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.2...HEAD
+[1.29.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.1...v1.29.2
 [1.29.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.0...v1.29.1
 [1.29.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.6...v1.29.0
 [1.28.6]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.5...v1.28.6
