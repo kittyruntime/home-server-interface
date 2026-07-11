@@ -10,6 +10,7 @@ import { downloadUrl } from '../../lib/file-url'
 import { randomId } from '../../lib/uuid'
 import { pollJob } from '../../lib/jobs'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
+import ShareLinkModal from '../share/ShareLinkModal.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
 import FileListView from './FileListView.vue'
@@ -47,6 +48,7 @@ const renameValue     = ref('')
 const pendingPaths    = ref<string[]>([])
 const creatingFolder  = ref(false)
 const permDialogPath  = ref<string | null>(null)
+const shareTarget     = ref<{ path: string; name: string } | null>(null)
 const propertiesEntry = ref<Entry | null>(null)
 const propertiesPlace = ref<Place | null>(null)
 const activePlaceId   = ref<string | null>(null)
@@ -395,6 +397,11 @@ function openPermissions() {
   permDialogPath.value = [...selected.value][0]!
 }
 
+function openShare() {
+  const e = selectedEntries.value[0]
+  if (e) shareTarget.value = { path: e.path, name: e.name }
+}
+
 function openProperties() {
   if (selected.value.size !== 1) return
   propertiesEntry.value = selectedEntries.value[0] ?? null
@@ -602,6 +609,7 @@ onMounted(async () => {
         @start-rename="startRename"
         @download="downloadSelected"
         @open-permissions="openPermissions"
+        @share="openShare"
         @delete="doDelete"
         @create-folder="createFolder"
         @upload-click="fileInput?.click()"
@@ -896,6 +904,13 @@ onMounted(async () => {
     v-if="permDialogPath"
     :path="permDialogPath"
     @close="permDialogPath = null"
+  />
+
+  <ShareLinkModal
+    v-if="shareTarget"
+    :path="shareTarget.path"
+    :name="shareTarget.name"
+    @close="shareTarget = null"
   />
 
   <FilePreviewModal
