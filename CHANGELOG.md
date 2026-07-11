@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Public file sharing**: share any file or folder over a public link (`/s/<token>`) with no account required for the recipient. Each link supports an optional password, an expiry, and a maximum download count, and can be revoked at any time. Visitors get a page that downloads the file or lets them browse a read-only folder listing; the link inherits the creator's read permission (re-checked on every access) and is contained to the shared path — symlink- and traversal-safe — on the privileged worker. Creating links is gated by a new per-place **Share** permission, grantable to a user or a role like Read/Write/Delete. Manage your links from Settings → Shared links.
+
+### Changed
+- **Logs**: the backend and the root worker now write their output to `/var/log/hsi/app.log` and `/var/log/hsi/root-worker.log` (created on install, rotated weekly) instead of only the systemd journal, so operators have plain log files to tail and ship.
+
+### Fixed
+- **Samba password sync**: password sync now logs a clear warning when the Samba (`smbpasswd`) or Linux (`chpasswd`) step fails, instead of swallowing it silently — making a refused SMB login diagnosable from the backend log.
+
 ## [1.28.6] - 2026-07-10
 
 ### Changed
