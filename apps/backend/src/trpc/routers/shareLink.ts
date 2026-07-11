@@ -162,12 +162,19 @@ export const shareLinkRouter = router({
   // ── Public endpoints (unauthenticated) ────────────────────────────────────
 
   info: publicProcedure
-    .input(z.object({ token: z.string() }))
+    .input(z.object({ token: z.string(), accessToken: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
       if (!res.ok) return { needsPassword: false, state: res.reason === "creator" ? "notfound" as const : res.reason }
       const { link } = res
-      if (link.passwordHash) return { needsPassword: true, state: "ok" as const }
+      if (link.passwordHash) {
+        // Only reveal metadata once the caller proves they unlocked this link.
+        let unlocked = false
+        if (input.accessToken) {
+          try { unlocked = verifyShareToken(input.accessToken).shareLinkId === link.id } catch { unlocked = false }
+        }
+        if (!unlocked) return { needsPassword: true, state: "ok" as const }
+      }
       return {
         needsPassword: false, state: "ok" as const,
         kind: link.isDir ? "dir" as const : "file" as const,

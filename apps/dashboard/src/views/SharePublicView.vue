@@ -12,6 +12,7 @@ const loading = ref(true)
 const password = ref('')
 const accessToken = ref<string | null>(null)
 const unlockError = ref('')
+const loadError = ref('')
 const subPath = ref('')
 const entries = ref<{ name: string; type: 'dir' | 'file'; size: number | null }[]>([])
 
@@ -32,7 +33,9 @@ function downloadUrl(relPath: string, inline = false) {
 
 async function loadInfo() {
   loading.value = true
-  try { info.value = await trpc.shareLink.info.query({ token }) }
+  loadError.value = ''
+  try { info.value = await trpc.shareLink.info.query({ token, accessToken: accessToken.value ?? undefined }) }
+  catch { loadError.value = 'Something went wrong. Please try again.' }
   finally { loading.value = false }
 }
 
@@ -51,8 +54,11 @@ async function submitPassword() {
 
 async function loadDir(path: string) {
   subPath.value = path
-  const r = await trpc.shareLink.browse.query({ token, subPath: path, accessToken: accessToken.value ?? undefined })
-  entries.value = r.entries
+  loadError.value = ''
+  try {
+    const r = await trpc.shareLink.browse.query({ token, subPath: path, accessToken: accessToken.value ?? undefined })
+    entries.value = r.entries
+  } catch { loadError.value = 'Could not open this folder.' }
 }
 
 const crumbs = computed(() => subPath.value ? subPath.value.split('/').filter(Boolean) : [])
@@ -67,6 +73,8 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)] p-4">
     <div class="w-full max-w-lg panel-card p-6 bg-[var(--c-surface)]">
+      <p v-if="loadError && !loading" class="text-sm text-[var(--c-accent)] mb-3">{{ loadError }}</p>
+
       <div v-if="loading" class="text-[var(--c-text-3)] text-sm">Loading…</div>
 
       <!-- Unavailable states -->
