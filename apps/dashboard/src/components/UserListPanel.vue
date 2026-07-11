@@ -36,6 +36,9 @@ const selectedUser = ref<User | null>(null)
 // ── Add user ─────────────────────────────────────────────────────────────────
 const addingUser = ref(false)
 const newUser    = reactive({ username: '', password: '', confirmPassword: '', displayName: '' })
+// A username must be a valid Linux account name so it can back the user's
+// Linux + Samba (SMB) account (enforced server-side by user.create too).
+const usernameValid = computed(() => /^[a-z_][a-z0-9_-]{0,31}$/.test(newUser.username.trim()))
 const addError   = ref('')
 const addLoading = ref(false)
 
@@ -183,6 +186,10 @@ onMounted(load)
           <div>
             <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-[var(--c-accent)]">*</span></label>
             <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
+            <p class="text-[11px] mt-1 leading-relaxed"
+              :class="newUser.username && !usernameValid ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-3)]'">
+              Lowercase letters, digits, - or _ (start with a letter or _). Also used for the Linux / SMB account.
+            </p>
           </div>
           <div>
             <label class="block text-xs text-[var(--c-text-3)] mb-1">Display name</label>
@@ -203,7 +210,7 @@ onMounted(load)
         <div class="flex items-center gap-2 pt-1">
           <button
             @click="submitAdd"
-            :disabled="addLoading || !newUser.username || !newUser.password"
+            :disabled="addLoading || !usernameValid || !newUser.password"
             class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {{ addLoading ? 'Creating…' : 'Create' }}

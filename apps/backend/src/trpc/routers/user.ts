@@ -2,7 +2,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure } from "../index"
-import { userSelect, createUser, changePassword, DEFAULT_PASSWORD } from "../../services/user.service"
+import { userSelect, createUser, changePassword, DEFAULT_PASSWORD, reLinuxUsername } from "../../services/user.service"
 import { syncSharesBestEffort } from "../../services/sharing.service"
 
 export const userRouter = router({
@@ -32,7 +32,10 @@ export const userRouter = router({
 
   create: userManagerProcedure
     .input(z.object({
-      username: z.string().min(1).max(64),
+      username: z.string().regex(
+        reLinuxUsername,
+        "Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.",
+      ),
       password: z.string().min(6).max(128),
       displayName: z.string().max(64).optional(),
     }))

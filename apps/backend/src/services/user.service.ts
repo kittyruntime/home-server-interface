@@ -27,7 +27,9 @@ export const userSelect = {
   },
 } as const
 
-const reLinuxUsername = /^[a-z_][a-z0-9_-]{0,31}$/
+// A username must be a valid Linux account name so it can back the user's
+// Linux + Samba (SMB) account. Enforced at the API boundary (user.create).
+export const reLinuxUsername = /^[a-z_][a-z0-9_-]{0,31}$/
 
 export async function createUser(
   prisma: PrismaClient,
