@@ -105,10 +105,23 @@ export async function syncSystemPassword(
       select: { linuxUsername: true },
     })
     if (!user?.linuxUsername) return
-    await requestSync("root.sharing.setPassword", {
-      linuxUsername: user.linuxUsername,
-      password: plainPassword,
-    })
+    const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean }>(
+      "root.sharing.setPassword",
+      { linuxUsername: user.linuxUsername, password: plainPassword },
+    )
+    // The worker replies ok even when a sub-step fails (best-effort). Surface a
+    // partial failure so "can't connect to SMB" is diagnosable from the logs
+    // instead of silent — the most common cause of Samba auth being refused.
+    if (res?.smbOk === false) {
+      console.warn(
+        `[password-sync] Samba password NOT set for "${user.linuxUsername}" — ` +
+          `smbpasswd failed (is samba installed, and does the Linux account exist?). ` +
+          `SMB auth will be refused for this user until this succeeds.`,
+      )
+    }
+    if (res?.linuxOk === false) {
+      console.warn(`[password-sync] Linux password NOT set for "${user.linuxUsername}" — chpasswd failed.`)
+    }
   } catch (e) {
     console.warn("[password-sync] failed (non-fatal):", e)
   }
