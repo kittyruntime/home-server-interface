@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.29.0] - 2026-07-11
+
 ### Added
 - **Public file sharing**: share any file or folder over a public link (`/s/<token>`) with no account required for the recipient. Each link supports an optional password, an expiry, and a maximum download count, and can be revoked at any time. Visitors get a page that downloads the file or lets them browse a read-only folder listing; the link inherits the creator's read permission (re-checked on every access) and is contained to the shared path — symlink- and traversal-safe — on the privileged worker. Creating links is gated by a new per-place **Share** permission, grantable to a user or a role like Read/Write/Delete. Manage your links from Settings → Shared links.
 
@@ -480,7 +482,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.6...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.0...HEAD
+[1.29.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.6...v1.29.0
 [1.28.6]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.5...v1.28.6
 [1.28.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.4...v1.28.5
 [1.28.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.3...v1.28.4
