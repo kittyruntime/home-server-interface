@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.30.0] - 2026-07-12
+
 ### Added
 - **Download a shared folder as a zip**: public folder share links now have a "Download all as .zip" button. The worker builds the archive into a private temp dir with a hard disk-space guard — it re-checks free space as it writes and aborts before the (limited) temp filesystem can fill, plus a size cap — streams it to the visitor, then removes it (no temp file ever lands inside the shared tree). Concurrent builds are capped and any orphaned archive is swept periodically.
 
@@ -500,7 +502,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.30.0...HEAD
+[1.30.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.2...v1.30.0
 [1.29.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.1...v1.29.2
 [1.29.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.0...v1.29.1
 [1.29.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.28.6...v1.29.0
