@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Download a shared folder as a zip**: public folder share links now have a "Download all as .zip" button. The worker builds the archive into a private temp dir with a hard disk-space guard — it re-checks free space as it writes and aborts before the (limited) temp filesystem can fill, plus a size cap — streams it to the visitor, then removes it (no temp file ever lands inside the shared tree). Concurrent builds are capped and any orphaned archive is swept periodically.
+
 ### Changed
 - Relicense the project under the Mozilla Public License 2.0 (`MPL-2.0`), replacing the previous source-available, non-commercial license.
 - **User accounts require a Linux-valid username**: creating a user now requires the username to be a valid Linux account name (lowercase letters/digits/`-`/`_`, starting with a letter or `_`), enforced in the create form and server-side. This guarantees every account can back a Linux and Samba (SMB) account — previously an invalid name (uppercase, dots…) silently produced an account with no file-server or SMB access.

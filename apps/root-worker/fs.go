@@ -578,6 +578,191 @@ func doZip(paths []string, destDir, name string) *fsError {
 	return nil
 }
 
+// ── zip to temp (public share "download all") ──────────────────────────────────
+//
+// Builds a zip of a directory into the worker's (PrivateTmp) temp dir, streamed
+// out afterwards by the backend via read-chunk, then removed via rm-temp. A hard
+// disk guard runs both before (pre-flight) and during writing so a large folder
+// can never fill the limited temp filesystem.
+
+const (
+	shareZipReserve  = 512 * 1024 * 1024       // always keep this much free on the temp fs
+	shareZipMaxInput = 50 * 1024 * 1024 * 1024 // refuse folders whose contents exceed this
+	shareZipTempPre  = "hsi-share-"            // temp file name prefix (see isShareTempPath)
+)
+
+var (
+	errZipTooBig  = errors.New("folder too large")
+	errZipNoSpace = errors.New("insufficient temp space")
+)
+
+func availBytes(path string) (int64, error) {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(path, &st); err != nil {
+		return 0, err
+	}
+	return int64(st.Bavail) * int64(st.Bsize), nil // Bavail = available to non-root
+}
+
+// guardedWriter aborts once free space on its dir drops below reserve.
+type guardedWriter struct {
+	w          io.Writer
+	dir        string
+	reserve    int64
+	checkEvery int64
+	sinceCheck int64
+	spaceErr   error
+}
+
+func (g *guardedWriter) Write(p []byte) (int, error) {
+	if g.spaceErr != nil {
+		return 0, g.spaceErr
+	}
+	g.sinceCheck += int64(len(p))
+	if g.sinceCheck >= g.checkEvery {
+		g.sinceCheck = 0
+		if avail, err := availBytes(g.dir); err == nil && avail < g.reserve {
+			g.spaceErr = errZipNoSpace
+			return 0, g.spaceErr
+		}
+	}
+	return g.w.Write(p)
+}
+
+// doZipToTemp must be called inside withUser so reads honour the caller's
+// permissions and the temp file is owned by that user (read back the same way).
+func doZipToTemp(srcPath string) (string, int64, *fsError) {
+	info, err := os.Lstat(srcPath)
+	if err != nil {
+		return "", 0, mapOsErr(err)
+	}
+	if !info.IsDir() {
+		return "", 0, &fsError{Code: "ERR", Message: "not a directory"}
+	}
+	tmpDir := os.TempDir()
+
+	// Pre-flight early-reject: the uncompressed total is a rough size estimate
+	// (not a strict upper bound — zip adds per-entry header overhead). The real
+	// guarantee against filling the disk is the guardedWriter below, which
+	// re-checks actual free space as it writes.
+	var total int64
+	if walkErr := filepath.Walk(srcPath, func(_ string, fi fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fi.Mode().IsRegular() {
+			total += fi.Size()
+			if total > shareZipMaxInput {
+				return errZipTooBig
+			}
+		}
+		return nil
+	}); walkErr != nil {
+		if errors.Is(walkErr, errZipTooBig) {
+			return "", 0, &fsError{Code: "TOOBIG", Message: "folder is too large to zip"}
+		}
+		return "", 0, mapOsErr(walkErr)
+	}
+	avail, err := availBytes(tmpDir)
+	if err != nil {
+		return "", 0, mapOsErr(err)
+	}
+	if avail-total < shareZipReserve {
+		return "", 0, &fsError{Code: "NOSPC", Message: "not enough temporary disk space to build the archive"}
+	}
+
+	f, err := os.CreateTemp(tmpDir, shareZipTempPre+"*.zip")
+	if err != nil {
+		return "", 0, mapOsErr(err)
+	}
+	tmpPath := f.Name()
+	gw := &guardedWriter{w: f, dir: tmpDir, reserve: shareZipReserve, checkEvery: 8 * 1024 * 1024}
+	zw := zip.NewWriter(gw)
+
+	fail := func(fe *fsError) (string, int64, *fsError) {
+		zw.Close()
+		f.Close()
+		os.Remove(tmpPath)
+		return "", 0, fe
+	}
+
+	parentDir := filepath.Dir(srcPath)
+	if walkErr := filepath.Walk(srcPath, func(walkPath string, fi fs.FileInfo, err error) error {
+		if err != nil || fi.IsDir() {
+			return err
+		}
+		if !fi.Mode().IsRegular() {
+			return nil // skip symlinks/devices — never follow them into the archive
+		}
+		rel, err := filepath.Rel(parentDir, walkPath)
+		if err != nil {
+			return err
+		}
+		w, err := zw.Create(rel)
+		if err != nil {
+			return err
+		}
+		in, err := os.Open(walkPath)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+		_, err = io.Copy(w, in)
+		return err
+	}); walkErr != nil {
+		if gw.spaceErr != nil {
+			return fail(&fsError{Code: "NOSPC", Message: "ran out of temporary disk space while building the archive"})
+		}
+		return fail(mapOsErr(walkErr))
+	}
+	if err := zw.Close(); err != nil {
+		if gw.spaceErr != nil {
+			return fail(&fsError{Code: "NOSPC", Message: "ran out of temporary disk space while building the archive"})
+		}
+		return fail(mapOsErr(err))
+	}
+	size, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return fail(mapOsErr(err))
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return "", 0, mapOsErr(err)
+	}
+	return tmpPath, size, nil
+}
+
+// isShareTempPath gates rm-temp: only our own archives, directly in the temp dir.
+func isShareTempPath(p string) bool {
+	clean := filepath.Clean(p)
+	base := filepath.Base(clean)
+	return filepath.Dir(clean) == filepath.Clean(os.TempDir()) &&
+		strings.HasPrefix(base, shareZipTempPre) &&
+		strings.HasSuffix(base, ".zip")
+}
+
+// sweepShareTemps removes orphaned share archives older than maxAge — the
+// safety net for any build whose caller timed out or disconnected before the
+// normal rm-temp cleanup ran. The disk guard prevents saturation regardless;
+// this just stops leaked archives lingering in the (private) temp dir.
+func sweepShareTemps(maxAge time.Duration) {
+	dir := os.TempDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-maxAge)
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasPrefix(name, shareZipTempPre) || !strings.HasSuffix(name, ".zip") {
+			continue
+		}
+		if info, err := e.Info(); err == nil && info.ModTime().Before(cutoff) {
+			os.Remove(filepath.Join(dir, name))
+		}
+	}
+}
+
 // ── unzip ─────────────────────────────────────────────────────────────────────
 
 func doUnzip(archivePath, destDir string) *fsError {

@@ -418,6 +418,75 @@ func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 	_ = nc.Publish(msg.Reply, data)
 }
 
+// zipBuildSem caps concurrent zip builds so an unauthenticated share-zip route
+// can't be used to pin an unbounded number of OS threads / CPU at once.
+var zipBuildSem = make(chan struct{}, 2)
+
+// handleZipTemp builds a zip of a shared directory into the temp dir (with a
+// hard disk guard) and returns its path + size. The backend streams it out via
+// read-chunk and then removes it via rm-temp.
+func handleZipTemp(nc *nats.Conn, msg *nats.Msg) {
+	select {
+	case zipBuildSem <- struct{}{}:
+		defer func() { <-zipBuildSem }()
+	default:
+		replyErr(nc, msg.Reply, &fsError{Code: "BUSY", Message: "too many archives building; try again shortly"})
+		return
+	}
+	var req struct {
+		Path          string `json:"path"`
+		LinuxUsername string `json:"linuxUsername"`
+		AllowedRoot   string `json:"allowedRoot"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	if fsErr := validateScoped(req.Path, req.AllowedRoot); fsErr != nil {
+		replyErr(nc, msg.Reply, fsErr)
+		return
+	}
+	var zipPath string
+	var size int64
+	var fsErr *fsError
+	if err := withUser(req.LinuxUsername, func() error {
+		zipPath, size, fsErr = doZipToTemp(req.Path)
+		if fsErr != nil {
+			return fsErr
+		}
+		return nil
+	}); err != nil {
+		if fe, ok := err.(*fsError); ok {
+			replyErr(nc, msg.Reply, fe)
+		} else {
+			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		}
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"path": zipPath, "size": size})
+}
+
+// handleRmTemp removes a share zip built by zip-temp. It refuses any path that
+// isn't one of our own archives directly in the temp dir.
+func handleRmTemp(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	if !isShareTempPath(req.Path) {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "refusing to remove non-temp path"})
+		return
+	}
+	if err := os.Remove(req.Path); err != nil && !os.IsNotExist(err) {
+		replyErr(nc, msg.Reply, mapOsErr(err))
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]bool{"ok": true})
+}
+
 func handleMkdirp(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
 		Path string `json:"path"`
@@ -816,6 +885,8 @@ func main() {
 		"root.sys.smart":            handleSmartInfo,
 		"root.fs.read-chunk":        handleReadChunk,
 		"root.fs.write-chunk":       handleWriteChunk,
+		"root.fs.zip-temp":          handleZipTemp,
+		"root.fs.rm-temp":           handleRmTemp,
 		"root.container.inspect":    handleDockerInspect,
 		"root.container.listAll":    handleDockerListAll,
 		"root.container.logs":       handleDockerLogs,
@@ -833,6 +904,17 @@ func main() {
 			log.Fatalf("subscribe %s: %v", subj, err)
 		}
 	}
+
+	// Periodically clear orphaned share archives (safety net for a build whose
+	// caller timed out or disconnected before rm-temp ran).
+	go func() {
+		sweepShareTemps(2 * time.Hour)
+		t := time.NewTicker(30 * time.Minute)
+		defer t.Stop()
+		for range t.C {
+			sweepShareTemps(2 * time.Hour)
+		}
+	}()
 
 	// ── JetStream pull consumer (async jobs) ──────────────────────────────
 	sub, err := js.PullSubscribe("root.>", "root-worker",

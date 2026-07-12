@@ -127,6 +127,29 @@ export async function requestSync<T>(
   return resp.result
 }
 
+// Build a zip of a shared directory into the worker's temp dir; returns the
+// temp path + size (worker enforces a disk guard). The build can take a while
+// for large folders, hence the long timeout. Stream it out with
+// requestReadChunk, then remove it with requestRmTemp.
+export async function requestZipTemp(
+  path: string,
+  linuxUsername: string,
+  allowedRoot: string,
+  timeout = 300_000,
+): Promise<{ path: string; size: number }> {
+  return requestSync<{ path: string; size: number }>(
+    "root.fs.zip-temp",
+    { path, linuxUsername, allowedRoot },
+    timeout,
+  )
+}
+
+// Remove a share zip built by requestZipTemp (best-effort; the worker refuses
+// any path that isn't one of its own temp archives).
+export async function requestRmTemp(path: string): Promise<void> {
+  await requestSync<{ ok: boolean }>("root.fs.rm-temp", { path })
+}
+
 // Download uses binary reply — worker sends raw bytes, not JSON.
 export async function requestRead(
   path: string,

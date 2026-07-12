@@ -31,6 +31,11 @@ function downloadUrl(relPath: string, inline = false) {
   return `/s/${token}/download?${p.toString()}`
 }
 
+// Downloads the whole shared folder as one archive (always the share root).
+function zipUrl() {
+  return `/s/${token}/zip${accessToken.value ? '?access=' + accessToken.value : ''}`
+}
+
 async function loadInfo() {
   loading.value = true
   loadError.value = ''
@@ -105,12 +110,15 @@ onMounted(async () => {
 
       <!-- Folder -->
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'dir'" class="space-y-3">
-        <div class="flex items-center gap-1 text-xs text-[var(--c-text-3)] flex-wrap">
-          <button class="hover:text-[var(--c-text-1)]" @click="loadDir('')">{{ info.name }}</button>
-          <template v-for="(c, i) in crumbs" :key="i">
-            <span>/</span>
-            <button class="hover:text-[var(--c-text-1)]" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button>
-          </template>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-1 text-xs text-[var(--c-text-3)] flex-wrap min-w-0">
+            <button class="hover:text-[var(--c-text-1)]" @click="loadDir('')">{{ info.name }}</button>
+            <template v-for="(c, i) in crumbs" :key="i">
+              <span>/</span>
+              <button class="hover:text-[var(--c-text-1)]" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button>
+            </template>
+          </div>
+          <a :href="zipUrl()" class="btn btn-outline btn-xs shrink-0">Download all as .zip</a>
         </div>
         <ul class="divide-y divide-[var(--c-border)]">
           <li v-for="e in entries" :key="e.name" class="flex items-center justify-between py-2 text-sm">
