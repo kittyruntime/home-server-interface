@@ -162,7 +162,7 @@ export const shareLinkRouter = router({
   // ── Public endpoints (unauthenticated) ────────────────────────────────────
 
   info: publicProcedure
-    .input(z.object({ token: z.string(), accessToken: z.string().optional() }))
+    .input(z.object({ token: z.string().max(200), accessToken: z.string().max(4096).optional() }))
     .query(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
       if (!res.ok) return { needsPassword: false, state: res.reason === "creator" ? "notfound" as const : res.reason }
@@ -184,7 +184,7 @@ export const shareLinkRouter = router({
     }),
 
   unlock: publicProcedure
-    .input(z.object({ token: z.string(), password: z.string() }))
+    .input(z.object({ token: z.string().max(200), password: z.string().max(200) }))
     .mutation(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
       if (!res.ok) throw new TRPCError({ code: "NOT_FOUND", message: "Link unavailable" })
@@ -195,7 +195,7 @@ export const shareLinkRouter = router({
     }),
 
   browse: publicProcedure
-    .input(z.object({ token: z.string(), subPath: z.string().default(""), accessToken: z.string().optional() }))
+    .input(z.object({ token: z.string().max(200), subPath: z.string().max(4096).default(""), accessToken: z.string().max(4096).optional() }))
     .query(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
       if (!res.ok || !res.link.isDir) throw new TRPCError({ code: "NOT_FOUND", message: "Not a folder" })
