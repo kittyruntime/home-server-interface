@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.31.0] - 2026-07-13
+
 ### Added
 - **App Store**: a new admin-only "App Store" app that installs curated self-hosted apps in one guided flow. Browse a catalog of 10 apps (Jellyfin, Vaultwarden, Navidrome, AdGuard Home, Syncthing, qBittorrent, Uptime Kuma, File Browser, Homarr, IT-Tools) with search and category filters, then install through a wizard that lets you set the app name, remap host ports, fill in settings, and — for each volume — pick an existing Place, create a new Place, use a host path (bind mount), or a named Docker volume. It reuses the existing container-create pipeline: images are pinned (never `:latest`), secrets like admin tokens are generated for you, and installed apps are tagged so the store shows what's already installed. Creating a new Place during install stays admin-only.
 - **Read-only volume mounts**: container volumes can now be mounted read-only (`:ro`), used by the App Store for library volumes (e.g. a media folder mounted read-only).
@@ -506,7 +508,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.30.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.0...HEAD
+[1.31.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.2...v1.30.0
 [1.29.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.1...v1.29.2
 [1.29.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.0...v1.29.1
