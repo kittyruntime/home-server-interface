@@ -1,0 +1,15 @@
+{
+  "id": "filebrowser",
+  "name": "File Browser",
+  "category": "Utilities",
+  "tagline": "Web-based file manager for browsing and sharing your files.",
+  "description": "File Browser provides a simple, self-hosted web interface for browsing, uploading, and sharing files stored on your NAS.",
+  "website": "https://filebrowser.org",
+  "image": "filebrowser/filebrowser:v2.31.2",
+  "webUiPort": 80,
+  "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI" }],
+  "volumes": [
+    { "target": "/srv", "label": "Files", "suggest": "place" },
+    { "target": "/database", "label": "Database", "suggest": "place" }
+  ]
+}

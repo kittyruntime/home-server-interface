@@ -1,0 +1,12 @@
+{
+  "id": "uptime-kuma",
+  "name": "Uptime Kuma",
+  "category": "Utilities",
+  "tagline": "Self-hosted uptime monitoring with a slick status dashboard.",
+  "description": "Uptime Kuma monitors your services (HTTP, TCP, DNS, and more) and notifies you the moment something goes down, with a clean status-page dashboard.",
+  "website": "https://github.com/louislam/uptime-kuma",
+  "image": "louislam/uptime-kuma:1.23.15",
+  "webUiPort": 3001,
+  "ports": [{ "container": 3001, "protocol": "tcp", "label": "Web UI" }],
+  "volumes": [{ "target": "/app/data", "label": "Data", "suggest": "place" }]
+}

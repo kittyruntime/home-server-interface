@@ -1,0 +1,21 @@
+{
+  "id": "qbittorrent",
+  "name": "qBittorrent",
+  "category": "Downloads",
+  "tagline": "Feature-rich BitTorrent client with a web interface.",
+  "description": "qBittorrent is a free, open-source BitTorrent client with a clean web UI, ideal for managing downloads remotely from your NAS.",
+  "website": "https://www.qbittorrent.org",
+  "image": "linuxserver/qbittorrent:5.0.2",
+  "webUiPort": 8080,
+  "ports": [{ "container": 8080, "protocol": "tcp", "label": "Web UI" }],
+  "env": [
+    { "key": "PUID", "default": "1000", "prompt": "User ID" },
+    { "key": "PGID", "default": "1000", "prompt": "Group ID" },
+    { "key": "TZ", "default": "Europe/Paris", "prompt": "Timezone" },
+    { "key": "WEBUI_PORT", "default": "8080" }
+  ],
+  "volumes": [
+    { "target": "/config", "label": "Config", "suggest": "place" },
+    { "target": "/downloads", "label": "Downloads", "suggest": "place" }
+  ]
+}

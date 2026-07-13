@@ -1,0 +1,20 @@
+{
+  "id": "adguard",
+  "name": "AdGuard Home",
+  "category": "Network",
+  "tagline": "Network-wide DNS server that blocks ads and trackers.",
+  "description": "AdGuard Home is a network-wide software for blocking ads and trackers, acting as a DNS server that re-routes tracking domains to a black hole for every device on your network.",
+  "website": "https://adguard.com/en/adguard-home/overview.html",
+  "image": "adguard/adguardhome:v0.107.52",
+  "webUiPort": 3000,
+  "ports": [
+    { "container": 3000, "protocol": "tcp", "label": "Setup / Web UI" },
+    { "container": 80, "protocol": "tcp", "label": "Web UI" },
+    { "container": 53, "protocol": "tcp", "label": "DNS" },
+    { "container": 53, "protocol": "udp", "label": "DNS" }
+  ],
+  "volumes": [
+    { "target": "/opt/adguardhome/work", "label": "Work data", "suggest": "place" },
+    { "target": "/opt/adguardhome/conf", "label": "Config", "suggest": "place" }
+  ]
+}
