@@ -37,9 +37,10 @@ type envVar struct {
 }
 
 type volumeMount struct {
-	Type   string `json:"type"`   // bind | named | place (place already resolved to bind by backend)
-	Source string `json:"source"` // host path or named volume name
-	Target string `json:"target"` // container path
+	Type     string `json:"type"`     // bind | named | place (place already resolved to bind by backend)
+	Source   string `json:"source"`   // host path or named volume name
+	Target   string `json:"target"`   // container path
+	ReadOnly bool   `json:"readOnly"` // mount as read-only when true
 }
 
 type labelEntry struct {
@@ -117,7 +118,11 @@ func buildCreateArgs(msg *dockerTaskMsg) []string {
 	}
 
 	for _, v := range msg.Volumes {
-		args = append(args, "-v", fmt.Sprintf("%s:%s", v.Source, v.Target))
+		bind := fmt.Sprintf("%s:%s", v.Source, v.Target)
+		if v.ReadOnly {
+			bind += ":ro"
+		}
+		args = append(args, "-v", bind)
 	}
 
 	// First network via --network; additional ones connected after start.

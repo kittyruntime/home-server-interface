@@ -22,9 +22,10 @@ const zEnvVar = z.object({
 })
 
 const zVolumeMount = z.object({
-  type:   z.enum(["bind", "named", "place"]),
-  source: z.string().min(1),
-  target: z.string().startsWith("/"),
+  type:     z.enum(["bind", "named", "place"]),
+  source:   z.string().min(1),
+  target:   z.string().startsWith("/"),
+  readOnly: z.boolean().default(false),
 })
 
 const zLabelEntry = z.object({
@@ -69,7 +70,7 @@ function mapWorkerError(e: any): TRPCError {
 /** Replace place-type volume mounts with their real host path. */
 async function resolvePlaceMounts(
   prisma: any,
-  volumes: Array<{ type: string; source: string; target: string }>,
+  volumes: Array<{ type: string; source: string; target: string; readOnly?: boolean }>,
 ) {
   return Promise.all(volumes.map(async (v) => {
     if (v.type !== "place") return v
@@ -290,9 +291,10 @@ const appRouter = router({
       ports:        z.array(zPortMapping).default([]),
       envs:         z.array(zEnvVar).default([]),
       volumes:      z.array(z.object({
-        type:   z.enum(["bind", "named", "place"]),
-        source: z.string(),
-        target: z.string(),
+        type:     z.enum(["bind", "named", "place"]),
+        source:   z.string(),
+        target:   z.string(),
+        readOnly: z.boolean().default(false),
       })).default([]),
       networkNames: z.array(z.string()).default([]),
       labels:       z.array(zLabelEntry).default([]),

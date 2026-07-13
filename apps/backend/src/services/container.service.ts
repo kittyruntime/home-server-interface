@@ -15,9 +15,10 @@ export interface EnvVar {
 }
 
 export interface VolumeMount {
-  type:   "bind" | "named" | "place"
-  source: string
-  target: string
+  type:     "bind" | "named" | "place"
+  source:   string
+  target:   string
+  readOnly: boolean
 }
 
 export interface LabelEntry {
