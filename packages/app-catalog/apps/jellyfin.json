@@ -1,0 +1,16 @@
+{
+  "id": "jellyfin",
+  "name": "Jellyfin",
+  "category": "Media",
+  "tagline": "Free software media server for your movies, shows and music.",
+  "description": "Jellyfin lets you stream your own media library to any device. No tracking, no fees.",
+  "website": "https://jellyfin.org",
+  "image": "jellyfin/jellyfin:10.9.11",
+  "webUiPort": 8096,
+  "ports": [{ "container": 8096, "protocol": "tcp", "label": "Web UI" }],
+  "env": [{ "key": "TZ", "default": "Europe/Paris", "prompt": "Timezone" }],
+  "volumes": [
+    { "target": "/config", "label": "Config", "suggest": "place" },
+    { "target": "/media", "label": "Media library", "suggest": "place", "readOnlyDefault": true }
+  ]
+}

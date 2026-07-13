@@ -9,6 +9,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@app/app-catalog": "workspace:*",
     "@app/database": "workspace:*",
     "@app/shared-types": "workspace:*",
     "@fastify/cors": "^11.2.0",

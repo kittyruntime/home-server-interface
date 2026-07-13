@@ -29,6 +29,9 @@ importers:
 
   apps/backend:
     dependencies:
+      '@app/app-catalog':
+        specifier: workspace:*
+        version: link:../../packages/app-catalog
       '@app/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -145,6 +148,12 @@ importers:
       vue-tsc:
         specifier: ^3.3.6
         version: 3.3.6(typescript@5.9.3)
+
+  packages/app-catalog:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/database:
     dependencies:
