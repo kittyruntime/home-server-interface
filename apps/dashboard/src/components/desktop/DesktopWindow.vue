@@ -16,6 +16,7 @@ import type SettingsPanelT from '../SettingsPanel.vue'
 const AppsPanel = defineAsyncComponent(() => import('../apps/AppsPanel.vue'))
 const SettingsPanel = defineAsyncComponent(() => import('../SettingsPanel.vue'))
 const StoragePanel = defineAsyncComponent(() => import('../storage/StoragePanel.vue'))
+const AppStorePanel = defineAsyncComponent(() => import('../store/AppStorePanel.vue'))
 const MonitorPanel = defineAsyncComponent(() => import('../monitor/MonitorPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../sharing/SharingPanel.vue'))
 
@@ -216,6 +217,7 @@ function onMaximizeClick() {
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
       <StoragePanel v-else-if="win.appId === 'storage'" class="h-full" />
+      <AppStorePanel v-else-if="win.appId === 'store'" class="h-full" />
       <MonitorPanel v-else-if="win.appId === 'monitor'" class="h-full" />
       <SharingPanel v-else-if="win.appId === 'sharing'" class="h-full" />
       <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="setDirty(win.id, $event)" />

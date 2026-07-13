@@ -10,7 +10,7 @@
 // The `../icons/*.svg` files remain the canonical, human-editable source
 // for each icon (for design review, static serving, etc.) — keep the
 // strings below in sync with them when an icon changes.
-export const ICONS: Record<string, string> = {
+export const ICONS: Record<'jellyfin' | 'vaultwarden', string> = {
   jellyfin: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
   <rect x="2.5" y="4.5" width="19" height="13" rx="2"/>
   <path d="M9.5 8.25v5.5l5-2.75z" fill="currentColor" stroke="none"/>

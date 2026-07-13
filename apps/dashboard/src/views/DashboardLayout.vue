@@ -14,6 +14,7 @@ import AppIcon from '../components/desktop/AppIcon.vue'
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
 const SettingsPanel = defineAsyncComponent(() => import('../components/SettingsPanel.vue'))
 const StoragePanel = defineAsyncComponent(() => import('../components/storage/StoragePanel.vue'))
+const AppStorePanel = defineAsyncComponent(() => import('../components/store/AppStorePanel.vue'))
 const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/MonitorPanel.vue'))
 const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
@@ -85,6 +86,7 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'settings') return 'Settings'
   if (activeApp.value === 'apps') return 'Apps'
   if (activeApp.value === 'storage') return 'Storage'
+  if (activeApp.value === 'store') return 'App Store'
   if (activeApp.value === 'monitor') return 'Monitor'
   if (activeApp.value === 'sharing') return 'Sharing'
   return 'Overview'
@@ -272,6 +274,26 @@ onUnmounted(() => {
               <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
               <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
             </svg>
+          </button>
+        </div>
+
+        <!-- Store -->
+        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
+          <span
+            v-if="isActive('store')"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
+          />
+          <button
+            @click="selectApp('store')"
+            title="App Store"
+            :class="[
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+              isActive('store')
+                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+            ]"
+          >
+            <AppIcon app="store" :stroke-width="1.75" class="w-5 h-5" />
           </button>
         </div>
 
@@ -501,6 +523,7 @@ onUnmounted(() => {
           <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
           <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
           <StoragePanel v-else-if="activeApp === 'storage'" class="h-full" />
+          <AppStorePanel v-else-if="activeApp === 'store'" class="h-full" />
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
           <div v-else class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
@@ -572,6 +595,17 @@ onUnmounted(() => {
             <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
             <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
           </svg>
+        </button>
+      </div>
+
+      <!-- Store -->
+      <div v-if="isAdmin" class="relative flex justify-center">
+        <span v-if="isActive('store')"
+          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
+        <button @click="selectApp('store')" title="App Store"
+          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
+            isActive('store') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
+          <AppIcon app="store" :stroke-width="1.75" class="w-5 h-5" />
         </button>
       </div>
 

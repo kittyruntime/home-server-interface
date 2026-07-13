@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'monitor' | 'sharing' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
 
 export interface FilePreviewPayload {
@@ -32,6 +32,7 @@ export const APP_LABEL: Record<AppId, string> = {
   apps: 'Apps',
   settings: 'Settings',
   storage: 'Storage',
+  store: 'App Store',
   monitor: 'Monitor',
   sharing: 'Sharing',
   'file-preview': 'Preview',
@@ -49,6 +50,7 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   apps: { w: 760, h: 540 },
   settings: { w: 860, h: 560 },
   storage: { w: 900, h: 580 },
+  store: { w: 900, h: 600 },
   monitor: { w: 860, h: 580 },
   sharing: { w: 860, h: 560 },
   'file-preview': { w: 760, h: 560 },

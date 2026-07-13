@@ -39,6 +39,10 @@ const ICONS: Record<AppId, IconDef> = {
       [16.9, 17, 1.1],
     ],
   },
+  store: {
+    stroke: 'M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0',
+    dots: [[12, 13, 1.4]],
+  },
   monitor: {
     stroke: 'M3.5 12h2.9l2.3-6 3.8 12 2.3-6h2.7',
     dots: [[20.25, 12, 1.4]],
