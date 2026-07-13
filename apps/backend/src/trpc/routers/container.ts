@@ -68,7 +68,7 @@ function mapWorkerError(e: any): TRPCError {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Replace place-type volume mounts with their real host path. */
-async function resolvePlaceMounts(
+export async function resolvePlaceMounts(
   prisma: any,
   volumes: Array<{ type: string; source: string; target: string; readOnly?: boolean }>,
 ) {
