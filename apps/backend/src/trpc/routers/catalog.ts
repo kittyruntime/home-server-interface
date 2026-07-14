@@ -25,14 +25,23 @@ const zInstallVolume = z.object({
 
 export const catalogRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    // "installed" if any managed app carries the hsi.catalog.id label.
+    // Enrich every manifest with its installed instance (if any): a managed app
+    // carrying the `hsi.catalog.id` label. We surface the live `status` and the
+    // web-UI host port so the store card can show a real state + an Open action,
+    // not just an installed/not-installed boolean.
     const apps = await listApps(ctx.prisma)
-    const installedIds = new Set<string>()
-    for (const a of apps) {
-      const l = a.labels.find((x) => x.key === "hsi.catalog.id")
-      if (l) installedIds.add(l.value)
-    }
-    return CATALOG.map((m) => ({ ...m, installed: installedIds.has(m.id) }))
+    return CATALOG.map((m) => {
+      const app = apps.find((a) =>
+        a.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
+      )
+      const webPort = app && m.webUiPort != null
+        ? app.ports.find((p) => p.containerPort === m.webUiPort)?.hostPort ?? null
+        : null
+      const installedApp = app
+        ? { id: app.id, name: app.name, status: app.status, webPort }
+        : null
+      return { ...m, installed: !!app, installedApp }
+    })
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(({ input }) => {

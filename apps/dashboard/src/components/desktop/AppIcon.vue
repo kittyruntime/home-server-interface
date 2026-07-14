@@ -40,8 +40,14 @@ const ICONS: Record<AppId, IconDef> = {
     ],
   },
   store: {
-    stroke: 'M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0',
-    dots: [[12, 13, 1.4]],
+    // Storefront: a striped awning over a shop with an arched doorway — reads as
+    // "store" and stays distinct from the `apps` launcher grid.
+    stroke:
+      'M4 9.5L5.6 5H18.4L20 9.5Z' +                                   // awning canopy
+      'M8 5L7.6 9.5M12 5V9.5M16 5L16.4 9.5' +                         // awning seams
+      'M5.4 9.5V18a1.6 1.6 0 001.6 1.6H17a1.6 1.6 0 001.6-1.6V9.5' +  // shop body
+      'M10.2 19.6V15.8a1.8 1.8 0 013.6 0V19.6',                       // arched door
+    dots: [[13.15, 17.9, 0.55]],                                      // door knob
   },
   monitor: {
     stroke: 'M3.5 12h2.9l2.3-6 3.8 12 2.3-6h2.7',
