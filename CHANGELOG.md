@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **App Store polish**: the catalog now shows each app's **real logo** instead of a generic glyph, and the App Store launcher icon is a storefront (clearer, and distinct from the Apps grid). Each catalog card shows the app's live state — Not installed, Installing…, Running, Stopped or Error — with a contextual **Install** or **Open** action (Open launches the app's web UI on its mapped port). The screen refreshes on its own so a fresh install visibly moves from "Installing…" to "Running", and it now shows a loading skeleton and a "no results" state.
+
 ## [1.31.0] - 2026-07-13
 
 ### Added
