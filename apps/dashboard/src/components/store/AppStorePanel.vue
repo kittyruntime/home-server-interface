@@ -116,8 +116,8 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         >
           <!-- Identity -->
           <div class="flex gap-3 items-start min-w-0">
-            <!-- eslint-disable-next-line vue/no-v-html -- `a.icon` is a bundled first-party SVG from @app/app-catalog, not user input. -->
-            <span class="w-10 h-10 shrink-0 text-[var(--c-text-2)]" v-html="a.icon" />
+            <!-- eslint-disable-next-line vue/no-v-html -- `a.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
+            <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="a.icon" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ a.name }}</span>

@@ -185,8 +185,8 @@ async function install() {
     <template v-else-if="manifest">
       <!-- Header -->
       <div class="flex items-center gap-3">
-        <!-- eslint-disable-next-line vue/no-v-html -- `manifest.icon` is a bundled first-party SVG from @app/app-catalog, not user input. -->
-        <span class="w-10 h-10 shrink-0 text-[var(--c-text-2)]" v-html="manifest.icon" />
+        <!-- eslint-disable-next-line vue/no-v-html -- `manifest.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
+        <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="manifest.icon" />
         <div class="min-w-0">
           <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ manifest.name }}</h3>
           <p class="text-xs text-[var(--c-text-3)]">{{ manifest.tagline }}</p>
