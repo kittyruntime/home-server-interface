@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.31.1] - 2026-07-14
+
 ### Changed
 - **App Store polish**: the catalog now shows each app's **real logo** instead of a generic glyph, and the App Store launcher icon is a storefront (clearer, and distinct from the Apps grid). Each catalog card shows the app's live state — Not installed, Installing…, Running, Stopped or Error — with a contextual **Install** or **Open** action (Open launches the app's web UI on its mapped port). The screen refreshes on its own so a fresh install visibly moves from "Installing…" to "Running", and it now shows a loading skeleton and a "no results" state.
 
@@ -511,7 +513,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.1...HEAD
+[1.31.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.0...v1.31.1
 [1.31.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.2...v1.30.0
 [1.29.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.29.1...v1.29.2
