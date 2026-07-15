@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.33.0] - 2026-07-15
+
 ### Added
 - **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved to your account and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
 - **Preferences follow your account**: your theme, accent colour and sidebar order now sync across the browsers and devices you sign in on (loaded on login, saved as you change them; localStorage stays the instant local cache). Device-specific settings like desktop mode remain per-browser.
@@ -529,7 +531,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.32.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.0...HEAD
+[1.33.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.1...v1.32.0
 [1.31.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.0...v1.31.1
 [1.31.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.30.0...v1.31.0
