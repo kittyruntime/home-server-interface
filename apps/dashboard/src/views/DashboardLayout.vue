@@ -8,7 +8,8 @@ import { useDesktop } from '../lib/desktop'
 import { trpc } from '../lib/trpc'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
-import AppIcon from '../components/desktop/AppIcon.vue'
+import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
+import { useSidebarNav, orderedIds, reorder, persistOrder, resetOrder } from '../lib/sidebar-nav'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -98,6 +99,41 @@ function selectApp(id: string) {
   notifMenuOpen.value = false
 }
 
+// Data-driven, user-orderable sidebar / mobile nav (order persisted per-browser).
+const { items: navItems } = useSidebarNav(() => isAdmin.value)
+
+// Native drag-and-drop reorder (desktop sidebar only). Operates on the full
+// ordered id list so hidden admin items keep their relative position.
+const draggingId = ref<string | null>(null)
+function onNavDragStart(id: string, e: DragEvent) {
+  draggingId.value = id
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+  }
+}
+function onNavDragOver(overId: string, e: DragEvent) {
+  const dragId = draggingId.value
+  if (!dragId || dragId === overId) return
+  const full = [...orderedIds.value]
+  const from = full.indexOf(dragId)
+  if (from === -1 || full.indexOf(overId) === -1) return
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const after = e.clientY > rect.top + rect.height / 2
+  full.splice(from, 1)
+  const to = full.indexOf(overId)
+  full.splice(after ? to + 1 : to, 0, dragId)
+  reorder(full)
+}
+function onNavDragEnd() {
+  if (draggingId.value) persistOrder()
+  draggingId.value = null
+}
+function resetSidebarOrder() {
+  resetOrder()
+  userMenuOpen.value = false
+}
+
 function isActive(id: string) {
   return activeApp.value === id
 }
@@ -183,190 +219,40 @@ onUnmounted(() => {
 
         <div class="w-8 border-t border-[var(--c-border)] mb-3" />
 
-        <!-- App nav -->
+        <!-- App nav (drag an icon to reorder — persisted per browser) -->
         <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
-
-        <!-- Dashboard -->
-        <div class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('dashboard')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('dashboard')"
-            title="Overview"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('dashboard')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
+          <div
+            v-for="item in navItems"
+            :key="item.id"
+            draggable="true"
+            @dragstart="onNavDragStart(item.id, $event)"
+            @dragover.prevent="onNavDragOver(item.id, $event)"
+            @dragend="onNavDragEnd"
+            @drop.prevent="onNavDragEnd"
+            :class="['relative flex justify-center py-0.5 transition-opacity', draggingId === item.id ? 'opacity-40' : '']"
           >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Files -->
-        <div class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('files')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('files')"
-            title="Files"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('files')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Apps -->
-        <div class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('apps')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('apps')"
-            title="Apps"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('apps')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Storage -->
-        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('storage')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('storage')"
-            title="Storage"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('storage')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 6.5a2 2 0 012-2h13a2 2 0 012 2v11a2 2 0 01-2 2h-13a2 2 0 01-2-2v-11zM3.5 9.5h17M3.5 14.5h17M6.5 7h4.5M6.5 12h4.5M6.5 17h4.5"/>
-              <circle cx="16.9" cy="7" r="0.9" fill="currentColor" stroke="none"/>
-              <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
-              <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Store -->
-        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('store')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('store')"
-            title="App Store"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('store')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <AppIcon app="store" :stroke-width="1.75" class="w-5 h-5" />
-          </button>
-        </div>
-
-        <!-- Monitor -->
-        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('monitor')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('monitor')"
-            title="Monitor"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('monitor')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Sharing -->
-        <div v-if="isAdmin" class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('sharing')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('sharing')"
-            title="Sharing"
-            :class="[
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('sharing')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <AppIcon app="sharing" :stroke-width="1.75" class="w-5 h-5" />
-          </button>
-        </div>
-
-        <!-- Settings -->
-        <div class="relative flex justify-center py-0.5">
-          <span
-            v-if="isActive('settings')"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
-          />
-          <button
-            @click="selectApp('settings')"
-            title="Settings"
-            :class="[
-              'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
-              isActive('settings')
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
             <span
-              v-if="updateAvailable && !isActive('settings')"
-              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]"
+              v-if="isActive(item.id)"
+              class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
             />
-          </button>
-        </div>
-
-      </nav>
+            <button
+              @click="selectApp(item.id)"
+              :title="item.label"
+              :class="[
+                'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+                isActive(item.id)
+                  ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+                  : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ]"
+            >
+              <SidebarNavIcon :id="item.id" />
+              <span
+                v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
+                class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]"
+              />
+            </button>
+          </div>
+        </nav>
       </template>
 
       <!-- Notifications bell -->
@@ -454,6 +340,16 @@ onUnmounted(() => {
                 <span :class="['absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform', desktopMode ? 'translate-x-4' : 'translate-x-0']" />
               </button>
             </div>
+            <button
+              @click="resetSidebarOrder"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--c-text-2)]
+                     hover:bg-[var(--c-hover)] rounded-lg transition-colors text-left"
+            >
+              <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reset sidebar order
+            </button>
             <div class="h-px bg-[var(--c-border-strong)] mx-1 my-1" />
             <button
               @click="handleLogout"
@@ -543,108 +439,15 @@ onUnmounted(() => {
     <!-- Mobile bottom nav -->
     <nav class="flex sm:hidden flex-shrink-0 items-center justify-around h-14 bg-[var(--c-sidebar)] border-t border-[var(--c-border)] px-1">
 
-      <!-- Dashboard -->
-      <div class="relative flex justify-center">
-        <span v-if="isActive('dashboard')"
+      <!-- App nav (order mirrors the sidebar; not draggable on mobile) -->
+      <div v-for="item in navItems" :key="item.id" class="relative flex justify-center">
+        <span v-if="isActive(item.id)"
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('dashboard')" title="Overview"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('dashboard') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Files -->
-      <div class="relative flex justify-center">
-        <span v-if="isActive('files')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('files')" title="Files"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('files') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Apps -->
-      <div class="relative flex justify-center">
-        <span v-if="isActive('apps')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('apps')" title="Apps"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('apps') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12H19M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Storage -->
-      <div v-if="isAdmin" class="relative flex justify-center">
-        <span v-if="isActive('storage')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('storage')" title="Storage"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('storage') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 6.5a2 2 0 012-2h13a2 2 0 012 2v11a2 2 0 01-2 2h-13a2 2 0 01-2-2v-11zM3.5 9.5h17M3.5 14.5h17M6.5 7h4.5M6.5 12h4.5M6.5 17h4.5"/>
-            <circle cx="16.9" cy="7" r="0.9" fill="currentColor" stroke="none"/>
-            <circle cx="16.9" cy="12" r="0.9" fill="currentColor" stroke="none"/>
-            <circle cx="16.9" cy="17" r="0.9" fill="currentColor" stroke="none"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Store -->
-      <div v-if="isAdmin" class="relative flex justify-center">
-        <span v-if="isActive('store')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('store')" title="App Store"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('store') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <AppIcon app="store" :stroke-width="1.75" class="w-5 h-5" />
-        </button>
-      </div>
-
-      <!-- Monitor -->
-      <div v-if="isAdmin" class="relative flex justify-center">
-        <span v-if="isActive('monitor')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('monitor')" title="Monitor"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('monitor') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Sharing -->
-      <div v-if="isAdmin" class="relative flex justify-center">
-        <span v-if="isActive('sharing')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('sharing')" title="Sharing"
-          :class="['w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('sharing') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <AppIcon app="sharing" :stroke-width="1.75" class="w-5 h-5" />
-        </button>
-      </div>
-
-      <!-- Settings -->
-      <div class="relative flex justify-center">
-        <span v-if="isActive('settings')"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[var(--c-accent)] rounded-t-full" />
-        <button @click="selectApp('settings')" title="Settings"
+        <button @click="selectApp(item.id)" :title="item.label"
           :class="['relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150',
-            isActive('settings') ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span v-if="updateAvailable && !isActive('settings')"
+            isActive(item.id) ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]']">
+          <SidebarNavIcon :id="item.id" />
+          <span v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
             class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-warning)]" />
         </button>
       </div>

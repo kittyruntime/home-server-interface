@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved per browser and mirrored in the mobile bottom bar. A plain click still opens the app. "Reset sidebar order" (in the profile menu) restores the default.
+
 ## [1.32.0] - 2026-07-15
 
 ### Added
