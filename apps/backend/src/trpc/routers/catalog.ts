@@ -5,7 +5,15 @@ import { router, protectedProcedure, withPermission } from "../index"
 import { CATALOG } from "@app/app-catalog"
 import { listApps, createApp, portDomainUrl, type AppConfig } from "../../services/container.service"
 import { publishJob, requestSync } from "../../nats"
-import { resolvePlaceMounts } from "./container"
+import { resolvePlaceMounts, dockerContainers } from "./container"
+
+// Docker's container state → the store card's status vocabulary. Anything mid-life
+// (created/restarting/…) falls through and the card treats it as "Installing…".
+function liveStatus(dockerStatus: string): string {
+  if (dockerStatus === "running") return "running"
+  if (dockerStatus === "exited" || dockerStatus === "dead" || dockerStatus === "paused") return "stopped"
+  return dockerStatus
+}
 
 // Same guard manual container creation uses (see container.ts's `canCreate`) —
 // `catalog.install` must not be reachable with weaker authorization than
@@ -30,17 +38,27 @@ export const catalogRouter = router({
     // web-UI host port so the store card can show a real state + an Open action,
     // not just an installed/not-installed boolean.
     const apps = await listApps(ctx.prisma)
+    // Live container state (persisted `status` is only refreshed on explicit
+    // actions, so a freshly-installed app would otherwise never show "Running").
+    const byName = new Map((await dockerContainers()).map((c) => [c.name, c]))
     return CATALOG.map((m) => {
       const app = apps.find((a) =>
         a.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
       )
+      const live = app ? byName.get(app.name) : undefined
       // The web-UI port row (if any) — carries both the mapped host port (fallback
       // URL) and its optional domain/HTTPS binding (the "Open" URL when set).
       const webRow = app && m.webUiPort != null
         ? app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
         : null
       const installedApp = app
-        ? { id: app.id, name: app.name, status: app.status, webPort: webRow?.hostPort ?? null, webUrl: webRow ? portDomainUrl(webRow) : null }
+        ? {
+            id:      app.id,
+            name:    app.name,
+            status:  live ? liveStatus(live.status) : app.status,
+            webPort: webRow?.hostPort ?? null,
+            webUrl:  webRow ? portDomainUrl(webRow) : null,
+          }
         : null
       return { ...m, installed: !!app, installedApp }
     })

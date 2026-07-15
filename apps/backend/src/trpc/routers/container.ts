@@ -92,20 +92,29 @@ const canCreate = withPermission("container.create")
 const canDelete = withPermission("container.delete")
 const canManage = withPermission("container.manage")
 
-// Real host-bound Docker ports ("port/proto" → container name), cached briefly so
-// debounced per-row `checkPort` calls don't re-run `docker ps` + inspect on every
-// keystroke. Covers managed AND unmanaged (compose) containers.
-let dockerPortsCache: { at: number; ports: Map<string, string> } | null = null
-async function dockerBoundPorts(): Promise<Map<string, string>> {
-  if (dockerPortsCache && Date.now() - dockerPortsCache.at < 5_000) return dockerPortsCache.ports
-  const ports = new Map<string, string>()
+// A cached snapshot of all Docker containers (managed + unmanaged), so repeated
+// callers — the debounced `checkPort` and the App Store's live status — don't each
+// re-run `docker ps` + inspect. Cached ~5s; `listAll` is the worker's ps+inspect.
+export type DockerContainerLite = {
+  name:    string
+  status:  string   // Docker State.Status: running | exited | created | paused | …
+  ports?:  Array<{ hostPort: number; protocol: string }>
+}
+let dockerCache: { at: number; list: DockerContainerLite[] } | null = null
+export async function dockerContainers(): Promise<DockerContainerLite[]> {
+  if (dockerCache && Date.now() - dockerCache.at < 5_000) return dockerCache.list
+  let list: DockerContainerLite[] = []
   try {
-    const all = await requestSync<Array<{ name: string; ports?: Array<{ hostPort: number; protocol: string }> }>>(
-      "root.container.listAll", {}, 10_000,
-    )
-    for (const c of all) for (const p of c.ports ?? []) ports.set(`${p.hostPort}/${p.protocol}`, c.name)
-  } catch { /* worker/docker unavailable — skip this source */ }
-  dockerPortsCache = { at: Date.now(), ports }
+    list = await requestSync<DockerContainerLite[]>("root.container.listAll", {}, 10_000)
+  } catch { /* worker/docker unavailable — treat as empty */ }
+  dockerCache = { at: Date.now(), list }
+  return list
+}
+async function dockerBoundPorts(): Promise<Map<string, string>> {
+  const ports = new Map<string, string>()
+  for (const c of await dockerContainers()) {
+    for (const p of c.ports ?? []) ports.set(`${p.hostPort}/${p.protocol}`, c.name)
+  }
   return ports
 }
 

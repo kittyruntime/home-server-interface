@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useUploads } from '../lib/uploads'
@@ -9,7 +9,7 @@ import { trpc } from '../lib/trpc'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
-import { useSidebarNav, orderedIds, reorder, persistOrder, resetOrder } from '../lib/sidebar-nav'
+import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -129,6 +129,28 @@ function onNavDragEnd() {
   if (draggingId.value) persistOrder()
   draggingId.value = null
 }
+// Keyboard reorder (drag isn't keyboard-accessible): Alt+ArrowUp/Down moves the
+// focused item past its previous/next visible sibling. Operates on the full order
+// so hidden admin items keep their positions.
+function moveNavItem(id: string, dir: -1 | 1) {
+  const visible = navItems.value.map(i => i.id)
+  const vi = visible.indexOf(id)
+  const target = vi + dir
+  if (vi === -1 || target < 0 || target >= visible.length) return
+  const targetId = visible[target]
+  if (targetId === undefined) return
+  const full = [...orderedIds.value]
+  full.splice(full.indexOf(id), 1)
+  const to = full.indexOf(targetId)
+  full.splice(dir > 0 ? to + 1 : to, 0, id)
+  setOrder(full)
+  nextTick(() => document.querySelector<HTMLElement>(`[data-nav-id="${id}"]`)?.focus())
+}
+function onNavKeydown(id: string, e: KeyboardEvent) {
+  if (!e.altKey) return
+  if (e.key === 'ArrowUp')   { e.preventDefault(); moveNavItem(id, -1) }
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveNavItem(id,  1) }
+}
 function resetSidebarOrder() {
   resetOrder()
   userMenuOpen.value = false
@@ -237,7 +259,11 @@ onUnmounted(() => {
             />
             <button
               @click="selectApp(item.id)"
+              @keydown="onNavKeydown(item.id, $event)"
+              :data-nav-id="item.id"
               :title="item.label"
+              :aria-label="item.label"
+              aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
               :class="[
                 'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
                 isActive(item.id)

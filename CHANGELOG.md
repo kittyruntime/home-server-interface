@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved per browser and mirrored in the mobile bottom bar. A plain click still opens the app. "Reset sidebar order" (in the profile menu) restores the default.
+- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved per browser and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
+
+### Fixed
+- **App Store live status**: catalog cards now show each app's real container state (Running / Stopped) read from Docker, instead of a persisted status that was never refreshed after install — so a freshly-installed app correctly moves from "Installing…" to "Running" on its own.
+
+### Security
+- **Audit log**: user-submitted secret env **values** (e.g. an `ADMIN_TOKEN` you type at install) are now redacted in the audit log. Previously the redaction matched only the field *name*, so the secret in `value` was written in cleartext; the setting's name is now kept for auditability while its value is masked. (Server-generated secrets were never logged.)
 
 ## [1.32.0] - 2026-07-15
 
