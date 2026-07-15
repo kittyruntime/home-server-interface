@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved per browser and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
+- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved to your account and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
+- **Preferences follow your account**: your theme, accent colour and sidebar order now sync across the browsers and devices you sign in on (loaded on login, saved as you change them; localStorage stays the instant local cache). Device-specific settings like desktop mode remain per-browser.
 
 ### Fixed
 - **App Store live status**: catalog cards now show each app's real container state (Running / Stopped) read from Docker, instead of a persisted status that was never refreshed after install — so a freshly-installed app correctly moves from "Installing…" to "Running" on its own.

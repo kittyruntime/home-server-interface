@@ -5,6 +5,7 @@ model User {
   displayName      String?
   linuxUsername    String?
   wallpaper        Json?
+  preferences      Json?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   userRoles        UserRole[]

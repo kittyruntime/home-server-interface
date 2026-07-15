@@ -10,6 +10,7 @@ import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
+import { syncPreferences } from '../lib/preferences'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -210,6 +211,7 @@ onMounted(() => {
   window.addEventListener('resize', updateIsMobile)
   checkUpdateBadge()
   checkDefaultPassword()
+  syncPreferences()
   updateTimer = setInterval(checkUpdateBadge, 3_600_000) // hourly
 })
 onUnmounted(() => {

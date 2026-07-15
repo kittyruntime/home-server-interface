@@ -5,10 +5,46 @@ import { router, protectedProcedure, userManagerProcedure } from "../index"
 import { userSelect, createUser, changePassword, DEFAULT_PASSWORD, reLinuxUsername } from "../../services/user.service"
 import { syncSharesBestEffort } from "../../services/sharing.service"
 
+// Per-account UI preferences, synced across a user's browsers/devices. Kept to the
+// cross-device-meaningful prefs (theme/accent/sidebar order); device-specific ones
+// like desktop mode stay in localStorage. Stored as a JSON blob on the user row.
+const zPreferences = z.object({
+  theme:        z.enum(["auto", "light", "dark"]).optional(),
+  accent:       z.enum(["orange", "blue", "green", "purple"]).optional(),
+  sidebarOrder: z.array(z.string()).optional(),
+})
+function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
+  const r = zPreferences.safeParse(v ?? {})
+  return r.success ? r.data : {}
+}
+
 export const userRouter = router({
   list: protectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findMany({ select: userSelect, orderBy: { createdAt: "asc" } })
   }),
+
+  preferences: protectedProcedure.query(async ({ ctx }) => {
+    const u = await ctx.prisma.user.findUnique({
+      where: { id: ctx.user.userId },
+      select: { preferences: true },
+    })
+    return parsePrefs(u?.preferences)
+  }),
+
+  updatePreferences: protectedProcedure
+    .input(zPreferences)
+    .mutation(async ({ ctx, input }) => {
+      const u = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.userId },
+        select: { preferences: true },
+      })
+      const merged = { ...parsePrefs(u?.preferences), ...input }
+      await ctx.prisma.user.update({
+        where: { id: ctx.user.userId },
+        data:  { preferences: merged },
+      })
+      return merged
+    }),
 
   me: protectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findUniqueOrThrow({
