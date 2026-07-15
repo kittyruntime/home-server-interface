@@ -43,8 +43,15 @@ const SENSITIVE_KEY = /pass(word|wd)?|secret|token|key|auth|credential/i
 function redact(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(redact)
   if (v && typeof v === "object") {
+    const rec = v as Record<string, unknown>
+    // {key, value} entries (env vars, labels…): the secret is in `value`, named by
+    // `key` — so redact based on the key's *value*, not the "key"/"value" property
+    // names (which would otherwise leave the actual secret in `value` untouched).
+    if (typeof rec.key === "string" && "value" in rec) {
+      return { ...rec, value: SENSITIVE_KEY.test(rec.key) ? "[REDACTED]" : redact(rec.value) }
+    }
     const out: Record<string, unknown> = {}
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    for (const [k, val] of Object.entries(rec)) {
       out[k] = SENSITIVE_KEY.test(k) ? "[REDACTED]" : redact(val)
     }
     return out
