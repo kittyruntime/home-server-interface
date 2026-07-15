@@ -292,7 +292,7 @@ func doMkdir(parent, name string) (*mkdirResult, *fsError) {
 		}
 		target = filepath.Join(parent, fmt.Sprintf("%s (%d)", name, n))
 	}
-	if err := os.MkdirAll(target, 0755); err != nil {
+	if err := os.MkdirAll(target, 0775); err != nil {
 		return nil, mapOsErr(err)
 	}
 	return &mkdirResult{Path: target, Name: filepath.Base(target)}, nil
@@ -444,7 +444,9 @@ func doDelete(path string) *fsError {
 // ── assemble ──────────────────────────────────────────────────────────────────
 
 func doAssemble(destFile string, chunks []string) *fsError {
-	out, err := os.OpenFile(destFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	// 0664 so uploads land group-writable (with umask 0002); combined with the
+	// setgid share dir this lets any write-user overwrite the file later.
+	out, err := os.OpenFile(destFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
 	if err != nil {
 		return mapOsErr(err)
 	}

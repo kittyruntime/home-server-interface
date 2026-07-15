@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,12 @@ const (
 	smbConfPath = smbConfDir + "/smb.conf"
 	dropInDir   = "/etc/systemd/system/smbd.service.d"
 	dropInPath  = dropInDir + "/nasui.conf"
+
+	// Shared group owning writable share directories. Write-permitted users are
+	// its members; share dirs are chgrp'd to it and made setgid + group-writable
+	// so both SMB and the web file-manager (both write as the connecting user)
+	// can write. Samba's valid-users/write-list still gates who may connect.
+	shareGroup = "hsi-share"
 )
 
 const dropInContent = `# Managed by nasui — points smbd at the app-owned config instead of the
@@ -48,6 +55,45 @@ func smbdInstalled() bool {
 	}
 	_, err := os.Stat("/usr/sbin/smbd")
 	return err == nil
+}
+
+// ── Share group + directory permissions ─────────────────────────────────────
+// Best-effort: a failure here must not break the smb.conf write / smbd reload,
+// so callers log and continue.
+
+func ensureShareGroup() error {
+	// -f: succeed if the group already exists.
+	return exec.Command("groupadd", "-f", shareGroup).Run()
+}
+
+// setShareGroupMembers replaces the group's member roster with exactly `users`
+// (gpasswd -M). Empty list clears membership.
+func setShareGroupMembers(users []string) error {
+	valid := make([]string, 0, len(users))
+	for _, u := range users {
+		if reLinuxUsername.MatchString(u) {
+			valid = append(valid, u)
+		}
+	}
+	return exec.Command("gpasswd", "-M", strings.Join(valid, ","), shareGroup).Run()
+}
+
+// prepareShareDir makes a writable share's directory group-owned by shareGroup,
+// setgid (so new content inherits the group) and group-writable, without changing
+// its owner. Pre-existing files keep their ownership.
+func prepareShareDir(path string) error {
+	// Defense in depth: only operate on absolute paths (also stops `path` from
+	// being read as a chgrp option). Callers already validate via renderSmbConf,
+	// but don't rely on call ordering.
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("refusing non-absolute share path %q", path)
+	}
+	// `--` terminates options so a path can never be parsed as a flag.
+	if err := exec.Command("chgrp", "--", shareGroup, path).Run(); err != nil {
+		return err
+	}
+	// 2775 = setgid + rwxrwxr-x
+	return os.Chmod(path, 0o775|os.ModeSetgid)
 }
 
 func handleSharingCheckPrereqs(nc *nats.Conn, msg *nats.Msg) {
@@ -112,6 +158,12 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		}
 		if !s.ReadOnly && len(s.WriteUsers) > 0 {
 			b.WriteString("   write list = " + strings.Join(s.WriteUsers, " ") + "\n")
+			// New content is owned by the writer but group-owned by shareGroup and
+			// group-writable, so any write-user can modify it (matches the setgid
+			// group-writable share dir + web file-manager behaviour).
+			b.WriteString("   force group = " + shareGroup + "\n")
+			b.WriteString("   create mask = 0664\n")
+			b.WriteString("   directory mask = 0775\n")
 		}
 	}
 	return b.String(), nil
@@ -134,6 +186,34 @@ func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
+
+	// Make writable shares actually writable at the filesystem layer (best-effort;
+	// never fail the whole sync on a chgrp/chmod hiccup): ensure the shared group,
+	// set its members to the union of all write-users, and setgid+group-write each
+	// writable share directory.
+	if err := ensureShareGroup(); err != nil {
+		log.Printf("sharing: ensure group %q: %v", shareGroup, err)
+	}
+	writeUnion := map[string]bool{}
+	for _, s := range req.Shares {
+		if s.ReadOnly || len(s.WriteUsers) == 0 {
+			continue
+		}
+		for _, u := range s.WriteUsers {
+			writeUnion[u] = true
+		}
+		if err := prepareShareDir(s.Path); err != nil {
+			log.Printf("sharing: prepare dir %q: %v", s.Path, err)
+		}
+	}
+	members := make([]string, 0, len(writeUnion))
+	for u := range writeUnion {
+		members = append(members, u)
+	}
+	if err := setShareGroupMembers(members); err != nil {
+		log.Printf("sharing: set group members: %v", err)
+	}
+
 	created, err := ensureDropIn()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "install drop-in: " + err.Error()})

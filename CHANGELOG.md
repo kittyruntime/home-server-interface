@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Can't write to an SMB share (even as admin)**: writes failed for two reasons — admins were never added to a share's Samba *write list*, and shared directories were created root-owned and not writable by the users granted write (which also affected the web file browser, since both write as your Linux user). Now admins always get read+write on every share, and each writable share directory is placed in a shared `hsi-share` group — setgid and group-writable, with the write-permitted users as members — so both SMB and the web file manager can write. New files are group-writable too. Takes effect on the next share sync; SMB clients may need to reconnect once for the new group membership to apply.
+
 ## [1.33.0] - 2026-07-15
 
 ### Added

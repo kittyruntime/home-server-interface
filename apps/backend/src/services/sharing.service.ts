@@ -86,6 +86,17 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
     where: { enabled: true },
     include: { place: { select: { name: true, path: true } } },
   })
+
+  // Admins always have full access in the app — mirror that into Samba so an
+  // admin can read/write every share without needing an explicit per-place grant.
+  const admins = await prisma.user.findMany({
+    where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
+    select: { linuxUsername: true },
+  })
+  const adminLinux = admins.map(a => a.linuxUsername!).filter(Boolean)
+
+  const uniqSorted = (xs: string[]) => [...new Set(xs)].sort()
+
   const defs = []
   for (const s of shares) {
     const users = await resolveShareUsers(prisma, s.placeId)
@@ -94,8 +105,8 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
       path: s.place.path,
       readOnly: s.readOnly,
       guestOk: s.guestOk,
-      validUsers: users.validUsers,
-      writeUsers: s.readOnly ? [] : users.writeUsers,
+      validUsers: uniqSorted([...users.validUsers, ...adminLinux]),
+      writeUsers: s.readOnly ? [] : uniqSorted([...users.writeUsers, ...adminLinux]),
     })
   }
   await requestSync("root.sharing.sync", { shares: defs })
