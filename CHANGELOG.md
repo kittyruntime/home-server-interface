@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Host-port conflict warning**: when you pick a host port for an app (App Store install wizard or the container form), HSI now warns if that port is already taken — by another HSI app, any Docker container (incl. Compose stacks), or a non-Docker process on the host. It's a non-blocking heads-up (the port still binds), so you can fix it before Docker fails to start the second app.
+- **Per-port access binding**: each published port can record where it's actually reached — an optional domain, an HTTPS toggle, and an optional external port — set in the app's settings (Ports). HSI doesn't terminate TLS or run a proxy; it just stores the binding so the **Open** button goes to the real URL (e.g. `https://jellyfin.example.com`) instead of `http://<host>:<port>`. Universal because it's plain per-container metadata, whatever handles TLS externally (your reverse proxy, tunnel, or router).
+
 ## [1.31.1] - 2026-07-14
 
 ### Changed

@@ -14,6 +14,11 @@ const zPortMapping = z.object({
   hostPort:      z.number().int().min(1).max(65535),
   containerPort: z.number().int().min(1).max(65535),
   protocol:      z.enum(["tcp", "udp"]).default("tcp"),
+  // Optional access binding — records that this port is reached at a real URL
+  // (behind the user's own reverse proxy / tunnel). HSI-side metadata only.
+  domain:        z.string().min(1).max(253).optional(),
+  tls:           z.boolean().default(false),
+  publicPort:    z.number().int().min(1).max(65535).optional(),
 })
 
 const zEnvVar = z.object({
@@ -87,8 +92,59 @@ const canCreate = withPermission("container.create")
 const canDelete = withPermission("container.delete")
 const canManage = withPermission("container.manage")
 
+// Real host-bound Docker ports ("port/proto" → container name), cached briefly so
+// debounced per-row `checkPort` calls don't re-run `docker ps` + inspect on every
+// keystroke. Covers managed AND unmanaged (compose) containers.
+let dockerPortsCache: { at: number; ports: Map<string, string> } | null = null
+async function dockerBoundPorts(): Promise<Map<string, string>> {
+  if (dockerPortsCache && Date.now() - dockerPortsCache.at < 5_000) return dockerPortsCache.ports
+  const ports = new Map<string, string>()
+  try {
+    const all = await requestSync<Array<{ name: string; ports?: Array<{ hostPort: number; protocol: string }> }>>(
+      "root.container.listAll", {}, 10_000,
+    )
+    for (const c of all) for (const p of c.ports ?? []) ports.set(`${p.hostPort}/${p.protocol}`, c.name)
+  } catch { /* worker/docker unavailable — skip this source */ }
+  dockerPortsCache = { at: Date.now(), ports }
+  return ports
+}
+
 const appRouter = router({
   list: protectedProcedure.use(canView).query(({ ctx }) => listApps(ctx.prisma)),
+
+  // Warn (non-blocking) when a host port is already taken — by another managed
+  // app, any Docker container, or a non-Docker host process. Returns a human
+  // string in `by` for the UI to show.
+  checkPort: protectedProcedure.use(canCreate)
+    .input(z.object({
+      port:         z.number().int().min(1).max(65535),
+      protocol:     z.enum(["tcp", "udp"]).default("tcp"),
+      excludeAppId: z.string().optional(),   // ignore the app currently being edited
+    }))
+    .query(async ({ ctx, input }): Promise<{ inUse: boolean; by: string | null }> => {
+      // 1) another HSI-managed app
+      const apps = await listApps(ctx.prisma)
+      for (const a of apps) {
+        if (a.id === input.excludeAppId) continue
+        if (a.ports.some(p => p.hostPort === input.port && p.protocol === input.protocol)) {
+          return { inUse: true, by: `app "${a.name}"` }
+        }
+      }
+      // 2) any Docker container (managed or unmanaged/compose). The app being
+      //    edited runs as a container of the same name — don't flag it against itself.
+      const dockerName = (await dockerBoundPorts()).get(`${input.port}/${input.protocol}`)
+      if (dockerName && !apps.some(a => a.name === dockerName && a.id === input.excludeAppId)) {
+        return { inUse: true, by: `container "${dockerName}"` }
+      }
+      // 3) a non-Docker process holding the port (bind-and-release probe)
+      try {
+        const probe = await requestSync<{ inUse: boolean }>(
+          "root.sys.port.check", { port: input.port, protocol: input.protocol }, 5_000,
+        )
+        if (probe.inUse) return { inUse: true, by: "another process on the host" }
+      } catch { /* worker unavailable — best-effort */ }
+      return { inUse: false, by: null }
+    }),
 
   listPinned: protectedProcedure.query(async ({ ctx }) => {
     const apps = await listApps(ctx.prisma)

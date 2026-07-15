@@ -883,6 +883,7 @@ func main() {
 		"root.sys.part.create":      handlePartitionCreate,
 		"root.sys.part.delete":      handlePartitionDelete,
 		"root.sys.smart":            handleSmartInfo,
+		"root.sys.port.check":       handleCheckPort,
 		"root.fs.read-chunk":        handleReadChunk,
 		"root.fs.write-chunk":       handleWriteChunk,
 		"root.fs.zip-temp":          handleZipTemp,

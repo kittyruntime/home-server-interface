@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import type { Place } from '../apps/VolumesTable.vue'
 
@@ -122,6 +122,29 @@ const portsValid = computed(() =>
   ports.value.every((p) => Number.isInteger(p.host) && p.host >= 1 && p.host <= 65535)
 )
 
+// Non-blocking "host port already in use" warnings, keyed by `${container}-${protocol}`.
+// A conflict never disables Install (Docker remains the authoritative failure).
+const portWarnings = ref<Record<string, string>>({})
+let portTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => ports.value.map((p) => `${p.container}/${p.protocol}=${p.host}`).join(','),
+  () => {
+    if (portTimer) clearTimeout(portTimer)
+    portTimer = setTimeout(checkPorts, 400)
+  },
+)
+async function checkPorts() {
+  const next: Record<string, string> = {}
+  await Promise.all(ports.value.map(async (p) => {
+    if (!Number.isInteger(p.host) || p.host < 1 || p.host > 65535) return
+    try {
+      const r = await trpc.container.app.checkPort.query({ port: p.host, protocol: p.protocol })
+      if (r.inUse) next[`${p.container}-${p.protocol}`] = `Port ${p.host} is already used by ${r.by}.`
+    } catch { /* best-effort — ignore */ }
+  }))
+  portWarnings.value = next
+}
+
 const volumesValid = computed(() =>
   volumeRows.value.every((v) => {
     if (v.mode === 'place')    return !!v.placeId
@@ -205,14 +228,19 @@ async function install() {
       <!-- Ports -->
       <div v-if="ports.length" class="space-y-2">
         <h4 class="eyebrow">Ports</h4>
-        <div v-for="p in ports" :key="`${p.container}-${p.protocol}`" class="flex items-center gap-3">
-          <span class="text-sm text-[var(--c-text-1)] flex-1">{{ p.label }}</span>
-          <span class="text-xs text-[var(--c-text-3)] font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
-          <input
-            type="number" min="1" max="65535"
-            v-model.number="p.host"
-            class="ui-input w-28 shrink-0"
-          />
+        <div v-for="p in ports" :key="`${p.container}-${p.protocol}`" class="space-y-1">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-[var(--c-text-1)] flex-1">{{ p.label }}</span>
+            <span class="text-xs text-[var(--c-text-3)] font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
+            <input
+              type="number" min="1" max="65535"
+              v-model.number="p.host"
+              class="ui-input w-28 shrink-0"
+            />
+          </div>
+          <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="text-xs text-[var(--c-warning)]">
+            {{ portWarnings[`${p.container}-${p.protocol}`] }}
+          </p>
         </div>
       </div>
 

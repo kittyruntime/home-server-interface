@@ -7,6 +7,21 @@ export interface PortMapping {
   hostPort:      number
   containerPort: number
   protocol:      "tcp" | "udp"
+  // Optional access binding (HSI-side metadata, never passed to `docker run`):
+  // records that this published port is reached at a real URL, e.g. behind the
+  // user's own reverse proxy. Drives the "Open" action's URL.
+  domain?:       string   // e.g. "jellyfin.example.com"
+  tls?:          boolean  // https when true
+  publicPort?:   number   // external port; empty ⇒ standard 443 (tls) / 80
+}
+
+/** A port's access binding → absolute URL, or null when no domain is set. */
+export function portDomainUrl(p: PortMapping): string | null {
+  if (!p.domain) return null
+  const scheme = p.tls ? "https" : "http"
+  const def    = p.tls ? 443 : 80
+  const ep     = p.publicPort ?? def
+  return ep === def ? `${scheme}://${p.domain}` : `${scheme}://${p.domain}:${ep}`
 }
 
 export interface EnvVar {

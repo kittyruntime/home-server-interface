@@ -27,7 +27,7 @@ function update(i: number, patch: Partial<T>) {
           </svg>
         </button>
       </div>
-      <slot name="extra" :item="item" :index="i" />
+      <slot name="extra" :item="item" :index="i" :update="(patch: Partial<T>) => update(i, patch)" />
     </div>
 
     <button @click="add" class="flex items-center gap-1.5 text-sm text-[var(--c-accent)] hover:opacity-80 transition-colors cursor-pointer">

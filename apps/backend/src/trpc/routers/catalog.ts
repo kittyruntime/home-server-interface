@@ -3,7 +3,7 @@ import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, withPermission } from "../index"
 import { CATALOG } from "@app/app-catalog"
-import { listApps, createApp, type AppConfig } from "../../services/container.service"
+import { listApps, createApp, portDomainUrl, type AppConfig } from "../../services/container.service"
 import { publishJob, requestSync } from "../../nats"
 import { resolvePlaceMounts } from "./container"
 
@@ -34,11 +34,13 @@ export const catalogRouter = router({
       const app = apps.find((a) =>
         a.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
       )
-      const webPort = app && m.webUiPort != null
-        ? app.ports.find((p) => p.containerPort === m.webUiPort)?.hostPort ?? null
+      // The web-UI port row (if any) — carries both the mapped host port (fallback
+      // URL) and its optional domain/HTTPS binding (the "Open" URL when set).
+      const webRow = app && m.webUiPort != null
+        ? app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
         : null
       const installedApp = app
-        ? { id: app.id, name: app.name, status: app.status, webPort }
+        ? { id: app.id, name: app.name, status: app.status, webPort: webRow?.hostPort ?? null, webUrl: webRow ? portDomainUrl(webRow) : null }
         : null
       return { ...m, installed: !!app, installedApp }
     })

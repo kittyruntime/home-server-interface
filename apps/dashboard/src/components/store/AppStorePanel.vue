@@ -42,8 +42,11 @@ const STATE_META: Record<CardState, { label: string; dot: string; text: string }
 
 function openWizard(a: Entry) { selected.value = a }
 function openApp(a: Entry) {
-  if (a.installedApp?.webPort == null) return
-  window.open(`http://${location.hostname}:${a.installedApp.webPort}`, '_blank')
+  // Prefer the port's configured domain/HTTPS binding; else the mapped host port.
+  const url = a.installedApp?.webUrl
+    ?? (a.installedApp?.webPort != null ? `http://${location.hostname}:${a.installedApp.webPort}` : null)
+  if (!url) return
+  window.open(url, '_blank')
 }
 
 async function refresh() {
@@ -140,7 +143,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               @click.stop="openWizard(a)"
             >Install</button>
             <button
-              v-else-if="a.installedApp?.webPort != null"
+              v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null"
               class="btn btn-outline btn-xs"
               @click.stop="openApp(a)"
             >Open ↗</button>

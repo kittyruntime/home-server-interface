@@ -381,7 +381,7 @@ async function save() {
 
       <!-- Ports -->
       <div v-else-if="activeTab === 'ports'">
-        <PortsTable v-model="form.ports" />
+        <PortsTable v-model="form.ports" :app-id="editApp?.id" />
       </div>
 
       <!-- Envs -->
