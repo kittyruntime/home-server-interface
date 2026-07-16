@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sharing diagnostics**: a new **Diagnostics** tab under Sharing shows, per share, who can actually read/write (with a dot marking whether each account has a Samba password), who is permitted but **blocked and why** (no Linux account, or a `root`/system account that can't be used for SMB), and whether the share directory is group-writable. Turns a "why can't I write?" into a glance instead of digging through logs and `smb.conf`.
+
 ### Fixed
 - **Web file manager couldn't write to places without an SMB share**: writing through the built-in file browser acts as your Linux user (same as SMB), so it hit the same wall — the shared-group/writable-directory setup only ran for SMB shares. Now **every place you're granted write on** is placed in the `hsi-share` group (setgid, group-writable), share or not, so the web file manager can write there too. Applies the next time a permission changes (or on the next sync).
 

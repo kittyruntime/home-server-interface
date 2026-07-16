@@ -6,10 +6,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -209,6 +212,74 @@ func handleSharingPlaceAccess(nc *nats.Conn, msg *nats.Msg) {
 		log.Printf("sharing: set group members: %v", err)
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
+func modeOctal(m os.FileMode) string {
+	o := int(m.Perm())
+	if m&os.ModeSetuid != 0 {
+		o |= 0o4000
+	}
+	if m&os.ModeSetgid != 0 {
+		o |= 0o2000
+	}
+	if m&os.ModeSticky != 0 {
+		o |= 0o1000
+	}
+	return fmt.Sprintf("%04o", o)
+}
+
+// handleSharingDiag returns read-only facts for the sharing diagnostics UI: the
+// accounts that have a Samba password (pdbedit -L) and the on-disk state of each
+// share/place directory (group, mode, setgid, group-writable).
+func handleSharingDiag(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Paths []string `json:"paths"`
+	}
+	_ = json.Unmarshal(msg.Data, &req)
+
+	sambaUsers := []string{}
+	if out, err := exec.Command("pdbedit", "-L").Output(); err == nil {
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			if line == "" {
+				continue
+			}
+			name := line
+			if i := strings.IndexByte(line, ':'); i >= 0 {
+				name = line[:i]
+			}
+			sambaUsers = append(sambaUsers, name)
+		}
+	}
+
+	type dirState struct {
+		Path          string `json:"path"`
+		Exists        bool   `json:"exists"`
+		Group         string `json:"group"`
+		Mode          string `json:"mode"`
+		Setgid        bool   `json:"setgid"`
+		GroupWritable bool   `json:"groupWritable"`
+	}
+	dirs := make([]dirState, 0, len(req.Paths))
+	for _, p := range req.Paths {
+		st := dirState{Path: p}
+		if fi, err := os.Stat(p); err == nil {
+			st.Exists = true
+			m := fi.Mode()
+			st.Mode = modeOctal(m)
+			st.Setgid = m&os.ModeSetgid != 0
+			st.GroupWritable = m.Perm()&0o020 != 0
+			if sys, ok := fi.Sys().(*syscall.Stat_t); ok {
+				gid := strconv.FormatUint(uint64(sys.Gid), 10)
+				if g, err := user.LookupGroupId(gid); err == nil {
+					st.Group = g.Name
+				} else {
+					st.Group = gid
+				}
+			}
+		}
+		dirs = append(dirs, st)
+	}
+	replyOk(nc, msg.Reply, map[string]any{"sambaUsers": sambaUsers, "dirs": dirs})
 }
 
 func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {

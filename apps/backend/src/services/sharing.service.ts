@@ -10,14 +10,27 @@ function isShareableLinux(linux: string | null | undefined): linux is string {
   return !!linux && !NON_SHAREABLE_LINUX.has(linux)
 }
 
+/** Why a permitted user can't actually use file sharing — null if they can. */
+export function shareExclusionReason(linuxUsername: string | null | undefined): string | null {
+  if (!linuxUsername) return "Aucun compte Linux — définis un identifiant Linux pour ce compte."
+  if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `Compte système « ${linuxUsername} » interdit en SMB — utilise un compte non-root.`
+  return null
+}
+
 /** Linux usernames of all admins (excluding root/system accounts) — admins have
  *  full access, so they're added to every share/place's write set. */
-async function adminLinuxUsers(prisma: PrismaClient): Promise<string[]> {
+export async function adminLinuxUsers(prisma: PrismaClient): Promise<string[]> {
   const admins = await prisma.user.findMany({
     where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
     select: { linuxUsername: true },
   })
   return admins.map(a => a.linuxUsername).filter(isShareableLinux)
+}
+
+export interface ShareUserEntry {
+  username:      string        // HSI username
+  linuxUsername: string | null
+  write:         boolean
 }
 
 export interface ResolvedShareUsers {
@@ -26,6 +39,8 @@ export interface ResolvedShareUsers {
   /** App usernames that have access to the Place but no linuxUsername — they
    *  cannot get a Samba account and are excluded from the effective share. */
   excludedUsernames: string[]
+  /** Every app-user with a permission on the place (for diagnostics). */
+  entries: ShareUserEntry[]
 }
 
 /** Aggregates UserPlacePermission + RolePlacePermission for a Place — same
@@ -81,7 +96,10 @@ export async function resolveShareUsers(
   validUsers.sort()
   writeUsers.sort()
   excludedUsernames.sort()
-  return { validUsers, writeUsers, excludedUsernames }
+  const entries: ShareUserEntry[] = [...byUsername.entries()].map(([username, info]) => ({
+    username, linuxUsername: info.linux, write: info.write,
+  }))
+  return { validUsers, writeUsers, excludedUsernames, entries }
 }
 
 function sanitizeSmbName(name: string): string {

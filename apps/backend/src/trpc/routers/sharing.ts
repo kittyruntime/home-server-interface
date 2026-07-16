@@ -6,7 +6,13 @@ import {
   resolveShareUsers,
   effectiveSmbName,
   syncShares,
+  adminLinuxUsers,
+  shareExclusionReason,
 } from "../../services/sharing.service"
+
+type DirState = {
+  path: string; exists: boolean; group: string; mode: string; setgid: boolean; groupWritable: boolean
+}
 
 const reSmbName = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
 
@@ -164,5 +170,54 @@ export const sharingRouter = router({
       if ((e as { code?: string })?.code === "SMBD_MISSING") return { connections: [] }
       throw e
     }
+  }),
+
+  // Per-share health: who can actually read/write (and whether they have a Samba
+  // password), who's permitted but excluded (no Linux account / root) and why, and
+  // the on-disk state of the share directory. Turns "it's broken" into a glance.
+  diagnose: adminProcedure.query(async ({ ctx }) => {
+    const shares = await ctx.prisma.share.findMany({
+      where: { enabled: true },
+      include: { place: { select: { name: true, path: true } } },
+      orderBy: { createdAt: "asc" },
+    })
+    const adminLinux = await adminLinuxUsers(ctx.prisma)
+
+    // Worker facts: which accounts have a Samba password + on-disk dir state.
+    const paths = [...new Set(shares.map((s) => s.place.path))]
+    let sambaUsers: string[] = []
+    let dirs: DirState[] = []
+    try {
+      const diag = await requestSync<{ sambaUsers: string[]; dirs: DirState[] }>(
+        "root.sharing.diag", { paths },
+      )
+      sambaUsers = diag.sambaUsers ?? []
+      dirs = diag.dirs ?? []
+    } catch { /* worker/samba unavailable — degrade gracefully */ }
+    const sambaSet = new Set(sambaUsers)
+    const dirByPath = new Map(dirs.map((d) => [d.path, d]))
+    const withSamba = (linux: string) => ({ linuxUsername: linux, hasSamba: sambaSet.has(linux) })
+
+    const result = await Promise.all(shares.map(async (s) => {
+      const users = await resolveShareUsers(ctx.prisma, s.placeId)
+      const writeSet = new Set([...users.writeUsers, ...adminLinux])
+      const writers = [...writeSet].sort().map(withSamba)
+      const readers = [...new Set(users.validUsers)].filter((l) => !writeSet.has(l)).sort().map(withSamba)
+      const excluded = users.entries
+        .map((e) => ({ username: e.username, reason: shareExclusionReason(e.linuxUsername) }))
+        .filter((e): e is { username: string; reason: string } => e.reason !== null)
+      return {
+        id:       s.id,
+        name:     effectiveSmbName(s, s.place.name),
+        path:     s.place.path,
+        readOnly: s.readOnly,
+        guestOk:  s.guestOk,
+        writers,   // effective write users (+ their Samba-account status)
+        readers,   // read-only users
+        excluded,  // permitted but can't use sharing, with the reason
+        dir:      dirByPath.get(s.place.path) ?? null,
+      }
+    }))
+    return { shares: result }
   }),
 })

@@ -903,6 +903,7 @@ func main() {
 		"root.sharing.checkPrereqs": handleSharingCheckPrereqs,
 		"root.sharing.sync":         handleSharingSync,
 		"root.sharing.placeAccess":  handleSharingPlaceAccess,
+		"root.sharing.diag":         handleSharingDiag,
 		"root.sharing.setPassword":  handleSharingSetPassword,
 		"root.sharing.status":       handleSharingStatus,
 	} {
