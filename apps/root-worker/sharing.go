@@ -170,6 +170,47 @@ func renderSmbConf(shares []shareDef) (string, error) {
 	return b.String(), nil
 }
 
+// handleSharingPlaceAccess ensures the filesystem access layer for every place
+// that has write-users: the hsi-share group's members (union of all write-users)
+// and each place directory made group-owned + setgid + group-writable. This lets
+// BOTH SMB and the web file-manager (which write as the connecting user) write,
+// even for places without an SMB share. Not gated on smbd. Best-effort.
+func handleSharingPlaceAccess(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Places []struct {
+			Path       string   `json:"path"`
+			WriteUsers []string `json:"writeUsers"`
+		} `json:"places"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
+		return
+	}
+	if err := ensureShareGroup(); err != nil {
+		log.Printf("sharing: ensure group %q: %v", shareGroup, err)
+	}
+	union := map[string]bool{}
+	for _, p := range req.Places {
+		if len(p.WriteUsers) == 0 {
+			continue
+		}
+		for _, u := range p.WriteUsers {
+			union[u] = true
+		}
+		if err := prepareShareDir(p.Path); err != nil {
+			log.Printf("sharing: prepare dir %q: %v", p.Path, err)
+		}
+	}
+	members := make([]string, 0, len(union))
+	for u := range union {
+		members = append(members, u)
+	}
+	if err := setShareGroupMembers(members); err != nil {
+		log.Printf("sharing: set group members: %v", err)
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
 func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
 	if !smbdInstalled() {
 		replyErr(nc, msg.Reply, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"})
@@ -187,33 +228,9 @@ func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-
-	// Make writable shares actually writable at the filesystem layer (best-effort;
-	// never fail the whole sync on a chgrp/chmod hiccup): ensure the shared group,
-	// set its members to the union of all write-users, and setgid+group-write each
-	// writable share directory.
-	if err := ensureShareGroup(); err != nil {
-		log.Printf("sharing: ensure group %q: %v", shareGroup, err)
-	}
-	writeUnion := map[string]bool{}
-	for _, s := range req.Shares {
-		if s.ReadOnly || len(s.WriteUsers) == 0 {
-			continue
-		}
-		for _, u := range s.WriteUsers {
-			writeUnion[u] = true
-		}
-		if err := prepareShareDir(s.Path); err != nil {
-			log.Printf("sharing: prepare dir %q: %v", s.Path, err)
-		}
-	}
-	members := make([]string, 0, len(writeUnion))
-	for u := range writeUnion {
-		members = append(members, u)
-	}
-	if err := setShareGroupMembers(members); err != nil {
-		log.Printf("sharing: set group members: %v", err)
-	}
+	// The filesystem/group layer is handled separately (root.sharing.placeAccess),
+	// so it covers *every* place with write-users — not only SMB shares — and works
+	// even when Samba is absent.
 
 	created, err := ensureDropIn()
 	if err != nil {

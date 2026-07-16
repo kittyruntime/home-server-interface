@@ -10,6 +10,16 @@ function isShareableLinux(linux: string | null | undefined): linux is string {
   return !!linux && !NON_SHAREABLE_LINUX.has(linux)
 }
 
+/** Linux usernames of all admins (excluding root/system accounts) — admins have
+ *  full access, so they're added to every share/place's write set. */
+async function adminLinuxUsers(prisma: PrismaClient): Promise<string[]> {
+  const admins = await prisma.user.findMany({
+    where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
+    select: { linuxUsername: true },
+  })
+  return admins.map(a => a.linuxUsername).filter(isShareableLinux)
+}
+
 export interface ResolvedShareUsers {
   validUsers: string[]
   writeUsers: string[]
@@ -99,11 +109,7 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
 
   // Admins always have full access in the app — mirror that into Samba so an
   // admin can read/write every share without needing an explicit per-place grant.
-  const admins = await prisma.user.findMany({
-    where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
-    select: { linuxUsername: true },
-  })
-  const adminLinux = admins.map(a => a.linuxUsername).filter(isShareableLinux)
+  const adminLinux = await adminLinuxUsers(prisma)
 
   const uniqSorted = (xs: string[]) => [...new Set(xs)].sort()
 
@@ -122,12 +128,29 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
   await requestSync("root.sharing.sync", { shares: defs })
 }
 
+/** Ensures the *filesystem* access layer for EVERY place that has write-users
+ *  (not only SMB-shared ones): the `hsi-share` group's members + each place dir
+ *  made group-writable/setgid. This is what lets the web file-manager write (it
+ *  writes as the connecting Linux user, same as SMB) even without a share. Runs
+ *  independently of Samba. */
+export async function syncPlaceAccess(prisma: PrismaClient): Promise<void> {
+  const places = await prisma.place.findMany({ select: { id: true, path: true } })
+  const adminLinux = await adminLinuxUsers(prisma)
+  const defs: { path: string; writeUsers: string[] }[] = []
+  for (const p of places) {
+    const users = await resolveShareUsers(prisma, p.id)
+    const writeUsers = [...new Set([...users.writeUsers, ...adminLinux])]
+    if (writeUsers.length) defs.push({ path: p.path, writeUsers })
+  }
+  await requestSync("root.sharing.placeAccess", { places: defs })
+}
+
 /** For hooks riding on unrelated mutations (permission edits, role
- *  assignments…): sharing must never break those flows. */
+ *  assignments…): sharing must never break those flows. Covers both the Samba
+ *  config and the filesystem access layer. */
 export async function syncSharesBestEffort(prisma: PrismaClient): Promise<void> {
-  try {
-    await syncShares(prisma)
-  } catch (e) {
-    console.warn("[sharing] sync failed (non-fatal):", e)
+  const results = await Promise.allSettled([syncShares(prisma), syncPlaceAccess(prisma)])
+  for (const r of results) {
+    if (r.status === "rejected") console.warn("[sharing] sync failed (non-fatal):", r.reason)
   }
 }

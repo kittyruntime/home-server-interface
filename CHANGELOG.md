@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Web file manager couldn't write to places without an SMB share**: writing through the built-in file browser acts as your Linux user (same as SMB), so it hit the same wall — the shared-group/writable-directory setup only ran for SMB shares. Now **every place you're granted write on** is placed in the `hsi-share` group (setgid, group-writable), share or not, so the web file manager can write there too. Applies the next time a permission changes (or on the next sync).
+
 ### Security
 - **`root` can no longer be an SMB share account**: HSI never adds `root` (e.g. an admin account mapped to the Linux `root` user) to a share's Samba valid-users / write-list, nor to the `hsi-share` group. Writing to shares as root is unsafe and Samba refuses a root login anyway (it falls back to guest → read-only), so mapping an account to root produced a share only "root" could write — which nothing could actually use. Give SMB users a normal (non-root) Linux account.
 

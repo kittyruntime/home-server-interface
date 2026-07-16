@@ -902,6 +902,7 @@ func main() {
 		"root.fs.search":            handleSearch,
 		"root.sharing.checkPrereqs": handleSharingCheckPrereqs,
 		"root.sharing.sync":         handleSharingSync,
+		"root.sharing.placeAccess":  handleSharingPlaceAccess,
 		"root.sharing.setPassword":  handleSharingSetPassword,
 		"root.sharing.status":       handleSharingStatus,
 	} {
