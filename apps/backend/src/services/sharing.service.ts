@@ -1,6 +1,15 @@
 import type { PrismaClient } from "@app/database"
 import { requestSync } from "../nats"
 
+// Never expose privileged/system accounts over Samba: writing to shares as root
+// is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
+// read-only). A user mapped to such an account simply isn't a share user — use a
+// normal account for SMB.
+const NON_SHAREABLE_LINUX = new Set(["root"])
+function isShareableLinux(linux: string | null | undefined): linux is string {
+  return !!linux && !NON_SHAREABLE_LINUX.has(linux)
+}
+
 export interface ResolvedShareUsers {
   validUsers: string[]
   writeUsers: string[]
@@ -51,7 +60,8 @@ export async function resolveShareUsers(
   const writeUsers: string[] = []
   const excludedUsernames: string[] = []
   for (const [username, info] of byUsername) {
-    if (!info.linux) {
+    // No linux account, or a blocked system account (root) → can't be a share user.
+    if (!isShareableLinux(info.linux)) {
       excludedUsernames.push(username)
       continue
     }
@@ -93,7 +103,7 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
     where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
     select: { linuxUsername: true },
   })
-  const adminLinux = admins.map(a => a.linuxUsername!).filter(Boolean)
+  const adminLinux = admins.map(a => a.linuxUsername).filter(isShareableLinux)
 
   const uniqSorted = (xs: string[]) => [...new Set(xs)].sort()
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **`root` can no longer be an SMB share account**: HSI never adds `root` (e.g. an admin account mapped to the Linux `root` user) to a share's Samba valid-users / write-list, nor to the `hsi-share` group. Writing to shares as root is unsafe and Samba refuses a root login anyway (it falls back to guest → read-only), so mapping an account to root produced a share only "root" could write — which nothing could actually use. Give SMB users a normal (non-root) Linux account.
+
 ## [1.33.1] - 2026-07-15
 
 ### Fixed

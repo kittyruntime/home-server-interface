@@ -71,7 +71,8 @@ func ensureShareGroup() error {
 func setShareGroupMembers(users []string) error {
 	valid := make([]string, 0, len(users))
 	for _, u := range users {
-		if reLinuxUsername.MatchString(u) {
+		// Never add root (or invalid names) to the share group.
+		if u != "root" && reLinuxUsername.MatchString(u) {
 			valid = append(valid, u)
 		}
 	}
