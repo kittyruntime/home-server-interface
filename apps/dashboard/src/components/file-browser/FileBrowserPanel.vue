@@ -18,6 +18,7 @@ import FileGridView from './FileGridView.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
+import TransfersTray from './TransfersTray.vue'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -714,6 +715,8 @@ onMounted(async () => {
           />
         </template>
       </div>
+
+      <TransfersTray />
     </div>
   </div>
 

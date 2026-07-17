@@ -1,35 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useUploads, type Transfer } from '../lib/uploads'
 import { useNotifications } from '../lib/notifications'
 
 defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
 defineEmits<{ close: [] }>()
 
-const uploads = useUploads()
 const { notifications, dismiss, dismissAll } = useNotifications()
 
-// ── upload helpers ────────────────────────────────────────────────────────────
-function pct(t: Transfer) {
-  return t.totalChunks ? Math.round((t.sentChunks ?? 0) / t.totalChunks * 100) : 0
-}
-
-function speed(bps: number) {
-  if (bps >= 1_048_576) return `${(bps / 1_048_576).toFixed(1)} MB/s`
-  if (bps >= 1_024)     return `${(bps / 1_024).toFixed(0)} KB/s`
-  return bps > 0 ? `${Math.round(bps)} B/s` : ''
-}
-
-function togglePause(t: Transfer) {
-  if (t.status === 'paused') uploads.resume(t.id)
-  else uploads.pause(t.id)
-}
-
-// ── combined list ─────────────────────────────────────────────────────────────
-// Uploads and notifications rendered together; uploads first when active
-const hasItems = computed(
-  () => uploads.tasks.value.length > 0 || notifications.value.length > 0
-)
+const hasItems = computed(() => notifications.value.length > 0)
 const hasDismissible = computed(
   () => notifications.value.some(n => n.type !== 'progress')
 )
@@ -58,80 +36,6 @@ const hasDismissible = computed(
 
         <!-- Task list -->
         <div class="flex-1 overflow-y-auto divide-y divide-[var(--c-border)]">
-
-          <!-- ── Upload tasks ───────────────────────────────────────────── -->
-          <div
-            v-for="t in uploads.tasks.value"
-            :key="t.id"
-            class="px-3.5 py-2.5"
-          >
-            <div class="flex items-center gap-2.5 min-w-0">
-              <!-- Icon -->
-              <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                :class="t.status === 'done'      ? 'bg-success/10 text-success'
-                      : t.status === 'error'     ? 'bg-danger/10 text-danger'
-                      : t.status === 'cancelled' ? 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'
-                      : t.status === 'paused'    ? 'bg-[var(--c-warning)]/10 text-[var(--c-warning)]'
-                      :                            'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
-                <svg v-if="t.status === 'done'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                <svg v-else-if="t.status === 'error'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                </svg>
-              </div>
-
-              <!-- Name + status -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-baseline justify-between gap-2">
-                  <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
-                  <span class="text-[10px] tabular-nums shrink-0"
-                    :class="t.status === 'done'      ? 'text-success'
-                          : t.status === 'error'     ? 'text-danger'
-                          : t.status === 'cancelled' ? 'text-[var(--c-text-3)]'
-                          : t.status === 'paused'    ? 'text-[var(--c-warning)]'
-                          :                            'text-[var(--c-text-3)]'">
-                    {{ t.status === 'uploading' ? pct(t) + '%' : t.status === 'paused' ? 'paused' : t.status }}
-                  </span>
-                </div>
-
-                <!-- Progress bar -->
-                <div v-if="t.status === 'uploading' || t.status === 'paused'" class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all"
-                    :class="t.status === 'paused' ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-accent)]'"
-                    :style="{ width: pct(t) + '%' }" />
-                </div>
-
-                <!-- Speed + error -->
-                <div v-if="t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0" class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
-                  {{ speed(t.bytesPerSec ?? 0) }}
-                </div>
-                <div v-if="t.error" class="text-[10px] text-danger mt-0.5 truncate">{{ t.error }}</div>
-              </div>
-
-              <!-- Actions -->
-              <div v-if="t.status === 'uploading' || t.status === 'paused'" class="flex gap-0.5 shrink-0">
-                <button @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
-                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
-                  <svg v-if="t.status === 'uploading'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
-                  </svg>
-                  <svg v-else class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </button>
-                <button @click="uploads.cancel(t.id)" title="Cancel"
-                  class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-danger hover:bg-danger/10 transition-colors">
-                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="4" y="4" width="16" height="16" rx="2"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
 
           <!-- ── Job notifications ─────────────────────────────────────── -->
           <div

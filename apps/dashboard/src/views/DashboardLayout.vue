@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
-import { useUploads } from '../lib/uploads'
 import { useNotifications } from '../lib/notifications'
 import { useDesktop } from '../lib/desktop'
 import { trpc } from '../lib/trpc'
@@ -29,7 +28,6 @@ import DesktopShell from '../components/desktop/DesktopShell.vue'
 
 const router = useRouter()
 const { currentUsername, isAdmin, logout } = useAuth()
-const uploads = useUploads()
 const { notifications } = useNotifications()
 const { desktopMode, setDesktopMode, openApp } = useDesktop()
 
@@ -68,10 +66,7 @@ const userMenuOpen     = ref(false)
 const settingsSection  = ref<'profile' | 'users' | 'places' | 'roles' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
-const badgeCount = computed(() =>
-  uploads.tasks.value.filter(t => t.status === 'uploading' || t.status === 'paused').length
-  + notifications.value.length
-)
+const badgeCount = computed(() => notifications.value.length)
 
 const bellRef     = ref<HTMLButtonElement | null>(null)
 const notifPos    = ref({ bottom: 16, left: 72 })
