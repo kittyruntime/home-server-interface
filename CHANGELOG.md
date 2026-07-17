@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Robust file transfers**: uploads now survive network blips — each chunk retries with backoff and resumes from where it stopped instead of failing the whole file — and progress moved into a docked **Transfers** tray inside the file browser (out of the notification bell), with full untruncated errors and a **Retry** button. An upload interrupted by a page reload reappears in the tray; re-select the same file to resume from the chunks already uploaded. Copies and moves show in the same tray with their own retry.
 - **Sharing diagnostics**: a new **Diagnostics** tab under Sharing shows, per share, who can actually read/write (with a dot marking whether each account has a Samba password), who is permitted but **blocked and why** (no Linux account, or a `root`/system account that can't be used for SMB), and whether the share directory is group-writable. Turns a "why can't I write?" into a glance instead of digging through logs and `smb.conf`.
 
 ### Fixed
