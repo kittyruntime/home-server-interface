@@ -147,6 +147,18 @@ export function useUploads() {
     }
   }
 
+  /** Reset byte/chunk progress to zero — called at the start of each upload run
+   *  (incl. resume/retry) so `updateProgress`'s additive `sentBytes` recomputes
+   *  from scratch instead of stacking onto a prior run's total. */
+  function resetProgress(id: string) {
+    const t = tasks.value.find(x => x.id === id)
+    if (!t) return
+    t.sentChunks = 0
+    t.sentBytes = 0
+    t.bytesPerSec = 0
+    throughputWindows.delete(id)
+  }
+
   function remove(id: string) {
     const i = tasks.value.findIndex(x => x.id === id)
     if (i >= 0) tasks.value.splice(i, 1)
@@ -196,6 +208,7 @@ export function useUploads() {
     register,
     setStatus,
     updateProgress,
+    resetProgress,
     remove,
     pause,
     resume,

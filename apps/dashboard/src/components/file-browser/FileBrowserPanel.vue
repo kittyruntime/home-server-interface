@@ -7,8 +7,8 @@ import { useClipboard } from '../../lib/clipboard'
 import { useUploads } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
-import { randomId } from '../../lib/uuid'
 import { pollJob } from '../../lib/jobs'
+import { startUpload } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
@@ -25,14 +25,11 @@ interface Crumb { label: string; path: string; clickable: boolean }
 
 const props = defineProps<{ desktopWindow?: boolean }>()
 
-const { isAdmin, token }    = useAuth()
+const { isAdmin }    = useAuth()
 const { track, trackBatch } = useNotifications()
 const { clipboard, copy: clipCopy, cut: clipCut, clear: clipClear } = useClipboard()
 const uploads = useUploads()
 const { openFilePreview } = useDesktop()
-
-const BASE_URL   = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/trpc$/, '') : ''
-const CHUNK_SIZE = 2 * 1024 * 1024
 
 // ── state ────────────────────────────────────────────────────────────────────
 const currentPath     = ref<string | null>(null)
@@ -471,67 +468,14 @@ function cancelRename() {
 }
 
 // ── upload ───────────────────────────────────────────────────────────────────
-async function uploadFiles(files: FileList | File[]) {
+function uploadFiles(files: FileList | File[]) {
   if (!currentPath.value) return
   const dest = currentPath.value
 
   for (const file of Array.from(files)) {
-    const id = randomId()
-
-    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE))
-    const ac = new AbortController()
-
-    uploads.register({ id, name: file.name, destDir: dest, totalChunks, sentChunks: 0, totalBytes: file.size, sentBytes: 0, bytesPerSec: 0, status: 'uploading' })
-    uploads.setAbortController(id, ac)
-
-    try {
-      for (let i = 0; i < totalChunks; i++) {
-        while (uploads.isPaused(id)) await new Promise(r => setTimeout(r, 200))
-        if (ac.signal.aborted) throw new DOMException('Cancelled', 'AbortError')
-
-        const resp = await fetch(`${BASE_URL}/files/upload/chunk`, {
-          method: 'POST',
-          signal: ac.signal,
-          headers: {
-            'Authorization':  `Bearer ${token.value}`,
-            'Content-Type':   'application/octet-stream',
-            'X-Upload-Id':    id,
-            'X-Chunk-Index':  String(i),
-            'X-Total-Chunks': String(totalChunks),
-            'X-File-Name':    encodeURIComponent(file.name),
-            'X-Dest-Dir':     encodeURIComponent(dest),
-          },
-          body: file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
-        })
-        if (!resp.ok) throw new Error(await resp.text())
-        const body = await resp.json() as { ok: true; done: boolean; jobId?: string }
-        uploads.updateProgress(id, i + 1, Math.min(CHUNK_SIZE, file.size - i * CHUNK_SIZE))
-
-        // The last chunk's response carries the fs.assemble jobId — wait for
-        // it to actually finish writing the destination file before treating
-        // the upload as done, same reason as the other fs mutations below.
-        if (body.done && body.jobId) await pollJob(body.jobId)
-      }
-
-      uploads.setStatus(id, 'done')
-      if (currentPath.value === dest) refresh()
-      setTimeout(() => uploads.remove(id), 3000)
-    } catch (e: any) {
-      const isAbort = e instanceof DOMException && e.name === 'AbortError'
-      if (isAbort) {
-        uploads.setStatus(id, 'cancelled')
-        fetch(`${BASE_URL}/files/upload/cancel`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token.value}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uploadId: id }),
-        }).catch(() => {})
-        setTimeout(() => uploads.remove(id), 2500)
-      } else {
-        uploads.setStatus(id, 'error', e.message)
-      }
-    } finally {
-      uploads.cleanup(id)
-    }
+    startUpload(file, dest, {
+      onDone: () => { if (currentPath.value === dest) refresh() },
+    })
   }
 }
 
