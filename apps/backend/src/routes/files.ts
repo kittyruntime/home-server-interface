@@ -399,6 +399,33 @@ export async function fileRoutes(app: FastifyInstance) {
     return reply.send({ ok: true, done: true, jobId })
   })
 
+  // ── GET /files/upload/status?uploadId=<id> ────────────────────────────────
+  //
+  // Lets the client resume/retry a chunked upload by reporting which chunk
+  // indices are already staged on disk, so it can skip re-sending them.
+  //
+  // Resolves via the in-memory upload state keyed by uploadId (like DELETE
+  // /files/upload/cancel) — never hand-building a path from client input, so an
+  // unknown/evicted uploadId always reports known:false. The staged set comes
+  // from `state.received` (chunks the server successfully wrote and acked),
+  // which is the authoritative, truncation-safe source: a chunk left partially
+  // written by a crash was never acked, so it's correctly NOT reported as
+  // staged (a disk listing could otherwise report a truncated `.part`, and a
+  // resuming client would skip it → corrupt assembly).
+  app.get("/files/upload/status", async (req, reply) => {
+    const user = authFromRequest(req)
+    if (!user) return reply.status(401).send("Unauthorized")
+
+    const { uploadId } = req.query as Record<string, string>
+    if (!uploadId) return reply.status(400).send("Missing uploadId")
+
+    const state = getUpload(uploadId)
+    if (!state) return reply.send({ known: false, staged: [] })
+
+    const staged = [...state.received].sort((a, b) => a - b)
+    return reply.send({ known: true, staged })
+  })
+
   // ── DELETE /files/upload/cancel ───────────────────────────────────────────
   app.delete("/files/upload/cancel", async (req, reply) => {
     const user = authFromRequest(req)
