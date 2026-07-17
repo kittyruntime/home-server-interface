@@ -15,6 +15,7 @@ export interface UploadState {
   linuxUser:   string   // guaranteed non-null at creation
   allowedRoot: string   // Place root destDir was validated against ("" = admin/unrestricted)
   createdAt:   number
+  totalBytes?: number   // from X-Total-Bytes on the first chunk; used for the disk preflight only
 }
 
 const uploadState = new Map<string, UploadState>()

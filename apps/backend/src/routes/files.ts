@@ -306,6 +306,8 @@ export async function fileRoutes(app: FastifyInstance) {
   //   X-Total-Chunks   — total number of chunks
   //   X-File-Name      — URI-encoded filename
   //   X-Dest-Dir       — URI-encoded destination directory
+  //   X-Total-Bytes    — optional; total upload size, used for a one-time
+  //                       disk-space preflight when the upload is created
   //
   // Body: raw binary (application/octet-stream)
   //
@@ -313,7 +315,10 @@ export async function fileRoutes(app: FastifyInstance) {
   // <destDir>/.uploads-<uploadId>/ under the linuxUser's identity,
   // so no /tmp staging and no double disk usage.
   //
-  // The last-chunk response includes { done: true, jobId } for polling.
+  // This route only STAGES chunks — it never triggers assembly. The
+  // last-chunk response is just { ok: true, done: true }; the client must
+  // call POST /files/upload/complete to actually publish the assemble job
+  // (see below), which makes assembly explicit and retryable.
   //
   // Exempt from the global rate limiter: one request per CHUNK_SIZE (2MB,
   // see FileBrowserPanel.vue), so a large file alone can need thousands of
@@ -348,11 +353,33 @@ export async function fileRoutes(app: FastifyInstance) {
     if (!state) {
       const linuxUser = await getLinuxUser(user.userId)
       if (!linuxUser) return reply.status(500).send("User has no Linux account configured")
+
+      // Disk preflight — only done once, when the upload state is created.
+      // X-Total-Bytes is optional (older clients / back-compat): if it's
+      // absent or not a number, skip the check entirely rather than guessing.
+      const totalBytesHeader = req.headers["x-total-bytes"] as string | undefined
+      const totalBytes = totalBytesHeader !== undefined ? parseInt(totalBytesHeader, 10) : NaN
+      if (!isNaN(totalBytes)) {
+        try {
+          const { free } = await requestSync<{ total: number; free: number }>(
+            "root.fs.diskusage",
+            { path: destDir, allowedRoot: allowedRoot ?? "" },
+          )
+          if (free < totalBytes * 1.02)
+            return reply.status(507).send("Espace disque insuffisant pour cet upload")
+        } catch (e: any) {
+          if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
+          if (e?.code === "ENOENT") return reply.status(404).send("Not found")
+          return reply.status(500).send(e?.message ?? "Disk usage check failed")
+        }
+      }
+
       // Staging dir lives directly inside destDir — same filesystem, no double-write.
       const stagingDir = join(destDir, `.uploads-${uploadId}`)
       const newState: UploadState = {
         received: new Set(), totalChunks, fileName, destDir, stagingDir,
         linuxUser, allowedRoot: allowedRoot ?? "", createdAt: Date.now(),
+        totalBytes: isNaN(totalBytes) ? undefined : totalBytes,
       }
       setUpload(uploadId, newState)
       state = newState
@@ -377,10 +404,43 @@ export async function fileRoutes(app: FastifyInstance) {
     }
 
     state.received.add(chunkIndex)
-    if (state.received.size < totalChunks) return reply.send({ ok: true, done: false })
 
-    // All chunks received — publish async assemble job.
-    const chunks   = Array.from({ length: totalChunks }, (_, i) => join(state.stagingDir, `${i}.part`))
+    // All chunks staged — but assembly is no longer auto-triggered here.
+    // The client must call POST /files/upload/complete (with the expected
+    // sha256) to actually publish the assemble job; that makes assembly an
+    // explicit, retryable step instead of tying it to whichever request
+    // happens to land last. State is deliberately kept (not deleted) so a
+    // retry of /complete can still find it — UPLOAD_TTL GC bounds the leak.
+    return reply.send({ ok: true, done: state.received.size === totalChunks })
+  })
+
+  // ── POST /files/upload/complete ───────────────────────────────────────────
+  //
+  // Explicit, retryable assembly trigger. The chunk route only stages bytes
+  // now (see above) — this is the one place that publishes fs.assemble, and
+  // it can be called again (e.g. after a client crash/timeout waiting on the
+  // job) as long as the upload state + staged chunks are still around: it
+  // republishes the same assemble job from the still-staged chunks.
+  //
+  // Body: { uploadId: string, sha256: string } — sha256 is passed through to
+  // the worker as expectedSha so assembly is verified end-to-end.
+  app.post("/files/upload/complete", async (req, reply) => {
+    const user = authFromRequest(req)
+    if (!user) return reply.status(401).send("Unauthorized")
+
+    const { uploadId, sha256 } = (req.body ?? {}) as { uploadId?: string; sha256?: string }
+    if (!uploadId || !sha256) return reply.status(400).send("Missing uploadId or sha256")
+
+    const state = getUpload(uploadId)
+    if (!state) return reply.status(404).send("Unknown upload")
+
+    if (state.received.size !== state.totalChunks) {
+      const missing = Array.from({ length: state.totalChunks }, (_, i) => i)
+        .filter(i => !state.received.has(i))
+      return reply.status(409).send({ error: "Upload incomplete", missing })
+    }
+
+    const chunks   = Array.from({ length: state.totalChunks }, (_, i) => join(state.stagingDir, `${i}.part`))
     const destFile = join(state.destDir, state.fileName)
 
     const jobId = await publishJob(
@@ -391,12 +451,12 @@ export async function fileRoutes(app: FastifyInstance) {
         chunks,
         stagingDir: state.stagingDir,
         allowedRoot: state.allowedRoot,
+        expectedSha: sha256,
       },
       user.userId,
     )
-    deleteUpload(uploadId)
 
-    return reply.send({ ok: true, done: true, jobId })
+    return reply.send({ jobId })
   })
 
   // ── GET /files/upload/status?uploadId=<id> ────────────────────────────────
