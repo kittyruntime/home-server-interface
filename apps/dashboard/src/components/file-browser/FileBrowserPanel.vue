@@ -4,7 +4,7 @@ import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useNotifications } from '../../lib/notifications'
 import { useClipboard } from '../../lib/clipboard'
-import { useUploads } from '../../lib/uploads'
+import { useUploads, trackTransfer } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
 import { pollJob } from '../../lib/jobs'
@@ -342,8 +342,10 @@ async function doPaste() {
   const dst = currentPath.value
   if (mode === 'cut') pendingPaths.value = [...paths]
   try {
-    await trackBatch(
-      mode === 'copy' ? `Copying ${paths.length} item(s)` : `Moving ${paths.length} item(s)`,
+    await trackTransfer(
+      mode === 'copy' ? 'copy' : 'move',
+      `${mode === 'copy' ? 'Copie' : 'Déplacement'} de ${paths.length} élément(s)`,
+      dst,
       paths.map(src => async () => {
         const { jobId } = mode === 'copy'
           ? await trpc.fs.copy.mutate({ src, dstDir: dst })

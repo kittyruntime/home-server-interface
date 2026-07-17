@@ -1,4 +1,5 @@
 import { ref, readonly } from 'vue'
+import { randomId } from './uuid'
 
 export type TransferKind = 'upload' | 'copy' | 'move'
 export type TransferStatus =
@@ -229,3 +230,88 @@ export function useUploads() {
     retry,
   }
 }
+
+// ── Transfers: copy/move ────────────────────────────────────────────────────
+// Copy/move don't go through the chunked upload runner — each item is a
+// single tRPC mutate + pollJob call. `trackTransfer` registers the batch as
+// one `copy`/`move` transfer in the tray, drives it via `Promise.allSettled`,
+// and keeps the original ops around so a retry can genuinely re-issue the
+// same copy/move calls (each op is self-contained: it captures its own
+// src/dst, so it stays runnable even after the clipboard that spawned it
+// has been cleared).
+
+interface TransferSpec {
+  kind: 'copy' | 'move'
+  name: string
+  destDir: string
+  ops: Array<() => Promise<unknown>>
+}
+
+const transferSpecs = new Map<string, TransferSpec>()
+
+// Module-level store handle — same pattern as `upload-runner.ts`'s `const
+// uploads = useUploads()`: the returned functions all close over the shared
+// module-level `tasks` ref, so a single instance here is equivalent to
+// calling `useUploads()` per-component.
+const store = useUploads()
+
+function errorMessage(reason: unknown): string {
+  if (reason instanceof Error) return reason.message
+  if (typeof reason === 'object' && reason !== null && 'message' in reason) {
+    const m = (reason as { message?: unknown }).message
+    if (typeof m === 'string') return m
+  }
+  return String(reason)
+}
+
+/** Run (or re-run, for retry) the ops of an already-registered transfer. */
+async function runTransfer(id: string): Promise<void> {
+  const spec = transferSpecs.get(id)
+  if (!spec) return
+
+  store.setStatus(id, 'running')
+  store.resetProgress(id)
+
+  let done = 0
+  const results = await Promise.allSettled(
+    spec.ops.map(op =>
+      op().then(
+        (r: unknown) => { done++; store.updateProgress(id, done, 0); return r },
+        (e: unknown) => { done++; store.updateProgress(id, done, 0); throw e }
+      )
+    )
+  )
+
+  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+  if (failures.length === 0) {
+    store.setStatus(id, 'done')
+    setTimeout(() => { store.remove(id); transferSpecs.delete(id) }, 3000)
+  } else {
+    const message = errorMessage(failures[0]!.reason)
+    store.setStatus(id, 'error', `${failures.length} échec(s): ${message}`)
+  }
+}
+
+/** Register a copy/move batch as one transfer in the tray and run it. */
+export async function trackTransfer(
+  kind: 'copy' | 'move',
+  name: string,
+  destDir: string,
+  ops: Array<() => Promise<unknown>>,
+): Promise<void> {
+  const id = randomId()
+  transferSpecs.set(id, { kind, name, destDir, ops })
+  store.register({
+    id,
+    kind,
+    name,
+    destDir,
+    status: 'running',
+    totalChunks: ops.length,
+    sentChunks: 0,
+  })
+  await runTransfer(id)
+}
+
+registerRetryHandler('copy', id => { void runTransfer(id) })
+registerRetryHandler('move', id => { void runTransfer(id) })
