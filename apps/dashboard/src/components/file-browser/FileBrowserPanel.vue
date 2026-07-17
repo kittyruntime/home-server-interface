@@ -8,7 +8,7 @@ import { useUploads } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
 import { pollJob } from '../../lib/jobs'
-import { startUpload } from '../../lib/upload-runner'
+import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
@@ -510,6 +510,7 @@ function closeContextMenu() { ctxMenu.value = null }
 onMounted(async () => {
   dbPlaces.value = (await trpc.place.list.query()) as Place[]
   if (allPlaces.value.length > 0) selectPlace(allPlaces.value[0]!)
+  void hydrateInterruptedUploads()
 })
 </script>
 

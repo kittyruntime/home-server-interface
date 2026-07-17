@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useUploads, type Transfer, type TransferStatus } from '../../lib/uploads'
+import { resumeByReselect } from '../../lib/upload-runner'
 
 const uploads = useUploads()
 const collapsed = ref(false)
+
+// Hidden input used to re-select a file for an `interrupted` (post-reload)
+// transfer — the browser has no way to reconnect to the original File handle
+// across a reload, so resuming requires the user to pick the file again.
+const reselectInput = ref<HTMLInputElement | null>(null)
+const reselectTargetId = ref<string | null>(null)
 
 // Non-terminal — still doing (or about to do) something.
 const ACTIVE: TransferStatus[] = ['uploading', 'running', 'paused', 'queued']
@@ -90,6 +97,31 @@ function clearFinished() {
   for (const t of uploads.tasks.value.filter(t => TERMINAL.includes(t.status))) {
     uploads.remove(t.id)
   }
+}
+
+// `interrupted` (post-reload, no in-memory File) needs a re-select before it
+// can resume at all — open the hidden picker instead of the in-session retry
+// path. A normal `error` transfer still has its File, so the existing
+// `uploads.retry()` → registerRetryHandler('upload') path just re-sends it.
+function retryOrReselect(t: Transfer) {
+  if (t.interrupted) {
+    reselectTargetId.value = t.id
+    reselectInput.value?.click()
+  } else {
+    uploads.retry(t.id)
+  }
+}
+
+// Validation (same name + exact byte size) and the mismatch toast both live
+// in `resumeByReselect` — the tray just wires the picked File through to it.
+function handleReselectPick(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  const id = reselectTargetId.value
+  reselectTargetId.value = null
+  input.value = ''
+  if (!file || !id) return
+  resumeByReselect(id, file)
 }
 </script>
 
@@ -199,9 +231,9 @@ function clearFinished() {
                 <rect x="4" y="4" width="16" height="16" rx="2"/>
               </svg>
             </button>
-            <button v-if="canRetry(t)" @click="uploads.retry(t.id)"
+            <button v-if="canRetry(t)" @click="retryOrReselect(t)"
               class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
-              Réessayer
+              {{ t.interrupted ? 'Reprendre' : 'Réessayer' }}
             </button>
             <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Effacer"
               class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
@@ -213,6 +245,11 @@ function clearFinished() {
         </div>
       </div>
     </div>
+
+    <!-- Hidden re-select input for `interrupted` (post-reload) transfers —
+         `retryOrReselect` opens this, `handleReselectPick` hands the file to
+         `resumeByReselect`, which validates it's the same file before resuming. -->
+    <input ref="reselectInput" type="file" class="hidden" @change="handleReselectPick" />
   </div>
 </template>
 

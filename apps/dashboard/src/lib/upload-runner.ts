@@ -12,10 +12,12 @@
 import { useAuth } from './auth'
 import { pollJob } from './jobs'
 import { randomId } from './uuid'
+import { useToast } from './toast'
 import {
   useUploads,
   persistUpload,
   clearPersisted,
+  loadPersisted,
   registerRetryHandler,
   type Transfer,
 } from './uploads'
@@ -26,6 +28,7 @@ const MAX_ATTEMPTS = 5
 
 const { token } = useAuth()
 const uploads = useUploads()
+const toast = useToast()
 
 interface ChunkResponse { ok: true; done: boolean; jobId?: string }
 
@@ -67,20 +70,27 @@ function chunkByteLength(file: File, index: number): number {
   return Math.min(CHUNK_SIZE, file.size - index * CHUNK_SIZE)
 }
 
-/** GET /files/upload/status — which chunk indices the server already staged. */
-async function fetchStagedChunks(uploadId: string): Promise<Set<number>> {
+interface UploadStatus { known: boolean; staged: number[] }
+
+/** GET /files/upload/status — raw server view of what's already staged for `uploadId`. */
+async function fetchUploadStatus(uploadId: string): Promise<UploadStatus | null> {
   try {
     const resp = await fetch(`${BASE_URL}/files/upload/status?uploadId=${encodeURIComponent(uploadId)}`, {
       headers: { 'Authorization': `Bearer ${token.value}` },
     })
-    if (!resp.ok) return new Set()
-    const body = await resp.json() as { known: boolean; staged: number[] }
-    return body.known ? new Set(body.staged) : new Set()
+    if (!resp.ok) return null
+    return await resp.json() as UploadStatus
   } catch {
-    // Best-effort — if the status check itself fails, just re-send every
-    // chunk (the server treats an already-staged chunk as a harmless rewrite).
-    return new Set()
+    return null
   }
+}
+
+/** Which chunk indices the server already staged (best-effort: empty on any failure). */
+async function fetchStagedChunks(uploadId: string): Promise<Set<number>> {
+  // Best-effort — if the status check itself fails, just re-send every chunk
+  // (the server treats an already-staged chunk as a harmless rewrite).
+  const status = await fetchUploadStatus(uploadId)
+  return status?.known ? new Set(status.staged) : new Set()
 }
 
 // Up to MAX_ATTEMPTS per chunk, backing off between them. Retries on network
@@ -249,12 +259,98 @@ export function resumeUpload(id: string, file: File, opts: UploadOpts = {}): voi
   void runUpload(t, file, opts)
 }
 
+/**
+ * Re-hydrate transfers for uploads that were mid-flight when the page was
+ * reloaded (`localStorage`-persisted metadata, no in-memory `Transfer` — the
+ * `File` object itself never survives a reload, that's a hard browser
+ * limitation, not a bug). For each persisted entry, ask the server what it
+ * already has staged:
+ *   - unknown upload (staging GC'd, or it actually finished via another tab) →
+ *     drop the stale bookmark, nothing to show.
+ *   - known and incomplete → register an `interrupted` transfer so the tray
+ *     shows "re-select to resume" instead of silently losing the progress.
+ *   - known and already fully staged (assemble was still pending on reload) →
+ *     leave the persisted entry alone; nothing to hydrate as interrupted,
+ *     and `runUpload`/`clearPersisted` elsewhere will resolve it normally.
+ *
+ * Call once on app/panel mount, before the user does anything.
+ */
+export async function hydrateInterruptedUploads(): Promise<void> {
+  for (const p of loadPersisted()) {
+    const uploadId = p.uploadId ?? p.id
+    const status = await fetchUploadStatus(uploadId)
+
+    if (!status) continue // network hiccup — leave the bookmark, retry next reload
+
+    if (!status.known) {
+      clearPersisted(p.id)
+      continue
+    }
+
+    const totalChunks = p.totalChunks ?? 0
+    if (totalChunks > 0 && status.staged.length >= totalChunks) continue
+
+    if (uploads.tasks.value.some(x => x.id === p.id)) continue // already registered
+
+    const sentChunks = status.staged.length
+    // Exact staged byte count needs the File (last chunk may be short); this
+    // is a display-only approximation until the user re-selects and resumes.
+    const sentBytes = p.totalBytes !== undefined
+      ? Math.min(p.totalBytes, sentChunks * CHUNK_SIZE)
+      : undefined
+
+    uploads.register({
+      id: p.id,
+      kind: 'upload',
+      name: p.name,
+      destDir: p.destDir,
+      status: 'error',
+      interrupted: true,
+      uploadId,
+      totalBytes: p.totalBytes,
+      totalChunks: p.totalChunks,
+      sentChunks,
+      sentBytes,
+      error: 'Interrompu — re-sélectionne le fichier pour reprendre',
+    })
+  }
+}
+
+/**
+ * Resume an `interrupted` transfer (post-reload) once the user has
+ * re-selected a file. The browser gives us no way to reconnect to the
+ * original `File` handle across a reload (no File System Access API in use
+ * here), so this is the only possible resume path: validate the re-selected
+ * file is (almost certainly) the same one — matching name + exact byte size —
+ * then attach it and let `runUpload`'s existing staged-chunk skip do the rest.
+ *
+ * A mismatch never attaches the file and never flips off `interrupted`: the
+ * transfer stays exactly as it was, so a wrong pick can't corrupt the resume
+ * (worst case the user just has to try again with the right file).
+ */
+export function resumeByReselect(id: string, file: File): void {
+  const t = uploads.tasks.value.find(x => x.id === id)
+  if (!t) return
+
+  if (file.name !== t.name || file.size !== t.totalBytes) {
+    toast.error('Fichier différent — sélectionne le même fichier')
+    uploads.setStatus(id, 'error', 'Fichier différent — sélectionne le même fichier')
+    return
+  }
+
+  uploads.attachFile(id, file)
+  resumeUpload(id, file)
+}
+
 registerRetryHandler('upload', id => {
   const t = uploads.tasks.value.find(x => x.id === id)
   if (t?.file) {
     resumeUpload(id, t.file)
   }
   // else: the transfer lost its File reference (page reload) — it's marked
-  // `interrupted` and needs the user to re-select the file; that re-select
-  // flow (Task 5) calls `resumeUpload` directly once it has a `File` again.
+  // `interrupted`, and the tray never routes this case through `uploads.retry()`
+  // in the first place (see TransfersTray.vue: interrupted rows open a hidden
+  // file input directly instead of calling retry). This branch is therefore a
+  // documented no-op/safety net — the real resume path is `resumeByReselect`
+  // above, invoked once the tray has a freshly re-selected `File`.
 })

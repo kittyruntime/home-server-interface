@@ -125,6 +125,15 @@ export function useUploads() {
     if (t) { t.status = status; if (error !== undefined) t.error = error }
   }
 
+  /** Attach a freshly re-selected `File` to an `interrupted` transfer (Task 5:
+   *  resume-after-reload) and clear the flag now that it's resumable again. */
+  function attachFile(id: string, file: File) {
+    const t = tasks.value.find(x => x.id === id)
+    if (!t) return
+    t.file = file
+    t.interrupted = false
+  }
+
   function updateProgress(id: string, sentChunks: number, chunkBytes: number) {
     const t = tasks.value.find(x => x.id === id)
     if (!t) return
@@ -207,6 +216,7 @@ export function useUploads() {
     tasks: readonly(tasks),
     register,
     setStatus,
+    attachFile,
     updateProgress,
     resetProgress,
     remove,
