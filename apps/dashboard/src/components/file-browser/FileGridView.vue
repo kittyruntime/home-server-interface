@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadTask } from '../../lib/uploads'
+import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
@@ -10,7 +10,7 @@ defineProps<{
   renameValue: string
   pendingPaths?: string[]
   creatingFolder?: boolean
-  uploadTasks?: UploadTask[]
+  uploadTasks?: Transfer[]
 }>()
 
 const emit = defineEmits<{
@@ -29,8 +29,8 @@ function fileExt(name: string): string {
   return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
 }
 
-function uploadPct(t: UploadTask) {
-  return t.totalBytes > 0 ? Math.round(t.sentBytes / t.totalBytes * 100) : 0
+function uploadPct(t: Transfer) {
+  return (t.totalBytes ?? 0) > 0 ? Math.round((t.sentBytes ?? 0) / (t.totalBytes ?? 1) * 100) : 0
 }
 function uploadSpeed(bps: number) {
   if (bps >= 1_048_576) return `${(bps / 1_048_576).toFixed(1)} MB/s`
@@ -71,9 +71,9 @@ function uploadSpeed(bps: number) {
       </span>
 
       <!-- Speed badge -->
-      <span v-if="t.status === 'uploading' && t.bytesPerSec > 0"
+      <span v-if="t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0"
         class="text-[9px] text-[var(--c-text-3)] tabular-nums leading-none">
-        {{ uploadSpeed(t.bytesPerSec) }}
+        {{ uploadSpeed(t.bytesPerSec ?? 0) }}
       </span>
       <span v-else-if="t.status === 'paused'" class="text-[9px] text-[var(--c-warning)]">Paused</span>
       <span v-else-if="t.status === 'error'" class="text-[9px] text-[var(--c-danger)]">Failed</span>

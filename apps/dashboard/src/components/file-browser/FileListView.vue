@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadTask } from '../../lib/uploads'
+import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type SortField = 'name' | 'size' | 'date'
@@ -11,13 +11,13 @@ defineProps<{
   renameValue: string
   pendingPaths?: string[]
   creatingFolder?: boolean
-  uploadTasks?: UploadTask[]
+  uploadTasks?: Transfer[]
   sortField?: SortField
   sortDir?: 'asc' | 'desc'
 }>()
 
-function uploadPct(t: UploadTask) {
-  return t.totalBytes > 0 ? Math.round(t.sentBytes / t.totalBytes * 100) : 0
+function uploadPct(t: Transfer) {
+  return (t.totalBytes ?? 0) > 0 ? Math.round((t.sentBytes ?? 0) / (t.totalBytes ?? 1) * 100) : 0
 }
 function uploadSpeed(bps: number) {
   if (bps >= 1_048_576) return `${(bps / 1_048_576).toFixed(1)} MB/s`
@@ -130,7 +130,7 @@ function fileExt(name: string): string {
           </div>
         </td>
         <td class="px-3 py-2 text-right text-[var(--c-text-3)] text-xs tabular-nums whitespace-nowrap">
-          <span v-if="t.status === 'uploading' && t.bytesPerSec > 0">{{ uploadSpeed(t.bytesPerSec) }}</span>
+          <span v-if="t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0">{{ uploadSpeed(t.bytesPerSec ?? 0) }}</span>
           <span v-else-if="t.status === 'error'" class="text-[var(--c-danger)]">Error</span>
         </td>
         <td class="px-3 py-2 text-right text-xs tabular-nums whitespace-nowrap"

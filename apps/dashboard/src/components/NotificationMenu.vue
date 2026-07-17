@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useUploads, type UploadTask } from '../lib/uploads'
+import { useUploads, type Transfer } from '../lib/uploads'
 import { useNotifications } from '../lib/notifications'
 
 defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
@@ -10,8 +10,8 @@ const uploads = useUploads()
 const { notifications, dismiss, dismissAll } = useNotifications()
 
 // ── upload helpers ────────────────────────────────────────────────────────────
-function pct(t: UploadTask) {
-  return t.totalChunks ? Math.round(t.sentChunks / t.totalChunks * 100) : 0
+function pct(t: Transfer) {
+  return t.totalChunks ? Math.round((t.sentChunks ?? 0) / t.totalChunks * 100) : 0
 }
 
 function speed(bps: number) {
@@ -20,7 +20,7 @@ function speed(bps: number) {
   return bps > 0 ? `${Math.round(bps)} B/s` : ''
 }
 
-function togglePause(t: UploadTask) {
+function togglePause(t: Transfer) {
   if (t.status === 'paused') uploads.resume(t.id)
   else uploads.pause(t.id)
 }
@@ -106,8 +106,8 @@ const hasDismissible = computed(
                 </div>
 
                 <!-- Speed + error -->
-                <div v-if="t.status === 'uploading' && t.bytesPerSec > 0" class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
-                  {{ speed(t.bytesPerSec) }}
+                <div v-if="t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0" class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
+                  {{ speed(t.bytesPerSec ?? 0) }}
                 </div>
                 <div v-if="t.error" class="text-[10px] text-danger mt-0.5 truncate">{{ t.error }}</div>
               </div>
