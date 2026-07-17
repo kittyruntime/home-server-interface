@@ -40,6 +40,7 @@ type taskMsg struct {
 	DestFile      string   `json:"destFile"`
 	Chunks        []string `json:"chunks"`
 	StagingDir    string   `json:"stagingDir"`
+	ExpectedSha   string   `json:"expectedSha"`
 	Mode          string   `json:"mode"`
 	Owner         string   `json:"owner"`
 	Group         string   `json:"group"`
@@ -722,7 +723,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		fsErr = validatePathsScoped(task.AllowedRoot, append([]string{task.DestFile}, task.Chunks...)...)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doAssemble(task.DestFile, task.Chunks)
+				fsErr = doAssemble(task.DestFile, task.Chunks, task.ExpectedSha)
 				if fsErr != nil {
 					return fsErr
 				}

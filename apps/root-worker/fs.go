@@ -2,6 +2,8 @@ package main
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -443,7 +445,7 @@ func doDelete(path string) *fsError {
 
 // ── assemble ──────────────────────────────────────────────────────────────────
 
-func doAssemble(destFile string, chunks []string) *fsError {
+func doAssemble(destFile string, chunks []string, expectedSha string) *fsError {
 	// 0664 so uploads land group-writable (with umask 0002); combined with the
 	// setgid share dir this lets any write-user overwrite the file later.
 	out, err := os.OpenFile(destFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
@@ -451,16 +453,26 @@ func doAssemble(destFile string, chunks []string) *fsError {
 		return mapOsErr(err)
 	}
 	defer out.Close()
+
+	h := sha256.New()
 	for _, chunk := range chunks {
 		f, err := os.Open(chunk)
 		if err != nil {
 			return mapOsErr(err)
 		}
-		_, cpErr := io.Copy(out, f)
+		_, cpErr := io.Copy(io.MultiWriter(out, h), f)
 		f.Close()
 		if cpErr != nil {
 			return &fsError{Code: "ERR", Message: cpErr.Error()}
 		}
+	}
+
+	if expectedSha != "" && hex.EncodeToString(h.Sum(nil)) != strings.ToLower(expectedSha) {
+		// Close before removing so the corrupted file isn't left open, and
+		// don't leave a partial/wrong file behind for the caller to trip on.
+		out.Close()
+		os.Remove(destFile)
+		return &fsError{Code: "ECHECKSUM", Message: "checksum mismatch — file corrupted in transfer"}
 	}
 	return nil
 }
