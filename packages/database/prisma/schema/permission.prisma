@@ -1,33 +1,14 @@
-// Named app-level permissions (glob-style: *.*, users.manage, places.*, …)
-model Permission {
-  id    String           @id @default(uuid())
-  name  String           @unique
-  roles RolePermission[]
-}
-
-model RolePermission {
-  roleId       String
-  permissionId String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-}
-
-// Per-place file-system access (canRead / canWrite / canDelete on a specific Place)
-model RolePlacePermission {
+model GroupPlacePermission {
   id        String  @id @default(uuid())
-  roleId    String
+  groupId   String
   placeId   String
   canRead   Boolean @default(false)
   canWrite  Boolean @default(false)
   canDelete Boolean @default(false)
   canShare  Boolean @default(false)
-
-  role  Role  @relation(fields: [roleId],  references: [id], onDelete: Cascade)
-  place Place @relation("RolePerms", fields: [placeId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, placeId])
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  place Place @relation("GroupPerms", fields: [placeId], references: [id], onDelete: Cascade)
+  @@unique([groupId, placeId])
 }
 
 model UserPlacePermission {
@@ -38,9 +19,7 @@ model UserPlacePermission {
   canWrite  Boolean @default(false)
   canDelete Boolean @default(false)
   canShare  Boolean @default(false)
-
   user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
   place Place @relation("UserPerms", fields: [placeId], references: [id], onDelete: Cascade)
-
   @@unique([userId, placeId])
 }

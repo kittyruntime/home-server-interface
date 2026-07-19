@@ -1,14 +1,15 @@
 model User {
-  id               String                @id @default(uuid())
-  username         String                @unique
-  password         String
-  displayName      String?
-  linuxUsername    String?
-  wallpaper        Json?
-  preferences      Json?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  userRoles        UserRole[]
+  id            String  @id @default(uuid())
+  username      String  @unique
+  password      String
+  displayName   String?
+  isAdmin       Boolean @default(false)
+  isUserManager Boolean @default(false)
+  wallpaper     Json?
+  preferences   Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  groups           UserGroup[]
   placePermissions UserPlacePermission[]
   auditLogs        AuditLog[]
   shareLinks       ShareLink[] @relation("UserShareLinks")
