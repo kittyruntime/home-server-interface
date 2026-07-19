@@ -1,7 +1,7 @@
 import { z } from "zod"
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, withPermission } from "../index"
+import { router, protectedProcedure, adminProcedure } from "../index"
 import { CATALOG } from "@app/app-catalog"
 import { listApps, createApp, portDomainUrl, type AppConfig } from "../../services/container.service"
 import { publishJob, requestSync } from "../../nats"
@@ -14,12 +14,6 @@ function liveStatus(dockerStatus: string): string {
   if (dockerStatus === "exited" || dockerStatus === "dead" || dockerStatus === "paused") return "stopped"
   return dockerStatus
 }
-
-// Same guard manual container creation uses (see container.ts's `canCreate`) —
-// `catalog.install` must not be reachable with weaker authorization than
-// `container.app.create`, since it ends up calling the exact same service +
-// worker job.
-const canCreate = withPermission("container.create")
 
 const zInstallVolume = z.object({
   target: z.string().startsWith("/"),
@@ -70,7 +64,7 @@ export const catalogRouter = router({
     return m
   }),
 
-  install: protectedProcedure.use(canCreate)
+  install: adminProcedure
     .input(z.object({
       id:      z.string(),
       name:    z.string().regex(/^[a-zA-Z0-9_-]+$/).max(64),

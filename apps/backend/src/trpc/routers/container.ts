@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, adminProcedure, protectedProcedure, withPermission } from "../index"
+import { router, adminProcedure, protectedProcedure } from "../index"
 import { publishJob, requestSync } from "../../nats"
 import {
   listApps, getApp, createApp, updateApp, deleteApp, setAppStatus,
@@ -87,11 +87,6 @@ export async function resolvePlaceMounts(
 
 // ── App sub-router ────────────────────────────────────────────────────────────
 
-const canView   = withPermission("container.view")
-const canCreate = withPermission("container.create")
-const canDelete = withPermission("container.delete")
-const canManage = withPermission("container.manage")
-
 // A cached snapshot of all Docker containers (managed + unmanaged), so repeated
 // callers — the debounced `checkPort` and the App Store's live status — don't each
 // re-run `docker ps` + inspect. Cached ~5s; `listAll` is the worker's ps+inspect.
@@ -119,12 +114,12 @@ async function dockerBoundPorts(): Promise<Map<string, string>> {
 }
 
 const appRouter = router({
-  list: protectedProcedure.use(canView).query(({ ctx }) => listApps(ctx.prisma)),
+  list: adminProcedure.query(({ ctx }) => listApps(ctx.prisma)),
 
   // Warn (non-blocking) when a host port is already taken — by another managed
   // app, any Docker container, or a non-Docker host process. Returns a human
   // string in `by` for the UI to show.
-  checkPort: protectedProcedure.use(canCreate)
+  checkPort: adminProcedure
     .input(z.object({
       port:         z.number().int().min(1).max(65535),
       protocol:     z.enum(["tcp", "udp"]).default("tcp"),
@@ -172,11 +167,11 @@ const appRouter = router({
       return { ok: true }
     }),
 
-  get: protectedProcedure.use(canView)
+  get: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(({ ctx, input }) => getApp(ctx.prisma, input.id)),
 
-  create: protectedProcedure.use(canCreate)
+  create: adminProcedure
     .input(zAppInput)
     .mutation(async ({ ctx, input }) => {
       const app = await createApp(ctx.prisma, input)
@@ -228,7 +223,7 @@ const appRouter = router({
       return { app, jobId }
     }),
 
-  delete: protectedProcedure.use(canDelete)
+  delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
@@ -239,7 +234,7 @@ const appRouter = router({
       return { jobId }
     }),
 
-  start: protectedProcedure.use(canManage)
+  start: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
@@ -249,7 +244,7 @@ const appRouter = router({
       return { jobId }
     }),
 
-  stop: protectedProcedure.use(canManage)
+  stop: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
@@ -259,7 +254,7 @@ const appRouter = router({
       return { jobId }
     }),
 
-  restart: protectedProcedure.use(canManage)
+  restart: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
@@ -269,7 +264,7 @@ const appRouter = router({
       return { jobId }
     }),
 
-  recreate: protectedProcedure.use(canManage)
+  recreate: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
@@ -295,7 +290,7 @@ const appRouter = router({
       return { jobId }
     }),
 
-  inspect: protectedProcedure.use(canView)
+  inspect: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const app = await getApp(ctx.prisma, input.id)
