@@ -15,7 +15,8 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "db:migrate:permissions": "vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
