@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.34.0] - 2026-07-19
+
 ### Added
 - **Upload integrity checks**: large uploads are now verified end-to-end. The browser computes the whole file's SHA-256 as it reads it, and the server re-computes the same hash while assembling the staged chunks — if they don't match, the file is rejected and the transfer shows "Fichier corrompu pendant le transfert — réessaie" (Retry re-sends and re-verifies). Before the first chunk goes up, HSI checks the destination has room and rejects the upload up front (instead of failing halfway) if it won't fit. Assembly is now an explicit, retryable step, so a dropped response at the very end no longer reports a false success.
 - **Robust file transfers**: uploads now survive network blips — each chunk retries with backoff and resumes from where it stopped instead of failing the whole file — and progress moved into a docked **Transfers** tray inside the file browser (out of the notification bell), with full untruncated errors and a **Retry** button. An upload interrupted by a page reload reappears in the tray; re-select the same file to resume from the chunks already uploaded. Copies and moves show in the same tray with their own retry.
@@ -547,7 +549,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.0...HEAD
+[1.34.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.1...v1.34.0
 [1.33.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.0...v1.33.1
 [1.33.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.31.1...v1.32.0
