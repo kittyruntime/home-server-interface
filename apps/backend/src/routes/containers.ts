@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify"
 import crypto from "node:crypto"
 import { StringCodec } from "nats"
-import { verifyToken, isTokenBlacklisted, hasPermission } from "../trpc/auth"
+import { verifyToken, isTokenBlacklisted } from "../trpc/auth"
 import { prisma } from "@app/database"
 import { requestSync, natsSubscribe } from "../nats"
 
@@ -20,14 +20,8 @@ function authFromRequest(req: { headers: { authorization?: string } }) {
 }
 
 async function canViewContainers(userId: string): Promise<boolean> {
-  const userRoles = await prisma.userRole.findMany({
-    where: { userId },
-    include: { role: { include: { permissions: { include: { permission: true } } } } },
-  })
-  const grants = userRoles.flatMap(ur =>
-    ur.role.permissions.map(rp => rp.permission.name),
-  )
-  return hasPermission(grants, "container.view")
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  return !!u?.isAdmin
 }
 
 export async function containerRoutes(app: FastifyInstance) {
