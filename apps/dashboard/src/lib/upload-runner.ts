@@ -9,8 +9,9 @@
 // Framework-light on purpose: no component imports, just the transfers store
 // (`lib/uploads.ts`) and a couple of small helpers (`lib/jobs.ts`, `lib/uuid.ts`,
 // `lib/auth.ts`).
+import { createSHA256 } from 'hash-wasm'
 import { useAuth } from './auth'
-import { pollJob } from './jobs'
+import { pollJobResult } from './jobs'
 import { randomId } from './uuid'
 import { useToast } from './toast'
 import {
@@ -30,7 +31,7 @@ const { token } = useAuth()
 const uploads = useUploads()
 const toast = useToast()
 
-interface ChunkResponse { ok: true; done: boolean; jobId?: string }
+interface ChunkResponse { ok: true; done: boolean }
 
 export interface UploadOpts {
   onDone?: () => void
@@ -100,6 +101,7 @@ async function fetchStagedChunks(uploadId: string): Promise<Set<number>> {
 async function sendChunkWithRetry(
   t: Transfer,
   file: File,
+  body: Uint8Array,
   uploadId: string,
   index: number,
   totalChunks: number,
@@ -119,10 +121,11 @@ async function sendChunkWithRetry(
           'X-Upload-Id':    uploadId,
           'X-Chunk-Index':  String(index),
           'X-Total-Chunks': String(totalChunks),
+          'X-Total-Bytes':  String(file.size),
           'X-File-Name':    encodeURIComponent(file.name),
           'X-Dest-Dir':     encodeURIComponent(t.destDir),
         },
-        body: file.slice(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE),
+        body: body as BodyInit,
       })
     } catch (e) {
       // Network error (offline, DNS, connection reset, ...) — retryable,
@@ -151,6 +154,38 @@ async function sendChunkWithRetry(
   throw new Error('Upload failed: exhausted retries')
 }
 
+// Trigger the explicit, retryable assembly of the staged chunks. The server
+// verifies the whole-file SHA-256 during assembly, so a `done` here means the
+// destination file matches what the client hashed. Returns the assemble jobId.
+async function completeUpload(uploadId: string, sha256: string, ac: AbortController): Promise<string> {
+  const resp = await fetch(`${BASE_URL}/files/upload/complete`, {
+    method: 'POST',
+    signal: ac.signal,
+    headers: {
+      'Authorization': `Bearer ${token.value}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ uploadId, sha256 }),
+  })
+  if (!resp.ok) {
+    const bodyText = await resp.text().catch(() => '')
+    throw new Error(bodyText || `Finalisation impossible (HTTP ${resp.status})`)
+  }
+  const { jobId } = await resp.json() as { jobId: string }
+  return jobId
+}
+
+// Map a failed assemble job to a user-facing message. The worker publishes the
+// fsError *message* (not its code), so a checksum mismatch surfaces as
+// "checksum mismatch — file corrupted in transfer" — a Retry re-hashes,
+// re-sends the missing chunks and re-verifies, so it's worth surfacing plainly.
+function assembleErrorMessage(error: string | null): string {
+  if (error && /checksum/i.test(error)) {
+    return 'Fichier corrompu pendant le transfert — réessaie'
+  }
+  return error || "Échec de l'assemblage du fichier sur le serveur"
+}
+
 async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<void> {
   const ac = new AbortController()
   uploads.setAbortController(t.id, ac)
@@ -177,23 +212,40 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
     }
     if (sentChunks > 0) uploads.updateProgress(t.id, sentChunks, stagedBytes)
 
-    let finalJobId: string | undefined
+    // Whole-file SHA-256, computed incrementally as we read each chunk. Every
+    // chunk is read and fed to the hasher (even ones the server already staged
+    // from a prior attempt) so the digest is correct on resume; only the
+    // not-yet-staged chunks are actually uploaded.
+    const hasher = await createSHA256()
     for (let i = 0; i < totalChunks; i++) {
+      await waitWhilePausedOrAborted(t.id, ac)
+
+      const buf = new Uint8Array(await file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE).arrayBuffer())
+      hasher.update(buf)
+
       if (staged.has(i)) continue
 
-      await waitWhilePausedOrAborted(t.id, ac)
-      const result = await sendChunkWithRetry(t, file, uploadId, i, totalChunks, ac)
-
+      await sendChunkWithRetry(t, file, buf, uploadId, i, totalChunks, ac)
       sentChunks++
       uploads.updateProgress(t.id, sentChunks, chunkByteLength(file, i))
-
-      // The last chunk's response carries the fs.assemble jobId — wait for
-      // it to actually finish writing the destination file before treating
-      // the upload as done.
-      if (result.done && result.jobId) finalJobId = result.jobId
     }
 
-    if (finalJobId) await pollJob(finalJobId)
+    // Explicit, retryable completion: the server assembles the staged chunks
+    // and verifies this whole-file digest before accepting the file. A lost
+    // response no longer means a false success — completion is idempotent
+    // while the upload state + staging survive (bounded by UPLOAD_TTL GC).
+    const sha = hasher.digest('hex')
+    const jobId = await completeUpload(uploadId, sha, ac)
+
+    // Server-side assembly streams+hashes the whole file, so give the poll a
+    // deadline that scales with size (assume a pessimistic ~10 MB/s floor)
+    // rather than the 30 s default — otherwise a large file times out into a
+    // false "failed" while the assemble is still legitimately running.
+    const assembleDeadline = 60_000 + Math.ceil(file.size / (10 * 1024 * 1024)) * 1000
+    const res = await pollJobResult(jobId, assembleDeadline)
+    if (res.status !== 'completed') {
+      throw new Error(assembleErrorMessage(res.error))
+    }
     uploads.setStatus(t.id, 'done')
     clearPersisted(t.id)
     opts.onDone?.()
