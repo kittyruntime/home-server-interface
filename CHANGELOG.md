@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.34.1] - 2026-07-19
+
 ### Fixed
 - **English UI**: the file-transfers tray, sharing diagnostics, and upload/disk error messages shipped with hardcoded French labels — they are now in English like the rest of the interface.
 
@@ -552,7 +554,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.1...HEAD
+[1.34.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.0...v1.34.1
 [1.34.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.1...v1.34.0
 [1.33.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.0...v1.33.1
 [1.33.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.32.0...v1.33.0
