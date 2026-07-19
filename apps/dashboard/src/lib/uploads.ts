@@ -288,7 +288,7 @@ async function runTransfer(id: string): Promise<void> {
     setTimeout(() => { store.remove(id); transferSpecs.delete(id) }, 3000)
   } else {
     const message = errorMessage(failures[0]!.reason)
-    store.setStatus(id, 'error', `${failures.length} échec(s): ${message}`)
+    store.setStatus(id, 'error', `${failures.length} failed: ${message}`)
   }
 }
 

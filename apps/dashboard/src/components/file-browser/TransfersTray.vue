@@ -53,12 +53,12 @@ function speed(bps: number): string {
 function statusLabel(t: Transfer): string {
   switch (t.status) {
     case 'uploading':  return pct(t) + '%'
-    case 'running':    return 'en cours'
-    case 'paused':     return 'en pause'
-    case 'queued':     return 'en attente'
-    case 'error':      return 'erreur'
-    case 'done':       return 'terminé'
-    case 'cancelled':  return 'annulé'
+    case 'running':    return 'running'
+    case 'paused':     return 'paused'
+    case 'queued':     return 'queued'
+    case 'error':      return 'error'
+    case 'done':       return 'done'
+    case 'cancelled':  return 'cancelled'
     default:           return t.status
   }
 }
@@ -139,7 +139,7 @@ function handleReselectPick(e: Event) {
         <svg class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
         </svg>
-        Transferts — {{ activeCount }} actif{{ activeCount === 1 ? '' : 's' }}
+        Transfers — {{ activeCount }} active
       </button>
 
       <!-- Mini overall progress bar -->
@@ -154,7 +154,7 @@ function handleReselectPick(e: Event) {
         @click="clearFinished"
         class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide shrink-0"
       >
-        Effacer terminés
+        Clear completed
       </button>
     </div>
 
@@ -216,7 +216,7 @@ function handleReselectPick(e: Event) {
 
           <!-- Actions -->
           <div class="flex gap-0.5 shrink-0">
-            <button v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Reprendre' : 'Pause'"
+            <button v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
               class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
               <svg v-if="t.status === 'paused'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
@@ -225,7 +225,7 @@ function handleReselectPick(e: Event) {
                 <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
               </svg>
             </button>
-            <button v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Annuler"
+            <button v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Cancel"
               class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-danger hover:bg-danger/10 transition-colors">
               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="4" y="4" width="16" height="16" rx="2"/>
@@ -233,9 +233,9 @@ function handleReselectPick(e: Event) {
             </button>
             <button v-if="canRetry(t)" @click="retryOrReselect(t)"
               class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
-              {{ t.interrupted ? 'Reprendre' : 'Réessayer' }}
+              {{ t.interrupted ? 'Resume' : 'Retry' }}
             </button>
-            <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Effacer"
+            <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
               class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

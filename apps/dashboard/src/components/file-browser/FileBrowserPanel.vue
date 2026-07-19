@@ -344,7 +344,7 @@ async function doPaste() {
   try {
     await trackTransfer(
       mode === 'copy' ? 'copy' : 'move',
-      `${mode === 'copy' ? 'Copie' : 'Déplacement'} de ${paths.length} élément(s)`,
+      `${mode === 'copy' ? 'Copying' : 'Moving'} ${paths.length} item${paths.length === 1 ? '' : 's'}`,
       dst,
       paths.map(src => async () => {
         const { jobId } = mode === 'copy'

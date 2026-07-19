@@ -12,8 +12,8 @@ function isShareableLinux(linux: string | null | undefined): linux is string {
 
 /** Why a permitted user can't actually use file sharing — null if they can. */
 export function shareExclusionReason(linuxUsername: string | null | undefined): string | null {
-  if (!linuxUsername) return "Aucun compte Linux — définis un identifiant Linux pour ce compte."
-  if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `Compte système « ${linuxUsername} » interdit en SMB — utilise un compte non-root.`
+  if (!linuxUsername) return "No Linux account — set a Linux username for this account."
+  if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `System account "${linuxUsername}" is not allowed over SMB — use a non-root account.`
   return null
 }
 

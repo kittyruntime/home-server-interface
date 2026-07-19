@@ -366,7 +366,7 @@ export async function fileRoutes(app: FastifyInstance) {
             { path: destDir, allowedRoot: allowedRoot ?? "" },
           )
           if (free < totalBytes * 1.02)
-            return reply.status(507).send("Espace disque insuffisant pour cet upload")
+            return reply.status(507).send("Not enough disk space for this upload")
         } catch (e: any) {
           if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
           if (e?.code === "ENOENT") return reply.status(404).send("Not found")

@@ -169,7 +169,7 @@ async function completeUpload(uploadId: string, sha256: string, ac: AbortControl
   })
   if (!resp.ok) {
     const bodyText = await resp.text().catch(() => '')
-    throw new Error(bodyText || `Finalisation impossible (HTTP ${resp.status})`)
+    throw new Error(bodyText || `Could not finalize upload (HTTP ${resp.status})`)
   }
   const { jobId } = await resp.json() as { jobId: string }
   return jobId
@@ -181,9 +181,9 @@ async function completeUpload(uploadId: string, sha256: string, ac: AbortControl
 // re-sends the missing chunks and re-verifies, so it's worth surfacing plainly.
 function assembleErrorMessage(error: string | null): string {
   if (error && /checksum/i.test(error)) {
-    return 'Fichier corrompu pendant le transfert — réessaie'
+    return 'File corrupted during transfer — please retry'
   }
-  return error || "Échec de l'assemblage du fichier sur le serveur"
+  return error || 'Failed to assemble the file on the server'
 }
 
 async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<void> {
@@ -363,7 +363,7 @@ export async function hydrateInterruptedUploads(): Promise<void> {
       totalChunks: p.totalChunks,
       sentChunks,
       sentBytes,
-      error: 'Interrompu — re-sélectionne le fichier pour reprendre',
+      error: 'Interrupted — re-select the file to resume',
     })
   }
 }
@@ -385,8 +385,8 @@ export function resumeByReselect(id: string, file: File): void {
   if (!t) return
 
   if (file.name !== t.name || file.size !== t.totalBytes) {
-    toast.error('Fichier différent — sélectionne le même fichier')
-    uploads.setStatus(id, 'error', 'Fichier différent — sélectionne le même fichier')
+    toast.error('Different file — please select the same file')
+    uploads.setStatus(id, 'error', 'Different file — please select the same file')
     return
   }
 

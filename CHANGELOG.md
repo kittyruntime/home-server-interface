@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **English UI**: the file-transfers tray, sharing diagnostics, and upload/disk error messages shipped with hardcoded French labels — they are now in English like the rest of the interface.
+
 ## [1.34.0] - 2026-07-19
 
 ### Added
