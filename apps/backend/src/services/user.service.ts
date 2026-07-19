@@ -1,30 +1,24 @@
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
-import type { PrismaClient, Prisma } from "@app/database"
+import type { PrismaClient } from "@app/database"
 import { requestSync } from "../nats"
 
 /** Seeded default password for the initial `admin` account. Surfaced so the
  *  dashboard can warn while it's still in use (see user.securityStatus). */
 export const DEFAULT_PASSWORD = "admin"
 
+// System account names that may never be claimed as an HSI username, since
+// the username doubles as the backing Linux/Samba account. "admin" is
+// deliberately excluded — it's a valid (and commonly used) HSI username.
+export const RESERVED_USERNAMES = new Set(["root", "daemon", "bin", "sys", "nobody", "www-data"])
+
 export const userSelect = {
   id: true,
   username: true,
   displayName: true,
-  linuxUsername: true,
+  isAdmin: true,
+  isUserManager: true,
   createdAt: true,
-  userRoles: {
-    select: {
-      role: {
-        select: {
-          id: true,
-          name: true,
-          isAdmin: true,
-          permissions: { select: { permission: { select: { name: true } } } },
-        },
-      },
-    },
-  },
 } as const
 
 // A username must be a valid Linux account name so it can back the user's
@@ -35,30 +29,26 @@ export async function createUser(
   prisma: PrismaClient,
   input: { username: string; password: string; displayName?: string },
 ) {
+  if (RESERVED_USERNAMES.has(input.username))
+    throw new TRPCError({ code: "BAD_REQUEST", message: "That username is reserved" })
+
   const existing = await prisma.user.findUnique({ where: { username: input.username } })
   if (existing) throw new TRPCError({ code: "CONFLICT", message: "Username already taken" })
 
   const hashedPassword = await bcrypt.hash(input.password, 12)
-  const linuxUsername = reLinuxUsername.test(input.username) ? input.username : null
 
-  const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const u = await tx.user.create({
-      data: {
-        username: input.username,
-        password: hashedPassword,
-        displayName: input.displayName ?? null,
-        linuxUsername,
-      },
-      select: userSelect,
-    })
-    const personalRole = await tx.role.create({ data: { name: input.username } })
-    await tx.userRole.create({ data: { userId: u.id, roleId: personalRole.id } })
-    return tx.user.findUniqueOrThrow({ where: { id: u.id }, select: userSelect })
+  const user = await prisma.user.create({
+    data: {
+      username: input.username,
+      password: hashedPassword,
+      displayName: input.displayName ?? null,
+    },
+    select: userSelect,
   })
 
-  if (linuxUsername) {
+  if (reLinuxUsername.test(input.username)) {
     try {
-      await requestSync("root.linux.user.create", { username: linuxUsername })
+      await requestSync("root.linux.user.create", { username: input.username })
       await syncSystemPassword(prisma, user.id, input.password)
     } catch (e) {
       console.warn("[user.create] Linux user creation failed (non-fatal):", e)
@@ -104,25 +94,25 @@ export async function syncSystemPassword(
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { linuxUsername: true },
+      select: { username: true },
     })
-    if (!user?.linuxUsername) return
+    if (!user?.username) return
     const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean }>(
       "root.sharing.setPassword",
-      { linuxUsername: user.linuxUsername, password: plainPassword },
+      { linuxUsername: user.username, password: plainPassword },
     )
     // The worker replies ok even when a sub-step fails (best-effort). Surface a
     // partial failure so "can't connect to SMB" is diagnosable from the logs
     // instead of silent — the most common cause of Samba auth being refused.
     if (res?.smbOk === false) {
       console.warn(
-        `[password-sync] Samba password NOT set for "${user.linuxUsername}" — ` +
+        `[password-sync] Samba password NOT set for "${user.username}" — ` +
           `smbpasswd failed (is samba installed, and does the Linux account exist?). ` +
           `SMB auth will be refused for this user until this succeeds.`,
       )
     }
     if (res?.linuxOk === false) {
-      console.warn(`[password-sync] Linux password NOT set for "${user.linuxUsername}" — chpasswd failed.`)
+      console.warn(`[password-sync] Linux password NOT set for "${user.username}" — chpasswd failed.`)
     }
   } catch (e) {
     console.warn("[password-sync] failed (non-fatal):", e)
