@@ -89,7 +89,8 @@ async function toggleMember(userId: string) {
   memberBusy.value[userId] = true
   try {
     const ids = new Set(props.group.members.map(m => m.userId))
-    ids.has(userId) ? ids.delete(userId) : ids.add(userId)
+    if (ids.has(userId)) ids.delete(userId)
+    else ids.add(userId)
     await trpc.group.setMembers.mutate({ id: props.group.id, userIds: [...ids] })
     emit('reload')
   } catch (e: any) {

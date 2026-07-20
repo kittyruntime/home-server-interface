@@ -12,7 +12,7 @@ async function main() {
   })
   const needsHash = !existing || !existing.password.startsWith("$2")
   const hashedPassword = needsHash ? await bcrypt.hash("admin", 12) : existing.password
-  const adminUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where:  { username: "admin" },
     update: needsHash ? { password: hashedPassword, isAdmin: true } : { isAdmin: true },
     create: { username: "admin", password: hashedPassword, isAdmin: true },
