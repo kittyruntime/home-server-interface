@@ -5,7 +5,7 @@ import { syncSharesBestEffort } from "../../services/sharing.service"
 export const groupRouter = router({
   list: adminProcedure.query(({ ctx }) =>
     ctx.prisma.group.findMany({
-      select: { id: true, name: true, members: { select: { userId: true } } },
+      select: { id: true, name: true, createdAt: true, members: { select: { userId: true } } },
       orderBy: { name: "asc" },
     })
   ),

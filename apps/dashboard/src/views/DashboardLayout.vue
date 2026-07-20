@@ -63,7 +63,7 @@ async function checkDefaultPassword() {
 const activeApp        = ref<string>('dashboard')
 const notifMenuOpen    = ref(false)
 const userMenuOpen     = ref(false)
-const settingsSection  = ref<'profile' | 'users' | 'places' | 'roles' | null>(null)
+const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 const badgeCount = computed(() => notifications.value.length)
