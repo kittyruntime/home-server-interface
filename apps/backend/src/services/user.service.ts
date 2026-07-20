@@ -46,13 +46,11 @@ export async function createUser(
     select: userSelect,
   })
 
+  // Provisions the backing Linux/Samba account (idempotent) and sets its
+  // password. syncSystemPassword is self-contained best-effort, so a worker
+  // hiccup here never fails user creation.
   if (reLinuxUsername.test(input.username)) {
-    try {
-      await requestSync("root.linux.user.create", { username: input.username })
-      await syncSystemPassword(prisma, user.id, input.password)
-    } catch (e) {
-      console.warn("[user.create] Linux user creation failed (non-fatal):", e)
-    }
+    await syncSystemPassword(prisma, user.id, input.password)
   }
 
   return user
@@ -97,6 +95,15 @@ export async function syncSystemPassword(
       select: { username: true },
     })
     if (!user?.username) return
+    // Ensure the backing Linux account exists before setting its password. The
+    // username IS the Linux/Samba account, but the account may not exist yet —
+    // e.g. the seeded `admin`, or any user whose row predates this identity
+    // model. chpasswd/smbpasswd both require an existing Unix account, so
+    // create it first. The worker's create is idempotent (useradd exit 9 =
+    // already exists → treated as success).
+    if (reLinuxUsername.test(user.username)) {
+      await requestSync("root.linux.user.create", { username: user.username })
+    }
     const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean }>(
       "root.sharing.setPassword",
       { linuxUsername: user.username, password: plainPassword },

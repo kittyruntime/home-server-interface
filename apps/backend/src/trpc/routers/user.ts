@@ -94,6 +94,10 @@ export const userRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
       if ((input.isAdmin !== undefined || input.isUserManager !== undefined) && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN" })
+      // An admin may not strip their own admin flag — the UI disables this, but
+      // a direct API call could otherwise lock out the last administrator.
+      if (input.isAdmin === false && input.userId === ctx.user.userId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can't remove your own admin access" })
       const result = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: {

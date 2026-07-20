@@ -24,8 +24,9 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "User" ADD COLUMN "isUserManager" BOOLEAN NOT NULL DEFAULT 0`,
   // 2. isAdmin from members of any isAdmin role
   `UPDATE "User" SET "isAdmin"=1 WHERE "id" IN (SELECT ur."userId" FROM "UserRole" ur JOIN "Role" r ON r."id"=ur."roleId" WHERE r."isAdmin"=1)`,
-  // 3. isUserManager from roles granting users.manage / wildcard
-  `UPDATE "User" SET "isUserManager"=1 WHERE "id" IN (SELECT ur."userId" FROM "UserRole" ur JOIN "RolePermission" rp ON rp."roleId"=ur."roleId" JOIN "Permission" p ON p."id"=rp."permissionId" WHERE p."name" IN ('users.manage','*','*.*'))`,
+  // 3. isUserManager from roles granting users.manage / users.* / wildcard
+  //    (the old glob matcher treated `users.*` as granting `users.manage`).
+  `UPDATE "User" SET "isUserManager"=1 WHERE "id" IN (SELECT ur."userId" FROM "UserRole" ur JOIN "RolePermission" rp ON rp."roleId"=ur."roleId" JOIN "Permission" p ON p."id"=rp."permissionId" WHERE p."name" IN ('users.manage','users.*','*','*.*'))`,
   // 4. Rename tables/cols: RolePlacePermission->GroupPlacePermission, Role->Group, UserRole->UserGroup
   `ALTER TABLE "RolePlacePermission" RENAME TO "GroupPlacePermission"`,
   `ALTER TABLE "GroupPlacePermission" RENAME COLUMN "roleId" TO "groupId"`,
