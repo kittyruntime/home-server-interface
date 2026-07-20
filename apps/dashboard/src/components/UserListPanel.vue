@@ -10,24 +10,21 @@ import SortableHeader from './ui/SortableHeader.vue'
 import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
 
-type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
 type User = {
   id: string
   username: string
   displayName: string | null
-  linuxUsername: string | null
+  isAdmin: boolean
+  isUserManager: boolean
   createdAt: Date | string
-  userRoles: UserRole[]
 }
-type RoleBasic = { id: string; name: string; isAdmin: boolean }
+type Group = { id: string; name: string; members: { userId: string }[] }
 
-function userIsAdmin(u: User) { return u.userRoles.some(ur => ur.role.isAdmin) }
-
-const { canManageUsers, currentUserId } = useAuth()
+const { isUserManager, currentUserId } = useAuth()
 const toast = useToast()
 
 const users     = ref<User[]>([])
-const roles     = ref<RoleBasic[]>([])
+const groups    = ref<Group[]>([])
 const loading   = ref(true)
 const loadError = ref('')
 
@@ -75,9 +72,15 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [u, r] = await Promise.all([trpc.user.list.query(), trpc.role.list.query()])
+    const u = await trpc.user.list.query()
     users.value = u as User[]
-    roles.value = (r as any[]).map(r => ({ id: r.id, name: r.name, isAdmin: r.isAdmin }))
+    // group.list is admin-only server-side; a non-admin user-manager can still
+    // manage users, just without the groups column — fail soft, not the whole panel.
+    try {
+      groups.value = await trpc.group.list.query() as Group[]
+    } catch {
+      groups.value = []
+    }
     if (selectedUser.value) {
       selectedUser.value = users.value.find(u => u.id === selectedUser.value!.id) ?? null
     }
@@ -147,7 +150,7 @@ onMounted(load)
     <UserDetailPanel
       v-if="selectedUser"
       :user="selectedUser"
-      :roles="roles"
+      :groups="groups"
       @back="onBack"
       @reload="load"
     />
@@ -164,7 +167,7 @@ onMounted(load)
           </p>
         </div>
         <button
-          v-if="canManageUsers && !addingUser"
+          v-if="isUserManager && !addingUser"
           @click="openAdd"
           class="btn btn-primary btn-xs shrink-0"
         >
@@ -241,12 +244,11 @@ onMounted(load)
                 <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
                   <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">User</SortableHeader>
                 </th>
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</th>
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Linux user</th>
+                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Groups</th>
                 <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
                   <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
                 </th>
-                <th v-if="canManageUsers" class="px-4 py-3 w-16"></th>
+                <th v-if="isUserManager" class="px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--c-border)]">
@@ -266,29 +268,24 @@ onMounted(load)
                         <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
                         <span v-if="user.id === currentUserId"
                           class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
-                        <span v-if="userIsAdmin(user)"
+                        <span v-if="user.isAdmin"
                           class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+                        <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
                       </div>
                       <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>
                     </div>
                   </div>
                 </td>
 
-                <!-- Roles -->
+                <!-- Groups -->
                 <td class="px-5 py-3.5">
                   <div class="flex flex-wrap gap-1">
-                    <span v-for="ur in user.userRoles" :key="ur.role.id"
+                    <span v-for="g in groups.filter(g => g.members.some(m => m.userId === user.id))" :key="g.id"
                       class="badge badge-violet">
-                      {{ ur.role.name }}
+                      {{ g.name }}
                     </span>
-                    <span v-if="user.userRoles.length === 0" class="text-[var(--c-text-3)] text-xs">—</span>
+                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-[var(--c-text-3)] text-xs">—</span>
                   </div>
-                </td>
-
-                <!-- Linux user -->
-                <td class="px-5 py-3.5 hidden sm:table-cell">
-                  <code v-if="user.linuxUsername" class="text-xs text-[var(--c-text-2)] font-mono">{{ user.linuxUsername }}</code>
-                  <span v-else class="text-[var(--c-text-3)] text-xs">—</span>
                 </td>
 
                 <!-- Created -->
@@ -297,7 +294,7 @@ onMounted(load)
                 </td>
 
                 <!-- Actions -->
-                <td v-if="canManageUsers" class="px-4 py-3.5 text-right">
+                <td v-if="isUserManager" class="px-4 py-3.5 text-right">
                   <button
                     @click="openDetail(user)"
                     title="Edit user"
@@ -312,7 +309,7 @@ onMounted(load)
 
               <!-- Empty state -->
               <tr v-if="filteredUsers.length === 0">
-                <td :colspan="canManageUsers ? 5 : 4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
+                <td :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
                   {{ users.length === 0 ? 'No users yet.' : 'No users match your search.' }}
                 </td>
               </tr>
