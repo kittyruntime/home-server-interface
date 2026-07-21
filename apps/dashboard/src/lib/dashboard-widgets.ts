@@ -1,7 +1,10 @@
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { trpc } from './trpc'
+import { type SmartResult, fetchSmartInto } from './../composables/useSmart'
+import { type BlockDev } from './../composables/useStorageData'
+import { useAuth } from './auth'
 
-export type WidgetType = 'cpu' | 'memory' | 'network' | 'containers'
+export type WidgetType = 'cpu' | 'memory' | 'network' | 'containers' | 'storage' | 'sysinfo' | 'smart'
 export interface Widget { id: string; type: WidgetType; cols: 1 | 2 }
 
 interface Metrics {
@@ -13,12 +16,26 @@ interface Metrics {
 
 type ContainerStatus = { status: string }
 
-export const CATALOG: { type: WidgetType; label: string }[] = [
-  { type: 'cpu',        label: 'CPU'        },
-  { type: 'memory',     label: 'Memory'     },
-  { type: 'network',    label: 'Network'    },
-  { type: 'containers', label: 'Containers' },
+export type DiskFs  = { device: string; mountPoint: string; fsType: string; total: number; used: number; free: number }
+export type Sysinfo = { hostname: string; platform: string; arch: string; release: string; cpuModel: string; cpuCount: number; loadavg: [number, number, number] }
+
+type CatalogEntry = { type: WidgetType; label: string; adminOnly?: boolean }
+
+const CATALOG_ALL: CatalogEntry[] = [
+  { type: 'cpu',        label: 'CPU'         },
+  { type: 'memory',     label: 'Memory'      },
+  { type: 'network',    label: 'Network'     },
+  { type: 'containers', label: 'Containers', adminOnly: true },
+  { type: 'storage',    label: 'Storage',    adminOnly: true },
+  { type: 'sysinfo',    label: 'System',     adminOnly: true },
+  { type: 'smart',      label: 'Disk Health', adminOnly: true },
 ]
+
+/** Widget types selectable given the viewer's role. Admin-only widgets rely on
+ *  admin tRPC queries, so they are hidden from non-admins entirely. */
+export function catalogFor(isAdmin: boolean): { type: WidgetType; label: string }[] {
+  return CATALOG_ALL.filter(c => isAdmin || !c.adminOnly).map(({ type, label }) => ({ type, label }))
+}
 
 const SK = 'dashboard'
 
@@ -82,10 +99,27 @@ export function memColor(percent: number): string {
   return 'var(--c-success)'
 }
 
+export function fmtGB(b: number): string {
+  if (b >= 1_099_511_627_776) return (b / 1_099_511_627_776).toFixed(2) + ' TB'
+  if (b >= 1_073_741_824)     return (b / 1_073_741_824).toFixed(1) + ' GB'
+  return (b / 1_048_576).toFixed(0) + ' MB'
+}
+export function diskColor(percent: number): string {
+  if (percent >= 90) return 'var(--c-accent)'
+  if (percent >= 75) return 'var(--c-warning)'
+  return 'var(--c-success)'
+}
+
 export function useDashboardWidgets() {
   const widgets    = ref<Widget[]>(loadWidgets())
   const metrics    = ref<Metrics | null>(null)
   const containers = ref<ContainerStatus[]>([])
+
+  const { isAdmin } = useAuth()
+  const disks    = ref<DiskFs[]>([])
+  const sysinfo  = ref<Sysinfo | null>(null)
+  const smart    = ref<Record<string, SmartResult>>({})
+  const smartDevices = ref<string[]>([])
 
   const HIST = 30
   const cpuHist = ref<number[]>([])
@@ -93,6 +127,8 @@ export function useDashboardWidgets() {
   const txHist  = ref<number[]>([])
 
   let timer: ReturnType<typeof setInterval> | null = null
+  let slowTimer:  ReturnType<typeof setInterval> | null = null
+  let smartTimer: ReturnType<typeof setInterval> | null = null
 
   async function fetchMetrics() {
     try {
@@ -110,14 +146,57 @@ export function useDashboardWidgets() {
     } catch { /* ignore */ }
   }
 
+  async function fetchDisks() {
+    try { disks.value = (await trpc.system.disks.query()).disks as DiskFs[] }
+    catch { /* non-admin or worker error → stays empty */ }
+  }
+  async function fetchSysinfo() {
+    try { sysinfo.value = await trpc.system.sysinfo.query() as Sysinfo }
+    catch { /* ignore */ }
+  }
+  async function refreshSmartDevices() {
+    try {
+      const res = await trpc.system.blockDevices.query() as { devices: BlockDev[] }
+      smartDevices.value = (res.devices ?? []).filter(d => d.type === 'disk').map(d => d.name)
+    } catch { smartDevices.value = [] }
+  }
+  async function fetchSmart() {
+    if (smartDevices.value.length === 0) await refreshSmartDevices()
+    await Promise.all(smartDevices.value.map(d => fetchSmartInto(smart, d)))
+  }
+
+  function hasType(t: WidgetType) { return widgets.value.some(w => w.type === t) }
+
+  function syncTimers() {
+    const wantSlow  = isAdmin.value && (hasType('storage') || hasType('sysinfo'))
+    const wantSmart = isAdmin.value && hasType('smart')
+
+    if (wantSlow && !slowTimer) {
+      fetchDisks(); fetchSysinfo()
+      slowTimer = setInterval(() => { fetchDisks(); fetchSysinfo() }, 30_000)
+    } else if (!wantSlow && slowTimer) {
+      clearInterval(slowTimer); slowTimer = null
+    }
+
+    if (wantSmart && !smartTimer) {
+      fetchSmart()
+      smartTimer = setInterval(fetchSmart, 60_000)
+    } else if (!wantSmart && smartTimer) {
+      clearInterval(smartTimer); smartTimer = null
+    }
+  }
+
   onMounted(() => {
     fetchMetrics()
     fetchContainers()
     timer = setInterval(fetchMetrics, 3000)
+    syncTimers()
   })
 
   onUnmounted(() => {
     if (timer) clearInterval(timer)
+    if (slowTimer)  clearInterval(slowTimer)
+    if (smartTimer) clearInterval(smartTimer)
   })
 
   const uptimeStr = computed(() => {
@@ -142,16 +221,19 @@ export function useDashboardWidgets() {
   function removeWidget(id: string) {
     widgets.value = widgets.value.filter(w => w.id !== id)
     saveWidgets(widgets.value)
+    syncTimers()
   }
 
   function addWidget(type: WidgetType) {
     const id = `w-${type}-${Date.now()}`
     widgets.value.push({ id, type, cols: 1 })
     saveWidgets(widgets.value)
+    syncTimers()
   }
 
   return {
     widgets, metrics, containers,
+    disks, sysinfo, smart, smartDevices,
     cpuHist, rxHist, txHist,
     uptimeStr, ctrRunning, ctrStopped, ctrError,
     toggleCols, removeWidget, addWidget,
