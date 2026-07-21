@@ -168,10 +168,23 @@ fi
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   DB_DIR="$APP_DIR/packages/database/data"
+  SCHEMA_DIR="$APP_DIR/packages/database/prisma/schema"
 else
   DB_DIR="$APP_DIR/database/data"
+  SCHEMA_DIR="$APP_DIR/database/prisma/schema"
 fi
-DB_FILE="$DB_DIR/${APP_NAME}.db"
+# The DB filename comes from the Prisma datasource, which is independent of
+# APP_NAME (e.g. the schema targets hsi.db while APP_NAME=app). Derive it from
+# the schema so update-detection and the pre-push backup point at the REAL DB;
+# using "${APP_NAME}.db" blindly would miss it, mis-detect a fresh install, and
+# skip the data migrations below. Fall back only when no schema is on disk yet
+# (a true first install — nothing extracted).
+DB_URL_PATH=$(grep -rhoP 'url\s*=\s*"file:\K[^"]+' "$SCHEMA_DIR" 2>/dev/null | head -1)
+if [[ -n "$DB_URL_PATH" ]]; then
+  DB_FILE="$DB_DIR/$(basename "$DB_URL_PATH")"
+else
+  DB_FILE="$DB_DIR/${APP_NAME}.db"
+fi
 ENV_FILE="$APP_DIR/.env"
 
 if [[ -f "$DB_FILE" ]]; then
@@ -251,6 +264,14 @@ else
   success "Downloaded"
 
   mkdir -p "$INSTALL_DIR"
+  # tar overwrites and adds files but NEVER removes ones deleted between
+  # releases. A leftover schema file is fatal: Prisma loads every *.prisma in
+  # the schema dir, so a stale model (e.g. role.prisma after the Roles→Groups
+  # redesign) fails `prisma generate` with dangling type refs and aborts the
+  # whole update. Wipe the release-owned code dirs first so the new set is
+  # clean — the live DB (database/data) and secrets (.env) live outside these
+  # paths and are preserved.
+  rm -rf "$INSTALL_DIR/database/prisma" "$INSTALL_DIR/public"
   tar -xzf "$TARBALL" --strip-components=1 -C "$INSTALL_DIR"
   chown -R "$APP_USER:" "$INSTALL_DIR"
   success "Extracted to $INSTALL_DIR"
