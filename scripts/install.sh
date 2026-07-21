@@ -297,6 +297,34 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   success "Database backed up → $BACKUP"
   ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
 
+  # ── Data migrations (idempotent) — MUST run BEFORE `db push` ────────────────
+  # `db push --accept-data-loss` DROPS any table/column the new schema removed.
+  # A migration that folds data out of a soon-to-be-dropped table (e.g. old
+  # Role/Permission grants → UserPlacePermission) must therefore run against the
+  # OLD shape, before the push — otherwise that data is gone. Each script self-
+  # guards and is idempotent, so running the whole directory on every update is
+  # safe (already-applied migrations no-op). An absolute DATABASE_URL is passed
+  # so the transform hits the live DB regardless of CWD (the schema's relative
+  # datasource path would resolve differently from within prisma/data-migrations).
+  MIGRATIONS_DIR="$DB_WORK_DIR/prisma/data-migrations"
+  if compgen -G "$MIGRATIONS_DIR/*.ts" > /dev/null 2>&1; then
+    # The runner imports @prisma/client: release mode generated it above, source
+    # mode has not (pnpm install has no postinstall generate).
+    if [[ "$FROM_SOURCE" -eq 1 ]]; then
+      sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && npx prisma generate"
+    fi
+    for m in "$MIGRATIONS_DIR"/*.ts; do
+      rel="prisma/data-migrations/$(basename "$m")"
+      step "Running data migration: $(basename "$m")"
+      if [[ "$FROM_SOURCE" -eq 1 ]]; then
+        sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' npx tsx '$rel'"
+      else
+        app_exec "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' '$rel'"
+      fi
+    done
+    success "Data migrations applied"
+  fi
+
   # --accept-data-loss is required for column-type changes (e.g. Int -> BigInt);
   # Prisma flags those as lossy even when SQLite preserves the values. The DB was
   # just backed up above, so this is safe — and without the flag such schema
