@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.35.0] - 2026-07-21
+
 ### Changed
 - **Simpler permissions — Users + Groups, no more Roles**: the old glob-permission role system (`files.write`, `places.*`, `*.*`, plus an auto-created "personal" role per user) is gone. Access is now just: grant **Read / Write / Delete / Share** on each **place**, to a **user** directly or to a **group** the user belongs to. "Roles" in Settings became **Groups** — a group is only a name plus its members. Two account tiers survive as simple switches on a user: **Admin** and **User manager**.
 - **Admin means full access, shown as such**: an administrator is now a flag on the account with implicit Read/Write/Delete/Share on every place. In the Permissions matrix, admins appear as a row with all four boxes checked (and locked) instead of being hidden — so "who can do what" is visible at a glance, and the admin account works over SMB and in the web file manager like any other member.
@@ -563,7 +565,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.35.0...HEAD
+[1.35.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.1...v1.35.0
 [1.34.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.34.0...v1.34.1
 [1.34.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.1...v1.34.0
 [1.33.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.33.0...v1.33.1
