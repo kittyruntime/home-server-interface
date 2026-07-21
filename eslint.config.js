@@ -36,7 +36,7 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
-      globals: { ...globals.browser, ...globals.node },
+      globals: { ...globals.browser, ...globals.node, __APP_VERSION__: "readonly" },
     },
     rules: {
       // Allow intentionally-unused args/vars when prefixed with an underscore.
