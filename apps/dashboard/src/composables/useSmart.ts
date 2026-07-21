@@ -36,6 +36,7 @@ export function smartStatus(s: SmartResult | undefined): SmartStatus {
   if (!s.available) return 'unknown'
   if (!s.healthPassed) return 'failed'
   if (s.attributes.some(a => a.isCritical && a.raw > 0)) return 'warning'
+  if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return 'warning'
   return 'passed'
 }
 
