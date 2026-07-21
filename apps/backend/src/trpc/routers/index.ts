@@ -3,7 +3,7 @@ import { authRouter } from "./auth"
 import { userRouter } from "./user"
 import { placeRouter } from "./place"
 import { fsRouter } from "./fs"
-import { roleRouter } from "./role"
+import { groupRouter } from "./group"
 import { permissionRouter } from "./permission"
 import { tasksRouter } from "./tasks"
 import { containerRouter } from "./container"
@@ -20,7 +20,7 @@ export const appRouter = router({
   user: userRouter,
   place: placeRouter,
   fs: fsRouter,
-  role: roleRouter,
+  group: groupRouter,
   permission: permissionRouter,
   tasks: tasksRouter,
   container: containerRouter,

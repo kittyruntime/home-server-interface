@@ -1,46 +1,42 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
-import RoleEditor from './RoleEditor.vue'
+import GroupEditor from './GroupEditor.vue'
 import Pagination from './ui/Pagination.vue'
 import SortableHeader from './ui/SortableHeader.vue'
 import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
 
-type Role = {
+type Group = {
   id: string
   name: string
-  isAdmin: boolean
   createdAt: string
-  userRoles: { userId: string }[]
-  permissions: { permission: { name: string } }[]
+  members: { userId: string }[]
 }
 type User = {
   id: string
   username: string
   displayName?: string | null
-  userRoles: { role: { id: string } }[]
+  isAdmin: boolean
+  isUserManager: boolean
 }
 
-const roles        = ref<Role[]>([])
-const users        = ref<User[]>([])
-const selectedRole = ref<Role | null>(null)
+const groups        = ref<Group[]>([])
+const users         = ref<User[]>([])
+const selectedGroup = ref<Group | null>(null)
 
-const usernames  = computed(() => new Set(users.value.map(u => u.username)))
-function isPersonal(role: Role) { return usernames.value.has(role.name) }
-
-// ── Add role ─────────────────────────────────────────────────────────────────
-const addingRole  = ref(false)
-const newRoleName = ref('')
+// ── Add group ────────────────────────────────────────────────────────────────
+const addingGroup  = ref(false)
+const newGroupName = ref('')
 const createError = ref('')
 const createLoading = ref(false)
 
 function openAdd() {
-  addingRole.value = true
+  addingGroup.value = true
   createError.value = ''
-  newRoleName.value = ''
+  newGroupName.value = ''
 }
-function cancelAdd() { addingRole.value = false }
+function cancelAdd() { addingGroup.value = false }
 
 // ── Search + sort ────────────────────────────────────────────────────────────
 const search  = ref('')
@@ -53,9 +49,9 @@ function toggleSort(key: SortKey) {
   else { sortKey.value = key; sortDir.value = key === 'createdAt' ? 'desc' : 'asc' }
 }
 
-const filteredRoles = computed(() => {
+const filteredGroups = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const list = q ? roles.value.filter(r => r.name.toLowerCase().includes(q)) : roles.value
+  const list = q ? groups.value.filter(g => g.name.toLowerCase().includes(q)) : groups.value
   return [...list].sort((a, b) => {
     const cmp = sortKey.value === 'name'
       ? a.name.localeCompare(b.name)
@@ -65,7 +61,7 @@ const filteredRoles = computed(() => {
 })
 
 // ── Pagination ──────────────────────────────────────────────────────────────
-const { page, pageCount, paged, pageSize } = usePagination(filteredRoles, 10)
+const { page, pageCount, paged, pageSize } = usePagination(filteredGroups, 10)
 
 watch(search, () => { page.value = 1 })
 
@@ -74,35 +70,35 @@ function formatDate(d: string) {
 }
 
 async function load() {
-  const [r, u] = await Promise.all([trpc.role.list.query(), trpc.user.list.query()])
-  roles.value = r as Role[]
+  const [g, u] = await Promise.all([trpc.group.list.query(), trpc.user.list.query()])
+  groups.value = g as Group[]
   users.value = u as User[]
-  if (selectedRole.value) {
-    selectedRole.value = roles.value.find(r => r.id === selectedRole.value!.id) ?? null
+  if (selectedGroup.value) {
+    selectedGroup.value = groups.value.find(g => g.id === selectedGroup.value!.id) ?? null
   }
 }
 
-async function createRole() {
-  const name = newRoleName.value.trim()
+async function createGroup() {
+  const name = newGroupName.value.trim()
   if (!name) return
   createError.value = ''
   createLoading.value = true
   try {
-    await trpc.role.create.mutate({ name })
-    addingRole.value = false
+    await trpc.group.create.mutate({ name })
+    addingGroup.value = false
     await load()
     page.value = 1
     sortKey.value = 'createdAt'
     sortDir.value = 'desc'
   } catch (e: any) {
-    createError.value = e?.message ?? 'Failed to create role'
+    createError.value = e?.message ?? 'Failed to create group'
   } finally {
     createLoading.value = false
   }
 }
 
-function openEditor(role: Role) { selectedRole.value = role }
-function onBack() { selectedRole.value = null }
+function openEditor(group: Group) { selectedGroup.value = group }
+function onBack() { selectedGroup.value = null }
 
 onMounted(load)
 </script>
@@ -110,55 +106,55 @@ onMounted(load)
 <template>
   <div>
 
-    <!-- ── Role editor ───────────────────────────────────────────────────────── -->
-    <RoleEditor
-      v-if="selectedRole"
-      :role="selectedRole"
+    <!-- ── Group editor ──────────────────────────────────────────────────────── -->
+    <GroupEditor
+      v-if="selectedGroup"
+      :group="selectedGroup"
       :users="users"
       @back="onBack"
       @reload="load"
     />
 
-    <!-- ── Role list ─────────────────────────────────────────────────────────── -->
+    <!-- ── Group list ────────────────────────────────────────────────────────── -->
     <section v-else class="space-y-5">
 
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Roles</h2>
+          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Groups</h2>
           <p class="text-xs text-[var(--c-text-3)] mt-0.5">
-            {{ filteredRoles.length }} of {{ roles.length }} role{{ roles.length !== 1 ? 's' : '' }}
+            {{ filteredGroups.length }} of {{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}
           </p>
         </div>
         <button
-          v-if="!addingRole"
+          v-if="!addingGroup"
           @click="openAdd"
           class="btn btn-primary btn-xs shrink-0"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
-          Add role
+          Add group
         </button>
       </div>
 
-      <!-- Add role form -->
-      <div v-if="addingRole" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New role</h4>
+      <!-- Add group form -->
+      <div v-if="addingGroup" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
+        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New group</h4>
         <div>
           <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-[var(--c-accent)]">*</span></label>
           <input
-            v-model="newRoleName"
-            placeholder="e.g. editor"
+            v-model="newGroupName"
+            placeholder="e.g. editors"
             autofocus
-            @keydown.enter.prevent="createRole"
+            @keydown.enter.prevent="createGroup"
             class="ui-input"
           />
         </div>
         <p v-if="createError" class="text-[var(--c-accent)] text-xs">{{ createError }}</p>
         <div class="flex items-center gap-2 pt-1">
           <button
-            @click="createRole"
-            :disabled="createLoading || !newRoleName.trim()"
+            @click="createGroup"
+            :disabled="createLoading || !newGroupName.trim()"
             class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {{ createLoading ? 'Creating…' : 'Create' }}
@@ -168,7 +164,7 @@ onMounted(load)
       </div>
 
       <!-- Search -->
-      <SearchInput v-model="search" placeholder="Search roles by name…" class="max-w-sm" />
+      <SearchInput v-model="search" placeholder="Search groups by name…" class="max-w-sm" />
 
       <!-- Table -->
       <div class="panel-card">
@@ -176,10 +172,9 @@ onMounted(load)
           <thead>
             <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
               <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
-                <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Role</SortableHeader>
+                <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Group</SortableHeader>
               </th>
               <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Members</th>
-              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Permissions</th>
               <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
               </th>
@@ -188,45 +183,30 @@ onMounted(load)
           </thead>
           <tbody class="divide-y divide-[var(--c-border)]">
             <tr
-              v-for="role in paged"
-              :key="role.id"
+              v-for="group in paged"
+              :key="group.id"
               class="bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
             >
-              <!-- Role -->
+              <!-- Group -->
               <td class="px-5 py-3.5">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-medium text-[var(--c-text-1)]">{{ role.name }}</span>
-                  <span v-if="role.isAdmin"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)] shrink-0">
-                    admin
-                  </span>
-                  <span v-if="isPersonal(role)"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)] shrink-0">
-                    personal
-                  </span>
-                </div>
+                <span class="font-medium text-[var(--c-text-1)]">{{ group.name }}</span>
               </td>
 
               <!-- Members -->
               <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                {{ role.userRoles.length }}
-              </td>
-
-              <!-- Permissions -->
-              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                {{ role.permissions.length }}
+                {{ group.members.length }}
               </td>
 
               <!-- Created -->
               <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                {{ formatDate(role.createdAt) }}
+                {{ formatDate(group.createdAt) }}
               </td>
 
               <!-- Actions -->
               <td class="px-4 py-3.5 text-right">
                 <button
-                  @click="openEditor(role)"
-                  title="Edit role"
+                  @click="openEditor(group)"
+                  title="Edit group"
                   class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -237,9 +217,9 @@ onMounted(load)
             </tr>
 
             <!-- Empty state -->
-            <tr v-if="filteredRoles.length === 0">
-              <td colspan="5" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
-                {{ roles.length === 0 ? 'No roles yet.' : 'No roles match your search.' }}
+            <tr v-if="filteredGroups.length === 0">
+              <td colspan="4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)] italic">
+                {{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}
               </td>
             </tr>
           </tbody>
@@ -247,7 +227,7 @@ onMounted(load)
       </div>
 
       <!-- Pagination -->
-      <Pagination :page="page" :page-count="pageCount" :total="filteredRoles.length" :page-size="pageSize" @update:page="page = $event" />
+      <Pagination :page="page" :page-count="pageCount" :total="filteredGroups.length" :page-size="pageSize" @update:page="page = $event" />
 
     </section>
   </div>

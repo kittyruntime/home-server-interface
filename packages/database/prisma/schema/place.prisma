@@ -4,7 +4,7 @@ model Place {
   path            String                @unique
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
-  rolePermissions RolePlacePermission[] @relation("RolePerms")
-  userPermissions UserPlacePermission[] @relation("UserPerms")
+  groupPermissions GroupPlacePermission[] @relation("GroupPerms")
+  userPermissions  UserPlacePermission[] @relation("UserPerms")
   share           Share?
 }

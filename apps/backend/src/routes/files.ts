@@ -57,21 +57,21 @@ async function resolveAllowedRoot(
   const places = await prisma.place.findMany()
   const place  = places.find(p => path === p.path || path.startsWith(p.path + "/"))
   if (!place) return undefined
-  const roleIds = (
-    await prisma.userRole.findMany({ where: { userId }, select: { roleId: true } })
-  ).map(r => r.roleId)
-  const [u, r] = await Promise.all([
+  const groupIds = (
+    await prisma.userGroup.findMany({ where: { userId }, select: { groupId: true } })
+  ).map(g => g.groupId)
+  const [u, g] = await Promise.all([
     prisma.userPlacePermission.findFirst({ where: { userId, placeId: place.id, [flag]: true } }),
-    roleIds.length
-      ? prisma.rolePlacePermission.findFirst({ where: { roleId: { in: roleIds }, placeId: place.id, [flag]: true } })
+    groupIds.length
+      ? prisma.groupPlacePermission.findFirst({ where: { groupId: { in: groupIds }, placeId: place.id, [flag]: true } })
       : null,
   ])
-  return (u || r) ? place.path : undefined
+  return (u || g) ? place.path : undefined
 }
 
 async function getLinuxUser(userId: string): Promise<string | null> {
-  const u = await prisma.user.findUnique({ where: { id: userId }, select: { linuxUsername: true } })
-  return u?.linuxUsername ?? null
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
+  return u?.username ?? null
 }
 
 function authFromRequest(req: { headers: { authorization?: string } }) {

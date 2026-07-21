@@ -9,20 +9,12 @@ type Me = {
   id: string
   username: string
   displayName: string | null
-  linuxUsername: string | null
-  userRoles: { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }[]
+  isAdmin: boolean
+  isUserManager: boolean
 }
 
-function matchesPerm(grants: string[], required: string): boolean {
-  const [rNs] = required.split('.')
-  return grants.some(g => g === required || g === '*.*' || (() => { const [ns, act] = g.split('.'); return ns === rNs && act === '*' })())
-}
-const meIsAdmin = computed(() => !!me.value && me.value.userRoles.some(ur => ur.role.isAdmin))
-const meCanManage = computed(() => {
-  if (!me.value) return false
-  const grants = me.value.userRoles.flatMap(ur => ur.role.permissions.map(rp => rp.permission.name))
-  return meIsAdmin.value || matchesPerm(grants, 'users.manage')
-})
+const meIsAdmin = computed(() => me.value?.isAdmin === true)
+const meCanManage = computed(() => !!me.value && (me.value.isAdmin || me.value.isUserManager))
 
 useAuth()
 
@@ -151,16 +143,6 @@ onMounted(async () => {
             <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
             <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
             <span v-if="!meIsAdmin && meCanManage" class="badge badge-violet">manager</span>
-          </div>
-          <!-- Roles -->
-          <div class="flex flex-wrap gap-1 mt-1.5">
-            <span v-for="ur in me.userRoles.filter(ur => ur.role.name !== me!.username)" :key="ur.role.id"
-              class="badge badge-violet">
-              {{ ur.role.name }}
-            </span>
-            <span v-if="me.linuxUsername" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
-              {{ me.linuxUsername }}
-            </span>
           </div>
         </div>
       </div>

@@ -7,20 +7,20 @@ import { syncSharesBestEffort } from "../../services/sharing.service"
 async function accessiblePlaceIds(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
 ): Promise<string[]> {
-  const userRoles = await ctx.prisma.userRole.findMany({
+  const userGroups = await ctx.prisma.userGroup.findMany({
     where: { userId: ctx.user.userId },
-    select: { roleId: true },
+    select: { groupId: true },
   })
-  const roleIds = userRoles.map((r: { roleId: string }) => r.roleId)
+  const groupIds = userGroups.map((g: { groupId: string }) => g.groupId)
 
-  const [userPerms, rolePerms] = await Promise.all([
+  const [userPerms, groupPerms] = await Promise.all([
     ctx.prisma.userPlacePermission.findMany({
       where: { userId: ctx.user.userId, canRead: true },
       select: { placeId: true },
     }),
-    roleIds.length > 0
-      ? ctx.prisma.rolePlacePermission.findMany({
-          where: { roleId: { in: roleIds }, canRead: true },
+    groupIds.length > 0
+      ? ctx.prisma.groupPlacePermission.findMany({
+          where: { groupId: { in: groupIds }, canRead: true },
           select: { placeId: true },
         })
       : Promise.resolve([]),
@@ -29,7 +29,7 @@ async function accessiblePlaceIds(
   return [
     ...new Set([
       ...userPerms.map((p: { placeId: string }) => p.placeId),
-      ...rolePerms.map((p: { placeId: string }) => p.placeId),
+      ...groupPerms.map((p: { placeId: string }) => p.placeId),
     ]),
   ] as string[]
 }

@@ -20,9 +20,9 @@ const MAX_TEXT_PREVIEW_BYTES = 3 * 1024 * 1024
 async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Promise<string | null> {
   const u = await ctx.prisma.user.findUnique({
     where:  { id: ctx.user.userId },
-    select: { linuxUsername: true },
+    select: { username: true },
   })
-  return u?.linuxUsername ?? null
+  return u?.username ?? null
 }
 
 // Returns the matched Place's root path so callers can pass it to the
@@ -41,23 +41,23 @@ export async function checkPathPerm(
   )
   if (!place) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
 
-  const userRoles = await ctx.prisma.userRole.findMany({
-    where: { userId: ctx.user.userId }, select: { roleId: true },
+  const userGroups = await ctx.prisma.userGroup.findMany({
+    where: { userId: ctx.user.userId }, select: { groupId: true },
   })
-  const roleIds = userRoles.map((r: { roleId: string }) => r.roleId)
+  const groupIds = userGroups.map((g: { groupId: string }) => g.groupId)
 
-  const [userPerm, rolePerm] = await Promise.all([
+  const [userPerm, groupPerm] = await Promise.all([
     ctx.prisma.userPlacePermission.findFirst({
       where: { userId: ctx.user.userId, placeId: place.id, [flag]: true },
     }),
-    roleIds.length > 0
-      ? ctx.prisma.rolePlacePermission.findFirst({
-          where: { roleId: { in: roleIds }, placeId: place.id, [flag]: true },
+    groupIds.length > 0
+      ? ctx.prisma.groupPlacePermission.findFirst({
+          where: { groupId: { in: groupIds }, placeId: place.id, [flag]: true },
         })
       : null,
   ])
 
-  if (!userPerm && !rolePerm) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
+  if (!userPerm && !groupPerm) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
   return place.path
 }
 

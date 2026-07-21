@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { randomId } from './uuid'
 
 export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'file-preview'
-export type SettingsSection = 'profile' | 'users' | 'places' | 'roles' | 'updates'
+export type SettingsSection = 'profile' | 'users' | 'places' | 'groups' | 'updates'
 
 export interface FilePreviewPayload {
   path: string

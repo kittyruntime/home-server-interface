@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { trpc } from '../lib/trpc'
 
 type Place = { id: string; name: string; path: string }
-type Role  = { id: string; name: string; userRoles: { userId: string }[] }
-type User  = { id: string; username: string; userRoles: { role: { isAdmin: boolean } }[] }
+type Group = { id: string; name: string }
+type User  = { id: string; username: string; isAdmin: boolean }
 type Perm  = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
 
 const places       = ref<Place[]>([])
-const roles        = ref<Role[]>([])
+const groups       = ref<Group[]>([])
 const users        = ref<User[]>([])
 const permsByPlace = ref<Record<string, Perm[]>>({})
 const expandedPlace = ref<string | null>(null)
@@ -22,22 +22,14 @@ const pathMissing  = ref(false)
 
 watch(newPath, () => { pathMissing.value = false })
 
-function userIsAdmin(u: User) { return u.userRoles.some(ur => ur.role.isAdmin) }
-
-// Hide personal roles from the matrix (users are already listed individually)
-const visibleRoles = computed(() => {
-  const usernames = new Set(users.value.map(u => u.username))
-  return roles.value.filter(r => !usernames.has(r.name))
-})
-
 async function load() {
-  const [p, r, u] = await Promise.all([
+  const [p, g, u] = await Promise.all([
     trpc.place.list.query(),
-    trpc.role.list.query(),
+    trpc.group.list.query(),
     trpc.user.list.query(),
   ])
   places.value = p as Place[]
-  roles.value  = r as Role[]
+  groups.value = g as Group[]
   users.value  = u as User[]
 }
 
@@ -97,7 +89,7 @@ function getPerm(placeId: string, subjectType: string, subjectId: string): Perm 
 
 async function togglePerm(
   placeId: string,
-  subjectType: 'user' | 'role',
+  subjectType: 'user' | 'group',
   subjectId: string,
   field: 'canRead' | 'canWrite' | 'canDelete' | 'canShare',
 ) {
@@ -130,7 +122,7 @@ onMounted(async () => {
         <h2 class="text-base font-semibold text-[var(--c-text-1)]">Places</h2>
         <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-md leading-relaxed">
           Folders on your NAS that you share with people. Each place maps a friendly name to a path on
-          the server, then grants read, write or delete access per user or role.
+          the server, then grants read, write or delete access per user or group.
         </p>
       </div>
       <button
@@ -192,7 +184,7 @@ onMounted(async () => {
         </svg>
         <h4 class="text-sm font-medium text-[var(--c-text-1)] mt-3">No places yet</h4>
         <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-xs mx-auto leading-relaxed">
-          A place shares a folder on your NAS with users and roles — you decide exactly who can read,
+          A place shares a folder on your NAS with users and groups — you decide exactly who can read,
           write or delete its contents.
         </p>
         <button @click="adding = true" class="btn btn-primary btn-sm mt-4 mx-auto">
@@ -241,7 +233,7 @@ onMounted(async () => {
             <div class="px-4 py-2.5 bg-[var(--c-surface-alt)]">
               <span class="eyebrow">Permissions</span>
               <p class="text-[11px] text-[var(--c-text-3)] mt-0.5 leading-relaxed">
-                Choose what each user or role can do in this folder. Administrators always have full access.
+                Choose what each user or group can do in this folder. Admins always have full access.
               </p>
             </div>
             <table class="w-full text-xs">
@@ -255,40 +247,42 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody class="divide-y divide-[var(--c-border)]">
-                <!-- Roles (personal roles hidden — users are listed individually below) -->
-                <tr v-for="role in visibleRoles" :key="'role-' + role.id">
+                <!-- Groups -->
+                <tr v-for="group in groups" :key="'group-' + group.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="badge badge-violet">role</span>
-                      <span class="text-[var(--c-text-2)]">{{ role.name }}</span>
+                      <span class="badge badge-violet">group</span>
+                      <span class="text-[var(--c-text-2)]">{{ group.name }}</span>
                     </div>
                   </td>
                   <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
                     <input type="checkbox"
-                      :checked="getPerm(place.id, 'role', role.id)?.[field] ?? false"
-                      @change="togglePerm(place.id, 'role', role.id, field)"
+                      :checked="getPerm(place.id, 'group', group.id)?.[field] ?? false"
+                      @change="togglePerm(place.id, 'group', group.id, field)"
                       class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"/>
                   </td>
                 </tr>
 
-                <!-- Users (skip admins — they always have full access) -->
-                <tr v-for="user in users.filter(u => !userIsAdmin(u))" :key="'user-' + user.id">
+                <!-- Users (admins always have full access) -->
+                <tr v-for="user in users" :key="'user-' + user.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
                       <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                       <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
+                      <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
                     </div>
                   </td>
                   <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
                     <input type="checkbox"
-                      :checked="getPerm(place.id, 'user', user.id)?.[field] ?? false"
-                      @change="togglePerm(place.id, 'user', user.id, field)"
-                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"/>
+                      :checked="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)"
+                      :disabled="user.isAdmin"
+                      @change="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)"
+                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"/>
                   </td>
                 </tr>
 
-                <tr v-if="visibleRoles.length === 0 && !users.some(u => !userIsAdmin(u))">
-                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
+                <tr v-if="groups.length === 0 && users.length === 0">
+                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)] italic">No groups or users to assign.</td>
                 </tr>
               </tbody>
             </table>

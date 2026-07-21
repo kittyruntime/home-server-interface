@@ -4,14 +4,14 @@ import { useAuth } from '../lib/auth'
 import ProfileSection from './ProfileSection.vue'
 import UserListPanel from './UserListPanel.vue'
 import PlacesSection from './PlacesSection.vue'
-import RolesSection from './RolesSection.vue'
+import GroupsSection from './GroupsSection.vue'
 import UpdateSection from './UpdateSection.vue'
 import PermissionsSection from './PermissionsSection.vue'
 import SharedLinksSection from './SharedLinksSection.vue'
 
-const { isAdmin, canManageUsers } = useAuth()
+const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'roles' | 'updates' | 'shares'
+type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -25,10 +25,10 @@ interface NavItem {
 const nav: NavItem[] = [
   { id: 'profile',     label: 'My Profile',  show: () => true },
   { id: 'shares',      label: 'Shared links', show: () => true },
-  { id: 'users',       label: 'Users',       show: () => canManageUsers.value },
+  { id: 'users',       label: 'Users',       show: () => isUserManager.value },
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'admin' },
   { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'admin' },
-  { id: 'roles',       label: 'Roles',       show: () => isAdmin.value, group: 'admin' },
+  { id: 'groups',      label: 'Groups',      show: () => isAdmin.value, group: 'admin' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'admin' },
 ]
 
@@ -101,8 +101,8 @@ defineExpose({ focusOn })
             <svg v-else-if="item.id === 'permissions'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
             </svg>
-            <!-- Roles icon -->
-            <svg v-else-if="item.id === 'roles'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <!-- Groups icon -->
+            <svg v-else-if="item.id === 'groups'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             </svg>
             <!-- Updates icon -->
@@ -119,14 +119,14 @@ defineExpose({ focusOn })
 
     <!-- ── Content area ───────────────────────────────────────────────── -->
     <div class="flex-1 overflow-y-auto">
-      <div :class="['p-8', ['users','roles','permissions'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
+      <div :class="['p-8', ['users','groups','permissions'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
         <ProfileSection     v-if="active === 'profile'" />
         <SharedLinksSection v-else-if="active === 'shares'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
         <PermissionsSection v-else-if="active === 'permissions'" />
-        <RolesSection       v-else-if="active === 'roles'" />
+        <GroupsSection      v-else-if="active === 'groups'" />
         <UpdateSection      v-else-if="active === 'updates'" />
 
       </div>

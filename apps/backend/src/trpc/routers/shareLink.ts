@@ -43,7 +43,7 @@ export async function loadLink(prisma: any, token: string):
 
   // Creator must still have canRead on the shared path (fail-closed).
   const creator = await prisma.user.findUnique({
-    where: { id: row.creatorId }, select: { linuxUsername: true },
+    where: { id: row.creatorId }, select: { username: true },
   })
   if (!creator) return { ok: false, reason: "creator" }
   // Authorization only — does not determine the worker containment root.
@@ -55,7 +55,7 @@ export async function loadLink(prisma: any, token: string):
     link: {
       id: row.id, path: row.path, isDir: row.isDir, passwordHash: row.passwordHash,
       maxDownloads: row.maxDownloads, downloads: row.downloads,
-      creatorId: row.creatorId, linuxUser: creator.linuxUsername ?? "",
+      creatorId: row.creatorId, linuxUser: creator.username,
       // Containment root is always the shared path itself, never the admin
       // "no root" sentinel — the worker must not allow escaping this dir.
       allowedRoot: row.path,
@@ -65,17 +65,17 @@ export async function loadLink(prisma: any, token: string):
 
 // Mirrors routes/files.ts resolveAllowedRoot but for canRead only, admin-aware.
 async function creatorAllowedRoot(prisma: any, userId: string, path: string): Promise<string | null | undefined> {
-  const roles = await prisma.userRole.findMany({ where: { userId }, select: { roleId: true, role: { select: { isAdmin: true } } } })
-  if (roles.some((r: any) => r.role.isAdmin)) return null
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  if (u?.isAdmin) return null
   const places = await prisma.place.findMany()
   const place = places.find((p: any) => path === p.path || path.startsWith(p.path + "/"))
   if (!place) return undefined
-  const roleIds = roles.map((r: any) => r.roleId)
-  const [u, r] = await Promise.all([
+  const groupIds = (await prisma.userGroup.findMany({ where: { userId }, select: { groupId: true } })).map((g: any) => g.groupId)
+  const [up, gp] = await Promise.all([
     prisma.userPlacePermission.findFirst({ where: { userId, placeId: place.id, canRead: true } }),
-    roleIds.length ? prisma.rolePlacePermission.findFirst({ where: { roleId: { in: roleIds }, placeId: place.id, canRead: true } }) : null,
+    groupIds.length ? prisma.groupPlacePermission.findFirst({ where: { groupId: { in: groupIds }, placeId: place.id, canRead: true } }) : null,
   ])
-  return (u || r) ? place.path : undefined
+  return (up || gp) ? place.path : undefined
 }
 
 // Validates a requested relative subPath stays within the shared dir root.
@@ -102,8 +102,8 @@ export const shareLinkRouter = router({
 
       // Determine file vs dir via the privileged stat (same channel fs uses).
       const linuxUser = await ctx.prisma.user
-        .findUnique({ where: { id: ctx.user.userId }, select: { linuxUsername: true } })
-        .then((u: { linuxUsername: string | null } | null) => u?.linuxUsername ?? "")
+        .findUnique({ where: { id: ctx.user.userId }, select: { username: true } })
+        .then((u: { username: string | null } | null) => u?.username ?? "")
       let isDir: boolean
       try {
         const s = await requestStat(p, linuxUser, allowedRoot ?? "")

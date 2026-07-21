@@ -21,10 +21,10 @@ export function shareExclusionReason(linuxUsername: string | null | undefined): 
  *  full access, so they're added to every share/place's write set. */
 export async function adminLinuxUsers(prisma: PrismaClient): Promise<string[]> {
   const admins = await prisma.user.findMany({
-    where: { linuxUsername: { not: null }, userRoles: { some: { role: { isAdmin: true } } } },
-    select: { linuxUsername: true },
+    where: { isAdmin: true },
+    select: { username: true },
   })
-  return admins.map(a => a.linuxUsername).filter(isShareableLinux)
+  return admins.map(a => a.username).filter(isShareableLinux)
 }
 
 export interface ShareUserEntry {
@@ -43,28 +43,28 @@ export interface ResolvedShareUsers {
   entries: ShareUserEntry[]
 }
 
-/** Aggregates UserPlacePermission + RolePlacePermission for a Place — same
+/** Aggregates UserPlacePermission + GroupPlacePermission for a Place — same
  *  read/write semantics as the rest of the app — into Samba user lists. */
 export async function resolveShareUsers(
   prisma: PrismaClient,
   placeId: string,
 ): Promise<ResolvedShareUsers> {
-  const [userPerms, rolePerms] = await Promise.all([
+  const [userPerms, groupPerms] = await Promise.all([
     prisma.userPlacePermission.findMany({
       where: { placeId, canRead: true },
       select: {
         canWrite: true,
-        user: { select: { username: true, linuxUsername: true } },
+        user: { select: { username: true } },
       },
     }),
-    prisma.rolePlacePermission.findMany({
+    prisma.groupPlacePermission.findMany({
       where: { placeId, canRead: true },
       select: {
         canWrite: true,
-        role: {
+        group: {
           select: {
-            userRoles: {
-              select: { user: { select: { username: true, linuxUsername: true } } },
+            members: {
+              select: { user: { select: { username: true } } },
             },
           },
         },
@@ -78,8 +78,8 @@ export async function resolveShareUsers(
     if (cur) cur.write = cur.write || write
     else byUsername.set(u.username, { linux: u.linuxUsername, write })
   }
-  for (const p of userPerms) add(p.user, p.canWrite)
-  for (const p of rolePerms) for (const ur of p.role.userRoles) add(ur.user, p.canWrite)
+  for (const p of userPerms) add({ username: p.user.username, linuxUsername: p.user.username }, p.canWrite)
+  for (const p of groupPerms) for (const m of p.group.members) add({ username: m.user.username, linuxUsername: m.user.username }, p.canWrite)
 
   const validUsers: string[] = []
   const writeUsers: string[] = []

@@ -3,24 +3,24 @@ import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 
 type Place = { id: string; name: string; path: string }
-type Role = { id: string; name: string; userRoles: { userId: string }[] }
-type User = { id: string; username: string; userRoles: { role: { id: string; name: string; isAdmin: boolean } }[] }
+type Group = { id: string; name: string }
+type User = { id: string; username: string; isAdmin: boolean }
 type Perm = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
 
 const places = ref<Place[]>([])
-const roles = ref<Role[]>([])
+const groups = ref<Group[]>([])
 const users = ref<User[]>([])
 const permsByPlace = ref<Record<string, Perm[]>>({})
 const expandedPlace = ref<string | null>(null)
 
 async function load() {
-  const [p, r, u] = await Promise.all([
+  const [p, g, u] = await Promise.all([
     trpc.place.list.query(),
-    trpc.role.list.query(),
+    trpc.group.list.query(),
     trpc.user.list.query(),
   ])
   places.value = p as Place[]
-  roles.value = r as Role[]
+  groups.value = g as Group[]
   users.value = u as User[]
 }
 
@@ -46,7 +46,7 @@ function getPerm(placeId: string, subjectType: string, subjectId: string): Perm 
 
 async function togglePerm(
   placeId: string,
-  subjectType: 'user' | 'role',
+  subjectType: 'user' | 'group',
   subjectId: string,
   field: 'canRead' | 'canWrite' | 'canDelete' | 'canShare',
 ) {
@@ -102,6 +102,7 @@ onMounted(load)
 
         <!-- Permission matrix -->
         <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
+          <p class="px-4 py-1.5 text-[11px] text-[var(--c-text-3)] leading-relaxed">Admins always have full access.</p>
           <table class="w-full text-xs">
             <thead>
               <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)]">
@@ -112,44 +113,46 @@ onMounted(load)
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--c-border)]">
-              <!-- Roles -->
-              <tr v-for="role in roles" :key="'role-' + role.id">
+              <!-- Groups -->
+              <tr v-for="group in groups" :key="'group-' + group.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="badge badge-violet">role</span>
-                    <span class="text-[var(--c-text-2)]">{{ role.name }}</span>
+                    <span class="badge badge-violet">group</span>
+                    <span class="text-[var(--c-text-2)]">{{ group.name }}</span>
                   </div>
                 </td>
                 <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
                   <input
                     type="checkbox"
-                    :checked="getPerm(place.id, 'role', role.id)?.[field] ?? false"
-                    @change="togglePerm(place.id, 'role', role.id, field)"
+                    :checked="getPerm(place.id, 'group', group.id)?.[field] ?? false"
+                    @change="togglePerm(place.id, 'group', group.id, field)"
                     class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"
                   />
                 </td>
               </tr>
 
-              <!-- Users (non-admin only — admins always have full access) -->
-              <tr v-for="user in users.filter(u => !u.userRoles.some(ur => ur.role.isAdmin))" :key="'user-' + user.id">
+              <!-- Users (admins always have full access) -->
+              <tr v-for="user in users" :key="'user-' + user.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                     <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
+                    <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
                   </div>
                 </td>
                 <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
                   <input
                     type="checkbox"
-                    :checked="getPerm(place.id, 'user', user.id)?.[field] ?? false"
-                    @change="togglePerm(place.id, 'user', user.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"
+                    :checked="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)"
+                    :disabled="user.isAdmin"
+                    @change="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)"
+                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </td>
               </tr>
 
-              <tr v-if="roles.length === 0 && users.filter(u => !u.userRoles.some(ur => ur.role.isAdmin)).length === 0">
-                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No roles or users to assign.</td>
+              <tr v-if="groups.length === 0 && users.length === 0">
+                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No groups or users to assign.</td>
               </tr>
             </tbody>
           </table>

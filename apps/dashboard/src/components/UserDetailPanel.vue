@@ -2,31 +2,29 @@
 import { ref, reactive, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
-import RolePicker, { type PickerItem } from './ui/RolePicker.vue'
 
-type UserRole = { role: { id: string; name: string; isAdmin: boolean; permissions: { permission: { name: string } }[] } }
 type User = {
   id: string
   username: string
   displayName: string | null
-  linuxUsername: string | null
+  isAdmin: boolean
+  isUserManager: boolean
   createdAt: Date | string
-  userRoles: UserRole[]
 }
-type RoleBasic = { id: string; name: string; isAdmin: boolean }
+type Group = { id: string; name: string; members: { userId: string }[] }
 
-const props = defineProps<{ user: User; roles: RoleBasic[] }>()
+const props = defineProps<{ user: User; groups: Group[] }>()
 const emit  = defineEmits<{ back: []; reload: [] }>()
 
-const { currentUserId } = useAuth()
+const { currentUserId, isAdmin } = useAuth()
 
-const form        = reactive({ displayName: props.user.displayName ?? '', linuxUsername: props.user.linuxUsername ?? '' })
+const form        = reactive({ displayName: props.user.displayName ?? '' })
 const saveLoading = ref(false)
 const saveError   = ref('')
 const saveSuccess = ref(false)
 
-const roleToggleBusy = ref<Record<string, boolean>>({})
-const roleError      = ref('')
+const accountBusy  = ref<Record<'isAdmin' | 'isUserManager', boolean>>({ isAdmin: false, isUserManager: false })
+const accountError = ref('')
 
 const deleteBusy    = ref(false)
 const deleteConfirm = ref(false)
@@ -45,21 +43,8 @@ function avatarGradient(username: string) {
   return palette[hash]
 }
 
-function hasRole(roleId: string) {
-  return props.user.userRoles.some(ur => ur.role.id === roleId)
-}
-
-function userIsAdmin() { return props.user.userRoles.some(ur => ur.role.isAdmin) }
-
-const assignedRoles = computed<PickerItem[]>(() =>
-  props.roles
-    .filter(r => hasRole(r.id))
-    .map(r => ({ id: r.id, label: r.name, sublabel: r.isAdmin ? 'admin' : undefined, disabled: isSelf.value })),
-)
-const availableRoles = computed<PickerItem[]>(() =>
-  props.roles
-    .filter(r => !hasRole(r.id))
-    .map(r => ({ id: r.id, label: r.name, sublabel: r.isAdmin ? 'admin' : undefined })),
+const memberGroups = computed(() =>
+  props.groups.filter(g => g.members.some(m => m.userId === props.user.id)),
 )
 
 async function save() {
@@ -68,9 +53,8 @@ async function save() {
   saveLoading.value = true
   try {
     await trpc.user.update.mutate({
-      userId:        props.user.id,
-      displayName:   form.displayName.trim() || null,
-      linuxUsername: form.linuxUsername.trim() || null,
+      userId:      props.user.id,
+      displayName: form.displayName.trim() || null,
     })
     saveSuccess.value = true
     emit('reload')
@@ -82,18 +66,22 @@ async function save() {
   }
 }
 
-async function toggleRole(roleId: string) {
-  if (roleToggleBusy.value[roleId]) return
-  roleToggleBusy.value[roleId] = true
-  roleError.value = ''
+async function toggleAccountFlag(flag: 'isAdmin' | 'isUserManager') {
+  if (isSelf.value || accountBusy.value[flag]) return
+  accountBusy.value[flag] = true
+  accountError.value = ''
   try {
-    if (hasRole(roleId)) await trpc.role.removeUser.mutate({ userId: props.user.id, roleId })
-    else                  await trpc.role.assignUser.mutate({ userId: props.user.id, roleId })
+    const next = !props.user[flag]
+    await trpc.user.update.mutate(
+      flag === 'isAdmin'
+        ? { userId: props.user.id, isAdmin: next }
+        : { userId: props.user.id, isUserManager: next },
+    )
     emit('reload')
   } catch (e: any) {
-    roleError.value = e?.message ?? 'Failed to update role'
+    accountError.value = e?.message ?? 'Failed to update'
   } finally {
-    roleToggleBusy.value[roleId] = false
+    accountBusy.value[flag] = false
   }
 }
 
@@ -136,8 +124,9 @@ async function deleteUser() {
           <span class="text-base font-semibold text-[var(--c-text-1)]">{{ user.username }}</span>
           <span v-if="isSelf"
             class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
-          <span v-if="userIsAdmin()"
+          <span v-if="user.isAdmin"
             class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+          <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
         </div>
         <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] mt-0.5">{{ user.displayName }}</div>
       </div>
@@ -154,14 +143,6 @@ async function deleteUser() {
             v-model="form.displayName"
             placeholder="Full name"
             class="ui-input"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label class="block text-xs text-[var(--c-text-3)]">Linux username</label>
-          <input
-            v-model="form.linuxUsername"
-            placeholder="linux_user"
-            class="ui-input font-mono"
           />
         </div>
       </div>
@@ -187,19 +168,52 @@ async function deleteUser() {
       </div>
     </div>
 
-    <!-- ── Role assignment ─────────────────────────────────────────────────── -->
-    <div v-if="roles.length > 0" class="space-y-3">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Roles</h4>
+    <!-- ── Account (admin only) ──────────────────────────────────────────────── -->
+    <div v-if="isAdmin" class="space-y-3">
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Account</h4>
 
-      <RolePicker
-        :assigned="assignedRoles"
-        :available="availableRoles"
-        :busy="roleToggleBusy"
-        @add="toggleRole"
-        @remove="toggleRole"
-      />
+      <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
+        <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
+          <div>
+            <p class="text-sm text-[var(--c-text-1)]">Admin</p>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Full access to every place, permission, and settings screen.</p>
+          </div>
+          <input
+            type="checkbox"
+            :checked="user.isAdmin"
+            :disabled="isSelf || accountBusy.isAdmin"
+            @change="toggleAccountFlag('isAdmin')"
+            class="shrink-0"
+          />
+        </label>
+        <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
+          <div>
+            <p class="text-sm text-[var(--c-text-1)]">User manager</p>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Can create, edit, and delete other user accounts.</p>
+          </div>
+          <input
+            type="checkbox"
+            :checked="user.isUserManager"
+            :disabled="isSelf || accountBusy.isUserManager"
+            @change="toggleAccountFlag('isUserManager')"
+            class="shrink-0"
+          />
+        </label>
+      </div>
 
-      <p v-if="roleError" class="text-[var(--c-danger)] text-xs px-3">{{ roleError }}</p>
+      <p v-if="isSelf" class="text-xs text-[var(--c-text-3)] px-0.5">You can't change your own access.</p>
+      <p v-if="accountError" class="text-[var(--c-danger)] text-xs px-0.5">{{ accountError }}</p>
+    </div>
+
+    <!-- ── Groups (read-only) ───────────────────────────────────────────────── -->
+    <div class="space-y-3">
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Groups</h4>
+
+      <div class="flex flex-wrap gap-1.5">
+        <span v-for="g in memberGroups" :key="g.id" class="badge badge-violet">{{ g.name }}</span>
+        <span v-if="memberGroups.length === 0" class="text-[var(--c-text-3)] text-xs italic">No groups.</span>
+      </div>
+      <p class="text-xs text-[var(--c-text-3)]">Group membership is managed from the Groups tab.</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->

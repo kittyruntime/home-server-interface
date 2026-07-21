@@ -81,26 +81,34 @@ export const userRouter = router({
     .input(z.object({
       userId: z.string(),
       displayName: z.string().max(64).nullable().optional(),
-      linuxUsername: z.string().max(64).nullable().optional(),
+      isAdmin: z.boolean().optional(),
+      isUserManager: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const target = await ctx.prisma.user.findUnique({ where: { id: input.userId } })
+      const target = await ctx.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { isAdmin: true },
+      })
       if (!target) throw new TRPCError({ code: "NOT_FOUND" })
-      const targetIsAdmin = (await ctx.prisma.userRole.findMany({
-        where: { userId: input.userId },
-        include: { role: { select: { isAdmin: true } } },
-      })).some(ur => ur.role.isAdmin)
-      if (targetIsAdmin && !ctx.user.isAdmin)
+      if (target.isAdmin && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
+      if ((input.isAdmin !== undefined || input.isUserManager !== undefined) && !ctx.user.isAdmin)
+        throw new TRPCError({ code: "FORBIDDEN" })
+      // An admin may not strip their own admin flag — the UI disables this, but
+      // a direct API call could otherwise lock out the last administrator.
+      if (input.isAdmin === false && input.userId === ctx.user.userId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can't remove your own admin access" })
       const result = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
-          ...(input.displayName  !== undefined && { displayName:  input.displayName }),
-          ...(input.linuxUsername !== undefined && { linuxUsername: input.linuxUsername }),
+          ...(input.displayName    !== undefined && { displayName:    input.displayName }),
+          ...(input.isAdmin        !== undefined && { isAdmin:        input.isAdmin }),
+          ...(input.isUserManager  !== undefined && { isUserManager:  input.isUserManager }),
         },
         select: userSelect,
       })
-      if (input.linuxUsername !== undefined) void syncSharesBestEffort(ctx.prisma)
+      if (input.isAdmin !== undefined || input.isUserManager !== undefined)
+        void syncSharesBestEffort(ctx.prisma)
       return result
     }),
 
@@ -130,13 +138,12 @@ export const userRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (input.userId === ctx.user.userId)
         throw new TRPCError({ code: "FORBIDDEN", message: "You cannot delete your own account" })
-      const target = await ctx.prisma.user.findUnique({ where: { id: input.userId } })
+      const target = await ctx.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { isAdmin: true },
+      })
       if (!target) throw new TRPCError({ code: "NOT_FOUND" })
-      const targetIsAdmin = (await ctx.prisma.userRole.findMany({
-        where: { userId: input.userId },
-        include: { role: { select: { isAdmin: true } } },
-      })).some(ur => ur.role.isAdmin)
-      if (targetIsAdmin && !ctx.user.isAdmin)
+      if (target.isAdmin && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
       const result = await ctx.prisma.user.delete({ where: { id: input.userId } })
       void syncSharesBestEffort(ctx.prisma)

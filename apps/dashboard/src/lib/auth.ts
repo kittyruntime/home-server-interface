@@ -15,10 +15,10 @@ function parseJwt(t: string): Record<string, unknown> {
 export function useAuth() {
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => token.value ? parseJwt(token.value).isAdmin === true : false)
-  const canManageUsers = computed(() => {
+  const isUserManager = computed(() => {
     if (!token.value) return false
     const p = parseJwt(token.value)
-    return p.isAdmin === true || p.canManageUsers === true
+    return p.isAdmin === true || p.isUserManager === true
   })
   const currentUserId = computed(() =>
     token.value ? (parseJwt(token.value).userId as string | null) ?? null : null
@@ -45,7 +45,7 @@ export function useAuth() {
     currentUserId,
     isAuthenticated,
     isAdmin,
-    canManageUsers,
+    isUserManager,
     login,
     logout,
   }

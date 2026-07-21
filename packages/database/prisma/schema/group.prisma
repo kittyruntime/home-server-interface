@@ -1,0 +1,15 @@
+model Group {
+  id               String  @id @default(uuid())
+  name             String  @unique
+  createdAt        DateTime @default(now())
+  members          UserGroup[]
+  placePermissions GroupPlacePermission[]
+}
+
+model UserGroup {
+  userId  String
+  groupId String
+  user    User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@id([userId, groupId])
+}
