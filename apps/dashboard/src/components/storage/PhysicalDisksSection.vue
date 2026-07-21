@@ -5,6 +5,7 @@ import {
   useStorageData, fmtBytes, fmtHours, fmtTiB, usagePct, usageBarClass,
   type BlockDev,
 } from '../../composables/useStorageData'
+import { type SmartResult, smartStatus, fetchSmartInto } from '../../composables/useSmart'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -15,26 +16,6 @@ import Modal from '../ui/Modal.vue'
 const emit = defineEmits<{ navigate: [section: 'raid' | 'lvm'] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
-
-// ── Types (SMART) ─────────────────────────────────────────────────────────────
-
-type SmartAttr = {
-  id: number; name: string; value: number; worst: number; thresh: number
-  raw: number; failed: boolean; isCritical: boolean
-}
-type NvmeInfo = {
-  criticalWarning: number; temperature: number
-  availableSpare: number; availableSpareThresh: number; percentageUsed: number
-  dataReadTiB: number; dataWrittenTiB: number; mediaErrors: number; errorLogEntries: number
-}
-type SmartResult = {
-  device: string; available: boolean
-  modelFamily?: string; modelName?: string; serialNumber?: string; firmware?: string
-  rotationRate: number; healthPassed: boolean; temperature: number
-  powerOnHours: number; powerCycles: number
-  attributes: SmartAttr[]; nvme?: NvmeInfo
-  _loading?: boolean; _error?: string
-}
 
 // ── State (SMART) ─────────────────────────────────────────────────────────────
 
@@ -50,31 +31,12 @@ function toggleSmart(diskName: string) {
   smartOpen.value = s
 }
 
-async function fetchSmart(diskName: string) {
-  smartCache.value = {
-    ...smartCache.value,
-    [diskName]: { device: diskName, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [], _loading: true },
-  }
-  try {
-    const res = await trpc.system.smartInfo.query({ device: diskName }) as SmartResult
-    smartCache.value = { ...smartCache.value, [diskName]: res }
-  } catch (e: unknown) {
-    smartCache.value = {
-      ...smartCache.value,
-      [diskName]: { device: diskName, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [], _error: (e as { message?: string })?.message ?? 'SMART query failed' },
-    }
-  }
+function fetchSmart(diskName: string) {
+  return fetchSmartInto(smartCache, diskName)
 }
 
-function smartStatus(diskName: string): 'unknown' | 'loading' | 'passed' | 'warning' | 'failed' {
-  const s = smartCache.value[diskName]
-  if (!s) return 'unknown'
-  if (s._loading) return 'loading'
-  if (!s.available) return 'unknown'
-  if (!s.healthPassed) return 'failed'
-  if (s.attributes.some(a => a.isCritical && a.raw > 0)) return 'warning'
-  if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return 'warning'
-  return 'passed'
+function diskStatus(diskName: string) {
+  return smartStatus(smartCache.value[diskName])
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
@@ -247,22 +209,22 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   <!-- Health badge -->
                   <button @click="toggleSmart(disk.name)" title="S.M.A.R.T. health"
                     :class="['inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
-                      smartStatus(disk.name) === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
-                      smartStatus(disk.name) === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
-                      smartStatus(disk.name) === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
-                      smartStatus(disk.name) === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
+                      diskStatus(disk.name) === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
+                      diskStatus(disk.name) === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
+                      diskStatus(disk.name) === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
+                      diskStatus(disk.name) === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
                       'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-text-2)]']">
                     <!-- Spinner when loading -->
-                    <svg v-if="smartStatus(disk.name) === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg v-if="diskStatus(disk.name) === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                     <!-- Status dot otherwise -->
                     <span v-else class="w-1.5 h-1.5 rounded-full"
-                      :class="smartStatus(disk.name) === 'passed' ? 'bg-success' : smartStatus(disk.name) === 'warning' ? 'bg-warning' : smartStatus(disk.name) === 'failed' ? 'bg-danger animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
-                    <span v-if="smartStatus(disk.name) === 'passed'">Healthy</span>
-                    <span v-else-if="smartStatus(disk.name) === 'warning'">Warning</span>
-                    <span v-else-if="smartStatus(disk.name) === 'failed'">Failed</span>
-                    <span v-else-if="smartStatus(disk.name) === 'loading'">…</span>
+                      :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : diskStatus(disk.name) === 'failed' ? 'bg-danger animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
+                    <span v-if="diskStatus(disk.name) === 'passed'">Healthy</span>
+                    <span v-else-if="diskStatus(disk.name) === 'warning'">Warning</span>
+                    <span v-else-if="diskStatus(disk.name) === 'failed'">Failed</span>
+                    <span v-else-if="diskStatus(disk.name) === 'loading'">…</span>
                     <span v-else>SMART</span>
                     <!-- Temperature (when data loaded) -->
                     <template v-if="smartCache[disk.name]?.available && smartCache[disk.name]?.temperature">
@@ -309,9 +271,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                       <!-- Health -->
                       <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full shrink-0"
-                          :class="smartStatus(disk.name) === 'passed' ? 'bg-success' : smartStatus(disk.name) === 'warning' ? 'bg-warning' : 'bg-danger'"/>
+                          :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : 'bg-danger'"/>
                         <span class="text-xs font-semibold"
-                          :class="smartStatus(disk.name) === 'passed' ? 'text-success' : smartStatus(disk.name) === 'warning' ? 'text-warning' : 'text-danger'">
+                          :class="diskStatus(disk.name) === 'passed' ? 'text-success' : diskStatus(disk.name) === 'warning' ? 'text-warning' : 'text-danger'">
                           {{ sc.healthPassed ? 'PASSED' : 'FAILED' }}
                         </span>
                       </div>
