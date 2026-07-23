@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **New dashboard widgets — Storage, System, Disk Health**: the dashboard and desktop widget picker gain three widgets: **Storage** (usage per disk), **System** (hostname, OS, CPU count, load average, uptime), and **Disk Health** (live SMART status per drive). Like the Containers widget, they rely on admin-only data, so they only appear in the widget catalog for administrator accounts.
+
+### Changed
+- **Refreshed sign-in page**: the login screen is now a centered card with the app logo, an ambient background, and a show/hide toggle on the password field.
+
 ## [1.35.0] - 2026-07-21
 
 ### Changed
