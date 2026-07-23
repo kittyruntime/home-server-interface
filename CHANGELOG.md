@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Permission changes take effect immediately**: admin and user-manager rights are now checked against the database on every request instead of being baked into the 7-day session token. Demoting an account (or deleting it) cuts its elevated access on the very next request — no more waiting for the session to expire or asking people to sign out and back in after a rights change.
+- **Login attempts are rate-limited**: after 5 failed sign-ins for a username (or from one IP address) within 15 minutes, further attempts are blocked until the window expires, and the login page shows how long to wait. Slows credential-guessing to a crawl; a successful sign-in clears the counter.
+
 ## [1.36.0] - 2026-07-23
 
 ### Added
