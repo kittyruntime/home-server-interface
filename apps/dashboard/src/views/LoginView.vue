@@ -12,7 +12,6 @@ const showPassword = ref(false)
 const error = ref('')
 const loading = ref(false)
 const mounted = ref(false)
-const appVersion = __APP_VERSION__
 
 onMounted(() => { mounted.value = true })
 
@@ -115,7 +114,7 @@ async function handleLogin() {
       </form>
 
       <p class="text-center text-xs text-[var(--c-text-3)] mt-6">
-        Home Server Interface · v{{ appVersion }}
+        Home Server Interface
       </p>
     </div>
   </div>
