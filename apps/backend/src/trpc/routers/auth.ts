@@ -1,7 +1,11 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, publicProcedure, protectedProcedure } from "../index"
 import { blacklistToken } from "../auth"
 import { loginUser } from "../../services/auth.service"
+import {
+  assertNotThrottled, recordLoginFailure, clearLoginFailures,
+} from "../../services/login-throttle"
 
 export const authRouter = router({
   login: publicProcedure
@@ -11,6 +15,11 @@ export const authRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const ip = ctx.req.ip ?? ctx.req.headers["x-forwarded-for"]?.toString()
+      const throttleKeys = [
+        `user:${input.username.toLowerCase()}`,
+        ...(ip ? [`ip:${ip}`] : []),
+      ]
+      assertNotThrottled(throttleKeys)
       let userId: string | null = null
       try {
         const user = await ctx.prisma.user.findUnique({
@@ -19,11 +28,15 @@ export const authRouter = router({
         })
         userId = user?.id ?? null
         const result = await loginUser(ctx.prisma, input.username, input.password)
+        clearLoginFailures(throttleKeys)
         void ctx.prisma.auditLog.create({
           data: { userId, action: "auth.login", target: input.username, ip, success: true },
         }).catch(() => {})
         return result
       } catch (err) {
+        if (err instanceof TRPCError && err.code === "UNAUTHORIZED") {
+          recordLoginFailure(throttleKeys)
+        }
         void ctx.prisma.auditLog.create({
           data: { userId, action: "auth.login", target: input.username, ip, success: false },
         }).catch(() => {})
