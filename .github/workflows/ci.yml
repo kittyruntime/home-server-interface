@@ -35,6 +35,9 @@ jobs:
       - name: Lint (ESLint)
         run: pnpm lint
 
+      - name: Check UI strings are English
+        run: scripts/check-i18n.sh
+
       - name: Check Go formatting
         run: |
           cd apps/root-worker

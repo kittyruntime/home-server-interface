@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { TRPCClientError } from '@trpc/client'
 import { useAuth } from '../lib/auth'
 
 const router = useRouter()
@@ -21,8 +22,10 @@ async function handleLogin() {
   try {
     await login(username.value, password.value)
     router.push('/')
-  } catch {
-    error.value = 'Invalid username or password'
+  } catch (err) {
+    error.value = err instanceof TRPCClientError && err.data?.code === 'TOO_MANY_REQUESTS'
+      ? err.message
+      : 'Invalid username or password'
   } finally {
     loading.value = false
   }
