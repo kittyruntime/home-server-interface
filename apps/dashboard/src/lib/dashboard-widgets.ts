@@ -39,6 +39,8 @@ export function catalogFor(isAdmin: boolean): { type: WidgetType; label: string 
 
 const SK = 'dashboard'
 
+const ADMIN_TYPES = new Set(CATALOG_ALL.filter(c => c.adminOnly).map(c => c.type))
+
 const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w-cpu',  type: 'cpu',        cols: 1 },
   { id: 'w-mem',  type: 'memory',     cols: 1 },
@@ -46,12 +48,12 @@ const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w-ctr',  type: 'containers', cols: 1 },
 ]
 
-function loadWidgets(): Widget[] {
+function loadWidgets(isAdmin: boolean): Widget[] {
   try {
     const raw = localStorage.getItem(SK)
     if (raw) return JSON.parse(raw) as Widget[]
   } catch { /* ignore */ }
-  return DEFAULT_WIDGETS.map(w => ({ ...w }))
+  return DEFAULT_WIDGETS.filter(w => isAdmin || !ADMIN_TYPES.has(w.type)).map(w => ({ ...w }))
 }
 
 function saveWidgets(ws: Widget[]) {
@@ -111,11 +113,11 @@ export function diskColor(percent: number): string {
 }
 
 export function useDashboardWidgets() {
-  const widgets    = ref<Widget[]>(loadWidgets())
+  const { isAdmin } = useAuth()
+
+  const widgets    = ref<Widget[]>(loadWidgets(isAdmin.value))
   const metrics    = ref<Metrics | null>(null)
   const containers = ref<ContainerStatus[]>([])
-
-  const { isAdmin } = useAuth()
   const disks    = ref<DiskFs[]>([])
   const sysinfo  = ref<Sysinfo | null>(null)
   const smart    = ref<Record<string, SmartResult>>({})
@@ -188,7 +190,7 @@ export function useDashboardWidgets() {
 
   onMounted(() => {
     fetchMetrics()
-    fetchContainers()
+    if (isAdmin.value) fetchContainers()
     timer = setInterval(fetchMetrics, 3000)
     syncTimers()
   })
