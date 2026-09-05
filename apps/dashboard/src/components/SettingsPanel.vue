@@ -10,10 +10,11 @@ import PermissionsSection from './PermissionsSection.vue'
 import SharedLinksSection from './SharedLinksSection.vue'
 import BackupSection from './BackupSection.vue'
 import DataBackupSection from './DataBackupSection.vue'
+import AlertingSection from './AlertingSection.vue'
 
 const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'backups' | 'data-backups' | 'shares'
+type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'backups' | 'data-backups' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -43,6 +44,7 @@ const nav: NavItem[] = [
   { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'access' },
   { id: 'groups',      label: 'Groups',      show: () => isAdmin.value, group: 'access' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'system' },
+  { id: 'alerting',    label: 'Alerting',    show: () => isAdmin.value, group: 'system' },
   { id: 'backups',     label: 'Backup & restore', show: () => isAdmin.value, group: 'backup' },
   { id: 'data-backups', label: 'Data backups', show: () => isAdmin.value, group: 'backup' },
 ]
@@ -127,6 +129,10 @@ defineExpose({ focusOn })
             <svg v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
+            <!-- Alerting icon -->
+            <svg v-else-if="item.id === 'alerting'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
             <!-- Backup icon -->
             <svg v-else-if="item.id === 'backups' || item.id === 'data-backups'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5v9a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-9zM8 5v5h8V5m-6 10h4"/>
@@ -150,6 +156,7 @@ defineExpose({ focusOn })
         <PermissionsSection v-else-if="active === 'permissions'" />
         <GroupsSection      v-else-if="active === 'groups'" />
         <UpdateSection      v-else-if="active === 'updates'" />
+        <AlertingSection    v-else-if="active === 'alerting'" />
         <BackupSection      v-else-if="active === 'backups'" />
         <DataBackupSection  v-else-if="active === 'data-backups'" />
 
