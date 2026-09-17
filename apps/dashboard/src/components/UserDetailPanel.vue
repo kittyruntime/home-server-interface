@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 
@@ -9,15 +9,61 @@ type User = {
   displayName: string | null
   isAdmin: boolean
   isUserManager: boolean
+  sambaEnabled: boolean
   createdAt: Date | string
   capabilities: { capability: string }[]
 }
 type Group = { id: string; name: string; members: { userId: string }[] }
+type IdentityStatus = {
+  userId: string
+  linuxExists: boolean
+  uid?: number
+  gid?: number
+  groups?: string[]
+  sambaEnabled: boolean
+  sambaExists: boolean
+  issue: string | null
+}
 
 const props = defineProps<{ user: User; groups: Group[] }>()
 const emit  = defineEmits<{ back: []; reload: [] }>()
 
 const { currentUserId, isAdmin } = useAuth()
+
+// ── Identity status (Linux + Samba, as the OS actually sees it) ───────────────
+const identity        = ref<IdentityStatus | null>(null)
+const identityLoading = ref(true)
+const identityError   = ref('')
+const sambaBusy        = ref(false)
+
+async function loadIdentity() {
+  identityLoading.value = true
+  identityError.value = ''
+  try {
+    const all = await trpc.user.identityStatus.query()
+    identity.value = (all as IdentityStatus[]).find(s => s.userId === props.user.id) ?? null
+  } catch (e: any) {
+    identityError.value = e?.message ?? 'Failed to load identity status'
+  } finally {
+    identityLoading.value = false
+  }
+}
+
+async function toggleSamba() {
+  if (isSelf.value || sambaBusy.value || !identity.value) return
+  sambaBusy.value = true
+  try {
+    await trpc.user.setSambaEnabled.mutate({ userId: props.user.id, sambaEnabled: !identity.value.sambaEnabled })
+    await loadIdentity()
+    emit('reload')
+  } catch (e: any) {
+    identityError.value = e?.message ?? 'Failed to update'
+  } finally {
+    sambaBusy.value = false
+  }
+}
+
+onMounted(loadIdentity)
 
 const form        = reactive({ displayName: props.user.displayName ?? '' })
 const saveLoading = ref(false)
@@ -247,6 +293,58 @@ async function deleteUser() {
       <p v-if="isSelf" class="text-xs text-[var(--c-text-3)] px-0.5">You can't change your own access.</p>
       <p v-if="accountError" class="text-[var(--c-danger)] text-xs px-0.5">{{ accountError }}</p>
       <p v-if="capabilityError" class="text-[var(--c-danger)] text-xs px-0.5">{{ capabilityError }}</p>
+    </div>
+
+    <!-- ── Identity (Linux + Samba, as the OS actually sees it) ─────────────── -->
+    <div v-if="isAdmin" class="space-y-3">
+      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Identity</h4>
+
+      <div v-if="identityLoading" class="text-xs text-[var(--c-text-3)]">Loading…</div>
+      <p v-else-if="identityError" class="text-[var(--c-danger)] text-xs">{{ identityError }}</p>
+
+      <div v-else-if="identity" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
+        <!-- HSI identity -->
+        <div class="flex items-center justify-between gap-4 px-4 py-3">
+          <p class="text-sm text-[var(--c-text-1)]">HSI identity</p>
+          <span class="text-xs font-mono text-[var(--c-text-2)]">{{ user.username }}</span>
+        </div>
+
+        <!-- Linux identity -->
+        <div class="flex items-start justify-between gap-4 px-4 py-3">
+          <div>
+            <p class="text-sm text-[var(--c-text-1)]">Linux identity</p>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Backs filesystem ownership for this account's uploads and edits.</p>
+          </div>
+          <div class="text-right shrink-0">
+            <template v-if="identity.linuxExists">
+              <div class="text-xs font-mono text-[var(--c-text-2)]">uid={{ identity.uid }} gid={{ identity.gid }}</div>
+              <div v-if="identity.groups?.length" class="text-[11px] text-[var(--c-text-3)] mt-0.5">{{ identity.groups.join(', ') }}</div>
+            </template>
+            <span v-else class="text-xs text-[var(--c-danger)]">Missing</span>
+          </div>
+        </div>
+
+        <!-- Samba identity -->
+        <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
+          <div>
+            <p class="text-sm text-[var(--c-text-1)]">Samba identity</p>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+              Whether this account should be reachable over SMB at all.
+              <span v-if="identity.sambaExists" class="text-[var(--c-success)]">Account exists.</span>
+              <span v-else class="text-[var(--c-text-3)]">No account on the system yet.</span>
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            :checked="identity.sambaEnabled"
+            :disabled="isSelf || sambaBusy"
+            @change="toggleSamba"
+            class="shrink-0"
+          />
+        </label>
+      </div>
+
+      <p v-if="identity?.issue" class="text-xs text-[var(--c-warning)] px-0.5">{{ identity.issue }}</p>
     </div>
 
     <!-- ── Groups (read-only) ───────────────────────────────────────────────── -->

@@ -8,6 +8,11 @@ model User {
   // Set on the seeded bootstrap admin so it can't be left on its known default
   // password indefinitely; cleared the moment the account changes its password.
   mustChangePassword Boolean @default(false)
+  // Explicit, not implicit: whether this account should have a Samba account at
+  // all. Default true keeps existing behaviour (every user gets one). Turning it
+  // off stops syncSystemPassword's Samba half; it does not remove an account that
+  // already exists — see docs/manage-without-hsi.md for that.
+  sambaEnabled       Boolean @default(true)
   wallpaper          Json?
   preferences        Json?
   createdAt     DateTime @default(now())

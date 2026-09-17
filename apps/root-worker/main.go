@@ -7,8 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -569,6 +571,61 @@ func handleLinuxUserCreate(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
+type linuxUserInfo struct {
+	Username    string   `json:"username"`
+	LinuxExists bool     `json:"linuxExists"`
+	Uid         int      `json:"uid,omitempty"`
+	Gid         int      `json:"gid,omitempty"`
+	Groups      []string `json:"groups,omitempty"`
+	SambaExists bool     `json:"sambaExists"`
+}
+
+// handleLinuxUserInfo reports the real OS-level account state for a batch of HSI
+// usernames — read-only, no mutation. HSI's own database only ever records that it
+// *wants* a Linux/Samba account to exist for a user (see user.service.ts's
+// syncSystemPassword); this is the one place that reports what the OS actually
+// has, so the identity status view can show a mismatch instead of assuming sync
+// always worked.
+func handleLinuxUserInfo(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Usernames []string `json:"usernames"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
+		return
+	}
+
+	sambaSet := make(map[string]bool)
+	for _, n := range sambaAccountNames() {
+		sambaSet[n] = true
+	}
+
+	results := make([]linuxUserInfo, 0, len(req.Usernames))
+	for _, username := range req.Usernames {
+		r := linuxUserInfo{Username: username, SambaExists: sambaSet[username]}
+		if u, err := user.Lookup(username); err == nil {
+			r.LinuxExists = true
+			if uid, err := strconv.Atoi(u.Uid); err == nil {
+				r.Uid = uid
+			}
+			if gid, err := strconv.Atoi(u.Gid); err == nil {
+				r.Gid = gid
+			}
+			if gids, err := u.GroupIds(); err == nil {
+				for _, gidStr := range gids {
+					if g, err := user.LookupGroupId(gidStr); err == nil {
+						r.Groups = append(r.Groups, g.Name)
+					} else {
+						r.Groups = append(r.Groups, gidStr)
+					}
+				}
+			}
+		}
+		results = append(results, r)
+	}
+	replyOk(nc, msg.Reply, map[string]any{"users": results})
+}
+
 type searchMsg struct {
 	LinuxUsername string `json:"linuxUsername"`
 	Path          string `json:"path"`
@@ -960,6 +1017,7 @@ func main() {
 		"root.container.logs.stop":  handleDockerLogsStop,
 		"root.fs.mkdirp":            handleMkdirp,
 		"root.linux.user.create":    handleLinuxUserCreate,
+		"root.linux.user.info":      handleLinuxUserInfo,
 		"root.fs.search":            handleSearch,
 		"root.sharing.checkPrereqs": handleSharingCheckPrereqs,
 		"root.sharing.sync":         handleSharingSync,

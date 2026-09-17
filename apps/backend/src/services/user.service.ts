@@ -14,6 +14,7 @@ export const userSelect = {
   displayName: true,
   isAdmin: true,
   isUserManager: true,
+  sambaEnabled: true,
   createdAt: true,
   capabilities: { select: { capability: true } },
 } as const
@@ -91,7 +92,7 @@ export async function syncSystemPassword(
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { username: true },
+      select: { username: true, sambaEnabled: true },
     })
     if (!user?.username) return
     // Ensure the backing Linux account exists before setting its password. The
@@ -103,14 +104,15 @@ export async function syncSystemPassword(
     if (reLinuxUsername.test(user.username)) {
       await requestSync("root.linux.user.create", { username: user.username })
     }
-    const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean }>(
+    const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean; smbSkipped?: boolean }>(
       "root.sharing.setPassword",
-      { linuxUsername: user.username, password: plainPassword },
+      { linuxUsername: user.username, password: plainPassword, skipSamba: !user.sambaEnabled },
     )
     // The worker replies ok even when a sub-step fails (best-effort). Surface a
     // partial failure so "can't connect to SMB" is diagnosable from the logs
     // instead of silent — the most common cause of Samba auth being refused.
-    if (res?.smbOk === false) {
+    // Skipped-by-choice (sambaEnabled=false) is not a failure — don't warn on it.
+    if (res?.smbOk === false && !res.smbSkipped) {
       console.warn(
         `[password-sync] Samba password NOT set for "${user.username}" — ` +
           `smbpasswd failed (is samba installed, and does the Linux account exist?). ` +
@@ -123,4 +125,75 @@ export async function syncSystemPassword(
   } catch (e) {
     console.warn("[password-sync] failed (non-fatal):", e)
   }
+}
+
+export type IdentityStatus = {
+  userId: string
+  username: string
+  displayName: string | null
+  isAdmin: boolean
+  linuxExists: boolean
+  uid?: number
+  gid?: number
+  groups?: string[]
+  sambaEnabled: boolean
+  sambaExists: boolean
+  /** Human-readable summary of the one thing worth flagging, if any — null when
+   *  Linux/Samba state matches what HSI expects. Kept server-side so the
+   *  reconciliation rule lives in one place, not duplicated into the frontend. */
+  issue: string | null
+}
+
+function describeIssue(u: {
+  linuxExists: boolean; sambaEnabled: boolean; sambaExists: boolean
+}): string | null {
+  if (!u.linuxExists) return "No Linux account — password sync has never succeeded for this user."
+  if (u.sambaEnabled && !u.sambaExists) return "Samba enabled, but no Samba account exists yet — will sync on next login or password change."
+  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists — see docs/manage-without-hsi.md to remove it."
+  return null
+}
+
+/** Real OS-level identity for every HSI user, alongside what HSI itself expects —
+ *  the "Account / HSI identity / Linux identity / Samba identity" view. One batch
+ *  call to the root-worker rather than one per user. */
+export async function getIdentityStatus(prisma: PrismaClient): Promise<IdentityStatus[]> {
+  const users = await prisma.user.findMany({
+    select: { id: true, username: true, displayName: true, isAdmin: true, sambaEnabled: true },
+    orderBy: { createdAt: "asc" },
+  })
+  const linuxUsers = users.filter(u => reLinuxUsername.test(u.username))
+  let infos: Array<{
+    username: string; linuxExists: boolean; uid?: number; gid?: number
+    groups?: string[]; sambaExists: boolean
+  }> = []
+  try {
+    const res = await requestSync<{ users: typeof infos }>(
+      "root.linux.user.info",
+      { usernames: linuxUsers.map(u => u.username) },
+    )
+    infos = res.users
+  } catch {
+    // Worker unreachable — fall through with linuxExists:false for everyone below,
+    // which correctly reads as "can't confirm" rather than a thrown error.
+  }
+  const byUsername = new Map(infos.map(i => [i.username, i]))
+
+  return users.map(u => {
+    const info = byUsername.get(u.username)
+    const linuxExists = info?.linuxExists ?? false
+    const sambaExists = info?.sambaExists ?? false
+    return {
+      userId: u.id,
+      username: u.username,
+      displayName: u.displayName,
+      isAdmin: u.isAdmin,
+      linuxExists,
+      uid: info?.uid,
+      gid: info?.gid,
+      groups: info?.groups,
+      sambaEnabled: u.sambaEnabled,
+      sambaExists,
+      issue: describeIssue({ linuxExists, sambaEnabled: u.sambaEnabled, sambaExists }),
+    }
+  })
 }

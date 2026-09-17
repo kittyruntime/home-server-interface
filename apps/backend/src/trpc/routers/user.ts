@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
-import { userSelect, createUser, changePassword, reLinuxUsername } from "../../services/user.service"
+import { userSelect, createUser, changePassword, reLinuxUsername, getIdentityStatus } from "../../services/user.service"
 import { syncSharesBestEffort } from "../../services/sharing.service"
 import { signToken } from "../auth"
 
@@ -152,6 +152,24 @@ export const userRouter = router({
       const result = await ctx.prisma.user.delete({ where: { id: input.userId } })
       void syncSharesBestEffort(ctx.prisma)
       return result
+    }),
+
+  // Real Linux/Samba account state per user, alongside what HSI expects — see
+  // user.service.ts's getIdentityStatus for the reconciliation rule.
+  identityStatus: userManagerProcedure.query(({ ctx }) => getIdentityStatus(ctx.prisma)),
+
+  setSambaEnabled: userManagerProcedure
+    .input(z.object({ userId: z.string(), sambaEnabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await ctx.prisma.user.findUnique({ where: { id: input.userId }, select: { isAdmin: true } })
+      if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+      if (target.isAdmin && !ctx.user.isAdmin)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: { sambaEnabled: input.sambaEnabled },
+        select: userSelect,
+      })
     }),
 
   setCapability: adminProcedure

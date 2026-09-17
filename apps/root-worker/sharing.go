@@ -228,6 +228,30 @@ func modeOctal(m os.FileMode) string {
 	return fmt.Sprintf("%04o", o)
 }
 
+// sambaAccountNames lists the Linux usernames that currently have a Samba
+// password set (pdbedit -L), i.e. an actual Samba account — as opposed to a user
+// HSI merely intends to have one for. Best-effort: an unreadable/absent pdbedit
+// yields an empty set rather than an error, since callers treat "no Samba
+// account" and "couldn't tell" the same way (both mean "don't rely on it").
+func sambaAccountNames() []string {
+	names := []string{}
+	out, err := exec.Command("pdbedit", "-L").Output()
+	if err != nil {
+		return names
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		name := line
+		if i := strings.IndexByte(line, ':'); i >= 0 {
+			name = line[:i]
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
 // handleSharingDiag returns read-only facts for the sharing diagnostics UI: the
 // accounts that have a Samba password (pdbedit -L) and the on-disk state of each
 // share/place directory (group, mode, setgid, group-writable).
@@ -237,19 +261,7 @@ func handleSharingDiag(nc *nats.Conn, msg *nats.Msg) {
 	}
 	_ = json.Unmarshal(msg.Data, &req)
 
-	sambaUsers := []string{}
-	if out, err := exec.Command("pdbedit", "-L").Output(); err == nil {
-		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-			if line == "" {
-				continue
-			}
-			name := line
-			if i := strings.IndexByte(line, ':'); i >= 0 {
-				name = line[:i]
-			}
-			sambaUsers = append(sambaUsers, name)
-		}
-	}
+	sambaUsers := sambaAccountNames()
 
 	type dirState struct {
 		Path          string `json:"path"`
@@ -345,6 +357,10 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
 		LinuxUsername string `json:"linuxUsername"`
 		Password      string `json:"password"`
+		// SkipSamba: the HSI account has sambaEnabled=false — leave any existing
+		// Samba account untouched rather than resetting its password (see
+		// user.service.ts's sambaEnabled handling for why this doesn't remove one).
+		SkipSamba bool `json:"skipSamba"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
@@ -368,12 +384,14 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 		linuxOk = false
 	}
 	smbOk := false
-	if _, err := exec.LookPath("smbpasswd"); err == nil {
-		smb := exec.Command("smbpasswd", "-s", "-a", req.LinuxUsername)
-		smb.Stdin = strings.NewReader(req.Password + "\n" + req.Password + "\n")
-		smbOk = smb.Run() == nil
+	if !req.SkipSamba {
+		if _, err := exec.LookPath("smbpasswd"); err == nil {
+			smb := exec.Command("smbpasswd", "-s", "-a", req.LinuxUsername)
+			smb.Stdin = strings.NewReader(req.Password + "\n" + req.Password + "\n")
+			smbOk = smb.Run() == nil
+		}
 	}
-	replyOk(nc, msg.Reply, map[string]any{"linuxOk": linuxOk, "smbOk": smbOk})
+	replyOk(nc, msg.Reply, map[string]any{"linuxOk": linuxOk, "smbOk": smbOk, "smbSkipped": req.SkipSamba})
 }
 
 func handleSharingStatus(nc *nats.Conn, msg *nats.Msg) {

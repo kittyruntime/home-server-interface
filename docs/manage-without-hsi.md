@@ -39,6 +39,28 @@ Samba's user database is managed the normal way (`smbpasswd`) — HSI keeps it i
 sync when you change a password through the UI, but doesn't replace it with its own
 store.
 
+```bash
+pdbedit -L                    # list Samba accounts
+smbpasswd -x <username>       # remove one — e.g. after disabling "Samba identity"
+                               # for a user in HSI, which stops syncing it but never
+                               # deletes it for you
+```
+
+## Users (Linux/Samba identity)
+
+Every HSI user maps 1:1 to a Linux account by username (`/sbin/nologin` shell — no
+shell/SSH access, it only exists to own files and back Samba). A Samba account is
+provisioned for it too, unless "Samba identity" is turned off for that user
+(Settings → Users → a user → Identity). HSI never invents its own separate
+user/permission store for either — `id <username>`, `getent passwd <username>`, and
+`pdbedit -L` are always the ground truth, and HSI's Identity panel is a read-only
+view over exactly those facts, not a cache that can drift from them.
+
+```bash
+id <username>                 # Linux uid/gid/groups
+getent passwd <username>      # full Linux account record
+```
+
 ## RAID (mdadm)
 
 Arrays HSI creates are plain `mdadm` arrays. Their assembly config is written to

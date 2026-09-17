@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **User identity status**: a user's edit panel now shows a dedicated Identity
+  section — HSI identity, real Linux account state (exists / uid / gid / groups,
+  read from the OS, not assumed from the database), and Samba account state. Flags
+  the common mismatches (no Linux account yet, Samba enabled but not synced,
+  Samba disabled but an account still exists) with a plain-language explanation.
+- **Samba identity toggle**: each user can now opt out of having a Samba account
+  synced at all (`sambaEnabled`, default on — no behavior change for existing
+  accounts). Turning it off stops future password syncs from touching Samba; it
+  does not delete an account that already exists (see docs/manage-without-hsi.md
+  for the manual `smbpasswd -x` command). Re-enabling syncs on the user's next
+  login or password change, same as any first-time account backfill.
+
+### Changed
+- New root-worker capability `root.linux.user.info`: read-only batch lookup of
+  real Linux (`uid`/`gid`/groups) and Samba account state for a set of usernames.
+  Reuses the same `pdbedit -L` parsing already used by the sharing diagnostics,
+  now shared instead of duplicated.
+
 ## [1.52.0] - 2026-09-05
 
 ### Added

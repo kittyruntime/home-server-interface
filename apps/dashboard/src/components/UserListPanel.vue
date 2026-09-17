@@ -17,6 +17,7 @@ type User = {
   displayName: string | null
   isAdmin: boolean
   isUserManager: boolean
+  sambaEnabled: boolean
   createdAt: Date | string
   capabilities: { capability: string }[]
 }
