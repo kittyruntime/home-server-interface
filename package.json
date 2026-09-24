@@ -8,11 +8,12 @@
     "pnpm": ">=10.18.0"
   },
   "scripts": {
-    "test": "pnpm test:backend && pnpm test:worker",
+    "test": "pnpm test:compose && pnpm test:backend && pnpm test:worker",
+    "test:compose": "pnpm --filter @app/compose test",
     "test:backend": "pnpm --filter @app/backend test",
     "test:worker": "cd apps/root-worker && go test ./...",
     "pretypecheck": "pnpm --filter @app/database db:generate",
-    "typecheck": "pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
+    "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
     "smoke:backend": "node scripts/smoke-backend.mjs",
     "check:go": "test -z \"$(gofmt -l apps/root-worker)\" && cd apps/root-worker && go vet ./...",
     "verify": "pnpm lint && scripts/check-i18n.sh && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@app/app-catalog": "workspace:*",
+    "@app/compose": "workspace:*",
     "@app/database": "workspace:*",
     "@app/shared-types": "workspace:*",
     "@prisma/client": "^6.19.3",
