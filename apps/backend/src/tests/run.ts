@@ -30,6 +30,15 @@ const {
 } = await import("../services/upload.service")
 type UploadState = import("../services/upload.service").UploadState
 
+// STACKS_DIR is captured at module evaluation: point it at a throwaway dir
+// before importing containerStacks (same reason JWT_SECRET is set above).
+const { mkdtemp, rm } = await import("node:fs/promises")
+const { join } = await import("node:path")
+const { tmpdir } = await import("node:os")
+const stacksTestDir = await mkdtemp(join(tmpdir(), "hsi-stacks-test-"))
+process.env.HSI_CONTAINERS_DIR = stacksTestDir
+const { removeStackDir, stackExists, stackStatus, writeStack } = await import("../services/containerStacks")
+
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)
   const user = await authenticateSession(`Bearer ${token}`, async () => ({
@@ -190,8 +199,6 @@ await testUploadsAreScopedToTheirOwner()
 testCancellationWinsTheInitializationRace()
 testUploadSizeCompatibilityAndLifecyclePhases()
 
-const { stackStatus } = await import("../services/containerStacks")
-
 function testStackStatusAggregation() {
   assert.equal(stackStatus([]), "unknown")
   assert.equal(stackStatus([{ status: "running" }]), "running")
@@ -199,5 +206,29 @@ function testStackStatusAggregation() {
   assert.equal(stackStatus([{ status: "exited" }, { status: "created" }]), "stopped")
 }
 testStackStatusAggregation()
+
+async function testStackFsOpsRejectPathTraversalNames() {
+  await assert.rejects(removeStackDir("../escape-test"), /Invalid app name/)
+  await assert.rejects(writeStack("../escape-test", "x"), /Invalid app name/)
+  const name = "stack-roundtrip-ok"
+  assert.equal(await stackExists(name), false)
+  const hash = await writeStack(name, "services:\n  app:\n    image: nginx\n")
+  assert.match(hash, /^[0-9a-f]{64}$/)
+  assert.equal(await stackExists(name), true)
+  await removeStackDir(name)
+  assert.equal(await stackExists(name), false)
+}
+
+await testCurrentAuthorizationWinsOverJwtClaims()
+await testDeletedAndLoggedOutAccountsAreRejected()
+await testDatabaseFailuresAreNotHiddenAsInvalidSessions()
+testFileTokensDoNotCarryAuthorizationClaims()
+await testUploadsAreScopedToTheirOwner()
+testCancellationWinsTheInitializationRace()
+testUploadSizeCompatibilityAndLifecyclePhases()
+testStackStatusAggregation()
+await testStackFsOpsRejectPathTraversalNames()
+
+await rm(stacksTestDir, { recursive: true, force: true })
 
 console.log("Backend security tests passed")

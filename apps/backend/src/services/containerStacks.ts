@@ -2,12 +2,20 @@ import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/p
 import path from "node:path"
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
-import { parseComposeYaml, type AppInput } from "@app/compose"
+import { parseComposeYaml, STACK_NAME_RE, type AppInput } from "@app/compose"
 import { requestSync } from "../nats"
 
 export const STACKS_DIR = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
 
+// Names end up as path segments under STACKS_DIR (compose.yaml ops, recursive
+// delete), so reject traversal/absolute/dotted names at the service boundary —
+// the router validates too, but the destructive primitives must not trust it.
+function assertValidStackName(name: string): void {
+  if (!STACK_NAME_RE.test(name)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid app name" })
+}
+
 export function stackFilePath(name: string): string {
+  assertValidStackName(name)
   return path.join(STACKS_DIR, name, "compose.yaml")
 }
 
@@ -109,6 +117,7 @@ export async function stackExists(name: string): Promise<boolean> {
 }
 
 export async function writeStack(name: string, content: string): Promise<string> {
+  assertValidStackName(name)
   const dir = path.join(STACKS_DIR, name)
   await mkdir(dir, { recursive: true })
   const hash = sha256(content)
@@ -120,6 +129,7 @@ export async function writeStack(name: string, content: string): Promise<string>
 }
 
 export async function removeStackDir(name: string): Promise<void> {
+  assertValidStackName(name)
   await rm(path.join(STACKS_DIR, name), { recursive: true, force: true })
   lastWritten.delete(name)
 }
