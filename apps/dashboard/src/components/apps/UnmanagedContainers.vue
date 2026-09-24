@@ -45,7 +45,7 @@ async function toggle() {
 }
 
 async function importContainer(c: UnmanagedContainer) {
-  if (!confirm(`Import "${c.name}"?\n\nThe container will be added to the managed list. Its current config (ports, volumes, networks) will be recorded.\n${c.composeProject ? `\nNote: this container is part of docker-compose project "${c.composeProject}". Managing it individually may conflict with compose.` : ''}`)) return
+  if (!confirm(`Import "${c.name}"?\n\nHSI will write a compose.yaml for it under /opt/containers/${c.name}/ (its current ports, volumes and networks are recorded). The container keeps running as-is and is adopted on the next Apply.\n${c.composeProject ? `\nNote: this container is part of docker-compose project "${c.composeProject}". Managing it individually may conflict with compose.` : ''}`)) return
 
   importing.value = new Set([...importing.value, c.name])
   try {

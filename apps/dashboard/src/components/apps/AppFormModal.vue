@@ -2,28 +2,21 @@
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
+import { pollJob } from '../../lib/jobs'
 import PortsTable,      { type PortMapping }    from './PortsTable.vue'
 import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
 import LabelsTable,     { type LabelEntry }     from './LabelsTable.vue'
-import AdvancedSection, { type AdvancedConfig } from './AdvancedSection.vue'
+import AdvancedSection                          from './AdvancedSection.vue'
 
-type App = {
-  id: string; name: string; image: string
-  ports: PortMapping[]; envs: EnvVar[]; volumes: VolumeMount[]
-  networkNames: string[]; labels: LabelEntry[]
-  capAdd: string[]; capDrop: string[]; extraHosts: string[]
-  restartPolicy: string
-  hostname: string | null; user: string | null; command: string | null
-  cpuLimit: number | null; memoryLimit: string | null
-  pinnedUrl: string | null
-  status: string
-}
+// Stack summary from container.app.get - `app` is null for multi-service files,
+// which the form cannot represent (those are edited via the raw YAML only).
+type StackSummary = Awaited<ReturnType<typeof trpc.container.app.get.query>>
 
-const props = defineProps<{ editApp?: App | null }>()
+const props = defineProps<{ editName?: string | null }>()
 const emit  = defineEmits<{
   close: []
-  saved: []
+  saved: [name: string]
 }>()
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
@@ -65,10 +58,10 @@ const form    = reactive(emptyForm())
 const loading = ref(false)
 const error   = ref('')
 
-const places      = ref<Place[]>([])
+const places       = ref<Place[]>([])
 const networkInput = ref('')
 
-// ── Compose tab state ──────────────────────────────────────────────────────────
+// ── Compose import panel (new apps) ───────────────────────────────────────────
 const composeRaw             = ref('')
 const composeError           = ref('')
 const composeSelectedService = ref('')
@@ -155,7 +148,6 @@ function importCompose() {
   if (Array.isArray(svc.cap_add))  form.capAdd  = svc.cap_add
   if (Array.isArray(svc.cap_drop)) form.capDrop = svc.cap_drop
 
-  // extra_hosts: ["host:ip"] or { host: "ip" }
   if (svc.extra_hosts) {
     const hosts: string[] = []
     if (Array.isArray(svc.extra_hosts)) {
@@ -188,40 +180,84 @@ onMounted(async () => {
   } catch {}
 })
 
-watch(() => props.editApp, (app) => {
-  if (app) {
-    Object.assign(form, {
-      name:          app.name,
-      image:         app.image,
-      ports:         [...app.ports],
-      envs:          [...app.envs],
-      volumes:       [...app.volumes],
-      networkNames:  [...app.networkNames],
-      labels:        [...app.labels],
-      capAdd:        [...app.capAdd],
-      capDrop:       [...app.capDrop],
-      extraHosts:    [...(app.extraHosts ?? [])],
-      restartPolicy: app.restartPolicy,
-      hostname:      app.hostname,
-      user:          app.user,
-      command:       app.command,
-      cpuLimit:      app.cpuLimit,
-      memoryLimit:   app.memoryLimit,
-      pinnedUrl:     app.pinnedUrl ?? null,
-    })
-    activeTab.value = 'basic'
+// ── Edit mode: fetch the stack by name, seed the form ─────────────────────────
+const editing    = ref(false)          // true when editing an existing app
+const fetched    = ref<StackSummary | null>(null)
+const multiSvc   = ref(false)          // compose has several services - raw editor only
+const rawYaml    = ref('')
+const unknownFields = ref<string[]>([])
+
+// Inline "saved - apply now?" prompt state
+const savedName  = ref<string | null>(null)
+const applying   = ref(false)
+const applyState = ref<'idle' | 'applied' | 'error'>('idle')
+const applyError = ref('')
+
+watch(() => props.editName, async (name) => {
+  error.value = ''
+  savedName.value = null
+  applyState.value = 'idle'
+  showCompose.value = false
+  if (name) {
+    editing.value = true
+    loading.value = true
+    try {
+      const s = await trpc.container.app.get.query({ name })
+      fetched.value = s
+      multiSvc.value = !s.app && s.services.length > 1
+      rawYaml.value = s.rawYaml
+      unknownFields.value = s.unknownFields
+      if (s.app) {
+        Object.assign(form, {
+          name:          s.app.name,
+          image:         s.app.image,
+          ports:         [...s.app.ports],
+          envs:          [...s.app.envs],
+          volumes:       [...s.app.volumes],
+          networkNames:  [...s.app.networkNames],
+          labels:        [...s.app.labels],
+          capAdd:        [...s.app.capAdd],
+          capDrop:       [...s.app.capDrop],
+          extraHosts:    [...(s.app.extraHosts ?? [])],
+          restartPolicy: s.app.restartPolicy,
+          hostname:      s.app.hostname ?? null,
+          user:          s.app.user ?? null,
+          command:       s.app.command ?? null,
+          cpuLimit:      s.app.cpuLimit ?? null,
+          memoryLimit:   s.app.memoryLimit ?? null,
+          pinnedUrl:     s.app.pinnedUrl ?? null,
+        })
+        activeTab.value = 'basic'
+      } else {
+        // Multi-service (or unparseable single service) - form fields cannot
+        // represent it; only the raw YAML editor is offered.
+        Object.assign(form, emptyForm(), { name })
+        multiSvc.value = true
+        activeTab.value = 'advanced'
+      }
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to load app'
+    } finally {
+      loading.value = false
+    }
   } else {
+    editing.value = false
+    fetched.value = null
+    multiSvc.value = false
+    rawYaml.value = ''
+    unknownFields.value = []
     Object.assign(form, emptyForm())
     activeTab.value = 'basic'
   }
-  showCompose.value = false
-  error.value = ''
 }, { immediate: true })
 
-const advanced = computed<AdvancedConfig>({
-  get:  () => ({ capAdd: form.capAdd, capDrop: form.capDrop, extraHosts: form.extraHosts, restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user, command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit }),
-  set:  (v) => { Object.assign(form, v) },
-})
+const advanced = computed(() => ({
+  capAdd: form.capAdd, capDrop: form.capDrop, extraHosts: form.extraHosts,
+  restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user,
+  command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit,
+}))
+
+const visibleTabs = computed(() => multiSvc.value ? tabs.filter(t => t.id === 'advanced') : tabs)
 
 function addNetwork() {
   const n = networkInput.value.trim()
@@ -252,17 +288,37 @@ async function save() {
       memoryLimit:   form.memoryLimit,
       pinnedUrl:     form.pinnedUrl || null,
     }
-    if (props.editApp) {
-      await trpc.container.app.update.mutate({ name: props.editApp.name, data: payload })
+    if (editing.value) {
+      await trpc.container.app.update.mutate({ name: form.name, data: payload })
     } else {
       await trpc.container.app.create.mutate({ data: payload })
     }
-    emit('saved')
-    emit('close')
+    const name = editing.value ? form.name : form.name
+    editing.value = true // a created app can now be applied/updated in place
+    savedName.value = name
+    emit('saved', name)
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to save'
   } finally {
     loading.value = false
+  }
+}
+
+async function applyNow() {
+  if (!savedName.value) return
+  applying.value = true
+  applyState.value = 'idle'
+  applyError.value = ''
+  try {
+    const { jobId } = await trpc.container.app.apply.mutate({ name: savedName.value })
+    await pollJob(jobId)
+    applyState.value = 'applied'
+    emit('saved', savedName.value)
+  } catch (e: any) {
+    applyState.value = 'error'
+    applyError.value = e?.message ?? 'Apply failed'
+  } finally {
+    applying.value = false
   }
 }
 </script>
@@ -282,9 +338,10 @@ async function save() {
         </svg>
       </button>
       <h2 class="text-sm font-semibold text-[var(--c-text-1)] flex-1">
-        {{ editApp ? `Edit — ${editApp.name}` : 'New App' }}
+        {{ editName ? `Edit — ${editName}` : 'New App' }}
       </h2>
       <button
+        v-if="!editName && !multiSvc"
         @click="showCompose = !showCompose"
         :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
         :class="[
@@ -335,10 +392,31 @@ async function save() {
       </div>
     </div>
 
+    <!-- Multi-service notice -->
+    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-[var(--c-border)] bg-[var(--c-warning)]/10 shrink-0">
+      <p class="text-xs text-[var(--c-text-2)]">This app has several services - edit the YAML directly.</p>
+    </div>
+
+    <!-- Saved - apply prompt -->
+    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-[var(--c-border)] bg-[var(--c-accent-subtle)]/40 flex items-center gap-3 shrink-0">
+      <p class="text-xs text-[var(--c-text-2)] flex-1">
+        <template v-if="applyState === 'applied'">Changes saved and applied.</template>
+        <template v-else-if="applyState === 'error'">Changes saved, but apply failed: <span class="text-[var(--c-accent)]">{{ applyError }}</span></template>
+        <template v-else>Changes saved. Apply now?</template>
+      </p>
+      <button
+        v-if="applyState !== 'applied'"
+        @click="applyNow" :disabled="applying"
+        class="btn btn-primary btn-sm"
+      >
+        {{ applying ? 'Applying…' : 'Apply' }}
+      </button>
+    </div>
+
     <!-- Tabs -->
     <div class="flex border-b border-[var(--c-border)] px-5 overflow-x-auto shrink-0">
       <button
-        v-for="tab in tabs" :key="tab.id"
+        v-for="tab in visibleTabs" :key="tab.id"
         @click="activeTab = tab.id"
         :class="[
           'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
@@ -357,7 +435,7 @@ async function save() {
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
           <input
-            v-model="form.name" placeholder="my-app" :disabled="!!editApp"
+            v-model="form.name" placeholder="my-app" :disabled="!!editName"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
           />
         </div>
@@ -380,7 +458,7 @@ async function save() {
 
       <!-- Ports -->
       <div v-else-if="activeTab === 'ports'">
-        <PortsTable v-model="form.ports" :app-name="editApp?.name" />
+        <PortsTable v-model="form.ports" :app-name="editName ?? undefined" />
       </div>
 
       <!-- Envs -->
@@ -426,13 +504,19 @@ async function save() {
 
       <!-- Advanced -->
       <div v-else-if="activeTab === 'advanced'">
-        <AdvancedSection v-model="advanced" />
+        <AdvancedSection
+          v-model="advanced"
+          :app-name="editName || (savedName ?? null)"
+          :unknown-fields="unknownFields"
+          :raw-yaml="rawYaml"
+          @raw-saved="rawYaml = $event"
+        />
       </div>
 
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
+    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
       <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
       <div v-else class="flex-1" />
       <button
@@ -445,6 +529,11 @@ async function save() {
       >
         {{ loading ? 'Saving…' : 'Save' }}
       </button>
+    </div>
+    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
+      <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
+      <div v-else class="flex-1" />
+      <button @click="emit('close')" class="btn btn-ghost">Close</button>
     </div>
 
   </div>

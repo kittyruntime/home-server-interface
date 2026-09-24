@@ -18,17 +18,10 @@ const toast = useToast()
 
 type App = Awaited<ReturnType<typeof trpc.container.app.list.query>>[number]
 
-// Flat shape AppFormModal expects: the stack's single-service input + id/status.
-type EditableApp = Omit<NonNullable<App['app']>, 'hostname' | 'user' | 'command' | 'cpuLimit' | 'memoryLimit' | 'pinnedUrl'> & {
-  id: string; status: string
-  hostname: string | null; user: string | null; command: string | null
-  cpuLimit: number | null; memoryLimit: string | null; pinnedUrl: string | null
-}
-
 const apps          = ref<App[]>([])
 const loading       = ref(true)
 const showModal     = ref(false)
-const editApp       = ref<EditableApp | null>(null)
+const editName      = ref<string | null>(null)
 const actionLoading = ref<Record<string, string>>({})
 let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -139,16 +132,10 @@ async function applyApp(id: string) {
 
 const logsApp = ref<App | null>(null)
 
-function openNew()        { editApp.value = null; showModal.value = true }
+function openNew()        { editName.value = null; showModal.value = true }
 function openEdit(a: App) {
-  const app = a.app
-  if (!app) { toast.error('Multi-service apps are edited via their compose file.'); return }
-  editApp.value = {
-    ...app, id: a.id, status: a.status,
-    hostname: app.hostname ?? null, user: app.user ?? null, command: app.command ?? null,
-    cpuLimit: app.cpuLimit ?? null, memoryLimit: app.memoryLimit ?? null,
-    pinnedUrl: app.pinnedUrl ?? null,
-  }
+  if (!a.app) { toast.error('Multi-service apps are edited via their compose file.'); return }
+  editName.value = a.name
   showModal.value = true
 }
 function openLogs(a: App) { logsApp.value = a }
@@ -198,7 +185,7 @@ async function unpin(app: App) {
     <!-- Inline form (create / edit) — replaces the list when active -->
   <AppFormModal
     v-if="showModal"
-    :edit-app="editApp"
+    :edit-name="editName"
     @close="showModal = false"
     @saved="onSaved"
   />

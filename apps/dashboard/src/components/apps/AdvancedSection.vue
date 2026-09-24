@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { trpc } from '../../lib/trpc'
 
 export interface AdvancedConfig {
   capAdd:        string[]
@@ -13,13 +14,53 @@ export interface AdvancedConfig {
   memoryLimit:   string | null
 }
 
-const props = defineProps<{ modelValue: AdvancedConfig }>()
-const emit  = defineEmits<{ 'update:modelValue': [v: AdvancedConfig] }>()
+const props = defineProps<{
+  modelValue: AdvancedConfig
+  appName?: string | null
+  unknownFields?: string[]
+  rawYaml?: string
+}>()
+const emit  = defineEmits<{
+  'update:modelValue': [v: AdvancedConfig]
+  'raw-saved': [content: string]
+}>()
 
 const capAddInput     = ref('')
 const capDropInput    = ref('')
 const extraHostInput  = ref('')
 const extraHostError  = ref('')
+
+// Raw compose file editor. The server validates the file (at least one
+// service) on save - no client-side sanity check needed here.
+const yamlDraft    = ref(props.rawYaml ?? '')
+const yamlDirty    = ref(false)
+const yamlSaving   = ref(false)
+const yamlError    = ref('')
+const yamlSavedAt  = ref(false)
+
+watch(() => props.rawYaml, (v) => {
+  yamlDraft.value = v ?? ''
+  yamlDirty.value = false
+  yamlError.value = ''
+  yamlSavedAt.value = false
+})
+
+async function saveRawYaml() {
+  yamlError.value = ''
+  yamlSavedAt.value = false
+  if (!props.appName) { yamlError.value = 'Save the app first to get a name.'; return }
+  yamlSaving.value = true
+  try {
+    await trpc.container.app.saveRaw.mutate({ name: props.appName, content: yamlDraft.value })
+    yamlDirty.value = false
+    yamlSavedAt.value = true
+    emit('raw-saved', yamlDraft.value)
+  } catch (e: any) {
+    yamlError.value = e?.message ?? 'Failed to save the file'
+  } finally {
+    yamlSaving.value = false
+  }
+}
 
 function update(field: keyof AdvancedConfig, val: unknown) {
   emit('update:modelValue', { ...props.modelValue, [field]: val })
@@ -56,6 +97,48 @@ function removeExtraHost(h: string) {
 
 <template>
   <div class="space-y-5">
+
+    <!-- Raw compose file (always visible in the advanced tab) -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Compose file (raw)</label>
+        <span v-if="yamlDirty" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Unsaved</span>
+        <span v-else-if="yamlSavedAt" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-success)] border-[var(--c-success)]/40">Saved</span>
+      </div>
+      <p class="text-xs text-[var(--c-text-3)]">
+        Edit the file directly. Fields HSI does not manage are preserved on save; changes apply on the next <strong>Apply</strong>.
+      </p>
+      <textarea
+        v-model="yamlDraft"
+        @input="yamlDirty = true; yamlSavedAt = false; yamlError = ''"
+        spellcheck="false"
+        rows="16"
+        class="w-full bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--c-text-2)] focus:outline-none focus:border-[var(--c-accent)] font-mono resize-y"
+      />
+      <div class="flex items-center gap-3">
+        <p v-if="yamlError" class="text-xs text-[var(--c-accent)] flex-1">{{ yamlError }}</p>
+        <div v-else class="flex-1" />
+        <button
+          @click="saveRawYaml"
+          :disabled="yamlSaving || !appName || !yamlDirty"
+          class="btn btn-primary btn-sm"
+        >
+          {{ yamlSaving ? 'Saving…' : 'Save file' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Fields HSI does not manage -->
+    <div v-if="unknownFields && unknownFields.length" class="space-y-2">
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Fields HSI does not manage</label>
+      <div class="flex flex-wrap gap-1.5">
+        <span
+          v-for="f in unknownFields" :key="f"
+          class="inline-flex items-center text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
+        >{{ f }}</span>
+      </div>
+      <p class="text-xs text-[var(--c-text-3)]">Preserved on save - edit them in the file above.</p>
+    </div>
 
     <!-- Cap Add -->
     <div class="space-y-2">
