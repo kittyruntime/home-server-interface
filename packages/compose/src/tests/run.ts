@@ -67,9 +67,68 @@ function testEmptyValuesDeleteKeys() {
 
 function testStackNameRegex() {
   assert.match("jellyfin", STACK_NAME_RE)
+  // Compose v2 lowercases project names, so mixed case can never match.
+  assert.doesNotMatch("Jellyfin", STACK_NAME_RE)
   assert.doesNotMatch("../etc", STACK_NAME_RE)
   assert.doesNotMatch("-lead", STACK_NAME_RE)
   assert.doesNotMatch("a b", STACK_NAME_RE)
+}
+
+function testListFormEnvsAndLabelsRoundTrip() {
+  const existing = [
+    "services:",
+    "  jellyfin:",
+    "    image: jellyfin/jellyfin:latest",
+    "    environment:",
+    "      - TZ=Europe/Paris",
+    "      - NO_PROXY=localhost,127.0.0.1",
+    "    labels:",
+    "      - hsi.catalog.id=jellyfin",
+    "      - com.example.tag=media",
+  ].join("\n")
+  const p = parseComposeYaml(existing)
+  assert.ok(p.app, "list-form environment/labels must parse to an app")
+  assert.deepEqual(p.app.envs, [
+    { key: "TZ", value: "Europe/Paris" },
+    { key: "NO_PROXY", value: "localhost,127.0.0.1" },
+  ])
+  assert.deepEqual(p.app.labels, [
+    { key: "hsi.catalog.id", value: "jellyfin" },
+    { key: "com.example.tag", value: "media" },
+  ])
+  // Regenerate in place: the env/labels must survive as a map of the actual
+  // values, not as mangled {"0": "TZ=..."} entries.
+  const y = generateComposeYaml(p.app, existing)
+  const p2 = parseComposeYaml(y)
+  assert.deepEqual(p2.app?.envs, p.app.envs)
+  assert.deepEqual(p2.app?.labels, p.app.labels)
+  assert.match(y, /TZ: Europe\/Paris/)
+  assert.match(y, /com\.example\.tag: media/)
+}
+
+function testListEntryWithoutEqualsDowngradesToRawOnly() {
+  const y = "services:\n  jellyfin:\n    image: busybox\n    environment:\n      - BARE\n"
+  const p = parseComposeYaml(y)
+  assert.equal(p.app, null)
+}
+
+function testUnknownXhsiKeysSurviveRegenerate() {
+  const existing = [
+    "services:",
+    "  jellyfin:",
+    "    image: jellyfin/jellyfin:latest",
+    "    x-hsi:",
+    "      custom: keep",
+    "      pinnedUrl: https://old.example.com",
+  ].join("\n")
+  const p = parseComposeYaml(existing)
+  assert.ok(p.app, "x-hsi-only app must parse")
+  assert.equal(p.app.pinnedUrl, "https://old.example.com")
+  const y = generateComposeYaml({ ...p.app, pinnedUrl: "https://new.example.com" }, existing)
+  assert.match(y, /pinnedUrl: https:\/\/new\.example\.com/) // model value wins
+  assert.match(y, /custom: keep/)                           // unknown sub-key preserved
+  const p2 = parseComposeYaml(y)
+  assert.equal(p2.app?.pinnedUrl, "https://new.example.com")
 }
 
 testFreshRoundTrip()
@@ -78,5 +137,8 @@ testMultiServiceIsNotApp()
 testPlaceVolumesRejected()
 testEmptyValuesDeleteKeys()
 testStackNameRegex()
+testListFormEnvsAndLabelsRoundTrip()
+testListEntryWithoutEqualsDowngradesToRawOnly()
+testUnknownXhsiKeysSurviveRegenerate()
 
 console.log("Compose package tests passed")

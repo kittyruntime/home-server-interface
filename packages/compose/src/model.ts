@@ -62,7 +62,9 @@ export const zLabelEntry = z.object({
 })
 
 export const zAppInput = z.object({
-  name:          z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+  // Lowercase only: Docker Compose v2 lowercases project names, so a
+  // mixed-case stack could never match its observed containers.
+  name:          z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9._-]{0,63}$/),
   image:         z.string().min(1),
   ports:         z.array(zPortMapping).default([]),
   envs:          z.array(zEnvVar).default([]),
@@ -85,7 +87,7 @@ export type AppInput = z.infer<typeof zAppInput>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-export const STACK_NAME_RE = /^[A-Za-z0-9][a-zA-Z0-9._-]{0,63}$/
+export const STACK_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
 /** A port's access binding -> absolute URL, or null when no domain is set. */
 export function portDomainUrl(p: PortMapping): string | null {

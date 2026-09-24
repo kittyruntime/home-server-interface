@@ -2,7 +2,7 @@
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
-import { pollJob } from '../../lib/jobs'
+import { pollJobResult } from '../../lib/jobs'
 import PortsTable,      { type PortMapping }    from './PortsTable.vue'
 import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
@@ -311,7 +311,9 @@ async function applyNow() {
   applyError.value = ''
   try {
     const { jobId } = await trpc.container.app.apply.mutate({ name: savedName.value })
-    await pollJob(jobId)
+    const result = await pollJobResult(jobId)
+    // A failed (or timed out) job must report as an error, not as success.
+    if (result.status !== 'completed') throw new Error(result.error ?? 'Apply failed')
     applyState.value = 'applied'
     emit('saved', savedName.value)
   } catch (e: any) {
@@ -435,7 +437,7 @@ async function applyNow() {
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
           <input
-            v-model="form.name" placeholder="my-app" :disabled="!!editName"
+            v-model="form.name" placeholder="my-app" :disabled="editing"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
           />
         </div>
@@ -458,7 +460,7 @@ async function applyNow() {
 
       <!-- Ports -->
       <div v-else-if="activeTab === 'ports'">
-        <PortsTable v-model="form.ports" :app-name="editName ?? undefined" />
+        <PortsTable v-model="form.ports" :app-name="savedName ?? (editName ?? undefined)" />
       </div>
 
       <!-- Envs -->

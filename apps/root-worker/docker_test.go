@@ -12,7 +12,7 @@ func TestComposeNameValidation(t *testing.T) {
 			t.Errorf("expected %q valid, got %v", ok, err)
 		}
 	}
-	for _, bad := range []string{"", "..", "../etc", "a/b", "-lead", "a b", strings.Repeat("x", 65)} {
+	for _, bad := range []string{"", "..", "../etc", "a/b", "-lead", "a b", "Jellyfin", strings.Repeat("x", 65)} {
 		if _, err := composeFilePath(bad); err == nil {
 			t.Errorf("expected %q rejected", bad)
 		}

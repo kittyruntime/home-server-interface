@@ -60,11 +60,13 @@ async function main() {
     const resolved: AppInput["volumes"] = []
     for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [])) {
       if (v.type === "place") {
-        const places = await prisma.$queryRawUnsafe<Array<{ path: string }>[]>(
+        // $queryRawUnsafe returns the rows as a flat array of objects
+        // ([{ path }]), not an array of arrays.
+        const places = await prisma.$queryRawUnsafe<Array<{ path: string }>>(
           `SELECT "path" FROM "Place" WHERE "id"=?`, v.source)
-        const p = places[0]?.[0]
+        const p = places[0]?.path
         if (!p) { console.warn(`app ${row.name}: place ${v.source} missing - volume skipped`); continue }
-        resolved.push({ type: "bind", source: p.path, target: v.target, readOnly: v.readOnly })
+        resolved.push({ type: "bind", source: p, target: v.target, readOnly: v.readOnly })
       } else {
         resolved.push(v as AppInput["volumes"][number])
       }

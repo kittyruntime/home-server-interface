@@ -33,8 +33,8 @@ docker compose -f /opt/containers/<name>/compose.yaml down
 `x-hsi:` keys in the compose file are HSI metadata (pinned URL, UI hints) — safe
 to ignore or delete.
 
-
-```
+Directories under `/opt/containers` whose names HSI cannot represent (spaces,
+leading dot) are ignored by the app list — manage them with plain docker compose.
 
 ## Samba (SMB shares)
 

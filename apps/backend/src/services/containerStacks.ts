@@ -75,13 +75,18 @@ type ObservedContainer = {
 }
 
 async function observedContainers(): Promise<ObservedContainer[]> {
-  try { return await requestSync<ObservedContainer[]>("root.container.listAll", {}, 10_000) }
-  catch { return [] }
+  // Same root.container.listAll subject as dockerContainers(), which caches
+  // for 5s — reuse that instead of firing an uncached request per call.
+  // Degrades to empty when the worker/docker is unavailable.
+  return (await dockerContainers()) as unknown as ObservedContainer[]
 }
 
 function observedForStack(all: ObservedContainer[], name: string, services: string[]): ObservedContainer[] {
+  // Compose v2 lowercases the project name, so match case-insensitively for
+  // legacy mixed-case stack dirs.
+  const lower = name.toLowerCase()
   return all.filter(c =>
-    c.labels["com.docker.compose.project"] === name ||
+    c.labels["com.docker.compose.project"] === lower ||
     (c.labels["com.docker.compose.service"] && services.includes(c.labels["com.docker.compose.service"])) ||
     services.includes(c.name),
   )
@@ -94,7 +99,7 @@ export async function listStacks() {
     const observed = observedForStack(all, s.name, parsed.services)
     const status = stackStatus(observed)
     const pendingApply = parsed.services.length > 0 &&
-      !observed.some(c => c.labels["com.docker.compose.project"] === s.name)
+      !observed.some(c => c.labels["com.docker.compose.project"] === s.name.toLowerCase())
     const lw = lastWritten.get(s.name)
     return {
       name: s.name, path: path.dirname(stackFilePath(s.name)), hash: s.hash,

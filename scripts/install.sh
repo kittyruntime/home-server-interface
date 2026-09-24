@@ -618,20 +618,21 @@ step "Setting up database"
 mkdir -p "$DB_DIR"
 chown "$APP_USER:" "$DB_DIR"
 
+# ── Declarative container stacks ─────────────────────────────────────────────
+# The app user owns /opt/containers and writes compose.yaml files directly;
+# the root worker only runs docker compose. Needed on BOTH fresh installs and
+# updates (the backend creates app dirs in here; without it, mkdir fails with
+# EACCES on a fresh install).
+step "Preparing /opt/containers"
+mkdir -p /opt/containers
+chown "$APP_USER" /opt/containers
+
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   BACKUP="$DB_DIR/${APP_NAME}.db.bak-$(date +%Y%m%d-%H%M%S)"
   cp "$DB_FILE" "$BACKUP"
   DB_ROLLBACK_FILE="$BACKUP"
   success "Database backed up → $BACKUP"
   ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
-
-  # ── Declarative container stacks ─────────────────────────────────────────────
-  # The app user owns /opt/containers and writes compose.yaml files directly;
-  # the root worker only runs docker compose. The compose data migration below
-  # needs this dir to exist and be writable by the app user.
-  step "Preparing /opt/containers"
-  mkdir -p /opt/containers
-  chown "$APP_USER" /opt/containers
 
   # ── Data migrations (idempotent) — MUST run BEFORE `db push` ────────────────
   # `db push --accept-data-loss` DROPS any table/column the new schema removed.

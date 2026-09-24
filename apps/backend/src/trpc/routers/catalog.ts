@@ -56,7 +56,10 @@ export const catalogRouter = router({
   install: adminProcedure
     .input(z.object({
       id:      z.string(),
-      name:    z.string().regex(/^[a-zA-Z0-9_-]+$/).max(64),
+      // Lowercase only (must match @app/compose zAppInput/STACK_NAME_RE):
+      // Compose v2 lowercases project names, so mixed-case stacks would never
+      // match their observed containers.
+      name:    z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/).max(64),
       ports:   z.array(z.object({ container: z.number().int(), host: z.number().int().min(1).max(65535) })).default([]),
       env:     z.array(z.object({ key: z.string(), value: z.string() })).default([]),
       volumes: z.array(zInstallVolume).default([]),

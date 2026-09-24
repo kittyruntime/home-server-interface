@@ -114,7 +114,9 @@ async function load() {
 }
 onMounted(load)
 
-const nameValid = computed(() => /^[a-zA-Z0-9_-]+$/.test(name.value) && name.value.length <= 64)
+// Lowercase only — Compose v2 lowercases project names (must match the
+// backend's stack-name rules).
+const nameValid = computed(() => /^[a-z0-9][a-z0-9._-]{0,63}$/.test(name.value))
 
 const envValid = computed(() =>
   envRows.value.every((e) => !e.required || e.value.trim() !== '')
@@ -220,7 +222,7 @@ async function install() {
         <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">App name</label>
         <input v-model="name" maxlength="64" placeholder="app-name" class="ui-input" />
         <p v-if="!nameValid" class="text-xs text-[var(--c-danger)]">
-          Only letters, numbers, "_" and "-" are allowed.
+          Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
         </p>
       </div>
 

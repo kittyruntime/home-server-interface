@@ -47,7 +47,7 @@ func stacksDir() string {
 	return "/opt/containers"
 }
 
-var reStackName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+var reStackName = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 func composeFilePath(name string) (string, error) {
 	if !reStackName.MatchString(name) || name == ".." {

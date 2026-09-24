@@ -8,7 +8,7 @@ import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { useConfirm } from '../../lib/confirm'
-import { pollJob } from '../../lib/jobs'
+import { pollJob, pollJobResult } from '../../lib/jobs'
 import { useNotifications } from '../../lib/notifications'
 import { useToast } from '../../lib/toast'
 
@@ -94,7 +94,10 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     if (action === 'delete') {
       if (!await confirm('Delete this app? The stack containers will be removed and its compose file deleted.', { danger: true, confirmLabel: 'Delete' })) return
       const { jobId } = await trpc.container.app.remove.mutate({ name: app?.name ?? id })
-      await pollJob(jobId)
+      const result = await pollJobResult(jobId)
+      // Only drop the row when the job actually completed; on failure the row
+      // stays and the error is surfaced.
+      if (result.status !== 'completed') throw new Error(result.error ?? 'Delete failed')
       apps.value = apps.value.filter(a => a.id !== id)
       return
     }
@@ -118,10 +121,19 @@ async function applyApp(id: string) {
   const notifId = pushNotif({ type: 'progress', title: `Applying ${app?.name ?? ''}…`, progress: -1 })
   try {
     const { jobId } = await trpc.container.app.apply.mutate({ name: app?.name ?? id })
-    await pollJob(jobId)
+    const result = await pollJobResult(jobId)
+    if (result.status !== 'completed') {
+      // Job failed (or timed out): keep the pending badge and surface the error.
+      const msg = result.error ?? 'Apply failed'
+      updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined })
+      toast.error(msg)
+      return
+    }
     updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })
     setTimeout(() => dismissNotif(notifId), 3000)
-    if (app) { app.pendingApply = false; app.drifted = false }
+    // Apply never rewrites the compose file, so the drifted badge must stay
+    // until the file is regenerated — only pendingApply is resolved here.
+    if (app) app.pendingApply = false
   } catch (e: any) {
     updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
     toast.error(e?.message ?? 'Failed to apply')
@@ -133,8 +145,10 @@ async function applyApp(id: string) {
 const logsApp = ref<App | null>(null)
 
 function openNew()        { editName.value = null; showModal.value = true }
+// Multi-service stacks are fine too: the form modal handles them with a
+// notice + the raw YAML editor (advanced tab only). Pinning from the UI is
+// guarded server-side.
 function openEdit(a: App) {
-  if (!a.app) { toast.error('Multi-service apps are edited via their compose file.'); return }
   editName.value = a.name
   showModal.value = true
 }

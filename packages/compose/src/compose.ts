@@ -36,6 +36,22 @@ function ensureService(doc: any, name: string): YAMLMap {
   return doc.getIn(["services", name], true)
 }
 
+// environment/labels accept both map form ({KEY: "v"}) and list form
+// (["KEY=v"]). Split list entries on the FIRST '='; an entry without '=' gets
+// an empty key, which fails zAppInput (key min length 1) and downgrades the
+// parse to raw-only instead of silently mangling the entry.
+function kvEntries(raw: unknown): Array<[string, string]> {
+  if (!raw || typeof raw !== "object") return []
+  if (Array.isArray(raw)) {
+    return raw.map(e => {
+      const s = String(e)
+      const i = s.indexOf("=")
+      return i === -1 ? ["", s] : [s.slice(0, i), s.slice(i + 1)]
+    })
+  }
+  return Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, String(v ?? "")])
+}
+
 function setOrDelete(map: YAMLMap, key: string, value: unknown) {
   if (value === undefined || value === null || value === "" ||
       (Array.isArray(value) && value.length === 0)) { map.delete(key); return }
@@ -53,6 +69,11 @@ function applyModel(doc: any, name: string, input: AppInput) {
   }
 
   const svc = ensureService(doc, name)
+  // x-hsi is a managed key, but its sub-keys are HSI metadata the forms do not
+  // all represent: carry unknown sub-keys over from the existing file. The
+  // model stays authoritative for the managed pinnedUrl/ports sub-keys.
+  const prevXhsiNode = svc.getIn(["x-hsi"], true)
+  const prevXhsi = isMap(prevXhsiNode) ? prevXhsiNode.toJSON() as Record<string, unknown> : null
   for (const k of MANAGED_SERVICE_KEYS) svc.deleteIn([k])
   setOrDelete(svc, "image", input.image)
   setOrDelete(svc, "ports", input.ports.map(portStr))
@@ -76,6 +97,9 @@ function applyModel(doc: any, name: string, input: AppInput) {
 
   const domainPorts = input.ports.filter(p => p.domain)
   const xhsi: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(prevXhsi ?? {})) {
+    if (k !== "pinnedUrl" && k !== "ports") xhsi[k] = v
+  }
   if (input.pinnedUrl) xhsi.pinnedUrl = input.pinnedUrl
   if (domainPorts.length) xhsi.ports = domainPorts.map(p => ({
     containerPort: p.containerPort, domain: p.domain, tls: p.tls, publicPort: p.publicPort ?? null,
@@ -127,12 +151,12 @@ export function parseComposeYaml(content: string): ParsedCompose {
       const [host, cont] = (pc ?? "").split(":")
       return { hostPort: Number(host), containerPort: Number(cont), protocol: proto as "tcp" | "udp" }
     })
-    const envs: EnvVar[] = Object.entries(svc.environment ?? {}).map(([key, value]) => ({ key, value: String(value) }))
+    const envs: EnvVar[] = kvEntries(svc.environment).map(([key, value]) => ({ key, value }))
     const volumes: VolumeMount[] = (Array.isArray(svc.volumes) ? svc.volumes : []).map((s: string) => {
       const [source, target, mode] = s.split(":")
       return { type: (source ?? "").startsWith("/") ? "bind" : "named", source: source ?? "", target: target ?? "", readOnly: mode === "ro" }
     })
-    const labels: LabelEntry[] = Object.entries(svc.labels ?? {}).map(([key, value]) => ({ key, value: String(value) }))
+    const labels: LabelEntry[] = kvEntries(svc.labels).map(([key, value]) => ({ key, value }))
     const extraHosts: string[] = Object.entries(svc.extra_hosts ?? {}).map(([h, ip]) => `${h}:${ip}`)
     const domainMeta: any[] = svc["x-hsi"]?.ports ?? []
     for (const dp of domainMeta) {
