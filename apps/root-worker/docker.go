@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,59 +28,104 @@ var (
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
-type portMapping struct {
-	HostPort      int    `json:"hostPort"`
-	ContainerPort int    `json:"containerPort"`
-	Protocol      string `json:"protocol"` // tcp | udp
-}
-
-type envVar struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-type volumeMount struct {
-	Type     string `json:"type"`     // bind | named | place (place already resolved to bind by backend)
-	Source   string `json:"source"`   // host path or named volume name
-	Target   string `json:"target"`   // container path
-	ReadOnly bool   `json:"readOnly"` // mount as read-only when true
-}
-
-type labelEntry struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// dockerTaskMsg covers all docker async task payloads in a single struct.
+// dockerTaskMsg covers all docker async task payloads. HSI generates the
+// compose.yaml; the worker only executes compose commands against it.
 type dockerTaskMsg struct {
-	JobID string `json:"jobId"`
+	JobID       string `json:"jobId"`
+	Name        string `json:"name"`
+	RemoveFiles bool   `json:"removeFiles"`
+}
 
-	// Container fields
-	ContainerName string        `json:"containerName"`
-	Image         string        `json:"image"`
-	Ports         []portMapping `json:"ports"`
-	Envs          []envVar      `json:"envs"`
-	Volumes       []volumeMount `json:"volumes"`
-	NetworkNames  []string      `json:"networkNames"`
-	Labels        []labelEntry  `json:"labels"`
-	CapAdd        []string      `json:"capAdd"`
-	CapDrop       []string      `json:"capDrop"`
-	ExtraHosts    []string      `json:"extraHosts"`
-	RestartPolicy string        `json:"restartPolicy"`
-	Hostname      *string       `json:"hostname"`
-	User          *string       `json:"user"`
-	Command       *string       `json:"command"`
-	CPULimit      *float64      `json:"cpuLimit"`    // e.g. 0.5, 2.0
-	MemoryLimit   *string       `json:"memoryLimit"` // e.g. "512m", "2g"
+// ── Compose plumbing ──────────────────────────────────────────────────────────
 
-	// Network fields
-	NetworkName string  `json:"networkName"`
-	Driver      string  `json:"driver"`
-	Subnet      *string `json:"subnet"`
-	Gateway     *string `json:"gateway"`
+const envStacksDir = "HSI_CONTAINERS_DIR"
 
-	// Volume fields
-	VolumeName string `json:"volumeName"`
+func stacksDir() string {
+	if v := os.Getenv(envStacksDir); v != "" {
+		return v
+	}
+	return "/opt/containers"
+}
+
+var reStackName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+func composeFilePath(name string) (string, error) {
+	if !reStackName.MatchString(name) || name == ".." {
+		return "", fmt.Errorf("invalid stack name %q", name)
+	}
+	return filepath.Join(stacksDir(), name, "compose.yaml"), nil
+}
+
+func composeArgs(name string, args ...string) ([]string, error) {
+	p, err := composeFilePath(name)
+	if err != nil {
+		return nil, err
+	}
+	return append([]string{"compose", "-f", p}, args...), nil
+}
+
+func runCompose(name string, args ...string) error {
+	full, err := composeArgs(name, args...)
+	if err != nil {
+		return err
+	}
+	_, err = runDocker(full...)
+	return err
+}
+
+type networkEntry struct {
+	Name   string `json:"name"`
+	Driver string `json:"driver"`
+}
+
+// handleDockerComposeValidate handles root.container.composeValidate (request-reply):
+// docker compose -f <path> config -q. A nonzero exit means the file is invalid;
+// the combined output is surfaced as the error message.
+func handleDockerComposeValidate(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil || req.Name == "" {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: name required"})
+		return
+	}
+	if err := runCompose(req.Name, "config", "-q"); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
+func parseNetworksList(out string) []networkEntry {
+	var out2 []networkEntry
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if line == "" {
+			continue
+		}
+		var raw struct {
+			Name   string `json:"Name"`
+			Driver string `json:"Driver"`
+		}
+		if json.Unmarshal([]byte(line), &raw) != nil || raw.Name == "" {
+			continue
+		}
+		out2 = append(out2, networkEntry{Name: raw.Name, Driver: raw.Driver})
+	}
+	return out2
+}
+
+// handleDockerNetworksList handles root.container.networksList (request-reply).
+func handleDockerNetworksList(nc *nats.Conn, msg *nats.Msg) {
+	out, err := runDocker("network", "ls", "--format", "{{json .}}")
+	if err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	list := parseNetworksList(out)
+	if list == nil {
+		list = []networkEntry{}
+	}
+	replyOk(nc, msg.Reply, list)
 }
 
 // ── Docker CLI runner ─────────────────────────────────────────────────────────
@@ -97,155 +145,6 @@ func runDocker(args ...string) (string, error) {
 		return "", err
 	}
 	return output, nil
-}
-
-// ── Container operations ──────────────────────────────────────────────────────
-
-// buildCreateArgs builds the argument list for `docker run -d`.
-func buildCreateArgs(msg *dockerTaskMsg) []string {
-	args := []string{"run", "-d", "--name", msg.ContainerName}
-
-	for _, p := range msg.Ports {
-		proto := p.Protocol
-		if proto == "" {
-			proto = "tcp"
-		}
-		args = append(args, "-p", fmt.Sprintf("%d:%d/%s", p.HostPort, p.ContainerPort, proto))
-	}
-
-	for _, e := range msg.Envs {
-		args = append(args, "-e", fmt.Sprintf("%s=%s", e.Key, e.Value))
-	}
-
-	for _, v := range msg.Volumes {
-		bind := fmt.Sprintf("%s:%s", v.Source, v.Target)
-		if v.ReadOnly {
-			bind += ":ro"
-		}
-		args = append(args, "-v", bind)
-	}
-
-	// First network via --network; additional ones connected after start.
-	if len(msg.NetworkNames) > 0 {
-		args = append(args, "--network", msg.NetworkNames[0])
-	}
-
-	for _, l := range msg.Labels {
-		args = append(args, "--label", fmt.Sprintf("%s=%s", l.Key, l.Value))
-	}
-
-	for _, c := range msg.CapAdd {
-		args = append(args, "--cap-add", c)
-	}
-	for _, c := range msg.CapDrop {
-		args = append(args, "--cap-drop", c)
-	}
-
-	for _, h := range msg.ExtraHosts {
-		args = append(args, "--add-host", h)
-	}
-
-	if msg.RestartPolicy != "" && msg.RestartPolicy != "no" {
-		args = append(args, "--restart", msg.RestartPolicy)
-	}
-
-	if msg.Hostname != nil && *msg.Hostname != "" {
-		args = append(args, "--hostname", *msg.Hostname)
-	}
-
-	if msg.User != nil && *msg.User != "" {
-		args = append(args, "--user", *msg.User)
-	}
-
-	if msg.CPULimit != nil && *msg.CPULimit > 0 {
-		args = append(args, "--cpus", fmt.Sprintf("%.2f", *msg.CPULimit))
-	}
-
-	if msg.MemoryLimit != nil && *msg.MemoryLimit != "" {
-		args = append(args, "--memory", *msg.MemoryLimit)
-	}
-
-	args = append(args, msg.Image)
-
-	if msg.Command != nil && *msg.Command != "" {
-		args = append(args, strings.Fields(*msg.Command)...)
-	}
-
-	return args
-}
-
-func doContainerCreate(msg *dockerTaskMsg) error {
-	if _, err := runDocker(buildCreateArgs(msg)...); err != nil {
-		return fmt.Errorf("docker run: %w", err)
-	}
-	// Connect additional networks (beyond the first).
-	for i := 1; i < len(msg.NetworkNames); i++ {
-		if _, err := runDocker("network", "connect", msg.NetworkNames[i], msg.ContainerName); err != nil {
-			log.Printf("warn: connect %s to network %s: %v", msg.ContainerName, msg.NetworkNames[i], err)
-		}
-	}
-	return nil
-}
-
-func doContainerRecreate(msg *dockerTaskMsg) error {
-	_, _ = runDocker("stop", msg.ContainerName)
-	_, _ = runDocker("rm", "-f", msg.ContainerName)
-	return doContainerCreate(msg)
-}
-
-func doContainerStart(name string) error {
-	_, err := runDocker("start", name)
-	return err
-}
-
-func doContainerStop(name string) error {
-	_, err := runDocker("stop", name)
-	return err
-}
-
-func doContainerRestart(name string) error {
-	_, err := runDocker("restart", name)
-	return err
-}
-
-func doContainerRemove(name string) error {
-	_, err := runDocker("rm", "-f", name)
-	return err
-}
-
-// ── Network operations ────────────────────────────────────────────────────────
-
-func doNetworkCreate(msg *dockerTaskMsg) error {
-	args := []string{"network", "create"}
-	if msg.Driver != "" {
-		args = append(args, "--driver", msg.Driver)
-	}
-	if msg.Subnet != nil && *msg.Subnet != "" {
-		args = append(args, "--subnet", *msg.Subnet)
-	}
-	if msg.Gateway != nil && *msg.Gateway != "" {
-		args = append(args, "--gateway", *msg.Gateway)
-	}
-	args = append(args, msg.NetworkName)
-	_, err := runDocker(args...)
-	return err
-}
-
-func doNetworkRemove(name string) error {
-	_, err := runDocker("network", "rm", name)
-	return err
-}
-
-// ── Volume operations ─────────────────────────────────────────────────────────
-
-func doVolumeCreate(name string) error {
-	_, err := runDocker("volume", "create", name)
-	return err
-}
-
-func doVolumeRemove(name string) error {
-	_, err := runDocker("volume", "rm", name)
-	return err
 }
 
 // ── Inspect / ListAll (sync request-reply) ────────────────────────────────────
@@ -499,7 +398,6 @@ func handleDockerLogsStop(nc *nats.Conn, msg *nats.Msg) {
 
 // ── Async task dispatcher ─────────────────────────────────────────────────────
 
-// handleDockerTask handles all root.docker.*  JetStream messages.
 func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 	var task dockerTaskMsg
 	if err := json.Unmarshal(msg.Data, &task); err != nil {
@@ -510,26 +408,19 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 
 	var err error
 	switch subject {
-	case "root.container.create":
-		err = doContainerCreate(&task)
-	case "root.container.recreate":
-		err = doContainerRecreate(&task)
-	case "root.container.start":
-		err = doContainerStart(task.ContainerName)
-	case "root.container.stop":
-		err = doContainerStop(task.ContainerName)
-	case "root.container.restart":
-		err = doContainerRestart(task.ContainerName)
-	case "root.container.remove":
-		err = doContainerRemove(task.ContainerName)
-	case "root.network.create":
-		err = doNetworkCreate(&task)
-	case "root.network.remove":
-		err = doNetworkRemove(task.NetworkName)
-	case "root.volume.create":
-		err = doVolumeCreate(task.VolumeName)
-	case "root.volume.remove":
-		err = doVolumeRemove(task.VolumeName)
+	case "root.container.composeUp":
+		err = runCompose(task.Name, "up", "-d")
+	case "root.container.composeStop":
+		err = runCompose(task.Name, "stop")
+	case "root.container.composeRestart":
+		err = runCompose(task.Name, "restart")
+	case "root.container.composeDown":
+		if err = runCompose(task.Name, "down"); err == nil && task.RemoveFiles {
+			dir := filepath.Dir(mustComposePath(task.Name))
+			if rmErr := os.RemoveAll(dir); rmErr != nil {
+				log.Printf("docker task: cleanup %s: %v", dir, rmErr)
+			}
+		}
 	default:
 		log.Printf("docker task: unknown subject %s", subject)
 		_ = msg.Term()
@@ -544,4 +435,13 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 		_ = msg.Ack()
 		publishJobResult(nc, task.JobID, "completed", map[string]bool{"ok": true}, "")
 	}
+}
+
+func mustComposePath(name string) string {
+	p, err := composeFilePath(name)
+	if err != nil {
+		log.Printf("compose path for %q: %v", name, err)
+		return ""
+	}
+	return p
 }
