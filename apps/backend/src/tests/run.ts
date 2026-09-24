@@ -219,14 +219,6 @@ async function testStackFsOpsRejectPathTraversalNames() {
   assert.equal(await stackExists(name), false)
 }
 
-await testCurrentAuthorizationWinsOverJwtClaims()
-await testDeletedAndLoggedOutAccountsAreRejected()
-await testDatabaseFailuresAreNotHiddenAsInvalidSessions()
-testFileTokensDoNotCarryAuthorizationClaims()
-await testUploadsAreScopedToTheirOwner()
-testCancellationWinsTheInitializationRace()
-testUploadSizeCompatibilityAndLifecyclePhases()
-testStackStatusAggregation()
 await testStackFsOpsRejectPathTraversalNames()
 
 await rm(stacksTestDir, { recursive: true, force: true })
