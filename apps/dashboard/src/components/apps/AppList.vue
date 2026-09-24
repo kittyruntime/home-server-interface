@@ -46,9 +46,17 @@ async function load() {
   finally { loading.value = false }
 }
 
+// Background refresh: no loading toggle — the spinner must show on the initial
+// mount only, or the whole panel would flicker (and remount UnmanagedContainers)
+// every 10 s.
+async function silentRefresh() {
+  try { apps.value = await trpc.container.app.list.query() }
+  catch { /* keep previous list on error */ }
+}
+
 onMounted(async () => {
   await load()
-  refreshTimer = setInterval(load, 10_000)
+  refreshTimer = setInterval(silentRefresh, 10_000)
 })
 
 onUnmounted(() => {
