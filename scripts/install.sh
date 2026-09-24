@@ -625,6 +625,14 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   success "Database backed up → $BACKUP"
   ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
 
+  # ── Declarative container stacks ─────────────────────────────────────────────
+  # The app user owns /opt/containers and writes compose.yaml files directly;
+  # the root worker only runs docker compose. The compose data migration below
+  # needs this dir to exist and be writable by the app user.
+  step "Preparing /opt/containers"
+  mkdir -p /opt/containers
+  chown "$APP_USER" /opt/containers
+
   # ── Data migrations (idempotent) — MUST run BEFORE `db push` ────────────────
   # `db push --accept-data-loss` DROPS any table/column the new schema removed.
   # A migration that folds data out of a soon-to-be-dropped table (e.g. old

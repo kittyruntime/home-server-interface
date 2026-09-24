@@ -202,6 +202,9 @@ importers:
         specifier: ^2.4.3
         version: 2.4.3
     devDependencies:
+      '@app/compose':
+        specifier: workspace:*
+        version: link:../compose
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
