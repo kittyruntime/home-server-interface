@@ -190,4 +190,14 @@ await testUploadsAreScopedToTheirOwner()
 testCancellationWinsTheInitializationRace()
 testUploadSizeCompatibilityAndLifecyclePhases()
 
+const { stackStatus } = await import("../services/containerStacks")
+
+function testStackStatusAggregation() {
+  assert.equal(stackStatus([]), "unknown")
+  assert.equal(stackStatus([{ status: "running" }]), "running")
+  assert.equal(stackStatus([{ status: "running" }, { status: "exited" }]), "running")
+  assert.equal(stackStatus([{ status: "exited" }, { status: "created" }]), "stopped")
+}
+testStackStatusAggregation()
+
 console.log("Backend security tests passed")
