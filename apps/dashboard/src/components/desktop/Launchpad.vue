@@ -18,7 +18,6 @@ const allApps: { id: AppId; adminOnly: boolean; capability?: string }[] = [
   { id: 'files',   adminOnly: false },
   { id: 'apps',    adminOnly: false },
   { id: 'storage', adminOnly: true, capability: 'storage' },
-  { id: 'alerts',  adminOnly: true, capability: 'storage' },
   { id: 'store',   adminOnly: true },
   { id: 'monitor', adminOnly: true },
   { id: 'sharing', adminOnly: true },
@@ -59,7 +58,7 @@ useEscLayer(requestClose)
             <AppIcon :app="id" :stroke-width="1.5" class="w-7 h-7" />
             <span v-if="id === 'storage' && hasAlerts('storage.')"
               class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
-            <span v-else-if="id === 'alerts' && alerts.length"
+            <span v-else-if="id === 'monitor' && alerts.length"
               class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
           </div>
           <span class="eyebrow">{{ APP_LABEL[id] }}</span>

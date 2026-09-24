@@ -57,9 +57,9 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Alerting</h2>
+    <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Alerts</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">
-      Thresholds for the background health checks. Active alerts are listed in the Alerts app.
+      Background health checks, sampled every 5 minutes. Active alerts are listed in Monitor &gt; Alerts.
     </p>
 
     <LoadingState v-if="loading" />

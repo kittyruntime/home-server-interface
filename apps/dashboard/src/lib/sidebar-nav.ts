@@ -16,7 +16,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'files',     label: 'Files' },
   { id: 'apps',      label: 'Apps' },
   { id: 'storage',   label: 'Storage',   adminOnly: true, capability: 'storage' },
-  { id: 'alerts',    label: 'Alerts',    adminOnly: true, capability: 'storage' },
   { id: 'store',     label: 'App Store', adminOnly: true },
   { id: 'monitor',   label: 'Monitor',   adminOnly: true },
   { id: 'sharing',   label: 'Sharing',   adminOnly: true },

@@ -3,9 +3,10 @@ import { ref } from 'vue'
 import OverviewSection from '../OverviewSection.vue'
 import SystemInfoSection from '../SystemInfoSection.vue'
 import MonitoringSection from '../MonitoringSection.vue'
+import AlertsSection from './AlertsSection.vue'
 import AuditLogSection from '../AuditLogSection.vue'
 
-type SectionId = 'overview' | 'system-info' | 'monitoring' | 'audit'
+type SectionId = 'overview' | 'system-info' | 'monitoring' | 'alerts' | 'audit'
 
 interface NavItem { id: SectionId; label: string }
 
@@ -13,6 +14,7 @@ const nav: NavItem[] = [
   { id: 'overview',    label: 'Overview' },
   { id: 'system-info', label: 'System Info' },
   { id: 'monitoring',  label: 'Monitoring' },
+  { id: 'alerts',      label: 'Alerts' },
   { id: 'audit',       label: 'Audit Log' },
 ]
 
@@ -57,6 +59,10 @@ const active = ref<SectionId>('overview')
           <svg v-else-if="item.id === 'monitoring'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3 8 4-16 3 8h4"/>
           </svg>
+          <!-- Alerts -->
+          <svg v-else-if="item.id === 'alerts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+          </svg>
           <!-- Audit -->
           <svg v-else-if="item.id === 'audit'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
@@ -72,6 +78,7 @@ const active = ref<SectionId>('overview')
         <OverviewSection    v-if="active === 'overview'" />
         <SystemInfoSection  v-else-if="active === 'system-info'" />
         <MonitoringSection  v-else-if="active === 'monitoring'" />
+        <AlertsSection      v-else-if="active === 'alerts'" />
         <AuditLogSection    v-else-if="active === 'audit'" />
       </div>
     </div>

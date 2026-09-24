@@ -61,11 +61,6 @@ const ICONS: Record<AppId, IconDef> = {
       [17.5, 18.25, 2.4],
     ],
   },
-  alerts: {
-    // Warning triangle with an exclamation mark (mark drawn as a dot + dash).
-    stroke: 'M12 4.5L21 19.5H3L12 4.5zM12 10v4',
-    dots: [[12, 16.75, 1.1]],
-  },
   'file-preview': {
     stroke: 'M6 5.5a2 2 0 012-2h5.2L18 8.3v10.2a2 2 0 01-2 2H8a2 2 0 01-2-2V5.5zM13.2 3.5v4.8H18',
     dots: [[12, 14.5, 1.5]],

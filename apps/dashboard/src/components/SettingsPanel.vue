@@ -18,7 +18,7 @@ type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'up
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
-type Group = 'access' | 'system' | 'backup'
+type Group = 'account' | 'access' | 'system' | 'backup'
 
 interface NavItem {
   id: SectionId
@@ -28,14 +28,15 @@ interface NavItem {
 }
 
 const GROUP_LABEL: Record<Group, string> = {
+  account: 'Account',
   access: 'Access control',
   system: 'System',
   backup: 'Backups',
 }
 
 const nav: NavItem[] = [
-  { id: 'profile',     label: 'My Profile',  show: () => true },
-  { id: 'shares',      label: 'Shared links', show: () => true },
+  { id: 'profile',     label: 'My Profile',  show: () => true,  group: 'account' },
+  { id: 'shares',      label: 'Shared links', show: () => true, group: 'account' },
   // Access control: who can reach what. Users is grouped here even though it's
   // gated on isUserManager (not isAdmin like the rest) — a user manager
   // without full admin still needs it alongside the places/perms they manage.
@@ -43,8 +44,8 @@ const nav: NavItem[] = [
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'access' },
   { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'access' },
   { id: 'groups',      label: 'Groups',      show: () => isAdmin.value, group: 'access' },
+  { id: 'alerting',    label: 'Alerts',      show: () => isAdmin.value, group: 'system' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'system' },
-  { id: 'alerting',    label: 'Alerting',    show: () => isAdmin.value, group: 'system' },
   { id: 'backups',     label: 'Backup & restore', show: () => isAdmin.value, group: 'backup' },
   { id: 'data-backups', label: 'Data backups', show: () => isAdmin.value, group: 'backup' },
 ]
