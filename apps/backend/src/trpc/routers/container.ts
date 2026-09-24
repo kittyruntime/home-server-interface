@@ -173,7 +173,7 @@ const appRouter = router({
 
   importContainer: adminProcedure
     .input(z.object({
-      name:         z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+      name:         z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9_-]{0,63}$/),
       image:        z.string().min(1),
       ports:        z.array(zPortMapping).default([]),
       envs:         z.array(zEnvVar).default([]),

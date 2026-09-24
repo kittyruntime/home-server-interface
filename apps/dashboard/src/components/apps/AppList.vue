@@ -8,7 +8,7 @@ import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { useConfirm } from '../../lib/confirm'
-import { pollJob, pollJobResult } from '../../lib/jobs'
+import { pollJobResult } from '../../lib/jobs'
 import { useNotifications } from '../../lib/notifications'
 import { useToast } from '../../lib/toast'
 
@@ -103,7 +103,8 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     }
     if (app) app.status = 'transitioning'
     const { jobId } = await (trpc.container.app[action as 'start' | 'stop' | 'restart'] as any).mutate({ name: app?.name ?? id })
-    await pollJob(jobId)
+    const result = await pollJobResult(jobId)
+    if (result.status !== 'completed') throw new Error(result.error ?? `${action} failed`)
     if (app) app.status = action === 'start' ? 'running' : 'stopped'
     if (notifId) { updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'}`, progress: undefined }); setTimeout(() => dismissNotif(notifId), 3000) }
   } catch (e: any) {
