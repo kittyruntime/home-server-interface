@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.53.1] - 2026-09-25
+
 ### Fixed
 - **Updates failing with a 502 storm (v1.53.0)**: the release archive did not
   ship the compose package, so the 2026-09-23 compose data migration aborted
@@ -923,7 +925,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.1...HEAD
+[1.53.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.0...v1.53.1
 [1.53.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.52.0...v1.53.0
 [1.52.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.51.0...v1.52.0
 [1.51.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.50.3...v1.51.0
