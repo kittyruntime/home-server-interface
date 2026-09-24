@@ -8,7 +8,9 @@
     "@prisma/client": "6.19.3",
     "bcryptjs": "2.4.3",
     "prisma": "6.19.3",
-    "tsx": "4.23.12"
+    "tsx": "4.23.12",
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"

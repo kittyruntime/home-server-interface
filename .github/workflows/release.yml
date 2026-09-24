@@ -103,6 +103,7 @@ jobs:
             --transform "flags=rh;s|^apps/dashboard/dist|public|" \
             --transform "flags=rh;s|^apps/root-worker/root-worker$|bin/${APP_NAME}-root-worker|" \
             --transform "flags=rh;s|^packages/database|database|" \
+            --transform "flags=rh;s|^packages/compose|compose|" \
             --transform "flags=rh;s|^runtime/node_modules|node_modules|" \
             --transform "flags=rh;s|^|${APP_NAME}-v${VERSION}/|" \
             apps/root-worker/root-worker \
@@ -111,6 +112,8 @@ jobs:
             packages/database/package.json \
             packages/database/prisma \
             packages/database/src \
+            packages/compose/package.json \
+            packages/compose/src \
             package.json \
             pnpm-lock.yaml \
             pnpm-workspace.yaml \

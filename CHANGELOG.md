@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Updates failing with a 502 storm (v1.53.0)**: the release archive did not
+  ship the compose package, so the 2026-09-23 compose data migration aborted
+  with `Cannot find package '@app/compose'` on every update. The failed apply
+  also left the pending-update marker in place, so systemd's path unit
+  re-ran the (failing) installer every few seconds, bouncing the backend and
+  causing intermittent 502s. The archive now ships `packages/compose`, the
+  install creates the `@app/compose` workspace link, `yaml`/`zod` are bundled
+  into the runtime dependencies, and a failed apply clears the marker instead
+  of looping.
+
 ## [1.53.0] - 2026-09-25
 
 ### Added

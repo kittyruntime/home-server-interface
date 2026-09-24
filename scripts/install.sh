@@ -438,6 +438,7 @@ else
      && -f "$RELEASE_STAGE/public/index.html" \
      && -x "$RELEASE_STAGE/bin/${RELEASE_APP_NAME}-root-worker" \
      && -d "$RELEASE_STAGE/database/prisma" \
+     && -d "$RELEASE_STAGE/compose/src" \
      && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
      && -x "$RELEASE_STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
      && -s "$RELEASE_STAGE/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node" \
@@ -547,7 +548,7 @@ else
   # paths and are preserved.
   ROLLBACK_REL_PATHS=(
     server.js public bin node_modules runtime scripts
-    database/prisma database/src database/package.json
+    database/prisma database/src database/package.json compose
     package.json pnpm-lock.yaml pnpm-workspace.yaml LICENSE CHANGELOG.md README.md
   )
   if [[ "$IS_UPDATE" -eq 1 ]]; then
@@ -570,6 +571,7 @@ else
     "$INSTALL_DIR/database/prisma" \
     "$INSTALL_DIR/database/src" \
     "$INSTALL_DIR/database/package.json" \
+    "$INSTALL_DIR/compose" \
     "$INSTALL_DIR/node_modules" \
     "$INSTALL_DIR/server.js" \
     "$INSTALL_DIR/package.json" \
@@ -579,6 +581,12 @@ else
     "$INSTALL_DIR/LICENSE" \
     "$INSTALL_DIR/CHANGELOG.md" \
     "$INSTALL_DIR/README.md"
+  # Data migrations import @app/compose (workspace package). The release
+  # layout is not a pnpm workspace, so re-create the link node_modules/@app/
+  # compose -> ../compose after every install (tsx resolves it via the ESM
+  # walk-up from database/ to the INSTALL_DIR node_modules).
+  mkdir -p "$INSTALL_DIR/node_modules/@app"
+  ln -sfn ../../compose "$INSTALL_DIR/node_modules/@app/compose"
   success "Extracted to $INSTALL_DIR"
 
   step "Installing root-worker binary"
@@ -991,7 +999,7 @@ Environment=BACKEND_PORT=${BACKEND_PORT}
 Environment=NATS_SERVER_VERSION=${NATS_SERVER_VERSION}
 Environment=SKIP_NGINX=${SKIP_NGINX}
 Environment=SKIP_SEED=${SKIP_SEED}
-ExecStart=:/bin/bash -c 'set -e; v=\$(cat "${DB_DIR}/.pending-update"); tmp=\$(mktemp); trap "rm -f \$tmp" EXIT; curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh -o \$tmp; VERSION=\$v bash \$tmp; rm -f "${DB_DIR}/.pending-update"'
+ExecStart=/bin/bash -c 'set -e; v=\$(cat "${DB_DIR}/.pending-update"); rm -f "${DB_DIR}/.pending-update"; tmp=\$(mktemp); trap "rm -f \$tmp" EXIT; curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh -o \$tmp; VERSION=\$v bash \$tmp'
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${APP_NAME}-update
