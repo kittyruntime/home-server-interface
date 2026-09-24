@@ -3,60 +3,13 @@ import { TRPCError } from "@trpc/server"
 import { router, adminProcedure, protectedProcedure } from "../index"
 import { publishJob, requestSync } from "../../nats"
 import {
-  listApps, getApp, createApp, updateApp, deleteApp, setAppStatus,
-  listNetworks, createNetwork, deleteNetwork,
-  listVolumes, createVolume, deleteVolume,
-} from "../../services/container.service"
-
-// ── Zod schemas ───────────────────────────────────────────────────────────────
-
-const zPortMapping = z.object({
-  hostPort:      z.number().int().min(1).max(65535),
-  containerPort: z.number().int().min(1).max(65535),
-  protocol:      z.enum(["tcp", "udp"]).default("tcp"),
-  // Optional access binding — records that this port is reached at a real URL
-  // (behind the user's own reverse proxy / tunnel). HSI-side metadata only.
-  domain:        z.string().min(1).max(253).optional(),
-  tls:           z.boolean().default(false),
-  publicPort:    z.number().int().min(1).max(65535).optional(),
-})
-
-const zEnvVar = z.object({
-  key:   z.string().min(1),
-  value: z.string(),
-})
-
-const zVolumeMount = z.object({
-  type:     z.enum(["bind", "named", "place"]),
-  source:   z.string().min(1),
-  target:   z.string().startsWith("/"),
-  readOnly: z.boolean().default(false),
-})
-
-const zLabelEntry = z.object({
-  key:   z.string().min(1),
-  value: z.string(),
-})
-
-const zAppInput = z.object({
-  name:          z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
-  image:         z.string().min(1),
-  ports:         z.array(zPortMapping).default([]),
-  envs:          z.array(zEnvVar).default([]),
-  volumes:       z.array(zVolumeMount).default([]),
-  networkNames:  z.array(z.string()).default([]),
-  labels:        z.array(zLabelEntry).default([]),
-  capAdd:        z.array(z.string()).default([]),
-  capDrop:       z.array(z.string()).default([]),
-  extraHosts:    z.array(z.string().regex(/^[^:]+:[^:]+$/)).default([]),
-  restartPolicy: z.enum(["no", "always", "unless-stopped", "on-failure"]).default("no"),
-  hostname:      z.string().max(63).nullable().optional(),
-  user:          z.string().nullable().optional(),
-  command:       z.string().nullable().optional(),
-  cpuLimit:      z.number().min(0).max(64).nullable().optional(),
-  memoryLimit:   z.string().regex(/^\d+[kmgKMG]?$/).nullable().optional(),
-  pinnedUrl:     z.string().url().nullable().optional(),
-})
+  listStacks, getStack, stackExists, writeStack, observedNetworks,
+  dockerContainers, type DockerContainerLite,
+} from "../../services/containerStacks"
+import {
+  generateComposeYaml, parseComposeYaml,
+  zAppInput, zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, type AppInput,
+} from "@app/compose"
 
 // ── Error mapper ──────────────────────────────────────────────────────────────
 
@@ -85,26 +38,6 @@ export async function resolvePlaceMounts(
   }))
 }
 
-// ── App sub-router ────────────────────────────────────────────────────────────
-
-// A cached snapshot of all Docker containers (managed + unmanaged), so repeated
-// callers — the debounced `checkPort` and the App Store's live status — don't each
-// re-run `docker ps` + inspect. Cached ~5s; `listAll` is the worker's ps+inspect.
-export type DockerContainerLite = {
-  name:    string
-  status:  string   // Docker State.Status: running | exited | created | paused | …
-  ports?:  Array<{ hostPort: number; protocol: string }>
-}
-let dockerCache: { at: number; list: DockerContainerLite[] } | null = null
-export async function dockerContainers(): Promise<DockerContainerLite[]> {
-  if (dockerCache && Date.now() - dockerCache.at < 5_000) return dockerCache.list
-  let list: DockerContainerLite[] = []
-  try {
-    list = await requestSync<DockerContainerLite[]>("root.container.listAll", {}, 10_000)
-  } catch { /* worker/docker unavailable — treat as empty */ }
-  dockerCache = { at: Date.now(), list }
-  return list
-}
 async function dockerBoundPorts(): Promise<Map<string, string>> {
   const ports = new Map<string, string>()
   for (const c of await dockerContainers()) {
@@ -113,31 +46,119 @@ async function dockerBoundPorts(): Promise<Map<string, string>> {
   return ports
 }
 
+// ── App sub-router ────────────────────────────────────────────────────────────
+
 const appRouter = router({
-  list: adminProcedure.query(({ ctx }) => listApps(ctx.prisma)),
+  list: adminProcedure.query(async () => (await listStacks()).map(s => ({ ...s, id: s.name }))),
+
+  get: adminProcedure.input(z.object({ name: z.string() }))
+    .query(async ({ input }) => ({ ...(await getStack(input.name)), id: input.name })),
+
+  create: adminProcedure.input(z.object({ data: zAppInput }))
+    .mutation(async ({ ctx, input }) => {
+      const data = input.data
+      if (await stackExists(data.name)) {
+        throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      }
+      const resolved = await resolvePlaceMounts(ctx.prisma, data.volumes as any[])
+      const yaml = generateComposeYaml({ ...data, volumes: resolved as any[] } as AppInput)
+      await writeStack(data.name, yaml)
+      return { name: data.name }
+    }),
+
+  update: adminProcedure.input(z.object({ name: z.string(), data: zAppInput }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await getStack(input.name)
+      const resolved = await resolvePlaceMounts(ctx.prisma, input.data.volumes as any[])
+      const yaml = generateComposeYaml({ ...input.data, volumes: resolved as any[] } as AppInput, current.rawYaml)
+      await writeStack(input.name, yaml)
+      return { name: input.name }
+    }),
+
+  saveRaw: adminProcedure.input(z.object({ name: z.string(), content: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const parsed = parseComposeYaml(input.content)
+      if (parsed.services.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "The file must declare at least one service" })
+      }
+      await writeStack(input.name, input.content)
+      return { name: input.name }
+    }),
+
+  apply: adminProcedure.input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await getStack(input.name) // 404 early
+      await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
+      const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
+      return { jobId }
+    }),
+
+  start: adminProcedure.input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      ({ jobId: await publishJob("container.composeUp", { name: input.name }, ctx.user.userId) })),
+
+  stop: adminProcedure.input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      ({ jobId: await publishJob("container.composeStop", { name: input.name }, ctx.user.userId) })),
+
+  restart: adminProcedure.input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      ({ jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) })),
+
+  remove: adminProcedure.input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      ({ jobId: await publishJob("container.composeDown", { name: input.name, removeFiles: true }, ctx.user.userId) })),
+
+  inspect: adminProcedure.input(z.object({ name: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        return await requestSync<{ status: string; [k: string]: unknown }>(
+          "root.container.inspect", { containerName: input.name })
+      } catch (e: any) { throw mapWorkerError(e) }
+    }),
+
+  /* NOTE: container logs are NOT a tRPC procedure - they are the HTTP SSE route
+     in apps/backend/src/routes/containers.ts (fetched by ContainerLogsPanel.vue
+     at /containers/<name>/logs). That route keeps working unchanged: it already
+     addresses containers by name. Do not add a logs procedure to the router. */
+
+  listPinned: protectedProcedure.query(async () => {
+    const stacks = await listStacks()
+    return stacks.filter(s => s.app?.pinnedUrl)
+      .map(s => ({ id: s.name, name: s.name, status: s.status, pinnedUrl: s.app!.pinnedUrl! }))
+  }),
+
+  pin: adminProcedure.input(z.object({ name: z.string(), pinnedUrl: z.string().url().nullable() }))
+    .mutation(async ({ input }) => {
+      const current = await getStack(input.name)
+      if (!current.app) throw new TRPCError({ code: "BAD_REQUEST", message: "Multi-service apps cannot be pinned from the UI" })
+      const yaml = generateComposeYaml({ ...current.app, pinnedUrl: input.pinnedUrl }, current.rawYaml)
+      await writeStack(input.name, yaml)
+      return { ok: true }
+    }),
 
   // Warn (non-blocking) when a host port is already taken — by another managed
   // app, any Docker container, or a non-Docker host process. Returns a human
   // string in `by` for the UI to show.
   checkPort: adminProcedure
     .input(z.object({
-      port:         z.number().int().min(1).max(65535),
-      protocol:     z.enum(["tcp", "udp"]).default("tcp"),
-      excludeAppId: z.string().optional(),   // ignore the app currently being edited
+      port:        z.number().int().min(1).max(65535),
+      protocol:    z.enum(["tcp", "udp"]).default("tcp"),
+      excludeName: z.string().optional(),   // ignore the app currently being edited
     }))
-    .query(async ({ ctx, input }): Promise<{ inUse: boolean; by: string | null }> => {
-      // 1) another HSI-managed app
-      const apps = await listApps(ctx.prisma)
-      for (const a of apps) {
-        if (a.id === input.excludeAppId) continue
-        if (a.ports.some(p => p.hostPort === input.port && p.protocol === input.protocol)) {
-          return { inUse: true, by: `app "${a.name}"` }
+    .query(async ({ input }): Promise<{ inUse: boolean; by: string | null }> => {
+      // 1) another HSI-managed app (declarative stack)
+      const stacks = await listStacks()
+      for (const s of stacks) {
+        if (s.name === input.excludeName) continue
+        if (s.app?.ports.some(p => p.hostPort === input.port && p.protocol === input.protocol)) {
+          return { inUse: true, by: `app "${s.name}"` }
         }
       }
       // 2) any Docker container (managed or unmanaged/compose). The app being
       //    edited runs as a container of the same name — don't flag it against itself.
       const dockerName = (await dockerBoundPorts()).get(`${input.port}/${input.protocol}`)
-      if (dockerName && !apps.some(a => a.name === dockerName && a.id === input.excludeAppId)) {
+      if (dockerName && !stacks.some(s => s.name === dockerName && s.name === input.excludeName)) {
         return { inUse: true, by: `container "${dockerName}"` }
       }
       // 3) a non-Docker process holding the port (bind-and-release probe)
@@ -150,164 +171,30 @@ const appRouter = router({
       return { inUse: false, by: null }
     }),
 
-  listPinned: protectedProcedure.query(async ({ ctx }) => {
-    const apps = await listApps(ctx.prisma)
-    return apps
-      .filter(a => a.pinnedUrl)
-      .map(a => ({ id: a.id, name: a.name, status: a.status, pinnedUrl: a.pinnedUrl! }))
-  }),
-
-  pin: adminProcedure
-    .input(z.object({ id: z.string(), pinnedUrl: z.string().url().nullable() }))
+  importContainer: adminProcedure
+    .input(z.object({
+      name:         z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+      image:        z.string().min(1),
+      ports:        z.array(zPortMapping).default([]),
+      envs:         z.array(zEnvVar).default([]),
+      volumes:      z.array(zVolumeMount).default([]),
+      networkNames: z.array(z.string()).default([]),
+      labels:       z.array(zLabelEntry).default([]),
+    }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.prisma.containerApp.update({
-        where: { id: input.id },
-        data:  { pinnedUrl: input.pinnedUrl ?? null },
-      })
-      return { ok: true }
+      if (await stackExists(input.name)) throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      const resolved = await resolvePlaceMounts(ctx.prisma, input.volumes as any[])
+      const yaml = generateComposeYaml({
+        name: input.name, image: input.image, ports: input.ports, envs: input.envs,
+        volumes: resolved as any[], networkNames: input.networkNames, labels: input.labels,
+        capAdd: [], capDrop: [], extraHosts: [], restartPolicy: "no",
+        hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null, pinnedUrl: null,
+      } as AppInput)
+      await writeStack(input.name, yaml)
+      return { name: input.name }
     }),
 
-  get: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .query(({ ctx, input }) => getApp(ctx.prisma, input.id)),
-
-  create: adminProcedure
-    .input(zAppInput)
-    .mutation(async ({ ctx, input }) => {
-      const app = await createApp(ctx.prisma, input)
-      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, input.volumes)
-      const jobId = await publishJob("container.create", {
-        containerName: app.name,
-        image:         app.image,
-        ports:         app.ports,
-        envs:          app.envs,
-        volumes:       resolvedVolumes,
-        networkNames:  app.networkNames,
-        labels:        app.labels,
-        capAdd:        app.capAdd,
-        capDrop:       app.capDrop,
-        extraHosts:    app.extraHosts,
-        restartPolicy: app.restartPolicy,
-        hostname:      app.hostname,
-        user:          app.user,
-        command:       app.command,
-        cpuLimit:      app.cpuLimit,
-        memoryLimit:   app.memoryLimit,
-      }, ctx.user.userId)
-      return { app, jobId }
-    }),
-
-  update: adminProcedure
-    .input(z.object({ id: z.string(), data: zAppInput }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await updateApp(ctx.prisma, input.id, input.data)
-      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, input.data.volumes)
-      const jobId = await publishJob("container.recreate", {
-        containerName: app.name,
-        image:         app.image,
-        ports:         app.ports,
-        envs:          app.envs,
-        volumes:       resolvedVolumes,
-        networkNames:  app.networkNames,
-        labels:        app.labels,
-        capAdd:        app.capAdd,
-        capDrop:       app.capDrop,
-        extraHosts:    app.extraHosts,
-        restartPolicy: app.restartPolicy,
-        hostname:      app.hostname,
-        user:          app.user,
-        command:       app.command,
-        cpuLimit:      app.cpuLimit,
-        memoryLimit:   app.memoryLimit,
-      }, ctx.user.userId)
-      return { app, jobId }
-    }),
-
-  delete: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      await deleteApp(ctx.prisma, input.id)
-      const jobId = await publishJob("container.remove", {
-        containerName: app.name,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-
-  start: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      const jobId = await publishJob("container.start", {
-        containerName: app.name,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-
-  stop: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      const jobId = await publishJob("container.stop", {
-        containerName: app.name,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-
-  restart: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      const jobId = await publishJob("container.restart", {
-        containerName: app.name,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-
-  recreate: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, app.volumes as any[])
-      const jobId = await publishJob("container.recreate", {
-        containerName: app.name,
-        image:         app.image,
-        ports:         app.ports,
-        envs:          app.envs,
-        volumes:       resolvedVolumes,
-        networkNames:  app.networkNames,
-        labels:        app.labels,
-        capAdd:        app.capAdd,
-        capDrop:       app.capDrop,
-        extraHosts:    app.extraHosts,
-        restartPolicy: app.restartPolicy,
-        hostname:      app.hostname,
-        user:          app.user,
-        command:       app.command,
-        cpuLimit:      app.cpuLimit,
-        memoryLimit:   app.memoryLimit,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-
-  inspect: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const app = await getApp(ctx.prisma, input.id)
-      try {
-        const result = await requestSync<{ status: string; [k: string]: unknown }>(
-          "root.container.inspect",
-          { containerName: app.name },
-        )
-        await setAppStatus(ctx.prisma, input.id, result.status ?? "unknown")
-        return result
-      } catch (e: any) {
-        await setAppStatus(ctx.prisma, input.id, "error")
-        throw mapWorkerError(e)
-      }
-    }),
-
-  listUnmanaged: adminProcedure.query(async ({ ctx }) => {
+  listUnmanaged: adminProcedure.query(async () => {
     type DockerContainer = {
       name:         string
       image:        string
@@ -318,15 +205,16 @@ const appRouter = router({
       networkNames: string[]
     }
 
-    let all: DockerContainer[]
-    try {
-      all = await requestSync<DockerContainer[]>("root.container.listAll", {}, 10_000)
-    } catch {
-      return []
-    }
+    const [all, stacks] = await Promise.all([
+      requestSync<DockerContainer[]>("root.container.listAll", {}, 10_000).catch(() => [] as DockerContainer[]),
+      listStacks(),
+    ])
 
-    const managed     = await listApps(ctx.prisma)
-    const managedNames = new Set(managed.map(a => a.name))
+    const managedNames = new Set<string>()
+    for (const s of stacks) {
+      managedNames.add(s.name)
+      for (const o of s.observed) managedNames.add(o.name)
+    }
 
     return all
       .filter(c => !managedNames.has(c.name))
@@ -343,110 +231,12 @@ const appRouter = router({
         composeFile:    c.labels?.["com.docker.compose.config-files"] ?? null,
       }))
   }),
-
-  importContainer: adminProcedure
-    .input(z.object({
-      name:         z.string().min(1).max(64),
-      image:        z.string().min(1),
-      ports:        z.array(zPortMapping).default([]),
-      envs:         z.array(zEnvVar).default([]),
-      volumes:      z.array(z.object({
-        type:     z.enum(["bind", "named", "place"]),
-        source:   z.string(),
-        target:   z.string(),
-        readOnly: z.boolean().default(false),
-      })).default([]),
-      networkNames: z.array(z.string()).default([]),
-      labels:       z.array(zLabelEntry).default([]),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const app = await createApp(ctx.prisma, {
-        ...input,
-        capAdd:        [],
-        capDrop:       [],
-        extraHosts:    [],
-        restartPolicy: "no",
-      })
-      await setAppStatus(ctx.prisma, app.id, input.name ? "unknown" : "unknown")
-      return app
-    }),
 })
 
 // ── Network sub-router ────────────────────────────────────────────────────────
 
 const networkRouter = router({
-  list: adminProcedure.query(({ ctx }) => listNetworks(ctx.prisma)),
-
-  create: adminProcedure
-    .input(z.object({
-      name:    z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
-      driver:  z.enum(["bridge", "overlay", "host", "none", "macvlan"]).default("bridge"),
-      subnet:  z.string().nullable().optional(),
-      gateway: z.string().nullable().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const network = await createNetwork(ctx.prisma, input)
-      const jobId = await publishJob("network.create", {
-        networkName: network.name,
-        driver:      network.driver,
-        subnet:      network.subnet,
-        gateway:     network.gateway,
-      }, ctx.user.userId)
-      return { network, jobId }
-    }),
-
-  delete: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const networks = await listNetworks(ctx.prisma)
-      const network  = networks.find(n => n.id === input.id)
-      if (!network) throw new TRPCError({ code: "NOT_FOUND" })
-      await deleteNetwork(ctx.prisma, input.id)
-      const jobId = await publishJob("network.remove", {
-        networkName: network.name,
-      }, ctx.user.userId)
-      return { jobId }
-    }),
-})
-
-// ── Volume sub-router ─────────────────────────────────────────────────────────
-
-const volumeRouter = router({
-  list: adminProcedure.query(({ ctx }) => listVolumes(ctx.prisma)),
-
-  create: adminProcedure
-    .input(z.object({
-      name:       z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
-      volumeType: z.enum(["named", "path", "place"]).default("named"),
-      sourcePath: z.string().nullable().optional(),
-      placeId:    z.string().nullable().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const volume = await createVolume(ctx.prisma, input)
-      if (volume.volumeType === "named") {
-        const jobId = await publishJob("volume.create", {
-          volumeName: volume.name,
-        }, ctx.user.userId)
-        return { volume, jobId }
-      }
-      return { volume, jobId: null }
-    }),
-
-  delete: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const volumes = await listVolumes(ctx.prisma)
-      const volume  = volumes.find(v => v.id === input.id)
-      if (!volume) throw new TRPCError({ code: "NOT_FOUND" })
-      await deleteVolume(ctx.prisma, input.id)
-      if (volume.volumeType === "named") {
-        const jobId = await publishJob("volume.remove", {
-          volumeName: volume.name,
-        }, ctx.user.userId)
-        return { jobId }
-      }
-      return { jobId: null }
-    }),
+  list: adminProcedure.query(() => observedNetworks()),
 })
 
 // ── Main router ───────────────────────────────────────────────────────────────
@@ -454,5 +244,6 @@ const volumeRouter = router({
 export const containerRouter = router({
   app:     appRouter,
   network: networkRouter,
-  volume:  volumeRouter,
 })
+
+export type { DockerContainerLite }

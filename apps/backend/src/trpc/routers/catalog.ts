@@ -3,17 +3,10 @@ import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { CATALOG } from "@app/app-catalog"
-import { listApps, createApp, portDomainUrl, type AppConfig } from "../../services/container.service"
+import { portDomainUrl, generateComposeYaml, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
-import { resolvePlaceMounts, dockerContainers } from "./container"
-
-// Docker's container state → the store card's status vocabulary. Anything mid-life
-// (created/restarting/…) falls through and the card treats it as "Installing…".
-function liveStatus(dockerStatus: string): string {
-  if (dockerStatus === "running") return "running"
-  if (dockerStatus === "exited" || dockerStatus === "dead" || dockerStatus === "paused") return "stopped"
-  return dockerStatus
-}
+import { listStacks, stackExists, writeStack } from "../../services/containerStacks"
+import { resolvePlaceMounts } from "./container"
 
 const zInstallVolume = z.object({
   target: z.string().startsWith("/"),
@@ -26,35 +19,31 @@ const zInstallVolume = z.object({
 })
 
 export const catalogRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    // Enrich every manifest with its installed instance (if any): a managed app
-    // carrying the `hsi.catalog.id` label. We surface the live `status` and the
-    // web-UI host port so the store card can show a real state + an Open action,
-    // not just an installed/not-installed boolean.
-    const apps = await listApps(ctx.prisma)
-    // Live container state (persisted `status` is only refreshed on explicit
-    // actions, so a freshly-installed app would otherwise never show "Running").
-    const byName = new Map((await dockerContainers()).map((c) => [c.name, c]))
+  list: protectedProcedure.query(async () => {
+    // Enrich every manifest with its installed instance (if any): a declarative
+    // stack carrying the `hsi.catalog.id` label. We surface the live `status`
+    // and the web-UI host port so the store card can show a real state + an
+    // Open action, not just an installed/not-installed boolean.
+    const stacks = await listStacks()
     return CATALOG.map((m) => {
-      const app = apps.find((a) =>
-        a.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
+      const stack = stacks.find((s) =>
+        s.app?.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
       )
-      const live = app ? byName.get(app.name) : undefined
       // The web-UI port row (if any) — carries both the mapped host port (fallback
       // URL) and its optional domain/HTTPS binding (the "Open" URL when set).
-      const webRow = app && m.webUiPort != null
-        ? app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
+      const webRow = stack?.app && m.webUiPort != null
+        ? stack.app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
         : null
-      const installedApp = app
+      const installedApp = stack && stack.app
         ? {
-            id:      app.id,
-            name:    app.name,
-            status:  live ? liveStatus(live.status) : app.status,
+            id:      stack.name,
+            name:    stack.name,
+            status:  stack.status,
             webPort: webRow?.hostPort ?? null,
             webUrl:  webRow ? portDomainUrl(webRow) : null,
           }
         : null
-      return { ...m, installed: !!app, installedApp }
+      return { ...m, installed: !!stack, installedApp }
     })
   }),
 
@@ -77,10 +66,10 @@ export const catalogRouter = router({
       if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
 
       // Fail fast on a name collision before doing any side effects (mkdirp,
-      // Place rows) below — createApp() would reject it anyway, but only
-      // *after* volumes have already been resolved/created.
-      const existing = await ctx.prisma.containerApp.findUnique({ where: { name: input.name } })
-      if (existing) throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      // Place rows) below.
+      if (await stackExists(input.name)) {
+        throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      }
 
       // Validate the submission only references the manifest's declared items.
       const manifestTargets = new Set(m.volumes.map((v) => v.target))
@@ -105,12 +94,11 @@ export const catalogRouter = router({
         if (clash) throw new TRPCError({ code: "CONFLICT", message: `A Place already exists at ${clash.path}` })
       }
 
-      // Resolve volumes → VolumeMount-shaped entries (same shape container.create
-      // persists: "place" volumes keep the Place id as `source` and get resolved
-      // to a real host bind path later via resolvePlaceMounts, exactly like
-      // container.create does).
+      // Resolve volumes → VolumeMount-shaped entries. "place" volumes keep the
+      // Place id as `source` and get resolved to a real host bind path below
+      // via resolvePlaceMounts before generating the compose file.
       const submitted = new Map(input.volumes.map((v) => [v.target, v]))
-      const volumes: AppConfig["volumes"] = await Promise.all(m.volumes.map(async (mv) => {
+      const volumes: AppInput["volumes"] = await Promise.all(m.volumes.map(async (mv) => {
         const s = submitted.get(mv.target)?.source
         const readOnly = mv.readOnlyDefault
         if (!s) throw new TRPCError({ code: "BAD_REQUEST", message: `Missing volume ${mv.target}` })
@@ -123,11 +111,8 @@ export const catalogRouter = router({
           // Creating a new Place (and mkdir-ing arbitrary host paths as root
           // via root.fs.mkdirp — which has NO path-containment check on the
           // worker side) is normally gated behind adminProcedure in place.ts
-          // (`place.create` / `place.mkdir`). `container.create`'s guard here
-          // (`container.create` permission) can be granted to non-admins, so
-          // to avoid handing a lesser-privileged role a way to create
-          // directories/root-owned Places anywhere on the host, require admin
-          // specifically for this volume source kind.
+          // (`place.create` / `place.mkdir`). This mutation is admin-only, but
+          // the check stays explicit for defence in depth.
           if (!ctx.user.isAdmin) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can create a new Place during install" })
           }
@@ -158,21 +143,23 @@ export const catalogRouter = router({
       const ports = m.ports.map((mp) => ({
         containerPort: mp.container,
         hostPort:      submittedPorts.get(mp.container) ?? mp.hostDefault ?? mp.container,
-        protocol:      mp.protocol,
+        protocol:      mp.protocol as "tcp" | "udp",
+        tls:           false,
       }))
 
       // Derive the web UI's actual host port from the resolved `ports` list
       // (rather than recomputing the same fallback logic a second time) so the
       // wizard can build `http://<host>:<webPort>` itself — the backend has no
       // notion of the browser's hostname, so `pinnedUrl` is intentionally left
-      // unset here (AppConfig.pinnedUrl stays null; container.app.pin can set
-      // it later once the frontend knows the URL).
+      // unset here (container.app.pin can set it later once the frontend knows
+      // the URL).
       const webPort = m.webUiPort != null
         ? ports.find((p) => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort
         : undefined
 
-      // Build the SAME AppConfig shape container.create builds, then reuse createApp.
-      const config: AppConfig = {
+      // Build the AppInput, resolve "place" volumes to real host paths, then
+      // write the compose file (the stack's single source of truth).
+      const config: AppInput = {
         name:          input.name,
         image:         m.image,
         ports,
@@ -190,31 +177,15 @@ export const catalogRouter = router({
         cpuLimit:      null,
         memoryLimit:   null,
       }
-      const app = await createApp(ctx.prisma, config)
+      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, config.volumes as any[])
+      const yaml = generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] })
+      await writeStack(input.name, yaml)
 
-      // Mirror container.app.create exactly: persisting the row alone does not
-      // start anything — the worker only creates+starts the container once it
-      // consumes this job off the "root.container.create" JetStream subject.
-      const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, app.volumes)
-      const jobId = await publishJob("container.create", {
-        containerName: app.name,
-        image:         app.image,
-        ports:         app.ports,
-        envs:          app.envs,
-        volumes:       resolvedVolumes,
-        networkNames:  app.networkNames,
-        labels:        app.labels,
-        capAdd:        app.capAdd,
-        capDrop:       app.capDrop,
-        extraHosts:    app.extraHosts,
-        restartPolicy: app.restartPolicy,
-        hostname:      app.hostname,
-        user:          app.user,
-        command:       app.command,
-        cpuLimit:      app.cpuLimit,
-        memoryLimit:   app.memoryLimit,
-      }, ctx.user.userId)
+      // Wizard UX: validate the freshly written file, then apply immediately —
+      // the worker's compose up job creates+starts the stack.
+      await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
+      const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
 
-      return { app, jobId, webPort }
+      return { name: input.name, jobId, webPort }
     }),
 })
