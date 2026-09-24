@@ -162,7 +162,7 @@ function onMaximizeClick() {
       </div>
       <div class="flex items-center gap-1 shrink-0" @pointerdown.stop>
         <button
-          v-if="win.appId === 'apps' && isAdmin && appsPanelRef?.active === 'containers'"
+          v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
           title="New App"
           class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"

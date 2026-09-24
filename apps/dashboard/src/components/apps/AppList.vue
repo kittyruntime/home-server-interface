@@ -16,20 +16,19 @@ const { confirm } = useConfirm()
 const { push: pushNotif, update: updateNotif, dismiss: dismissNotif } = useNotifications()
 const toast = useToast()
 
-type App = {
-  id: string; name: string; image: string; status: string
-  ports: Array<{ hostPort: number; containerPort: number; protocol: 'tcp' | 'udp' }>
-  envs: any[]; volumes: any[]; networkNames: string[]; labels: any[]
-  capAdd: string[]; capDrop: string[]; extraHosts: string[]; restartPolicy: string
+type App = Awaited<ReturnType<typeof trpc.container.app.list.query>>[number]
+
+// Flat shape AppFormModal expects: the stack's single-service input + id/status.
+type EditableApp = Omit<NonNullable<App['app']>, 'hostname' | 'user' | 'command' | 'cpuLimit' | 'memoryLimit' | 'pinnedUrl'> & {
+  id: string; status: string
   hostname: string | null; user: string | null; command: string | null
-  cpuLimit: number | null; memoryLimit: string | null
-  pinnedUrl: string | null
+  cpuLimit: number | null; memoryLimit: string | null; pinnedUrl: string | null
 }
 
 const apps          = ref<App[]>([])
 const loading       = ref(true)
 const showModal     = ref(false)
-const editApp       = ref<App | null>(null)
+const editApp       = ref<EditableApp | null>(null)
 const actionLoading = ref<Record<string, string>>({})
 let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -38,33 +37,18 @@ const pinDialogUrl  = ref('')
 const pinDialogErr  = ref('')
 const pinDialogBusy = ref(false)
 
-const pinnedApps = computed(() => apps.value.filter(a => a.pinnedUrl))
+const pinnedApps = computed(() => apps.value.filter(a => a.app?.pinnedUrl))
 
 async function load() {
   loading.value = true
-  try { apps.value = await trpc.container.app.list.query() as App[] }
+  try { apps.value = await trpc.container.app.list.query() }
   catch (e: any) { console.error('Failed to load apps:', e.message) }
   finally { loading.value = false }
 }
 
-async function refreshStatuses() {
-  if (!apps.value.length) return
-  await Promise.allSettled(
-    apps.value
-      .filter(a => !actionLoading.value[a.id])
-      .map(async (app) => {
-        try {
-          const result = await trpc.container.app.inspect.query({ id: app.id })
-          app.status = (result as any).status ?? 'unknown'
-        } catch { /* keep previous status on error */ }
-      })
-  )
-}
-
 onMounted(async () => {
   await load()
-  await refreshStatuses()
-  refreshTimer = setInterval(refreshStatuses, 10_000)
+  refreshTimer = setInterval(load, 10_000)
 })
 
 onUnmounted(() => {
@@ -92,9 +76,10 @@ function statusText(status: string) {
 }
 
 function portsSummary(app: App): string {
-  if (!app.ports.length) return '—'
-  return app.ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ')
-    + (app.ports.length > 2 ? ` +${app.ports.length - 2}` : '')
+  const ports = app.app?.ports ?? []
+  if (!ports.length) return '—'
+  return ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ')
+    + (ports.length > 2 ? ` +${ports.length - 2}` : '')
 }
 
 async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'delete') {
@@ -106,60 +91,39 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     : null
   try {
     if (action === 'delete') {
-      if (!await confirm('Delete this app? The container will be removed.', { danger: true, confirmLabel: 'Delete' })) return
-      await trpc.container.app.delete.mutate({ id })
+      if (!await confirm('Delete this app? The stack containers will be removed and its compose file deleted.', { danger: true, confirmLabel: 'Delete' })) return
+      const { jobId } = await trpc.container.app.remove.mutate({ name: app?.name ?? id })
+      await pollJob(jobId)
       apps.value = apps.value.filter(a => a.id !== id)
       return
     }
     if (app) app.status = 'transitioning'
-    const { jobId } = await (trpc.container.app[action as 'start' | 'stop' | 'restart'] as any).mutate({ id })
+    const { jobId } = await (trpc.container.app[action as 'start' | 'stop' | 'restart'] as any).mutate({ name: app?.name ?? id })
     await pollJob(jobId)
-    try {
-      const result = await trpc.container.app.inspect.query({ id })
-      if (app) app.status = (result as any).status ?? 'unknown'
-    } catch {
-      if (app) app.status = action === 'start' ? 'running' : 'stopped'
-    }
+    if (app) app.status = action === 'start' ? 'running' : 'stopped'
     if (notifId) { updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'}`, progress: undefined }); setTimeout(() => dismissNotif(notifId), 3000) }
   } catch (e: any) {
     if (app) app.status = 'unknown'
-    const notFound = (e?.message ?? '').includes('No such container')
-    if (notFound && (action === 'start' || action === 'restart')) {
-      if (notifId) dismissNotif(notifId)
-      const ok = await confirm(
-        `Container "${app?.name}" doesn't exist on Docker. Recreate it from the stored configuration?`,
-        { confirmLabel: 'Recreate' },
-      )
-      if (ok) { delete actionLoading.value[id]; await recreateApp(id); return }
-    } else {
-      if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
-      toast.error(e.message ?? `Failed: ${action}`)
-    }
+    if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
+    toast.error(e.message ?? `Failed: ${action}`)
   } finally {
     delete actionLoading.value[id]
   }
 }
 
-async function recreateApp(id: string) {
-  actionLoading.value[id] = 'recreate'
+async function applyApp(id: string) {
+  actionLoading.value[id] = 'apply'
   const app = apps.value.find(a => a.id === id)
-  if (app) app.status = 'transitioning'
-  const notifId = pushNotif({ type: 'progress', title: `Recreating ${app?.name ?? ''}…`, progress: -1 })
+  const notifId = pushNotif({ type: 'progress', title: `Applying ${app?.name ?? ''}…`, progress: -1 })
   try {
-    const { jobId } = await trpc.container.app.recreate.mutate({ id })
+    const { jobId } = await trpc.container.app.apply.mutate({ name: app?.name ?? id })
     await pollJob(jobId)
-    try {
-      const result = await trpc.container.app.inspect.query({ id })
-      if (app) app.status = (result as any).status ?? 'unknown'
-    } catch {
-      if (app) app.status = 'running'
-    }
-    updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} recreated`, progress: undefined })
+    updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })
     setTimeout(() => dismissNotif(notifId), 3000)
+    if (app) { app.pendingApply = false; app.drifted = false }
   } catch (e: any) {
-    if (app) app.status = 'error'
-    updateNotif(notifId, { type: 'error', title: `Recreate ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
-    toast.error(e?.message ?? 'Failed to recreate container')
+    updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
+    toast.error(e?.message ?? 'Failed to apply')
   } finally {
     delete actionLoading.value[id]
   }
@@ -168,20 +132,26 @@ async function recreateApp(id: string) {
 const logsApp = ref<App | null>(null)
 
 function openNew()        { editApp.value = null; showModal.value = true }
-function openEdit(a: App) { editApp.value = a;    showModal.value = true }
+function openEdit(a: App) {
+  const app = a.app
+  if (!app) { toast.error('Multi-service apps are edited via their compose file.'); return }
+  editApp.value = {
+    ...app, id: a.id, status: a.status,
+    hostname: app.hostname ?? null, user: app.user ?? null, command: app.command ?? null,
+    cpuLimit: app.cpuLimit ?? null, memoryLimit: app.memoryLimit ?? null,
+    pinnedUrl: app.pinnedUrl ?? null,
+  }
+  showModal.value = true
+}
 function openLogs(a: App) { logsApp.value = a }
 
 defineExpose({ openNew })
 
-function onSaved(app: App) {
-  const idx = apps.value.findIndex(a => a.id === app.id)
-  if (idx !== -1) apps.value[idx] = app
-  else apps.value.push(app)
-}
+function onSaved() { load() }
 
 function openPinDialog(app: App) {
   pinDialog.value    = app
-  pinDialogUrl.value = app.pinnedUrl ?? ''
+  pinDialogUrl.value = app.app?.pinnedUrl ?? ''
   pinDialogErr.value = ''
 }
 
@@ -193,8 +163,8 @@ async function savePin() {
   pinDialogBusy.value = true
   pinDialogErr.value  = ''
   try {
-    await trpc.container.app.pin.mutate({ id: app.id, pinnedUrl: url })
-    app.pinnedUrl   = url
+    await trpc.container.app.pin.mutate({ name: app.name, pinnedUrl: url })
+    if (app.app) app.app.pinnedUrl = url
     pinDialog.value = null
   } catch (e: any) {
     pinDialogErr.value = e?.message ?? 'Failed to save'
@@ -205,8 +175,8 @@ async function savePin() {
 
 async function unpin(app: App) {
   try {
-    await trpc.container.app.pin.mutate({ id: app.id, pinnedUrl: null })
-    app.pinnedUrl = null
+    await trpc.container.app.pin.mutate({ name: app.name, pinnedUrl: null })
+    if (app.app) app.app.pinnedUrl = null
   } catch (e: any) {
     toast.error(e?.message ?? 'Failed to unpin')
   }
@@ -267,13 +237,13 @@ async function unpin(app: App) {
           <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
-              :href="app.pinnedUrl!" target="_blank" rel="noopener"
+              :href="app.app?.pinnedUrl ?? ''" target="_blank" rel="noopener"
               class="group flex items-center gap-3 px-3.5 py-2.5 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl hover:bg-[var(--c-hover)] transition-all no-underline"
             >
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
               <div class="min-w-0">
                 <p class="text-[13px] font-semibold text-[var(--c-text-1)] font-mono leading-none">{{ app.name }}</p>
-                <p class="text-[11px] text-[var(--c-text-3)] mt-0.5 truncate max-w-[180px]">{{ app.pinnedUrl }}</p>
+                <p class="text-[11px] text-[var(--c-text-3)] mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
               </div>
               <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] group-hover:text-[var(--c-text-2)] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -285,7 +255,7 @@ async function unpin(app: App) {
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
           <article v-for="app in apps" :key="app.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.image">{{app.image}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '—'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
             <div class="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--c-border)] pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" @click="openLogs(app)">Logs</button></div>
           </article>
         </div>
@@ -312,18 +282,26 @@ async function unpin(app: App) {
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-[var(--c-text-2)] text-[13px] font-medium">{{ app.name }}</span>
                   <svg
-                    v-if="app.pinnedUrl"
+                    v-if="app.app?.pinnedUrl"
                     class="w-3 h-3 text-[var(--c-accent)] flex-shrink-0"
                     fill="currentColor" viewBox="0 0 24 24"
                   >
                     <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                   </svg>
+                  <span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span>
+                  <span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span>
+                </div>
+                <div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5">
+                  <div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5">
+                    <span :class="['w-1 h-1 rounded-full', statusDot(svc.status)]" />
+                    <span class="font-mono text-[11px] text-[var(--c-text-3)]">{{ svc.name }}</span>
+                  </div>
                 </div>
               </td>
 
               <!-- Image -->
               <td class="px-3 py-3.5 hidden sm:table-cell">
-                <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.image }}</span>
+                <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.app?.image ?? '—' }}</span>
               </td>
 
               <!-- Ports -->
@@ -342,6 +320,17 @@ async function unpin(app: App) {
               <!-- Actions -->
               <td class="px-6 py-3.5">
                 <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                  <!-- Apply -->
+                  <button
+                    v-if="app.pendingApply || app.drifted"
+                    @click="applyApp(app.id)"
+                    :disabled="!!actionLoading[app.id]"
+                    title="Apply changes"
+                    class="px-2 py-1 mr-1.5 rounded-lg text-[11px] font-medium text-[var(--c-accent)] border border-[var(--c-accent)]/40 hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
+                  >
+                    Apply
+                  </button>
 
                   <!-- Start / Stop / Restart -->
                   <div class="flex items-center border border-[var(--c-border-strong)] rounded-lg overflow-hidden mr-1.5">
@@ -392,14 +381,14 @@ async function unpin(app: App) {
 
                   <!-- Pin -->
                   <button
-                    @click="app.pinnedUrl ? unpin(app) : openPinDialog(app)"
-                    :title="app.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
+                    @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
+                    :title="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
                     :class="[
                       'p-1.5 rounded-lg transition-colors hover:bg-[var(--c-hover)]',
-                      app.pinnedUrl ? 'text-[var(--c-accent)] hover:text-[var(--c-text-2)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
+                      app.app?.pinnedUrl ? 'text-[var(--c-accent)] hover:text-[var(--c-text-2)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
                     ]"
                   >
-                    <svg class="w-3.5 h-3.5" :fill="app.pinnedUrl ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg class="w-3.5 h-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                     </svg>
                   </button>

@@ -125,6 +125,12 @@ function actionLabel(action: string): string {
     'container.start':           'Start container',
     'container.stop':            'Stop container',
     'container.restart':         'Restart container',
+    'container.app.create':      'Create container app',
+    'container.app.update':      'Update container app',
+    'container.app.apply':       'Apply container stack',
+    'container.app.saveRaw':     'Edit container compose file',
+    'container.app.remove':      'Remove container app',
+    'catalog.install':           'Install app from catalog',
     'place.create':              'Create place',
     'place.delete':              'Delete place',
     'role.create':               'Create role',
@@ -149,7 +155,7 @@ function actionCategory(action: string): Category {
   if (action.startsWith('system.') || action.startsWith('storage.')) return 'system'
   if (action.startsWith('user.')  || action.startsWith('role.')  ||
       action.startsWith('place.') || action.startsWith('container.') ||
-      action.startsWith('update.')) return 'admin'
+      action.startsWith('catalog.') || action.startsWith('update.')) return 'admin'
   return 'other'
 }
 

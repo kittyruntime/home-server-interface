@@ -12,7 +12,7 @@ export interface PortMapping {
   publicPort?:   number
 }
 
-const props = defineProps<{ modelValue: PortMapping[]; appId?: string }>()
+const props = defineProps<{ modelValue: PortMapping[]; appName?: string }>()
 defineEmits<{ 'update:modelValue': [v: PortMapping[]] }>()
 
 // Non-blocking "port already in use" warnings, keyed by row index.
@@ -33,7 +33,7 @@ async function runChecks() {
     if (!p.hostPort || p.hostPort < 1 || p.hostPort > 65535) return
     try {
       const r = await trpc.container.app.checkPort.query({
-        port: p.hostPort, protocol: p.protocol, excludeAppId: props.appId,
+        port: p.hostPort, protocol: p.protocol, excludeName: props.appName,
       })
       if (r.inUse) next[i] = `Port ${p.hostPort} is already used by ${r.by}.`
     } catch { /* best-effort — ignore */ }

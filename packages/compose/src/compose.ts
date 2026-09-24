@@ -124,13 +124,13 @@ export function parseComposeYaml(content: string): ParsedCompose {
   if (svc) {
     const ports: PortMapping[] = (Array.isArray(svc.ports) ? svc.ports : []).map((s: string) => {
       const [pc, proto = "tcp"] = s.split("/")
-      const [host, cont] = pc.split(":")
+      const [host, cont] = (pc ?? "").split(":")
       return { hostPort: Number(host), containerPort: Number(cont), protocol: proto as "tcp" | "udp" }
     })
     const envs: EnvVar[] = Object.entries(svc.environment ?? {}).map(([key, value]) => ({ key, value: String(value) }))
     const volumes: VolumeMount[] = (Array.isArray(svc.volumes) ? svc.volumes : []).map((s: string) => {
       const [source, target, mode] = s.split(":")
-      return { type: source.startsWith("/") ? "bind" : "named", source, target, readOnly: mode === "ro" }
+      return { type: (source ?? "").startsWith("/") ? "bind" : "named", source: source ?? "", target: target ?? "", readOnly: mode === "ro" }
     })
     const labels: LabelEntry[] = Object.entries(svc.labels ?? {}).map(([key, value]) => ({ key, value: String(value) }))
     const extraHosts: string[] = Object.entries(svc.extra_hosts ?? {}).map(([h, ip]) => `${h}:${ip}`)

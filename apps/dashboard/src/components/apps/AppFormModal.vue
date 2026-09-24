@@ -23,7 +23,7 @@ type App = {
 const props = defineProps<{ editApp?: App | null }>()
 const emit  = defineEmits<{
   close: []
-  saved: [app: App]
+  saved: []
 }>()
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
@@ -252,13 +252,12 @@ async function save() {
       memoryLimit:   form.memoryLimit,
       pinnedUrl:     form.pinnedUrl || null,
     }
-    let result: any
     if (props.editApp) {
-      result = await trpc.container.app.update.mutate({ id: props.editApp.id, data: payload })
+      await trpc.container.app.update.mutate({ name: props.editApp.name, data: payload })
     } else {
-      result = await trpc.container.app.create.mutate(payload)
+      await trpc.container.app.create.mutate({ data: payload })
     }
-    emit('saved', result.app)
+    emit('saved')
     emit('close')
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to save'
@@ -381,7 +380,7 @@ async function save() {
 
       <!-- Ports -->
       <div v-else-if="activeTab === 'ports'">
-        <PortsTable v-model="form.ports" :app-id="editApp?.id" />
+        <PortsTable v-model="form.ports" :app-name="editApp?.name" />
       </div>
 
       <!-- Envs -->

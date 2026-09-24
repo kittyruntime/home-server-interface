@@ -432,7 +432,7 @@ onUnmounted(() => {
         <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]">
           <span class="eyebrow">{{ activeAppLabel }}</span>
           <button
-            v-if="activeApp === 'apps' && isAdmin && appsPanelRef?.active === 'containers'"
+            v-if="activeApp === 'apps' && isAdmin"
             @click="appsPanelRef?.openNew()"
             class="btn btn-primary btn-xs"
           >
