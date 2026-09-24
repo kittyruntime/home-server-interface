@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   login or password change, same as any first-time account backfill.
 
 ### Changed
+- **Alerts reorganized**: the dedicated Alerts app is gone. Active alerts are
+  now listed in Monitor > Alerts (with the source filter and severity dots);
+  threshold configuration lives in Settings > System > Alerts. The alert badge
+  moved to the Monitor sidebar/dock icon, and the Settings navigation is
+  reorganized into four labelled groups (Account, Access control, System,
+  Backups).
 - **Root worker slimmed (compose-only Docker ops)**: `docker.go` no longer
   builds privileged container definitions — it only executes `docker compose`
   commands against the generated files (up/stop/restart/down + validate).
