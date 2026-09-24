@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Declarative container apps**: container apps are now Docker Compose projects
+  in `/opt/containers/<name>/compose.yaml` — the file is the source of truth,
+  HSI re-reads manual edits (drift + unmanaged-field detection, nothing silently
+  dropped), and applying is an explicit, validated step. Existing apps are
+  migrated to compose files on update (zero downtime; each stack is adopted on
+  its first Apply). Apps keep working with `docker compose` even when HSI is off.
 - **User identity status**: a user's edit panel now shows a dedicated Identity
   section — HSI identity, real Linux account state (exists / uid / gid / groups,
   read from the OS, not assumed from the database), and Samba account state. Flags
@@ -21,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   login or password change, same as any first-time account backfill.
 
 ### Changed
+- **Root worker slimmed (compose-only Docker ops)**: `docker.go` no longer
+  builds privileged container definitions — it only executes `docker compose`
+  commands against the generated files (up/stop/restart/down + validate).
+  Networks and volumes live inside each app's compose file; the standalone
+  Networks/Volumes panels and their DB registries are gone (shared networks via
+  `external: true`).
 - New root-worker capability `root.linux.user.info`: read-only batch lookup of
   real Linux (`uid`/`gid`/groups) and Samba account state for a set of usernames.
   Reuses the same `pdbedit -L` parsing already used by the sharing diagnostics,

@@ -13,13 +13,27 @@ App Store installs is a normal container, covered under Docker below.
 
 Containers created through the App Store or the Containers app are ordinary Docker
 containers under their configured name — nothing about them depends on HSI staying
-up.
+up. Each app managed by HSI is a Docker Compose project under
+`/opt/containers/<name>/compose.yaml` — the file is the source of truth, usable
+without HSI:
 
 ```bash
 docker ps -a                  # list containers, including stopped ones
 docker logs -f <name>
 docker start|stop|restart <name>
 docker inspect <name>         # ports, mounts, env, labels — everything HSI showed you
+
+# Compose project (the file HSI generates/edits):
+docker compose -f /opt/containers/<name>/compose.yaml ps
+docker compose -f /opt/containers/<name>/compose.yaml up -d
+docker compose -f /opt/containers/<name>/compose.yaml logs -f
+docker compose -f /opt/containers/<name>/compose.yaml down
+```
+
+`x-hsi:` keys in the compose file are HSI metadata (pinned URL, UI hints) — safe
+to ignore or delete.
+
+
 ```
 
 ## Samba (SMB shares)

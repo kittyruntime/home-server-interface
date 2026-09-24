@@ -5,6 +5,30 @@ pieces. The guiding principle is **privilege isolation**: the process exposed to
 the network holds no special rights, and anything requiring root is delegated to
 an isolated worker over a message broker.
 
+## Declarative configuration
+
+**HSI manages your server, not owns it. The DB describes HSI; files describe the server.**
+
+1. Server configuration lives in files at each tool's native location — never in a DB table.
+2. Files stay readable, backupable and hand-editable; HSI re-reads manual edits and flags what it
+   cannot represent (nothing is silently dropped).
+3. HSI only writes its own dedicated files — never a package-owned file. Use `conf.d`/drop-in
+   patterns when the tool offers them.
+4. Editing is not applying: edits write the file; applying to the system is an explicit step
+   (validated first).
+5. The DB keeps only HSI-territorial data (users, permissions, Places, audit, preferences) and at
+   most in-memory observed state.
+6. The root worker executes, never decides: it receives a precise operation on a file, not a
+   definition.
+
+Current file locations:
+
+| Domain | File | Status |
+|---|---|---|
+| Container apps | `/opt/containers/<app>/compose.yaml` (Compose is the source of truth) | done |
+| Samba | `/etc/nasui/samba/smb.conf` (dedicated file, systemd drop-in) | file exists; re-read planned |
+| RAID / storage | `mdadm.conf` + HSI file | planned |
+
 ## Runtime processes
 
 Three long-running processes, each a systemd unit in production:

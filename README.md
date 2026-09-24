@@ -62,6 +62,7 @@ for what that means in practice.
 - Curated App Store with guided installs and pinned image versions
 - Full container lifecycle: create, edit, logs, networks, mounts
 - Import an existing Compose file to prefill a container
+- App definitions live as standard Docker Compose files (`/opt/containers`) — usable with or without HSI
 
 **Storage** `Beta` — Real disk and array management, not just a usage bar.
 - S.M.A.R.T. health, partitions, and disk formatting
