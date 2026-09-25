@@ -11,7 +11,7 @@
 <p align="center">
   Home Server Interface (HSI) is an open-source control panel for a single Linux server:
   manage files, run Docker apps from a built-in App Store, operate real storage
-  (S.M.A.R.T., RAID, LVM), and monitor your hardware — all from one modern dashboard,
+  (S.M.A.R.T., RAID, LVM), and monitor your hardware, all from one modern dashboard,
   without giving up shell access to the machine underneath.
 </p>
 
@@ -40,46 +40,46 @@ One command, on a fresh Ubuntu 24.04 server:
 curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash
 ```
 
-That's it — the installer sets up the app user, Node.js, the message broker, the
-privileged worker, and the database, then starts HSI as a systemd service. Full
+That's it: the installer sets up the app user, Node.js, the message broker, the
+privileged worker, and the database, then starts HSI's systemd services. Full
 details, updates and version pinning are in [Install](#install--update).
 
 ---
 
 ## Features
 
-Every area below is real and in daily use, but HSI is still pre-1.0 — nothing here is
-labeled "Stable" yet. `Beta` means it works and is actively maintained; `Experimental`
+Every area below is real and in daily use, but HSI is still evolving quickly, so nothing
+here is labeled "Stable" yet. `Beta` means it works and is actively maintained; `Experimental`
 means it's new enough that interfaces may still change. See [Project status](#project-status)
 for what that means in practice.
 
-**Files** `Beta` — A full file manager in the browser, not an afterthought.
+**Files** `Beta`: A full file manager in the browser, not an afterthought.
 - Resumable, pause/resume chunked uploads with integrity checks
 - Built-in code editor and expiring public share links
 - "Places" with per-user and per-group permissions
 
-**Apps & Docker** `Beta` — Run self-hosted apps and containers without touching a shell.
+**Apps & Docker** `Beta`: Run self-hosted apps and containers without touching a shell.
 - Curated App Store with guided installs and pinned image versions
 - Full container lifecycle: create, edit, logs, networks, mounts
 - Import an existing Compose file to prefill a container
-- App definitions live as standard Docker Compose files (`/opt/containers`) — usable with or without HSI
+- App definitions live as standard Docker Compose files in `/opt/containers`, usable with or without HSI
 
-**Storage** `Beta` — Real disk and array management, not just a usage bar.
+**Storage** `Beta`: Real disk and array management, not just a usage bar.
 - S.M.A.R.T. health, partitions, and disk formatting
 - `mdadm` RAID and LVM, with guardrails against destructive actions
 - Mounts and `/etc/fstab` management
 
-**Monitoring** `Beta` — Know what your server is doing, live and over time.
+**Monitoring** `Beta`: Know what your server is doing, live and over time.
 - CPU, RAM, network and storage metrics with 1h–7d history
 - Background alerts for RAID degradation and failing disks
 - Filterable audit trail of privileged actions
 
-**Users & Sharing** `Beta` — Multi-user from day one.
+**Users & Sharing** `Beta`: Multi-user from day one.
 - Groups, per-place permissions, and admin/storage delegation
 - Built-in SMB/Samba sharing, synced with HSI accounts
 - Rate-limited logins and redacted audit values
 
-**Backups** `Beta` — Two layers, so config and data are both covered.
+**Backups** `Beta`: Two layers, so config and data are both covered.
 - Encrypted (AES-256-GCM) HSI configuration backup and restore
 - Scheduled rsync backups, local or over SSH, push or pull
 
@@ -119,18 +119,18 @@ aims for the middle ground:
 - **Storage you can actually operate.** S.M.A.R.T., partitions, `mdadm` RAID and LVM
   are managed from the UI, with guardrails against destructive operations.
 - **Docker and an App Store together.** Run a curated app in one click, or manage any
-  container by hand — same interface, same place.
+  container by hand: same interface, same place.
 - **Backups included.** Encrypted config backups and scheduled rsync jobs ship with
   HSI itself, not as a separate tool you have to wire up.
 - **Security-conscious by design.** The web backend runs unprivileged; every
   root-level operation goes through a separate, isolated worker process over a
-  message queue — not `sudo` calls from a Node process.
+  message queue, not `sudo` calls from a Node process.
 - **Linux stays visible.** HSI manages your server without hiding it: the Samba
   shares, `/etc/fstab` entries and systemd units it creates are things you can
   inspect and touch yourself.
 
 If that sounds like something you'd want to run on your own hardware, a star on
-GitHub helps more people find the project — and takes one click.
+GitHub helps more people find the project, and it takes one click.
 
 ---
 
@@ -146,13 +146,13 @@ GitHub helps more people find the project — and takes one click.
 > HSI has not undergone a formal security audit and may contain vulnerabilities,
 > incomplete protections, or breaking changes without notice. If you run it, keep
 > it updated, avoid exposing it directly to the internet, and consider network
-> isolation — especially while the project is this young.
+> isolation, especially while the project is this young.
 
 ---
 
 ## Requirements
 
-- A Linux server (x86-64)
+- Ubuntu 24.04 on x86-64 (other distributions are not officially supported)
 - `curl`, `openssl`, `rsync`, an OpenSSH client
 - Optional: Docker for containers and the App Store; Samba for SMB shares
 - Ports 80 (nginx, optional) and 9001 (backend) reachable from clients
@@ -163,11 +163,11 @@ GitHub helps more people find the project — and takes one click.
 
 Developer and operator documentation lives in [`docs/`](docs/):
 
-- [Architecture](docs/architecture.md) — processes, privilege isolation, data flow, tech stack
-- [Manage without HSI](docs/manage-without-hsi.md) — the files and commands behind Docker, Samba, RAID, mounts and systemd, if HSI is down or gone
-- [Development](docs/development.md) — local setup, build, project layout, release process
-- [Configuration](docs/configuration.md) — environment variables, services, install/update options
-- [Design system](docs/design-system.md) — tokens, shared components and frontend conventions
+- [Architecture](docs/architecture.md): processes, privilege isolation, data flow, tech stack
+- [Manage without HSI](docs/manage-without-hsi.md): the files and commands behind Docker, Samba, RAID, mounts and systemd, if HSI is down or gone
+- [Development](docs/development.md): local setup, build, project layout, release process
+- [Configuration](docs/configuration.md): environment variables, services, install/update options
+- [Design system](docs/design-system.md): tokens, shared components and frontend conventions
 
 ---
 
@@ -192,12 +192,12 @@ The script:
 ### Update
 
 Re-run the same command. The script detects an existing installation, preserves
-the database and all secrets, and restarts only the application services.
+the database and all secrets, and restarts the services.
 
 ### Pin a version
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.50.3 bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.54.0 bash
 ```
 
 ---
@@ -233,15 +233,17 @@ For a local development environment (dev servers, hot reload, project layout, re
 
 ## Contributing
 
-HSI is open source and still shaping its roadmap — feedback from real usage is
+HSI is open source and still shaping its roadmap, so feedback from real usage is
 genuinely useful at this stage.
 
 - **Found a bug?** Open an [issue](https://github.com/kittyruntime/home-server-interface/issues).
 - **Missing a feature?** Open an issue describing the use case.
-- **Want to contribute code?** Pull requests are welcome — see
+- **Want to contribute code?** Pull requests are welcome; see
   [docs/development.md](docs/development.md) for local setup.
 - **General feedback** on the interface or the direction of the project is welcome
   via issues too.
+
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
 
 ---
 
