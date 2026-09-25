@@ -31,5 +31,5 @@ export function useAlerts() {
     return alerts.value.some(a => a.source.startsWith(prefix))
   }
 
-  return { alerts, hasAlerts }
+  return { alerts, hasAlerts, refresh: fetchAlerts }
 }

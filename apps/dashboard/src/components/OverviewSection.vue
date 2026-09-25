@@ -109,6 +109,8 @@ function actionLabel(action: string): string {
     'storage.initPartitionTable': 'Init partition table',
     'storage.createPartition':    'Create partition',
     'storage.deletePartition':    'Delete partition',
+    'alert.clear':                'Clear alert',
+    'alert.clearAll':             'Clear all alerts',
     'storage.createRaid':         'Create RAID',
     'storage.stopRaid':           'Stop RAID',
     'storage.createPv':           'Create PV',

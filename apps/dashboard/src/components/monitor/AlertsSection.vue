@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useDesktop } from '../../lib/desktop'
+import { useConfirm } from '../../lib/confirm'
+import { useAlerts } from '../../composables/useAlerts'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
 
@@ -12,6 +14,41 @@ const error   = ref('')
 const alerts  = ref<Alert[]>([])
 
 const { openApp } = useDesktop()
+const { confirm } = useConfirm()
+// Shared alert state behind the sidebar/dock badges: refreshed after clearing
+// so the badges update immediately instead of at the next 60 s poll.
+const { refresh: refreshBadges } = useAlerts()
+const clearing = ref(false)
+const clearError = ref('')
+
+async function clearOne(a: Alert) {
+  clearError.value = ''
+  try {
+    await trpc.alert.clear.mutate({ id: a.id })
+    alerts.value = alerts.value.filter(x => x.id !== a.id)
+    void refreshBadges()
+  } catch (e: any) {
+    clearError.value = e?.message ?? 'Failed to clear the alert'
+  }
+}
+
+async function clearAll() {
+  if (!await confirm(
+    `Clear all ${alerts.value.length} alerts? Alerts whose condition is still true come back at the next check (within 5 minutes).`,
+    { confirmLabel: 'Clear all' },
+  )) return
+  clearing.value = true
+  clearError.value = ''
+  try {
+    await trpc.alert.clearAll.mutate()
+    alerts.value = []
+    void refreshBadges()
+  } catch (e: any) {
+    clearError.value = e?.message ?? 'Failed to clear alerts'
+  } finally {
+    clearing.value = false
+  }
+}
 
 // Source filter — 'all' or a source prefix like 'storage.'. The list of known
 // prefixes is derived from the alerts themselves so future checkers (#12) show
@@ -63,15 +100,21 @@ onMounted(load)
         <span class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
           Active ({{ filteredAlerts.length }})
         </span>
-        <select
-          v-if="sourcePrefixes.length > 1"
-          v-model="sourceFilter"
-          class="bg-transparent text-xs text-[var(--c-text-2)] focus:outline-none"
-        >
-          <option value="all">All sources</option>
-          <option v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</option>
-        </select>
+        <div class="flex items-center gap-3">
+          <select
+            v-if="sourcePrefixes.length > 1"
+            v-model="sourceFilter"
+            class="bg-transparent text-xs text-[var(--c-text-2)] focus:outline-none"
+          >
+            <option value="all">All sources</option>
+            <option v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</option>
+          </select>
+          <button v-if="alerts.length" type="button" class="btn btn-ghost btn-xs" :disabled="clearing" @click="clearAll">
+            {{ clearing ? 'Clearing…' : 'Clear all' }}
+          </button>
+        </div>
       </div>
+      <p v-if="clearError" class="px-4 py-2 text-xs text-danger border-b border-[var(--c-border)]">{{ clearError }}</p>
       <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-[var(--c-text-3)] text-center">
         No active alerts.
       </div>
@@ -87,6 +130,7 @@ onMounted(load)
           </div>
           <span class="text-[10px] uppercase tracking-wider text-[var(--c-text-3)] shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
           <div class="text-[11px] text-[var(--c-text-3)] shrink-0 tabular-nums">{{ fmtDate(a.lastSeenAt) }}</div>
+          <button type="button" class="btn btn-ghost btn-xs shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</button>
         </div>
       </div>
     </div>
