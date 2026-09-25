@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Replace a failed RAID disk**: Storage > RAID lists each member as Active,
+  Failed or Spare with its model and serial number, and can mark a disk as
+  failed, remove it and add a replacement (only free disks large enough are
+  offered). Rebuild progress is shown live.
+- **RAID capacity in numbers**: the Create RAID wizard shows the usable size of
+  the selected drives, efficiency, fault tolerance and space wasted by larger
+  drives; each array shows usable vs raw size and how many more failures it can
+  take.
+- **Import existing storage**: arrays found on disks but not running, and
+  inactive volume groups, are listed in RAID and LVM and can be assembled or
+  activated without formatting. A degraded array is only started after a warning.
+- **Scheduled disk checks**: Storage > Maintenance schedules SMART short and
+  extended self-tests and RAID consistency checks. A systemd timer runs them even
+  when the dashboard is down; sleeping disks are not woken up and no check starts
+  during a rebuild. RAID mismatches raise a `storage.raid-check` alert.
+- **Devices page for many disks**: summary bar, compact table (default from 5
+  disks) with serial, role, health and temperature, sorting, filters, search,
+  grouping by role, and multi-select of free disks to create a RAID or a volume
+  group.
+- **Volume owner at mount time**: the mount dialog can make another HSI user the
+  owner, optionally even on a volume that already holds data (mount point only,
+  never recursive), and the format wizard offers "Mount now".
+
 ## [1.56.0] - 2026-09-25
 
 ### Added
