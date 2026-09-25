@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
 import type { PrismaClient } from "@app/database"
 import { requestSync } from "../nats"
+import { log } from "../utils/log"
 
 // System account names that may never be claimed as an HSI username, since
 // the username doubles as the backing Linux/Samba account. "admin" is
@@ -113,17 +114,17 @@ export async function syncSystemPassword(
     // instead of silent — the most common cause of Samba auth being refused.
     // Skipped-by-choice (sambaEnabled=false) is not a failure — don't warn on it.
     if (res?.smbOk === false && !res.smbSkipped) {
-      console.warn(
-        `[password-sync] Samba password NOT set for "${user.username}" — ` +
-          `smbpasswd failed (is samba installed, and does the Linux account exist?). ` +
-          `SMB auth will be refused for this user until this succeeds.`,
+      log.warn(
+        { username: user.username },
+        "password-sync: Samba password NOT set — smbpasswd failed (is samba installed, and does the Linux account exist?). " +
+          "SMB auth will be refused for this user until this succeeds.",
       )
     }
     if (res?.linuxOk === false) {
-      console.warn(`[password-sync] Linux password NOT set for "${user.username}" — chpasswd failed.`)
+      log.warn({ username: user.username }, "password-sync: Linux password NOT set — chpasswd failed")
     }
   } catch (e) {
-    console.warn("[password-sync] failed (non-fatal):", e)
+    log.warn({ err: e }, "password-sync failed (non-fatal)")
   }
 }
 

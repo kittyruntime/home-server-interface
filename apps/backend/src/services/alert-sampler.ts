@@ -1,6 +1,7 @@
 import { prisma } from "@app/database"
 import { requestSync } from "../nats"
 import { dispatchEvent, type NotificationEvent, type Severity } from "./notifications"
+import { log } from "../utils/log"
 
 type CheckResult = { target: string; message: string; severity: Severity }
 type CheckOutcome = { found: CheckResult[]; checked: string[] }
@@ -183,7 +184,7 @@ async function runChecks(): Promise<void> {
       }
       for (const evt of [...raised, ...cleared]) void dispatchEvent(evt)
     } catch (e) {
-      console.error(`alert-sampler: failed to persist alerts for ${source}:`, e) // non-fatal: sampler errors must not crash the server
+      log.error({ err: e, source }, "alert-sampler: failed to persist alerts") // non-fatal: sampler errors must not crash the server
     }
   }
 }

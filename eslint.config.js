@@ -54,6 +54,13 @@ export default tseslint.config(
   },
 
   {
+    // Backend logs must go through utils/log (one JSON format, see #42).
+    files: ["apps/backend/src/**/*.ts"],
+    ignores: ["apps/backend/src/tests/**"],
+    rules: { "no-console": "error" },
+  },
+
+  {
     files: ["scripts/**/*.mjs"],
     languageOptions: {
       globals: { ...globals.node },

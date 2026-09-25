@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@app/database"
 import { requestSync } from "../nats"
+import { log } from "../utils/log"
 
 // Never expose privileged/system accounts over Samba: writing to shares as root
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
@@ -169,6 +170,6 @@ export async function syncPlaceAccess(prisma: PrismaClient): Promise<void> {
 export async function syncSharesBestEffort(prisma: PrismaClient): Promise<void> {
   const results = await Promise.allSettled([syncShares(prisma), syncPlaceAccess(prisma)])
   for (const r of results) {
-    if (r.status === "rejected") console.warn("[sharing] sync failed (non-fatal):", r.reason)
+    if (r.status === "rejected") log.warn({ err: r.reason }, "sharing: sync failed (non-fatal)")
   }
 }

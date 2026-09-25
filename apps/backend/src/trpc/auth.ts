@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken"
 import crypto from "node:crypto"
+import { log } from "../utils/log"
 
 const DEV_SECRET = "dev-secret"
 const isProd = process.env.NODE_ENV === "production"
@@ -13,8 +14,8 @@ if (isProd && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
   )
 }
 if (!process.env.JWT_SECRET) {
-  console.warn(
-    "[security] JWT_SECRET is not set — using an insecure development default. " +
+  log.warn(
+    "JWT_SECRET is not set — using an insecure development default. " +
     "Set JWT_SECRET in your environment before deploying to production.",
   )
 }

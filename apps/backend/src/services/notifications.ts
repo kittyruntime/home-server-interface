@@ -1,4 +1,5 @@
 import { prisma } from "@app/database"
+import { log } from "../utils/log"
 
 // Notification engine core: pure functions (interpolation, rule matching,
 // webhook request rendering). Transport and persistence live in the
@@ -257,11 +258,11 @@ export async function dispatchEvent(event: NotificationEvent, opts: { onlyConnec
           if (connector) await deliverWebhook(connector, event, opts.test ?? false)
         }
       } catch (e) {
-        console.error(`notifications: connector ${id} delivery failed:`, e)
+        log.error({ err: e, connectorId: id }, "notifications: connector delivery failed")
       }
     }
   } catch (e) {
-    console.error("notifications: dispatch failed:", e) // never crash the caller
+    log.error({ err: e }, "notifications: dispatch failed") // never crash the caller
   }
 }
 

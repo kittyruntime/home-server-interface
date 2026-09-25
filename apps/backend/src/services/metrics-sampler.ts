@@ -1,6 +1,7 @@
 import * as os from "os"
 import * as fs from "fs"
 import { prisma } from "@app/database"
+import { log } from "../utils/log"
 
 let cpuPrev: { idle: number; total: number }[] | null = null
 
@@ -101,7 +102,7 @@ export function startMetricsSampler(): void {
       })
     } catch (e) {
       // non-fatal: sampler errors must not crash the server
-      console.error("[metrics-sampler]", e)
+      log.error({ err: e }, "metrics-sampler failed")
     }
   }, 60_000)
 }

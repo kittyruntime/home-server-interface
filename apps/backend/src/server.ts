@@ -4,6 +4,16 @@ import { startAlertSampler } from "./services/alert-sampler"
 import { startTelemetry } from "./services/telemetry"
 import { startBackupScheduler } from "./services/backup-scheduler"
 import { ensureDefaultRule } from "./services/notifications"
+import { log } from "./utils/log"
+
+// Crashes go through the logger too, so the log file stays one JSON line per event.
+process.on("uncaughtException", (err) => {
+  log.fatal({ err }, "uncaught exception")
+  process.exit(1)
+})
+process.on("unhandledRejection", (reason) => {
+  log.error({ err: reason }, "unhandled promise rejection")
+})
 
 const app = buildApp()
 

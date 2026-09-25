@@ -93,6 +93,26 @@ tail -f /var/log/hsi/root-worker.log   # root worker (jobs, failed requests, com
 journalctl -u hsi-nats -f
 ```
 
+Both files use one JSON format, one line per event:
+
+| Field | Meaning |
+|---|---|
+| `time` | ISO 8601 timestamp |
+| `level` | `debug`, `info`, `warn`, `error` or `fatal` |
+| `component` | `backend` or `worker` |
+| `msg` | What happened |
+| `err` | Error details (`message`, `stack`) when there is one |
+
+Other fields depend on the event (`jobId`, `subject`, `reqId`, `username`…).
+To read them comfortably:
+
+```bash
+tail -f /var/log/hsi/root-worker.log | jq -r '"\(.time) \(.level) \(.msg) \(.error // .err.message // "")"'
+```
+
+Output that bypasses the loggers (a Node.js warning, or a Go runtime crash
+dump) can still appear as plain text.
+
 Every async operation has a `jobId` that appears in both files. The worker logs
 each job it receives and its outcome, and every synchronous request that fails.
 Set `HSI_LOG_LEVEL=debug` in `/etc/hsi/worker.env` and restart

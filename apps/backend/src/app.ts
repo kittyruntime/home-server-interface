@@ -13,6 +13,7 @@ import { containerRoutes } from "./routes/containers"
 import { backupRoutes } from "./routes/backup"
 import { appRouter } from "./trpc/routers/index"
 import { createContext } from "./trpc/context"
+import { loggerOptions, setLogger } from "./utils/log"
 export { connectNats, startEventSubscriber } from "./nats"
 
 // Resolve dashboard dist: configurable via env (supports relative paths resolved from CWD),
@@ -23,7 +24,7 @@ const DASHBOARD_DIR = process.env.DASHBOARD_PATH
 
 export function buildApp() {
     const app = Fastify({
-        logger: true,
+        logger: loggerOptions,
         bodyLimit: 50 * 1024 * 1024, // 50 MB — covers 2 MB chunks with headroom
         // Production nginx connects over IPv4 loopback. Trust forwarded client
         // addresses only from loopback peers, so direct clients cannot spoof
@@ -31,6 +32,7 @@ export function buildApp() {
         trustProxy: (address) =>
             address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1",
     })
+    setLogger(app.log)
 
     // Disable cross-origin requests — the frontend is served from the same origin.
     app.register(cors, { origin: false })

@@ -30,8 +30,18 @@ func parseLogLevel(s string) slog.Level {
 	}
 }
 
+// replaceAttr aligns slog's output with the backend's pino logs: lowercase
+// level names ("warn", not "WARN").
+func replaceAttr(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.LevelKey {
+		return slog.String(slog.LevelKey, strings.ToLower(a.Value.String()))
+	}
+	return a
+}
+
 func newLogger(level string) *slog.Logger {
-	l := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: parseLogLevel(level)}))
+	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: parseLogLevel(level), ReplaceAttr: replaceAttr})
+	l := slog.New(h).With("component", "worker")
 	// Route the remaining log.Printf calls through the same handler.
 	slog.SetDefault(l)
 	return l

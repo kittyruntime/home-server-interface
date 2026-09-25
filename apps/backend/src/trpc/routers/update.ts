@@ -5,6 +5,7 @@ import path from "node:path"
 import { execFile } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { requestSync } from "../../nats"
+import { log } from "../../utils/log"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -151,7 +152,7 @@ export const updateRouter = router({
     } catch (e) {
       // The check itself succeeded: report the latest version, but say why it
       // will not be remembered instead of failing the whole request.
-      console.error(`[update] could not save ${updateCheckFile()}:`, e)
+      log.error({ err: e, file: updateCheckFile() }, "update: could not save the check result")
     }
     return result
   }),
