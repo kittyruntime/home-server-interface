@@ -3,22 +3,25 @@ import { ref } from 'vue'
 import { trpc } from '../../../lib/trpc'
 import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
+import { useToast } from '../../../lib/toast'
 
 /* Shared mount dialog. Call open(dev) via a template ref; emits `done` after a
    successful mount. */
 const emit = defineEmits<{ done: [] }>()
+const toast = useToast()
 
 const dlg = ref<{
   dev:     BlockDev
   mp:      string
   options: string
   persist: boolean
+  access:  'shared' | 'keep'
   busy:    boolean
   err:     string
 } | null>(null)
 
 function open(dev: BlockDev) {
-  dlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, busy: false, err: '' }
+  dlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, access: 'shared', busy: false, err: '' }
 }
 
 async function doMount() {
@@ -28,7 +31,12 @@ async function doMount() {
   d.err  = ''
   try {
     const device = d.dev.path.replace(/^\/dev\//, '')
-    await trpc.storage.mountDevice.mutate({ device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist })
+    const res = await trpc.storage.mountDevice.mutate({
+      device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist, access: d.access,
+    })
+    // Mounted: anything left unchanged (existing data, unknown account) is
+    // reported without failing the mount.
+    for (const w of res.warnings ?? []) toast.info(w)
     dlg.value = null
     emit('done')
   } catch (e: unknown) {
@@ -77,6 +85,23 @@ defineExpose({ open })
           <div class="text-[10px] text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
         </div>
       </label>
+      <fieldset class="space-y-2">
+        <legend class="text-xs font-medium text-[var(--c-text-2)] mb-1.5">Access</legend>
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input v-model="dlg.access" type="radio" value="shared" class="mt-0.5 accent-accent"/>
+          <div>
+            <div class="text-xs font-medium text-[var(--c-text-2)]">Writable by you and shared users (recommended)</div>
+            <div class="text-[10px] text-[var(--c-text-3)]">On a new, empty volume: owned by your account and the hsi-share group, so you can create files right away. Volumes that already hold data are left unchanged.</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input v-model="dlg.access" type="radio" value="keep" class="mt-0.5 accent-accent"/>
+          <div>
+            <div class="text-xs font-medium text-[var(--c-text-2)]">Keep current permissions</div>
+            <div class="text-[10px] text-[var(--c-text-3)]">A new volume stays owned by root: only root can write to it until you change its permissions.</div>
+          </div>
+        </label>
+      </fieldset>
       <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
       <div class="flex gap-2 pt-1">
         <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>

@@ -334,6 +334,10 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		MountPoint string `json:"mountpoint"`
 		Options    string `json:"options"`
 		Persist    bool   `json:"persist"`
+		// Access "shared" prepares a fresh volume for OwnerUser and the
+		// hsi-share group; anything else leaves the filesystem root as is.
+		Access    string `json:"access"`
+		OwnerUser string `json:"ownerUser"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
@@ -413,7 +417,15 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		}
 	}
 
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+	var warnings []string
+	if req.Access == "shared" {
+		warnings = prepareSharedVolumeRoot(mp, req.OwnerUser)
+		for _, w := range warnings {
+			logger.Warn("mount access", "mountPoint", mp, "warning", w)
+		}
+	}
+
+	replyOk(nc, msg.Reply, map[string]any{"ok": true, "warnings": warnings})
 }
 
 // handleDiskUmount unmounts a mount point, optionally removing its fstab entry.

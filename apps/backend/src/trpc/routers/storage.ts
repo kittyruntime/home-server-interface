@@ -38,9 +38,14 @@ export const storageRouter = router({
       mountpoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
       options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
       persist:    z.boolean().default(false),
+      // "shared": a freshly formatted volume becomes writable by the user who
+      // mounts it and the hsi-share group. "keep": leave its root as root:root.
+      access:     z.enum(["shared", "keep"]).default("keep"),
     }))
-    .mutation(async ({ input }) => {
-      return await requestSync("root.sys.mount", input, 20_000)
+    .mutation(async ({ ctx, input }) => {
+      const me = await ctx.prisma.user.findUnique({ where: { id: ctx.user.userId }, select: { username: true } })
+      return await requestSync<{ ok: true; warnings?: string[] | null }>(
+        "root.sys.mount", { ...input, ownerUser: me?.username ?? "" }, 20_000)
     }),
 
   umountDevice: storageProcedure
