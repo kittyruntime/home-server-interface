@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Freshly mounted volumes are writable**: the mount dialog asks for access.
+  The default makes a new, empty volume owned by the user who mounts it and by
+  the `hsi-share` group (mode 2775), so files can be created from the file
+  manager right away. Volumes that already hold data are never changed.
+- **Missing host tools are explained**: the Storage app lists features that are
+  unavailable because a package is missing (mdadm, smartmontools, lvm2…), with
+  the exact `apt install` command, and disables Create RAID / Create VG instead
+  of failing when the action runs.
+- **Installer checks host packages**: every install and update checks the
+  required packages (storage tools included) and installs missing ones with
+  `apt-get`; `SKIP_DEPS_INSTALL=1` only checks. Missing optional packages
+  (Docker, Samba, nginx) are reported. The installer no longer needs `sudo`
+  itself (it uses `runuser`).
+- **Worker logs**: the root worker writes structured JSON logs with a job ID
+  shared with the backend, logs every job outcome and failed request, and
+  honours `HSI_LOG_LEVEL` in `/etc/hsi/worker.env`.
+
+### Changed
+- **Failed jobs are no longer retried**: a failed file or app operation used to
+  be redelivered up to three times; it now reports one failure.
+- **RAID and LVM members are read-only in the UI**: a disk or partition used by
+  an array or volume group (including inactive ones) only offers the SMART
+  check. The worker now reports what each device is used for, and the RAID/LVM
+  pickers only offer free devices.
+
+### Fixed
+- **No feedback on operations (v1.54.0)**: progress and errors of file-manager
+  and other operations were no longer shown anywhere. They are listed in the
+  bell menu again, and failures raise an error toast.
+- **App Store installs failing with `mkdir /opt/containers/<app>`**: the backend
+  sandbox could not write to `/opt/containers`.
+- **Migrated apps could not be started, stopped or deleted** (`refers to
+  undefined volume`): named volumes are now declared in `compose.yaml`, keeping
+  the exact Docker volume so data is preserved. Existing files are repaired on
+  update.
+- **Data safety for RAID/LVM**: creating an array or a PV now refuses devices
+  that are members, mounted, hold a filesystem, or are disks with partitions
+  (`mdadm --run` and `pvcreate -f` skipped their own prompts). Partitioning and
+  mounting a member are refused too.
+- **Empty RAID errors**: command failures always carry a message (for example
+  when `mdadm` is not installed).
+- **`/etc/mdadm/mdadm.conf` overwritten**: only the created array's line is
+  added (and removed when the array is stopped); the initramfs is refreshed so
+  arrays keep their name at boot.
+- **`/etc/fstab` handling**: write errors are reported, entries written by HSI
+  are marked and no longer duplicated, and unmounting never removes an entry
+  for another device.
+- **Disks without SMART support shown as FAILED** (virtio, many USB bridges):
+  health is now passed, failed or unknown, and only an explicit failure raises
+  an alert. Disks whose self-test log has errors are no longer hidden as
+  "SMART unavailable".
+- **Update check failing with EACCES on fresh installs**: the result is stored in
+  the app-owned data directory.
+- **Configuration restore failing when `/tmp` is a separate filesystem**.
+- **Switch knobs overflowing their track** in Profile and Notifications.
+
 ## [1.54.0] - 2026-09-25
 
 ### Added
