@@ -147,22 +147,27 @@ export async function verifyEncryptedConfigBackup(encrypted: string, password: s
 async function pruneRollbackCopies(databasePath: string) {
   const directory = path.dirname(databasePath)
   const prefix = `${path.basename(databasePath)}.pre-restore-`
-  const copies = (await readdir(directory)).filter(name => name.startsWith(prefix) && !name.endsWith("-wal") && !name.endsWith("-shm")).sort().reverse()
+  const sidecar = (name: string) => ["-journal", "-wal", "-shm"].some(suffix => name.endsWith(suffix))
+  const copies = (await readdir(directory)).filter(name => name.startsWith(prefix) && !sidecar(name)).sort().reverse()
   for (const old of copies.slice(3)) {
-    await unlink(path.join(directory, old)).catch(() => {})
-    await unlink(path.join(directory, `${old}-wal`)).catch(() => {})
-    await unlink(path.join(directory, `${old}-shm`)).catch(() => {})
+    for (const suffix of ["", "-journal", "-wal", "-shm"]) {
+      await unlink(path.join(directory, `${old}${suffix}`)).catch(() => {})
+    }
   }
 }
 
 export async function restoreEncryptedConfigBackup(encrypted: string, password: string, auditUserId: string, auditIp: string) {
   if (restoreInProgress) throw new Error("A configuration restore is already in progress")
   restoreInProgress = true
-  const dir = await mkdtemp(path.join(os.tmpdir(), "hsi-config-restore-"))
-  const restoredFile = path.join(dir, "restored.db")
+  let dir: string | null = null
   let disconnected = false
   let replaced = false
   try {
+    // Stage the decrypted database next to the active one: rename() cannot
+    // cross filesystems (EXDEV), and /tmp is often a separate tmpfs.
+    const active = await currentDatabasePath()
+    dir = await mkdtemp(path.join(path.dirname(active), ".hsi-config-restore-"))
+    const restoredFile = path.join(dir, "restored.db")
     await decryptBackup(encrypted, password, restoredFile)
     await validateRestoredDatabase(restoredFile)
 
@@ -176,25 +181,30 @@ export async function restoreEncryptedConfigBackup(encrypted: string, password: 
       await restored.$disconnect()
     }
 
-    const active = await currentDatabasePath()
     const stamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z")
     const rollback = `${active}.pre-restore-${stamp}`
     await prisma.$disconnect()
     disconnected = true
 
+    // SQLite sidecar files belong to the database they were written for: move
+    // them with the rollback copy so they are never applied to the restored one.
+    const sidecars = ["-journal", "-wal", "-shm"]
     await rename(active, rollback)
+    for (const suffix of sidecars) await rename(active + suffix, rollback + suffix).catch(() => {})
     try {
       await rename(restoredFile, active)
       await chmod(active, 0o600)
       replaced = true
     } catch (error) {
       await rename(rollback, active).catch(() => {})
+      for (const suffix of sidecars) await rename(rollback + suffix, active + suffix).catch(() => {})
       throw error
     }
     await pruneRollbackCopies(active)
     return { rollback }
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    // Removes the decrypted plaintext on success and failure alike.
+    if (dir) await rm(dir, { recursive: true, force: true })
     if (disconnected && !replaced) await prisma.$connect().catch(() => {})
     if (!replaced) restoreInProgress = false
   }
