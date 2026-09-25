@@ -19,6 +19,8 @@
 #   NATS_SERVER_VERSION   NATS binary version        (default: v2.10.24)
 #   SKIP_NGINX            Set to 1 to skip nginx     (default: 0)
 #   SKIP_SEED             Set to 1 to skip DB seed   (default: 0)
+#   SKIP_DEPS_INSTALL     Set to 1 to only check host packages, never
+#                         install them with apt-get     (default: 0)
 #
 # Release-mode overrides:
 #   VERSION               Release tag to install     (default: latest)
@@ -44,6 +46,7 @@ BACKEND_PORT="${BACKEND_PORT:-9001}"
 NATS_SERVER_VERSION="${NATS_SERVER_VERSION:-v2.10.24}"
 SKIP_NGINX="${SKIP_NGINX:-0}"
 SKIP_SEED="${SKIP_SEED:-0}"
+SKIP_DEPS_INSTALL="${SKIP_DEPS_INSTALL:-0}"
 
 # ── Colour helpers ─────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -54,6 +57,62 @@ success() { echo -e "  ${GREEN}✓${NC}   $*"; }
 warn()    { echo -e "  ${YELLOW}!${NC}   $*"; }
 die()     { echo -e "\n  ${RED}✗ error:${NC} $*\n" >&2; exit 1; }
 step()    { echo -e "\n${BOLD}${CYAN}▶ $*${NC}"; }
+
+# Run a shell snippet as another user with that user's HOME. runuser ships with
+# util-linux, so the installer does not depend on sudo being installed.
+run_as() {
+  local user=$1 home
+  shift
+  home=$(getent passwd "$user" | cut -d: -f6)
+  runuser -u "$user" -- env HOME="${home:-/}" bash -c "$*"
+}
+
+# ── Host packages ──────────────────────────────────────────────────────────────
+# command:package. Required ones are installed with apt-get when missing (unless
+# SKIP_DEPS_INSTALL=1); optional ones only enable a feature and are reported.
+REQUIRED_DEPS=(
+  curl:curl openssl:openssl rsync:rsync ssh:openssh-client
+  runuser:util-linux lsblk:util-linux blkid:util-linux
+  mdadm:mdadm smartctl:smartmontools pvcreate:lvm2
+  parted:parted partprobe:parted mkfs.ext4:e2fsprogs udevadm:udev
+)
+OPTIONAL_DEPS=(
+  "docker:docker.io:Apps and App Store"
+  "smbd:samba:SMB sharing"
+  "nginx:nginx:reverse proxy on port 80"
+)
+
+ensure_dependencies() {
+  step "Checking host packages"
+  local entry cmd pkg missing=()
+  for entry in "${REQUIRED_DEPS[@]}"; do
+    cmd=${entry%%:*}; pkg=${entry#*:}
+    command -v "$cmd" &>/dev/null && continue
+    [[ " ${missing[*]} " == *" $pkg "* ]] || missing+=("$pkg")
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    warn "Missing required packages: ${missing[*]}"
+    if [[ "$SKIP_DEPS_INSTALL" == "1" ]] || ! command -v apt-get &>/dev/null; then
+      die "Install them first: apt-get install ${missing[*]}"
+    fi
+    info "Installing: apt-get install -y ${missing[*]}"
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}" >/dev/null \
+      || die "Could not install ${missing[*]}. Install them manually: apt-get install ${missing[*]}"
+    for entry in "${REQUIRED_DEPS[@]}"; do
+      cmd=${entry%%:*}
+      command -v "$cmd" &>/dev/null || die "'$cmd' is still missing after installing ${entry#*:}."
+    done
+  fi
+  success "Required packages present"
+
+  local rest feature
+  for entry in "${OPTIONAL_DEPS[@]}"; do
+    cmd=${entry%%:*}; rest=${entry#*:}; pkg=${rest%%:*}; feature=${rest#*:}
+    command -v "$cmd" &>/dev/null || warn "Optional: install '$pkg' to enable $feature."
+  done
+}
 
 DL_DIR=""
 RELEASE_STAGE=""
@@ -114,7 +173,10 @@ trap cleanup_install_exit EXIT
   || die "NATS_SERVER_VERSION must be a tag such as v2.10.24."
 
 # ── Must run as root ───────────────────────────────────────────────────────────
-[[ $EUID -eq 0 ]] || die "Run with sudo: sudo $0"
+[[ $EUID -eq 0 ]] || die "Run as root: sudo $0 (or from a root shell)"
+
+# Also re-checked on every update: new releases may need new host tools.
+ensure_dependencies
 
 # ── Legacy "app" install migration (app -> hsi rename) ────────────────────────
 # Older installs used APP_NAME=app: units app*, /opt/app, user/group "app",
@@ -301,10 +363,6 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   check_cmd node    "Install Node.js 20.19+ or 22.12+ from https://nodejs.org/"
   check_cmd pnpm    "Install pnpm: npm install -g pnpm"
   check_cmd go      "Install Go ≥ 1.25 from https://go.dev/dl/"
-  check_cmd openssl "apt install openssl"
-  check_cmd curl    "apt install curl"
-  check_cmd rsync   "apt install rsync"
-  check_cmd ssh     "apt install openssh-client"
 
   NODE_VERSION_RAW=$(node --version)
   NODE_VERSION_RAW="${NODE_VERSION_RAW#v}"
@@ -358,13 +416,6 @@ else
       || die "INSTALL_DIR is non-empty and is not a recognized HSI installation: $INSTALL_DIR"
   fi
 
-  step "Checking prerequisites"
-  command -v curl    &>/dev/null || die "'curl' not found. apt install curl"
-  command -v openssl &>/dev/null || die "'openssl' not found. apt install openssl"
-  command -v rsync   &>/dev/null || die "'rsync' not found. apt install rsync"
-  command -v ssh     &>/dev/null || die "'ssh' not found. apt install openssh-client"
-  success "Prerequisites satisfied"
-
   step "Resolving release version"
   if [[ -z "$VERSION" ]]; then
     VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
@@ -394,7 +445,7 @@ else
   NVM_DIR="$APP_HOME/.nvm"
 
   app_exec() {
-    sudo -u "$APP_USER" bash -c "
+    run_as "$APP_USER" "
       export HOME='$APP_HOME'
       export NVM_DIR='$NVM_DIR'
       [[ -s '$NVM_DIR/nvm.sh' ]] && source '$NVM_DIR/nvm.sh'
@@ -404,7 +455,7 @@ else
 
   step "Installing Node.js $NODE_VERSION via nvm"
   if [[ ! -f "$NVM_DIR/nvm.sh" ]]; then
-    sudo -u "$APP_USER" bash -c "
+    run_as "$APP_USER" "
       export HOME='$APP_HOME'
       export NVM_DIR='$NVM_DIR'
       curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
@@ -500,7 +551,7 @@ fi
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
 
   step "Installing pnpm dependencies"
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && pnpm install --frozen-lockfile"
+  run_as "$APP_USER" "cd '$APP_DIR' && pnpm install --frozen-lockfile"
   success "Dependencies installed"
 
   step "Building root-worker"
@@ -512,7 +563,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   success "Installed: /usr/local/bin/${APP_NAME}-root-worker"
 
   step "Building backend"
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && pnpm --filter @app/backend build"
+  run_as "$APP_USER" "cd '$APP_DIR' && pnpm --filter @app/backend build"
   success "Backend bundled → apps/backend/dist/server.js"
 
   step "Building dashboard"
@@ -524,7 +575,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
     warn "nginx not found — dashboard will connect directly to :${BACKEND_PORT}"
   fi
   printf 'VITE_API_URL=%s\n' "$VITE_API_URL" > "$APP_DIR/apps/dashboard/.env.production"
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR/apps/dashboard' && pnpm build"
+  run_as "$APP_USER" "cd '$APP_DIR/apps/dashboard' && pnpm build"
   success "Dashboard built → apps/dashboard/dist/"
 
   BACKEND_DIST="$APP_DIR/apps/backend/dist/server.js"
@@ -660,7 +711,7 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
       rel="prisma/data-migrations/$(basename "$m")"
       step "Running data migration: $(basename "$m")"
       if [[ "$FROM_SOURCE" -eq 1 ]]; then
-        sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' pnpm exec tsx '$rel'"
+        run_as "$APP_USER" "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' pnpm exec tsx '$rel'"
       else
         app_exec "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' '$rel'"
       fi
@@ -673,14 +724,14 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   # just backed up above, so this is safe — and without the flag such schema
   # changes silently fail on update, leaving the running DB stale.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
+    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
   else
     app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' PRISMA_SCHEMA_ENGINE_BINARY='$PRISMA_SCHEMA_ENGINE_BIN' PRISMA_QUERY_ENGINE_LIBRARY='$PRISMA_QUERY_ENGINE_LIB' '$PRISMA_BIN' db push --accept-data-loss"
   fi
   success "Schema migrated (existing data preserved)"
 else
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
+    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
   else
     app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' PRISMA_SCHEMA_ENGINE_BINARY='$PRISMA_SCHEMA_ENGINE_BIN' PRISMA_QUERY_ENGINE_LIBRARY='$PRISMA_QUERY_ENGINE_LIB' '$PRISMA_BIN' db push --accept-data-loss"
   fi
@@ -689,7 +740,7 @@ fi
 
 if [[ "${SKIP_SEED}" != "1" ]]; then
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    sudo -u "$APP_USER" bash -c "cd '$DB_WORK_DIR' && pnpm exec tsx prisma/seed.ts"
+    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec tsx prisma/seed.ts"
   else
     app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' prisma/seed.ts"
   fi

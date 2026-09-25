@@ -153,7 +153,10 @@ GitHub helps more people find the project, and it takes one click.
 ## Requirements
 
 - Ubuntu 24.04 on x86-64 (other distributions are not officially supported)
-- `curl`, `openssl`, `rsync`, an OpenSSH client
+- `curl` and root access to run the install command (`sudo`, or `curl … | bash` from a root shell)
+- The installer checks the other host packages it needs (storage tools such as `mdadm`,
+  `smartmontools`, `lvm2`, `parted`, plus `openssl`, `rsync`, an OpenSSH client) and installs
+  missing ones with `apt-get`; see [Configuration](docs/configuration.md#host-packages)
 - Optional: Docker for containers and the App Store; Samba for SMB shares
 - Ports 80 (nginx, optional) and 9001 (backend) reachable from clients
 

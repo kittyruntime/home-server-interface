@@ -38,9 +38,36 @@ environment variables:
 | `NATS_SERVER_VERSION` | `v2.10.24` | NATS binary version to download. |
 | `SKIP_NGINX` | `0` | Skip nginx configuration. |
 | `SKIP_SEED` | `0` | Skip seeding the initial `admin / admin` account. |
+| `SKIP_DEPS_INSTALL` | `0` | Only check host packages; fail instead of installing missing ones with `apt-get`. |
 
 Re-running the installer detects an existing installation, **preserves the
-database and all secrets**, and restarts only the application services.
+database and all secrets**, and restarts the services.
+
+## Host packages
+
+The installer checks these on every install and update. Missing required packages are
+installed with `apt-get` (set `SKIP_DEPS_INSTALL=1` to only check them).
+
+| Package | Needed for |
+|---|---|
+| `curl`, `openssl` | Downloading releases, generating secrets |
+| `rsync`, `openssh-client` | Backup jobs |
+| `util-linux` (`runuser`, `lsblk`, `blkid`) | Running steps as the app user, disk inventory |
+| `mdadm` | RAID arrays |
+| `smartmontools` | S.M.A.R.T. health |
+| `lvm2` | LVM volumes |
+| `parted`, `e2fsprogs`, `udev` | Partitioning and formatting |
+
+Optional packages enable a feature and are only reported when missing:
+
+| Package | Feature |
+|---|---|
+| `docker.io` (or Docker CE) | Apps and the App Store |
+| `samba` | SMB sharing |
+| `nginx` | Reverse proxy on port 80 |
+
+`curl` and root access are needed before the installer can run: use
+`curl … | sudo bash`, or `curl … | bash` from a root shell when `sudo` is not installed.
 
 ## systemd services
 
