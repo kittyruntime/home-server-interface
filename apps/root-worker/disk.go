@@ -1199,6 +1199,13 @@ const (
 // could read SMART data from it; health is "failed" only on an explicit failed
 // status, "passed" on an explicit passed status, and "unknown" otherwise, so
 // devices without SMART support are never reported as failing.
+// smartUnsupported reports whether a device without SMART data was opened
+// fine (so it does not support SMART), as opposed to being in standby or
+// failing to open (bit 1), where the answer may change on the next check.
+func smartUnsupported(sc smartctlJSON) bool {
+	return sc.Smartctl.ExitStatus&smartExitOpenFailed == 0
+}
+
 func evalSmart(sc smartctlJSON) (available bool, health string, warnings []string) {
 	st := sc.Smartctl.ExitStatus
 	nvmePresent := sc.NvmeLog.Temperature > 0 || sc.NvmeLog.AvailableSpare > 0 ||
@@ -1258,16 +1265,20 @@ type NvmeInfo struct {
 }
 
 type SmartResult struct {
-	Device       string      `json:"device"`
-	Available    bool        `json:"available"`
-	ModelFamily  string      `json:"modelFamily,omitempty"`
-	ModelName    string      `json:"modelName,omitempty"`
-	SerialNumber string      `json:"serialNumber,omitempty"`
-	Firmware     string      `json:"firmware,omitempty"`
-	RotationRate int         `json:"rotationRate"` // 0 = SSD/NVMe
-	HealthPassed bool        `json:"healthPassed"` // Health == "passed"; kept for older clients
-	Health       string      `json:"health"`       // passed | failed | unknown
-	Warnings     []string    `json:"warnings"`     // smartctl exit status bits 2, 4-7
+	Device       string   `json:"device"`
+	Available    bool     `json:"available"`
+	ModelFamily  string   `json:"modelFamily,omitempty"`
+	ModelName    string   `json:"modelName,omitempty"`
+	SerialNumber string   `json:"serialNumber,omitempty"`
+	Firmware     string   `json:"firmware,omitempty"`
+	RotationRate int      `json:"rotationRate"` // 0 = SSD/NVMe
+	HealthPassed bool     `json:"healthPassed"` // Health == "passed"; kept for older clients
+	Health       string   `json:"health"`       // passed | failed | unknown
+	Warnings     []string `json:"warnings"`     // smartctl exit status bits 2, 4-7
+	// Unsupported: smartctl opened the device but it exposes no SMART data
+	// (virtio, many USB bridges). Unlike a disk in standby, this is a final
+	// answer, so stale health alerts for the device can be cleared.
+	Unsupported  bool        `json:"unsupported,omitempty"`
 	Temperature  int         `json:"temperature"`
 	PowerOnHours int64       `json:"powerOnHours"`
 	PowerCycles  int64       `json:"powerCycles"`
@@ -1317,6 +1328,7 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 
 	available, health, warnings := evalSmart(sc)
 	if !available {
+		result.Unsupported = smartUnsupported(sc)
 		replyOk(nc, msg.Reply, result)
 		return
 	}

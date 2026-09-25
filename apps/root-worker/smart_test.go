@@ -58,6 +58,12 @@ func TestEvalSmart(t *testing.T) {
 			t.Fatalf("%s: bad fixture: %v", c.name, err)
 		}
 		available, health, warnings := evalSmart(sc)
+		if !available {
+			wantUnsupported := c.name == "virtio disk without SMART"
+			if got := smartUnsupported(sc); got != wantUnsupported {
+				t.Errorf("%s: smartUnsupported() = %v, want %v", c.name, got, wantUnsupported)
+			}
+		}
 		if available != c.wantAvailable || health != c.wantHealth || !reflect.DeepEqual(warnings, c.wantWarnings) {
 			t.Errorf("%s: evalSmart() = (%v, %q, %v), want (%v, %q, %v)",
 				c.name, available, health, warnings, c.wantAvailable, c.wantHealth, c.wantWarnings)

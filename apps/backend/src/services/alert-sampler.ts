@@ -33,6 +33,7 @@ type BlockDevLite = { name: string; type: string }
 type SmartAttr = { isCritical: boolean; raw: number }
 type SmartResult = {
   available: boolean
+  unsupported?: boolean
   healthPassed: boolean
   health?: "passed" | "failed" | "unknown"
   warnings?: string[]
@@ -68,7 +69,13 @@ async function checkSmart(): Promise<CheckOutcome> {
     } catch {
       continue // unreadable this tick — not checked, leave any existing alert alone
     }
-    if (!smart.available) continue // skipped (e.g. disk in standby) — not checked this tick, leave any existing alert alone
+    if (!smart.available) {
+      // No SMART support is a final answer: count the disk as checked so a
+      // stale alert (e.g. the false "failed" older versions raised for virtio
+      // disks) is cleared. Standby or an open failure may change: leave it.
+      if (smart.unsupported) checked.push(d.name)
+      continue
+    }
     checked.push(d.name)
     const status = deriveSmartStatus(smart)
     if (status === "warning" || status === "failed") {
