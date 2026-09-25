@@ -119,7 +119,7 @@ const testResult = ref<{ ok: boolean; status?: number; error?: string } | null>(
 
 const testLine = computed(() => {
   if (!testResult.value) return null
-  if (testResult.value.ok) return { ok: true, text: `Sent (HTTP ${testResult.value.status ?? 200})` }
+  if (testResult.value.ok) return { ok: true, text: testResult.value.status !== undefined ? `Sent (HTTP ${testResult.value.status})` : 'Sent' }
   return { ok: false, text: testResult.value.error ?? 'Test failed' }
 })
 

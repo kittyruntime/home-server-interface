@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (bell menu, persistent, all users, unread badge) and a generic webhook
   connector with editable `{{vars}}` JSON payload templates, prefilled presets
   (Discord, Slack, ntfy), live backend-rendered preview and one-click test send.
-  A default rule ("All alerts" to the bell) is seeded on first boot.
+   A default rule ("All alerts" to the bell) is seeded on first boot.
+   On upgrade, existing alerts default to warning severity, and the first
+   sampler tick after updating may re-raise alerts whose true severity differs
+   (one-time, by design).
 
 ## [1.53.1] - 2026-09-25
 

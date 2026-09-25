@@ -178,7 +178,7 @@ export async function attemptWebhook(
   req: WebhookRequest,
   opts: AttemptOpts = {},
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
-  const delays = opts.delays ?? [0, 2_000, 10_000]
+  const delays = opts.delays ?? [2_000, 10_000] // 3 attempts max (spec)
   const doFetch = opts.fetchImpl ?? fetch
   let lastError = "unknown error"
   for (let i = 0; i <= delays.length; i++) {
@@ -233,6 +233,11 @@ async function deliverWebhook(connector: { id: string; method: string; url: stri
   await prisma.notificationDelivery.create({
     data: { connectorId: connector.id, ok: result.ok, error: result.error ?? "", test },
   })
+  // Prune: keep the 200 most recent rows.
+  const keep = await prisma.notificationDelivery.findMany({ orderBy: { at: "desc" }, take: 200, select: { at: true } })
+  if (keep.length === 200) {
+    await prisma.notificationDelivery.deleteMany({ where: { at: { lt: keep[keep.length - 1]!.at } } })
+  }
 }
 
 // Fire-and-forget entry point: callers do NOT await this in the sampling path.

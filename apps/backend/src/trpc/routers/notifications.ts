@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { prisma, PrismaClient } from "@app/database"
 import {
-  attemptWebhook, renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS,
+  attemptWebhook, renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID,
 } from "../../services/notifications"
 
 const severityEnum = z.enum(["info", "warning", "critical"])
@@ -32,7 +32,7 @@ async function resolveConnectorIds(db: PrismaClient, connectorIds: string[]): Pr
   const connectors = await db.notificationConnector.findMany({ select: { id: true } })
   const known = new Set(connectors.map(c => c.id))
   for (const id of unique) {
-    if (id !== "inapp" && !known.has(id)) {
+    if (id !== IN_APP_CONNECTOR_ID && !known.has(id)) {
       throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown connector id: ${id}` })
     }
   }
@@ -117,7 +117,7 @@ export const notificationsRouter = router({
   })).mutation(async ({ input }) => {
     const event = sampleEvent()
     const req = renderWebhookRequest(input, event)
-    const result = await attemptWebhook(req, { delays: [0] }) // single attempt, no retry storm
+    const result = await attemptWebhook(req, { delays: [] }) // single attempt, no retry storm
     await prisma.notificationDelivery.create({
       data: { connectorId: input.id ?? "test", ok: result.ok, error: result.error ?? "", test: true },
     })
