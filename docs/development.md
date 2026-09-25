@@ -4,8 +4,7 @@
 
 - **Node.js 20.19+ or 22.12+** and **pnpm**
 - **Go ≥ 1.25** (for the root-worker)
-- A running **NATS** server with JetStream (the install script sets one up; for
-  local dev you can run `nats-server -js`)
+- **Docker**, to run the local NATS server (or a `nats-server` binary with JetStream)
 - `curl`, `openssl`
 
 ## Install dependencies
@@ -27,26 +26,69 @@ Other database scripts (from `packages/database`): `db:push`, `db:migrate`,
 
 ## Run the dev servers
 
+A local stack has four processes: NATS, the root worker, the backend and the
+dashboard.
+
+### 1. Database
+
 ```bash
-pnpm dev          # runs every workspace's dev script in parallel
+pnpm --filter @app/database db:push
+pnpm --filter @app/database db:seed   # creates the admin / admin account
 ```
 
-Or per workspace:
+### 2. Backend environment
 
 ```bash
-pnpm --filter @app/dashboard dev    # Vite dev server (hot reload)
-pnpm --filter @app/backend dev      # vite-node, serves API on :9001
+cat > apps/backend/.env << 'END'
+JWT_SECRET=dev-secret
+NATS_URL=nats://127.0.0.1:4222
+NATS_USER=backend
+NATS_PASS=backend-dev
+END
 ```
+
+`apps/backend/.env` is git-ignored. See [configuration.md](configuration.md) for
+every environment variable.
+
+### 3. NATS (terminal 1)
+
+```bash
+docker compose up
+```
+
+`docker-compose.yaml` starts NATS with JetStream using the repository's
+`nats.conf`, which defines the development accounts `backend` / `backend-dev`
+and `worker` / `worker-dev`. It listens on `127.0.0.1:4222` only.
+
+### 4. Root worker (terminal 2, needs root)
+
+```bash
+cd apps/root-worker
+go build -o root-worker .
+sudo NATS_URL=nats://127.0.0.1:4222 NATS_USER=worker NATS_PASS=worker-dev ./root-worker
+```
+
+The worker performs privileged operations (disks, users, Samba) on the machine
+it runs on. Prefer a disposable VM over your workstation.
+
+### 5. Backend (terminal 3)
+
+```bash
+pnpm --filter @app/backend dev      # vite-node, serves the API on :9001
+```
+
+### 6. Dashboard (terminal 4)
+
+```bash
+pnpm --filter @app/dashboard dev    # Vite dev server with hot reload on :5173
+```
+
+Open http://localhost:5173 and log in with `admin / admin`. `pnpm dev` runs the
+backend and dashboard dev scripts in parallel if you prefer one terminal for
+both.
 
 The backend reads `DASHBOARD_PATH` to serve built assets; in dev the dashboard is
-served by Vite instead. See [configuration.md](configuration.md) for the full
-list of environment variables (`JWT_SECRET`, `NATS_URL`, …).
-
-The root-worker is a Go binary:
-
-```bash
-cd apps/root-worker && go build -o root-worker . && ./root-worker
-```
+served by Vite instead.
 
 ## Build & verify
 
