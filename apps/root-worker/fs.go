@@ -1260,6 +1260,30 @@ type raidArray struct {
 	// new member), "resync", "check" or "reshape".
 	SyncAction string       `json:"syncAction,omitempty"`
 	Members    []raidMember `json:"members"`
+	// After a consistency check (last_sync_action = check): sectors found out
+	// of sync. Non-zero on RAID 5/6 means silent corruption or a failing disk.
+	LastCheck     string `json:"lastCheck,omitempty"`
+	MismatchCount *int64 `json:"mismatchCount,omitempty"`
+}
+
+// addCheckResults reads the last consistency-check outcome from sysfs.
+func addCheckResults(raids []raidArray) {
+	for i := range raids {
+		base := "/sys/block/" + raids[i].Name + "/md/"
+		last, err := os.ReadFile(base + "last_sync_action")
+		if err != nil {
+			continue
+		}
+		raids[i].LastCheck = strings.TrimSpace(string(last))
+		if raids[i].LastCheck != "check" || raids[i].ResyncPercent != nil {
+			continue
+		}
+		if cnt, err := os.ReadFile(base + "mismatch_cnt"); err == nil {
+			if n, err := strconv.ParseInt(strings.TrimSpace(string(cnt)), 10, 64); err == nil {
+				raids[i].MismatchCount = &n
+			}
+		}
+	}
 }
 
 // raidMember is one device of an array as /proc/mdstat lists it.

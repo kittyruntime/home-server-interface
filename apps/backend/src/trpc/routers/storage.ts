@@ -6,6 +6,14 @@ import { requestSync } from "../../nats"
 // Storage router — disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
 // thin zod-validated proxy over a privileged NATS subject handled by the root-worker
 // (apps/root-worker/disk.go). Monitoring/sysinfo live in the `system` router instead.
+const zMaintenanceSchedule = z.object({
+  every:   z.enum(["off", "daily", "weekly", "monthly"]),
+  weekday: z.number().int().min(0).max(6),
+  day:     z.number().int().min(1).max(28),
+  hour:    z.number().int().min(0).max(23),
+})
+type MaintenanceSchedule = z.infer<typeof zMaintenanceSchedule>
+
 export const storageRouter = router({
   disks: storageProcedure.query(async () => {
     return await requestSync<{
@@ -97,6 +105,25 @@ export const storageRouter = router({
     .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
     .mutation(async ({ input }) => requestSync("root.sys.raid.add", input, 60_000)),
 
+  // Scheduled disk checks (SMART self-tests, RAID consistency checks). The
+  // schedule is run by a systemd timer, independently of the backend.
+  maintenance: storageProcedure.query(async () => requestSync<{
+    timerInstalled: boolean
+    tasks: Record<"smartShort" | "smartLong" | "raidCheck", {
+      schedule: MaintenanceSchedule
+      lastRun: string | null
+      nextRun: string | null
+      results: Array<{ device: string; serial?: string; status: "started" | "skipped" | "error"; message?: string }> | null
+    }>
+  }>("root.sys.maintenance.get", {}, 10_000)),
+
+  setMaintenance: storageProcedure
+    .input(z.object({ smartShort: zMaintenanceSchedule, smartLong: zMaintenanceSchedule, raidCheck: zMaintenanceSchedule }))
+    .mutation(async ({ input }) => requestSync("root.sys.maintenance.set", input, 10_000)),
+
+  runMaintenanceNow: storageProcedure
+    .input(z.object({ task: z.enum(["smartShort", "smartLong", "raidCheck"]) }))
+    .mutation(async ({ input }) => requestSync("root.sys.maintenance.runNow", input, 120_000)),
   // Import existing storage without formatting: arrays found in superblocks
   // that are not running, and volume groups with no active logical volume.
   importScan: storageProcedure.query(async () => requestSync<{

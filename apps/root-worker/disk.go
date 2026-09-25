@@ -246,6 +246,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 
 	mdData, _ := os.ReadFile("/proc/mdstat")
 	raids := parseMdstat(string(mdData))
+	addCheckResults(raids)
 
 	replyOk(nc, msg.Reply, map[string]any{
 		"devices": devices,

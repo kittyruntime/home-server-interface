@@ -966,6 +966,12 @@ func main() {
 	// perms elsewhere (0644 config files) are unaffected — a mask only clears bits.
 	syscall.Umask(int(workerCreateMask))
 
+	// `hsi-root-worker maintenance`: scheduled disk checks, run by
+	// hsi-maintenance.timer without NATS or the backend.
+	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
+		os.Exit(runMaintenanceCLI())
+	}
+
 	natsURL := getenv("NATS_URL", "nats://127.0.0.1:4222")
 	natsUser := getenv("NATS_USER", "worker")
 	natsPass := getenv("NATS_PASS", "worker-dev")
@@ -1022,6 +1028,9 @@ func main() {
 		"root.sys.part.delete":           handlePartitionDelete,
 		"root.sys.smart":                 handleSmartInfo,
 		"root.sys.tools":                 handleHostTools,
+		"root.sys.maintenance.get":       handleMaintenanceGet,
+		"root.sys.maintenance.set":       handleMaintenanceSet,
+		"root.sys.maintenance.runNow":    handleMaintenanceRunNow,
 		"root.sys.import.scan":           handleImportScan,
 		"root.sys.import.assemble":       handleImportAssemble,
 		"root.sys.import.activateVg":     handleImportActivateVG,
