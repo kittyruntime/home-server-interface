@@ -7,6 +7,7 @@ import {
   type BlockDev, type RaidArray,
 } from './store'
 import { useHostTools } from './tools'
+import { useToast } from '../../lib/toast'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -20,6 +21,7 @@ const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
+const toast = useToast()
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -155,7 +157,10 @@ async function doDestroyRaid() {
   d.busy = true
   d.err  = ''
   try {
-    await trpc.storage.stopRaid.mutate({ name: d.raid.name })
+    const res = await trpc.storage.stopRaid.mutate({ name: d.raid.name })
+    // The array is gone; anything left behind (a signature that could not be
+    // wiped, a config file that could not be updated) is reported, not fatal.
+    for (const w of res.warnings ?? []) toast.error(w)
     destroyDlg.value = null
     await refresh()
   } catch (e: any) {

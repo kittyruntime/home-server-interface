@@ -89,23 +89,6 @@ func upsertArrayLine(conf, name, arrayLine string) string {
 	return joinConf(lines)
 }
 
-// removeArrayLine removes the HSI-managed entry of array name only; ARRAY
-// lines the admin wrote without HSI's marker are kept.
-func removeArrayLine(conf, name string) string {
-	lines := splitConf(conf)
-	out := make([]string, 0, len(lines))
-	for i := 0; i < len(lines); i++ {
-		if lines[i] == hsiArrayMarker+name {
-			if i+1 < len(lines) && strings.HasPrefix(lines[i+1], "ARRAY ") {
-				i++
-			}
-			continue
-		}
-		out = append(out, lines[i])
-	}
-	return joinConf(out)
-}
-
 // briefArrayLine extracts the ARRAY line from `mdadm --detail --brief` output.
 func briefArrayLine(out string) string {
 	for _, line := range strings.Split(out, "\n") {
@@ -171,4 +154,39 @@ func updateMdadmConf(edit func(string) string) []string {
 		}
 	}
 	return warnings
+}
+
+// parseMdDetail extracts the member devices and array UUID from
+// `mdadm --detail /dev/mdX`. The device table's State column can hold several
+// words ("active sync", "faulty spare"), so members are read from the last
+// field of each table row rather than by a fixed column pattern.
+func parseMdDetail(out string) (members []string, uuid string) {
+	inTable := false
+	for _, line := range strings.Split(out, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if k, v, ok := strings.Cut(trimmed, ":"); ok && strings.TrimSpace(k) == "UUID" && uuid == "" {
+			uuid = strings.TrimSpace(v)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "Number") && strings.Contains(trimmed, "RaidDevice") {
+			inTable = true
+			continue
+		}
+		if !inTable {
+			continue
+		}
+		f := strings.Fields(trimmed)
+		if len(f) > 0 && strings.HasPrefix(f[len(f)-1], "/dev/") {
+			members = append(members, f[len(f)-1])
+		}
+	}
+	return members, uuid
+}
+
+// removeArrayEntries removes every mdadm.conf entry for a destroyed array:
+// HSI's marked entry, and any ARRAY line for the same device or UUID (files
+// written by earlier HSI versions have no marker). Such a line points at an
+// array that no longer exists, so keeping it only produces boot errors.
+func removeArrayEntries(conf, name, uuid string) string {
+	return joinConf(withoutHSIEntry(splitConf(conf), name, uuid))
 }

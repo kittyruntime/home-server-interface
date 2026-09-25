@@ -72,7 +72,7 @@ export const storageRouter = router({
       name: z.string().regex(/^md[0-9]{1,3}$/),
     }))
     .mutation(async ({ input }) => {
-      return await requestSync("root.sys.raid.stop", input, 30_000)
+      return await requestSync<{ ok: true; warnings?: string[] | null }>("root.sys.raid.stop", input, 60_000)
     }),
 
   // Host commands each feature needs, so the dashboard can explain a missing

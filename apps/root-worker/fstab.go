@@ -113,3 +113,25 @@ func editFstab(edit func(string) (string, error)) error {
 	}
 	return nil
 }
+
+// removeFstabSources removes HSI's marked entries and any entry whose source
+// is one of sources. Used when the underlying device is destroyed: an entry
+// for a device that will never come back would stop the boot in emergency
+// mode.
+func removeFstabSources(conf string, sources ...string) string {
+	lines := splitConf(conf)
+	out := make([]string, 0, len(lines))
+	for i := 0; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], hsiMountMarker) && i+1 < len(lines) {
+			if src, _ := fstabFields(lines[i+1]); containsString(sources, src) {
+				i++
+				continue
+			}
+		}
+		if src, _ := fstabFields(lines[i]); src != "" && containsString(sources, src) {
+			continue
+		}
+		out = append(out, lines[i])
+	}
+	return joinConf(out)
+}

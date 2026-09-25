@@ -616,8 +616,22 @@ func handleRaidStop(nc *nats.Conn, msg *nats.Msg) {
 		}
 	}
 
-	// Capture member list before stopping
-	detailOut, _ := exec.Command("mdadm", "--detail", raidDev).Output()
+	// Read the members and UUID before stopping: without them the superblocks
+	// cannot be wiped and the array comes back at the next boot.
+	detailOut, derr := exec.Command("mdadm", "--detail", raidDev).CombinedOutput()
+	members, uuid := parseMdDetail(string(detailOut))
+	if derr != nil || len(members) == 0 {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "could not read the members of " + raidDev + ": " + cmdErrMessage(detailOut, derr)})
+		return
+	}
+	// fstab sources that refer to this array (device path, or the UUID of the
+	// filesystem on it).
+	fstabSources := []string{raidDev}
+	if fsUUID, err := exec.Command("blkid", "-s", "UUID", "-o", "value", raidDev).Output(); err == nil {
+		if v := strings.TrimSpace(string(fsUUID)); v != "" {
+			fstabSources = append(fstabSources, "UUID="+v)
+		}
+	}
 
 	out, err := exec.Command("mdadm", "--stop", raidDev).CombinedOutput()
 	if err != nil {
@@ -625,15 +639,21 @@ func handleRaidStop(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	// Zero superblocks on member devices so they show as clean disks.
-	memberRe := regexp.MustCompile(`(?m)^\s+\d+\s+\d+\s+\d+\s+\w+\s+(/dev/\S+)\s*$`)
-	for _, m := range memberRe.FindAllSubmatch(detailOut, -1) {
-		if len(m) > 1 {
-			exec.Command("mdadm", "--zero-superblock", string(m[1])).Run()
+	// Wipe the md superblock on every member so the disks are free again and
+	// the kernel does not reassemble the array at boot.
+	var warnings []string
+	for _, m := range members {
+		if zout, zerr := exec.Command("mdadm", "--zero-superblock", m).CombinedOutput(); zerr != nil {
+			warnings = append(warnings, "could not wipe the RAID signature on "+m+": "+cmdErrMessage(zout, zerr))
 		}
 	}
 
-	warnings := updateMdadmConf(func(conf string) string { return removeArrayLine(conf, req.Name) })
+	if err := editFstab(func(conf string) (string, error) {
+		return removeFstabSources(conf, fstabSources...), nil
+	}); err != nil {
+		warnings = append(warnings, "could not remove the array from /etc/fstab: "+err.Error())
+	}
+	warnings = append(warnings, updateMdadmConf(func(conf string) string { return removeArrayEntries(conf, req.Name, uuid) })...)
 	for _, w := range warnings {
 		log.Printf("raid stop %s: %s", raidDev, w)
 	}

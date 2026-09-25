@@ -50,14 +50,11 @@ func TestUpsertArrayLineReplacesUnmarkedLineForSameArray(t *testing.T) {
 	}
 }
 
-func TestRemoveArrayLineOnlyTouchesHSIEntry(t *testing.T) {
+func TestRemoveArrayEntriesKeepsAdminContent(t *testing.T) {
 	line := "ARRAY /dev/md0 metadata=1.2 UUID=22222222:22222222:22222222:22222222"
 	conf := upsertArrayLine(adminConf, "md0", line)
-	if got := removeArrayLine(conf, "md0"); got != adminConf {
-		t.Fatalf("removeArrayLine() =\n%s\nwant\n%s", got, adminConf)
-	}
-	if got := removeArrayLine(adminConf, "md0"); got != adminConf {
-		t.Fatalf("removeArrayLine() must not touch admin lines:\n%s", got)
+	if got := removeArrayEntries(conf, "md0", "22222222:22222222:22222222:22222222"); got != adminConf {
+		t.Fatalf("removeArrayEntries() =\n%s\nwant\n%s", got, adminConf)
 	}
 }
 
