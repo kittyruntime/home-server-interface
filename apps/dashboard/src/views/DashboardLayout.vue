@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
-import { useNotifications } from '../lib/notifications'
 import { useDesktop } from '../lib/desktop'
+import { useSystemNotifications } from '../lib/systemNotifications'
 import { trpc } from '../lib/trpc'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
@@ -30,8 +30,8 @@ import DesktopShell from '../components/desktop/DesktopShell.vue'
 const router = useRouter()
 const { currentUsername, isAdmin, hasCapability, mustChangePassword, logout } = useAuth()
 const { alerts, hasAlerts } = useAlerts()
-const { notifications } = useNotifications()
 const { desktopMode, setDesktopMode, openApp } = useDesktop()
+const { unread, refresh: refreshNotifications } = useSystemNotifications()
 
 const isMobile = ref(window.innerWidth < 640)
 const launchpadOpen = ref(false)
@@ -57,7 +57,11 @@ const moreMenuOpen     = ref(false)
 const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | 'data-backups' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
-const badgeCount = computed(() => notifications.value.length)
+const badgeCount = computed(() => unread.value)
+
+// Refreshing on close keeps the badge accurate right after the user has read
+// the list, without waiting for the next 60s poll.
+watch(notifMenuOpen, open => { if (!open) void refreshNotifications() })
 
 const bellRef     = ref<HTMLButtonElement | null>(null)
 const notifPos    = ref({ bottom: 16, left: 72 })

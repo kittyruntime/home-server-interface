@@ -1,17 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useNotifications } from '../lib/notifications'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
+import { computed, watch } from 'vue'
+import { useSystemNotifications, type SystemNotification } from '../lib/systemNotifications'
 
-defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
+const props = defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
 defineEmits<{ close: [] }>()
 
-const { notifications, dismiss, dismissAll } = useNotifications()
+const { items, unread, refresh, markAllRead } = useSystemNotifications()
 
-const hasItems = computed(() => notifications.value.length > 0)
-const hasDismissible = computed(
-  () => notifications.value.some(n => n.type !== 'progress')
-)
+// Fresh data every time the bell opens.
+watch(() => props.open, open => { if (open) void refresh() })
+
+const hasItems = computed(() => items.value.length > 0)
+const hasUnread = computed(() => unread.value > 0)
+
+function itemTitle(n: SystemNotification): string {
+  const action = n.eventType === 'alert.raised' ? 'Alert raised' : 'Alert cleared'
+  return `${action} - ${n.target}`
+}
+
+function formatTime(createdAt: string): string {
+  const t = new Date(createdAt).getTime()
+  if (Number.isNaN(t)) return ''
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000))
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  const d = new Date(createdAt)
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 </script>
 
 <template>
@@ -35,70 +51,52 @@ const hasDismissible = computed(
           </button>
         </div>
 
-        <!-- Task list -->
+        <!-- Persisted notification list -->
         <div class="flex-1 overflow-y-auto divide-y divide-[var(--c-border)]">
 
-          <!-- ── Job notifications ─────────────────────────────────────── -->
           <div
-            v-for="n in notifications"
+            v-for="n in items"
             :key="n.id"
             class="px-3.5 py-2.5"
           >
-            <div class="flex items-center gap-2.5 min-w-0">
-              <!-- Icon -->
-              <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                :class="n.type === 'success' ? 'bg-success/10 text-success'
-                      : n.type === 'error'   ? 'bg-danger/10 text-danger'
-                      : n.type === 'info'    ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                      :                        'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'">
-                <!-- Spinner for progress -->
-                <LoadingSpinner v-if="n.type === 'progress'" label="" class="text-current" />
-                <svg v-else-if="n.type === 'success'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                <svg v-else-if="n.type === 'error'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </div>
+            <div class="flex items-start gap-2.5 min-w-0">
+              <!-- Severity dot -->
+              <span
+                class="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full"
+                :class="n.severity === 'critical' ? 'bg-danger'
+                     : n.severity === 'warning'  ? 'bg-warning'
+                     :                             'bg-[var(--c-text-3)]'"
+              />
 
               <!-- Title + detail -->
               <div class="flex-1 min-w-0">
-                <span class="text-xs text-[var(--c-text-1)] leading-snug">{{ n.title }}</span>
-                <p v-if="n.detail" class="text-[10px] text-[var(--c-text-3)] mt-0.5 truncate">{{ n.detail }}</p>
-                <!-- Progress bar -->
-                <div v-if="n.progress != null" class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-                  <div v-if="n.progress < 0" class="h-full w-1/3 bg-[var(--c-accent)] rounded-full animate-[slide_1.2s_ease-in-out_infinite]" />
-                  <div v-else class="h-full rounded-full bg-[var(--c-accent)] transition-all" :style="{ width: n.progress + '%' }" />
-                </div>
+                <span class="block text-xs text-[var(--c-text-1)] leading-snug truncate">{{ itemTitle(n) }}</span>
+                <p class="text-[10px] text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.message }}</p>
               </div>
 
-              <!-- Dismiss -->
-              <button v-if="n.type !== 'progress'" @click="dismiss(n.id)" aria-label="Dismiss activity"
-                class="shrink-0 p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
-                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+              <!-- Time -->
+              <span class="shrink-0 text-[10px] text-[var(--c-text-3)] leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
             </div>
           </div>
 
           <!-- Empty state -->
           <div v-if="!hasItems" class="flex flex-col items-center justify-center gap-1.5 text-[var(--c-text-3)] py-10 select-none">
-            <svg class="w-6 h-6 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            <svg class="w-6 h-6 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
-            <p class="text-xs">Nothing in progress</p>
+            <p class="text-xs">No notifications</p>
           </div>
 
         </div>
 
-        <!-- Footer: clear done -->
-        <div v-if="hasDismissible" class="px-3.5 py-2 border-t border-[var(--c-border)] shrink-0">
-          <button @click="dismissAll()" class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide">
-            Clear all
+        <!-- Footer: mark all read -->
+        <div v-if="hasItems" class="px-3.5 py-2 border-t border-[var(--c-border)] shrink-0">
+          <button
+            @click="markAllRead()"
+            :disabled="!hasUnread"
+            class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide disabled:opacity-50 disabled:hover:text-[var(--c-text-3)] disabled:cursor-default"
+          >
+            Mark all read
           </button>
         </div>
       </div>
@@ -109,9 +107,4 @@ const hasDismissible = computed(
 <style scoped>
 .nm-enter-active, .nm-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .nm-enter-from, .nm-leave-to { opacity: 0; transform: translateX(-4px); }
-
-@keyframes slide {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
-}
 </style>
