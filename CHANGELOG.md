@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.56.0] - 2026-09-25
+
 ### Added
 - **Docker detection**: the Apps page and the App Store show a full-panel notice
   when Docker is not installed, not running or missing the compose plugin, with
@@ -1032,7 +1034,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.56.0...HEAD
+[1.56.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.1...v1.56.0
 [1.55.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.0...v1.55.1
 [1.55.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.1...v1.54.0
