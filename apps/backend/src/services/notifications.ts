@@ -242,11 +242,17 @@ export async function dispatchEvent(event: NotificationEvent, opts: { onlyConnec
     let ids = selectConnectorIds(config.rules, event)
     if (opts.onlyConnectorId) ids = ids.filter(id => id === opts.onlyConnectorId)
     for (const id of ids) {
-      if (id === IN_APP_CONNECTOR_ID) {
-        await deliverInApp(event)
-      } else {
-        const connector = config.connectors.find(c => c.id === id && c.enabled && c.type === "webhook")
-        if (connector) await deliverWebhook(connector, event, opts.test ?? false)
+      // Per-connector isolation: an in-app or webhook failure must never
+      // prevent the remaining connectors of the same event from being delivered.
+      try {
+        if (id === IN_APP_CONNECTOR_ID) {
+          await deliverInApp(event)
+        } else {
+          const connector = config.connectors.find(c => c.id === id && c.enabled && c.type === "webhook")
+          if (connector) await deliverWebhook(connector, event, opts.test ?? false)
+        }
+      } catch (e) {
+        console.error(`notifications: connector ${id} delivery failed:`, e)
       }
     }
   } catch (e) {
