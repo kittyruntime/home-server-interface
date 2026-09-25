@@ -223,4 +223,67 @@ await testStackFsOpsRejectPathTraversalNames()
 
 await rm(stacksTestDir, { recursive: true, force: true })
 
+const { interpolateTemplate, ruleMatches, selectConnectorIds, renderWebhookRequest, SEVERITY_RANK } = await import("../services/notifications")
+type NotificationEvent = import("../services/notifications").NotificationEvent
+
+async function testInterpolateTemplate() {
+  const vars = { "event.message": 'Disk usage: 84.2% (warning, threshold 80%)', "event.severity": "warning" }
+  // JSON-escaping: quotes and backslashes must not break the JSON body
+  assert.equal(
+    interpolateTemplate('{"text":"{{event.message}}"}', vars),
+    '{"text":"Disk usage: 84.2% (warning, threshold 80%)"}',
+  )
+  assert.equal(interpolateTemplate('{"m":"{{event.message}}"}', { "event.message": 'a "quoted" \\ value' }), '{"m":"a \\"quoted\\" \\\\ value"}')
+  assert.equal(interpolateTemplate('{"m":"{{event.unknown}}"}', vars), '{"m":"{{event.unknown}}"}') // unknown kept as-is
+}
+
+async function testRuleMatches() {
+  assert.deepEqual(SEVERITY_RANK, { info: 0, warning: 1, critical: 2 })
+  const event: NotificationEvent = { type: "alert.raised", severity: "warning", source: "storage.disk-usage", target: "/srv/data", message: "m", time: "t" }
+  assert.equal(ruleMatches({ sourcePrefix: "storage.", minSeverity: "warning", enabled: true }, event), true)
+  assert.equal(ruleMatches({ sourcePrefix: "container.", minSeverity: "warning", enabled: true }, event), false)
+  assert.equal(ruleMatches({ sourcePrefix: "", minSeverity: "critical", enabled: true }, event), false) // severity below min
+  assert.equal(ruleMatches({ sourcePrefix: "", minSeverity: "info", enabled: false }, event), false) // disabled rule
+  assert.equal(ruleMatches({ sourcePrefix: "", minSeverity: "info", enabled: true }, event), true)
+  // cleared events carry the resolved alert's severity
+  const cleared: NotificationEvent = { ...event, type: "alert.cleared" }
+  assert.equal(ruleMatches({ sourcePrefix: "", minSeverity: "critical", enabled: true }, cleared), false)
+}
+
+async function testSelectConnectorIds() {
+  const event: NotificationEvent = { type: "alert.raised", severity: "critical", source: "storage.raid", target: "md0", message: "m", time: "t" }
+  const rules = [
+    { sourcePrefix: "", minSeverity: "warning", enabled: true, connectorIds: '["inapp","w1"]' },
+    { sourcePrefix: "storage.", minSeverity: "critical", enabled: true, connectorIds: '["w2"]' },
+    { sourcePrefix: "storage.", minSeverity: "info", enabled: false, connectorIds: '["w3"]' },
+    { sourcePrefix: "backup.", minSeverity: "info", enabled: true, connectorIds: '["w4"]' },
+  ]
+  assert.deepEqual(selectConnectorIds(rules, event).sort(), ["inapp", "w1", "w2"].sort())
+}
+
+async function testRenderWebhookRequest() {
+  const connector = {
+    method: "POST",
+    url: "https://example.test/hook",
+    headers: '{"Content-Type":"application/json","X-Title":"HSI {{event.severity}}"}',
+    bodyTemplate: '{"severity":"{{event.severity}}","msg":"{{event.message}}"}',
+  }
+  const event: NotificationEvent = { type: "alert.raised", severity: "warning", source: "storage.disk-usage", target: "/srv/data", message: 'He said "hi"', time: "2026-09-25T14:03:00.000Z" }
+  const rendered = renderWebhookRequest(connector, event)
+  assert.equal(rendered.method, "POST")
+  assert.equal(rendered.url, "https://example.test/hook")
+  assert.equal(rendered.headers["X-Title"], "HSI warning")
+  assert.equal(rendered.headers["Content-Type"], "application/json")
+  const parsed = JSON.parse(rendered.body) // must be valid JSON even with quotes in message
+  assert.equal(parsed.msg, 'He said "hi"')
+  // invalid headers JSON degrades to {}
+  const bad = renderWebhookRequest({ ...connector, headers: "not json" }, event)
+  assert.deepEqual(bad.headers, {})
+}
+
+await testInterpolateTemplate()
+await testRuleMatches()
+await testSelectConnectorIds()
+await testRenderWebhookRequest()
+
 console.log("Backend security tests passed")
