@@ -286,4 +286,31 @@ await testRuleMatches()
 await testSelectConnectorIds()
 await testRenderWebhookRequest()
 
+const { attemptWebhook } = await import("../services/notifications")
+
+async function testAttemptWebhookRetriesAndReports() {
+  let calls = 0
+  const fakeFetch = async (_url: any, _init: any) => {
+    calls++
+    if (calls < 3) throw new Error("boom")
+    return new Response("ok", { status: 200 })
+  }
+  const res = await attemptWebhook(
+    { method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
+    { delays: [0, 0], fetchImpl: fakeFetch as any }, // zero-delay backoff for tests
+  )
+  assert.equal(calls, 3)
+  assert.equal(res.ok, true)
+  assert.equal(res.status, 200)
+
+  const resFail = await attemptWebhook(
+    { method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
+    { delays: [0], fetchImpl: (async () => { throw new Error("nope") }) as any },
+  )
+  assert.equal(resFail.ok, false)
+  assert.match(resFail.error ?? "", /nope/)
+}
+
+await testAttemptWebhookRetriesAndReports()
+
 console.log("Backend security tests passed")

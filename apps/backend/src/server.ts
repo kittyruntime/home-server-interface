@@ -3,6 +3,7 @@ import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startTelemetry } from "./services/telemetry"
 import { startBackupScheduler } from "./services/backup-scheduler"
+import { ensureDefaultRule } from "./services/notifications"
 
 const app = buildApp()
 
@@ -27,6 +28,7 @@ const start = async () => {
     await connectNats()
     startMetricsSampler()
     startAlertSampler()
+    await ensureDefaultRule()
     startTelemetry(app.log)
     startBackupScheduler()
     void startEventSubscriber(app.log).catch(err => {
