@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import {
   useStorageData, fmtBytes, usagePct, usageBarClass,
-  raidLevelLabel, raidDescription, isRaidHealthy,
+  raidLevelLabel, raidDescription, isRaidHealthy, isLockedByMembership,
   type BlockDev, type RaidArray,
 } from './store'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -55,7 +55,10 @@ const eligibleForRaid = computed<BlockDev[]>(() => {
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
     if (committed(dev)) return  // skip device AND its subtree
+    // isLockedByMembership also catches members of arrays/VGs that are not
+    // assembled, which the raids/PVs lists above do not know about.
     if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
+        !isLockedByMembership(dev, raids.value, lvmPVs.value) &&
         dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
       out.push(dev)
     }

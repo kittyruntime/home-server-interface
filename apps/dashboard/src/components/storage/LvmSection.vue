@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, type BlockDev, type LvmVG, type LvmLV } from './store'
+import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, isLockedByMembership, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { trpc } from '../../lib/trpc'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
@@ -45,7 +45,10 @@ const eligibleForLvm = computed<BlockDev[]>(() => {
   const out: BlockDev[] = []
   function collect(dev: BlockDev) {
     if (committed(dev)) return  // skip RAID-committed devices and their subtrees
+    // isLockedByMembership also catches members of arrays/VGs that are not
+    // assembled, which the raids/PVs lists above do not know about.
     if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
+        !isLockedByMembership(dev, raids.value, lvmPVs.value) &&
         dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
       out.push(dev)
     }

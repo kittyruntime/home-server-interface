@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import {
   useStorageData, fmtBytes, fmtHours, fmtTiB, usagePct, usageBarClass, lvToDmName,
-  type BlockDev,
+  deviceRole, isLockedByMembership, roleLabel,
+  type BlockDev, type DeviceRole,
 } from './store'
 import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -47,11 +48,18 @@ function diskStatus(diskName: string) {
 
 const physicalDisks = computed(() => devices.value.filter(d => d.type === 'disk'))
 
-// Which RAID array (if any) uses this device name (or a name under it) as a member?
+// Which RAID array (if any) uses this exact device as a member?
 function raidMemberOf(devName: string): string | undefined {
-  return raids.value.find(r =>
-    r.devices.some(d => d === devName || d.startsWith(devName))
-  )?.name
+  return raids.value.find(r => r.devices.includes(devName))?.name
+}
+
+// RAID/LVM membership, including members of arrays/VGs that are not active.
+function roleOf(dev: BlockDev): DeviceRole | null {
+  return deviceRole(dev, raids.value, lvmPVs.value)
+}
+
+function diskLocked(disk: BlockDev): boolean {
+  return isLockedByMembership(disk, raids.value, lvmPVs.value)
 }
 
 // Which VG (if any) uses this device as a PV?
@@ -203,6 +211,10 @@ function toggleDanger(name: string) {
                       SYSTEM
                     </span>
                     <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
+                    <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
+                    <button v-if="roleOf(disk)" @click="emit('navigate', roleOf(disk)!.kind === 'raid' ? 'raid' : 'lvm')"
+                      :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
+                      class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
                   </div>
                   <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk — no modifications allowed</div>
                 </div>
@@ -231,7 +243,7 @@ function toggleDanger(name: string) {
                     </template>
                   </button>
                   <!-- + Partition button (non-system only) -->
-                  <button v-if="!disk.isSystem" @click="partCreateDlg = { disk, busy: false, err: '' }"
+                  <button v-if="!disk.isSystem && !diskLocked(disk)" @click="partCreateDlg = { disk, busy: false, err: '' }"
                     class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
                     + Partition
                   </button>
@@ -392,7 +404,7 @@ function toggleDanger(name: string) {
                         <span class="font-mono text-xs text-[var(--c-text-2)]">/dev/{{ part.name }}</span>
                         <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
                         <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
-                        <span v-else-if="!raidMemberOf(part.name) && !pvVgOf(part.name)" class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
+                        <span v-else-if="!roleOf(part)" class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
                         <!-- Role: RAID member -->
                         <button v-if="raidMemberOf(part.name)" @click="emit('navigate', 'raid')"
                           class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
@@ -403,6 +415,9 @@ function toggleDanger(name: string) {
                           class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                           LVM {{ pvVgOf(part.name) }} →
                         </button>
+                        <!-- Role: member of an array/VG that is not active -->
+                        <span v-if="roleOf(part) && !roleOf(part)!.owner"
+                          class="text-[10px] px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">{{ roleLabel(roleOf(part)!) }}</span>
                       </div>
                       <div v-if="part.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ part.mountpoint }}</div>
                       <div v-if="part.usageTotal > 0" class="mt-1.5 flex items-center gap-2">
@@ -423,14 +438,14 @@ function toggleDanger(name: string) {
                     </div>
                     <!-- Actions — revealed on hover, hidden by default -->
                     <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
-                      <button v-if="!part.mountpoint && !raidMemberOf(part.name) && !pvVgOf(part.name)" @click="openFormat(part)"
+                      <button v-if="!part.mountpoint && !roleOf(part)" @click="openFormat(part)"
                         class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                      <button v-if="part.fstype && !part.mountpoint" @click="openMount(part)"
+                      <button v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="openMount(part)"
                         class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                       <button v-if="part.mountpoint" @click="openUmount(part)"
                         class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                       <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
-                      <button v-if="!part.mountpoint" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
+                      <button v-if="!part.mountpoint && !roleOf(part)" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
                         title="Delete this partition"
                         class="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -452,9 +467,9 @@ function toggleDanger(name: string) {
                     <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
-                    <button v-if="!disk.mountpoint" @click="openFormat(disk)"
+                    <button v-if="!disk.mountpoint && !roleOf(disk)" @click="openFormat(disk)"
                       class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                    <button v-if="!disk.mountpoint" @click="openMount(disk)"
+                    <button v-if="!disk.mountpoint && !roleOf(disk)" @click="openMount(disk)"
                       class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                     <button v-if="disk.mountpoint" @click="openUmount(disk)"
                       class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
@@ -474,7 +489,7 @@ function toggleDanger(name: string) {
               </div>
 
               <!-- Expandable danger zone — only for disks that already have partitions -->
-              <div v-if="!disk.isSystem && disk.children && disk.children.length > 0" class="border-t border-[var(--c-border)]">
+              <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-[var(--c-border)]">
                 <button @click="toggleDanger(disk.name)"
                   class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
                   <svg class="w-3 h-3 shrink-0 transition-transform" :class="dangerDisks.has(disk.name) ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

@@ -362,6 +362,11 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 
 	devPath := "/dev/" + req.Device
 
+	if member, reason := isRaidOrLvmMember(req.Device); member {
+		replyErr(nc, msg.Reply, &fsError{Code: "EBUSY", Message: reason})
+		return
+	}
+
 	if err := os.MkdirAll(mp, 0755); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "create mountpoint: " + err.Error()})
 		return
@@ -496,6 +501,10 @@ func handleRaidCreate(nc *nats.Conn, msg *nats.Msg) {
 		}
 		if sysDevs[d] {
 			replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "device " + d + " belongs to the system disk"})
+			return
+		}
+		if fe := checkDeviceClaimable(d); fe != nil {
+			replyErr(nc, msg.Reply, fe)
 			return
 		}
 		devPaths = append(devPaths, "/dev/"+d)
@@ -671,33 +680,121 @@ func getLvmInfo() (pvs []lvmPV, vgs []lvmVG, lvs []lvmLV) {
 	return
 }
 
+// blkNode is one row of `lsblk -P -o NAME,FSTYPE,MOUNTPOINT <dev>`: the device
+// itself first, then everything stacked on it (partitions, arrays, LVs).
+type blkNode struct {
+	Name       string
+	FsType     string
+	MountPoint string
+}
+
+var reLsblkPair = regexp.MustCompile(`([A-Z]+)="([^"]*)"`)
+
+// parseLsblkPairs parses lsblk's key="value" output (-P). Unlike the raw
+// format, empty columns keep their position, so an empty FSTYPE cannot shift
+// MOUNTPOINT into its place.
+func parseLsblkPairs(out string) []blkNode {
+	var nodes []blkNode
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if line == "" {
+			continue
+		}
+		var n blkNode
+		for _, m := range reLsblkPair.FindAllStringSubmatch(line, -1) {
+			switch m[1] {
+			case "NAME":
+				n.Name = m[2]
+			case "FSTYPE":
+				n.FsType = m[2]
+			case "MOUNTPOINT":
+				n.MountPoint = m[2]
+			}
+		}
+		if n.Name != "" {
+			nodes = append(nodes, n)
+		}
+	}
+	return nodes
+}
+
+// memberReason explains why a device tree belongs to a RAID array or an LVM
+// volume group (the device itself or one of its partitions), or returns "".
+func memberReason(nodes []blkNode) string {
+	for _, n := range nodes {
+		switch n.FsType {
+		case "linux_raid_member":
+			return "device " + n.Name + " is a member of a RAID array"
+		case "LVM2_member":
+			return "device " + n.Name + " is an LVM physical volume"
+		}
+	}
+	return ""
+}
+
+// claimBlockReason explains why a device cannot be claimed by a new RAID array
+// or LVM physical volume, or returns "" when it is free: not a member, not
+// mounted, no filesystem, and (for a disk) no partitions that would be lost.
+func claimBlockReason(nodes []blkNode) string {
+	if len(nodes) == 0 {
+		return "could not inspect the device — refusing to proceed"
+	}
+	if r := memberReason(nodes); r != "" {
+		return r
+	}
+	for _, n := range nodes {
+		if n.MountPoint != "" {
+			return "device " + n.Name + " is mounted on " + n.MountPoint + " — unmount it first"
+		}
+		if n.FsType != "" {
+			return "device " + n.Name + " contains a " + n.FsType + " filesystem — format or wipe it first"
+		}
+	}
+	if len(nodes) > 1 {
+		return "device " + nodes[0].Name + " has partitions — use a partition, or wipe the partition table first"
+	}
+	return ""
+}
+
+func lsblkTree(device string) ([]blkNode, error) {
+	out, err := exec.Command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", "/dev/"+device).Output()
+	if err != nil {
+		return nil, err
+	}
+	return parseLsblkPairs(string(out)), nil
+}
+
 // isRaidOrLvmMember reports whether device (bare name, e.g. "sdb1") or any of
 // its child partitions is currently a RAID member or LVM physical volume —
 // even if the array isn't assembled, the VG isn't visible to `pvs` (e.g. an
 // LVM devices-file exclusion), or the member is a partition of the disk
 // being checked rather than the disk itself. Used to block destructive
-// operations (format, partition delete/init) that would silently corrupt
-// the array/VG. Fails closed: if lsblk itself can't be queried, the device
-// is treated as a member (block, don't guess) — an unverifiable claim on a
-// path this destructive is treated as "assume dangerous".
+// operations (format, partition create/delete/init, mount) that would silently
+// corrupt the array/VG. Fails closed: if lsblk itself can't be queried, the
+// device is treated as a member (block, don't guess) — an unverifiable claim on
+// a path this destructive is treated as "assume dangerous".
 func isRaidOrLvmMember(device string) (bool, string) {
-	out, err := exec.Command("lsblk", "-rno", "NAME,FSTYPE", "/dev/"+device).Output()
-	if err != nil {
+	nodes, err := lsblkTree(device)
+	if err != nil || len(nodes) == 0 {
 		return true, "could not verify device usage — refusing to proceed"
 	}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			continue
-		}
-		switch fields[1] {
-		case "linux_raid_member":
-			return true, "device " + fields[0] + " is a member of a RAID array"
-		case "LVM2_member":
-			return true, "device " + fields[0] + " is an LVM physical volume"
-		}
+	if r := memberReason(nodes); r != "" {
+		return true, r
 	}
 	return false, ""
+}
+
+// checkDeviceClaimable refuses devices that a new RAID array or PV would
+// silently destroy. mdadm --run and pvcreate -f skip their own confirmation
+// prompts, so this check is the only safeguard before they overwrite data.
+func checkDeviceClaimable(device string) *fsError {
+	nodes, err := lsblkTree(device)
+	if err != nil {
+		return &fsError{Code: "EBUSY", Message: "could not inspect device " + device + ": " + err.Error()}
+	}
+	if r := claimBlockReason(nodes); r != "" {
+		return &fsError{Code: "EBUSY", Message: r}
+	}
+	return nil
 }
 
 func handleLvmInfo(nc *nats.Conn, msg *nats.Msg) {
@@ -730,8 +827,14 @@ func handlePvCreate(nc *nats.Conn, msg *nats.Msg) {
 			replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: d + " belongs to the system disk"})
 			return
 		}
+		if fe := checkDeviceClaimable(d); fe != nil {
+			replyErr(nc, msg.Reply, fe)
+			return
+		}
 		devPaths = append(devPaths, "/dev/"+d)
 	}
+	// -f skips pvcreate's own "signature detected, wipe it?" prompt; it is only
+	// safe because checkDeviceClaimable refused anything holding data above.
 	args := append([]string{"pvcreate", "-f"}, devPaths...)
 	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
@@ -940,6 +1043,10 @@ func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) {
 	}
 	if systemDeviceNames()[req.Device] {
 		replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "cannot modify system disk"})
+		return
+	}
+	if member, reason := isRaidOrLvmMember(req.Device); member {
+		replyErr(nc, msg.Reply, &fsError{Code: "EBUSY", Message: reason})
 		return
 	}
 	end := req.EndPct

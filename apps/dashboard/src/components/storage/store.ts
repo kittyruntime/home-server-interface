@@ -37,6 +37,30 @@ export type LvmLV = { name: string; vgName: string; size: number; path: string }
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
+// A device that belongs to a RAID array or an LVM volume group. `owner` is null
+// when the on-disk signature says so but the array/VG is not assembled/visible.
+export type DeviceRole = { kind: 'raid' | 'lvm'; owner: string | null }
+
+export function deviceRole(dev: BlockDev, raids: RaidArray[], pvs: LvmPV[]): DeviceRole | null {
+  const raid = raids.find(r => r.devices.includes(dev.name))
+  if (raid || dev.fstype === 'linux_raid_member') return { kind: 'raid', owner: raid?.name ?? null }
+  const pv = pvs.find(p => p.name === `/dev/${dev.name}`)
+  if (pv || dev.fstype === 'LVM2_member') return { kind: 'lvm', owner: pv?.vgName ?? null }
+  return null
+}
+
+// A member device, or a disk with a member partition, is read-only in the UI:
+// formatting, mounting, partitioning or wiping it would break the array/VG.
+export function isLockedByMembership(dev: BlockDev, raids: RaidArray[], pvs: LvmPV[]): boolean {
+  if (deviceRole(dev, raids, pvs)) return true
+  return (dev.children ?? []).some(c => c.type === 'part' && deviceRole(c, raids, pvs) !== null)
+}
+
+export function roleLabel(role: DeviceRole): string {
+  const what = role.kind === 'raid' ? 'RAID' : 'LVM'
+  return role.owner ? `${what} ${role.owner}` : `${what} member (inactive)`
+}
+
 export const criticalMountPoints: Record<string, boolean> = {
   '/': true, '/boot': true, '/boot/efi': true, '/boot/grub': true,
   '/usr': true, '/var': true, '/home': true, '/etc': true,
