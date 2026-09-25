@@ -6,8 +6,9 @@ import Modal from '../../ui/Modal.vue'
 
 /* Shared 3-step format wizard used by every storage section. Call open(dev)
    via a template ref; it emits `done` after a successful format so the parent
-   can refresh. */
-const emit = defineEmits<{ done: [] }>()
+   can refresh, then offers to mount the new filesystem: `mount` hands the
+   device to the parent's mount dialog, where access is chosen. */
+const emit = defineEmits<{ done: []; mount: [dev: BlockDev] }>()
 
 type FsType = 'ext4' | 'xfs' | 'btrfs' | 'fat32'
 
@@ -20,7 +21,7 @@ const FS_OPTIONS: { id: FsType; name: string; tag: string; desc: string }[] = [
 
 const wiz = ref<{
   dev:     BlockDev
-  step:    1 | 2 | 3
+  step:    1 | 2 | 3 | 4
   fstype:  FsType
   label:   string
   confirm: string
@@ -41,13 +42,20 @@ async function doFormat() {
   try {
     const device = w.dev.path.replace(/^\/dev\//, '')
     await trpc.storage.formatDisk.mutate({ device, fstype: w.fstype, label: w.label || undefined })
-    wiz.value = null
+    w.step = 4
     emit('done')
   } catch (e: unknown) {
     w.err = (e as { message?: string })?.message ?? 'Format failed'
   } finally {
     if (wiz.value) w.busy = false
   }
+}
+
+function mountNow() {
+  if (!wiz.value) return
+  const dev = { ...wiz.value.dev, fstype: wiz.value.fstype === 'fat32' ? 'vfat' : wiz.value.fstype }
+  wiz.value = null
+  emit('mount', dev)
 }
 
 defineExpose({ open })
@@ -57,7 +65,7 @@ defineExpose({ open })
   <Modal v-if="wiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!wiz.busy" @close="wiz = null">
 
     <!-- Step indicator -->
-    <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
+    <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-[var(--c-border)]">
       <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
         :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
           wiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
@@ -174,6 +182,21 @@ defineExpose({ open })
           <span v-if="wiz.busy">Formatting…</span>
           <span v-else>Format now</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Done: a new filesystem is root-owned until it is mounted with access set up -->
+    <div v-else class="p-6 space-y-4">
+      <div>
+        <div class="font-semibold text-sm text-[var(--c-text-1)]">Formatted</div>
+        <p class="text-xs text-[var(--c-text-3)] mt-1">
+          <span class="font-mono">/dev/{{ wiz.dev.name }}</span> now holds an empty {{ wiz.fstype }} filesystem.
+          Mount it to choose who can write to it and to create a Place for it.
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button @click="wiz = null" class="btn btn-outline flex-1 justify-center">Later</button>
+        <button @click="mountNow" class="btn btn-primary flex-1 justify-center">Mount now…</button>
       </div>
     </div>
 

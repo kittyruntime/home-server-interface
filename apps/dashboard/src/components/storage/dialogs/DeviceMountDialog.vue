@@ -13,12 +13,18 @@ const toast = useToast()
 // Places are admin-managed; storage-only users just mount.
 const { isAdmin } = useAuth()
 
+// HSI accounts a volume can be given to. HSI groups are not Linux groups, so
+// group access goes through the Place instead.
+const users = ref<{ id: string; username: string; displayName: string | null }[]>([])
+
 const dlg = ref<{
   dev:     BlockDev
   mp:      string
   options: string
   persist: boolean
-  access:  'shared' | 'keep'
+  access:  'shared' | 'user' | 'keep'
+  ownerUserId: string
+  force:   boolean
   createPlace: boolean
   placeName:   string
   busy:    boolean
@@ -27,7 +33,10 @@ const dlg = ref<{
 
 function open(dev: BlockDev) {
   dlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, access: 'shared',
-    createPlace: isAdmin.value, placeName: dev.name, busy: false, err: '' }
+    ownerUserId: '', force: false, createPlace: isAdmin.value, placeName: dev.name, busy: false, err: '' }
+  trpc.user.list.query()
+    .then(list => { users.value = list })
+    .catch(() => { users.value = [] })
 }
 
 async function doMount() {
@@ -39,6 +48,8 @@ async function doMount() {
     const device = d.dev.path.replace(/^\/dev\//, '')
     const res = await trpc.storage.mountDevice.mutate({
       device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist, access: d.access,
+      ownerUserId: d.access === 'user' ? d.ownerUserId : undefined,
+      force: d.access !== 'keep' && d.force,
     })
     // Mounted: anything left unchanged (existing data, unknown account) is
     // reported without failing the mount.
@@ -111,10 +122,31 @@ defineExpose({ open })
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
+          <input v-model="dlg.access" type="radio" value="user" class="mt-0.5 accent-accent"/>
+          <div class="flex-1">
+            <div class="text-xs font-medium text-[var(--c-text-2)]">Owned by another user</div>
+            <div class="text-[10px] text-[var(--c-text-3)]">Same as above, owned by the account you pick. To give a group access, create a Place and grant it there.</div>
+            <select v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
+              class="mt-1.5 w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors">
+              <option value="" disabled>Choose a user</option>
+              <option v-for="u in users" :key="u.id" :value="u.id">
+                {{ u.displayName ? `${u.displayName} (${u.username})` : u.username }}
+              </option>
+            </select>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer">
           <input v-model="dlg.access" type="radio" value="keep" class="mt-0.5 accent-accent"/>
           <div>
             <div class="text-xs font-medium text-[var(--c-text-2)]">Keep current permissions</div>
             <div class="text-[10px] text-[var(--c-text-3)]">A new volume stays owned by root: only root can write to it until you change its permissions.</div>
+          </div>
+        </label>
+        <label v-if="dlg.access !== 'keep'" class="flex items-start gap-2.5 cursor-pointer pt-1">
+          <input v-model="dlg.force" type="checkbox" class="mt-0.5 accent-accent"/>
+          <div>
+            <div class="text-xs font-medium text-[var(--c-text-2)]">Also apply if the volume already holds data</div>
+            <div class="text-[10px] text-[var(--c-text-3)]">Changes the owner and mode of the mount point's top folder only. Existing files and folders inside keep their permissions.</div>
           </div>
         </label>
       </fieldset>
@@ -132,7 +164,7 @@ defineExpose({ open })
       <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
       <div class="flex gap-2 pt-1">
         <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-        <button @click="doMount" :disabled="!dlg.mp || dlg.busy"
+        <button @click="doMount" :disabled="!dlg.mp || dlg.busy || (dlg.access === 'user' && !dlg.ownerUserId)"
           class="btn btn-primary flex-1 justify-center">
           <span v-if="dlg.busy">Mounting…</span>
           <span v-else>Mount</span>

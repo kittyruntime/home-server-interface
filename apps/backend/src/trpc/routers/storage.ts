@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, storageProcedure } from "../index"
 import { requestSync } from "../../nats"
 
@@ -39,13 +40,28 @@ export const storageRouter = router({
       options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
       persist:    z.boolean().default(false),
       // "shared": a freshly formatted volume becomes writable by the user who
-      // mounts it and the hsi-share group. "keep": leave its root as root:root.
-      access:     z.enum(["shared", "keep"]).default("keep"),
+      // mounts it and the hsi-share group. "user": same, owned by ownerUserId.
+      // "keep": leave its root as root:root.
+      access:      z.enum(["shared", "user", "keep"]).default("keep"),
+      ownerUserId: z.string().optional(),
+      // Also prepare a volume that already holds data (confirmed in the UI).
+      force:       z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
-      const me = await ctx.prisma.user.findUnique({ where: { id: ctx.user.userId }, select: { username: true } })
+      const { ownerUserId, ...rest } = input
+      // Owners are HSI users only, never an arbitrary system account.
+      const ownerId = input.access === "user" ? ownerUserId : ctx.user.userId
+      if (input.access === "user" && !ownerId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the user who will own the volume" })
+      }
+      const owner = ownerId
+        ? await ctx.prisma.user.findUnique({ where: { id: ownerId }, select: { username: true } })
+        : null
+      if (input.access === "user" && !owner) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown user" })
+      }
       return await requestSync<{ ok: true; warnings?: string[] | null }>(
-        "root.sys.mount", { ...input, ownerUser: me?.username ?? "" }, 20_000)
+        "root.sys.mount", { ...rest, ownerUser: owner?.username ?? "" }, 20_000)
     }),
 
   umountDevice: storageProcedure
