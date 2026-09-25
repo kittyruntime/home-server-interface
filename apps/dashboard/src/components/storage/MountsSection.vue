@@ -8,7 +8,7 @@ import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'raid' | 'lvm'] }>()
 
-const { loading, error, devices, raids, lvmPVs, lvmLVs, refresh } = useStorageData()
+const { loading, error, devices, raids, lvmLVs, refresh } = useStorageData()
 
 // ── Aggregated mount data ─────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
     if (bd.type === 'dm' || bd.type === 'lvm' || bd.isSystem) continue
     if (bd.fstype === 'swap') continue
     // RAID/LVM members carry a signature, not a mountable filesystem.
-    if (deviceRole(bd, raids.value, lvmPVs.value)) continue
+    if (deviceRole(bd)) continue
     const parentDisk = devices.value.find(d => bd.name.startsWith(d.name) && d.type === 'disk')
     entries.push({
       key:         `disk:${bd.name}`,

@@ -18,8 +18,14 @@ export type BlockDev = {
   usageTotal:  number
   usageUsed:   number
   usageFree:   number
+  /** Computed by the root worker: system | raid-member | lvm-pv | mounted |
+   *  filesystem | partitioned | free. `owner` is the array/VG of a member. */
+  usage?:      DeviceUsage
+  owner?:      string
   children:    BlockDev[]
 }
+
+export type DeviceUsage = 'system' | 'raid-member' | 'lvm-pv' | 'mounted' | 'filesystem' | 'partitioned' | 'free'
 
 export type RaidArray = {
   name:    string
@@ -41,19 +47,34 @@ export type LvmLV = { name: string; vgName: string; size: number; path: string }
 // when the on-disk signature says so but the array/VG is not assembled/visible.
 export type DeviceRole = { kind: 'raid' | 'lvm'; owner: string | null }
 
-export function deviceRole(dev: BlockDev, raids: RaidArray[], pvs: LvmPV[]): DeviceRole | null {
-  const raid = raids.find(r => r.devices.includes(dev.name))
-  if (raid || dev.fstype === 'linux_raid_member') return { kind: 'raid', owner: raid?.name ?? null }
-  const pv = pvs.find(p => p.name === `/dev/${dev.name}`)
-  if (pv || dev.fstype === 'LVM2_member') return { kind: 'lvm', owner: pv?.vgName ?? null }
+export function deviceRole(dev: BlockDev): DeviceRole | null {
+  const usage = dev.usage
+    // Workers older than the usage field: fall back to the on-disk signature.
+    ?? (dev.fstype === 'linux_raid_member' ? 'raid-member' : dev.fstype === 'LVM2_member' ? 'lvm-pv' : undefined)
+  if (usage === 'raid-member') return { kind: 'raid', owner: dev.owner || null }
+  if (usage === 'lvm-pv') return { kind: 'lvm', owner: dev.owner || null }
   return null
 }
 
 // A member device, or a disk with a member partition, is read-only in the UI:
 // formatting, mounting, partitioning or wiping it would break the array/VG.
-export function isLockedByMembership(dev: BlockDev, raids: RaidArray[], pvs: LvmPV[]): boolean {
-  if (deviceRole(dev, raids, pvs)) return true
-  return (dev.children ?? []).some(c => c.type === 'part' && deviceRole(c, raids, pvs) !== null)
+export function isLockedByMembership(dev: BlockDev): boolean {
+  if (deviceRole(dev)) return true
+  return (dev.children ?? []).some(c => c.type === 'part' && deviceRole(c) !== null)
+}
+
+/** Devices a new RAID array or LVM PV may claim: nothing on them (per the
+ *  worker's usage), disks and partitions only, plus assembled arrays when
+ *  `includeArrays` (a PV on top of md0). Each device appears once. */
+export function claimableDevices(devices: BlockDev[], includeArrays = false): BlockDev[] {
+  const out = new Map<string, BlockDev>()
+  function walk(dev: BlockDev) {
+    const kindOk = dev.type === 'disk' || dev.type === 'part' || (includeArrays && dev.type.startsWith('raid'))
+    if (kindOk && dev.usage === 'free' && !dev.isSystem) out.set(dev.name, dev)
+    dev.children?.forEach(walk)
+  }
+  devices.forEach(walk)
+  return [...out.values()]
 }
 
 export function roleLabel(role: DeviceRole): string {

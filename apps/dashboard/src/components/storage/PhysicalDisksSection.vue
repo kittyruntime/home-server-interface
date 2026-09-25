@@ -16,7 +16,7 @@ import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{ navigate: [section: 'raid' | 'lvm'] }>()
 
-const { loading, error, devices, raids, lvmPVs, lvmLVs, refresh } = useStorageData()
+const { loading, error, devices, lvmLVs, refresh } = useStorageData()
 
 // ── State (SMART) ─────────────────────────────────────────────────────────────
 
@@ -48,23 +48,25 @@ function diskStatus(diskName: string) {
 
 const physicalDisks = computed(() => devices.value.filter(d => d.type === 'disk'))
 
-// Which RAID array (if any) uses this exact device as a member?
-function raidMemberOf(devName: string): string | undefined {
-  return raids.value.find(r => r.devices.includes(devName))?.name
-}
-
 // RAID/LVM membership, including members of arrays/VGs that are not active.
 function roleOf(dev: BlockDev): DeviceRole | null {
-  return deviceRole(dev, raids.value, lvmPVs.value)
+  return deviceRole(dev)
 }
 
 function diskLocked(disk: BlockDev): boolean {
-  return isLockedByMembership(disk, raids.value, lvmPVs.value)
+  return isLockedByMembership(disk)
 }
 
-// Which VG (if any) uses this device as a PV?
-function pvVgOf(devName: string): string | undefined {
-  return lvmPVs.value.find(p => p.name === `/dev/${devName}`)?.vgName
+// The array (md0) that uses this device, when it is assembled.
+function raidMemberOf(dev: BlockDev): string | undefined {
+  const role = roleOf(dev)
+  return role?.kind === 'raid' ? role.owner ?? undefined : undefined
+}
+
+// The volume group that uses this device as a PV, when it is known.
+function pvVgOf(dev: BlockDev): string | undefined {
+  const role = roleOf(dev)
+  return role?.kind === 'lvm' ? role.owner ?? undefined : undefined
 }
 
 // LVs belonging to a VG, as display rows.
@@ -407,14 +409,14 @@ function toggleDanger(name: string) {
                         <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
                         <span v-else-if="!roleOf(part)" class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
                         <!-- Role: RAID member -->
-                        <button v-if="raidMemberOf(part.name)" @click="emit('navigate', 'raid')"
+                        <button v-if="raidMemberOf(part)" @click="emit('navigate', 'raid')"
                           class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
-                          RAID {{ raidMemberOf(part.name) }} →
+                          RAID {{ raidMemberOf(part) }} →
                         </button>
                         <!-- Role: LVM PV -->
-                        <button v-if="pvVgOf(part.name)" @click="emit('navigate', 'lvm')"
+                        <button v-if="pvVgOf(part)" @click="emit('navigate', 'lvm')"
                           class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
-                          LVM {{ pvVgOf(part.name) }} →
+                          LVM {{ pvVgOf(part) }} →
                         </button>
                         <!-- Role: member of an array/VG that is not active -->
                         <span v-if="roleOf(part) && !roleOf(part)!.owner"
@@ -428,8 +430,8 @@ function toggleDanger(name: string) {
                         <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
                       </div>
                       <!-- Nested: LVs of the VG this partition is a PV of -->
-                      <div v-if="pvVgOf(part.name) && lvsOfVg(pvVgOf(part.name)!).length" class="mt-1.5 space-y-1">
-                        <div v-for="lv in lvsOfVg(pvVgOf(part.name)!)" :key="lv.path" class="flex items-center gap-2 text-[10px]">
+                      <div v-if="pvVgOf(part) && lvsOfVg(pvVgOf(part)!).length" class="mt-1.5 space-y-1">
+                        <div v-for="lv in lvsOfVg(pvVgOf(part)!)" :key="lv.path" class="flex items-center gap-2 text-[10px]">
                           <span class="text-[var(--c-text-3)]/50">└─</span>
                           <span class="font-mono text-purple-400">{{ lv.vgName }}/{{ lv.name }}</span>
                           <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>

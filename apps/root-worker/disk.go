@@ -99,20 +99,24 @@ type lsblkOutput struct {
 
 // BlockDev is the enriched device info sent to the frontend.
 type BlockDev struct {
-	Name        string     `json:"name"`
-	Path        string     `json:"path"`
-	Size        int64      `json:"size"`
-	Type        string     `json:"type"`
-	FsType      string     `json:"fstype"`
-	MountPoint  string     `json:"mountpoint"`
-	Model       string     `json:"model"`
-	UUID        string     `json:"uuid"`
-	IsSystem    bool       `json:"isSystem"`
-	IsRemovable bool       `json:"isRemovable"`
-	UsageTotal  int64      `json:"usageTotal"`
-	UsageUsed   int64      `json:"usageUsed"`
-	UsageFree   int64      `json:"usageFree"`
-	Children    []BlockDev `json:"children"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Size        int64  `json:"size"`
+	Type        string `json:"type"`
+	FsType      string `json:"fstype"`
+	MountPoint  string `json:"mountpoint"`
+	Model       string `json:"model"`
+	UUID        string `json:"uuid"`
+	IsSystem    bool   `json:"isSystem"`
+	IsRemovable bool   `json:"isRemovable"`
+	UsageTotal  int64  `json:"usageTotal"`
+	UsageUsed   int64  `json:"usageUsed"`
+	UsageFree   int64  `json:"usageFree"`
+	// Usage is what the device is used for; see assignUsage. Owner names the
+	// array (md0) or volume group that uses a member, when it is known.
+	Usage    string     `json:"usage"`
+	Owner    string     `json:"owner,omitempty"`
+	Children []BlockDev `json:"children"`
 }
 
 // Helpers for lsblkRaw fields that can be null/bool/string/number.
@@ -221,10 +225,16 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
+	pvVG := map[string]string{}
+	if pvsOut, err := exec.Command("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
+		pvVG = parsePvs(string(pvsOut))
+	}
+
 	devices := make([]BlockDev, 0, len(raw.BlockDevices))
 	for _, r := range raw.BlockDevices {
 		dev := convertDev(r, sysDevs, false)
 		propagateSystem(&dev)
+		assignUsage(&dev, pvVG)
 		devices = append(devices, dev)
 	}
 

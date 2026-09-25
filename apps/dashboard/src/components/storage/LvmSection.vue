@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, isLockedByMembership, type BlockDev, type LvmVG, type LvmLV } from './store'
+import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, claimableDevices, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { useHostTools } from './tools'
 import { trpc } from '../../lib/trpc'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -11,7 +11,7 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
 
-const { loading, error, devices, raids, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
+const { loading, error, devices, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -23,51 +23,8 @@ function lv2bd(lv: LvmLV): BlockDev {
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
-function makeRaidChecker(inRaid: Set<string>, mdNames: Set<string>) {
-  function committedToRaid(dev: BlockDev): boolean {
-    if (inRaid.has(dev.name) || mdNames.has(dev.name)) return true
-    return (dev.children ?? []).some(committedToRaid)
-  }
-  return committedToRaid
-}
-
-function allDevices(): BlockDev[] {
-  const out: BlockDev[] = []
-  function walk(d: BlockDev) { out.push(d); d.children?.forEach(walk) }
-  devices.value.forEach(walk)
-  return out
-}
-
-// Eligible for LVM PV: free disks/partitions (not RAID-committed) + assembled RAID arrays (once each)
-const eligibleForLvm = computed<BlockDev[]>(() => {
-  const inRaid  = new Set(raids.value.flatMap(r => r.devices))
-  const mdNames = new Set(raids.value.map(r => r.name))
-  const pvDevs  = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
-  const committed = makeRaidChecker(inRaid, mdNames)
-  const out: BlockDev[] = []
-  function collect(dev: BlockDev) {
-    if (committed(dev)) return  // skip RAID-committed devices and their subtrees
-    // isLockedByMembership also catches members of arrays/VGs that are not
-    // assembled, which the raids/PVs lists above do not know about.
-    if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
-        !isLockedByMembership(dev, raids.value, lvmPVs.value) &&
-        dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
-      out.push(dev)
-    }
-    dev.children?.forEach(collect)
-  }
-  devices.value.forEach(collect)
-  // Add each assembled RAID array exactly once as a PV candidate
-  const flat = allDevices()
-  const seen = new Set<string>()
-  for (const r of raids.value) {
-    if (seen.has(r.name)) continue
-    seen.add(r.name)
-    const md = flat.find(d => d.name === r.name)
-    if (md && !md.mountpoint && !md.isSystem && !pvDevs.has(md.name)) out.push(md)
-  }
-  return out
-})
+// Eligible for LVM PV: free disks/partitions and free assembled RAID arrays (worker usage)
+const eligibleForLvm = computed<BlockDev[]>(() => claimableDevices(devices.value, true))
 
 // VG free space as percentage
 function vgFreePct(vg: LvmVG): number {

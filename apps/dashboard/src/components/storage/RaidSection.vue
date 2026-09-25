@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import {
   useStorageData, fmtBytes, usagePct, usageBarClass,
-  raidLevelLabel, raidDescription, isRaidHealthy, isLockedByMembership,
+  raidLevelLabel, raidDescription, isRaidHealthy, claimableDevices,
   type BlockDev, type RaidArray,
 } from './store'
 import { useHostTools } from './tools'
@@ -36,39 +36,8 @@ function raidPvVg(raidName: string): string | undefined {
   return lvmPVs.value.find(p => p.name === `/dev/${raidName}`)?.vgName
 }
 
-// lsblk reports RAID devices as type "raid0", "raid1", "raid5", "raid10" — not "md".
-// A device or any of its descendants is "committed to RAID" if its name is a known
-// RAID member or array name. We check recursively so parent disks of RAID-member
-// partitions are also excluded.
-function makeRaidChecker(inRaid: Set<string>, mdNames: Set<string>) {
-  function committedToRaid(dev: BlockDev): boolean {
-    if (inRaid.has(dev.name) || mdNames.has(dev.name)) return true
-    return (dev.children ?? []).some(committedToRaid)
-  }
-  return committedToRaid
-}
-
-// Eligible for RAID creation: free disks/partitions with no RAID commitment anywhere in their subtree
-const eligibleForRaid = computed<BlockDev[]>(() => {
-  const inRaid  = new Set(raids.value.flatMap(r => r.devices))
-  const mdNames = new Set(raids.value.map(r => r.name))
-  const pvDevs  = new Set(lvmPVs.value.map(p => p.name.replace('/dev/', '')))
-  const committed = makeRaidChecker(inRaid, mdNames)
-  const out: BlockDev[] = []
-  function collect(dev: BlockDev) {
-    if (committed(dev)) return  // skip device AND its subtree
-    // isLockedByMembership also catches members of arrays/VGs that are not
-    // assembled, which the raids/PVs lists above do not know about.
-    if (!dev.isSystem && !dev.mountpoint && !pvDevs.has(dev.name) &&
-        !isLockedByMembership(dev, raids.value, lvmPVs.value) &&
-        dev.type !== 'rom' && dev.type !== 'loop' && dev.type !== 'lvm') {
-      out.push(dev)
-    }
-    dev.children?.forEach(collect)
-  }
-  devices.value.forEach(collect)
-  return out
-})
+// Eligible for RAID creation: free disks/partitions (worker usage)
+const eligibleForRaid = computed<BlockDev[]>(() => claimableDevices(devices.value))
 
 // ── Format wizard ─────────────────────────────────────────────────────────────
 
