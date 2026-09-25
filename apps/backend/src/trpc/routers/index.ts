@@ -16,6 +16,7 @@ import { sharingRouter } from "./sharing"
 import { shareLinkRouter } from "./shareLink"
 import { catalogRouter } from "./catalog"
 import { alertRouter } from "./alert"
+import { notificationsRouter } from "./notifications"
 import { backupRouter } from "./backup"
 
 export const appRouter = router({
@@ -36,6 +37,7 @@ export const appRouter = router({
   shareLink: shareLinkRouter,
   catalog: catalogRouter,
   alert: alertRouter,
+  notifications: notificationsRouter,
   backup: backupRouter,
 })
 
