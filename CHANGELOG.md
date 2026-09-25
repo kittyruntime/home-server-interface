@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Notifications (feedback #12)**: central notification engine. Alert raises and
+  clears (including severity changes) flow to rules; each rule filters by source
+  prefix and minimum severity and targets connectors. Native in-app connector
+  (bell menu, persistent, all users, unread badge) and a generic webhook
+  connector with editable `{{vars}}` JSON payload templates, prefilled presets
+  (Discord, Slack, ntfy), live backend-rendered preview and one-click test send.
+  A default rule ("All alerts" to the bell) is seeded on first boot.
+
 ## [1.53.1] - 2026-09-25
 
 ### Fixed
