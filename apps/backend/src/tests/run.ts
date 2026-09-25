@@ -313,4 +313,41 @@ async function testAttemptWebhookRetriesAndReports() {
 
 await testAttemptWebhookRetriesAndReports()
 
+const { diffAlerts } = await import("../services/alert-sampler")
+
+async function testDiffAlerts() {
+  const prev = [
+    { target: "/a", severity: "warning", message: "Disk usage: 81% (warning, threshold 80%)" },
+    { target: "/b", severity: "critical", message: "Disk usage: 95% (critical, threshold 90%)" },
+    { target: "/skipped", severity: "warning", message: "SMART status: warning" },
+  ]
+  const found = [
+    { target: "/a", severity: "warning" as const, message: "Disk usage: 82% (warning, threshold 80%)" }, // same severity, new message -> silent update
+    { target: "/b", severity: "critical" as const, message: "Disk usage: 96% (critical, threshold 90%)" }, // unchanged -> silent
+    { target: "/c", severity: "critical" as const, message: "Disk usage: 91% (critical, threshold 90%)" }, // new -> raised
+  ]
+  const now = "2026-09-25T00:00:00.000Z"
+  const { raised, cleared } = diffAlerts("storage.disk-usage", prev, ["/a", "/b", "/c"], found, now)
+  assert.equal(raised.length, 1)
+  assert.equal(raised[0].type, "alert.raised")
+  assert.equal(raised[0].target, "/c")
+  // /skipped was not checked this tick -> NOT cleared
+  assert.equal(cleared.length, 0)
+
+  // severity escalation re-raises
+  const esc = [{ target: "/a", severity: "warning", message: "m" }]
+  const foundCrit = [{ target: "/a", severity: "critical" as const, message: "m" }]
+  const out2 = diffAlerts("storage.disk-usage", esc, ["/a"], foundCrit, now)
+  assert.equal(out2.raised.length, 1)
+  assert.equal(out2.raised[0].severity, "critical")
+
+  // cleared: checked but absent from found
+  const out3 = diffAlerts("storage.disk-usage", [{ target: "/a", severity: "warning", message: "m" }], ["/a"], [], now)
+  assert.equal(out3.cleared.length, 1)
+  assert.equal(out3.cleared[0].type, "alert.cleared")
+  assert.equal(out3.cleared[0].severity, "warning")
+}
+
+await testDiffAlerts()
+
 console.log("Backend security tests passed")

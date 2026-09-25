@@ -1,7 +1,8 @@
 import { prisma } from "@app/database"
 import { requestSync } from "../nats"
+import { dispatchEvent, type NotificationEvent, type Severity } from "./notifications"
 
-type CheckResult = { target: string; message: string }
+type CheckResult = { target: string; message: string; severity: Severity }
 type CheckOutcome = { found: CheckResult[]; checked: string[] }
 type Checker = { source: string; check: () => Promise<CheckOutcome> }
 
@@ -19,9 +20,10 @@ async function checkRaid(): Promise<CheckOutcome> {
   const checked = res.raids.map(r => r.name)
   const found = res.raids
     .filter(r => !((r.state === "active" || r.state === "clean") && r.active === r.total))
-    .map(r => ({
+    .map((r): CheckResult => ({
       target: r.name,
       message: `${r.active}/${r.total} devices active (${r.state})`,
+      severity: r.active === 0 ? "critical" : "warning",
     }))
   return { found, checked }
 }
@@ -64,7 +66,7 @@ async function checkSmart(): Promise<CheckOutcome> {
     checked.push(d.name)
     const status = deriveSmartStatus(smart)
     if (status === "warning" || status === "failed") {
-      found.push({ target: d.name, message: `SMART status: ${status}` })
+      found.push({ target: d.name, message: `SMART status: ${status}`, severity: status === "failed" ? "critical" : "warning" })
     }
   }
   return { found, checked }
@@ -98,9 +100,9 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
     checked.push(path)
     const usedPercent = ((usage.total - usage.free) / usage.total) * 100
     if (usedPercent >= critical) {
-      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (critical, threshold ${critical}%)` })
+      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (critical, threshold ${critical}%)`, severity: "critical" })
     } else if (usedPercent >= warning) {
-      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (warning, threshold ${warning}%)` })
+      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (warning, threshold ${warning}%)`, severity: "warning" })
     }
   }
   return { found, checked }
@@ -111,6 +113,32 @@ const checkers: Checker[] = [
   { source: "storage.smart", check: checkSmart },
   { source: "storage.disk-usage", check: checkDiskUsage },
 ]
+
+// Pure diff between the previous alert set (source-scoped) and this tick's
+// findings. Targets that were not checked are ignored (kept as-is).
+export function diffAlerts(
+  source: string,
+  prev: Array<{ target: string; severity: string; message: string }>,
+  checked: string[],
+  found: Array<{ target: string; severity: Severity; message: string }>,
+  now: string,
+): { raised: NotificationEvent[]; cleared: NotificationEvent[] } {
+  const checkedSet = new Set(checked)
+  const foundByTarget = new Map(found.map(f => [f.target, f]))
+  const raised: NotificationEvent[] = []
+  const cleared: NotificationEvent[] = []
+  for (const f of found) {
+    const was = prev.find(p => p.target === f.target)
+    if (!was || was.severity !== f.severity) {
+      raised.push({ type: "alert.raised", severity: f.severity, source, target: f.target, message: f.message, time: now })
+    }
+  }
+  for (const p of prev) {
+    if (!checkedSet.has(p.target) || foundByTarget.has(p.target)) continue
+    cleared.push({ type: "alert.cleared", severity: (p.severity as Severity), source, target: p.target, message: p.message, time: now })
+  }
+  return { raised, cleared }
+}
 
 async function runChecks(): Promise<void> {
   for (const { source, check } of checkers) {
@@ -123,18 +151,24 @@ async function runChecks(): Promise<void> {
     if (outcome === null) continue
     const { found, checked } = outcome
     try {
-      const targets = found.map(f => f.target)
-      // Only reconcile targets actually evaluated this tick — a target that
-      // was skipped (e.g. a disk in standby) keeps whatever alert it already
-      // had rather than having it wrongly cleared.
-      await prisma.alert.deleteMany({ where: { source, target: { in: checked, notIn: targets } } })
+      const prev = await prisma.alert.findMany({
+        where: { source },
+        select: { target: true, severity: true, message: true },
+      })
+      const now = new Date().toISOString()
+      const { raised, cleared } = diffAlerts(source, prev, checked, found, now)
+      // Reconcile: persist found (message+severity), delete cleared.
+      if (cleared.length > 0) {
+        await prisma.alert.deleteMany({ where: { source, target: { in: cleared.map(c => c.target) } } })
+      }
       for (const f of found) {
         await prisma.alert.upsert({
           where: { source_target: { source, target: f.target } },
-          create: { source, target: f.target, message: f.message },
-          update: { message: f.message },
+          create: { source, target: f.target, message: f.message, severity: f.severity },
+          update: { message: f.message, severity: f.severity },
         })
       }
+      for (const evt of [...raised, ...cleared]) void dispatchEvent(evt)
     } catch (e) {
       console.error(`alert-sampler: failed to persist alerts for ${source}:`, e) // non-fatal: sampler errors must not crash the server
     }
