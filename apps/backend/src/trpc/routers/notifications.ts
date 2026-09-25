@@ -1,6 +1,7 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
-import { prisma } from "@app/database"
+import { prisma, PrismaClient } from "@app/database"
 import {
   attemptWebhook, renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS,
 } from "../../services/notifications"
@@ -25,6 +26,19 @@ const ruleInput = z.object({
   enabled: z.boolean().default(true),
 })
 
+// Every target must be the built-in in-app connector or an existing connector.
+async function resolveConnectorIds(db: PrismaClient, connectorIds: string[]): Promise<string[]> {
+  const unique = [...new Set(connectorIds)]
+  const connectors = await db.notificationConnector.findMany({ select: { id: true } })
+  const known = new Set(connectors.map(c => c.id))
+  for (const id of unique) {
+    if (id !== "inapp" && !known.has(id)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown connector id: ${id}` })
+    }
+  }
+  return unique
+}
+
 export const notificationsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const [items, unread] = await Promise.all([
@@ -47,34 +61,40 @@ export const notificationsRouter = router({
       const { id, ...data } = input
       return ctx.prisma.notificationConnector.update({ where: { id }, data })
     }),
-    delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) => {
-      // Orphan rule targets are impossible: strip the id from every rule.
-      const rules = await ctx.prisma.notificationRule.findMany()
-      for (const rule of rules) {
-        const ids: string[] = JSON.parse(rule.connectorIds)
-        if (ids.includes(input.id)) {
-          await ctx.prisma.notificationRule.update({
-            where: { id: rule.id },
-            data: { connectorIds: JSON.stringify(ids.filter(x => x !== input.id)) },
-          })
+    delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) =>
+      // Orphan rule targets are impossible: strip the id from every rule,
+      // atomically with the delete itself.
+      ctx.prisma.$transaction(async (tx) => {
+        const rules = await tx.notificationRule.findMany()
+        for (const rule of rules) {
+          const ids: string[] = JSON.parse(rule.connectorIds)
+          if (ids.includes(input.id)) {
+            await tx.notificationRule.update({
+              where: { id: rule.id },
+              data: { connectorIds: JSON.stringify(ids.filter(x => x !== input.id)) },
+            })
+          }
         }
-      }
-      await ctx.prisma.notificationConnector.delete({ where: { id: input.id } })
-      return { ok: true }
-    }),
+        await tx.notificationConnector.delete({ where: { id: input.id } })
+        return { ok: true }
+      }),
+    ),
   }),
 
   rules: router({
     list: adminProcedure.query(async ({ ctx }) => ctx.prisma.notificationRule.findMany({ orderBy: { name: "asc" } })),
-    create: adminProcedure.input(ruleInput).mutation(({ ctx, input }) =>
-      ctx.prisma.notificationRule.create({
-        data: { ...input, connectorIds: JSON.stringify(input.connectorIds) },
-      })),
-    update: adminProcedure.input(ruleInput.extend({ id: z.string().uuid() })).mutation(({ ctx, input }) => {
+    create: adminProcedure.input(ruleInput).mutation(async ({ ctx, input }) => {
+      const connectorIds = await resolveConnectorIds(ctx.prisma, input.connectorIds)
+      return ctx.prisma.notificationRule.create({
+        data: { ...input, connectorIds: JSON.stringify(connectorIds) },
+      })
+    }),
+    update: adminProcedure.input(ruleInput.extend({ id: z.string().uuid() })).mutation(async ({ ctx, input }) => {
       const { id, connectorIds, ...data } = input
+      const resolved = await resolveConnectorIds(ctx.prisma, connectorIds)
       return ctx.prisma.notificationRule.update({
         where: { id },
-        data: { ...data, connectorIds: JSON.stringify(connectorIds) },
+        data: { ...data, connectorIds: JSON.stringify(resolved) },
       })
     }),
     delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(({ ctx, input }) =>
