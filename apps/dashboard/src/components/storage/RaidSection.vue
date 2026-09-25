@@ -18,6 +18,7 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 import RaidLevelVisual from './RaidLevelVisual.vue'
 import Hint from '../ui/Hint.vue'
+import ImportFound from './ImportFound.vue'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 const props = defineProps<{ preselect?: string[] }>()
@@ -330,6 +331,8 @@ const openMenu = ref<string | null>(null)
         </button>
       </div>
     </div>
+
+    <ImportFound kind="raid" :used-md-names="raids.map(r => r.name)" @imported="refresh" />
 
     <div v-if="loading && !raids.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>

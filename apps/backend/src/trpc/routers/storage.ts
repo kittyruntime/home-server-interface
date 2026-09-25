@@ -97,6 +97,26 @@ export const storageRouter = router({
     .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
     .mutation(async ({ input }) => requestSync("root.sys.raid.add", input, 60_000)),
 
+  // Import existing storage without formatting: arrays found in superblocks
+  // that are not running, and volume groups with no active logical volume.
+  importScan: storageProcedure.query(async () => requestSync<{
+    arrays: Array<{ device: string; level: string; uuid: string; name: string; expected: number; members: string[]; missing: number }>
+    vgs: Array<{ name: string; lvs: string[] }>
+  }>("root.sys.import.scan", {}, 30_000)),
+
+  importAssembleRaid: storageProcedure
+    .input(z.object({
+      uuid:          z.string().regex(/^[0-9a-fA-F:]{8,64}$/),
+      name:          z.string().regex(/^md[0-9]{1,3}$/),
+      allowDegraded: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => requestSync<{ ok: true; device: string; warnings?: string[] | null }>(
+      "root.sys.import.assemble", input, 60_000)),
+
+  importActivateVg: storageProcedure
+    .input(z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.import.activateVg", input, 60_000)),
+
   stopRaid: storageProcedure
     .input(z.object({
       name: z.string().regex(/^md[0-9]{1,3}$/),
