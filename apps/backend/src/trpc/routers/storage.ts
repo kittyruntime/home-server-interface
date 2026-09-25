@@ -100,6 +100,8 @@ export const storageRouter = router({
   smartInfo: storageProcedure
     .input(z.object({
       device: z.string().regex(/^[a-z][a-z0-9]+$/), // bare name only: sda, nvme0n1
+      // Skip a disk in standby instead of spinning it up (list-wide health).
+      noWake: z.boolean().optional(),
     }))
     .query(async ({ input }) => {
       return await requestSync("root.sys.smart", input, 15_000)
