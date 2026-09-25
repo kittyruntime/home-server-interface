@@ -5,7 +5,7 @@ import { router, protectedProcedure, adminProcedure } from "../index"
 import { CATALOG } from "@app/app-catalog"
 import { portDomainUrl, generateComposeYaml, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
-import { listStacks, stackExists, writeStack } from "../../services/containerStacks"
+import { listStacks, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
 import { resolvePlaceMounts } from "./container"
 
 const zInstallVolume = z.object({
@@ -185,8 +185,15 @@ export const catalogRouter = router({
       await writeStack(input.name, yaml)
 
       // Wizard UX: validate the freshly written file, then apply immediately —
-      // the worker's compose up job creates+starts the stack.
-      await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
+      // the worker's compose up job creates+starts the stack. On invalid YAML
+      // remove the half-created stack dir: an invalid compose.yaml left on
+      // disk would break later compose ops and reappear on every stack scan.
+      try {
+        await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
+      } catch (err) {
+        await removeStackDir(input.name).catch(() => {})
+        throw err
+      }
       const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
 
       return { name: input.name, jobId, webPort }

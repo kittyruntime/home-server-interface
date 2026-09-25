@@ -7,7 +7,7 @@ import { useClipboard } from '../../lib/clipboard'
 import { useUploads, trackTransfer } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
-import { pollJob } from '../../lib/jobs'
+import { pollJobResult } from '../../lib/jobs'
 import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
@@ -313,13 +313,20 @@ const selectedEntries = computed(() =>
 )
 
 // ── file operations ──────────────────────────────────────────────────────────
+// Worker fs ops resolve asynchronously: wait for the terminal state and
+// throw on failure so the tracking notification surfaces the real error
+// (same pattern as the app panel's pollJobResult usage).
+async function awaitJob(jobId: string): Promise<void> {
+  const result = await pollJobResult(jobId)
+  if (result.status !== 'completed') throw new Error(result.error ?? 'Operation failed')
+}
 async function createFolder() {
   if (!currentPath.value) return
   creatingFolder.value = true
   try {
     await track('Creating folder', async () => {
       const { jobId } = await trpc.fs.mkdir.mutate({ parentPath: currentPath.value!, name: 'New Folder' })
-      await pollJob(jobId)
+      await awaitJob(jobId)
     })
   } finally {
     creatingFolder.value = false
@@ -333,7 +340,7 @@ async function createFile() {
   try {
     await track('Creating file', async () => {
       const { jobId } = await trpc.fs.touch.mutate({ parentPath: currentPath.value!, name: 'New File' })
-      await pollJob(jobId)
+      await awaitJob(jobId)
     })
   } finally {
     creatingFile.value = false
@@ -365,7 +372,7 @@ async function doPaste() {
         const { jobId } = mode === 'copy'
           ? await trpc.fs.copy.mutate({ src, dstDir: dst })
           : await trpc.fs.move.mutate({ src, dstDir: dst })
-        await pollJob(jobId)
+        await awaitJob(jobId)
       })
     )
   } finally {
@@ -385,7 +392,7 @@ async function doDelete() {
       `Deleting ${paths.length} item(s)`,
       paths.map(p => async () => {
         const { jobId } = await trpc.fs.delete.mutate({ path: p })
-        await pollJob(jobId)
+        await awaitJob(jobId)
       })
     )
   } finally {
@@ -438,7 +445,7 @@ async function doZip() {
 
   await track(`Compressing ${paths.length} item(s)`, async () => {
     const { jobId } = await trpc.fs.zip.mutate({ paths, destDir: currentPath.value!, name })
-    await pollJob(jobId)
+    await awaitJob(jobId)
   })
   refresh()
 }
@@ -452,7 +459,7 @@ async function doUnzip() {
 
   await track(`Extracting ${base}`, async () => {
     const { jobId } = await trpc.fs.unzip.mutate({ path: archivePath, destDir })
-    await pollJob(jobId)
+    await awaitJob(jobId)
   })
   refresh()
 }
@@ -472,7 +479,7 @@ async function commitRename() {
   try {
     await track(`Renaming to "${name}"`, async () => {
       const { jobId } = await trpc.fs.rename.mutate({ path, newName: name })
-      await pollJob(jobId)
+      await awaitJob(jobId)
     })
   } finally {
     pendingPaths.value = []
