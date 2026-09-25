@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Docker detection**: the Apps page and the App Store show a full-panel notice
+  when Docker is not installed, not running or missing the compose plugin, with
+  the exact command to fix it and a "Check again" button. Apps actions and App
+  Store installs are refused with the same message until Docker is usable.
+- **Clear alerts**: Monitor > Alerts can clear one alert or all of them. An alert
+  whose condition is still true comes back at the next check.
+- **Failed backup notifications**: a failed backup run (scheduled or manual)
+  sends a `backup.plan` event through notification rules.
+- **Create a Place when mounting**: admins can create a Place for a volume from
+  the mount dialog, so it shows up in Files right away.
+- **Clearer permission errors**: "permission denied" now says which account the
+  operation ran as and who owns the target folder, with its mode.
+
+### Changed
+- **One log format**: `app.log` and `root-worker.log` use the same JSON lines
+  (`time`, `level`, `component`, `msg`, `err`). The backend no longer writes
+  plain-text lines. See docs/configuration.md for a `jq` one-liner.
+
+### Fixed
+- **Deleted RAID arrays came back after a reboot**: member superblocks were
+  never wiped and `mdadm.conf` kept the array. Deleting an array now wipes its
+  members, removes its `mdadm.conf` and `/etc/fstab` entries (including lines
+  written by earlier versions) and refreshes the initramfs. Arrays deleted with
+  an earlier version reappear after a reboot: delete them again to clean them up.
+
 ## [1.55.1] - 2026-09-25
 
 ### Fixed
