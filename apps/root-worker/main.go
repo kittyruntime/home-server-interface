@@ -927,6 +927,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
+	if fsErr != nil && fsErr.Code == "EACCES" && strings.HasPrefix(subject, "root.fs.") {
+		fsErr.Message += permissionContext(permissionTargetDir(task), task.LinuxUsername)
+	}
 	if fsErr != nil {
 		// A failed job is a completed attempt: never redeliver it. Retrying
 		// behind the UI's back would publish several results, and could replay
