@@ -70,6 +70,14 @@ export const storageRouter = router({
       return await requestSync("root.sys.raid.stop", input, 30_000)
     }),
 
+  // Host commands each feature needs, so the dashboard can explain a missing
+  // package before an action fails.
+  tools: storageProcedure.query(async () => {
+    return await requestSync<{
+      tools: Array<{ command: string; package: string; feature: string; available: boolean }>
+    }>("root.sys.tools", {}, 5_000)
+  }),
+
   smartInfo: storageProcedure
     .input(z.object({
       device: z.string().regex(/^[a-z][a-z0-9]+$/), // bare name only: sda, nvme0n1

@@ -999,6 +999,7 @@ func main() {
 		"root.sys.part.create":           handlePartitionCreate,
 		"root.sys.part.delete":           handlePartitionDelete,
 		"root.sys.smart":                 handleSmartInfo,
+		"root.sys.tools":                 handleHostTools,
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,
 		"root.fs.read-chunk":             handleReadChunk,

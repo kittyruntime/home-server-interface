@@ -6,6 +6,7 @@ import {
   raidLevelLabel, raidDescription, isRaidHealthy, isLockedByMembership,
   type BlockDev, type RaidArray,
 } from './store'
+import { useHostTools } from './tools'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -18,6 +19,7 @@ import Hint from '../ui/Hint.vue'
 const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
+const { isMissing } = useHostTools()
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -205,7 +207,9 @@ const openMenu = ref<string | null>(null)
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openRaidWizard" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+        <button @click="openRaidWizard" :disabled="isMissing('mdadm')"
+          :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined"
+          class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Create RAID
         </button>

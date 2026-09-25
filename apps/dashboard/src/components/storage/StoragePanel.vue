@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
+import { useHostTools } from './tools'
 
 type SectionId = 'disks' | 'raid' | 'lvm' | 'mounts'
 
@@ -21,6 +22,12 @@ const active = ref<SectionId>('disks')
 function focusOn(section: SectionId) {
   active.value = section
 }
+
+const { load: loadTools, missingStorageTools } = useHostTools()
+onMounted(() => { void loadTools() })
+const missingTools = computed(() => missingStorageTools())
+const installCommand = computed(() =>
+  `sudo apt install ${[...new Set(missingTools.value.map(t => t.package))].join(' ')}`)
 </script>
 
 <template>
@@ -75,6 +82,14 @@ function focusOn(section: SectionId) {
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
       <div class="p-4 sm:p-8 max-w-5xl">
+        <div v-if="missingTools.length" role="status"
+          class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
+          <p class="text-[var(--c-text-1)]">
+            Some storage tools are not installed on the server, so these features are unavailable:
+            {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
+          </p>
+          <p class="mt-1 text-[var(--c-text-3)]">Install them with <code class="font-mono text-[var(--c-text-2)]">{{ installCommand }}</code></p>
+        </div>
         <PhysicalDisksSection v-if="active === 'disks'"  @navigate="focusOn" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn" />
         <LvmSection           v-else-if="active === 'lvm'" />

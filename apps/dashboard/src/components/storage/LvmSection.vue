@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, isLockedByMembership, type BlockDev, type LvmVG, type LvmLV } from './store'
+import { useHostTools } from './tools'
 import { trpc } from '../../lib/trpc'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
@@ -11,6 +12,7 @@ import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
 
 const { loading, error, devices, raids, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
+const { isMissing } = useHostTools()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -209,8 +211,9 @@ const openMenu = ref<string | null>(null)
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical volumes, volume groups and logical volumes.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openLvmWizard"
-          class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+        <button @click="openLvmWizard" :disabled="isMissing('pvcreate')"
+          :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined"
+          class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Create VG
         </button>
