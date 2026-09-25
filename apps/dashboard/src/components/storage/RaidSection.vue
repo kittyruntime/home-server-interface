@@ -530,7 +530,7 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" />
+    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
     <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 

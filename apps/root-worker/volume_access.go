@@ -10,9 +10,10 @@ import (
 
 // A new filesystem's root directory is root:root 0755, so nobody but root can
 // write to a freshly mounted volume from the file manager or over SMB (both act
-// as the connecting user). "shared" access makes the root owned by the user
-// who mounted it and by the hsi-share group, setgid so new content keeps the
-// group, matching how share directories are prepared.
+// as the connecting user). Preparing a volume makes its root owned by one HSI
+// user (the one who mounted it, or one picked in the mount dialog) and by the
+// hsi-share group, setgid so new content keeps the group, matching how share
+// directories are prepared.
 
 // isFreshVolumeRoot reports whether a mount point's entries are those of a
 // freshly created filesystem (nothing, or only ext4's lost+found).
@@ -25,28 +26,31 @@ func isFreshVolumeRoot(entries []string) bool {
 	return true
 }
 
-// prepareSharedVolumeRoot sets up shared access on a freshly formatted volume.
-// It never touches a volume that already holds data or already has a non-root
-// owner, and it only changes the mount point itself, never recursively.
-// Returns warnings describing what was left unchanged.
-func prepareSharedVolumeRoot(mountPoint, ownerUser string) []string {
-	st, err := os.Stat(mountPoint)
-	if err != nil {
-		return []string{"could not inspect " + mountPoint + ": " + err.Error()}
-	}
-	if sys, ok := st.Sys().(*syscall.Stat_t); ok && sys.Uid != 0 {
-		return []string{mountPoint + " already has an owner; permissions left unchanged"}
-	}
-	entries, err := os.ReadDir(mountPoint)
-	if err != nil {
-		return []string{"could not list " + mountPoint + ": " + err.Error()}
-	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		names = append(names, e.Name())
-	}
-	if !isFreshVolumeRoot(names) {
-		return []string{mountPoint + " already contains data; permissions left unchanged"}
+// prepareVolumeRoot makes a volume's root writable by ownerUser and the
+// hsi-share group. Unless force is set (the admin confirmed it in the mount
+// dialog), it never touches a volume that already holds data or already has a
+// non-root owner. Either way it only changes the mount point itself, never
+// recursively. Returns warnings describing what was left unchanged.
+func prepareVolumeRoot(mountPoint, ownerUser string, force bool) []string {
+	if !force {
+		st, err := os.Stat(mountPoint)
+		if err != nil {
+			return []string{"could not inspect " + mountPoint + ": " + err.Error()}
+		}
+		if sys, ok := st.Sys().(*syscall.Stat_t); ok && sys.Uid != 0 {
+			return []string{mountPoint + " already has an owner; permissions left unchanged"}
+		}
+		entries, err := os.ReadDir(mountPoint)
+		if err != nil {
+			return []string{"could not list " + mountPoint + ": " + err.Error()}
+		}
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		if !isFreshVolumeRoot(names) {
+			return []string{mountPoint + " already contains data; permissions left unchanged"}
+		}
 	}
 
 	if err := ensureShareGroup(); err != nil {
