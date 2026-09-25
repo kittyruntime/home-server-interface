@@ -29,6 +29,23 @@ async function checkRaid(): Promise<CheckOutcome> {
   return { found, checked }
 }
 
+// Consistency checks (scheduled from Storage > Maintenance, or the distro's own
+// timer) report sectors that disagree between members. On RAID 5/6 any
+// mismatch means silent corruption or a failing disk; on RAID 1/10 small
+// counts can come from swap or unwritten areas, so it is only a warning.
+async function checkRaidConsistency(): Promise<CheckOutcome> {
+  const res = await requestSync<{ raids: Array<RaidArray & { mismatchCount?: number }> }>("root.sys.blockdevices", {}, 15_000)
+  const withResult = res.raids.filter(r => r.mismatchCount != null)
+  const found = withResult
+    .filter(r => (r.mismatchCount ?? 0) > 0)
+    .map((r): CheckResult => ({
+      target: r.name,
+      message: `consistency check found ${r.mismatchCount} mismatched sectors`,
+      severity: r.level === "raid5" || r.level === "raid6" ? "critical" : "warning",
+    }))
+  return { found, checked: withResult.map(r => r.name) }
+}
+
 type BlockDevLite = { name: string; type: string }
 
 type SmartAttr = { isCritical: boolean; raw: number }
@@ -125,6 +142,7 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
 const checkers: Checker[] = [
   { source: "storage.raid", check: checkRaid },
   { source: "storage.smart", check: checkSmart },
+  { source: "storage.raid-check", check: checkRaidConsistency },
   { source: "storage.disk-usage", check: checkDiskUsage },
 ]
 

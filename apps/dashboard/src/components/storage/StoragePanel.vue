@@ -4,9 +4,10 @@ import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
+import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
 
-type SectionId = 'disks' | 'raid' | 'lvm' | 'mounts'
+type SectionId = 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
 
 interface NavItem { id: SectionId; label: string }
 
@@ -15,6 +16,7 @@ const nav: NavItem[] = [
   { id: 'raid',   label: 'RAID' },
   { id: 'lvm',    label: 'LVM' },
   { id: 'mounts', label: 'Mounts' },
+  { id: 'maintenance', label: 'Maintenance' },
 ]
 
 const active = ref<SectionId>('disks')
@@ -70,8 +72,12 @@ const installCommand = computed(() =>
           <svg v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/>
           </svg>
+          <!-- Maintenance -->
+          <svg v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
+          </svg>
           <!-- Mounts -->
-          <svg v-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <svg v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
           </svg>
           {{ item.label }}
@@ -94,6 +100,7 @@ const installCommand = computed(() =>
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn" />
         <LvmSection           v-else-if="active === 'lvm'" />
         <MountsSection        v-else-if="active === 'mounts'" @navigate="focusOn" />
+        <MaintenanceSection   v-else-if="active === 'maintenance'" />
       </div>
     </div>
 

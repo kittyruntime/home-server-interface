@@ -861,6 +861,9 @@ NATS_URL=nats://127.0.0.1:4222
 NATS_USER=worker
 NATS_PASS=$NATS_WORKER_PASS
 HSI_LOG_LEVEL=${WORKER_LOG_LEVEL:-info}
+HSI_MAINTENANCE_CONFIG=$APP_CONF_DIR/maintenance.json
+HSI_MAINTENANCE_STATE=/var/lib/${APP_NAME}/maintenance-state.json
+HSI_MAINTENANCE_TIMER=/etc/systemd/system/${APP_NAME}-maintenance.timer
 EOF
 chmod 600 "$WORKER_ENV"
 success "Worker env → $WORKER_ENV"
@@ -940,6 +943,37 @@ SyslogIdentifier=${APP_NAME}-root-worker
 WantedBy=multi-user.target
 EOF
 
+# Scheduled disk checks (SMART self-tests, RAID consistency checks). Runs the
+# worker binary directly, so schedules keep running when the backend is down.
+# Settings: Storage > Maintenance (stored in $APP_CONF_DIR/maintenance.json).
+mkdir -p "/var/lib/${APP_NAME}"
+cat > /etc/systemd/system/${APP_NAME}-maintenance.service <<EOF
+[Unit]
+Description=${APP_NAME} scheduled disk checks
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/${APP_NAME}-root-worker maintenance
+EnvironmentFile=$WORKER_ENV
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=append:$LOG_DIR/root-worker.log
+StandardError=append:$LOG_DIR/root-worker.log
+SyslogIdentifier=${APP_NAME}-maintenance
+EOF
+
+cat > /etc/systemd/system/${APP_NAME}-maintenance.timer <<EOF
+[Unit]
+Description=Hourly check for due ${APP_NAME} disk maintenance
+
+[Timer]
+OnCalendar=hourly
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+EOF
+
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   SOURCE_EXTRA="Environment=DASHBOARD_PATH=${DASHBOARD_DIST}"
 else
@@ -981,6 +1015,7 @@ EOF
 
 systemctl daemon-reload
 systemctl enable "${APP_NAME}-nats" "${APP_NAME}-root-worker" "${APP_NAME}"
+systemctl enable --now "${APP_NAME}-maintenance.timer"
 systemctl restart "${APP_NAME}-nats"
 systemctl restart "${APP_NAME}-root-worker"
 systemctl restart "${APP_NAME}"
