@@ -6,6 +6,7 @@ import {
   listStacks, getStack, stackExists, writeStack, observedNetworks,
   dockerContainers, type DockerContainerLite,
 } from "../../services/containerStacks"
+import { assertDockerReady, getDockerStatus, dockerProblem } from "../../services/docker-status"
 import {
   generateComposeYaml, parseComposeYaml,
   zAppInput, zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, type AppInput,
@@ -87,6 +88,7 @@ const appRouter = router({
 
   apply: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
       await getStack(input.name) // 404 early
       await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
       const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
@@ -94,20 +96,28 @@ const appRouter = router({
     }),
 
   start: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) =>
-      ({ jobId: await publishJob("container.composeUp", { name: input.name }, ctx.user.userId) })),
+    .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
+      return { jobId: await publishJob("container.composeUp", { name: input.name }, ctx.user.userId) }
+    }),
 
   stop: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) =>
-      ({ jobId: await publishJob("container.composeStop", { name: input.name }, ctx.user.userId) })),
+    .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
+      return { jobId: await publishJob("container.composeStop", { name: input.name }, ctx.user.userId) }
+    }),
 
   restart: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) =>
-      ({ jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) })),
+    .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
+      return { jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) }
+    }),
 
   remove: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) =>
-      ({ jobId: await publishJob("container.composeDown", { name: input.name, removeFiles: true }, ctx.user.userId) })),
+    .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
+      return { jobId: await publishJob("container.composeDown", { name: input.name, removeFiles: true }, ctx.user.userId) }
+    }),
 
   inspect: adminProcedure.input(z.object({ name: z.string() }))
     .query(async ({ input }) => {
@@ -242,6 +252,11 @@ const networkRouter = router({
 // ── Main router ───────────────────────────────────────────────────────────────
 
 export const containerRouter = router({
+  // Whether apps can run on this server; `problem` is the message to show.
+  dockerStatus: adminProcedure.query(async () => {
+    const status = await getDockerStatus(true)
+    return { ...status, problem: dockerProblem(status) }
+  }),
   app:     appRouter,
   network: networkRouter,
 })

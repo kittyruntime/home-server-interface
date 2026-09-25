@@ -1019,6 +1019,7 @@ func main() {
 		"root.sys.part.delete":           handlePartitionDelete,
 		"root.sys.smart":                 handleSmartInfo,
 		"root.sys.tools":                 handleHostTools,
+		"root.docker.status":             handleDockerStatus,
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,
 		"root.fs.read-chunk":             handleReadChunk,

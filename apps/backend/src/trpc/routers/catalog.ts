@@ -7,6 +7,7 @@ import { portDomainUrl, generateComposeYaml, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
 import { listStacks, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
 import { resolvePlaceMounts } from "./container"
+import { assertDockerReady } from "../../services/docker-status"
 
 const zInstallVolume = z.object({
   target: z.string().startsWith("/"),
@@ -65,6 +66,7 @@ export const catalogRouter = router({
       volumes: z.array(zInstallVolume).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
+      await assertDockerReady()
       const m = CATALOG.find((x) => x.id === input.id)
       if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
 

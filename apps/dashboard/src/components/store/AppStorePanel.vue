@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
+import DockerUnavailable from '../apps/DockerUnavailable.vue'
+import { useDockerStatus } from '../../lib/docker'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -10,6 +12,8 @@ const loading = ref(true)
 const search = ref('')
 const category = ref<string>('All')
 const selected = ref<Entry | null>(null)
+// The App Store is only offered when installs can actually run.
+const { check: checkDocker, ready: dockerReady } = useDockerStatus()
 
 const categories = computed(() => ['All', ...new Set(apps.value.map(a => a.category))])
 const filtered = computed(() => apps.value.filter(a =>
@@ -59,6 +63,7 @@ async function load() {
 
 let poll: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
+  void checkDocker()
   load()
   // Light polling so install → running (and stop/error) transitions show without
   // a manual reload. Paused while the wizard is open (grid isn't visible then).
@@ -68,7 +73,8 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto p-4 sm:p-6">
+  <DockerUnavailable v-if="!dockerReady()" />
+  <div v-else class="h-full overflow-y-auto p-4 sm:p-6">
     <div v-if="selected">
       <button class="btn btn-ghost btn-sm mb-3" @click="selected = null">← Back</button>
       <AppInstallWizard :app-id="selected.id" @installed="selected = null; load()" @close="selected = null" />
