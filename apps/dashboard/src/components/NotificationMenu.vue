@@ -21,7 +21,9 @@ const hasItems = computed(() => items.value.length > 0)
 const hasUnread = computed(() => unread.value > 0)
 
 function itemTitle(n: SystemNotification): string {
-  const action = n.eventType === 'alert.raised' ? 'Alert raised' : 'Alert cleared'
+  const action = n.eventType === 'alert.raised' ? 'Alert raised'
+    : n.eventType === 'job.failed' ? 'Failed'
+    : 'Alert cleared'
   return `${action} - ${n.target}`
 }
 

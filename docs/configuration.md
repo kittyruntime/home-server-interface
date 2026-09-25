@@ -118,6 +118,21 @@ each job it receives and its outcome, and every synchronous request that fails.
 Set `HSI_LOG_LEVEL=debug` in `/etc/hsi/worker.env` and restart
 `hsi-root-worker` to also log successful requests.
 
+## Notifications
+
+Settings > Notifications routes events to connectors (the in-app bell, or a
+webhook such as Discord, Slack or ntfy). Rules match on the event source prefix
+and a minimum severity:
+
+| Source | Events |
+|---|---|
+| `storage.smart`, `storage.raid`, `storage.disk-usage` | Alert raised, alert cleared (including manual clears) |
+| `backup.plan` | A backup run failed |
+
+HSI can only notify while it is running. A server that is powered off, frozen or
+unreachable cannot report its own outage: use an external monitor (for example
+an uptime service polling `http://<server>:9001/health`) to detect that.
+
 ## Ports
 
 - **9001** — backend API + dashboard (configurable via `BACKEND_PORT`)

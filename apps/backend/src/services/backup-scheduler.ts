@@ -1,5 +1,6 @@
 import { prisma } from "@app/database"
 import { publishJob } from "../nats"
+import { dispatchEvent } from "./notifications"
 
 let timer: NodeJS.Timeout | undefined
 
@@ -42,6 +43,14 @@ async function tick() {
     const job = await prisma.job.findUnique({ where: { id: plan.lastJobId! } })
     if (job && ["completed", "failed"].includes(job.status)) {
       await prisma.backupPlan.update({ where: { id: plan.id }, data: { lastStatus: job.status, lastError: job.error, nextRunAt: nextBackupRun(plan.schedule, plan.scheduleHour, plan.scheduleMinute, plan.scheduleWeekday, now) } })
+      if (job.status === "failed") {
+        // Routed like alerts (source prefix "backup.", severity), so a rule
+        // can send failed backups to email/webhook targets.
+        void dispatchEvent({
+          type: "job.failed", severity: "warning", source: "backup.plan", target: plan.name,
+          message: `Backup "${plan.name}" failed: ${job.error ?? "unknown error"}`, time: now.toISOString(),
+        })
+      }
     }
   }
   const due = await prisma.backupPlan.findMany({ where: { enabled: true, schedule: { not: "manual" }, nextRunAt: { lte: now }, OR: [{ lastStatus: null }, { lastStatus: { notIn: ["pending", "running"] } }] } })

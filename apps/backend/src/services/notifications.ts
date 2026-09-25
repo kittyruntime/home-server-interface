@@ -9,7 +9,8 @@ import { log } from "../utils/log"
 export type Severity = "info" | "warning" | "critical"
 
 export interface NotificationEvent {
-  type: "alert.raised" | "alert.cleared"
+  // job.failed: a one-off failure (e.g. a backup run) with nothing to clear later.
+  type: "alert.raised" | "alert.cleared" | "job.failed"
   severity: Severity
   source: string
   target: string
