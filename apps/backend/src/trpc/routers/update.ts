@@ -25,11 +25,25 @@ function installDir(): string {
 // INSTALL_DIR); in the dev checkout the same data dir is nested under
 // packages/. INSTALL_DIR is only set in production, so its presence tells
 // us which layout applies.
-function pendingUpdateFile(): string {
-  const dbDataDir = process.env.INSTALL_DIR
+function dbDataDir(): string {
+  return process.env.INSTALL_DIR
     ? path.join(installDir(), "database", "data")
     : path.join(installDir(), "packages", "database", "data")
-  return path.join(dbDataDir, ".pending-update")
+}
+
+function pendingUpdateFile(): string {
+  return path.join(dbDataDir(), ".pending-update")
+}
+
+// Same constraint as the pending-update marker: a fresh install cannot create
+// files in INSTALL_DIR itself. Mirrored in scripts/install.sh (hsi-check-update).
+function updateCheckFile(): string {
+  return path.join(dbDataDir(), ".update-check.json")
+}
+
+// Written by versions before the move; read as a fallback until the next check.
+function legacyUpdateCheckFile(): string {
+  return path.join(installDir(), ".update-check.json")
 }
 
 function readCurrentVersion(): string {
@@ -44,9 +58,12 @@ function readCurrentVersion(): string {
 type CheckResult = { latestVersion: string; checkedAt: string; releaseNotes?: string }
 
 function readCheck(): CheckResult | null {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(installDir(), ".update-check.json"), "utf8"))
-  } catch { return null }
+  for (const file of [updateCheckFile(), legacyUpdateCheckFile()]) {
+    try {
+      return JSON.parse(fs.readFileSync(file, "utf8")) as CheckResult
+    } catch { /* missing or unreadable: try the next location */ }
+  }
+  return null
 }
 
 function isNewer(candidate: string, current: string): boolean {
@@ -129,11 +146,13 @@ export const updateRouter = router({
       checkedAt: new Date().toISOString(),
       releaseNotes: data.body?.slice(0, 4000),
     }
-    fs.writeFileSync(
-      path.join(installDir(), ".update-check.json"),
-      JSON.stringify(result),
-      "utf8"
-    )
+    try {
+      fs.writeFileSync(updateCheckFile(), JSON.stringify(result), "utf8")
+    } catch (e) {
+      // The check itself succeeded: report the latest version, but say why it
+      // will not be remembered instead of failing the whole request.
+      console.error(`[update] could not save ${updateCheckFile()}:`, e)
+    }
     return result
   }),
 

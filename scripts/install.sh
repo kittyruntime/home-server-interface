@@ -941,6 +941,9 @@ success "All services started"
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 0 ]]; then
   step "Installing update checker"
+  # The check result now lives in the app-owned data dir: a fresh install
+  # cannot create files in INSTALL_DIR, which the release copy leaves root-owned.
+  rm -f "$INSTALL_DIR/.update-check.json"
 
   cat > /usr/local/bin/${APP_NAME}-check-update <<CHECKEOF
 #!/usr/bin/env bash
@@ -950,10 +953,10 @@ latest=\$(curl -fsSL --max-time 15 \\
   -H "Accept: application/vnd.github+json" \\
   "https://api.github.com/repos/\${REPO}/releases/latest" \\
   | grep -oP '"tag_name":\s*"\K[^"]+' || true)
-[[ -n "\$latest" ]] || exit 0
+[[ -n "\$latest" ]] || { echo "update check: could not read the latest release from GitHub" >&2; exit 0; }
 printf '{"latestVersion":"%s","checkedAt":"%s"}\n' \\
   "\$latest" "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  > "\$INSTALL_DIR/.update-check.json"
+  > "${DB_DIR}/.update-check.json"
 CHECKEOF
   chmod 755 /usr/local/bin/${APP_NAME}-check-update
 
