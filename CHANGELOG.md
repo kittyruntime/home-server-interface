@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.55.0] - 2026-09-25
+
 ### Added
 - **Freshly mounted volumes are writable**: the mount dialog asks for access.
   The default makes a new, empty volume owned by the user who mounts it and by
@@ -996,7 +998,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.54.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.0...HEAD
+[1.55.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.1...v1.54.0
 [1.53.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.0...v1.53.1
 [1.53.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.52.0...v1.53.0
