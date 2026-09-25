@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, storageProcedure } from "../index"
 import { requestSync } from "../../nats"
 
@@ -47,13 +48,28 @@ export const storageRouter = router({
       options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
       persist:    z.boolean().default(false),
       // "shared": a freshly formatted volume becomes writable by the user who
-      // mounts it and the hsi-share group. "keep": leave its root as root:root.
-      access:     z.enum(["shared", "keep"]).default("keep"),
+      // mounts it and the hsi-share group. "user": same, owned by ownerUserId.
+      // "keep": leave its root as root:root.
+      access:      z.enum(["shared", "user", "keep"]).default("keep"),
+      ownerUserId: z.string().optional(),
+      // Also prepare a volume that already holds data (confirmed in the UI).
+      force:       z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
-      const me = await ctx.prisma.user.findUnique({ where: { id: ctx.user.userId }, select: { username: true } })
+      const { ownerUserId, ...rest } = input
+      // Owners are HSI users only, never an arbitrary system account.
+      const ownerId = input.access === "user" ? ownerUserId : ctx.user.userId
+      if (input.access === "user" && !ownerId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the user who will own the volume" })
+      }
+      const owner = ownerId
+        ? await ctx.prisma.user.findUnique({ where: { id: ownerId }, select: { username: true } })
+        : null
+      if (input.access === "user" && !owner) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown user" })
+      }
       return await requestSync<{ ok: true; warnings?: string[] | null }>(
-        "root.sys.mount", { ...input, ownerUser: me?.username ?? "" }, 20_000)
+        "root.sys.mount", { ...rest, ownerUser: owner?.username ?? "" }, 20_000)
     }),
 
   umountDevice: storageProcedure
@@ -108,6 +124,25 @@ export const storageRouter = router({
   runMaintenanceNow: storageProcedure
     .input(z.object({ task: z.enum(["smartShort", "smartLong", "raidCheck"]) }))
     .mutation(async ({ input }) => requestSync("root.sys.maintenance.runNow", input, 120_000)),
+  // Import existing storage without formatting: arrays found in superblocks
+  // that are not running, and volume groups with no active logical volume.
+  importScan: storageProcedure.query(async () => requestSync<{
+    arrays: Array<{ device: string; level: string; uuid: string; name: string; expected: number; members: string[]; missing: number }>
+    vgs: Array<{ name: string; lvs: string[] }>
+  }>("root.sys.import.scan", {}, 30_000)),
+
+  importAssembleRaid: storageProcedure
+    .input(z.object({
+      uuid:          z.string().regex(/^[0-9a-fA-F:]{8,64}$/),
+      name:          z.string().regex(/^md[0-9]{1,3}$/),
+      allowDegraded: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => requestSync<{ ok: true; device: string; warnings?: string[] | null }>(
+      "root.sys.import.assemble", input, 60_000)),
+
+  importActivateVg: storageProcedure
+    .input(z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.import.activateVg", input, 60_000)),
 
   stopRaid: storageProcedure
     .input(z.object({
@@ -128,6 +163,8 @@ export const storageRouter = router({
   smartInfo: storageProcedure
     .input(z.object({
       device: z.string().regex(/^[a-z][a-z0-9]+$/), // bare name only: sda, nvme0n1
+      // Skip a disk in standby instead of spinning it up (list-wide health).
+      noWake: z.boolean().optional(),
     }))
     .query(async ({ input }) => {
       return await requestSync("root.sys.smart", input, 15_000)

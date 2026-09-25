@@ -18,8 +18,11 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 import RaidLevelVisual from './RaidLevelVisual.vue'
 import Hint from '../ui/Hint.vue'
+import ImportFound from './ImportFound.vue'
 
-const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
+// `preselect`: whole disks picked in Devices; opens the create wizard with them.
+const props = defineProps<{ preselect?: string[] }>()
+const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm']; preselected: [] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -193,9 +196,15 @@ const raidWiz = ref<{
   err:     string
 } | null>(null)
 
-function openRaidWizard() {
-  raidWiz.value = { step: 1, level: 1, devs: [], name: nextMdName(), confirm: '', busy: false, err: '' }
+function openRaidWizard(devs: string[] = []) {
+  raidWiz.value = { step: 1, level: 1, devs: [...devs], name: nextMdName(), confirm: '', busy: false, err: '' }
 }
+
+watch(() => props.preselect, devs => {
+  if (!devs?.length) return
+  openRaidWizard(devs)
+  emit('preselected')
+}, { immediate: true })
 
 const selectedRaidLevel = computed(() =>
   RAID_LEVELS.find(l => l.level === raidWiz.value?.level) ?? RAID_LEVELS[1]!
@@ -309,7 +318,7 @@ const openMenu = ref<string | null>(null)
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openRaidWizard" :disabled="isMissing('mdadm')"
+        <button @click="openRaidWizard()" :disabled="isMissing('mdadm')"
           :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined"
           class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -322,6 +331,8 @@ const openMenu = ref<string | null>(null)
         </button>
       </div>
     </div>
+
+    <ImportFound kind="raid" :used-md-names="raids.map(r => r.name)" @imported="refresh" />
 
     <div v-if="loading && !raids.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
@@ -530,7 +541,7 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" />
+    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
     <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 

@@ -25,6 +25,13 @@ function focusOn(section: SectionId) {
   active.value = section
 }
 
+// Free disks picked in Devices, handed to the RAID or LVM create wizard.
+const preselect = ref<{ kind: 'raid' | 'lvm'; devices: string[] } | null>(null)
+function startCreate(kind: 'raid' | 'lvm', devices: string[]) {
+  preselect.value = { kind, devices }
+  active.value = kind
+}
+
 const { load: loadTools, missingStorageTools } = useHostTools()
 onMounted(() => { void loadTools() })
 const missingTools = computed(() => missingStorageTools())
@@ -96,9 +103,11 @@ const installCommand = computed(() =>
           </p>
           <p class="mt-1 text-[var(--c-text-3)]">Install them with <code class="font-mono text-[var(--c-text-2)]">{{ installCommand }}</code></p>
         </div>
-        <PhysicalDisksSection v-if="active === 'disks'"  @navigate="focusOn" />
-        <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn" />
-        <LvmSection           v-else-if="active === 'lvm'" />
+        <PhysicalDisksSection v-if="active === 'disks'"  @navigate="focusOn" @create="startCreate" />
+        <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
+          :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
+        <LvmSection           v-else-if="active === 'lvm'"
+          :preselect="preselect?.kind === 'lvm' ? preselect.devices : undefined" @preselected="preselect = null" />
         <MountsSection        v-else-if="active === 'mounts'" @navigate="focusOn" />
         <MaintenanceSection   v-else-if="active === 'maintenance'" />
       </div>

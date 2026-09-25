@@ -86,6 +86,22 @@ mdadm --detail /dev/md0           # full detail on one array
 cat /etc/mdadm/mdadm.conf         # HSI adds one marked ARRAY line per array it creates
 ```
 
+### Importing existing arrays and volume groups
+
+After a reinstall, or with disks moved from another machine, Storage > RAID lists
+arrays found in the disks' superblocks that are not running, and Storage > LVM
+lists volume groups with no active volume. Importing never formats anything. By hand:
+
+```bash
+mdadm --examine --scan --verbose                          # arrays recorded on the disks
+mdadm --assemble /dev/md1 --uuid=<UUID> --scan            # add --run to start it degraded
+lvs -o vg_name,lv_name,lv_active                          # inactive volumes have an empty lv_active
+vgchange -ay <vg>
+```
+
+The filesystems they hold then appear in Storage > Mounts. Mounting one that
+already holds data never changes its ownership or permissions.
+
 ### Replacing a failed disk
 
 Storage > RAID shows each member as Active, Failed or Spare, with the disk model

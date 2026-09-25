@@ -351,10 +351,13 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		MountPoint string `json:"mountpoint"`
 		Options    string `json:"options"`
 		Persist    bool   `json:"persist"`
-		// Access "shared" prepares a fresh volume for OwnerUser and the
-		// hsi-share group; anything else leaves the filesystem root as is.
+		// Access "shared" or "user" prepares a fresh volume for OwnerUser
+		// and the hsi-share group (the backend picks OwnerUser); anything
+		// else leaves the filesystem root as is. Force also applies it to a
+		// volume that already holds data, once the admin has confirmed.
 		Access    string `json:"access"`
 		OwnerUser string `json:"ownerUser"`
+		Force     bool   `json:"force"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
@@ -435,8 +438,8 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	var warnings []string
-	if req.Access == "shared" {
-		warnings = prepareSharedVolumeRoot(mp, req.OwnerUser)
+	if req.Access == "shared" || req.Access == "user" {
+		warnings = prepareVolumeRoot(mp, req.OwnerUser, req.Force)
 		for _, w := range warnings {
 			logger.Warn("mount access", "mountPoint", mp, "warning", w)
 		}

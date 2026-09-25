@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, claimableDevices, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { useHostTools } from './tools'
 import { trpc } from '../../lib/trpc'
@@ -10,6 +10,11 @@ import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
+import ImportFound from './ImportFound.vue'
+
+// `preselect`: whole disks picked in Devices; opens the create wizard with them.
+const props = defineProps<{ preselect?: string[] }>()
+const emit = defineEmits<{ preselected: [] }>()
 
 const { loading, error, devices, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -53,9 +58,15 @@ const lvmWiz = ref<{
   err:       string
 } | null>(null)
 
-function openLvmWizard() {
-  lvmWiz.value = { step: 1, pvDevs: [], vgName: '', lvName: 'lv0', lvSizeGB: 0, busy: false, err: '' }
+function openLvmWizard(devs: string[] = []) {
+  lvmWiz.value = { step: 1, pvDevs: [...devs], vgName: '', lvName: 'lv0', lvSizeGB: 0, busy: false, err: '' }
 }
+
+watch(() => props.preselect, devs => {
+  if (!devs?.length) return
+  openLvmWizard(devs)
+  emit('preselected')
+}, { immediate: true })
 
 function toggleLvmDev(name: string) {
   if (!lvmWiz.value) return
@@ -168,7 +179,7 @@ const openMenu = ref<string | null>(null)
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical volumes, volume groups and logical volumes.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openLvmWizard" :disabled="isMissing('pvcreate')"
+        <button @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
           :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined"
           class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -183,6 +194,8 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <LvmIntro />
+
+    <ImportFound kind="lvm" :used-md-names="[]" @imported="refresh" />
 
     <div v-if="loading && !lvmVGs.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
@@ -315,7 +328,7 @@ const openMenu = ref<string | null>(null)
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" />
+    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
     <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 

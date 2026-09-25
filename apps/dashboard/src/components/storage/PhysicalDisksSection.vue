@@ -1,24 +1,33 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { useAuth } from '../../lib/auth'
+import { useStorageData, fmtBytes, type BlockDev } from './store'
+import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
 import {
-  useStorageData, fmtBytes, fmtHours, fmtTiB, usagePct, usageBarClass, lvToDmName,
-  deviceRole, isLockedByMembership, roleLabel,
-  type BlockDev, type DeviceRole,
-} from './store'
-import { type SmartResult, smartStatus, smartHealth, fetchSmartInto } from './smart'
+  diskRow, summarize, filterRows, sortRows, groupRows, isSelectable, ROLE_LABELS,
+  type DiskRow, type DiskRole, type DiskHealth, type SortKey, type SortDir,
+} from './disk-list'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import DiskCard from './DiskCard.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 
-const emit = defineEmits<{ navigate: [section: 'raid' | 'lvm'] }>()
+const emit = defineEmits<{
+  navigate: [section: 'raid' | 'lvm']
+  // Start creating an array or a volume group with these whole disks.
+  create:   [kind: 'raid' | 'lvm', devices: string[]]
+}>()
 
 const { loading, error, devices, lvmLVs, refresh } = useStorageData()
+const { currentUsername } = useAuth()
 
-// ── State (SMART) ─────────────────────────────────────────────────────────────
+// ── SMART ─────────────────────────────────────────────────────────────────────
+// Every disk's health is read when the list loads, without waking disks in
+// standby (they show as unknown until their SMART panel is opened).
 
 const smartCache = ref<Record<string, SmartResult>>({})
 const smartOpen  = ref<Set<string>>(new Set())
@@ -27,59 +36,164 @@ function toggleSmart(diskName: string) {
   const s = new Set(smartOpen.value)
   if (s.has(diskName)) { s.delete(diskName) } else {
     s.add(diskName)
-    if (!smartCache.value[diskName] || smartCache.value[diskName]._error) fetchSmart(diskName)
+    const c = smartCache.value[diskName]
+    // Opening the panel is explicit: read a disk that was skipped in standby.
+    if (!c || c._error || (!c.available && !c.unsupported && !c._loading)) fetchSmartInto(smartCache, diskName)
   }
   smartOpen.value = s
 }
 
-function fetchSmart(diskName: string) {
-  return fetchSmartInto(smartCache, diskName)
-}
-
-function diskStatus(diskName: string) {
-  return smartStatus(smartCache.value[diskName])
-}
-
-// ── Hierarchy ─────────────────────────────────────────────────────────────────
-// The tree is rooted at physical disks. Each child node shows what it *feeds*:
-// a partition can be a filesystem (mounted or not), a RAID member, or an LVM PV
-// — in which case its LVs appear as nested children. This mirrors the physical
-// reality: disk → partition → RAID/LVM → filesystem → mount point.
-
 const physicalDisks = computed(() => devices.value.filter(d => d.type === 'disk'))
 
-// RAID/LVM membership, including members of arrays/VGs that are not active.
-function roleOf(dev: BlockDev): DeviceRole | null {
-  return deviceRole(dev)
+async function loadHealth(names: string[]) {
+  const queue = names.filter(n => !smartCache.value[n])
+  // A few at a time: smartctl on a dozen disks at once is slow and noisy.
+  const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+    for (let n = queue.shift(); n; n = queue.shift()) await fetchSmartInto(smartCache, n, { noWake: true })
+  })
+  await Promise.all(workers)
+}
+watch(physicalDisks, disks => { void loadHealth(disks.map(d => d.name)) }, { immediate: true })
+
+function healthOf(s: SmartResult | undefined): DiskHealth {
+  const st = smartStatus(s)
+  return st === 'loading' ? 'unknown' : st
 }
 
-function diskLocked(disk: BlockDev): boolean {
-  return isLockedByMembership(disk)
+const rows = computed<DiskRow<BlockDev>[]>(() => physicalDisks.value.map(d => {
+  const s = smartCache.value[d.name]
+  return diskRow(d, s && { health: healthOf(s), temperature: s.temperature, rotationRate: s.rotationRate, available: s.available })
+}))
+const summary = computed(() => summarize(rows.value))
+
+// ── View, filters and sort (remembered per user in this browser) ─────────────
+
+type View = 'table' | 'cards'
+type Prefs = {
+  view?: View; sortKey: SortKey; sortDir: SortDir; grouped: boolean
+  role: DiskRole | 'all'; health: DiskHealth | 'all'; expanded: string[]
+}
+const PREFS_KEY = computed(() => `hsi.storage.devices.${currentUsername.value ?? ''}`)
+
+function loadPrefs(): Prefs {
+  const defaults: Prefs = { sortKey: 'name', sortDir: 'asc', grouped: false, role: 'all', health: 'all', expanded: [] }
+  try {
+    const raw = localStorage.getItem(PREFS_KEY.value)
+    return raw ? { ...defaults, ...JSON.parse(raw) as Partial<Prefs> } : defaults
+  } catch {
+    return defaults
+  }
 }
 
-// The array (md0) that uses this device, when it is assembled.
-function raidMemberOf(dev: BlockDev): string | undefined {
-  const role = roleOf(dev)
-  return role?.kind === 'raid' ? role.owner ?? undefined : undefined
+const prefs = ref<Prefs>(loadPrefs())
+watch(prefs, p => {
+  try { localStorage.setItem(PREFS_KEY.value, JSON.stringify(p)) } catch { /* private mode: not remembered */ }
+}, { deep: true })
+
+// The table is the default once there are many disks; a choice sticks.
+const view = computed<View>(() => prefs.value.view ?? (physicalDisks.value.length >= 5 ? 'table' : 'cards'))
+const search = ref('')
+
+const visibleRows = computed(() => sortRows(
+  filterRows(rows.value, { search: search.value, role: prefs.value.role, health: prefs.value.health }),
+  prefs.value.sortKey, prefs.value.sortDir))
+const groups = computed(() => prefs.value.grouped
+  ? groupRows(visibleRows.value)
+  : [{ key: 'all', label: '', rows: visibleRows.value }])
+const filtered = computed(() => !!search.value || prefs.value.role !== 'all' || prefs.value.health !== 'all')
+
+function setSort(key: SortKey) {
+  const p = prefs.value
+  if (p.sortKey === key) p.sortDir = p.sortDir === 'asc' ? 'desc' : 'asc'
+  else { p.sortKey = key; p.sortDir = 'asc' }
 }
 
-// The volume group that uses this device as a PV, when it is known.
-function pvVgOf(dev: BlockDev): string | undefined {
-  const role = roleOf(dev)
-  return role?.kind === 'lvm' ? role.owner ?? undefined : undefined
+// Summary chips toggle the matching filter.
+function toggleRole(role: DiskRole) {
+  prefs.value.role = prefs.value.role === role ? 'all' : role
+}
+function toggleHealth(h: DiskHealth) {
+  prefs.value.health = prefs.value.health === h ? 'all' : h
+}
+function clearFilters() {
+  search.value = ''
+  prefs.value.role = 'all'
+  prefs.value.health = 'all'
 }
 
-// LVs belonging to a VG, as display rows.
-function lvsOfVg(vgName: string) {
-  return lvmLVs.value.filter(l => l.vgName === vgName)
+const expanded = computed(() => new Set(prefs.value.expanded))
+function toggleExpanded(name: string) {
+  const e = prefs.value.expanded
+  const i = e.indexOf(name)
+  if (i >= 0) e.splice(i, 1)
+  else e.push(name)
 }
 
-function lvMountpoint(lv: { vgName: string; name: string; path: string }): string {
-  const dmName = lvToDmName({ name: lv.name, vgName: lv.vgName, size: 0, path: lv.path })
-  const all: BlockDev[] = []
-  function walk(d: BlockDev) { all.push(d); d.children?.forEach(walk) }
-  devices.value.forEach(walk)
-  return all.find(d => d.name === dmName)?.mountpoint ?? ''
+// ── Row presentation ──────────────────────────────────────────────────────────
+
+const ROLE_CLASS: Record<DiskRole, string> = {
+  system:    'bg-warning/10 text-warning border-warning/20',
+  raid:      'bg-info/10 text-info border-info/20',
+  lvm:       'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  mounted:   'bg-teal-500/10 text-teal-500 border-teal-500/20',
+  free:      'bg-success/10 text-success border-success/20',
+  unmounted: 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
+}
+
+const HEALTH_DOT: Record<DiskHealth, string> = {
+  passed: 'bg-success', warning: 'bg-warning', failed: 'bg-danger animate-pulse', unknown: 'bg-[var(--c-text-3)]/40',
+}
+const HEALTH_LABEL: Record<DiskHealth, string> = {
+  passed: 'Healthy', warning: 'Warning', failed: 'Failed', unknown: 'Unknown',
+}
+
+function roleText(r: DiskRow): string {
+  if (r.role === 'raid') return r.raidOwners.length ? `RAID ${r.raidOwners.join(', ')}` : 'RAID (inactive)'
+  if (r.role === 'lvm')  return r.vgOwners.length ? `VG ${r.vgOwners.join(', ')}` : 'LVM (no VG)'
+  return ROLE_LABELS[r.role]
+}
+
+// Arrays and VGs link to their section.
+function openRole(r: DiskRow) {
+  if (r.role === 'raid' || r.role === 'lvm') emit('navigate', r.role)
+}
+
+function tempClass(t: number): string {
+  return t >= 55 ? 'text-danger font-semibold' : t >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'
+}
+
+const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
+  { key: 'name',        label: 'Device' },
+  { key: 'model',       label: 'Model' },
+  { key: 'serial',      label: 'Serial / WWN' },
+  { key: 'size',        label: 'Size', class: 'text-right' },
+  { key: 'kind',        label: 'Type' },
+  { key: 'role',        label: 'Role' },
+  { key: 'health',      label: 'Health' },
+  { key: 'temperature', label: 'Temp', class: 'text-right' },
+]
+
+// ── Selection: free disks for a new array or volume group ─────────────────────
+
+const selected = ref<Set<string>>(new Set())
+// Drop disks that are gone or no longer free after a refresh.
+watch(rows, rs => {
+  const ok = new Set(rs.filter(isSelectable).map(r => r.disk.name))
+  const next = new Set([...selected.value].filter(n => ok.has(n)))
+  if (next.size !== selected.value.size) selected.value = next
+})
+
+function toggleSelected(name: string) {
+  const s = new Set(selected.value)
+  if (s.has(name)) s.delete(name)
+  else s.add(name)
+  selected.value = s
+}
+
+function startCreate(kind: 'raid' | 'lvm') {
+  const names = [...selected.value]
+  selected.value = new Set()
+  emit('create', kind, names)
 }
 
 // ── Partition dialogs ─────────────────────────────────────────────────────────
@@ -152,17 +266,6 @@ const umountDlg = ref<InstanceType<typeof DeviceUnmountDialog> | null>(null)
 function openFormat(dev: BlockDev) { formatWiz.value?.open(dev) }
 function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
 function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
-
-// ── UI state: expandable danger zones ─────────────────────────────────────────
-
-const dangerDisks = ref(new Set<string>())
-
-function toggleDanger(name: string) {
-  const s = new Set(dangerDisks.value)
-  if (s.has(name)) s.delete(name)
-  else s.add(name)
-  dangerDisks.value = s
-}
 </script>
 
 <template>
@@ -185,346 +288,191 @@ function toggleDanger(name: string) {
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-if="!loading || devices.length">
+      <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No physical drives detected.</div>
 
-      <!-- ════════════════════════════════════════════════════════════════════ -->
-      <!-- DISK TREE                                                             -->
-      <!-- ════════════════════════════════════════════════════════════════════ -->
-      <section>
-        <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No physical drives detected.</div>
-
-        <div class="space-y-3">
-          <div v-for="disk in physicalDisks" :key="disk.name"
-            class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-            :class="disk.isSystem ? 'border-warning/20' : 'border-[var(--c-border)]'">
-            <!-- Left stripe by type -->
-            <div class="w-0.5 shrink-0"
-              :class="disk.isSystem ? 'bg-warning/60' : disk.isRemovable ? 'bg-info/50' : 'bg-[var(--c-border-strong)]'"/>
-            <div class="flex-1 min-w-0">
-
-              <!-- Disk header (tree root) -->
-              <div class="flex items-center gap-3 px-4 py-3">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">/dev/{{ disk.name }}</span>
-                    <span v-if="disk.model" class="text-[11px] text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
-                    <span class="text-[11px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(disk.size) }}</span>
-                    <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
-                      <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                      SYSTEM
-                    </span>
-                    <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
-                    <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
-                    <button v-if="roleOf(disk)" @click="emit('navigate', roleOf(disk)!.kind === 'raid' ? 'raid' : 'lvm')"
-                      :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
-                      class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
-                  </div>
-                  <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk — no modifications allowed</div>
-                </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <!-- Health badge -->
-                  <button @click="toggleSmart(disk.name)" title="S.M.A.R.T. health"
-                    :class="['inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
-                      diskStatus(disk.name) === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
-                      diskStatus(disk.name) === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
-                      diskStatus(disk.name) === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
-                      diskStatus(disk.name) === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
-                      'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-text-2)]']">
-                    <svg v-if="diskStatus(disk.name) === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    <span v-else class="w-1.5 h-1.5 rounded-full"
-                      :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : diskStatus(disk.name) === 'failed' ? 'bg-danger animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
-                    <span v-if="diskStatus(disk.name) === 'passed'">Healthy</span>
-                    <span v-else-if="diskStatus(disk.name) === 'warning'">Warning</span>
-                    <span v-else-if="diskStatus(disk.name) === 'failed'">Failed</span>
-                    <span v-else-if="diskStatus(disk.name) === 'loading'">…</span>
-                    <span v-else>SMART</span>
-                    <template v-if="smartCache[disk.name]?.available && smartCache[disk.name]?.temperature">
-                      <span class="opacity-50">·</span>
-                      <span :class="(smartCache[disk.name]?.temperature ?? 0) >= 55 ? 'text-danger' : (smartCache[disk.name]?.temperature ?? 0) >= 40 ? 'text-warning' : ''">{{ smartCache[disk.name]?.temperature }}°C</span>
-                    </template>
-                  </button>
-                  <!-- + Partition button (non-system only) -->
-                  <button v-if="!disk.isSystem && !diskLocked(disk)" @click="partCreateDlg = { disk, busy: false, err: '' }"
-                    class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                    + Partition
-                  </button>
-                </div>
-              </div>
-
-              <!-- SMART health panel (expandable) -->
-              <div v-if="smartOpen.has(disk.name)" class="border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/40">
-                <!-- sc = SmartResult | undefined, scoped for TS narrowing.
-                     Single-element array: disk.name is a valid unique key here. -->
-                <!-- eslint-disable-next-line vue/valid-v-for -->
-                <template v-for="sc in [smartCache[disk.name]]" :key="disk.name">
-                  <!-- Loading -->
-                  <div v-if="sc?._loading" class="flex items-center gap-2 px-4 py-4 text-sm text-[var(--c-text-3)]">
-                    <svg class="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Reading S.M.A.R.T. data…
-                  </div>
-
-                  <!-- Error -->
-                  <div v-else-if="sc?._error" class="px-4 py-3 text-sm text-danger">
-                    {{ sc._error }}
-                  </div>
-
-                  <!-- Unavailable -->
-                  <div v-else-if="sc && !sc.available" class="px-4 py-3 text-sm text-[var(--c-text-3)] italic">
-                    S.M.A.R.T. not supported by this device, or smartctl is not installed. Virtual disks and many USB enclosures do not expose it.
-                  </div>
-
-                  <!-- Data -->
-                  <template v-else-if="sc?.available">
-                    <!-- Overview row -->
-                    <div class="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--c-border)]">
-                      <div class="flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full shrink-0"
-                          :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : diskStatus(disk.name) === 'failed' ? 'bg-danger' : 'bg-[var(--c-text-3)]/40'"/>
-                        <span class="text-xs font-semibold"
-                          :class="diskStatus(disk.name) === 'passed' ? 'text-success' : diskStatus(disk.name) === 'warning' ? 'text-warning' : diskStatus(disk.name) === 'failed' ? 'text-danger' : 'text-[var(--c-text-3)]'">
-                          {{ smartHealth(sc) === 'passed' ? 'PASSED' : smartHealth(sc) === 'failed' ? 'FAILED' : 'NO HEALTH STATUS' }}
-                        </span>
-                        <span v-for="w in sc.warnings ?? []" :key="w" class="text-[11px] text-warning">· {{ w }}</span>
-                      </div>
-                      <div v-if="sc.temperature" class="flex items-center gap-1 text-xs">
-                        <span :class="sc.temperature >= 55 ? 'text-danger font-semibold' : sc.temperature >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'">
-                          {{ sc.temperature }}°C
-                        </span>
-                      </div>
-                      <div v-if="sc.powerOnHours" class="text-xs text-[var(--c-text-3)]">
-                        {{ fmtHours(sc.powerOnHours) }} powered on
-                      </div>
-                      <div v-if="sc.powerCycles" class="text-xs text-[var(--c-text-3)]">
-                        {{ sc.powerCycles.toLocaleString() }} power cycles
-                      </div>
-                      <div class="ml-auto text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-[var(--c-text-3)]">
-                        {{ sc.nvme ? 'NVMe' : sc.rotationRate === 0 ? 'SSD' : `HDD ${sc.rotationRate} RPM` }}
-                      </div>
-                    </div>
-
-                    <!-- Device info row -->
-                    <div v-if="sc.serialNumber || sc.firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--c-text-3)] border-b border-[var(--c-border)]">
-                      <span v-if="sc.modelFamily"><span class="text-[var(--c-text-2)]">Family</span> {{ sc.modelFamily }}</span>
-                      <span v-if="sc.serialNumber"><span class="text-[var(--c-text-2)]">S/N</span> <span class="font-mono">{{ sc.serialNumber }}</span></span>
-                      <span v-if="sc.firmware"><span class="text-[var(--c-text-2)]">FW</span> <span class="font-mono">{{ sc.firmware }}</span></span>
-                    </div>
-
-                    <!-- NVMe health log -->
-                    <div v-if="sc.nvme" class="px-4 py-3 space-y-2">
-                      <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">NVMe Health Log</div>
-                      <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                        <div class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Critical Warning</span>
-                          <span :class="sc.nvme.criticalWarning > 0 ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.criticalWarning }}</span>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Media Errors</span>
-                          <span :class="sc.nvme.mediaErrors > 0 ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.mediaErrors }}</span>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Available Spare</span>
-                          <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-danger font-semibold' : 'text-[var(--c-text-2)]'">{{ sc.nvme.availableSpare }}% <span class="text-[var(--c-text-3)]">(min {{ sc.nvme.availableSpareThresh }}%)</span></span>
-                        </div>
-                        <div class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Percentage Used</span>
-                          <span :class="sc.nvme.percentageUsed >= 90 ? 'text-danger font-semibold' : sc.nvme.percentageUsed >= 70 ? 'text-warning' : 'text-[var(--c-text-2)]'">{{ sc.nvme.percentageUsed }}%</span>
-                        </div>
-                        <div v-if="sc.nvme.dataReadTiB > 0" class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Data Read</span>
-                          <span class="text-[var(--c-text-2)] font-mono">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
-                        </div>
-                        <div v-if="sc.nvme.dataWrittenTiB > 0" class="flex justify-between gap-2">
-                          <span class="text-[var(--c-text-3)]">Data Written</span>
-                          <span class="text-[var(--c-text-2)] font-mono">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- ATA attributes table -->
-                    <div v-if="sc.attributes.length > 0" class="px-4 pb-4 pt-3">
-                      <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">ATA Attributes</div>
-                      <div class="rounded-lg overflow-hidden border border-[var(--c-border)]">
-                        <table class="w-full text-[11px] border-collapse">
-                          <thead>
-                            <tr class="bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
-                              <th class="text-left px-2.5 py-1.5 font-medium w-8">ID</th>
-                              <th class="text-left px-2.5 py-1.5 font-medium">Attribute</th>
-                              <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Value</th>
-                              <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Worst</th>
-                              <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Thresh</th>
-                              <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Raw</th>
-                              <th class="text-center px-2.5 py-1.5 font-medium w-8"></th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-[var(--c-border)]">
-                            <tr v-for="attr in sc.attributes" :key="attr.id"
-                              :class="['transition-colors', attr.failed ? 'bg-danger/8' : attr.isCritical && attr.raw > 0 ? 'bg-warning/6' : '']">
-                              <td class="px-2.5 py-1.5 font-mono text-[var(--c-text-3)]">{{ attr.id }}</td>
-                              <td class="px-2.5 py-1.5 font-mono"
-                                :class="attr.failed ? 'text-danger font-semibold' : attr.isCritical ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">
-                                {{ attr.name.replace(/_/g, ' ') }}
-                              </td>
-                              <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-2)]">{{ attr.value }}</td>
-                              <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.worst }}</td>
-                              <td class="px-2.5 py-1.5 tabular-nums text-right text-[var(--c-text-3)]">{{ attr.thresh }}</td>
-                              <td class="px-2.5 py-1.5 tabular-nums text-right font-mono"
-                                :class="attr.failed ? 'text-danger font-semibold' : attr.isCritical && attr.raw > 0 ? 'text-warning font-semibold' : 'text-[var(--c-text-2)]'">
-                                {{ attr.raw.toLocaleString() }}
-                              </td>
-                              <td class="px-2.5 py-1.5 text-center">
-                                <svg v-if="attr.failed" class="w-3 h-3 text-danger mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                </svg>
-                                <svg v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-warning mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                                <svg v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </template>
-                </template>
-              </div>
-
-              <!-- Children: partitions and what they feed -->
-              <div v-if="disk.children && disk.children.length > 0" class="border-t border-[var(--c-border)] divide-y divide-[var(--c-border)]">
-                <template v-for="part in disk.children.filter(c => c.type !== 'swap')" :key="part.name">
-                  <div class="group/part flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
-                    <!-- Status dot -->
-                    <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                      :class="part.isSystem ? 'bg-warning/60' : part.mountpoint ? 'bg-success/70' : 'bg-[var(--c-text-3)]/25'"/>
-                    <!-- Info -->
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="font-mono text-xs text-[var(--c-text-2)]">/dev/{{ part.name }}</span>
-                        <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
-                        <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
-                        <span v-else-if="!roleOf(part)" class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
-                        <!-- Role: RAID member -->
-                        <button v-if="raidMemberOf(part)" @click="emit('navigate', 'raid')"
-                          class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
-                          RAID {{ raidMemberOf(part) }} →
-                        </button>
-                        <!-- Role: LVM PV -->
-                        <button v-if="pvVgOf(part)" @click="emit('navigate', 'lvm')"
-                          class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
-                          LVM {{ pvVgOf(part) }} →
-                        </button>
-                        <!-- Role: member of an array/VG that is not active -->
-                        <span v-if="roleOf(part) && !roleOf(part)!.owner"
-                          class="text-[10px] px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">{{ roleLabel(roleOf(part)!) }}</span>
-                      </div>
-                      <div v-if="part.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ part.mountpoint }}</div>
-                      <div v-if="part.usageTotal > 0" class="mt-1.5 flex items-center gap-2">
-                        <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-                          <div class="h-full rounded-full" :class="usageBarClass(usagePct(part))" :style="{ width: usagePct(part) + '%' }"/>
-                        </div>
-                        <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
-                      </div>
-                      <!-- Nested: LVs of the VG this partition is a PV of -->
-                      <div v-if="pvVgOf(part) && lvsOfVg(pvVgOf(part)!).length" class="mt-1.5 space-y-1">
-                        <div v-for="lv in lvsOfVg(pvVgOf(part)!)" :key="lv.path" class="flex items-center gap-2 text-[10px]">
-                          <span class="text-[var(--c-text-3)]/50">└─</span>
-                          <span class="font-mono text-purple-400">{{ lv.vgName }}/{{ lv.name }}</span>
-                          <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
-                          <span v-if="lvMountpoint(lv)" class="font-mono text-[var(--c-text-3)]">↳ {{ lvMountpoint(lv) }}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- Actions — revealed on hover, hidden by default -->
-                    <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
-                      <button v-if="!part.mountpoint && !roleOf(part)" @click="openFormat(part)"
-                        class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                      <button v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="openMount(part)"
-                        class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
-                      <button v-if="part.mountpoint" @click="openUmount(part)"
-                        class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
-                      <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
-                      <button v-if="!part.mountpoint && !roleOf(part)" @click="partDeleteDlg = { disk, part, busy: false, err: '' }"
-                        title="Delete this partition"
-                        class="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </template>
-              </div>
-
-              <!-- Unpartitioned raw disk -->
-              <div v-else-if="!disk.isSystem" class="border-t border-[var(--c-border)]">
-                <!-- Has a filesystem directly on the raw disk -->
-                <div v-if="disk.fstype" class="flex items-center gap-3 px-4 py-2.5">
-                  <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-accent)]/60"/>
-                  <div class="flex-1 min-w-0">
-                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
-                    <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
-                  </div>
-                  <div class="flex items-center gap-1 shrink-0">
-                    <button v-if="!disk.mountpoint && !roleOf(disk)" @click="openFormat(disk)"
-                      class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                    <button v-if="!disk.mountpoint && !roleOf(disk)" @click="openMount(disk)"
-                      class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
-                    <button v-if="disk.mountpoint" @click="openUmount(disk)"
-                      class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
-                  </div>
-                </div>
-                <!-- Truly blank disk — no partition table, no filesystem -->
-                <div v-else class="flex items-center gap-3 px-4 py-2.5">
-                  <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-text-3)]/20"/>
-                  <div class="flex-1 min-w-0">
-                    <span class="text-[11px] text-[var(--c-text-3)]">No partition table — create one to start using this disk.</span>
-                  </div>
-                  <button @click="partInitDlg = { disk, busy: false, err: '' }"
-                    class="shrink-0 text-[11px] px-2.5 py-1 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
-                    Create partition table…
-                  </button>
-                </div>
-              </div>
-
-              <!-- Expandable danger zone — only for disks that already have partitions -->
-              <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-[var(--c-border)]">
-                <button @click="toggleDanger(disk.name)"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
-                  <svg class="w-3 h-3 shrink-0 transition-transform" :class="dangerDisks.has(disk.name) ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                  </svg>
-                  Advanced
-                </button>
-                <div v-if="dangerDisks.has(disk.name)" class="px-4 pb-3 pt-0.5">
-                  <div class="flex items-start gap-3 p-3 rounded-lg border border-danger/20 bg-danger/5">
-                    <svg class="w-3.5 h-3.5 text-danger/70 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                    </svg>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
-                      <p class="text-[10px] text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
-                      <button @click="partInitDlg = { disk, busy: false, err: '' }"
-                        class="mt-2 text-[11px] px-2.5 py-1 rounded-sm border border-danger/30 text-danger/80 hover:border-danger/60 hover:text-danger hover:bg-danger/10 transition-colors">
-                        Create partition table…
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <template v-else>
+        <!-- Summary: each count filters the list -->
+        <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3 mb-3">
+          <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+            <span class="font-semibold text-[var(--c-text-1)]">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
+            <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
+            <span v-if="summary.roles.free" class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(summary.freeBytes) }} on free disks</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
+              <button v-if="summary.roles[role]" @click="toggleRole(role)" :aria-pressed="prefs.role === role"
+                :class="['text-[11px] px-2 py-1 rounded-lg border transition-colors', ROLE_CLASS[role],
+                  prefs.role === role ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
+                {{ ROLE_LABELS[role] }} <span class="font-semibold tabular-nums">{{ summary.roles[role] }}</span>
+              </button>
+            </template>
+            <template v-for="h in (['failed', 'warning'] as DiskHealth[])" :key="h">
+              <button v-if="summary.health[h]" @click="toggleHealth(h)" :aria-pressed="prefs.health === h"
+                :class="['inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border transition-colors',
+                  h === 'failed' ? 'bg-danger/10 text-danger border-danger/25' : 'bg-warning/10 text-warning border-warning/25',
+                  prefs.health === h ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
+                <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[h]"/>
+                SMART {{ HEALTH_LABEL[h].toLowerCase() }} <span class="font-semibold tabular-nums">{{ summary.health[h] }}</span>
+              </button>
+            </template>
           </div>
         </div>
-      </section>
 
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <input v-model="search" type="search" placeholder="Search device, model, serial…" aria-label="Search disks"
+            class="flex-1 min-w-[12rem] px-3 py-1.5 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"/>
+          <select v-model="prefs.role" aria-label="Filter by role"
+            class="px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none">
+            <option value="all">All roles</option>
+            <option v-for="(label, role) in ROLE_LABELS" :key="role" :value="role">{{ label }}</option>
+          </select>
+          <select v-model="prefs.health" aria-label="Filter by health"
+            class="px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none">
+            <option value="all">Any health</option>
+            <option v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</option>
+          </select>
+          <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
+            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && 'sm:hidden']">
+            <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
+          </select>
+          <label class="flex items-center gap-1.5 text-xs text-[var(--c-text-2)] cursor-pointer">
+            <input v-model="prefs.grouped" type="checkbox" class="accent-accent"/> Group by role
+          </label>
+          <div class="flex rounded-lg border border-[var(--c-border)] overflow-hidden text-xs" role="group" aria-label="View">
+            <button v-for="v in (['table', 'cards'] as View[])" :key="v" @click="prefs.view = v" :aria-pressed="view === v"
+              :class="['px-2.5 py-1.5 transition-colors', view === v ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]' : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)]']">
+              {{ v === 'table' ? 'Table' : 'Details' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="filtered && visibleRows.length" class="mb-2 text-[11px] text-[var(--c-text-3)]">
+          Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
+          <button @click="clearFilters" class="text-[var(--c-accent)] hover:underline">Clear filters</button>
+        </div>
+
+        <!-- Selected free disks -->
+        <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-[var(--c-border-strong)] bg-[var(--c-surface)] text-xs">
+          <span class="text-[var(--c-text-2)]">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
+          <button v-if="selected.size >= 2" @click="startCreate('raid')" class="btn btn-primary text-xs">Create RAID…</button>
+          <button @click="startCreate('lvm')" class="btn btn-outline text-xs">Create volume group…</button>
+          <button @click="selected = new Set()" class="ml-auto text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Clear</button>
+        </div>
+
+        <div v-if="!visibleRows.length" class="text-sm text-[var(--c-text-3)] py-6 text-center">
+          No disk matches these filters. <button @click="clearFilters" class="text-[var(--c-accent)] hover:underline">Clear filters</button>
+        </div>
+
+        <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
+        <div v-else-if="view === 'table'" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
+          <!-- Header (desktop) -->
+          <div class="hidden sm:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[11px] font-medium text-[var(--c-text-3)]">
+            <span/>
+            <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
+              :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+              :class="['text-left hover:text-[var(--c-text-1)] transition-colors truncate', c.class, prefs.sortKey === c.key && 'text-[var(--c-text-1)]']">
+              {{ c.label }}<span v-if="prefs.sortKey === c.key">{{ prefs.sortDir === 'asc' ? ' ↑' : ' ↓' }}</span>
+            </button>
+            <span/>
+          </div>
+
+          <template v-for="g in groups" :key="g.key">
+            <div v-if="g.label" class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] bg-[var(--c-surface-deep)]/60 border-b border-[var(--c-border)]">
+              {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
+            </div>
+            <div v-for="r in g.rows" :key="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
+              <!-- Row (desktop) -->
+              <div class="hidden sm:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
+                @click="toggleExpanded(r.disk.name)">
+                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
+                  :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
+                <span v-else/>
+                <span class="font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
+                <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '—' }}</span>
+                <span class="font-mono text-[10px] text-[var(--c-text-3)] min-w-0">
+                  <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '—' }}</span>
+                  <span v-if="r.disk.wwn" class="block truncate opacity-70" :title="r.disk.wwn">{{ r.disk.wwn }}</span>
+                </span>
+                <span class="text-right tabular-nums text-[var(--c-text-2)]">{{ fmtBytes(r.disk.size) }}</span>
+                <span class="text-[var(--c-text-3)]">{{ r.kind || '—' }}</span>
+                <span class="min-w-0">
+                  <button v-if="r.role === 'raid' || r.role === 'lvm'" @click.stop="openRole(r)"
+                    :class="['max-w-full truncate text-[10px] px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
+                  <span v-else :class="['text-[10px] px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
+                </span>
+                <span class="flex items-center gap-1.5 text-[var(--c-text-2)]">
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
+                </span>
+                <span class="text-right tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature ? `${r.temperature}°C` : '—' }}</span>
+                <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+
+              <!-- Row (mobile): role and health first -->
+              <div class="sm:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
+                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
+                  :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span :class="['text-[10px] px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] text-[var(--c-text-2)]">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
+                    </span>
+                    <span v-if="r.temperature" class="text-[10px] tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
+                  </div>
+                  <div class="mt-1 text-xs">
+                    <span class="font-mono font-semibold text-[var(--c-text-1)]">/dev/{{ r.disk.name }}</span>
+                    <span class="text-[var(--c-text-3)] tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
+                    <span v-if="r.kind" class="text-[var(--c-text-3)]"> · {{ r.kind }}</span>
+                  </div>
+                  <div class="text-[10px] text-[var(--c-text-3)] truncate">
+                    {{ r.disk.model }}<span v-if="r.disk.serial" class="font-mono"> · {{ r.disk.serial }}</span>
+                  </div>
+                </div>
+                <svg class="w-3.5 h-3.5 mt-1 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+
+              <div v-if="expanded.has(r.disk.name)" class="px-3 pb-3">
+                <DiskCard :disk="r.disk" :smart="smartCache[r.disk.name]" :smart-open="smartOpen.has(r.disk.name)"
+                  :devices="devices" :lvs="lvmLVs"
+                  @navigate="s => emit('navigate', s)" @toggle-smart="toggleSmart(r.disk.name)"
+                  @format="openFormat" @mount="openMount" @umount="openUmount"
+                  @part-init="d => partInitDlg = { disk: d, busy: false, err: '' }"
+                  @part-create="d => partCreateDlg = { disk: d, busy: false, err: '' }"
+                  @part-delete="(d, p) => partDeleteDlg = { disk: d, part: p, busy: false, err: '' }" />
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- ═══ Detailed view: the full tree of every disk ═══ -->
+        <div v-else class="space-y-3">
+          <template v-for="g in groups" :key="g.key">
+            <div v-if="g.label" class="pt-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+              {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
+            </div>
+            <div v-for="r in g.rows" :key="r.disk.name" class="flex items-start gap-2">
+              <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @change="toggleSelected(r.disk.name)"
+                :aria-label="`Select /dev/${r.disk.name}`" class="mt-4 accent-accent"/>
+              <DiskCard class="flex-1 min-w-0" :disk="r.disk" :smart="smartCache[r.disk.name]" :smart-open="smartOpen.has(r.disk.name)"
+                :devices="devices" :lvs="lvmLVs"
+                @navigate="s => emit('navigate', s)" @toggle-smart="toggleSmart(r.disk.name)"
+                @format="openFormat" @mount="openMount" @umount="openUmount"
+                @part-init="d => partInitDlg = { disk: d, busy: false, err: '' }"
+                @part-create="d => partCreateDlg = { disk: d, busy: false, err: '' }"
+                @part-delete="(d, p) => partDeleteDlg = { disk: d, part: p, busy: false, err: '' }" />
+            </div>
+          </template>
+        </div>
+      </template>
     </template>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" />
+    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
     <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
@@ -546,6 +494,7 @@ function toggleDanger(name: string) {
         <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
         <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
+        <div v-if="partInitDlg.disk.serial" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Serial</span><span class="font-mono">{{ partInitDlg.disk.serial }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
@@ -594,10 +543,18 @@ function toggleDanger(name: string) {
         <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
         <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-[var(--c-text-3)]">{{ partDeleteDlg.disk.model }}</span></div>
+        <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Serial</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
   </div>
 </template>
+
+<style scoped>
+/* select · device · model · serial · size · type · role · health · temp · chevron */
+.disk-grid {
+  grid-template-columns: 1rem minmax(6.5rem, 1fr) minmax(7rem, 1.4fr) minmax(7rem, 1.2fr) 4.5rem 3.5rem minmax(6.5rem, 1fr) 5rem 3rem 0.875rem;
+}
+</style>
