@@ -1106,7 +1106,10 @@ type smartctlJSON struct {
 	SerialNumber    string `json:"serial_number"`
 	FirmwareVersion string `json:"firmware_version"`
 	RotationRate    int    `json:"rotation_rate"`
-	SmartStatus     struct {
+	// Absent when the device does not report an overall health status
+	// (virtio disks, many USB bridges): a pointer keeps "unknown" distinct
+	// from "failed".
+	SmartStatus *struct {
 		Passed bool `json:"passed"`
 	} `json:"smart_status"`
 	Temperature struct {
@@ -1142,6 +1145,57 @@ type smartctlJSON struct {
 	} `json:"nvme_smart_health_information_log"`
 }
 
+// smartctl(8) exit status bits.
+const (
+	smartExitCmdLine      = 1 << 0 // command line or device type not recognised
+	smartExitOpenFailed   = 1 << 1 // device open failed, or in low-power mode (-n)
+	smartExitCmdFailed    = 1 << 2 // a SMART command failed or returned a checksum error
+	smartExitDiskFailing  = 1 << 3 // SMART status: DISK FAILING
+	smartExitPrefail      = 1 << 4 // prefail attributes at or below threshold
+	smartExitUsage        = 1 << 5 // usage attributes were past threshold
+	smartExitErrorLog     = 1 << 6 // device error log contains errors
+	smartExitSelfTestFail = 1 << 7 // self-test log contains errors
+)
+
+// evalSmart classifies smartctl -j output. A device is available when smartctl
+// could read SMART data from it; health is "failed" only on an explicit failed
+// status, "passed" on an explicit passed status, and "unknown" otherwise, so
+// devices without SMART support are never reported as failing.
+func evalSmart(sc smartctlJSON) (available bool, health string, warnings []string) {
+	st := sc.Smartctl.ExitStatus
+	nvmePresent := sc.NvmeLog.Temperature > 0 || sc.NvmeLog.AvailableSpare > 0 ||
+		sc.NvmeLog.PercentageUsed > 0 || sc.NvmeLog.DataUnitsRead > 0
+	hasData := sc.SmartStatus != nil || len(sc.AtaSmartAttributes.Table) > 0 || nvmePresent
+	if !hasData || st&(smartExitCmdLine|smartExitOpenFailed) != 0 && sc.SmartStatus == nil {
+		return false, "unknown", nil
+	}
+
+	switch {
+	case st&smartExitDiskFailing != 0 || (sc.SmartStatus != nil && !sc.SmartStatus.Passed):
+		health = "failed"
+	case sc.SmartStatus != nil && sc.SmartStatus.Passed:
+		health = "passed"
+	default:
+		health = "unknown"
+	}
+
+	for _, w := range []struct {
+		bit int
+		msg string
+	}{
+		{smartExitCmdFailed, "some SMART commands failed or returned a checksum error"},
+		{smartExitPrefail, "prefail attributes are at or below their threshold"},
+		{smartExitUsage, "usage attributes were past their threshold"},
+		{smartExitErrorLog, "the device error log contains errors"},
+		{smartExitSelfTestFail, "the self-test log contains errors"},
+	} {
+		if st&w.bit != 0 {
+			warnings = append(warnings, w.msg)
+		}
+	}
+	return true, health, warnings
+}
+
 type SmartAttr struct {
 	ID         int    `json:"id"`
 	Name       string `json:"name"`
@@ -1173,7 +1227,9 @@ type SmartResult struct {
 	SerialNumber string      `json:"serialNumber,omitempty"`
 	Firmware     string      `json:"firmware,omitempty"`
 	RotationRate int         `json:"rotationRate"` // 0 = SSD/NVMe
-	HealthPassed bool        `json:"healthPassed"`
+	HealthPassed bool        `json:"healthPassed"` // Health == "passed"; kept for older clients
+	Health       string      `json:"health"`       // passed | failed | unknown
+	Warnings     []string    `json:"warnings"`     // smartctl exit status bits 2, 4-7
 	Temperature  int         `json:"temperature"`
 	PowerOnHours int64       `json:"powerOnHours"`
 	PowerCycles  int64       `json:"powerCycles"`
@@ -1221,19 +1277,21 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	// Exit status bit 1 = open failed, bit 7 = no device
-	if sc.Smartctl.ExitStatus&0x82 != 0 {
+	available, health, warnings := evalSmart(sc)
+	if !available {
 		replyOk(nc, msg.Reply, result)
 		return
 	}
 
 	result.Available = true
+	result.Health = health
+	result.Warnings = warnings
 	result.ModelFamily = strings.TrimSpace(sc.ModelFamily)
 	result.ModelName = strings.TrimSpace(sc.ModelName)
 	result.SerialNumber = strings.TrimSpace(sc.SerialNumber)
 	result.Firmware = strings.TrimSpace(sc.FirmwareVersion)
 	result.RotationRate = sc.RotationRate
-	result.HealthPassed = sc.SmartStatus.Passed
+	result.HealthPassed = health == "passed"
 	result.Temperature = sc.Temperature.Current
 	result.PowerOnHours = sc.PowerOnTime.Hours
 	result.PowerCycles = sc.PowerCycleCount

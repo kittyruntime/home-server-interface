@@ -14,12 +14,20 @@ export type SmartResult = {
   device: string; available: boolean
   modelFamily?: string; modelName?: string; serialNumber?: string; firmware?: string
   rotationRate: number; healthPassed: boolean; temperature: number
+  /** passed | failed | unknown (no overall status, e.g. virtio or USB bridges) */
+  health?: SmartHealth; warnings?: string[]
   powerOnHours: number; powerCycles: number
   attributes: SmartAttr[]; nvme?: NvmeInfo
   _loading?: boolean; _error?: string
 }
 
 export type SmartStatus = 'unknown' | 'loading' | 'passed' | 'warning' | 'failed'
+export type SmartHealth = 'passed' | 'failed' | 'unknown'
+
+/** Overall health; older workers only sent healthPassed. */
+export function smartHealth(s: SmartResult): SmartHealth {
+  return s.health ?? (s.healthPassed ? 'passed' : 'failed')
+}
 
 /** A zero-value SmartResult with optional overrides (loading/error markers). */
 export function emptySmart(device: string, extra: Partial<SmartResult> = {}): SmartResult {
@@ -34,10 +42,12 @@ export function smartStatus(s: SmartResult | undefined): SmartStatus {
   if (!s) return 'unknown'
   if (s._loading) return 'loading'
   if (!s.available) return 'unknown'
-  if (!s.healthPassed) return 'failed'
+  const health = smartHealth(s)
+  if (health === 'failed') return 'failed'
+  if (s.warnings?.length) return 'warning'
   if (s.attributes.some(a => a.isCritical && a.raw > 0)) return 'warning'
   if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return 'warning'
-  return 'passed'
+  return health === 'passed' ? 'passed' : 'unknown'
 }
 
 /** Query SMART for one bare device name (sda, nvme0n1) and write it into `cache`,

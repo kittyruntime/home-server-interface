@@ -6,7 +6,7 @@ import {
   deviceRole, isLockedByMembership, roleLabel,
   type BlockDev, type DeviceRole,
 } from './store'
-import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
+import { type SmartResult, smartStatus, smartHealth, fetchSmartInto } from './smart'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -271,7 +271,7 @@ function toggleDanger(name: string) {
 
                   <!-- Unavailable -->
                   <div v-else-if="sc && !sc.available" class="px-4 py-3 text-sm text-[var(--c-text-3)] italic">
-                    S.M.A.R.T. not available for this device (smartctl may not be installed or the device may not support it).
+                    S.M.A.R.T. not supported by this device, or smartctl is not installed. Virtual disks and many USB enclosures do not expose it.
                   </div>
 
                   <!-- Data -->
@@ -280,11 +280,12 @@ function toggleDanger(name: string) {
                     <div class="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--c-border)]">
                       <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full shrink-0"
-                          :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : 'bg-danger'"/>
+                          :class="diskStatus(disk.name) === 'passed' ? 'bg-success' : diskStatus(disk.name) === 'warning' ? 'bg-warning' : diskStatus(disk.name) === 'failed' ? 'bg-danger' : 'bg-[var(--c-text-3)]/40'"/>
                         <span class="text-xs font-semibold"
-                          :class="diskStatus(disk.name) === 'passed' ? 'text-success' : diskStatus(disk.name) === 'warning' ? 'text-warning' : 'text-danger'">
-                          {{ sc.healthPassed ? 'PASSED' : 'FAILED' }}
+                          :class="diskStatus(disk.name) === 'passed' ? 'text-success' : diskStatus(disk.name) === 'warning' ? 'text-warning' : diskStatus(disk.name) === 'failed' ? 'text-danger' : 'text-[var(--c-text-3)]'">
+                          {{ smartHealth(sc) === 'passed' ? 'PASSED' : smartHealth(sc) === 'failed' ? 'FAILED' : 'NO HEALTH STATUS' }}
                         </span>
+                        <span v-for="w in sc.warnings ?? []" :key="w" class="text-[11px] text-warning">· {{ w }}</span>
                       </div>
                       <div v-if="sc.temperature" class="flex items-center gap-1 text-xs">
                         <span :class="sc.temperature >= 55 ? 'text-danger font-semibold' : sc.temperature >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'">

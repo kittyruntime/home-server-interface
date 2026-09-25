@@ -34,6 +34,8 @@ type SmartAttr = { isCritical: boolean; raw: number }
 type SmartResult = {
   available: boolean
   healthPassed: boolean
+  health?: "passed" | "failed" | "unknown"
+  warnings?: string[]
   attributes: SmartAttr[]
   nvme?: { criticalWarning: number; mediaErrors: number }
 }
@@ -44,10 +46,14 @@ type SmartResult = {
 // place that needs it.
 function deriveSmartStatus(s: SmartResult): "passed" | "warning" | "failed" | "unknown" {
   if (!s.available) return "unknown"
-  if (!s.healthPassed) return "failed"
+  // Only an explicit failed status is a failure: devices without an overall
+  // SMART status (virtio, many USB bridges) report "unknown" and never alert.
+  const health = s.health ?? (s.healthPassed ? "passed" : "failed")
+  if (health === "failed") return "failed"
+  if (s.warnings?.length) return "warning"
   if (s.attributes.some(a => a.isCritical && a.raw > 0)) return "warning"
   if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return "warning"
-  return "passed"
+  return health === "passed" ? "passed" : "unknown"
 }
 
 async function checkSmart(): Promise<CheckOutcome> {
