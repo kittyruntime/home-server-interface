@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Red badges on Alerts and Storage that never went away**: disks without SMART
+  support (virtio, many USB bridges) kept the false "SMART failed" alert raised
+  by older versions. Such disks are now counted as checked, so the stale alert is
+  cleared on the next sampler run; disks in standby are still left alone.
+
 ## [1.55.0] - 2026-09-25
 
 ### Added
