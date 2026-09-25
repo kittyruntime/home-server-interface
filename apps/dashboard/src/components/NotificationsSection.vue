@@ -6,6 +6,7 @@ import ErrorState from './ui/ErrorState.vue'
 import ConnectorDialog from './notifications/ConnectorDialog.vue'
 import RuleDialog from './notifications/RuleDialog.vue'
 import { useConfirm } from '../lib/confirm'
+import ToggleSwitch from './ui/ToggleSwitch.vue'
 
 const { confirm } = useConfirm()
 
@@ -203,14 +204,7 @@ function formatTime(at: string | Date): string {
                 </div>
                 <p class="text-xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ c.method }} {{ c.url }}</p>
               </div>
-              <button
-                type="button" role="switch" :aria-checked="c.enabled"
-                :title="c.enabled ? 'Disable connector' : 'Enable connector'"
-                :class="['shrink-0 w-9 h-5 rounded-full transition-colors relative', c.enabled ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)]']"
-                @click="toggleConnector(c)"
-              >
-                <span :class="['absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', c.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
-              </button>
+              <ToggleSwitch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
               <button type="button" class="btn btn-ghost btn-xs shrink-0" @click="openConnectorDialog(c)">Edit</button>
               <button type="button" class="btn btn-danger btn-xs shrink-0" @click="deleteConnector(c)">Delete</button>
             </li>
@@ -249,14 +243,7 @@ function formatTime(at: string | Date): string {
                   >{{ t }}</span>
                 </div>
               </div>
-              <button
-                type="button" role="switch" :aria-checked="r.enabled"
-                :title="r.enabled ? 'Disable rule' : 'Enable rule'"
-                :class="['shrink-0 w-9 h-5 rounded-full transition-colors relative', r.enabled ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)]']"
-                @click="toggleRule(r)"
-              >
-                <span :class="['absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', r.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
-              </button>
+              <ToggleSwitch :model-value="r.enabled" :title="r.enabled ? 'Disable rule' : 'Enable rule'" @update:model-value="toggleRule(r)" />
               <button type="button" class="btn btn-ghost btn-xs shrink-0" @click="openRuleDialog(r)">Edit</button>
               <button type="button" class="btn btn-danger btn-xs shrink-0" @click="deleteRule(r)">Delete</button>
             </li>

@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { useAdvancedMode } from '../lib/advanced-mode'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+import ToggleSwitch from './ui/ToggleSwitch.vue'
 
 type Me = {
   id: string
@@ -290,24 +291,9 @@ onMounted(async () => {
         <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Advanced mode</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between gap-4">
           <p class="text-xs text-[var(--c-text-3)]">
-            Show extra technical detail where it's available — raw UID/GID on files, for now.
+            Show extra technical detail where it's available: raw UID/GID on files, for now.
           </p>
-          <button
-            role="switch"
-            :aria-checked="advancedMode"
-            @click="setAdvancedMode(!advancedMode)"
-            :class="[
-              'shrink-0 w-9 h-5 rounded-full transition-colors relative',
-              advancedMode ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)]',
-            ]"
-          >
-            <span
-              :class="[
-                'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                advancedMode ? 'translate-x-4' : 'translate-x-0.5',
-              ]"
-            />
-          </button>
+          <ToggleSwitch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
         </div>
       </div>
 

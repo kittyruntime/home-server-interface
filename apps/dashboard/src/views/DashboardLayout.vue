@@ -27,6 +27,7 @@ import ToastContainer from '../components/ui/ToastContainer.vue'
 import Dock from '../components/desktop/Dock.vue'
 import Launchpad from '../components/desktop/Launchpad.vue'
 import DesktopShell from '../components/desktop/DesktopShell.vue'
+import ToggleSwitch from '../components/ui/ToggleSwitch.vue'
 
 const router = useRouter()
 const { currentUsername, isAdmin, hasCapability, mustChangePassword, logout } = useAuth()
@@ -377,15 +378,7 @@ onUnmounted(() => {
                 </svg>
                 Desktop mode
               </span>
-              <button
-                @click="setDesktopMode(!desktopMode)"
-                role="switch"
-                :aria-checked="desktopMode"
-                title="Toggle desktop mode"
-                :class="['relative w-9 h-5 rounded-full transition-colors shrink-0', desktopMode ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-border-strong)]']"
-              >
-                <span :class="['absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform', desktopMode ? 'translate-x-4' : 'translate-x-0']" />
-              </button>
+              <ToggleSwitch :model-value="desktopMode" title="Toggle desktop mode" @update:model-value="setDesktopMode" />
             </div>
             <button
               @click="resetSidebarOrder"
