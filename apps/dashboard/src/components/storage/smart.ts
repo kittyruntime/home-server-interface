@@ -16,6 +16,8 @@ export type SmartResult = {
   rotationRate: number; healthPassed: boolean; temperature: number
   /** passed | failed | unknown (no overall status, e.g. virtio or USB bridges) */
   health?: SmartHealth; warnings?: string[]
+  /** No SMART at all (virtio, USB bridge), as opposed to a disk skipped in standby. */
+  unsupported?: boolean
   powerOnHours: number; powerCycles: number
   attributes: SmartAttr[]; nvme?: NvmeInfo
   _loading?: boolean; _error?: string
@@ -51,14 +53,16 @@ export function smartStatus(s: SmartResult | undefined): SmartStatus {
 }
 
 /** Query SMART for one bare device name (sda, nvme0n1) and write it into `cache`,
- *  marking loading first and never throwing (records `_error` instead). */
+ *  marking loading first and never throwing (records `_error` instead).
+ *  `noWake` skips a disk in standby instead of spinning it up. */
 export async function fetchSmartInto(
   cache: Ref<Record<string, SmartResult>>,
   device: string,
+  opts: { noWake?: boolean } = {},
 ): Promise<void> {
   cache.value = { ...cache.value, [device]: emptySmart(device, { _loading: true }) }
   try {
-    const res = await trpc.storage.smartInfo.query({ device }) as SmartResult
+    const res = await trpc.storage.smartInfo.query({ device, noWake: opts.noWake }) as SmartResult
     cache.value = { ...cache.value, [device]: res }
   } catch (e: unknown) {
     cache.value = {
