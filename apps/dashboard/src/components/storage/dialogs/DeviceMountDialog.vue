@@ -4,11 +4,14 @@ import { trpc } from '../../../lib/trpc'
 import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 import { useToast } from '../../../lib/toast'
+import { useAuth } from '../../../lib/auth'
 
 /* Shared mount dialog. Call open(dev) via a template ref; emits `done` after a
    successful mount. */
 const emit = defineEmits<{ done: [] }>()
 const toast = useToast()
+// Places are admin-managed; storage-only users just mount.
+const { isAdmin } = useAuth()
 
 const dlg = ref<{
   dev:     BlockDev
@@ -16,12 +19,15 @@ const dlg = ref<{
   options: string
   persist: boolean
   access:  'shared' | 'keep'
+  createPlace: boolean
+  placeName:   string
   busy:    boolean
   err:     string
 } | null>(null)
 
 function open(dev: BlockDev) {
-  dlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, access: 'shared', busy: false, err: '' }
+  dlg.value = { dev, mp: `/mnt/${dev.name}`, options: 'defaults', persist: true, access: 'shared',
+    createPlace: isAdmin.value, placeName: dev.name, busy: false, err: '' }
 }
 
 async function doMount() {
@@ -37,6 +43,16 @@ async function doMount() {
     // Mounted: anything left unchanged (existing data, unknown account) is
     // reported without failing the mount.
     for (const w of res.warnings ?? []) toast.info(w)
+    // A Place makes the volume visible in Files and lets permissions be
+    // granted per user/group. The mount itself already succeeded.
+    if (d.createPlace && d.placeName.trim()) {
+      try {
+        await trpc.place.create.mutate({ name: d.placeName.trim(), path: d.mp })
+        toast.success(`Place "${d.placeName.trim()}" created`)
+      } catch (e: unknown) {
+        toast.error(`Mounted, but the Place was not created: ${(e as { message?: string })?.message ?? 'unknown error'}`)
+      }
+    }
     dlg.value = null
     emit('done')
   } catch (e: unknown) {
@@ -102,6 +118,17 @@ defineExpose({ open })
           </div>
         </label>
       </fieldset>
+      <div v-if="isAdmin" class="space-y-2">
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input v-model="dlg.createPlace" type="checkbox" class="mt-0.5 accent-accent"/>
+          <div>
+            <div class="text-xs font-medium text-[var(--c-text-2)]">Create a Place for this volume</div>
+            <div class="text-[10px] text-[var(--c-text-3)]">Shows it in Files and lets you grant access per user or group.</div>
+          </div>
+        </label>
+        <input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" placeholder="Place name"
+          class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"/>
+      </div>
       <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
       <div class="flex gap-2 pt-1">
         <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
