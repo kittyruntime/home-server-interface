@@ -631,9 +631,10 @@ chown "$APP_USER:" "$DB_DIR"
 # the root worker only runs docker compose. Needed on BOTH fresh installs and
 # updates (the backend creates app dirs in here; without it, mkdir fails with
 # EACCES on a fresh install).
-step "Preparing /opt/containers"
-mkdir -p /opt/containers
-chown "$APP_USER" /opt/containers
+CONTAINERS_DIR=/opt/containers
+step "Preparing $CONTAINERS_DIR"
+mkdir -p "$CONTAINERS_DIR"
+chown "$APP_USER" "$CONTAINERS_DIR"
 
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   BACKUP="$DB_DIR/${APP_NAME}.db.bak-$(date +%Y%m%d-%H%M%S)"
@@ -913,7 +914,9 @@ SyslogIdentifier=${APP_NAME}
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR
+# CONTAINERS_DIR: the backend writes compose.yaml files itself (containerStacks.ts);
+# without it ProtectSystem=strict makes /opt read-only and App Store installs fail.
+ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR
 
 [Install]
 WantedBy=multi-user.target
