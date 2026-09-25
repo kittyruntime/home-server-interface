@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.55.1] - 2026-09-25
+
 ### Fixed
 - **Red badges on Alerts and Storage that never went away**: disks without SMART
   support (virtio, many USB bridges) kept the false "SMART failed" alert raised
@@ -1004,7 +1006,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.1...HEAD
+[1.55.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.0...v1.55.1
 [1.55.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.1...v1.54.0
 [1.53.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.53.0...v1.53.1
