@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useToast } from './toast'
 
 export type NotifType = 'progress' | 'success' | 'error' | 'info'
 
@@ -12,6 +13,7 @@ export interface Notification {
 }
 
 const items = ref<Notification[]>([])
+const toast = useToast()
 let seq = 0
 
 export function useNotifications() {
@@ -43,6 +45,8 @@ export function useNotifications() {
     } catch (e: any) {
       const detail = e?.message ?? 'Unknown error'
       update(id, { type: 'error', detail, progress: undefined })
+      // Errors must be seen without opening the bell menu.
+      toast.error(`${title} failed: ${detail}`)
       throw e
     }
   }
@@ -68,7 +72,10 @@ export function useNotifications() {
       update(id, { type: 'success', title: `${title} — done`, progress: undefined })
       setTimeout(() => dismiss(id), 3000)
     } else {
-      update(id, { type: 'error', title: `${title} — ${failed} failed`, progress: undefined })
+      const firstError = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')?.reason
+      const detail = firstError instanceof Error ? firstError.message : firstError ? String(firstError) : undefined
+      update(id, { type: 'error', title: `${title} — ${failed} failed`, detail, progress: undefined })
+      toast.error(`${title}: ${failed} of ${ops.length} failed${detail ? ` (${detail})` : ''}`)
     }
     return results
   }

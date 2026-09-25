@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
 import { useSystemNotifications } from '../lib/systemNotifications'
+import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
 import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
@@ -32,6 +33,7 @@ const { currentUsername, isAdmin, hasCapability, mustChangePassword, logout } = 
 const { alerts, hasAlerts } = useAlerts()
 const { desktopMode, setDesktopMode, openApp } = useDesktop()
 const { unread, refresh: refreshNotifications } = useSystemNotifications()
+const { notifications: operations } = useNotifications()
 
 const isMobile = ref(window.innerWidth < 640)
 const launchpadOpen = ref(false)
@@ -57,7 +59,8 @@ const moreMenuOpen     = ref(false)
 const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | 'data-backups' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
-const badgeCount = computed(() => unread.value)
+// Unread system notifications plus operations that are running or failed.
+const badgeCount = computed(() => unread.value + operations.value.filter(n => n.type === 'progress' || n.type === 'error').length)
 
 // Refreshing on close keeps the badge accurate right after the user has read
 // the list, without waiting for the next 60s poll.
