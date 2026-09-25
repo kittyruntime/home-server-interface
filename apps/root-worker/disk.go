@@ -3,7 +3,6 @@ package main
 // disk.go — storage management: block devices, format, mount/umount, RAID, LVM, partitions
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -399,16 +398,18 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		if fstype == "" {
 			fstype = "auto"
 		}
-		var entry string
+		source := devPath
 		if uuid != "" {
-			entry = fmt.Sprintf("UUID=%s\t%s\t%s\t%s\t0\t2\n", uuid, mp, fstype, opts)
-		} else {
-			entry = fmt.Sprintf("%s\t%s\t%s\t%s\t0\t2\n", devPath, mp, fstype, opts)
+			source = "UUID=" + uuid
 		}
-		f, ferr := os.OpenFile("/etc/fstab", os.O_APPEND|os.O_WRONLY, 0644)
-		if ferr == nil {
-			_, _ = f.WriteString(entry)
-			f.Close()
+		entry := fmt.Sprintf("%s\t%s\t%s\t%s\t0\t2", source, mp, fstype, opts)
+		if err := editFstab(func(conf string) (string, error) {
+			return upsertFstabEntry(conf, mp, source, entry)
+		}); err != nil {
+			// The runtime mount succeeded: say so, so the admin knows only the
+			// persistence failed (it will not come back after a reboot).
+			replyErr(nc, msg.Reply, &fsError{Code: "EPERSIST", Message: "mounted on " + mp + ", but not saved for reboot: " + err.Error()})
+			return
 		}
 	}
 
@@ -436,6 +437,10 @@ func handleDiskUmount(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
+	// Identify what is mounted here before unmounting, so only the fstab
+	// entry for that device is removed (never an admin entry for another one).
+	sources := mountSources(mp)
+
 	out, err := exec.Command("umount", mp).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
@@ -443,27 +448,38 @@ func handleDiskUmount(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	if req.RemoveFromFstab {
-		removeFstabEntry(mp)
+		if err := editFstab(func(conf string) (string, error) {
+			return removeFstabLines(conf, mp, sources...), nil
+		}); err != nil {
+			replyErr(nc, msg.Reply, &fsError{Code: "EPERSIST", Message: "unmounted " + mp + ", but its fstab entry was not removed: " + err.Error()})
+			return
+		}
 	}
 
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
-func removeFstabEntry(mountPoint string) {
-	data, err := os.ReadFile("/etc/fstab")
+// mountSources returns the fstab source forms of the device mounted on
+// mountPoint: its /dev path and UUID=… when it has one.
+func mountSources(mountPoint string) []string {
+	data, err := os.ReadFile("/proc/mounts")
 	if err != nil {
-		return
+		return nil
 	}
-	var keep []string
-	sc := bufio.NewScanner(strings.NewReader(string(data)))
-	for sc.Scan() {
-		line := sc.Text()
-		if f := strings.Fields(line); len(f) >= 2 && f[1] == mountPoint {
+	for _, line := range strings.Split(string(data), "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 || f[1] != mountPoint {
 			continue
 		}
-		keep = append(keep, line)
+		sources := []string{f[0]}
+		if out, err := exec.Command("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
+			if uuid := strings.TrimSpace(string(out)); uuid != "" {
+				sources = append(sources, "UUID="+uuid)
+			}
+		}
+		return sources
 	}
-	_ = os.WriteFile("/etc/fstab", []byte(strings.Join(keep, "\n")+"\n"), 0644)
+	return nil
 }
 
 // handleRaidCreate creates a Linux software RAID array using mdadm.
