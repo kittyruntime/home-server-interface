@@ -8,9 +8,10 @@
     "pnpm": ">=10.18.0"
   },
   "scripts": {
-    "test": "pnpm test:compose && pnpm test:backend && pnpm test:worker",
+    "test": "pnpm test:compose && pnpm test:backend && pnpm test:dashboard && pnpm test:worker",
     "test:compose": "pnpm --filter @app/compose test",
     "test:backend": "pnpm --filter @app/backend test",
+    "test:dashboard": "pnpm --filter @app/dashboard test",
     "test:worker": "cd apps/root-worker && go test ./...",
     "pretypecheck": "pnpm --filter @app/database db:generate",
     "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",

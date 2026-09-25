@@ -6,6 +6,7 @@ import {
   raidLevelLabel, raidDescription, isRaidHealthy, claimableDevices,
   type BlockDev, type RaidArray,
 } from './store'
+import { raidCapacity, remainingFaultTolerance } from './raid-capacity'
 import { useHostTools } from './tools'
 import { useToast } from '../../lib/toast'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -116,6 +117,44 @@ function toggleRaidDev(name: string) {
   const idx = raidWiz.value.devs.indexOf(name)
   if (idx >= 0) raidWiz.value.devs.splice(idx, 1)
   else raidWiz.value.devs.push(name)
+}
+
+// Live capacity of the selected drives, instead of a generic formula.
+const wizardCapacity = computed(() => {
+  const w = raidWiz.value
+  if (!w) return null
+  const picked = w.devs.map(n => eligibleForRaid.value.find(d => d.name === n)).filter((d): d is BlockDev => !!d)
+  const cap = raidCapacity(w.level, picked.map(d => d.size))
+  const waste = picked
+    .map((d, i) => ({ name: d.name, bytes: cap.wasted[i] ?? 0 }))
+    .filter(x => x.bytes > 0)
+  return { cap, waste }
+})
+
+function toleranceText(n: number, max: number): string {
+  if (n === 0) return 'no drive failure tolerated'
+  const base = `survives ${n} drive failure${n > 1 ? 's' : ''}`
+  return max > n ? `${base} (up to ${max} if they hit different mirrors)` : base
+}
+
+// Usable vs raw size and remaining tolerance of an existing array.
+function arrayCapacityLine(r: RaidArray): string {
+  const md = raidBlockDev(r.name)
+  const memberSizes = r.devices.map(n => memberSize(n)).filter(s => s > 0)
+  const raw = memberSizes.reduce((a, b) => a + b, 0)
+  const usable = md?.size ?? raidCapacity(r.level, memberSizes).usable
+  const parts: string[] = []
+  if (usable > 0) parts.push(raw > 0 ? `${fmtBytes(usable)} usable of ${fmtBytes(raw)} raw (${Math.round(usable / raw * 100)}%)` : `${fmtBytes(usable)} usable`)
+  const left = remainingFaultTolerance(r.level, r.total, r.active)
+  parts.push(left === 0 ? 'no failure tolerated right now' : `can lose ${left} more drive${left > 1 ? 's' : ''}`)
+  return parts.join(' · ')
+}
+
+function memberSize(name: string): number {
+  let size = 0
+  function walk(d: BlockDev) { if (d.name === name) size = d.size; d.children?.forEach(walk) }
+  devices.value.forEach(walk)
+  return size
 }
 
 const raidCanAdvance = computed(() =>
@@ -260,7 +299,8 @@ const openMenu = ref<string | null>(null)
               </div>
             </div>
           </div>
-          <p v-if="raidDescription(r.level)" class="text-[11px] text-[var(--c-text-3)] px-4 pb-3">{{ raidDescription(r.level) }}</p>
+          <p v-if="raidDescription(r.level)" class="text-[11px] text-[var(--c-text-3)] px-4 pb-1">{{ raidDescription(r.level) }}</p>
+          <p class="text-[11px] text-[var(--c-text-2)] px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
           <!-- Built from: member devices, completing the disk → RAID chain started in Devices -->
           <p class="text-[11px] text-[var(--c-text-3)] px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
 
@@ -420,8 +460,18 @@ const openMenu = ref<string | null>(null)
               <span class="text-[var(--c-text-3)]">Minimum {{ selectedRaidLevel.minDev }} required.</span>
             </p>
 
-            <!-- Capacity hint -->
-            <div class="text-[11px] text-[var(--c-text-3)] px-1">{{ selectedRaidLevel.capacityHint }}</div>
+            <!-- Capacity: computed from the selected drives once there are enough -->
+            <div class="px-1 space-y-0.5">
+              <div v-if="wizardCapacity?.cap.valid" class="text-xs text-[var(--c-text-1)]">
+                Usable: <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
+                of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)
+                · {{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}
+              </div>
+              <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-[11px] text-warning">
+                {{ fmtBytes(w.bytes) }} unused on /dev/{{ w.name }} (drives are used at the size of the smallest one)
+              </div>
+              <div class="text-[11px] text-[var(--c-text-3)]">{{ selectedRaidLevel.capacityHint }}</div>
+            </div>
 
             <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
               No eligible drives available.<br>
@@ -494,7 +544,11 @@ const openMenu = ref<string | null>(null)
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Array</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Level</span><span>{{ selectedRaidLevel.name }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Drives</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Capacity</span><span>{{ selectedRaidLevel.capacityHint }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Capacity</span>
+                <span v-if="wizardCapacity?.cap.valid">{{ fmtBytes(wizardCapacity.cap.usable) }} usable of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)</span>
+                <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
+              </div>
+              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Redundancy</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
             </div>
 
             <div>
