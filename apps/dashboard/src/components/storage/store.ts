@@ -13,6 +13,8 @@ export type BlockDev = {
   mountpoint:  string
   model:       string
   uuid:        string
+  serial?:     string
+  wwn?:        string
   isSystem:    boolean
   isRemovable: boolean
   usageTotal:  number
@@ -35,7 +37,12 @@ export type RaidArray = {
   active:  number
   total:   number
   resyncPercent?: number | null
+  /** recovery (rebuilding onto a new member) | resync | check | reshape */
+  syncAction?: string
+  members?: RaidMember[]
 }
+
+export type RaidMember = { name: string; role: 'active' | 'faulty' | 'spare' }
 
 export type LvmPV = { name: string; vgName: string; size: number; free: number }
 export type LvmVG = { name: string; size: number; free: number; pvCount: number; lvCount: number }

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import {
   useStorageData, fmtBytes, usagePct, usageBarClass,
   raidLevelLabel, raidDescription, isRaidHealthy, claimableDevices,
-  type BlockDev, type RaidArray,
+  type BlockDev, type RaidArray, type RaidMember,
 } from './store'
 import { raidCapacity, remainingFaultTolerance } from './raid-capacity'
 import { useHostTools } from './tools'
 import { useToast } from '../../lib/toast'
+import { useConfirm } from '../../lib/confirm'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -23,6 +24,94 @@ const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm'] }>()
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
 const toast = useToast()
+const { confirm } = useConfirm()
+
+// ── Member management (replace a failed disk) ────────────────────────────────
+
+function membersOf(r: RaidArray): RaidMember[] {
+  return r.members ?? r.devices.map(name => ({ name, role: 'active' as const }))
+}
+
+function memberDev(name: string): BlockDev | undefined {
+  let found: BlockDev | undefined
+  function walk(d: BlockDev) { if (d.name === name) found = d; d.children?.forEach(walk) }
+  devices.value.forEach(walk)
+  return found
+}
+
+// "WDC WD40EFRX · serial WD-WCC4E1234567" — what to look for on the disk label.
+function memberIdentity(name: string): string {
+  const d = memberDev(name)
+  // A partition's model/serial are the parent disk's.
+  const disk = d?.model || d?.serial ? d : devices.value.find(x => x.children?.some(c => c.name === name))
+  return [disk?.model, disk?.serial ? `serial ${disk.serial}` : ''].filter(Boolean).join(' · ')
+}
+
+// Slots with no device at all (a member that was removed or vanished).
+function emptySlots(r: RaidArray): number {
+  const present = membersOf(r).filter(m => m.role !== 'spare').length
+  return Math.max(0, r.total - present)
+}
+
+function replacementCandidates(r: RaidArray): BlockDev[] {
+  const sizes = membersOf(r).map(m => memberSize(m.name)).filter(n => n > 0)
+  const needed = sizes.length ? Math.min(...sizes) : 0
+  return claimableDevices(devices.value).filter(d => d.size >= needed)
+}
+
+const memberBusy = ref<string | null>(null)
+const addPicker = ref<string | null>(null) // array name whose picker is open
+
+async function runMemberOp(r: RaidArray, device: string, op: 'fail' | 'remove' | 'add') {
+  memberBusy.value = `${r.name}:${device}`
+  try {
+    if (op === 'fail') await trpc.storage.failRaidMember.mutate({ name: r.name, device })
+    else if (op === 'remove') await trpc.storage.removeRaidMember.mutate({ name: r.name, device })
+    else await trpc.storage.addRaidMember.mutate({ name: r.name, device })
+    addPicker.value = null
+    await refresh()
+  } catch (e: any) {
+    toast.error(e?.message ?? `Could not ${op} /dev/${device}`)
+  } finally {
+    memberBusy.value = null
+  }
+}
+
+async function failMember(r: RaidArray, m: RaidMember) {
+  const id = memberIdentity(m.name)
+  if (!await confirm(
+    `Mark /dev/${m.name}${id ? ` (${id})` : ''} as failed in /dev/${r.name}? The array keeps running without it until a replacement is added.`,
+    { danger: true, confirmLabel: 'Mark as failed' },
+  )) return
+  await runMemberOp(r, m.name, 'fail')
+}
+
+async function removeMember(r: RaidArray, m: RaidMember) {
+  await runMemberOp(r, m.name, 'remove')
+}
+
+async function addMember(r: RaidArray, d: BlockDev) {
+  const id = memberIdentity(d.name)
+  if (!await confirm(
+    `Add /dev/${d.name}${id ? ` (${id})` : ''} to /dev/${r.name}? Its current content is overwritten. A degraded array starts rebuilding onto it; otherwise it becomes a spare.`,
+    { danger: true, confirmLabel: 'Add disk' },
+  )) return
+  await runMemberOp(r, d.name, 'add')
+}
+
+function syncLabel(r: RaidArray): string {
+  if (r.resyncPercent == null) return r.state
+  const what = r.syncAction === 'recovery' ? 'Rebuilding' : r.syncAction === 'check' ? 'Checking' : r.syncAction === 'reshape' ? 'Reshaping' : 'Syncing'
+  return `${what} — ${r.resyncPercent.toFixed(1)}%`
+}
+
+// Refresh while an array rebuilds so progress moves without a reload.
+let syncTimer: ReturnType<typeof setInterval> | null = null
+watch(() => raids.value.some(r => r.resyncPercent != null), syncing => {
+  if (syncing && !syncTimer) syncTimer = setInterval(() => { void refresh() }, 5_000)
+  if (!syncing && syncTimer) { clearInterval(syncTimer); syncTimer = null }
+}, { immediate: true })
+onUnmounted(() => { if (syncTimer) clearInterval(syncTimer) })
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -268,7 +357,7 @@ const openMenu = ref<string | null>(null)
               <span class="text-[11px] text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
               <span class="inline-flex items-center gap-1.5 text-[11px] font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-danger animate-pulse'"/>
-                {{ isRaidHealthy(r) ? 'Healthy' : (r.resyncPercent != null ? `${r.state} — ${r.resyncPercent.toFixed(1)}%` : r.state) }}
+                {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
               <button v-if="raidPvVg(r.name)" @click="emit('navigate', 'lvm')"
@@ -310,26 +399,26 @@ const openMenu = ref<string | null>(null)
               <template v-for="(dev, idx) in r.devices" :key="dev">
                 <div class="flex flex-col items-center gap-1.5">
                   <div class="relative rounded-lg border transition-colors"
-                    :class="idx < r.active ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-danger/40 bg-danger/5'">
+                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-danger/40 bg-danger/5'">
                     <svg viewBox="0 0 52 68" class="w-12 h-16">
                       <rect x="3" y="3" width="46" height="62" rx="5"
-                        :fill="idx < r.active ? 'var(--c-surface-deep)' : 'color-mix(in srgb, var(--c-danger) 6%, transparent)'"
-                        :stroke="idx < r.active ? 'var(--c-border-strong)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1.5"/>
+                        :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-surface-deep)' : 'color-mix(in srgb, var(--c-danger) 6%, transparent)'"
+                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-border-strong)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1.5"/>
                       <circle cx="9" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="43" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="9" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
                       <circle cx="43" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="26" cy="32" r="12" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <circle cx="26" cy="32" r="6" fill="none" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <line x1="26" y1="32" x2="35" y2="21" :stroke="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
-                      <circle cx="26" cy="32" r="2.5" :fill="idx < r.active ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 70%, transparent)'" opacity="0.8"/>
-                      <circle cx="40" cy="50" r="2" :fill="idx < r.active ? 'var(--c-success)' : 'var(--c-danger)'" opacity="0.9"/>
+                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 70%, transparent)'" opacity="0.8"/>
+                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-success)' : 'var(--c-danger)'" opacity="0.9"/>
                       <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
                     </svg>
                   </div>
                   <button @click="emit('navigate', 'disks')"
                     class="text-[10px] font-mono hover:underline transition-colors"
-                    :class="idx < r.active ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
+                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
                     /dev/{{ dev }}
                   </button>
                 </div>
@@ -345,6 +434,58 @@ const openMenu = ref<string | null>(null)
                   <div class="text-[11px] font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
                   <div class="text-[10px] text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disks: identify, fail, remove, add a replacement -->
+          <div class="px-4 pb-4">
+            <div v-if="r.resyncPercent != null" class="mb-3">
+              <div class="flex justify-between text-[11px] text-[var(--c-text-2)] mb-1">
+                <span>{{ syncLabel(r) }}</span>
+                <span v-if="r.syncAction === 'recovery'" class="text-[var(--c-text-3)]">redundancy returns when it finishes</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-[var(--c-surface-deep)] overflow-hidden">
+                <div class="h-full bg-[var(--c-accent)] transition-all" :style="{ width: r.resyncPercent + '%' }"/>
+              </div>
+            </div>
+            <div class="rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
+              <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
+                <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
+                  :class="m.role === 'faulty' ? 'bg-danger/10 text-danger' : m.role === 'spare' ? 'bg-info/10 text-info' : 'bg-success/10 text-success'">
+                  {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : 'Active' }}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ m.name }}</span>
+                  <span v-if="memberSize(m.name)" class="text-[11px] text-[var(--c-text-3)] ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
+                  <p v-if="memberIdentity(m.name)" class="text-[10px] text-[var(--c-text-3)] truncate">{{ memberIdentity(m.name) }}</p>
+                </div>
+                <button v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="btn btn-ghost btn-xs shrink-0"
+                  :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</button>
+                <button v-else-if="m.role !== 'active'" type="button" class="btn btn-outline btn-xs shrink-0"
+                  :disabled="memberBusy !== null" @click="removeMember(r, m)">
+                  {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
+                </button>
+              </div>
+              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-[11px] text-danger">
+                {{ emptySlots(r) }} empty slot{{ emptySlots(r) > 1 ? 's' : '' }}: add a replacement disk to restore redundancy.
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <button v-if="addPicker !== r.name" type="button" class="btn btn-ghost btn-xs" :disabled="memberBusy !== null"
+                @click="addPicker = r.name">+ Add a disk</button>
+              <div v-else class="rounded-lg border border-[var(--c-border)] p-2 space-y-1">
+                <p class="text-[11px] text-[var(--c-text-3)] px-1">Free disks at least as large as the smallest member:</p>
+                <p v-if="!replacementCandidates(r).length" class="text-[11px] text-[var(--c-text-3)] px-1 py-1">No suitable disk is free.</p>
+                <button v-for="d in replacementCandidates(r)" :key="d.name" type="button"
+                  class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-[var(--c-hover)]"
+                  :disabled="memberBusy !== null" @click="addMember(r, d)">
+                  <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ d.name }}</span>
+                  <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(d.size) }}</span>
+                  <span v-if="memberIdentity(d.name)" class="text-[10px] text-[var(--c-text-3)] truncate">{{ memberIdentity(d.name) }}</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-xs" @click="addPicker = null">Cancel</button>
               </div>
             </div>
           </div>

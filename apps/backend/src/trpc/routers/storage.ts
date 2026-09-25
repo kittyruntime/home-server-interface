@@ -67,6 +67,20 @@ export const storageRouter = router({
       return await requestSync("root.sys.raid.create", input, 120_000)
     }),
 
+  // Replacing a failed member: fail it, remove it, add a replacement (mdadm
+  // then rebuilds). The worker refuses unsuitable devices (in use, too small).
+  failRaidMember: storageProcedure
+    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.raid.fail", input, 30_000)),
+
+  removeRaidMember: storageProcedure
+    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.raid.remove", input, 30_000)),
+
+  addRaidMember: storageProcedure
+    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
+    .mutation(async ({ input }) => requestSync("root.sys.raid.add", input, 60_000)),
+
   stopRaid: storageProcedure
     .input(z.object({
       name: z.string().regex(/^md[0-9]{1,3}$/),

@@ -1256,6 +1256,32 @@ type raidArray struct {
 	Active        int      `json:"active"`
 	Total         int      `json:"total"`
 	ResyncPercent *float64 `json:"resyncPercent,omitempty"`
+	// SyncAction is what the progress is for: "recovery" (rebuilding onto a
+	// new member), "resync", "check" or "reshape".
+	SyncAction string       `json:"syncAction,omitempty"`
+	Members    []raidMember `json:"members"`
+}
+
+// raidMember is one device of an array as /proc/mdstat lists it.
+type raidMember struct {
+	Name string `json:"name"`
+	Role string `json:"role"` // active | faulty | spare
+}
+
+// memberFromMdstat parses "sdb1[1]", "sdc[2](F)" or "sdd[3](S)".
+func memberFromMdstat(tok string) (raidMember, bool) {
+	i := strings.Index(tok, "[")
+	if i <= 0 {
+		return raidMember{}, false
+	}
+	m := raidMember{Name: tok[:i], Role: "active"}
+	switch {
+	case strings.HasSuffix(tok, "(F)"):
+		m.Role = "faulty"
+	case strings.HasSuffix(tok, "(S)"):
+		m.Role = "spare"
+	}
+	return m, true
 }
 
 type disksResult struct {
@@ -1367,14 +1393,17 @@ func parseMdstat(content string) []raidArray {
 		}
 
 		var devs []string
+		members := []raidMember{}
 		for _, f := range fields[devStart:] {
-			if idx := strings.Index(f, "["); idx > 0 {
-				devs = append(devs, f[:idx])
+			if m, ok := memberFromMdstat(f); ok {
+				devs = append(devs, m.Name)
+				members = append(members, m)
 			}
 		}
 
 		active, total := 0, 0
 		var resyncPercent *float64
+		syncAction := ""
 		// Status line: "   NNNNN blocks ... [T/A] [UU_...]"; while rebuilding, an
 		// extra progress line follows: "[===>....] recovery = 45.2% (...) ..."
 		for j := i + 1; j < len(lines) && j <= i+4; j++ {
@@ -1396,10 +1425,13 @@ func parseMdstat(content string) []raidArray {
 					}
 				}
 			}
-			if strings.Contains(next, "resync =") || strings.Contains(next, "recovery =") {
-				if m := reResyncPct.FindStringSubmatch(next); m != nil {
-					if pct, err := strconv.ParseFloat(m[1], 64); err == nil {
-						resyncPercent = &pct
+			for _, action := range []string{"recovery", "resync", "check", "reshape"} {
+				if strings.Contains(next, action+" =") {
+					if m := reResyncPct.FindStringSubmatch(next); m != nil {
+						if pct, err := strconv.ParseFloat(m[1], 64); err == nil {
+							resyncPercent = &pct
+							syncAction = action
+						}
 					}
 				}
 			}
@@ -1413,6 +1445,8 @@ func parseMdstat(content string) []raidArray {
 			Active:        active,
 			Total:         total,
 			ResyncPercent: resyncPercent,
+			SyncAction:    syncAction,
+			Members:       members,
 		})
 	}
 

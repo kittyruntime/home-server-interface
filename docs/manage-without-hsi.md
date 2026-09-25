@@ -83,8 +83,26 @@ the standard location so they still auto-assemble on boot without HSI running.
 ```bash
 cat /proc/mdstat                  # live array state
 mdadm --detail /dev/md0           # full detail on one array
-cat /etc/mdadm/mdadm.conf         # the assembly config HSI (re)writes on changes
+cat /etc/mdadm/mdadm.conf         # HSI adds one marked ARRAY line per array it creates
 ```
+
+### Replacing a failed disk
+
+Storage > RAID shows each member as Active, Failed or Spare, with the disk model
+and serial number to find it physically. The same steps by hand:
+
+```bash
+cat /proc/mdstat                              # (F) marks a failed member
+mdadm --detail /dev/md0                       # state of every member
+mdadm --manage /dev/md0 --fail /dev/sdb       # if the kernel has not marked it yet
+mdadm --manage /dev/md0 --remove /dev/sdb     # or --remove detached if the disk is gone
+mdadm --manage /dev/md0 --add /dev/sdf        # at least as large as the smallest member
+watch cat /proc/mdstat                        # recovery = NN.N% while it rebuilds
+```
+
+Supported levels: RAID 0 (no redundancy, nothing to replace), RAID 1, RAID 5 and
+RAID 10. Until the rebuild finishes the array has no redundancy left (RAID 5,
+RAID 10 pair, two-disk RAID 1): avoid heavy writes and keep a backup.
 
 ## Mounts
 

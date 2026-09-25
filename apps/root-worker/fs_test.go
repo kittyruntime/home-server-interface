@@ -121,6 +121,10 @@ md1 : active raid1 sdd1[1] sdc1[0]
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := parseMdstat(tc.content)
+			// Members and SyncAction are covered by TestParseMdstatMembers.
+			for i := range got {
+				got[i].Members, got[i].SyncAction = nil, ""
+			}
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("parseMdstat(%q) =\n  %+v\nwant\n  %+v", tc.name, got, tc.want)
 			}
