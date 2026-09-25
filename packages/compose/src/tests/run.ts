@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { generateComposeYaml, parseComposeYaml } from "../compose.js"
+import { generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations } from "../compose.js"
+import { parseDocument } from "yaml"
 import { STACK_NAME_RE, type AppInput } from "../model.js"
 
 const base: AppInput = {
@@ -131,6 +132,85 @@ function testUnknownXhsiKeysSurviveRegenerate() {
   assert.equal(p2.app?.pinnedUrl, "https://new.example.com")
 }
 
+// Compose rejects a service that references an undeclared named volume
+// ("refers to undefined volume"). The declaration keeps the exact Docker volume
+// name so apps migrated from `docker run -v name:/path` keep their data instead
+// of getting a new, empty "<project>_name" volume.
+const named: AppInput = {
+  ...base, name: "navidrome",
+  volumes: [{ type: "named", source: "navidrome_data", target: "/data", readOnly: false }],
+}
+
+function topVolumes(y: string): Record<string, unknown> | undefined {
+  return (parseDocument(y).toJS() as Record<string, any>).volumes
+}
+
+function testNamedVolumesAreDeclared() {
+  const y = generateComposeYaml(named)
+  assert.deepEqual(topVolumes(y), { navidrome_data: { name: "navidrome_data" } })
+  const p = parseComposeYaml(y)
+  assert.deepEqual(p.unknownFields, [])
+  assert.deepEqual(p.app, named)
+  // Fresh documents keep services last so hand-appended services stay valid.
+  assert.ok(y.indexOf("volumes:\n  navidrome_data") < y.indexOf("services:"))
+}
+
+function testUnusedGeneratedDeclarationIsRemoved() {
+  const y1 = generateComposeYaml(named)
+  const y2 = generateComposeYaml({ ...named, volumes: [{ type: "bind", source: "/srv/music", target: "/music", readOnly: true }] }, y1)
+  assert.equal(topVolumes(y2), undefined)
+}
+
+function testCustomVolumeDeclarationIsKept() {
+  const existing = [
+    "services:",
+    "  navidrome:",
+    "    image: deluan/navidrome:0.53.3",
+    "    volumes:",
+    "      - navidrome_data:/data",
+    "volumes:",
+    "  navidrome_data:",
+    "    driver: local",
+    "  other:",
+    "    driver: local",
+  ].join("\n")
+  const y = generateComposeYaml({ ...named, image: "deluan/navidrome:0.53.3" }, existing)
+  assert.deepEqual(topVolumes(y), { navidrome_data: { driver: "local" }, other: { driver: "local" } })
+  assert.deepEqual(parseComposeYaml(y).unknownFields, ["volumes.navidrome_data", "volumes.other"])
+}
+
+function testRelativeBindIsNotDeclared() {
+  const y = generateComposeYaml({ ...named, volumes: [{ type: "named", source: "./data", target: "/data", readOnly: false }] })
+  assert.equal(topVolumes(y), undefined)
+}
+
+function testRepairAddsMissingDeclarations() {
+  const broken = [
+    "# Managed by HSI - editable by hand, re-read on load.",
+    "services:",
+    "  navidrome:",
+    "    image: deluan/navidrome:0.53.3",
+    "    # keep me",
+    "    volumes:",
+    "      - navidrome_data:/data",
+    "      - /srv/music:/music:ro",
+    "  sidecar:",
+    "    image: busybox",
+    "    volumes:",
+    "      - type: volume",
+    "        source: shared_cache",
+    "        target: /cache",
+  ].join("\n")
+  const fixed = repairNamedVolumeDeclarations(broken)
+  assert.ok(fixed, "a broken file must be repaired")
+  assert.deepEqual(topVolumes(fixed), {
+    navidrome_data: { name: "navidrome_data" },
+    shared_cache: { name: "shared_cache" },
+  })
+  assert.match(fixed, /# keep me/)
+  assert.equal(repairNamedVolumeDeclarations(fixed), null) // idempotent
+}
+
 testFreshRoundTrip()
 testUnknownFieldsAndCommentsSurviveEdit()
 testMultiServiceIsNotApp()
@@ -140,5 +220,10 @@ testStackNameRegex()
 testListFormEnvsAndLabelsRoundTrip()
 testListEntryWithoutEqualsDowngradesToRawOnly()
 testUnknownXhsiKeysSurviveRegenerate()
+testNamedVolumesAreDeclared()
+testUnusedGeneratedDeclarationIsRemoved()
+testCustomVolumeDeclarationIsKept()
+testRelativeBindIsNotDeclared()
+testRepairAddsMissingDeclarations()
 
 console.log("Compose package tests passed")

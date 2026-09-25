@@ -52,6 +52,67 @@ function kvEntries(raw: unknown): Array<[string, string]> {
   return Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, String(v ?? "")])
 }
 
+// A Docker named volume (as opposed to a bind path like /srv or ./data).
+const NAMED_VOLUME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/
+
+// Named volumes referenced by any service, in short ("src:/target") or long
+// ({ type: volume, source }) syntax.
+function namedVolumeRefs(json: Record<string, any>): string[] {
+  const refs = new Set<string>()
+  for (const svc of Object.values(json.services ?? {}) as any[]) {
+    for (const v of Array.isArray(svc?.volumes) ? svc.volumes : []) {
+      const source = typeof v === "string" ? v.split(":")[0]
+        : v && typeof v === "object" && (v.type ?? "volume") === "volume" ? v.source : undefined
+      if (typeof source === "string" && NAMED_VOLUME_RE.test(source)) refs.add(source)
+    }
+  }
+  return [...refs]
+}
+
+// The declaration HSI generates: pins the exact Docker volume name, so Compose
+// does not prefix it with the project name (apps migrated from `docker run -v
+// name:/path` keep using their existing volume and data).
+function isGeneratedDeclaration(key: string, value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const entries = Object.entries(value as Record<string, unknown>)
+  const [only] = entries
+  return entries.length === 1 && only !== undefined && only[0] === "name" && only[1] === key
+}
+
+// Compose rejects a project whose services reference an undeclared named
+// volume. Declare every referenced named volume that is missing, and drop
+// generated declarations nobody references any more. Declarations with other
+// options (driver, external…) belong to the admin and are never touched.
+function syncVolumeDeclarations(doc: any) {
+  const json = (doc.toJS() ?? {}) as Record<string, any>
+  const refs = namedVolumeRefs(json)
+  const declared = (json.volumes && typeof json.volumes === "object") ? json.volumes as Record<string, unknown> : {}
+
+  const missing = refs.filter(r => !(r in declared))
+  if (missing.length) {
+    let vols = doc.getIn(["volumes"], true)
+    if (!isMap(vols)) {
+      doc.setIn(["volumes"], doc.createNode({}))
+      vols = doc.getIn(["volumes"], true)
+      // Keep services last in the document (see applyModel).
+      const items = doc.contents.items as Array<{ key: any }>
+      const volIdx = items.findIndex(p => String(p.key?.value ?? p.key) === "volumes")
+      const svcIdx = items.findIndex(p => String(p.key?.value ?? p.key) === "services")
+      if (svcIdx !== -1 && volIdx > svcIdx) {
+        const [moved] = items.splice(volIdx, 1)
+        if (moved) items.splice(svcIdx, 0, moved)
+      }
+    }
+    for (const name of missing) (vols as YAMLMap).set(name, doc.createNode({ name }))
+  }
+
+  for (const [key, value] of Object.entries(declared)) {
+    if (!refs.includes(key) && isGeneratedDeclaration(key, value)) doc.deleteIn(["volumes", key])
+  }
+  const vols = doc.getIn(["volumes"], true)
+  if (isMap(vols) && vols.items.length === 0) doc.delete("volumes")
+}
+
 function setOrDelete(map: YAMLMap, key: string, value: unknown) {
   if (value === undefined || value === null || value === "" ||
       (Array.isArray(value) && value.length === 0)) { map.delete(key); return }
@@ -106,6 +167,7 @@ function applyModel(doc: any, name: string, input: AppInput) {
   }))
   if (Object.keys(xhsi).length) setOrDelete(svc, "x-hsi", xhsi)
   setOrDelete(svc, "container_name", name)
+  syncVolumeDeclarations(doc)
 }
 
 export interface ParsedCompose {
@@ -124,6 +186,19 @@ export function generateComposeYaml(input: AppInput, existing?: string): string 
   return String(doc)
 }
 
+// Adds the missing top-level declarations for named volumes referenced by any
+// service, for files written before HSI declared them. Returns the repaired
+// content, or null when the file needs no change. Comments and every other
+// part of the file are preserved.
+export function repairNamedVolumeDeclarations(content: string): string | null {
+  const doc = parseDocument(content)
+  if (doc.errors.length) return null
+  const before = String(doc)
+  syncVolumeDeclarations(doc as any)
+  const after = String(doc)
+  return after === before ? null : after
+}
+
 export function parseComposeYaml(content: string): ParsedCompose {
   const doc = parseDocument(content)
   const json = (doc.toJS() ?? {}) as Record<string, any>
@@ -133,7 +208,8 @@ export function parseComposeYaml(content: string): ParsedCompose {
   const svc = svcName ? json.services[svcName] : null
 
   for (const [k] of Object.entries(json)) {
-    if (k === "services" || k === "networks") continue
+    // volumes/networks are checked key by key below.
+    if (k === "services" || k === "networks" || k === "volumes") continue
     unknownFields.push(k)
   }
   if (svc) for (const [k] of Object.entries(svc)) {
@@ -142,7 +218,14 @@ export function parseComposeYaml(content: string): ParsedCompose {
   if (json.networks) for (const k of Object.keys(json.networks)) {
     if (!svc || !Array.isArray(svc.networks) || !svc.networks.includes(k)) unknownFields.push(`networks.${k}`)
   }
-  if (json.volumes) for (const k of Object.keys(json.volumes)) unknownFields.push(`volumes.${k}`)
+  if (json.volumes) {
+    // The generated `{ name: <key> }` declaration of a referenced named volume
+    // is HSI's own; anything else in the section is unknown to the forms.
+    const refs = namedVolumeRefs(json)
+    for (const [k, v] of Object.entries(json.volumes)) {
+      if (!(refs.includes(k) && isGeneratedDeclaration(k, v))) unknownFields.push(`volumes.${k}`)
+    }
+  }
 
   let app: AppInput | null = null
   if (svc) {

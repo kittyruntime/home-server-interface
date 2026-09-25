@@ -80,7 +80,7 @@ async function main() {
       restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
-    const yaml = generateComposeYaml(input) // named volumes auto-declared by compose
+    const yaml = generateComposeYaml(input) // declares named volumes at the top level
     await mkdir(path.join(stacksDir, row.name), { recursive: true })
     await writeFile(composePath, yaml, "utf8")
     written++
