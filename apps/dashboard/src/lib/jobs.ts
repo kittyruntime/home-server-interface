@@ -39,5 +39,8 @@ export async function pollJobResult(jobId: string, deadlineMs = 30_000): Promise
       return { status: 'failed', error: e instanceof Error ? e.message : String(e) }
     }
   }
-  return { status: 'timeout', error: null }
+  return {
+    status: 'timeout',
+    error: `The operation did not finish within ${Math.round(deadlineMs / 1000)} s. It may still be running; refresh to check.`,
+  }
 }

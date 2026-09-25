@@ -260,7 +260,7 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         log.warn("nats: event subscriber received message without jobId, skipping")
         continue
       }
-      await prisma.job.update({
+      const job = await prisma.job.update({
         where: { id: event.jobId },
         data: {
           status: event.status,
@@ -268,6 +268,12 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
           error:  event.error  ?? null,
         },
       })
+      // Same jobId as the worker's log, so a failure can be followed across both.
+      if (event.status === "failed") {
+        log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, "job failed")
+      } else {
+        log.info({ jobId: job.id, action: job.action }, "job finished")
+      }
     } catch (e) {
       log.error(e, "nats: event subscriber error")
     }

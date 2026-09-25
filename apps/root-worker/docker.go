@@ -405,6 +405,7 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 		_ = msg.Term()
 		return
 	}
+	logJobReceived(subject, task.JobID, "")
 
 	var err error
 	switch subject {
@@ -429,7 +430,7 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 
 	if err != nil {
 		log.Printf("docker task: %s failed: %v", subject, err)
-		_ = msg.Nak()
+		_ = msg.Term() // see handleTask: failed jobs are never redelivered
 		publishJobResult(nc, task.JobID, "failed", nil, err.Error())
 	} else {
 		_ = msg.Ack()

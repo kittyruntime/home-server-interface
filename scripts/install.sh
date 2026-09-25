@@ -19,6 +19,8 @@
 #   NATS_SERVER_VERSION   NATS binary version        (default: v2.10.24)
 #   SKIP_NGINX            Set to 1 to skip nginx     (default: 0)
 #   SKIP_SEED             Set to 1 to skip DB seed   (default: 0)
+#   HSI_LOG_LEVEL         Root worker log level: debug, info, warn, error
+#                         (default: info, or the value already in worker.env)
 #   SKIP_DEPS_INSTALL     Set to 1 to only check host packages, never
 #                         install them with apt-get     (default: 0)
 #
@@ -851,10 +853,14 @@ chmod 640 "$NATS_CONF"
 chown root:nats "$NATS_CONF"
 success "NATS config → $NATS_CONF"
 
+# Keep a log level the admin set in worker.env across updates.
+WORKER_LOG_LEVEL="${HSI_LOG_LEVEL:-$(grep -s '^HSI_LOG_LEVEL=' "$WORKER_ENV" | cut -d= -f2 || true)}"
+[[ "${WORKER_LOG_LEVEL:-info}" =~ ^(debug|info|warn|error)$ ]] || WORKER_LOG_LEVEL=info
 cat > "$WORKER_ENV" <<EOF
 NATS_URL=nats://127.0.0.1:4222
 NATS_USER=worker
 NATS_PASS=$NATS_WORKER_PASS
+HSI_LOG_LEVEL=${WORKER_LOG_LEVEL:-info}
 EOF
 chmod 600 "$WORKER_ENV"
 success "Worker env → $WORKER_ENV"

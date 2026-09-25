@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -98,11 +99,30 @@ func replyOk(nc *nats.Conn, replySubject string, result interface{}) {
 }
 
 func replyErr(nc *nats.Conn, replySubject string, e *fsError) {
+	logReplyError(replySubject, e)
 	data, _ := json.Marshal(syncResponse{Ok: false, Error: e.Message, Code: e.Code})
 	_ = nc.Publish(replySubject, data)
 }
 
+// jobStarts records when each async job was received, for duration logging.
+var jobStarts sync.Map
+
+// logJobReceived logs an async job and remembers its start time.
+func logJobReceived(subject, jobID, linuxUser string) {
+	jobStarts.Store(jobID, time.Now())
+	logger.Info("job received", "subject", subject, "jobId", jobID, "linuxUser", linuxUser)
+}
+
 func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, errMsg string) {
+	attrs := []any{"jobId", jobID, "status", status}
+	if start, ok := jobStarts.LoadAndDelete(jobID); ok {
+		attrs = append(attrs, "durationMs", time.Since(start.(time.Time)).Milliseconds())
+	}
+	if status == "failed" {
+		logger.Warn("job failed", append(attrs, "error", errMsg)...)
+	} else {
+		logger.Info("job finished", attrs...)
+	}
 	event := jobEvent{JobID: jobID, Status: status, Result: result, Error: errMsg}
 	data, _ := json.Marshal(event)
 	subject := fmt.Sprintf("events.job.%s", jobID)
@@ -115,6 +135,7 @@ func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, e
 // value (uid=0) if the username is empty, meaning the op runs as root.
 func resolveUserCtx(username string) (userCtx, error) {
 	if username == "" {
+		logger.Warn("file operation runs as root: no Linux user was given")
 		return userCtx{uid: 0, gid: 0, gids: []int{0}}, nil
 	}
 	return resolveUser(username)
@@ -708,6 +729,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	subject := msg.Subject
+	logJobReceived(subject, task.JobID, task.LinuxUsername)
 
 	var result interface{}
 	var fsErr *fsError
@@ -906,13 +928,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	if fsErr != nil {
-		// An rsync failure is a completed attempt, not a transient queue failure.
-		// Retrying it behind the UI's back could overlap a later manual/scheduled run.
-		if subject == "root.backup.rsync" {
-			_ = msg.Ack()
-		} else {
-			_ = msg.Nak()
-		}
+		// A failed job is a completed attempt: never redeliver it. Retrying
+		// behind the UI's back would publish several results, and could replay
+		// a half-done copy/move or overlap a later manual/scheduled rsync.
+		_ = msg.Term()
 		publishJobResult(nc, task.JobID, "failed", nil, fsErr.Message)
 	} else {
 		_ = msg.Ack()
@@ -1023,8 +1042,8 @@ func main() {
 		"root.sharing.setPassword":       handleSharingSetPassword,
 		"root.sharing.status":            handleSharingStatus,
 	} {
-		h := handler // capture
-		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { h(nc, msg) }); err != nil {
+		h, s := handler, subj // capture
+		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { serveSync(nc, s, h, msg) }); err != nil {
 			log.Fatalf("subscribe %s: %v", subj, err)
 		}
 	}

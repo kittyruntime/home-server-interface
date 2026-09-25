@@ -38,6 +38,7 @@ environment variables:
 | `NATS_SERVER_VERSION` | `v2.10.24` | NATS binary version to download. |
 | `SKIP_NGINX` | `0` | Skip nginx configuration. |
 | `SKIP_SEED` | `0` | Skip seeding the initial `admin / admin` account. |
+| `HSI_LOG_LEVEL` | `info` | Root worker log level (`debug`, `info`, `warn`, `error`), kept in `/etc/hsi/worker.env` across updates. |
 | `SKIP_DEPS_INSTALL` | `0` | Only check host packages; fail instead of installing missing ones with `apt-get`. |
 
 Re-running the installer detects an existing installation, **preserves the
@@ -79,9 +80,23 @@ Optional packages enable a feature and are only reported when missing:
 
 ```bash
 systemctl status hsi hsi-root-worker hsi-nats
-journalctl -u hsi -f            # follow backend logs
-journalctl -u hsi-root-worker -f
 ```
+
+## Logs
+
+The backend and the root worker write JSON lines to files, rotated by
+`/etc/logrotate.d/hsi`; NATS logs to the journal.
+
+```bash
+tail -f /var/log/hsi/app.log           # backend (HTTP requests, job outcomes)
+tail -f /var/log/hsi/root-worker.log   # root worker (jobs, failed requests, commands)
+journalctl -u hsi-nats -f
+```
+
+Every async operation has a `jobId` that appears in both files. The worker logs
+each job it receives and its outcome, and every synchronous request that fails.
+Set `HSI_LOG_LEVEL=debug` in `/etc/hsi/worker.env` and restart
+`hsi-root-worker` to also log successful requests.
 
 ## Ports
 
