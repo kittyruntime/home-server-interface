@@ -335,7 +335,7 @@ func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
 	}
 	if created {
 		if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: strings.TrimSpace(string(out))})
+			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 			return
 		}
 		exec.Command("systemctl", "enable", "--quiet", "smbd").Run()

@@ -559,7 +559,7 @@ func handleLinuxUserCreate(nc *nats.Conn, msg *nats.Msg) {
 			replyOk(nc, msg.Reply, map[string]any{"ok": true, "existed": true})
 			return
 		}
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: strings.TrimSpace(string(out))})
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})

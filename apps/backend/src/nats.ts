@@ -118,7 +118,9 @@ export async function requestSync<T>(
     throw new Error("Invalid worker response")
   }
   if (!resp.ok) {
-    throw Object.assign(new Error(resp.error), { code: resp.code })
+    // Never surface an empty message: the dashboard would show a blank error.
+    const message = resp.error?.trim() || `${subject} failed${resp.code ? ` (${resp.code})` : ""} without an error message`
+    throw Object.assign(new Error(message), { code: resp.code })
   }
   return resp.result
 }
