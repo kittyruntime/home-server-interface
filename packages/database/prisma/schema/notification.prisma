@@ -1,0 +1,43 @@
+model NotificationConnector {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  type         String // "webhook" (the in-app connector is the virtual id "inapp")
+  method       String   @default("POST")
+  url          String   @default("")
+  headers      String   @default("{}") // JSON {k:v}
+  bodyTemplate String   @default("") // template with {{vars}}
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model NotificationRule {
+  id           String  @id @default(uuid())
+  name         String
+  sourcePrefix String  @default("") // "" = all sources; "storage." = storage.*
+  minSeverity  String  @default("warning") // info | warning | critical
+  connectorIds String  @default("[]") // JSON array, may contain "inapp"
+  enabled      Boolean @default(true)
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  severity  String // info | warning | critical
+  source    String
+  target    String
+  message   String
+  eventType String // alert.raised | alert.cleared
+  createdAt DateTime  @default(now())
+  readAt    DateTime? // global read state shared by all users
+}
+
+// Troubleshooting journal, pruned (keep the latest 200). No reference to a
+// persisted Notification: events are not stored as rows (only in-app
+// deliveries insert Notification rows) — this journal is enough for debugging.
+model NotificationDelivery {
+  id          String   @id @default(uuid())
+  connectorId String
+  ok          Boolean
+  error       String?  @default("")
+  test        Boolean  @default(false)
+  at          DateTime @default(now())
+}

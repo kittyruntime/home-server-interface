@@ -3,6 +3,7 @@ model Alert {
   source      String
   target      String
   message     String
+  severity    String   @default("warning")
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @updatedAt
   @@unique([source, target])
