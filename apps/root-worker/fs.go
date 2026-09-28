@@ -882,7 +882,7 @@ func doZip(paths []string, destDir, name string) *fsError {
 
 // ── zip to temp (public share "download all") ──────────────────────────────────
 //
-// Builds a zip of a directory into the worker's (PrivateTmp) temp dir, streamed
+// Builds a zip of a directory into the worker's temp dir, streamed
 // out afterwards by the backend via read-chunk, then removed via rm-temp. A hard
 // disk guard runs both before (pre-flight) and during writing so a large folder
 // can never fill the limited temp filesystem.

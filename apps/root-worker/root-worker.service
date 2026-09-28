@@ -12,7 +12,6 @@ User=root
 #   NATS_USER=worker
 #   NATS_PASS=<password matching nats.conf>
 EnvironmentFile=/etc/app/worker.env
-PrivateTmp=yes
 # NoNewPrivileges must be off: the worker uses setresuid to impersonate users.
 NoNewPrivileges=no
 Restart=on-failure

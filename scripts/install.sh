@@ -937,7 +937,6 @@ Requires=${APP_NAME}-nats.service
 ExecStart=/usr/local/bin/${APP_NAME}-root-worker
 User=root
 EnvironmentFile=$WORKER_ENV
-PrivateTmp=yes
 NoNewPrivileges=no
 Restart=on-failure
 RestartSec=5
