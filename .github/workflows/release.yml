@@ -101,7 +101,7 @@ jobs:
           tar -czf "$ARCHIVE" \
             --transform "flags=rh;s|^apps/backend/dist/server\.js$|server.js|" \
             --transform "flags=rh;s|^apps/dashboard/dist|public|" \
-            --transform "flags=rh;s|^apps/root-worker/root-worker$|bin/${APP_NAME}-root-worker|" \
+            --transform "flags=rh;s|^apps/root-worker/root-worker$|bin/${APP_NAME}-worker|" \
             --transform "flags=rh;s|^packages/database|database|" \
             --transform "flags=rh;s|^packages/compose|compose|" \
             --transform "flags=rh;s|^runtime/node_modules|node_modules|" \

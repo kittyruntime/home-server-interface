@@ -4,6 +4,7 @@ dist/
 *.db-journal
 apps/backend/bin/
 apps/root-worker/root-worker
+apps/root-worker/hsi-worker
 .claude/
 apps/backend/.env
 apps/backend/data/
