@@ -7,7 +7,7 @@ import { useClipboard } from '../../lib/clipboard'
 import { useUploads, trackTransfer } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
-import { pollJobResult } from '../../lib/jobs'
+import { awaitJob } from '../../lib/jobs'
 import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
@@ -313,13 +313,8 @@ const selectedEntries = computed(() =>
 )
 
 // ── file operations ──────────────────────────────────────────────────────────
-// Worker fs ops resolve asynchronously: wait for the terminal state and
-// throw on failure so the tracking notification surfaces the real error
-// (same pattern as the app panel's pollJobResult usage).
-async function awaitJob(jobId: string): Promise<void> {
-  const result = await pollJobResult(jobId)
-  if (result.status !== 'completed') throw new Error(result.error ?? 'Operation failed')
-}
+// Worker fs ops resolve asynchronously: awaitJob waits for the terminal state
+// and throws on failure so the tracking notification surfaces the real error.
 async function createFolder() {
   if (!currentPath.value) return
   creatingFolder.value = true

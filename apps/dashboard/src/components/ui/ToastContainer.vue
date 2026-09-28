@@ -33,7 +33,11 @@ const { toasts, dismiss } = useToast()
           </div>
 
           <!-- Message -->
-          <span class="flex-1 text-sm leading-snug">{{ t.message }}</span>
+          <div class="flex-1 min-w-0">
+            <span class="block text-sm leading-snug">{{ t.message }}</span>
+            <button v-if="t.action" @click="t.action.run(); dismiss(t.id)"
+              class="mt-1 text-xs font-medium text-[var(--c-accent)] hover:underline">{{ t.action.label }}</button>
+          </div>
 
           <!-- Dismiss -->
           <button @click="dismiss(t.id)" aria-label="Dismiss notification" class="shrink-0 p-0.5 -mr-1 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-sm">

@@ -116,7 +116,16 @@ dump) can still appear as plain text.
 Every async operation has a `jobId` that appears in both files. The worker logs
 each job it receives and its outcome, and every synchronous request that fails.
 Set `HSI_LOG_LEVEL=debug` in `/etc/hsi/worker.env` and restart
-`hsi-root-worker` to also log successful requests.
+`hsi-root-worker` to also log successful requests and every external command
+the worker runs (`mdadm`, `parted`, `smartctl`…) with its exit code, duration
+and trimmed output. Command failures are logged at `debug` as well: many probes
+fail routinely, and a failure that matters already shows up as a failed job or
+request. Passwords are only ever passed on stdin, which is never logged.
+
+Administrators can open the log lines of a failed operation from its error
+notification (**View logs**). HSI reads them from the end of `app.log` and
+`root-worker.log` in `HSI_LOG_DIR` (default `/var/log/hsi`); lines already
+rotated away are not shown.
 
 ## Notifications
 

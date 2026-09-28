@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure } from "../index"
+import { router, protectedProcedure, adminProcedure } from "../index"
+import { readJobLogs } from "../../services/jobLogs"
 
 export const tasksRouter = router({
   get: protectedProcedure
@@ -16,4 +17,10 @@ export const tasksRouter = router({
         error:  job.error ?? null,
       }
     }),
+
+  // Log lines of one job from the backend and worker logs (admin only: they
+  // name users, paths and commands).
+  logs: adminProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(({ input }) => readJobLogs(input.jobId)),
 })
