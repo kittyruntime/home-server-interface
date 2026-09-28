@@ -31,6 +31,11 @@ export function interpolateTemplate(template: string, vars: Record<string, strin
   })
 }
 
+// Same variables without JSON escaping, for plain-text targets (email).
+export function interpolatePlain(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (match, key: string) => vars[key] ?? match)
+}
+
 export function ruleMatches(
   rule: { sourcePrefix: string; minSeverity: string; enabled: boolean },
   event: NotificationEvent,
@@ -64,7 +69,7 @@ export function selectConnectorIds(
   return [...ids]
 }
 
-function eventVars(event: NotificationEvent): Record<string, string> {
+export function eventVars(event: NotificationEvent): Record<string, string> {
   return {
     "event.type": event.type,
     "event.severity": event.severity,
