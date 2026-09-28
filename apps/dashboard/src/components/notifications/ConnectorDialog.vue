@@ -99,9 +99,15 @@ const canSubmit = computed(() => type.value === 'smtp'
   ? !!smtp.value.host.trim() && !!smtp.value.from.trim() && recipients.value.length > 0
   : !!url.value.trim())
 
-const previewInput = computed(() => ({ ...part.value, id: props.connector?.id }))
+const testInput = computed(() => ({ ...part.value, id: props.connector?.id }))
 
-const preview = ref<Awaited<ReturnType<typeof trpc.notifications.renderPreview.query>> | null>(null)
+// The preview never needs the SMTP password: keep it off the wire while typing.
+const previewInput = computed(() => {
+  const p = part.value
+  return { ...(p.type === 'smtp' ? { ...p, smtp: { ...p.smtp, password: '' } } : p), id: props.connector?.id }
+})
+
+const preview = ref<Awaited<ReturnType<typeof trpc.notifications.renderPreview.mutate>> | null>(null)
 const previewError = ref('')
 
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -115,7 +121,7 @@ async function runPreview() {
   }
   const seq = ++previewSeq
   try {
-    const r = await trpc.notifications.renderPreview.query(previewInput.value)
+    const r = await trpc.notifications.renderPreview.mutate(previewInput.value)
     if (seq === previewSeq) {
       preview.value = r
       previewError.value = ''
@@ -160,7 +166,7 @@ async function sendTest() {
   testing.value = true
   testResult.value = null
   try {
-    testResult.value = await trpc.notifications.testConnector.mutate(previewInput.value)
+    testResult.value = await trpc.notifications.testConnector.mutate(testInput.value)
   } catch (e: any) {
     testResult.value = { ok: false, error: e?.message ?? 'Test failed' }
   } finally {

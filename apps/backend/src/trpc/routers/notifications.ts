@@ -53,17 +53,18 @@ function badRequest(e: unknown): never {
 // input refers to an existing connector (masked fields keep their value).
 async function resolveInput(db: PrismaClient, input: ConnectorInput, id?: string): Promise<ResolvedConnector> {
   let stored: ResolvedConnector | null = null
+  let unreadable = false
   if (id) {
     const row = await db.notificationConnector.findUnique({ where: { id } })
     if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Connector not found" })
     try {
       stored = resolveStored(row)
     } catch {
-      stored = null // unreadable: every secret must be re-entered
+      unreadable = true // every secret must be re-entered
     }
   }
   try {
-    return mergeConnectorInput(input, stored)
+    return mergeConnectorInput(input, stored, { unreadable })
   } catch (e) {
     badRequest(e)
   }
@@ -187,10 +188,14 @@ export const notificationsRouter = router({
       ctx.prisma.notificationRule.delete({ where: { id: input.id } })),
   }),
 
-  renderPreview: adminProcedure.input(z.intersection(connectorPart, optionalId)).query(async ({ ctx, input }) => {
-    const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
+  // A mutation, not a query: queries travel in the URL, which request logs
+  // (Fastify, nginx) record, and the form may hold fresh secrets.
+  renderPreview: adminProcedure.input(z.intersection(connectorPart, optionalId)).mutation(async ({ ctx, input }) => {
     const event = sampleEvent()
-    if (resolved.type === "smtp") return { type: "smtp" as const, email: renderEmail(resolved.smtp, event) }
+    // Rendering an email needs no secret: never merge stored ones for it.
+    if (input.type === "smtp") return { type: "smtp" as const, email: renderEmail({ ...input.smtp, password: "" }, event) }
+    const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
+    if (resolved.type !== "webhook") throw new TRPCError({ code: "BAD_REQUEST", message: "Unexpected connector type" })
     const request = renderWebhookRequest(
       { method: resolved.method, url: resolved.url, headers: JSON.stringify(resolved.headers), bodyTemplate: resolved.bodyTemplate },
       event,

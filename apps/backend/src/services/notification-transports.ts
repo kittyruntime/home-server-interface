@@ -67,15 +67,39 @@ export async function sendEmail(smtp: SmtpConfig, event: NotificationEvent, send
   }
 }
 
-export function deliverResolved(
+// Secret values a transport error must never repeat: errors are shown in the
+// browser and stored in the delivery journal.
+function secretsOf(connector: ResolvedConnector): string[] {
+  if (connector.type === "smtp") return [connector.smtp.password]
+  const values = Object.entries(connector.headers).filter(([k]) => k.toLowerCase() !== "content-type").map(([, v]) => v)
+  let path = ""
+  try {
+    const u = new URL(connector.url)
+    path = u.pathname + u.search
+  } catch { /* unparsable URL: scrub it whole */ }
+  return [connector.url, path.length > 1 ? path : "", ...values]
+}
+
+function scrub(message: string, secrets: string[]): string {
+  let out = message
+  for (const s of secrets.filter(v => v.length >= 3).sort((a, b) => b.length - a.length)) out = out.split(s).join("••••••")
+  return out
+}
+
+export async function deliverResolved(
   connector: ResolvedConnector,
   event: NotificationEvent,
   deps: { fetchImpl?: typeof fetch; sender?: MailSender } = {},
 ): Promise<DeliveryResult> {
-  if (connector.type === "smtp") return sendEmail(connector.smtp, event, deps.sender)
-  const req = renderWebhookRequest(
-    { method: connector.method, url: connector.url, headers: JSON.stringify(connector.headers), bodyTemplate: connector.bodyTemplate },
-    event,
-  )
-  return sendWebhook(req, deps.fetchImpl)
+  let result: DeliveryResult
+  if (connector.type === "smtp") {
+    result = await sendEmail(connector.smtp, event, deps.sender)
+  } else {
+    const req = renderWebhookRequest(
+      { method: connector.method, url: connector.url, headers: JSON.stringify(connector.headers), bodyTemplate: connector.bodyTemplate },
+      event,
+    )
+    result = await sendWebhook(req, deps.fetchImpl)
+  }
+  return result.error ? { ...result, error: scrub(result.error, secretsOf(connector)) } : result
 }

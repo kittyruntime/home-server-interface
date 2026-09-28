@@ -626,10 +626,17 @@ async function testUpdateWatch() {
   const t0 = new Date("2026-09-28T08:00:00.000Z")
   const attempt = { from: "v1.57.0", target: "v1.58.0", requestedAt: t0.toISOString() }
   const later = new Date(t0.getTime() + 16 * 60_000)
-  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.58.0", false, later).kind, "succeeded")
-  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", true, later).kind, "wait")
-  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, new Date(t0.getTime() + 60_000)).kind, "wait")
-  const failed = watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, later)
+  const restarted = new Date(t0.getTime() + 5 * 60_000) // backend restarted by the installer
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.58.0", false, later, restarted).kind, "succeeded")
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", true, later, restarted).kind, "wait")
+  // Just restarted: VERSION may not be written yet.
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, new Date(restarted.getTime() + 60_000), restarted).kind, "wait")
+  // Never restarted (old backend still serving while the release downloads): no alarm at 16 min...
+  const before = new Date(t0.getTime() - 3_600_000)
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, later, before).kind, "wait")
+  // ...only once the installer clearly never got as far as restarting HSI.
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, new Date(t0.getTime() + 61 * 60_000), before).kind, "failed")
+  const failed = watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, later, restarted)
   assert.equal(failed.kind, "failed")
   if (failed.kind === "failed") {
     assert.deepEqual(
@@ -644,26 +651,26 @@ async function testUpdateWatch() {
   try {
     const events: unknown[] = []
     const dispatch = (e: unknown) => { events.push(e) }
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "none")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch, restarted), "none")
 
     await writeFile(join(dir, watch.ATTEMPT_FILE), JSON.stringify(attempt))
     await writeFile(join(dir, ".pending-update"), "v1.58.0")
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "wait")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch, restarted), "wait")
 
     await rm(join(dir, ".pending-update"))
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "failed")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch, restarted), "failed")
     assert.equal(events.length, 1)
     assert.equal(await exists(join(dir, watch.ATTEMPT_FILE)), false)
     // Emitted once.
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "none")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch, restarted), "none")
 
     await writeFile(join(dir, watch.ATTEMPT_FILE), JSON.stringify(attempt))
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.58.0", later, dispatch), "succeeded")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.58.0", later, dispatch, restarted), "succeeded")
     assert.equal(events.length, 1)
 
     // Half-written file: removed, no event, no throw.
     await writeFile(join(dir, watch.ATTEMPT_FILE), "{\"from\":\"v1")
-    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "corrupt")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch, restarted), "corrupt")
     assert.equal(await exists(join(dir, watch.ATTEMPT_FILE)), false)
     assert.equal(events.length, 1)
   } finally {
@@ -672,5 +679,64 @@ async function testUpdateWatch() {
 }
 
 await testUpdateWatch()
+
+async function testReviewFixes() {
+  const key = Buffer.alloc(32, 5)
+
+  // Live preview must not put form secrets in a GET query string (request logs).
+  const { notificationsRouter } = await import("../trpc/routers/notifications")
+  assert.equal((notificationsRouter as any)._def.procedures.renderPreview._def.mutation, true)
+
+  // URLs with credentials are rejected: fetch refuses them and echoes the URL in its error.
+  assert.throws(() => conn.mergeConnectorInput({ type: "webhook", method: "POST", url: "https://u:pw@host.test/x", headers: "{}", bodyTemplate: "" }, null), /credentials/)
+
+  // Transport errors never carry the secret URL or header values.
+  const secretHook = { type: "webhook" as const, method: "POST", url: "https://hooks.test/SECRETPATH?token=abc", headers: { Authorization: "Bearer HDRSECRET" }, bodyTemplate: "{}" }
+  const leaky = (async (url: string, init: any) => { throw new Error(`failed ${url} with ${init.headers.Authorization}`) }) as any
+  const res = await transports.deliverResolved(secretHook, sampleLikeEvent(), { fetchImpl: leaky })
+  assert.equal(res.ok, false)
+  assert.ok(!res.error!.includes("SECRETPATH") && !res.error!.includes("abc") && !res.error!.includes("HDRSECRET"), res.error ?? "")
+
+  // Masked secrets are only reused for the same destination.
+  const prevHook = { type: "webhook" as const, method: "POST", url: "https://discord.com/api/webhooks/1/s", headers: { Authorization: "Bearer k" }, bodyTemplate: "{}" }
+  assert.throws(() => conn.mergeConnectorInput(
+    { type: "webhook", method: "POST", url: "https://evil.test/collect", headers: JSON.stringify({ Authorization: conn.SECRET_MASK }), bodyTemplate: "{}" }, prevHook), /re-enter/)
+  assert.throws(() => conn.mergeConnectorInput(
+    { type: "webhook", method: "POST", url: "https://evil.test/…", headers: "{}", bodyTemplate: "{}" }, prevHook), /re-enter/)
+  // Same origin, new path: the masked header is kept.
+  const samOrigin = conn.mergeConnectorInput(
+    { type: "webhook", method: "POST", url: "https://discord.com/api/webhooks/2/t", headers: JSON.stringify({ Authorization: conn.SECRET_MASK }), bodyTemplate: "{}" }, prevHook)
+  assert.equal(samOrigin.type === "webhook" && samOrigin.headers.Authorization, "Bearer k")
+
+  const prevMail = { type: "smtp" as const, smtp: {
+    host: "smtp.example.com", port: 587, security: "starttls" as const, username: "nas", password: "pw",
+    from: "nas@example.com", to: ["me@example.com"], subjectTemplate: "s", bodyTemplate: "b",
+  } }
+  assert.throws(() => conn.mergeConnectorInput({ type: "smtp", smtp: { ...prevMail.smtp, host: "evil.test", password: "" } }, prevMail), /re-enter/)
+  assert.throws(() => conn.mergeConnectorInput({ type: "smtp", smtp: { ...prevMail.smtp, username: "other", password: "" } }, prevMail), /re-enter/)
+  // No authentication at all: nothing to re-enter.
+  const noAuth = conn.mergeConnectorInput({ type: "smtp", smtp: { ...prevMail.smtp, host: "relay.test", username: "", password: "" } }, prevMail)
+  assert.equal(noAuth.type === "smtp" && noAuth.smtp.password, "")
+
+  // Unreadable stored secrets: an SMTP save with username and no password is refused.
+  assert.throws(() => conn.mergeConnectorInput({ type: "smtp", smtp: { ...prevMail.smtp, password: "" } }, null, { unreadable: true }), (e: Error) => e.name === "SecretsError")
+
+  // A row left in "sending" by an aborted tick (no restart) is retried on the next tick.
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    const t = new Date("2026-09-28T09:00:00.000Z")
+    await queue.enqueue(store, ["c"], sampleLikeEvent(), t)
+    rows[0]!.status = "sending"
+    await queue.runDeliveryTick(store, async () => ({ ok: true }), t)
+    assert.equal(rows[0]!.status, "sent")
+  }
+
+  void key
+  function sampleLikeEvent() {
+    return { type: "alert.raised" as const, severity: "warning" as const, source: "s", target: "t", message: "m", time: "2026-09-28T09:00:00.000Z" }
+  }
+}
+
+await testReviewFixes()
 
 console.log("Backend security tests passed")
