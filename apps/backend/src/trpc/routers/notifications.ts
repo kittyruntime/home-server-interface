@@ -2,22 +2,86 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { prisma, PrismaClient } from "@app/database"
+import { renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID } from "../../services/notifications"
 import {
-  renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID,
-} from "../../services/notifications"
-import { sendWebhook } from "../../services/notification-transports"
+  DEFAULT_EMAIL_BODY, DEFAULT_EMAIL_SUBJECT, SECRET_MASK, SMTP_PRESETS, maskUrl, mergeConnectorInput, resolveStored,
+  toPublicConnector, toStoredFields, type ConnectorInput, type ResolvedConnector,
+} from "../../services/notification-connectors"
+import { deliverResolved, renderEmail } from "../../services/notification-transports"
 
 const severityEnum = z.enum(["info", "warning", "critical"])
 
-const connectorInput = z.object({
-  name: z.string().min(1).max(64),
+const webhookPart = z.object({
   type: z.literal("webhook"),
   method: z.enum(["POST", "PUT"]).default("POST"),
-  url: z.string().url(),
+  url: z.string().max(2048),
   headers: z.string().default("{}"),
   bodyTemplate: z.string(),
-  enabled: z.boolean().default(true),
 })
+
+const smtpPart = z.object({
+  type: z.literal("smtp"),
+  smtp: z.object({
+    host: z.string().min(1).max(255),
+    port: z.number().int().min(1).max(65535),
+    security: z.enum(["starttls", "tls", "none"]),
+    username: z.string().max(255).default(""),
+    password: z.string().max(1024).default(""),
+    from: z.string().email(),
+    to: z.array(z.string().email()).min(1).max(20),
+    subjectTemplate: z.string().max(500),
+    bodyTemplate: z.string().max(10_000),
+  }),
+})
+
+const connectorPart = z.discriminatedUnion("type", [webhookPart, smtpPart])
+const connectorMeta = z.object({
+  name: z.string().min(1).max(64),
+  enabled: z.boolean().default(true),
+  rateLimitPerMinute: z.number().int().min(1).max(600).default(10),
+})
+const connectorForm = z.intersection(connectorPart, connectorMeta)
+const optionalId = z.object({ id: z.string().uuid().optional() })
+
+// Maps secret and validation failures to a 400 with the real message.
+function badRequest(e: unknown): never {
+  if (e instanceof TRPCError) throw e
+  throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : String(e) })
+}
+
+// Plaintext connector for an input, merged with the stored secrets when the
+// input refers to an existing connector (masked fields keep their value).
+async function resolveInput(db: PrismaClient, input: ConnectorInput, id?: string): Promise<ResolvedConnector> {
+  let stored: ResolvedConnector | null = null
+  if (id) {
+    const row = await db.notificationConnector.findUnique({ where: { id } })
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Connector not found" })
+    try {
+      stored = resolveStored(row)
+    } catch {
+      stored = null // unreadable: every secret must be re-entered
+    }
+  }
+  try {
+    return mergeConnectorInput(input, stored)
+  } catch (e) {
+    badRequest(e)
+  }
+}
+
+function partOf(input: z.infer<typeof connectorPart>): ConnectorInput {
+  return input.type === "smtp"
+    ? { type: "smtp", smtp: input.smtp }
+    : { type: "webhook", method: input.method, url: input.url, headers: input.headers, bodyTemplate: input.bodyTemplate }
+}
+
+function storedData(resolved: ResolvedConnector) {
+  try {
+    return toStoredFields(resolved)
+  } catch (e) {
+    badRequest(e)
+  }
+}
 
 const ruleInput = z.object({
   name: z.string().min(1).max(64),
@@ -54,13 +118,34 @@ export const notificationsRouter = router({
   ),
 
   connectors: router({
-    list: adminProcedure.query(async ({ ctx }) => ctx.prisma.notificationConnector.findMany({ orderBy: { createdAt: "asc" } })),
-    presets: adminProcedure.query(() => WEBHOOK_PRESETS),
-    create: adminProcedure.input(connectorInput).mutation(({ ctx, input }) =>
-      ctx.prisma.notificationConnector.create({ data: input })),
-    update: adminProcedure.input(connectorInput.extend({ id: z.string().uuid() })).mutation(({ ctx, input }) => {
-      const { id, ...data } = input
-      return ctx.prisma.notificationConnector.update({ where: { id }, data })
+    list: adminProcedure.query(async ({ ctx }) => {
+      const rows = await ctx.prisma.notificationConnector.findMany({ orderBy: { createdAt: "asc" } })
+      return rows.map(r => toPublicConnector(r))
+    }),
+    presets: adminProcedure.query(() => ({
+      webhook: WEBHOOK_PRESETS,
+      smtp: SMTP_PRESETS,
+      emailDefaults: { subjectTemplate: DEFAULT_EMAIL_SUBJECT, bodyTemplate: DEFAULT_EMAIL_BODY },
+    })),
+    create: adminProcedure.input(connectorForm).mutation(async ({ ctx, input }) => {
+      const resolved = await resolveInput(ctx.prisma, partOf(input))
+      const row = await ctx.prisma.notificationConnector.create({
+        data: { name: input.name, enabled: input.enabled, rateLimitPerMinute: input.rateLimitPerMinute, ...storedData(resolved) },
+      })
+      return toPublicConnector(row)
+    }),
+    update: adminProcedure.input(z.intersection(connectorForm, z.object({ id: z.string().uuid() }))).mutation(async ({ ctx, input }) => {
+      const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
+      const row = await ctx.prisma.notificationConnector.update({
+        where: { id: input.id },
+        data: { name: input.name, enabled: input.enabled, rateLimitPerMinute: input.rateLimitPerMinute, ...storedData(resolved) },
+      })
+      return toPublicConnector(row)
+    }),
+    // Toggling must not round-trip secrets through the browser.
+    setEnabled: adminProcedure.input(z.object({ id: z.string().uuid(), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
+      await ctx.prisma.notificationConnector.update({ where: { id: input.id }, data: { enabled: input.enabled } })
+      return { ok: true }
     }),
     delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) =>
       // Orphan rule targets are impossible: strip the id from every rule,
@@ -102,25 +187,29 @@ export const notificationsRouter = router({
       ctx.prisma.notificationRule.delete({ where: { id: input.id } })),
   }),
 
-  renderPreview: adminProcedure.input(z.object({
-    method: z.enum(["POST", "PUT"]),
-    url: z.string(),
-    headers: z.string(),
-    bodyTemplate: z.string(),
-  })).query(({ input }) => renderWebhookRequest(input, sampleEvent())),
-
-  testConnector: adminProcedure.input(z.object({
-    id: z.string().optional(), // absent when testing an unsaved connector
-    method: z.enum(["POST", "PUT"]),
-    url: z.string().url(),
-    headers: z.string(),
-    bodyTemplate: z.string(),
-  })).mutation(async ({ input }) => {
+  renderPreview: adminProcedure.input(z.intersection(connectorPart, optionalId)).query(async ({ ctx, input }) => {
+    const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
     const event = sampleEvent()
-    const req = renderWebhookRequest(input, event)
-    const result = await sendWebhook(req) // single attempt, no queue
+    if (resolved.type === "smtp") return { type: "smtp" as const, email: renderEmail(resolved.smtp, event) }
+    const request = renderWebhookRequest(
+      { method: resolved.method, url: resolved.url, headers: JSON.stringify(resolved.headers), bodyTemplate: resolved.bodyTemplate },
+      event,
+    )
+    // The preview is shown in the browser: mask secrets the same way as `list`.
+    const headers = Object.fromEntries(Object.entries(request.headers).map(([k, v]) =>
+      [k, k.toLowerCase() === "content-type" ? v : SECRET_MASK]))
+    return { type: "webhook" as const, request: { ...request, url: maskUrl(request.url), headers } }
+  }),
+
+  testConnector: adminProcedure.input(z.intersection(connectorPart, optionalId)).mutation(async ({ ctx, input }) => {
+    const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
+    const event = sampleEvent()
+    const result = await deliverResolved(resolved, event) // one attempt, no queue, no rate limit
     await prisma.notificationDelivery.create({
-      data: { connectorId: input.id ?? "test", status: result.ok ? "sent" : "failed", ok: result.ok, error: result.error ?? "", test: true },
+      data: {
+        connectorId: input.id ?? "test", status: result.ok ? "sent" : "failed", ok: result.ok, attempts: 1,
+        error: result.error ?? "", test: true, sentAt: new Date(), event: JSON.stringify(event),
+      },
     })
     return result
   }),
@@ -132,7 +221,11 @@ export const notificationsRouter = router({
         ctx.prisma.notificationConnector.findMany({ select: { id: true, name: true } }),
       ])
       const names = new Map(connectors.map(c => [c.id, c.name]))
-      return rows.map(r => ({ ...r, connectorName: names.get(r.connectorId) ?? r.connectorId }))
+      return rows.map(r => ({
+        id: r.id, connectorId: r.connectorId, connectorName: names.get(r.connectorId) ?? r.connectorId,
+        status: r.status as "pending" | "sending" | "sent" | "failed", attempts: r.attempts,
+        error: r.error ?? "", test: r.test, at: r.at, sentAt: r.sentAt, nextAttemptAt: r.nextAttemptAt,
+      }))
     }),
   }),
 })
