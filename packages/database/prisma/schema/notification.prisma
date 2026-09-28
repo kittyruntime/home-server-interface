@@ -1,13 +1,15 @@
 model NotificationConnector {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  type         String // "webhook" (the in-app connector is the virtual id "inapp")
-  method       String   @default("POST")
-  url          String   @default("")
-  headers      String   @default("{}") // JSON {k:v}
-  bodyTemplate String   @default("") // template with {{vars}}
-  enabled      Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  type               String // "webhook" | "smtp" (the in-app connector is the virtual id "inapp")
+  method             String   @default("POST")
+  url                String   @default("") // encrypted (enc:v1:...)
+  headers            String   @default("{}") // JSON {k:v}; values encrypted except Content-Type
+  bodyTemplate       String   @default("") // template with {{vars}}
+  config             String   @default("{}") // JSON, type-specific (smtp: host, port, ..., password encrypted)
+  rateLimitPerMinute Int      @default(10)
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now())
 }
 
 model NotificationRule {
@@ -30,14 +32,20 @@ model Notification {
   readAt    DateTime? // global read state shared by all users
 }
 
-// Troubleshooting journal, pruned (keep the latest 200). No reference to a
-// persisted Notification: events are not stored as rows (only in-app
-// deliveries insert Notification rows) — this journal is enough for debugging.
+// Outbox and journal: pending rows are drained by the delivery queue
+// (services/notification-queue.ts); terminal rows are pruned to the latest 200.
 model NotificationDelivery {
-  id          String   @id @default(uuid())
-  connectorId String
-  ok          Boolean
-  error       String?  @default("")
-  test        Boolean  @default(false)
-  at          DateTime @default(now())
+  id            String    @id @default(uuid())
+  connectorId   String
+  status        String    @default("legacy") // pending | sending | sent | failed ("legacy": pre-queue row, converted at boot)
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  event         String    @default("{}") // JSON NotificationEvent
+  ok            Boolean   @default(false) // kept for one release; mirrors status == "sent"
+  error         String?   @default("")
+  test          Boolean   @default(false)
+  at            DateTime  @default(now())
+  sentAt        DateTime?
+
+  @@index([status, nextAttemptAt])
 }

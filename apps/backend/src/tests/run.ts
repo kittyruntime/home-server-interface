@@ -429,4 +429,71 @@ async function testSecrets() {
 
 await testSecrets()
 
+const conn = await import("../services/notification-connectors")
+
+async function testConnectorShapes() {
+  const key = Buffer.alloc(32, 3)
+  const webhook = {
+    type: "webhook" as const, method: "POST", url: "https://discord.com/api/webhooks/1/secret",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer t0k" }, bodyTemplate: "{}",
+  }
+  const stored = conn.toStoredFields(webhook, key)
+  assert.ok(!stored.url.includes("secret"))
+  const storedHeaders = JSON.parse(stored.headers)
+  assert.equal(storedHeaders["Content-Type"], "application/json")
+  assert.ok(storedHeaders.Authorization.startsWith("enc:v1:"))
+  assert.deepEqual(conn.resolveStored(stored, key), webhook)
+
+  // Public shape: nothing secret leaves the server.
+  const row = { ...stored, id: "c1", name: "d", enabled: true, rateLimitPerMinute: 10, createdAt: new Date() }
+  const pub = conn.toPublicConnector(row, key)
+  assert.equal(pub.url, "https://discord.com/…")
+  assert.deepEqual(JSON.parse(pub.headers), { "Content-Type": "application/json", Authorization: conn.SECRET_MASK })
+  assert.equal(pub.secretsUnreadable, false)
+  assert.ok(!JSON.stringify(pub).includes("webhooks/1/secret") && !JSON.stringify(pub).includes("t0k"))
+
+  // Saving the masked form keeps every stored secret.
+  const kept = conn.mergeConnectorInput(
+    { type: "webhook", method: "POST", url: pub.url, headers: pub.headers, bodyTemplate: "{}" },
+    webhook,
+  )
+  assert.deepEqual(kept, webhook)
+  // Empty URL keeps too; a new value replaces; a removed header disappears.
+  const changed = conn.mergeConnectorInput(
+    { type: "webhook", method: "PUT", url: "https://ntfy.sh/topic", headers: '{"Content-Type":"text/plain"}', bodyTemplate: "x" },
+    webhook,
+  )
+  assert.equal(changed.type === "webhook" && changed.url, "https://ntfy.sh/topic")
+  assert.deepEqual(changed.type === "webhook" && changed.headers, { "Content-Type": "text/plain" })
+  const emptyUrl = conn.mergeConnectorInput({ type: "webhook", method: "POST", url: "", headers: "{}", bodyTemplate: "{}" }, webhook)
+  assert.equal(emptyUrl.type === "webhook" && emptyUrl.url, webhook.url)
+  // A mask with nothing stored cannot be resolved.
+  assert.throws(() => conn.mergeConnectorInput({ type: "webhook", method: "POST", url: pub.url, headers: "{}", bodyTemplate: "" }, null), (e: Error) => e.name === "SecretsError")
+  // Invalid URL is rejected.
+  assert.throws(() => conn.mergeConnectorInput({ type: "webhook", method: "POST", url: "ftp://x", headers: "{}", bodyTemplate: "" }, null), /http/)
+
+  // SMTP: the password never leaves, an empty password keeps the stored one.
+  const smtp = { type: "smtp" as const, smtp: {
+    host: "smtp.example.com", port: 587, security: "starttls" as const, username: "nas", password: "pw",
+    from: "nas@example.com", to: ["me@example.com"], subjectTemplate: "s", bodyTemplate: "b",
+  } }
+  const smtpStored = conn.toStoredFields(smtp, key)
+  assert.ok(!smtpStored.config.includes('"pw"'))
+  const smtpPub = conn.toPublicConnector({ ...smtpStored, id: "c2", name: "m", enabled: true, rateLimitPerMinute: 10, createdAt: new Date() }, key)
+  assert.equal(smtpPub.smtp?.passwordSet, true)
+  assert.ok(!JSON.stringify(smtpPub).includes('"pw"'))
+  const smtpKept = conn.mergeConnectorInput({ type: "smtp", smtp: { ...smtp.smtp, password: "" } }, smtp)
+  assert.equal(smtpKept.type === "smtp" && smtpKept.smtp.password, "pw")
+
+  // Wrong key: the public shape flags it instead of throwing.
+  const bad = conn.toPublicConnector(row, Buffer.alloc(32, 4))
+  assert.equal(bad.secretsUnreadable, true)
+  assert.equal(bad.url, conn.SECRET_MASK)
+
+  // Legacy plaintext rows resolve without a key.
+  assert.equal((conn.resolveStored({ type: "webhook", method: "POST", url: "https://a.test/x", headers: "{}", bodyTemplate: "", config: "{}" }, null) as any).url, "https://a.test/x")
+}
+
+await testConnectorShapes()
+
 console.log("Backend security tests passed")
