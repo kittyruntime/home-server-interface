@@ -23,6 +23,7 @@ const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPane
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
 import NotificationMenu from '../components/NotificationMenu.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import JobLogsDialog from '../components/JobLogsDialog.vue'
 import ToastContainer from '../components/ui/ToastContainer.vue'
 import Dock from '../components/desktop/Dock.vue'
 import Launchpad from '../components/desktop/Launchpad.vue'
@@ -532,6 +533,7 @@ onUnmounted(() => {
 
   <ToastContainer />
   <ConfirmDialog />
+  <JobLogsDialog v-if="isAdmin" />
   <NotificationMenu
     :open="notifMenuOpen"
     :pos="notifPos"

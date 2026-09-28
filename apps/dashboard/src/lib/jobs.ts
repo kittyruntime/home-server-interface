@@ -44,3 +44,21 @@ export async function pollJobResult(jobId: string, deadlineMs = 30_000): Promise
     error: `The operation did not finish within ${Math.round(deadlineMs / 1000)} s. It may still be running; refresh to check.`,
   }
 }
+
+// Error for a job that did not complete, carrying its id so the failure can
+// be traced in the logs (see lib/jobLogs.ts).
+export class JobError extends Error {
+  readonly jobId: string
+  constructor(message: string, jobId: string) {
+    super(message)
+    this.name = 'JobError'
+    this.jobId = jobId
+  }
+}
+
+// Waits for a job and throws a JobError unless it completed, so a `track`
+// notification surfaces the real worker error.
+export async function awaitJob(jobId: string, fallback = 'Operation failed'): Promise<void> {
+  const result = await pollJobResult(jobId)
+  if (result.status !== 'completed') throw new JobError(result.error ?? fallback, jobId)
+}

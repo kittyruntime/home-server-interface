@@ -8,7 +8,8 @@ import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { useConfirm } from '../../lib/confirm'
-import { pollJobResult } from '../../lib/jobs'
+import { pollJobResult, JobError } from '../../lib/jobs'
+import { viewableJobId, viewLogsAction } from '../../lib/jobLogs'
 import { useNotifications } from '../../lib/notifications'
 import { useToast } from '../../lib/toast'
 
@@ -97,20 +98,20 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
       const result = await pollJobResult(jobId)
       // Only drop the row when the job actually completed; on failure the row
       // stays and the error is surfaced.
-      if (result.status !== 'completed') throw new Error(result.error ?? 'Delete failed')
+      if (result.status !== 'completed') throw new JobError(result.error ?? 'Delete failed', jobId)
       apps.value = apps.value.filter(a => a.id !== id)
       return
     }
     if (app) app.status = 'transitioning'
     const { jobId } = await (trpc.container.app[action as 'start' | 'stop' | 'restart'] as any).mutate({ name: app?.name ?? id })
     const result = await pollJobResult(jobId)
-    if (result.status !== 'completed') throw new Error(result.error ?? `${action} failed`)
+    if (result.status !== 'completed') throw new JobError(result.error ?? `${action} failed`, jobId)
     if (app) app.status = action === 'start' ? 'running' : 'stopped'
     if (notifId) { updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'}`, progress: undefined }); setTimeout(() => dismissNotif(notifId), 3000) }
   } catch (e: any) {
     if (app) app.status = 'unknown'
-    if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
-    toast.error(e.message ?? `Failed: ${action}`)
+    if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined, jobId: viewableJobId(e) })
+    toast.error(e.message ?? `Failed: ${action}`, viewLogsAction(e))
   } finally {
     delete actionLoading.value[id]
   }
@@ -126,8 +127,9 @@ async function applyApp(id: string) {
     if (result.status !== 'completed') {
       // Job failed (or timed out): keep the pending badge and surface the error.
       const msg = result.error ?? 'Apply failed'
-      updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined })
-      toast.error(msg)
+      const err = new JobError(msg, jobId)
+      updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined, jobId: viewableJobId(err) })
+      toast.error(msg, viewLogsAction(err))
       return
     }
     updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })

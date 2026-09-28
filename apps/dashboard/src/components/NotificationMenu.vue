@@ -2,11 +2,17 @@
 import { computed, watch } from 'vue'
 import { useSystemNotifications, type SystemNotification } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
+import { openJobLogs } from '../lib/jobLogs'
 import SegmentedBar from './ui/SegmentedBar.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 const props = defineProps<{ open: boolean; pos: { bottom: number; left: number } }>()
-defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [] }>()
+
+function viewLogs(jobId: string) {
+  emit('close')
+  openJobLogs(jobId)
+}
 
 const { items, unread, refresh, markAllRead } = useSystemNotifications()
 // In-memory operations started from this browser (track/trackBatch): shown
@@ -90,6 +96,8 @@ function formatTime(createdAt: string): string {
                 <span class="block text-xs text-[var(--c-text-1)] leading-snug truncate">{{ op.title }}</span>
                 <p v-if="op.detail" class="text-[10px] mt-0.5 leading-snug break-words"
                   :class="op.type === 'error' ? 'text-danger' : 'text-[var(--c-text-3)]'">{{ op.detail }}</p>
+                <button v-if="op.jobId" @click="viewLogs(op.jobId)"
+                  class="mt-0.5 text-[10px] text-[var(--c-accent)] hover:underline">View logs</button>
                 <SegmentedBar
                   v-if="op.type === 'progress'"
                   class="mt-1.5"

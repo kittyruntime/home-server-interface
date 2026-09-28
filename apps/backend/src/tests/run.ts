@@ -350,4 +350,47 @@ async function testDiffAlerts() {
 
 await testDiffAlerts()
 
+const { readJobLogs } = await import("../services/jobLogs")
+
+async function testReadJobLogs() {
+  const { writeFile } = await import("node:fs/promises")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-logs-test-"))
+  try {
+    const job = "6f1c2c1e-0000-4000-8000-000000000001"
+    const other = "6f1c2c1e-0000-4000-8000-000000000002"
+    await writeFile(join(dir, "app.log"), [
+      JSON.stringify({ level: "info", time: "2026-09-28T08:00:00.000Z", component: "backend", pid: 1, msg: "job published", jobId: job, subject: "root.fs.mkdir" }),
+      JSON.stringify({ level: "info", time: "2026-09-28T08:00:00.500Z", component: "backend", msg: "job published", jobId: other }),
+      JSON.stringify({ level: "warn", time: "2026-09-28T08:00:02.000Z", component: "backend", msg: "job failed", jobId: job }),
+      "",
+    ].join("\n"))
+    // Worker lines use local time with an offset: 10:00:01+02:00 is 08:00:01Z.
+    await writeFile(join(dir, "root-worker.log"), [
+      JSON.stringify({ time: "2026-09-28T10:00:01.000000000+02:00", level: "warn", msg: "job failed", component: "worker", jobId: job, error: "permission denied" }),
+      `panic: something ${job}`,
+      "",
+    ].join("\n"))
+
+    const lines = await readJobLogs(job, dir)
+    assert.equal(lines.length, 4)
+    // Unparseable line first, then chronological across both files.
+    assert.deepEqual(lines.map(l => `${l.source}:${l.msg}`), [
+      `worker:panic: something ${job}`,
+      "backend:job published",
+      "worker:job failed",
+      "backend:job failed",
+    ])
+    assert.deepEqual(lines[1].fields, { subject: "root.fs.mkdir" })
+    assert.equal(lines[2].level, "warn")
+    assert.equal(lines[2].fields.error, "permission denied")
+
+    // Missing files are not an error.
+    assert.deepEqual(await readJobLogs(job, join(dir, "missing")), [])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+await testReadJobLogs()
+
 console.log("Backend security tests passed")

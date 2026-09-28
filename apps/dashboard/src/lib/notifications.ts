@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useToast } from './toast'
+import { viewableJobId, viewLogsAction } from './jobLogs'
 
 export type NotifType = 'progress' | 'success' | 'error' | 'info'
 
@@ -10,6 +11,8 @@ export interface Notification {
   detail?: string
   /** -1 = indeterminate spinner, 0-100 = real progress, undefined = no bar */
   progress?: number
+  /** Failed job whose logs an admin can open. */
+  jobId?: string
 }
 
 const items = ref<Notification[]>([])
@@ -44,9 +47,9 @@ export function useNotifications() {
       return result
     } catch (e: any) {
       const detail = e?.message ?? 'Unknown error'
-      update(id, { type: 'error', detail, progress: undefined })
+      update(id, { type: 'error', detail, progress: undefined, jobId: viewableJobId(e) })
       // Errors must be seen without opening the bell menu.
-      toast.error(`${title} failed: ${detail}`)
+      toast.error(`${title} failed: ${detail}`, viewLogsAction(e))
       throw e
     }
   }
@@ -74,8 +77,8 @@ export function useNotifications() {
     } else {
       const firstError = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')?.reason
       const detail = firstError instanceof Error ? firstError.message : firstError ? String(firstError) : undefined
-      update(id, { type: 'error', title: `${title} — ${failed} failed`, detail, progress: undefined })
-      toast.error(`${title}: ${failed} of ${ops.length} failed${detail ? ` (${detail})` : ''}`)
+      update(id, { type: 'error', title: `${title} — ${failed} failed`, detail, progress: undefined, jobId: viewableJobId(firstError) })
+      toast.error(`${title}: ${failed} of ${ops.length} failed${detail ? ` (${detail})` : ''}`, viewLogsAction(firstError))
     }
     return results
   }
