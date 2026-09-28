@@ -286,32 +286,6 @@ await testRuleMatches()
 await testSelectConnectorIds()
 await testRenderWebhookRequest()
 
-const { attemptWebhook } = await import("../services/notifications")
-
-async function testAttemptWebhookRetriesAndReports() {
-  let calls = 0
-  const fakeFetch = async (_url: any, _init: any) => {
-    calls++
-    if (calls < 3) throw new Error("boom")
-    return new Response("ok", { status: 200 })
-  }
-  const res = await attemptWebhook(
-    { method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
-    { delays: [0, 0], fetchImpl: fakeFetch as any }, // zero-delay backoff for tests
-  )
-  assert.equal(calls, 3)
-  assert.equal(res.ok, true)
-  assert.equal(res.status, 200)
-
-  const resFail = await attemptWebhook(
-    { method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
-    { delays: [0], fetchImpl: (async () => { throw new Error("nope") }) as any },
-  )
-  assert.equal(resFail.ok, false)
-  assert.match(resFail.error ?? "", /nope/)
-}
-
-await testAttemptWebhookRetriesAndReports()
 
 const { diffAlerts } = await import("../services/alert-sampler")
 
@@ -542,5 +516,108 @@ async function testTransports() {
 }
 
 await testTransports()
+
+const queue = await import("../services/notification-queue")
+
+function memoryStore(connectors: Record<string, { enabled: boolean; rateLimitPerMinute: number }>) {
+  type Row = { id: string; connectorId: string; status: string; attempts: number; nextAttemptAt: Date; event: string; error: string; sentAt: Date | null; at: Date }
+  const rows: Row[] = []
+  let seq = 0
+  const store: import("../services/notification-queue").DeliveryStore = {
+    async resetSending() { let n = 0; for (const r of rows) if (r.status === "sending") { r.status = "pending"; n++ } return n },
+    async due(now, limit) {
+      return rows.filter(r => r.status === "pending" && r.nextAttemptAt <= now)
+        .sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, limit)
+        .map(r => ({ id: r.id, connectorId: r.connectorId, attempts: r.attempts, event: r.event }))
+    },
+    async connector(id) { return connectors[id] ?? null },
+    async sentSince(id, since) { return rows.filter(r => r.connectorId === id && r.status === "sent" && r.sentAt && r.sentAt > since).map(r => r.sentAt!) },
+    async update(id, patch) { Object.assign(rows.find(r => r.id === id)!, patch) },
+    async insertPending(list) { for (const l of list) rows.push({ id: `r${seq++}`, connectorId: l.connectorId, status: "pending", attempts: 0, nextAttemptAt: l.now, event: l.event, error: "", sentAt: null, at: new Date(l.now.getTime() + seq) }) },
+    async oldestPending(count) { return rows.filter(r => r.status === "pending").sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, count).map(r => r.id) },
+    async countPending() { return rows.filter(r => r.status === "pending").length },
+    async prune() {},
+  }
+  return { store, rows }
+}
+
+async function testDeliveryQueue() {
+  const t0 = new Date("2026-09-28T08:00:00.000Z")
+  const at = (ms: number) => new Date(t0.getTime() + ms)
+  const event = { type: "alert.raised" as const, severity: "warning" as const, source: "s", target: "t", message: "m", time: t0.toISOString() }
+
+  // Pure planning.
+  assert.equal(queue.planAfterAttempt(0, { ok: true }, t0).status, "sent")
+  const retry = queue.planAfterAttempt(0, { ok: false, error: "x" }, t0)
+  assert.deepEqual([retry.status, retry.attempts, retry.nextAttemptAt.getTime() - t0.getTime()], ["pending", 1, 2_000])
+  assert.equal(queue.planAfterAttempt(1, { ok: false }, t0).nextAttemptAt.getTime() - t0.getTime(), 10_000)
+  assert.equal(queue.planAfterAttempt(2, { ok: false, error: "x" }, t0).status, "failed")
+  assert.equal(queue.rateLimitedUntil([at(-30_000)], 2, t0), null)
+  assert.equal(queue.rateLimitedUntil([at(-30_000), at(-10_000)], 2, t0)?.getTime(), at(30_000).getTime())
+  assert.equal(queue.rateLimitedUntil([at(-70_000), at(-10_000)], 2, t0), null)
+
+  // Retries then failure, one attempt per tick.
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    await queue.enqueue(store, ["c"], event, t0)
+    let calls = 0
+    const deliver = async () => { calls++; return { ok: false, error: "down" } }
+    await queue.runDeliveryTick(store, deliver, t0)
+    await queue.runDeliveryTick(store, deliver, at(1_000)) // not due yet
+    await queue.runDeliveryTick(store, deliver, at(2_000))
+    await queue.runDeliveryTick(store, deliver, at(12_000))
+    assert.equal(calls, 3)
+    assert.deepEqual([rows[0]!.status, rows[0]!.attempts, rows[0]!.error], ["failed", 3, "down"])
+  }
+
+  // Crash recovery: a row left in "sending" is retried after restart.
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    await queue.enqueue(store, ["c"], event, t0)
+    rows[0]!.status = "sending"
+    assert.equal(await store.resetSending(), 1)
+    await queue.runDeliveryTick(store, async () => ({ ok: true }), t0)
+    assert.equal(rows[0]!.status, "sent")
+  }
+
+  // Rate limit inside a single tick: 12 rows, limit 10 -> 10 sent, 2 delayed.
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    for (let i = 0; i < 12; i++) await queue.enqueue(store, ["c"], event, t0)
+    await queue.runDeliveryTick(store, async () => ({ ok: true }), t0)
+    assert.equal(rows.filter(r => r.status === "sent").length, 10)
+    const delayed = rows.filter(r => r.status === "pending")
+    assert.equal(delayed.length, 2)
+    assert.ok(delayed.every(r => r.nextAttemptAt.getTime() === at(60_000).getTime() && r.attempts === 0))
+  }
+
+  // Disabled / removed connectors fail their rows without sending.
+  {
+    const { store, rows } = memoryStore({ off: { enabled: false, rateLimitPerMinute: 10 } })
+    await queue.enqueue(store, ["off", "gone"], event, t0)
+    let calls = 0
+    await queue.runDeliveryTick(store, async () => { calls++; return { ok: true } }, t0)
+    assert.equal(calls, 0)
+    assert.deepEqual(rows.map(r => [r.status, r.error]), [["failed", "connector disabled"], ["failed", "connector removed"]])
+  }
+
+  // Queue cap: the oldest pending rows are failed with "queue full".
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    for (let i = 0; i < queue.QUEUE_CAP + 2; i++) await queue.enqueue(store, ["c"], event, t0)
+    assert.equal(await store.countPending(), queue.QUEUE_CAP)
+    assert.deepEqual(rows.slice(0, 2).map(r => [r.status, r.error]), [["failed", "queue full"], ["failed", "queue full"]])
+  }
+
+  // A throwing transport counts as a failed attempt.
+  {
+    const { store, rows } = memoryStore({ c: { enabled: true, rateLimitPerMinute: 10 } })
+    await queue.enqueue(store, ["c"], event, t0)
+    await queue.runDeliveryTick(store, async () => { throw new Error("boom") }, t0)
+    assert.deepEqual([rows[0]!.status, rows[0]!.error], ["pending", "boom"])
+  }
+}
+
+await testDeliveryQueue()
 
 console.log("Backend security tests passed")

@@ -1,5 +1,6 @@
 import { prisma } from "@app/database"
 import { log } from "../utils/log"
+import { enqueueDeliveries } from "./notification-queue"
 
 // Notification engine core: pure functions (interpolation, rule matching,
 // webhook request rendering). Transport and persistence live in the
@@ -108,9 +109,8 @@ export function renderWebhookRequest(
 }
 
 // ---------------------------------------------------------------------------
-// Dispatcher: transport, persistence and delivery. Uses the pure functions
-// above; the only DB-free entry points remain the pure helpers + attemptWebhook
-// (fetch is injectable there).
+// Dispatcher: routes an event to the in-app bell and to the delivery queue
+// (notification-queue.ts). Transports live in notification-transports.ts.
 // ---------------------------------------------------------------------------
 
 export const IN_APP_CONNECTOR_ID = "inapp"
@@ -179,47 +179,16 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
   },
 ]
 
-// One transport attempt per call site loop. `fetchImpl` injectable for tests.
-export interface AttemptOpts { delays?: number[]; fetchImpl?: typeof fetch }
-export async function attemptWebhook(
-  req: WebhookRequest,
-  opts: AttemptOpts = {},
-): Promise<{ ok: boolean; status?: number; error?: string }> {
-  const delays = opts.delays ?? [2_000, 10_000] // 3 attempts max (spec)
-  const doFetch = opts.fetchImpl ?? fetch
-  let lastError = "unknown error"
-  for (let i = 0; i <= delays.length; i++) {
-    if (i > 0) await new Promise(r => setTimeout(r, delays[i - 1]))
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 10_000)
-    try {
-      const res = await doFetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-        signal: controller.signal,
-      })
-      if (res.ok) return { ok: true, status: res.status }
-      lastError = `HTTP ${res.status}`
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : String(e)
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  return { ok: false, error: lastError }
-}
-
 const RULES_CACHE_TTL_MS = 30_000
-let rulesCache: { rules: Array<{ id: string; name: string; sourcePrefix: string; minSeverity: string; connectorIds: string; enabled: boolean }>; connectors: Array<{ id: string; name: string; type: string; method: string; url: string; headers: string; bodyTemplate: string; enabled: boolean }>; at: number } | null = null
+let rulesCache: { rules: Array<{ id: string; name: string; sourcePrefix: string; minSeverity: string; connectorIds: string; enabled: boolean }>; connectorIds: Set<string>; at: number } | null = null
 
 async function loadConfig() {
   if (rulesCache && Date.now() - rulesCache.at < RULES_CACHE_TTL_MS) return rulesCache
   const [rules, connectors] = await Promise.all([
     prisma.notificationRule.findMany({ where: { enabled: true } }),
-    prisma.notificationConnector.findMany({ where: { enabled: true } }),
+    prisma.notificationConnector.findMany({ where: { enabled: true }, select: { id: true } }),
   ])
-  rulesCache = { rules, connectors, at: Date.now() }
+  rulesCache = { rules, connectorIds: new Set(connectors.map(c => c.id)), at: Date.now() }
   return rulesCache
 }
 
@@ -234,39 +203,21 @@ async function deliverInApp(event: NotificationEvent): Promise<void> {
   }
 }
 
-async function deliverWebhook(connector: { id: string; method: string; url: string; headers: string; bodyTemplate: string }, event: NotificationEvent, test: boolean): Promise<void> {
-  const req = renderWebhookRequest(connector, event)
-  const result = await attemptWebhook(req)
-  await prisma.notificationDelivery.create({
-    data: { connectorId: connector.id, ok: result.ok, error: result.error ?? "", test },
-  })
-  // Prune: keep the 200 most recent rows.
-  const keep = await prisma.notificationDelivery.findMany({ orderBy: { at: "desc" }, take: 200, select: { at: true } })
-  if (keep.length === 200) {
-    await prisma.notificationDelivery.deleteMany({ where: { at: { lt: keep[keep.length - 1]!.at } } })
-  }
-}
-
 // Fire-and-forget entry point: callers do NOT await this in the sampling path.
-export async function dispatchEvent(event: NotificationEvent, opts: { onlyConnectorId?: string; test?: boolean } = {}): Promise<void> {
+// In-app notifications are written immediately; external connectors go
+// through the persistent delivery queue.
+export async function dispatchEvent(event: NotificationEvent): Promise<void> {
   try {
     const config = await loadConfig()
-    let ids = selectConnectorIds(config.rules, event)
-    if (opts.onlyConnectorId) ids = ids.filter(id => id === opts.onlyConnectorId)
-    for (const id of ids) {
-      // Per-connector isolation: an in-app or webhook failure must never
-      // prevent the remaining connectors of the same event from being delivered.
+    const ids = selectConnectorIds(config.rules, event)
+    if (ids.includes(IN_APP_CONNECTOR_ID)) {
       try {
-        if (id === IN_APP_CONNECTOR_ID) {
-          await deliverInApp(event)
-        } else {
-          const connector = config.connectors.find(c => c.id === id && c.enabled && c.type === "webhook")
-          if (connector) await deliverWebhook(connector, event, opts.test ?? false)
-        }
+        await deliverInApp(event)
       } catch (e) {
-        log.error({ err: e, connectorId: id }, "notifications: connector delivery failed")
+        log.error({ err: e }, "notifications: in-app delivery failed")
       }
     }
+    await enqueueDeliveries(ids.filter(id => id !== IN_APP_CONNECTOR_ID && config.connectorIds.has(id)), event)
   } catch (e) {
     log.error({ err: e }, "notifications: dispatch failed") // never crash the caller
   }
