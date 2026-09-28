@@ -166,7 +166,7 @@ cleanup_install_exit() {
         systemctl disable "$(basename "$unitfile")" >/dev/null 2>&1 || true
         rm -f "$unitfile"
       done
-      cp -- "$ROLLBACK_DIR"/units/* /etc/systemd/system/ 2>/dev/null || true
+      cp -P -- "$ROLLBACK_DIR"/units/* /etc/systemd/system/ 2>/dev/null || true
       systemctl daemon-reload
       if [[ -f "$ROLLBACK_DIR/units.enabled" ]]; then
         xargs -r systemctl enable < "$ROLLBACK_DIR/units.enabled" >/dev/null 2>&1 || true
@@ -243,7 +243,11 @@ detect_legacy_app_install() {
 migrate_service_names() {
   local unit changed=0
   for unit in "${APP_NAME}.service" "${APP_NAME}-root-worker.service"; do
-    if [[ -e "/etc/systemd/system/$unit" ]]; then
+    if [[ -L "/etc/systemd/system/$unit" ]]; then
+      # Alias left for a release older than #21 (see below): not a unit.
+      rm -f "/etc/systemd/system/$unit"
+      changed=1
+    elif [[ -e "/etc/systemd/system/$unit" ]]; then
       systemctl stop "$unit" 2>/dev/null || true
       systemctl disable "$unit" 2>/dev/null || true
       rm -f "/etc/systemd/system/$unit"
@@ -679,7 +683,7 @@ else
     for f in /etc/systemd/system/${APP_NAME}*.service /etc/systemd/system/${APP_NAME}*.target \
              /etc/systemd/system/${APP_NAME}*.timer /etc/systemd/system/${APP_NAME}*.path; do
       [[ -f "$f" ]] || continue
-      cp -- "$f" "$ROLLBACK_DIR/units/"
+      cp -P -- "$f" "$ROLLBACK_DIR/units/"
       if systemctl is-enabled "$(basename "$f")" 2>/dev/null | grep -qx enabled; then
         basename "$f" >> "$ROLLBACK_DIR/units.enabled"
       fi
@@ -1104,6 +1108,14 @@ ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR
 [Install]
 WantedBy=${APP_NAME}.target
 EOF
+
+# A release older than #21 ships a backend whose update pre-flight checks the
+# old unit names: keep them as aliases so updating from the dashboard keeps
+# working. migrate_service_names removes them once a newer release is installed.
+if [[ "${RELEASE_WORKER_BIN:-}" == "${RELEASE_APP_NAME}-root-worker" ]]; then
+  ln -sfn "/etc/systemd/system/${APP_NAME}-server.service" "/etc/systemd/system/${APP_NAME}.service"
+  ln -sfn "/etc/systemd/system/${APP_NAME}-worker.service" "/etc/systemd/system/${APP_NAME}-root-worker.service"
+fi
 
 systemctl daemon-reload
 systemctl enable "${APP_NAME}.target"
