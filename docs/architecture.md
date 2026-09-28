@@ -44,8 +44,8 @@ Browser ───────────▶  backend  ◀───────�
 
 | Process | Unit | Runs as | Responsibility |
 |---|---|---|---|
-| **backend** (`apps/backend`) | `hsi` | unprivileged app user | Serves the API and the built dashboard. Owns auth, the database, and business logic. Holds **no** root rights. |
-| **root-worker** (`apps/root-worker`, Go) | `hsi-root-worker` | `root` | Executes privileged operations only: ownership-preserving file ops, `chmod`/`chown`, user-impersonated writes, disk/RAID/LVM/mount management, and Samba config. |
+| **backend** (`apps/backend`) | `hsi-server` | unprivileged app user | Serves the API and the built dashboard. Owns auth, the database, and business logic. Holds **no** root rights. |
+| **root-worker** (`apps/root-worker`, Go) | `hsi-worker` | `root` | Executes privileged operations only: ownership-preserving file ops, `chmod`/`chown`, user-impersonated writes, disk/RAID/LVM/mount management, and Samba config. |
 | **NATS** | `hsi-nats` | service user | JetStream message broker linking backend ↔ root-worker via request/reply. |
 
 The backend never shells out as root. When it needs a privileged action it

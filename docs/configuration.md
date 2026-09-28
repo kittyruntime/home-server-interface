@@ -75,13 +75,21 @@ Optional packages enable a feature and are only reported when missing:
 
 | Unit | Role |
 |---|---|
+| `hsi.target` | The whole stack; the only unit enabled at boot |
 | `hsi-nats` | NATS JetStream message broker |
-| `hsi-root-worker` | Privileged filesystem/disk worker (runs as root) |
-| `hsi` | Backend API + static dashboard server |
+| `hsi-worker` | Privileged filesystem/disk worker (runs as root) |
+| `hsi-server` | Backend API + static dashboard server |
 
 ```bash
-systemctl status hsi hsi-root-worker hsi-nats
+systemctl restart hsi.target
+systemctl status hsi-server hsi-worker hsi-nats
 ```
+
+`systemctl stop|start|restart hsi.target` acts on the three services; each
+can still be managed on its own. An active target does not mean every
+component is healthy: check the services individually. The scheduled disk
+checks (`hsi-maintenance.timer`) and the update units (`hsi-update-check`,
+`hsi-update-apply`) are not part of the target.
 
 ## Logs
 
@@ -117,7 +125,7 @@ dump) can still appear as plain text.
 Every async operation has a `jobId` that appears in both files. The worker logs
 each job it receives and its outcome, and every synchronous request that fails.
 Set `HSI_LOG_LEVEL=debug` in `/etc/hsi/worker.env` and restart
-`hsi-root-worker` to also log successful requests and every external command
+`hsi-worker` to also log successful requests and every external command
 the worker runs (`mdadm`, `parted`, `smartctl`…) with its exit code, duration
 and trimmed output. Command failures are logged at `debug` as well: many probes
 fail routinely, and a failure that matters already shows up as a failed job or

@@ -133,12 +133,13 @@ mount -a                    # (re)apply fstab by hand
 
 ## systemd services
 
-HSI itself is three ordinary systemd units — see [Services](../README.md#services)
-in the README for the full list and log commands.
+HSI itself is three ordinary systemd units grouped under `hsi.target`; see
+[Services](../README.md#services) in the README for the full list and log
+commands.
 
 ```bash
-systemctl status hsi hsi-root-worker hsi-nats
-journalctl -u hsi -f
+systemctl status hsi-server hsi-worker hsi-nats
+systemctl stop hsi.target      # stop HSI entirely, e.g. before manual work
 ```
 
 ## What this doesn't cover yet

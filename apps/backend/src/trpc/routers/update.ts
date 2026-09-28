@@ -170,12 +170,14 @@ export const updateRouter = router({
       checks.push({ id: "disk", label: "Free disk space", status: "ok", detail: `${fmtMb(free)} available` })
     }
 
-    // 2. HSI services are up (so the update can actually restart into the new version)
-    const units = ["hsi", "hsi-root-worker", "hsi-nats"] as const
+    // 2. HSI services are up (so the update can actually restart into the new
+    //    version). Checked one by one: an active hsi.target does not mean every
+    //    component is running.
+    const units = ["hsi-server", "hsi-worker", "hsi-nats"] as const
     const states = await Promise.all(units.map(u => systemdActive(u)))
     const down = units.filter((_, i) => !states[i])
     if (down.length === 0) {
-      checks.push({ id: "services", label: "HSI services", status: "ok", detail: "hsi, hsi-root-worker, hsi-nats all active" })
+      checks.push({ id: "services", label: "HSI services", status: "ok", detail: "hsi-server, hsi-worker, hsi-nats all active" })
     } else {
       checks.push({ id: "services", label: "HSI services", status: "fail", detail: `Inactive: ${down.join(", ")}` })
     }
