@@ -393,4 +393,40 @@ async function testReadJobLogs() {
 
 await testReadJobLogs()
 
+const secrets = await import("../services/secrets")
+
+async function testSecrets() {
+  const key = Buffer.alloc(32, 7)
+  const other = Buffer.alloc(32, 8)
+
+  const enc = secrets.encryptSecret("https://discord.com/api/webhooks/1/abc", key)
+  assert.ok(secrets.isEncrypted(enc))
+  assert.ok(enc.startsWith("enc:v1:"))
+  assert.ok(!enc.includes("discord"))
+  assert.equal(secrets.decryptSecret(enc, key), "https://discord.com/api/webhooks/1/abc")
+  // Random IV: same plaintext, different ciphertext.
+  assert.notEqual(secrets.encryptSecret("x", key), secrets.encryptSecret("x", key))
+
+  assert.throws(() => secrets.decryptSecret(enc, other), (e: Error) => e instanceof secrets.SecretsError && e.message === secrets.UNREADABLE_SECRETS)
+  const parts = enc.split(":")
+  parts[4] = Buffer.from("tampered").toString("base64")
+  assert.throws(() => secrets.decryptSecret(parts.join(":"), key), secrets.SecretsError)
+  assert.throws(() => secrets.encryptSecret("x", null), /HSI_SECRETS_KEY missing/)
+
+  // Legacy plaintext is returned as-is; encrypted values need the key.
+  assert.equal(secrets.revealSecret("plain", null), "plain")
+  assert.equal(secrets.revealSecret(enc, key), "https://discord.com/api/webhooks/1/abc")
+  assert.throws(() => secrets.revealSecret(enc, null), /HSI_SECRETS_KEY missing/)
+
+  const prev = process.env.HSI_SECRETS_KEY
+  process.env.HSI_SECRETS_KEY = "ab".repeat(32)
+  assert.equal(secrets.secretsKey()?.length, 32)
+  process.env.HSI_SECRETS_KEY = "too-short"
+  assert.equal(secrets.secretsKey(), null)
+  if (prev === undefined) delete process.env.HSI_SECRETS_KEY
+  else process.env.HSI_SECRETS_KEY = prev
+}
+
+await testSecrets()
+
 console.log("Backend security tests passed")
