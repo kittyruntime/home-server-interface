@@ -3,8 +3,9 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { prisma, PrismaClient } from "@app/database"
 import {
-  attemptWebhook, renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID,
+  renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID,
 } from "../../services/notifications"
+import { sendWebhook } from "../../services/notification-transports"
 
 const severityEnum = z.enum(["info", "warning", "critical"])
 
@@ -117,9 +118,9 @@ export const notificationsRouter = router({
   })).mutation(async ({ input }) => {
     const event = sampleEvent()
     const req = renderWebhookRequest(input, event)
-    const result = await attemptWebhook(req, { delays: [] }) // single attempt, no retry storm
+    const result = await sendWebhook(req) // single attempt, no queue
     await prisma.notificationDelivery.create({
-      data: { connectorId: input.id ?? "test", ok: result.ok, error: result.error ?? "", test: true },
+      data: { connectorId: input.id ?? "test", status: result.ok ? "sent" : "failed", ok: result.ok, error: result.error ?? "", test: true },
     })
     return result
   }),
