@@ -129,7 +129,7 @@ cleanup_install_exit() {
   set +e
   if (( status != 0 )); then
     if (( SERVICES_STOPPED == 1 )); then
-      systemctl stop "${APP_NAME}" "${APP_NAME}-root-worker" >/dev/null 2>&1 || true
+      systemctl stop "${APP_NAME}-server" "${APP_NAME}-worker" "${APP_NAME}" "${APP_NAME}-root-worker" >/dev/null 2>&1 || true
     fi
     if [[ -n "$ROLLBACK_DIR" && -d "$ROLLBACK_DIR" ]]; then
       warn "Install failed — restoring the previous application files."
@@ -551,7 +551,7 @@ fi
 # =============================================================================
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   step "Stopping services before update"
-  systemctl stop "${APP_NAME}" "${APP_NAME}-root-worker" 2>/dev/null || true
+  systemctl stop "${APP_NAME}-server" "${APP_NAME}-worker" "${APP_NAME}" "${APP_NAME}-root-worker" 2>/dev/null || true
   SERVICES_STOPPED=1
   success "Application services stopped"
 fi
@@ -919,10 +919,25 @@ $LOG_DIR/*.log {
 }
 ROTATE
 
+# The stack: hsi.target starts, stops and restarts NATS, the worker and the
+# server together (PartOf=); each service can still be managed on its own.
+# Only the target is enabled at boot. Timers and the update units stay
+# outside, so stopping the stack never kills a running update.
+cat > /etc/systemd/system/${APP_NAME}.target <<EOF
+[Unit]
+Description=${APP_NAME} stack (NATS, worker, server)
+Wants=${APP_NAME}-nats.service ${APP_NAME}-worker.service ${APP_NAME}-server.service
+After=${APP_NAME}-nats.service ${APP_NAME}-worker.service ${APP_NAME}-server.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 cat > /etc/systemd/system/${APP_NAME}-nats.service <<EOF
 [Unit]
 Description=${APP_NAME} NATS JetStream Server
 After=network.target
+PartOf=${APP_NAME}.target
 
 [Service]
 ExecStart=/usr/local/bin/nats-server --config $NATS_CONF
@@ -935,14 +950,15 @@ StandardError=journal
 SyslogIdentifier=${APP_NAME}-nats
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=${APP_NAME}.target
 EOF
 
-cat > /etc/systemd/system/${APP_NAME}-root-worker.service <<EOF
+cat > /etc/systemd/system/${APP_NAME}-worker.service <<EOF
 [Unit]
-Description=${APP_NAME} Root Worker
+Description=${APP_NAME} worker (root)
 After=network.target ${APP_NAME}-nats.service
 Requires=${APP_NAME}-nats.service
+PartOf=${APP_NAME}.target
 
 [Service]
 ExecStart=/usr/local/bin/${APP_NAME}-worker
@@ -953,10 +969,10 @@ Restart=on-failure
 RestartSec=5
 StandardOutput=append:$LOG_DIR/root-worker.log
 StandardError=append:$LOG_DIR/root-worker.log
-SyslogIdentifier=${APP_NAME}-root-worker
+SyslogIdentifier=${APP_NAME}-worker
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=${APP_NAME}.target
 EOF
 
 # Scheduled disk checks (SMART self-tests, RAID consistency checks). Runs the
@@ -996,12 +1012,13 @@ else
   SOURCE_EXTRA="Environment=INSTALL_DIR=${INSTALL_DIR}"
 fi
 
-cat > /etc/systemd/system/${APP_NAME}.service <<EOF
+cat > /etc/systemd/system/${APP_NAME}-server.service <<EOF
 [Unit]
-Description=${APP_NAME} Backend
+Description=${APP_NAME} server
 Documentation=https://github.com/${REPO}
-After=network.target ${APP_NAME}-nats.service ${APP_NAME}-root-worker.service
-Requires=${APP_NAME}-nats.service ${APP_NAME}-root-worker.service
+After=network.target ${APP_NAME}-nats.service ${APP_NAME}-worker.service
+Requires=${APP_NAME}-nats.service ${APP_NAME}-worker.service
+PartOf=${APP_NAME}.target
 StartLimitIntervalSec=0
 
 [Service]
@@ -1016,7 +1033,7 @@ Restart=on-failure
 RestartSec=5
 StandardOutput=append:$LOG_DIR/app.log
 StandardError=append:$LOG_DIR/app.log
-SyslogIdentifier=${APP_NAME}
+SyslogIdentifier=${APP_NAME}-server
 
 NoNewPrivileges=true
 ProtectSystem=strict
@@ -1026,15 +1043,16 @@ ProtectHome=read-only
 ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=${APP_NAME}.target
 EOF
 
 systemctl daemon-reload
-systemctl enable "${APP_NAME}-nats" "${APP_NAME}-root-worker" "${APP_NAME}"
+systemctl enable "${APP_NAME}.target"
 systemctl enable --now "${APP_NAME}-maintenance.timer"
-systemctl restart "${APP_NAME}-nats"
-systemctl restart "${APP_NAME}-root-worker"
-systemctl restart "${APP_NAME}"
+# Restart each service explicitly so it runs the new files even when the
+# target was already active, then make sure the target itself is started.
+systemctl restart "${APP_NAME}-nats" "${APP_NAME}-worker" "${APP_NAME}-server"
+systemctl start "${APP_NAME}.target"
 SERVICES_STOPPED=0
 CORE_INSTALL_COMPLETE=1
 DB_ROLLBACK_FILE=""
@@ -1284,8 +1302,10 @@ if [[ "$IS_UPDATE" -eq 0 ]]; then
 fi
 
 echo -e "  ${BOLD}Useful commands:${NC}"
-echo -e "    systemctl status ${APP_NAME}               # backend"
-echo -e "    systemctl status ${APP_NAME}-root-worker   # privilege worker"
+echo -e "    systemctl status ${APP_NAME}.target        # whole stack"
+echo -e "    systemctl restart ${APP_NAME}.target       # restart everything"
+echo -e "    systemctl status ${APP_NAME}-server        # backend"
+echo -e "    systemctl status ${APP_NAME}-worker        # privileged worker"
 echo -e "    systemctl status ${APP_NAME}-nats          # message bus"
 echo -e "    tail -f ${LOG_DIR}/app.log               # backend logs"
 echo -e "    tail -f ${LOG_DIR}/root-worker.log       # worker logs"
