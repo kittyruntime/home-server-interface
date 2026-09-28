@@ -207,7 +207,7 @@ func runMaintenance(now time.Time, only string) error {
 	return nil
 }
 
-// runMaintenanceCLI is `hsi-root-worker maintenance`, run hourly by
+// runMaintenanceCLI is `hsi-worker maintenance`, run hourly by
 // hsi-maintenance.timer.
 func runMaintenanceCLI() int {
 	if err := runMaintenance(time.Now(), ""); err != nil {

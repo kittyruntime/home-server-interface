@@ -966,7 +966,7 @@ func main() {
 	// perms elsewhere (0644 config files) are unaffected — a mask only clears bits.
 	syscall.Umask(int(workerCreateMask))
 
-	// `hsi-root-worker maintenance`: scheduled disk checks, run by
+	// `hsi-worker maintenance`: scheduled disk checks, run by
 	// hsi-maintenance.timer without NATS or the backend.
 	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
 		os.Exit(runMaintenanceCLI())

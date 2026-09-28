@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   external command it runs (`mdadm`, `parted`, `smartctl`...) with its exit
   code, duration and output.
 
+### Changed
+- **One target for the whole stack**: `systemctl start|stop|restart hsi.target`
+  controls NATS, the worker and the server; each still works on its own.
+  Services are renamed `hsi-server` (was `hsi`) and `hsi-worker` (was
+  `hsi-root-worker`, binary included). Updates migrate existing installs
+  automatically, and a failed update restores the previous services.
+
+### Fixed
+- **Worker private /tmp**: the worker no longer runs with `PrivateTmp`, which
+  gave it a separate mount namespace.
+
 ### Security
 - **Encrypted notification secrets**: webhook URLs, header values (except
   `Content-Type`) and SMTP passwords are encrypted with a new `HSI_SECRETS_KEY`,

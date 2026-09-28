@@ -4,7 +4,7 @@ import "time"
 
 // Scheduled disk maintenance: SMART self-tests and md consistency checks.
 // The schedule lives in /etc/hsi/maintenance.json and is run by a systemd
-// timer (`hsi-root-worker maintenance`, hourly), so it keeps working when the
+// timer (`hsi-worker maintenance`, hourly), so it keeps working when the
 // dashboard or the backend is down.
 
 type taskSchedule struct {

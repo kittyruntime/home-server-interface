@@ -184,10 +184,10 @@ The script:
 1. Creates a system user
 2. Installs Node.js 22 via nvm (in the app user's home)
 3. Downloads and installs the [NATS](https://nats.io) message broker
-4. Installs the `root-worker` privilege worker
+4. Installs the privileged worker (`hsi-worker`)
 5. Applies the database schema
 6. Seeds an `admin / admin` account
-7. Registers and starts three systemd services: `hsi-nats`, `hsi-root-worker`, `hsi`
+7. Registers three systemd services (`hsi-nats`, `hsi-worker`, `hsi-server`) grouped under `hsi.target`, and starts them
 8. Configures nginx if present
 
 > **Change the admin password immediately after first login.**
@@ -195,7 +195,10 @@ The script:
 ### Update
 
 Re-run the same command. The script detects an existing installation, preserves
-the database and all secrets, and restarts the services.
+the database and all secrets, and restarts the services. Installs from before
+`hsi.target` are migrated automatically (`hsi` becomes `hsi-server`,
+`hsi-root-worker` becomes `hsi-worker`); if the update fails, the previous
+services are restored.
 
 ### Pin a version
 
@@ -207,16 +210,25 @@ curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/
 
 ## Services
 
+HSI runs as three systemd services grouped under `hsi.target`:
+
 | Unit | Role |
 |---|---|
+| `hsi.target` | The whole stack: start, stop or restart everything at once. Enabled at boot. |
+| `hsi-server` | Backend API + static file server (unprivileged user) |
+| `hsi-worker` | Privileged filesystem and disk worker (runs as root) |
 | `hsi-nats` | NATS JetStream message broker |
-| `hsi-root-worker` | Privileged filesystem worker (runs as root) |
-| `hsi` | Backend API + static file server |
 
 ```bash
-systemctl status hsi hsi-root-worker hsi-nats
-journalctl -u hsi -f
+sudo systemctl restart hsi.target      # whole stack
+sudo systemctl restart hsi-worker      # one component
+systemctl status hsi-server hsi-worker hsi-nats
+tail -f /var/log/hsi/app.log /var/log/hsi/root-worker.log
+journalctl -u hsi-nats -f
 ```
+
+An active `hsi.target` does not mean every component is healthy: check the
+three services individually.
 
 ---
 
