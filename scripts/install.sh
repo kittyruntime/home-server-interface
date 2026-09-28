@@ -143,8 +143,12 @@ cleanup_install_exit() {
           mv -- "$backup" "$target"
         fi
       done
-      if [[ -f "$ROLLBACK_DIR/system-root-worker" ]]; then
-        install -m 755 "$ROLLBACK_DIR/system-root-worker" "/usr/local/bin/${APP_NAME}-root-worker"
+      if compgen -G "$ROLLBACK_DIR/system-bin-*" >/dev/null; then
+        rm -f "/usr/local/bin/${APP_NAME}-worker" "/usr/local/bin/${APP_NAME}-root-worker"
+        local saved
+        for saved in "$ROLLBACK_DIR"/system-bin-*; do
+          install -m 755 "$saved" "/usr/local/bin/${saved##*/system-bin-}"
+        done
       fi
     fi
     if [[ -n "$DB_ROLLBACK_FILE" && -f "$DB_ROLLBACK_FILE" && -n "${DB_FILE:-}" ]]; then
@@ -487,9 +491,14 @@ else
   done || die "Release archive has an unsafe or unexpected layout."
   mkdir -p "$RELEASE_STAGE"
   tar -xzf "$TARBALL" --no-same-owner --strip-components=1 -C "$RELEASE_STAGE"
+  # Worker binary: bin/hsi-worker since #21; older releases ship bin/hsi-root-worker.
+  RELEASE_WORKER_BIN=""
+  for candidate in "${RELEASE_APP_NAME}-worker" "${RELEASE_APP_NAME}-root-worker"; do
+    if [[ -x "$RELEASE_STAGE/bin/$candidate" ]]; then RELEASE_WORKER_BIN="$candidate"; break; fi
+  done
   [[ -f "$RELEASE_STAGE/server.js" \
      && -f "$RELEASE_STAGE/public/index.html" \
-     && -x "$RELEASE_STAGE/bin/${RELEASE_APP_NAME}-root-worker" \
+     && -n "$RELEASE_WORKER_BIN" \
      && -d "$RELEASE_STAGE/database/prisma" \
      && -d "$RELEASE_STAGE/compose/src" \
      && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
@@ -556,13 +565,13 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   run_as "$APP_USER" "cd '$APP_DIR' && pnpm install --frozen-lockfile"
   success "Dependencies installed"
 
-  step "Building root-worker"
+  step "Building worker"
   (
     cd "$APP_DIR/apps/root-worker"
-    CGO_ENABLED=0 go build -ldflags="-s -w" -o "${APP_NAME}-root-worker" .
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o "${APP_NAME}-worker" .
   )
-  install -m 755 "$APP_DIR/apps/root-worker/${APP_NAME}-root-worker" /usr/local/bin/${APP_NAME}-root-worker
-  success "Installed: /usr/local/bin/${APP_NAME}-root-worker"
+  install -m 755 "$APP_DIR/apps/root-worker/${APP_NAME}-worker" "/usr/local/bin/${APP_NAME}-worker"
+  success "Installed: /usr/local/bin/${APP_NAME}-worker"
 
   step "Building backend"
   run_as "$APP_USER" "cd '$APP_DIR' && pnpm --filter @app/backend build"
@@ -613,9 +622,11 @@ else
         mv -- "$INSTALL_DIR/$rel" "$ROLLBACK_DIR/$rel"
       fi
     done
-    if [[ -f "/usr/local/bin/${APP_NAME}-root-worker" ]]; then
-      cp -- "/usr/local/bin/${APP_NAME}-root-worker" "$ROLLBACK_DIR/system-root-worker"
-    fi
+    for bin in "${APP_NAME}-worker" "${APP_NAME}-root-worker"; do
+      if [[ -f "/usr/local/bin/$bin" ]]; then
+        cp -- "/usr/local/bin/$bin" "$ROLLBACK_DIR/system-bin-$bin"
+      fi
+    done
   fi
   cp -a "$RELEASE_STAGE/." "$INSTALL_DIR/"
   chown -R "$APP_USER:" \
@@ -642,10 +653,10 @@ else
   ln -sfn ../../compose "$INSTALL_DIR/node_modules/@app/compose"
   success "Extracted to $INSTALL_DIR"
 
-  step "Installing root-worker binary"
-  chmod +x "$INSTALL_DIR/bin/${RELEASE_APP_NAME}-root-worker"
-  install -m 755 "$INSTALL_DIR/bin/${RELEASE_APP_NAME}-root-worker" /usr/local/bin/${APP_NAME}-root-worker
-  success "Installed: /usr/local/bin/${APP_NAME}-root-worker"
+  step "Installing worker binary"
+  chmod +x "$INSTALL_DIR/bin/$RELEASE_WORKER_BIN"
+  install -m 755 "$INSTALL_DIR/bin/$RELEASE_WORKER_BIN" "/usr/local/bin/${APP_NAME}-worker"
+  success "Installed: /usr/local/bin/${APP_NAME}-worker"
 
   step "Checking bundled runtime dependencies"
   PRISMA_BIN="$INSTALL_DIR/node_modules/.bin/prisma"
@@ -934,7 +945,7 @@ After=network.target ${APP_NAME}-nats.service
 Requires=${APP_NAME}-nats.service
 
 [Service]
-ExecStart=/usr/local/bin/${APP_NAME}-root-worker
+ExecStart=/usr/local/bin/${APP_NAME}-worker
 User=root
 EnvironmentFile=$WORKER_ENV
 NoNewPrivileges=no
@@ -958,7 +969,7 @@ Description=${APP_NAME} scheduled disk checks
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/${APP_NAME}-root-worker maintenance
+ExecStart=/usr/local/bin/${APP_NAME}-worker maintenance
 EnvironmentFile=$WORKER_ENV
 Nice=10
 IOSchedulingClass=idle
