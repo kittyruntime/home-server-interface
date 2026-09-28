@@ -149,7 +149,7 @@ func updateMdadmConf(edit func(string) string) []string {
 		return []string{fmt.Sprintf("could not update %s: %v", mdadmConfPath, err)}
 	}
 	if _, err := exec.LookPath("update-initramfs"); err == nil {
-		if out, err := exec.Command("update-initramfs", "-u").CombinedOutput(); err != nil {
+		if out, err := command("update-initramfs", "-u").CombinedOutput(); err != nil {
 			warnings = append(warnings, "update-initramfs failed: "+cmdErrMessage(out, err))
 		}
 	}

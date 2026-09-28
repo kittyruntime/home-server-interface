@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -36,7 +35,7 @@ func parseRaidMemberReq(msg *nats.Msg) (raidMemberReq, *fsError) {
 
 // arrayMembers returns the member devices of /dev/<name> as mdadm reports them.
 func arrayMembers(name string) ([]string, *fsError) {
-	out, err := exec.Command("mdadm", "--detail", "/dev/"+name).CombinedOutput()
+	out, err := command("mdadm", "--detail", "/dev/"+name).CombinedOutput()
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)}
 	}
@@ -110,7 +109,7 @@ func manageRaid(nc *nats.Conn, msg *nats.Msg, op string) {
 		}
 	}
 
-	out, err := exec.Command("mdadm", "--manage", "/dev/"+req.Name, op, target).CombinedOutput()
+	out, err := command("mdadm", "--manage", "/dev/"+req.Name, op, target).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -120,7 +119,7 @@ func manageRaid(nc *nats.Conn, msg *nats.Msg, op string) {
 }
 
 func deviceSize(path string) (int64, error) {
-	out, err := exec.Command("blockdev", "--getsize64", path).Output()
+	out, err := command("blockdev", "--getsize64", path).Output()
 	if err != nil {
 		return 0, err
 	}
