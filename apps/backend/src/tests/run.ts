@@ -496,4 +496,51 @@ async function testConnectorShapes() {
 
 await testConnectorShapes()
 
+const transports = await import("../services/notification-transports")
+const nodemailer = (await import("nodemailer")).default
+
+async function testTransports() {
+  const event = {
+    type: "alert.raised" as const, severity: "critical" as const, source: "storage.raid",
+    target: "md0\r\nBcc: evil@example.com", message: "Array degraded", time: "2026-09-28T08:00:00.000Z",
+  }
+
+  // Webhook: exactly one attempt, errors reported.
+  let calls = 0
+  const ok = await transports.sendWebhook(
+    { method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
+    (async () => { calls++; return new Response(null, { status: 204 }) }) as any,
+  )
+  assert.deepEqual([calls, ok.ok, ok.status], [1, true, 204])
+  const http = await transports.sendWebhook({ method: "POST", url: "https://example.test/hook", headers: {}, body: "{}" },
+    (async () => new Response("no", { status: 500 })) as any)
+  assert.deepEqual([http.ok, http.error], [false, "HTTP 500"])
+
+  // Email rendering: plain interpolation, single-line subject.
+  const smtp = {
+    host: "smtp.example.com", port: 587, security: "starttls" as const, username: "", password: "",
+    from: "nas@example.com", to: ["me@example.com"], subjectTemplate: "[{{event.severity}}] {{event.target}}",
+    bodyTemplate: "{{event.message}} \"quoted\"",
+  }
+  const mail = transports.renderEmail(smtp, event)
+  assert.equal(mail.subject, "[critical] md0 Bcc: evil@example.com")
+  assert.ok(!/[\r\n]/.test(mail.subject))
+  assert.equal(mail.text, "Array degraded \"quoted\"")
+
+  // Delivery through nodemailer's stream transport (no network).
+  const stream = nodemailer.createTransport({ streamTransport: true, buffer: true })
+  let raw = ""
+  const sender = { sendMail: async (m: any) => { const info: any = await stream.sendMail(m); raw = info.message.toString(); return info } }
+  const sent = await transports.sendEmail(smtp, event, sender)
+  assert.equal(sent.ok, true)
+  assert.match(raw, /To: me@example.com/)
+  assert.ok(!/^Bcc:/m.test(raw))
+
+  const failing = { sendMail: async () => { throw new Error("535 auth failed") } }
+  const bad = await transports.sendEmail(smtp, event, failing)
+  assert.deepEqual([bad.ok, bad.error], [false, "535 auth failed"])
+}
+
+await testTransports()
+
 console.log("Backend security tests passed")
