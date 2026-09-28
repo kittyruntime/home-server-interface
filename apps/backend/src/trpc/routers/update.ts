@@ -26,20 +26,20 @@ function installDir(): string {
 // INSTALL_DIR); in the dev checkout the same data dir is nested under
 // packages/. INSTALL_DIR is only set in production, so its presence tells
 // us which layout applies.
-function dbDataDir(): string {
+export function updateStateDir(): string {
   return process.env.INSTALL_DIR
     ? path.join(installDir(), "database", "data")
     : path.join(installDir(), "packages", "database", "data")
 }
 
 function pendingUpdateFile(): string {
-  return path.join(dbDataDir(), ".pending-update")
+  return path.join(updateStateDir(), ".pending-update")
 }
 
 // Same constraint as the pending-update marker: a fresh install cannot create
 // files in INSTALL_DIR itself. Mirrored in scripts/install.sh (hsi-check-update).
 function updateCheckFile(): string {
-  return path.join(dbDataDir(), ".update-check.json")
+  return path.join(updateStateDir(), ".update-check.json")
 }
 
 // Written by versions before the move; read as a fallback until the next check.
@@ -47,7 +47,7 @@ function legacyUpdateCheckFile(): string {
   return path.join(installDir(), ".update-check.json")
 }
 
-function readCurrentVersion(): string {
+export function readCurrentVersion(): string {
   const vf = path.join(installDir(), "VERSION")
   if (fs.existsSync(vf)) return fs.readFileSync(vf, "utf8").trim()
   try {
@@ -211,6 +211,10 @@ export const updateRouter = router({
   apply: adminProcedure
     .input(z.object({ version: z.string().regex(/^v\d+\.\d+\.\d+$/) }))
     .mutation(({ input }) => {
+      // Recorded before the marker: update-watch reports the update as failed
+      // if HSI does not come back on this version.
+      const attempt = { from: readCurrentVersion(), target: input.version, requestedAt: new Date().toISOString() }
+      fs.writeFileSync(path.join(updateStateDir(), ".update-attempt.json"), JSON.stringify(attempt), "utf8")
       fs.writeFileSync(pendingUpdateFile(), input.version, "utf8")
       return { ok: true }
     }),

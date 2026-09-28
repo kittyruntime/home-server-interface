@@ -6,6 +6,8 @@ import { startBackupScheduler } from "./services/backup-scheduler"
 import { ensureDefaultRule } from "./services/notifications"
 import { migrateNotificationStorage } from "./services/notification-connectors"
 import { startDeliveryQueue } from "./services/notification-queue"
+import { startUpdateWatch } from "./services/update-watch"
+import { updateStateDir, readCurrentVersion } from "./trpc/routers/update"
 import { log } from "./utils/log"
 
 // Crashes go through the logger too, so the log file stays one JSON line per event.
@@ -43,6 +45,7 @@ const start = async () => {
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()
+    startUpdateWatch({ dir: updateStateDir, currentVersion: readCurrentVersion })
     startTelemetry(app.log)
     startBackupScheduler()
     void startEventSubscriber(app.log).catch(err => {

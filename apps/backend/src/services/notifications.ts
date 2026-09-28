@@ -11,7 +11,8 @@ export type Severity = "info" | "warning" | "critical"
 
 export interface NotificationEvent {
   // job.failed: a one-off failure (e.g. a backup run) with nothing to clear later.
-  type: "alert.raised" | "alert.cleared" | "job.failed"
+  // update.failed: an HSI update that did not end on the requested version.
+  type: "alert.raised" | "alert.cleared" | "job.failed" | "update.failed"
   severity: Severity
   source: string
   target: string
