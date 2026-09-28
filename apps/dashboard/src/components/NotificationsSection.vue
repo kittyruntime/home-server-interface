@@ -12,15 +12,7 @@ const { confirm } = useConfirm()
 
 type Connector = Awaited<ReturnType<typeof trpc.notifications.connectors.list.query>>[number]
 type Rule = Awaited<ReturnType<typeof trpc.notifications.rules.list.query>>[number]
-type Delivery = {
-  id: string
-  connectorId: string
-  ok: boolean
-  error: string | null
-  test: boolean
-  at: string
-  connectorName: string
-}
+type Delivery = Awaited<ReturnType<typeof trpc.notifications.deliveries.list.query>>[number]
 
 const loading = ref(true)
 const error = ref('')
@@ -46,7 +38,7 @@ async function load() {
     ])
     connectors.value = c
     rules.value = r
-    deliveries.value = d as Delivery[]
+    deliveries.value = d
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to load notifications settings'
   } finally {
@@ -99,16 +91,7 @@ async function reloadAfterSave() {
 async function toggleConnector(c: Connector) {
   actionError.value = ''
   try {
-    await trpc.notifications.connectors.update.mutate({
-      id: c.id,
-      name: c.name,
-      type: 'webhook' as const,
-      method: c.method as 'POST' | 'PUT',
-      url: c.url,
-      headers: c.headers,
-      bodyTemplate: c.bodyTemplate,
-      enabled: !c.enabled,
-    })
+    await trpc.notifications.connectors.setEnabled.mutate({ id: c.id, enabled: !c.enabled })
     await load()
   } catch (e: any) {
     actionError.value = e?.message ?? 'Failed to update connector'
@@ -161,6 +144,23 @@ async function deleteRule(r: Rule) {
   }
 }
 
+function connectorTarget(c: Connector): string {
+  if (c.type === 'smtp') return `${c.smtp?.host}:${c.smtp?.port} → ${c.smtp?.to.join(', ')}`
+  return `${c.method} ${c.url}`
+}
+
+function deliveryDot(d: Delivery): string {
+  if (d.status === 'sent') return 'bg-[var(--c-success)]'
+  if (d.status === 'failed') return 'bg-[var(--c-danger)]'
+  return 'bg-[var(--c-warning)]'
+}
+
+function deliveryText(d: Delivery): string {
+  if (d.status === 'sent') return 'Delivered'
+  if (d.status === 'failed') return d.error || 'Failed'
+  return d.attempts > 0 ? `Retrying (attempt ${d.attempts + 1} of 3): ${d.error}` : 'Queued'
+}
+
 function formatTime(at: string | Date): string {
   const d = new Date(at)
   const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -173,7 +173,7 @@ function formatTime(at: string | Date): string {
   <div>
     <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Notifications</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">
-      Route alert events to the in-app bell and webhook connectors. Rules decide which alerts each target receives.
+      Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.
     </p>
 
     <LoadingState v-if="loading" />
@@ -200,9 +200,10 @@ function formatTime(at: string | Date): string {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ c.name }}</span>
-                  <span class="badge badge-muted">webhook</span>
+                  <span class="badge badge-muted">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</span>
+                  <span v-if="c.secretsUnreadable" class="badge bg-danger/10 text-danger">secrets unreadable</span>
                 </div>
-                <p class="text-xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ c.method }} {{ c.url }}</p>
+                <p class="text-xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
               <ToggleSwitch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
               <button type="button" class="btn btn-ghost btn-xs shrink-0" @click="openConnectorDialog(c)">Edit</button>
@@ -210,7 +211,7 @@ function formatTime(at: string | Date): string {
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-[var(--c-text-3)]">
-            No connectors yet. Add one to send alerts to Discord, Slack, ntfy or any webhook.
+            No connectors yet. Add one to send alerts by email or to Discord, Slack, ntfy or any webhook.
           </p>
         </section>
 
@@ -270,10 +271,9 @@ function formatTime(at: string | Date): string {
           </button>
           <ul v-if="deliveriesExpanded && deliveries.length > 0" class="divide-y divide-[var(--c-border)]">
             <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="d.ok ? 'bg-[var(--c-success)]' : 'bg-[var(--c-danger)]'" />
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
               <span class="font-medium text-[var(--c-text-2)] shrink-0">{{ d.connectorName }}</span>
-              <span v-if="d.ok" class="flex-1 text-[var(--c-text-3)]">Delivered</span>
-              <span v-else class="flex-1 text-[var(--c-danger)] truncate">{{ d.error || 'Failed' }}</span>
+              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-3)]'">{{ deliveryText(d) }}</span>
               <span v-if="d.test" class="badge badge-muted shrink-0">Test</span>
               <span class="text-[var(--c-text-3)] tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
             </li>

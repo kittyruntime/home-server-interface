@@ -130,14 +130,26 @@ rotated away are not shown.
 
 ## Notifications
 
-Settings > Notifications routes events to connectors (the in-app bell, or a
-webhook such as Discord, Slack or ntfy). Rules match on the event source prefix
-and a minimum severity:
+Settings > Notifications routes events to connectors (the in-app bell, a
+webhook such as Discord, Slack or ntfy, or email over SMTP). Rules match on the
+event source prefix and a minimum severity:
 
 | Source | Events |
 |---|---|
 | `storage.smart`, `storage.raid`, `storage.disk-usage` | Alert raised, alert cleared (including manual clears) |
 | `backup.plan` | A backup run failed |
+| `system.update` | An HSI update did not end on the requested version (checked 15 minutes after it started) |
+
+External deliveries go through a queue stored in the database: they survive a
+backend restart, are retried twice (after 2 s and 10 s), and each connector
+sends at most its configured number of messages per minute (10 by default).
+Extra messages wait; none are dropped unless more than 500 are waiting. Recent
+deliveries and their errors are listed at the bottom of the page.
+
+Webhook URLs, header values (except `Content-Type`) and SMTP passwords are
+encrypted with `HSI_SECRETS_KEY` and never shown again after saving. If the
+key changes, affected connectors are flagged and their secrets must be entered
+again.
 
 HSI can only notify while it is running. A server that is powered off, frozen or
 unreachable cannot report its own outage: use an external monitor (for example
