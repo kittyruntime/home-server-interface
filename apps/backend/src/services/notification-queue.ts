@@ -55,7 +55,10 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
+// Ticks never overlap, so a row still "sending" when a tick starts was left
+// behind by an aborted tick (a failed DB write, a crash): send it again.
 export async function runDeliveryTick(store: DeliveryStore, deliver: Deliver, now: Date = new Date()): Promise<void> {
+  await store.resetSending()
   const rows = await store.due(now, BATCH_SIZE)
   for (const row of rows) {
     const connector = await store.connector(row.connectorId)

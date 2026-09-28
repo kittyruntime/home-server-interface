@@ -123,15 +123,37 @@ function assertHttpUrl(url: string): void {
     throw new Error("URL must be a valid http(s) URL")
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("URL must be a valid http(s) URL")
+  if (parsed.username || parsed.password) throw new Error("URL must not contain credentials; put them in an Authorization header")
 }
 
-export function mergeConnectorInput(input: ConnectorInput, stored: ResolvedConnector | null): ResolvedConnector {
+const REBIND = "re-enter the secrets after changing the destination"
+
+function originOf(url: string): string | null {
+  try {
+    return new URL(url.replace(/…$/, "")).origin
+  } catch {
+    return null
+  }
+}
+
+// Stored secrets are only reused for the destination they were entered for:
+// otherwise a masked form could send them to another host (a test send, or a
+// save followed by a delivery). `unreadable` means a stored connector exists
+// but its secrets cannot be decrypted.
+export function mergeConnectorInput(
+  input: ConnectorInput, stored: ResolvedConnector | null, opts: { unreadable?: boolean } = {},
+): ResolvedConnector {
   if (input.type === "smtp") {
     const prev = stored?.type === "smtp" ? stored.smtp : null
     const keep = input.smtp.password === "" || input.smtp.password === SECRET_MASK
-    // An empty password on a new connector means "no authentication".
-    if (input.smtp.password === SECRET_MASK && !prev) throw new SecretsError(UNREADABLE_SECRETS)
-    return { type: "smtp", smtp: { ...input.smtp, password: keep ? (prev?.password ?? "") : input.smtp.password } }
+    if (!keep) return { type: "smtp", smtp: input.smtp }
+    // An empty password without a username means "no authentication".
+    if (!input.smtp.username) return { type: "smtp", smtp: { ...input.smtp, password: "" } }
+    if (opts.unreadable || (input.smtp.password === SECRET_MASK && !prev)) throw new SecretsError(UNREADABLE_SECRETS)
+    if (!prev) return { type: "smtp", smtp: { ...input.smtp, password: "" } }
+    const sameServer = prev.host === input.smtp.host && prev.port === input.smtp.port && prev.username === input.smtp.username
+    if (prev.password && !sameServer) throw new SecretsError(REBIND)
+    return { type: "smtp", smtp: { ...input.smtp, password: prev.password } }
   }
 
   const prev = stored?.type === "webhook" ? stored : null
@@ -140,16 +162,19 @@ export function mergeConnectorInput(input: ConnectorInput, stored: ResolvedConne
   const masked = url === "" || url === SECRET_MASK || url.endsWith("/…")
   if (masked) {
     if (!prev) throw new SecretsError(UNREADABLE_SECRETS)
+    if (url.endsWith("/…") && originOf(url) !== originOf(prev.url)) throw new SecretsError(REBIND)
     url = prev.url
   } else {
     assertHttpUrl(url)
   }
+  const sameOrigin = prev !== null && originOf(url) === originOf(prev.url)
 
   const headers: Record<string, string> = {}
   for (const [k, raw] of Object.entries(parseObject(input.headers))) {
     const v = String(raw ?? "")
     if (v === SECRET_MASK && !isPublicHeader(k)) {
       if (prev?.headers[k] === undefined) throw new SecretsError(UNREADABLE_SECRETS)
+      if (!sameOrigin) throw new SecretsError(REBIND)
       headers[k] = prev.headers[k]!
     } else {
       headers[k] = v
