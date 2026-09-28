@@ -620,4 +620,57 @@ async function testDeliveryQueue() {
 
 await testDeliveryQueue()
 
+const watch = await import("../services/update-watch")
+
+async function testUpdateWatch() {
+  const t0 = new Date("2026-09-28T08:00:00.000Z")
+  const attempt = { from: "v1.57.0", target: "v1.58.0", requestedAt: t0.toISOString() }
+  const later = new Date(t0.getTime() + 16 * 60_000)
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.58.0", false, later).kind, "succeeded")
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", true, later).kind, "wait")
+  assert.equal(watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, new Date(t0.getTime() + 60_000)).kind, "wait")
+  const failed = watch.evaluateUpdateAttempt(attempt, "v1.57.0", false, later)
+  assert.equal(failed.kind, "failed")
+  if (failed.kind === "failed") {
+    assert.deepEqual(
+      [failed.event.type, failed.event.severity, failed.event.source, failed.event.target, failed.event.message],
+      ["update.failed", "critical", "system.update", "v1.58.0", "Update to v1.58.0 failed, still running v1.57.0"],
+    )
+  }
+
+  const { writeFile, access } = await import("node:fs/promises")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-update-watch-"))
+  const exists = (p: string) => access(p).then(() => true, () => false)
+  try {
+    const events: unknown[] = []
+    const dispatch = (e: unknown) => { events.push(e) }
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "none")
+
+    await writeFile(join(dir, watch.ATTEMPT_FILE), JSON.stringify(attempt))
+    await writeFile(join(dir, ".pending-update"), "v1.58.0")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "wait")
+
+    await rm(join(dir, ".pending-update"))
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "failed")
+    assert.equal(events.length, 1)
+    assert.equal(await exists(join(dir, watch.ATTEMPT_FILE)), false)
+    // Emitted once.
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "none")
+
+    await writeFile(join(dir, watch.ATTEMPT_FILE), JSON.stringify(attempt))
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.58.0", later, dispatch), "succeeded")
+    assert.equal(events.length, 1)
+
+    // Half-written file: removed, no event, no throw.
+    await writeFile(join(dir, watch.ATTEMPT_FILE), "{\"from\":\"v1")
+    assert.equal(await watch.checkUpdateAttempt(dir, "v1.57.0", later, dispatch), "corrupt")
+    assert.equal(await exists(join(dir, watch.ATTEMPT_FILE)), false)
+    assert.equal(events.length, 1)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+await testUpdateWatch()
+
 console.log("Backend security tests passed")
