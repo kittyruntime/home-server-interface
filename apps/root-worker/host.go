@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os/exec"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
@@ -17,7 +16,7 @@ func handleHostReboot(nc *nats.Conn, msg *nats.Msg) {
 
 	go func() {
 		time.Sleep(750 * time.Millisecond)
-		if out, err := exec.Command("systemctl", "--no-block", "reboot").CombinedOutput(); err != nil {
+		if out, err := command("systemctl", "--no-block", "reboot").CombinedOutput(); err != nil {
 			log.Printf("host reboot failed: %v: %s", err, string(out))
 		}
 	}()

@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -135,7 +134,7 @@ func handleDockerNetworksList(nc *nats.Conn, msg *nats.Msg) {
 func runDocker(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd := commandContext(ctx, "docker", args...)
 	out, err := cmd.CombinedOutput()
 	output := strings.TrimSpace(string(out))
 	if err != nil {
@@ -344,7 +343,7 @@ func handleDockerLogs(nc *nats.Conn, msg *nats.Msg) {
 			_ = nc.Publish(inbox, done)
 		}()
 
-		cmd := exec.CommandContext(ctx, "docker", "logs", "--follow", "--timestamps",
+		cmd := commandContext(ctx, "docker", "logs", "--follow", "--timestamps",
 			"--tail", strconv.Itoa(tail), containerName)
 
 		pr, pw := io.Pipe()

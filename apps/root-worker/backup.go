@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -87,7 +86,7 @@ func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
 		src = endpoint + src
 	}
 	args = append(args, "--", src, dst)
-	cmd := exec.Command("rsync", args...)
+	cmd := command("rsync", args...)
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output

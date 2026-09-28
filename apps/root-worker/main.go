@@ -573,7 +573,7 @@ func handleLinuxUserCreate(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid linux username: must match ^[a-z_][a-z0-9_-]{0,31}$"})
 		return
 	}
-	out, err := exec.Command("useradd", "-M", "-s", "/sbin/nologin", req.Username).CombinedOutput()
+	out, err := command("useradd", "-M", "-s", "/sbin/nologin", req.Username).CombinedOutput()
 	if err != nil {
 		if x, ok := err.(*exec.ExitError); ok && x.ExitCode() == 9 {
 			// exit 9 = user already exists, treat as success

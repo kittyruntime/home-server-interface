@@ -110,7 +110,7 @@ func parseInactiveVGs(out string) []foundVG {
 
 func activeArrayUUIDs() map[string]bool {
 	active := map[string]bool{}
-	out, err := exec.Command("mdadm", "--detail", "--scan").Output()
+	out, err := command("mdadm", "--detail", "--scan").Output()
 	if err != nil {
 		return active
 	}
@@ -126,13 +126,13 @@ func handleImportScan(nc *nats.Conn, msg *nats.Msg) {
 	arrays := []foundArray{}
 	if _, err := exec.LookPath("mdadm"); err == nil {
 		// --examine only reads superblocks; nothing is assembled here.
-		if out, err := exec.Command("mdadm", "--examine", "--scan", "--verbose").Output(); err == nil {
+		if out, err := command("mdadm", "--examine", "--scan", "--verbose").Output(); err == nil {
 			arrays = unassembledArrays(parseExamineScan(string(out)), activeArrayUUIDs())
 		}
 	}
 	vgs := []foundVG{}
 	if _, err := exec.LookPath("lvs"); err == nil {
-		if out, err := exec.Command("lvs", "--noheadings", "--separator", ":", "-o", "vg_name,lv_name,lv_active").Output(); err == nil {
+		if out, err := command("lvs", "--noheadings", "--separator", ":", "-o", "vg_name,lv_name,lv_active").Output(); err == nil {
 			vgs = parseInactiveVGs(string(out))
 		}
 	}
@@ -163,13 +163,13 @@ func handleImportAssemble(nc *nats.Conn, msg *nats.Msg) {
 	if req.AllowDegraded {
 		args = append(args, "--run")
 	}
-	out, err := exec.Command("mdadm", args...).CombinedOutput()
+	out, err := command("mdadm", args...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
 	var warnings []string
-	briefOut, berr := exec.Command("mdadm", "--detail", "--brief", "/dev/"+req.Name).CombinedOutput()
+	briefOut, berr := command("mdadm", "--detail", "--brief", "/dev/"+req.Name).CombinedOutput()
 	if line := briefArrayLine(string(briefOut)); line != "" {
 		warnings = updateMdadmConf(func(conf string) string { return upsertArrayLine(conf, req.Name, line) })
 	} else {
@@ -192,7 +192,7 @@ func handleImportActivateVG(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid volume group name"})
 		return
 	}
-	out, err := exec.Command("vgchange", "-ay", req.Name).CombinedOutput()
+	out, err := command("vgchange", "-ay", req.Name).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return

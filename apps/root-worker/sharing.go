@@ -66,7 +66,7 @@ func smbdInstalled() bool {
 
 func ensureShareGroup() error {
 	// -f: succeed if the group already exists.
-	return exec.Command("groupadd", "-f", shareGroup).Run()
+	return command("groupadd", "-f", shareGroup).Run()
 }
 
 // setShareGroupMembers replaces the group's member roster with exactly `users`
@@ -79,7 +79,7 @@ func setShareGroupMembers(users []string) error {
 			valid = append(valid, u)
 		}
 	}
-	return exec.Command("gpasswd", "-M", strings.Join(valid, ","), shareGroup).Run()
+	return command("gpasswd", "-M", strings.Join(valid, ","), shareGroup).Run()
 }
 
 // prepareShareDir makes a writable share's directory group-owned by shareGroup,
@@ -93,7 +93,7 @@ func prepareShareDir(path string) error {
 		return fmt.Errorf("refusing non-absolute share path %q", path)
 	}
 	// `--` terminates options so a path can never be parsed as a flag.
-	if err := exec.Command("chgrp", "--", shareGroup, path).Run(); err != nil {
+	if err := command("chgrp", "--", shareGroup, path).Run(); err != nil {
 		return err
 	}
 	// 2775 = setgid + rwxrwxr-x
@@ -235,7 +235,7 @@ func modeOctal(m os.FileMode) string {
 // account" and "couldn't tell" the same way (both mean "don't rely on it").
 func sambaAccountNames() []string {
 	names := []string{}
-	out, err := exec.Command("pdbedit", "-L").Output()
+	out, err := command("pdbedit", "-L").Output()
 	if err != nil {
 		return names
 	}
@@ -334,18 +334,18 @@ func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	if created {
-		if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
+		if out, err := command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
 			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 			return
 		}
-		exec.Command("systemctl", "enable", "--quiet", "smbd").Run()
-		if out, err := exec.Command("systemctl", "restart", "smbd").CombinedOutput(); err != nil {
+		command("systemctl", "enable", "--quiet", "smbd").Run()
+		if out, err := command("systemctl", "restart", "smbd").CombinedOutput(); err != nil {
 			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "restart smbd: " + strings.TrimSpace(string(out))})
 			return
 		}
 	} else {
-		exec.Command("systemctl", "enable", "--quiet", "smbd").Run()
-		if out, err := exec.Command("systemctl", "reload-or-restart", "smbd").CombinedOutput(); err != nil {
+		command("systemctl", "enable", "--quiet", "smbd").Run()
+		if out, err := command("systemctl", "reload-or-restart", "smbd").CombinedOutput(); err != nil {
 			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "reload smbd: " + strings.TrimSpace(string(out))})
 			return
 		}
@@ -378,7 +378,7 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 	// handleLinuxUserCreate), so this grants no shell/SSH access — it only
 	// keeps web/Linux/Samba passwords consistent, NAS-style.
 	linuxOk := true
-	chp := exec.Command("chpasswd")
+	chp := command("chpasswd")
 	chp.Stdin = strings.NewReader(req.LinuxUsername + ":" + req.Password + "\n")
 	if err := chp.Run(); err != nil {
 		linuxOk = false
@@ -386,7 +386,7 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 	smbOk := false
 	if !req.SkipSamba {
 		if _, err := exec.LookPath("smbpasswd"); err == nil {
-			smb := exec.Command("smbpasswd", "-s", "-a", req.LinuxUsername)
+			smb := command("smbpasswd", "-s", "-a", req.LinuxUsername)
 			smb.Stdin = strings.NewReader(req.Password + "\n" + req.Password + "\n")
 			smbOk = smb.Run() == nil
 		}
@@ -399,7 +399,7 @@ func handleSharingStatus(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"})
 		return
 	}
-	out, err := exec.Command("smbstatus", "--json").Output()
+	out, err := command("smbstatus", "--json").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "smbstatus failed: " + err.Error()})
 		return

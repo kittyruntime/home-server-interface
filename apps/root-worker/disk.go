@@ -63,7 +63,7 @@ func systemDeviceNames() map[string]bool {
 
 	// Walk up to the parent disk via lsblk.
 	for _, dev := range critDevs {
-		out, err := exec.Command("lsblk", "-no", "PKNAME", dev).Output()
+		out, err := command("lsblk", "-no", "PKNAME", dev).Output()
 		if err != nil {
 			continue
 		}
@@ -218,7 +218,7 @@ func propagateSystem(dev *BlockDev) {
 func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	sysDevs := systemDeviceNames()
 
-	out, err := exec.Command("lsblk", "-J", "-b", "-o",
+	out, err := command("lsblk", "-J", "-b", "-o",
 		"NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL,UUID,RM,SERIAL,WWN").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "lsblk failed: " + err.Error()})
@@ -232,7 +232,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	pvVG := map[string]string{}
-	if pvsOut, err := exec.Command("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
+	if pvsOut, err := command("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
 		pvVG = parsePvs(string(pvsOut))
 	}
 
@@ -330,15 +330,15 @@ func handleDiskFormat(nc *nats.Conn, msg *nats.Msg) {
 	}
 	args = append(args, devPath)
 
-	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	out, err := command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
 
 	// Notify kernel of new filesystem
-	exec.Command("partprobe", devPath).Run()
-	exec.Command("udevadm", "settle").Run()
+	command("partprobe", devPath).Run()
+	command("udevadm", "settle").Run()
 
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
@@ -408,16 +408,16 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	out, err := exec.Command("mount", "-o", opts, devPath, mp).CombinedOutput()
+	out, err := command("mount", "-o", opts, devPath, mp).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
 
 	if req.Persist {
-		uuidOut, _ := exec.Command("blkid", "-s", "UUID", "-o", "value", devPath).Output()
+		uuidOut, _ := command("blkid", "-s", "UUID", "-o", "value", devPath).Output()
 		uuid := strings.TrimSpace(string(uuidOut))
-		fstypeOut, _ := exec.Command("blkid", "-s", "TYPE", "-o", "value", devPath).Output()
+		fstypeOut, _ := command("blkid", "-s", "TYPE", "-o", "value", devPath).Output()
 		fstype := strings.TrimSpace(string(fstypeOut))
 		if fstype == "" {
 			fstype = "auto"
@@ -473,7 +473,7 @@ func handleDiskUmount(nc *nats.Conn, msg *nats.Msg) {
 	// entry for that device is removed (never an admin entry for another one).
 	sources := mountSources(mp)
 
-	out, err := exec.Command("umount", mp).CombinedOutput()
+	out, err := command("umount", mp).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -504,7 +504,7 @@ func mountSources(mountPoint string) []string {
 			continue
 		}
 		sources := []string{f[0]}
-		if out, err := exec.Command("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
+		if out, err := command("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
 			if uuid := strings.TrimSpace(string(out)); uuid != "" {
 				sources = append(sources, "UUID="+uuid)
 			}
@@ -572,7 +572,7 @@ func handleRaidCreate(nc *nats.Conn, msg *nats.Msg) {
 		"--run",
 	}, devPaths...)
 
-	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	out, err := command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -582,7 +582,7 @@ func handleRaidCreate(nc *nats.Conn, msg *nats.Msg) {
 	// Only this array's ARRAY line is written; the rest of mdadm.conf (owned by
 	// the mdadm package and the admin) is kept.
 	var warnings []string
-	briefOut, berr := exec.Command("mdadm", "--detail", "--brief", raidDev).CombinedOutput()
+	briefOut, berr := command("mdadm", "--detail", "--brief", raidDev).CombinedOutput()
 	if line := briefArrayLine(string(briefOut)); line != "" {
 		warnings = updateMdadmConf(func(conf string) string { return upsertArrayLine(conf, req.Name, line) })
 	} else {
@@ -628,7 +628,7 @@ func handleRaidStop(nc *nats.Conn, msg *nats.Msg) {
 
 	// Read the members and UUID before stopping: without them the superblocks
 	// cannot be wiped and the array comes back at the next boot.
-	detailOut, derr := exec.Command("mdadm", "--detail", raidDev).CombinedOutput()
+	detailOut, derr := command("mdadm", "--detail", raidDev).CombinedOutput()
 	members, uuid := parseMdDetail(string(detailOut))
 	if derr != nil || len(members) == 0 {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "could not read the members of " + raidDev + ": " + cmdErrMessage(detailOut, derr)})
@@ -637,13 +637,13 @@ func handleRaidStop(nc *nats.Conn, msg *nats.Msg) {
 	// fstab sources that refer to this array (device path, or the UUID of the
 	// filesystem on it).
 	fstabSources := []string{raidDev}
-	if fsUUID, err := exec.Command("blkid", "-s", "UUID", "-o", "value", raidDev).Output(); err == nil {
+	if fsUUID, err := command("blkid", "-s", "UUID", "-o", "value", raidDev).Output(); err == nil {
 		if v := strings.TrimSpace(string(fsUUID)); v != "" {
 			fstabSources = append(fstabSources, "UUID="+v)
 		}
 	}
 
-	out, err := exec.Command("mdadm", "--stop", raidDev).CombinedOutput()
+	out, err := command("mdadm", "--stop", raidDev).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -653,7 +653,7 @@ func handleRaidStop(nc *nats.Conn, msg *nats.Msg) {
 	// the kernel does not reassemble the array at boot.
 	var warnings []string
 	for _, m := range members {
-		if zout, zerr := exec.Command("mdadm", "--zero-superblock", m).CombinedOutput(); zerr != nil {
+		if zout, zerr := command("mdadm", "--zero-superblock", m).CombinedOutput(); zerr != nil {
 			warnings = append(warnings, "could not wipe the RAID signature on "+m+": "+cmdErrMessage(zout, zerr))
 		}
 	}
@@ -719,7 +719,7 @@ func parseLvmReport(data []byte, key string) []map[string]string {
 }
 
 func lvmCmd(args ...string) []byte {
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := command(args[0], args[1:]...).Output()
 	if err != nil {
 		return []byte(`{"report":[]}`)
 	}
@@ -843,7 +843,7 @@ func claimBlockReason(nodes []blkNode) string {
 }
 
 func lsblkTree(device string) ([]blkNode, error) {
-	out, err := exec.Command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", "/dev/"+device).Output()
+	out, err := command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", "/dev/"+device).Output()
 	if err != nil {
 		return nil, err
 	}
@@ -923,7 +923,7 @@ func handlePvCreate(nc *nats.Conn, msg *nats.Msg) {
 	// -f skips pvcreate's own "signature detected, wipe it?" prompt; it is only
 	// safe because checkDeviceClaimable refused anything holding data above.
 	args := append([]string{"pvcreate", "-f"}, devPaths...)
-	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	out, err := command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -958,7 +958,7 @@ func handleVgCreate(nc *nats.Conn, msg *nats.Msg) {
 		devPaths = append(devPaths, "/dev/"+d)
 	}
 	args := append([]string{"vgcreate", req.Name}, devPaths...)
-	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	out, err := command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -987,12 +987,12 @@ func handleLvCreate(nc *nats.Conn, msg *nats.Msg) {
 	} else {
 		args = []string{"lvcreate", "-L", fmt.Sprintf("%dB", req.SizeBytes), "-n", req.LVName, req.VGName}
 	}
-	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	out, err := command(args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
-	exec.Command("udevadm", "settle").Run()
+	command("udevadm", "settle").Run()
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
@@ -1028,7 +1028,7 @@ func handleLvRemove(nc *nats.Conn, msg *nats.Msg) {
 			return
 		}
 	}
-	out, err := exec.Command("lvremove", "-f", lvPath).CombinedOutput()
+	out, err := command("lvremove", "-f", lvPath).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -1067,7 +1067,7 @@ func handleVgRemove(nc *nats.Conn, msg *nats.Msg) {
 		}
 	}
 
-	out, err := exec.Command("vgremove", "-f", req.VGName).CombinedOutput()
+	out, err := command("vgremove", "-f", req.VGName).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
@@ -1101,13 +1101,13 @@ func handlePartitionInit(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	devPath := "/dev/" + req.Device
-	out, err := exec.Command("parted", "-s", devPath, "mklabel", "gpt").CombinedOutput()
+	out, err := command("parted", "-s", devPath, "mklabel", "gpt").CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
-	exec.Command("partprobe", devPath).Run()
-	exec.Command("udevadm", "settle").Run()
+	command("partprobe", devPath).Run()
+	command("udevadm", "settle").Run()
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
@@ -1145,14 +1145,14 @@ func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	devPath := "/dev/" + req.Device
-	out, err := exec.Command("parted", "-s", devPath, "mkpart", "primary",
+	out, err := command("parted", "-s", devPath, "mkpart", "primary",
 		fmt.Sprintf("%d%%", req.StartPct), fmt.Sprintf("%d%%", end)).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
-	exec.Command("partprobe", devPath).Run()
-	exec.Command("udevadm", "settle").Run()
+	command("partprobe", devPath).Run()
+	command("udevadm", "settle").Run()
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
@@ -1344,7 +1344,7 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 		args = append(args, "-n", "standby")
 	}
 	args = append(args, "/dev/"+req.Device)
-	raw, err := exec.Command(smartctlPath, args...).Output()
+	raw, err := command(smartctlPath, args...).Output()
 	if err != nil && len(raw) == 0 {
 		replyOk(nc, msg.Reply, result)
 		return
@@ -1451,12 +1451,12 @@ func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) {
 			return
 		}
 	}
-	out, err := exec.Command("parted", "-s", "/dev/"+req.Device, "rm", req.PartNum).CombinedOutput()
+	out, err := command("parted", "-s", "/dev/"+req.Device, "rm", req.PartNum).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
 		return
 	}
-	exec.Command("partprobe", "/dev/"+req.Device).Run()
-	exec.Command("udevadm", "settle").Run()
+	command("partprobe", "/dev/"+req.Device).Run()
+	command("udevadm", "settle").Run()
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }

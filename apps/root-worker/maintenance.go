@@ -103,7 +103,7 @@ func runSmartTests(kind string) []taskResult {
 	if _, err := exec.LookPath("smartctl"); err != nil {
 		return append(results, taskResult{Status: "error", Message: "smartctl is not installed (sudo apt install smartmontools)"})
 	}
-	out, err := exec.Command("lsblk", "-dn", "-P", "-o", "NAME,TYPE,SERIAL").Output()
+	out, err := command("lsblk", "-dn", "-P", "-o", "NAME,TYPE,SERIAL").Output()
 	if err != nil {
 		return append(results, taskResult{Status: "error", Message: "lsblk failed: " + err.Error()})
 	}
@@ -116,7 +116,7 @@ func runSmartTests(kind string) []taskResult {
 			continue
 		}
 		dev := "/dev/" + fields["NAME"]
-		sout, serr := exec.Command("smartctl", "-n", "standby", "-t", kind, dev).CombinedOutput()
+		sout, serr := command("smartctl", "-n", "standby", "-t", kind, dev).CombinedOutput()
 		status, msg := classifySelfTestStart(string(sout), serr)
 		results = append(results, taskResult{Device: fields["NAME"], Serial: fields["SERIAL"], Status: status, Message: msg})
 	}
