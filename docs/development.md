@@ -45,6 +45,8 @@ NATS_URL=nats://127.0.0.1:4222
 NATS_USER=backend
 NATS_PASS=backend-dev
 END
+# Encrypts notification connector secrets (webhook URLs, SMTP passwords)
+echo "HSI_SECRETS_KEY=$(openssl rand -hex 32)" >> apps/backend/.env
 ```
 
 `apps/backend/.env` is git-ignored. See [configuration.md](configuration.md) for

@@ -762,10 +762,16 @@ if [[ -f "$ENV_FILE" ]]; then
 else
   JWT_SECRET=$(openssl rand -hex 32)
   printf 'NODE_ENV=production\nJWT_SECRET=%s\n' "$JWT_SECRET" > "$ENV_FILE"
-  chown "$APP_USER:" "$ENV_FILE"
-  chmod 600 "$ENV_FILE"
   success "Generated JWT secret → $ENV_FILE"
 fi
+# Encrypts notification connector secrets. Added to existing installs too;
+# never regenerated, or stored secrets would become unreadable.
+if ! grep -q '^HSI_SECRETS_KEY=' "$ENV_FILE"; then
+  printf 'HSI_SECRETS_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
+  success "Generated notification secrets key → $ENV_FILE"
+fi
+chown "$APP_USER:" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
 
 # =============================================================================
 # COMMON — install NATS server binary
