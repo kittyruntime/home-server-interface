@@ -138,7 +138,7 @@ event source prefix and a minimum severity:
 |---|---|
 | `storage.smart`, `storage.raid`, `storage.disk-usage` | Alert raised, alert cleared (including manual clears) |
 | `backup.plan` | A backup run failed |
-| `system.update` | An HSI update did not end on the requested version (checked 15 minutes after it started) |
+| `system.update` | An HSI update did not end on the requested version: reported 5 minutes after HSI restarts on the old version, or 1 hour after the request if HSI never restarted |
 
 External deliveries go through a queue stored in the database: they survive a
 backend restart, are retried twice (after 2 s and 10 s), and each connector
