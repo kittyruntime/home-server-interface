@@ -156,9 +156,29 @@ cleanup_install_exit() {
       cp -- "$DB_ROLLBACK_FILE" "$DB_FILE"
       chown "$APP_USER:" "$DB_FILE"
     fi
+    if [[ -n "$ROLLBACK_DIR" && -d "$ROLLBACK_DIR/units" ]]; then
+      local unitfile
+      for unitfile in /etc/systemd/system/${APP_NAME}*.service /etc/systemd/system/${APP_NAME}*.target \
+                      /etc/systemd/system/${APP_NAME}*.timer /etc/systemd/system/${APP_NAME}*.path; do
+        [[ -f "$unitfile" ]] || continue
+        # Never touch the unit running this script during an auto-update.
+        [[ "$(basename "$unitfile")" == "${APP_NAME}-update-apply.service" ]] && continue
+        systemctl disable "$(basename "$unitfile")" >/dev/null 2>&1 || true
+        rm -f "$unitfile"
+      done
+      cp -- "$ROLLBACK_DIR"/units/* /etc/systemd/system/ 2>/dev/null || true
+      systemctl daemon-reload
+      if [[ -f "$ROLLBACK_DIR/units.enabled" ]]; then
+        xargs -r systemctl enable < "$ROLLBACK_DIR/units.enabled" >/dev/null 2>&1 || true
+      fi
+    fi
     if (( SERVICES_STOPPED == 1 )); then
       warn "Restarting the previous services after the failed update."
-      systemctl start "${APP_NAME}-nats" "${APP_NAME}-root-worker" "${APP_NAME}" >/dev/null 2>&1 || true
+      if [[ -f "/etc/systemd/system/${APP_NAME}.target" ]]; then
+        systemctl start "${APP_NAME}.target" >/dev/null 2>&1 || true
+      else
+        systemctl start "${APP_NAME}-nats" "${APP_NAME}-root-worker" "${APP_NAME}" >/dev/null 2>&1 || true
+      fi
     fi
   fi
   if [[ -n "$ROLLBACK_DIR" && -d "$ROLLBACK_DIR" && $CORE_INSTALL_COMPLETE -eq 1 ]]; then
@@ -215,6 +235,32 @@ detect_legacy_app_install() {
     die "Group 'hsi' already exists but user 'app' is not yet renamed - resolve manually, then re-run."
   fi
   return 0
+}
+
+# hsi.service -> hsi-server.service, hsi-root-worker.service -> hsi-worker.service,
+# boot through hsi.target (#21). Idempotent: a rerun after an interruption
+# finishes the job. Only unit files and the worker binary change.
+migrate_service_names() {
+  local unit changed=0
+  for unit in "${APP_NAME}.service" "${APP_NAME}-root-worker.service"; do
+    if [[ -e "/etc/systemd/system/$unit" ]]; then
+      systemctl stop "$unit" 2>/dev/null || true
+      systemctl disable "$unit" 2>/dev/null || true
+      rm -f "/etc/systemd/system/$unit"
+      info "Removed legacy unit $unit"
+      changed=1
+    fi
+  done
+  if [[ -e "/usr/local/bin/${APP_NAME}-root-worker" && -x "/usr/local/bin/${APP_NAME}-worker" ]]; then
+    rm -f "/usr/local/bin/${APP_NAME}-root-worker"
+    info "Removed legacy binary /usr/local/bin/${APP_NAME}-root-worker"
+  fi
+  if (( changed )); then systemctl daemon-reload; fi
+  # The target starts NATS now; a direct multi-user.target link would be a
+  # second boot path.
+  if systemctl is-enabled "${APP_NAME}-nats" 2>/dev/null | grep -qx enabled; then
+    systemctl disable "${APP_NAME}-nats" 2>/dev/null || true
+  fi
 }
 
 migrate_legacy_app_install() {
@@ -627,6 +673,17 @@ else
         cp -- "/usr/local/bin/$bin" "$ROLLBACK_DIR/system-bin-$bin"
       fi
     done
+    # Unit files and their enablement: restored as a set on failure, so a
+    # failed update after the unit renaming (#21) boots the previous stack.
+    mkdir -p "$ROLLBACK_DIR/units"
+    for f in /etc/systemd/system/${APP_NAME}*.service /etc/systemd/system/${APP_NAME}*.target \
+             /etc/systemd/system/${APP_NAME}*.timer /etc/systemd/system/${APP_NAME}*.path; do
+      [[ -f "$f" ]] || continue
+      cp -- "$f" "$ROLLBACK_DIR/units/"
+      if systemctl is-enabled "$(basename "$f")" 2>/dev/null | grep -qx enabled; then
+        basename "$f" >> "$ROLLBACK_DIR/units.enabled"
+      fi
+    done
   fi
   cp -a "$RELEASE_STAGE/." "$INSTALL_DIR/"
   chown -R "$APP_USER:" \
@@ -918,6 +975,8 @@ $LOG_DIR/*.log {
   copytruncate
 }
 ROTATE
+
+migrate_service_names
 
 # The stack: hsi.target starts, stops and restarts NATS, the worker and the
 # server together (PartOf=); each service can still be managed on its own.
