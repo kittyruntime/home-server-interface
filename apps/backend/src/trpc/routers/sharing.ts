@@ -5,10 +5,11 @@ import { requestSync } from "../../nats"
 import {
   resolveShareUsers,
   effectiveSmbName,
-  syncShares,
   adminLinuxUsers,
   shareExclusionReason,
   desiredShareDefs,
+  syncShares,
+  withShareLock,
 } from "../../services/sharing.service"
 import {
   SHARE_OPS, applyShareChange, previewShareChange,
@@ -128,6 +129,8 @@ function planDeps(ctx: Context, change: ShareChange, commit: () => Promise<unkno
     defs:   () => desiredShareDefs(ctx.prisma, change),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     commit,
+    serialize: withShareLock,
+    resync: () => syncShares(ctx.prisma),
   }
 }
 

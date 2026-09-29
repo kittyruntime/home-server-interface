@@ -153,10 +153,22 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
   return defs
 }
 
+// Share syncs and applied share plans run one at a time: a sync reading the
+// database while a plan is between its smb.conf write and its database write
+// would put the old state back.
+let shareLock: Promise<unknown> = Promise.resolve()
+export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = shareLock.then(fn, fn)
+  shareLock = run.catch(() => {})
+  return run
+}
+
 /** Pushes the complete desired SMB state to the root-worker. Samba always
  *  reflects the current DB/permission state, no incremental diffing. */
 export async function syncShares(prisma: PrismaClient): Promise<void> {
-  await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma) })
+  await withShareLock(async () => {
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma) })
+  })
 }
 
 /** Ensures the *filesystem* access layer for EVERY place that has write-users
