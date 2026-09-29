@@ -131,6 +131,10 @@ cat /etc/fstab              # persisted entries
 mount -a                    # (re)apply fstab by hand
 ```
 
+Before changing storage, HSI shows the exact commands and file diffs it will
+apply; the same plan is kept in the audit log, so every change can be redone or
+undone by hand.
+
 HSI's entries carry `nofail`, and their mount point directories are made
 immutable while unmounted so nothing writes to the system disk in their place.
 To reuse such a directory by hand, clear the flag first:

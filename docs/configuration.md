@@ -164,6 +164,20 @@ HSI can only notify while it is running. A server that is powered off, frozen or
 unreachable cannot report its own outage: use an external monitor (for example
 an uptime service polling `http://<server>:9001/health`) to detect that.
 
+## Previewing storage operations
+
+Formatting, partition changes, RAID creation and deletion, LVM changes and
+mounts are shown as a plan before anything runs: every command with its exact
+arguments, every file change as a diff (`/etc/fstab`, `mdadm.conf`), and, for
+steps that erase data, the device with its model, serial number, size and
+current contents. Applying runs exactly that plan. If the server changed in
+between (fstab edited, another disk behind the same name), HSI refuses and asks
+you to review the new plan. The executed plan, with the result of each step, is
+kept in the audit log.
+
+From a shell, `hsi-worker plan preview <op> '<json>'` prints the same plan (and
+`hsi-worker plan apply <op> '<json>' <fingerprint>` applies it).
+
 ## Missing volumes
 
 Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")

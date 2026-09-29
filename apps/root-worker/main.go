@@ -971,6 +971,12 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
 		os.Exit(runMaintenanceCLI())
 	}
+	// `hsi-worker plan preview <op> <input-json>` and
+	// `hsi-worker plan apply <op> <input-json> <fingerprint>`: the same plans
+	// as root.plan.*, from a shell (debugging, tests).
+	if len(os.Args) > 1 && os.Args[1] == "plan" {
+		os.Exit(runPlanCLI(os.Args[2:]))
+	}
 	// `hsi-worker volumes`: state of every HSI data volume (remounting one
 	// that came back), usable without the backend.
 	if len(os.Args) > 1 && os.Args[1] == "volumes" {
