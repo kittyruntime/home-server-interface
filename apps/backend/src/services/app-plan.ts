@@ -38,15 +38,55 @@ export interface AppStepResult { status: string; error?: string; detail?: string
 const SECRET_KEY = /pass(word|wd)?|secret|token|key|auth|credential/i
 const MASK = "••••••"
 
-/** Masks environment values whose key looks like a secret, in map and list syntax. */
-export function maskSecrets(yaml: string): string {
-  return yaml.split("\n").map(line => {
+interface MaskedLine { shown: string; id?: string; raw?: string }
+
+// A secret value may span several lines (a folded long value, a `|` block):
+// the lines indented under its key belong to it and are hidden with it.
+function maskLines(yaml: string, extraKeys: readonly string[] = []): MaskedLine[] {
+  const isSecret = (k: string) => SECRET_KEY.test(k) || extraKeys.includes(k)
+  const seen = new Map<string, number>()
+  const idOf = (k: string) => { const n = (seen.get(k) ?? 0) + 1; seen.set(k, n); return `${k}#${n}` }
+  const out: MaskedLine[] = []
+  let open: { indent: number; line: MaskedLine } | null = null
+  for (const line of yaml.split("\n")) {
+    const indent = line.length - line.trimStart().length
+    if (open && (line.trim() === "" || indent > open.indent)) { open.line.raw += "\n" + line; continue }
+    open = null
     const list = line.match(/^(\s*-\s*["']?)([A-Za-z0-9_.-]+)=(.*?)(["']?\s*)$/)
-    if (list && SECRET_KEY.test(list[2]!)) return `${list[1]}${list[2]}=${MASK}${list[4]}`
-    const map = line.match(/^(\s*)([A-Za-z0-9_.-]+):\s+(\S.*)$/)
-    if (map && SECRET_KEY.test(map[2]!) && !/^[|>]/.test(map[3]!)) return `${map[1]}${map[2]}: ${MASK}`
-    return line
-  }).join("\n")
+    if (list && isSecret(list[2]!)) {
+      out.push({ shown: `${list[1]}${list[2]}=${MASK}${list[4]}`, id: idOf(list[2]!), raw: list[3] })
+      continue
+    }
+    // Only a key with a value on its line: a bare `secrets:` opens a nested mapping.
+    const map = line.match(/^(\s*)(["']?)([A-Za-z0-9_.-]+)\2:\s+(\S.*)$/)
+    if (map && isSecret(map[3]!)) {
+      const ml: MaskedLine = { shown: `${map[1]}${map[2]}${map[3]}${map[2]}: ${MASK}`, id: idOf(map[3]!), raw: map[4] }
+      out.push(ml)
+      open = { indent: map[1]!.length, line: ml }
+      continue
+    }
+    out.push({ shown: line })
+  }
+  return out
+}
+
+/** Masks environment values whose key looks like a secret (or is listed), in map and list syntax. */
+export function maskSecrets(yaml: string, extraKeys: readonly string[] = []): string {
+  return maskLines(yaml, extraKeys).map(l => l.shown).join("\n")
+}
+
+/** Diff of two versions with secrets masked; a secret whose value changed is marked as such. */
+export function maskedDiff(path: string, before: string, after: string, extraKeys: readonly string[] = []): string {
+  if (before === after) return ""
+  const b = maskLines(before, extraKeys)
+  const was = new Map(b.filter(l => l.id).map(l => [l.id!, l.raw]))
+  const a = maskLines(after, extraKeys).map(l =>
+    l.id && was.has(l.id) && was.get(l.id) !== l.raw ? `${l.shown} (changed)` : l.shown)
+  return unifiedDiff(path, b.map(l => l.shown).join("\n"), a.join("\n"))
+}
+
+export function manifestSecretKeys(m: { env: Array<{ key: string; secret?: boolean }> }): string[] {
+  return m.env.filter(e => e.secret).map(e => e.key)
 }
 
 function splitLines(s: string): string[] {
@@ -200,16 +240,15 @@ async function resolvePlaces(deps: AppPlanDeps, volumes: AppInput["volumes"]): P
   }))
 }
 
-function fileStep(deps: AppPlanDeps, name: string, before: string | null, yaml: string, summary: string, extraRun?: () => Promise<void>): AppStep {
+function fileStep(deps: AppPlanDeps, name: string, before: string | null, yaml: string, summary: string, extraRun?: () => Promise<void>, secretKeys: readonly string[] = []): AppStep {
   const target = deps.stackPath(name)
-  const shown = maskSecrets(yaml)
   return {
     kind: before === null ? "create" : "update",
     target,
     summary,
     diff: before === null
-      ? unifiedDiff(target, "", shown)
-      : unifiedDiff(target, maskSecrets(before), shown),
+      ? unifiedDiff(target, "", maskSecrets(yaml, secretKeys))
+      : maskedDiff(target, before, yaml, secretKeys),
     run: async () => {
       await deps.effects.writeStack(name, yaml)
       if (extraRun) await extraRun()
@@ -357,7 +396,7 @@ async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>
       await deps.effects.removeStackDir(input.name).catch(() => {})
       throw e
     }
-  }))
+  }, manifestSecretKeys(m)))
   steps.push(upStep(deps, input.name, yaml, false))
   return { op: "app.install", steps, observed: {}, reply: { name: input.name, webPort } }
 }
