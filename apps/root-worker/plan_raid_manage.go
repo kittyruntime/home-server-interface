@@ -17,13 +17,56 @@ var (
 // arrayIdentity reads the members and UUID of an array. Only these are
 // observed: mdadm --detail also reports resync progress and event counts,
 // which change on their own.
-func arrayIdentity(name string) ([]string, string, *fsError) {
+func arrayIdentity(name string) ([]string, string, string, *fsError) {
 	out, err := hostMdDetail("/dev/" + name)
 	if err != nil {
-		return nil, "", &fsError{Code: "ERR", Message: cmdErrMessage([]byte(out), err)}
+		return nil, "", "", &fsError{Code: "ERR", Message: cmdErrMessage([]byte(out), err)}
 	}
 	members, uuid := parseMdDetail(out)
-	return members, uuid, nil
+	return members, uuid, out, nil
+}
+
+// canLoseActiveMember tells whether failing one more active member keeps the
+// array running. mdadm --fail on the last redundant member stops the array.
+// Unknown layouts are allowed, as before.
+func canLoseActiveMember(detail, device string) bool {
+	field := func(name string) string {
+		for _, line := range strings.Split(detail, "\n") {
+			if k, v, ok := strings.Cut(strings.TrimSpace(line), ":"); ok && strings.TrimSpace(k) == name {
+				return strings.TrimSpace(v)
+			}
+		}
+		return ""
+	}
+	// A member that is already faulty or a spare is not carrying data.
+	for _, line := range strings.Split(detail, "\n") {
+		if strings.HasSuffix(strings.TrimSpace(line), "/dev/"+device) && !strings.Contains(line, "active") {
+			return true
+		}
+	}
+	var n, active int
+	if _, err := fmt.Sscanf(field("Raid Devices"), "%d", &n); err != nil {
+		return true
+	}
+	if _, err := fmt.Sscanf(field("Active Devices"), "%d", &active); err != nil {
+		return true
+	}
+	left := active - 1
+	switch field("Raid Level") {
+	case "raid0", "linear":
+		return false
+	case "raid1":
+		return left >= 1
+	case "raid4", "raid5":
+		return left >= n-1
+	case "raid6":
+		return left >= n-2
+	case "raid10":
+		// Which mirror pair a disk belongs to is not known here: only a fully
+		// healthy RAID10 is sure to survive losing one member.
+		return active == n
+	}
+	return true
 }
 
 func sortedJoin(xs []string) string {
@@ -47,7 +90,7 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 	if sys[req.Name] && op != "--add" {
 		return nil, &fsError{Code: "ESYS", Message: "cannot change members of the system RAID array from HSI"}
 	}
-	members, uuid, fe := arrayIdentity(req.Name)
+	members, uuid, detail, fe := arrayIdentity(req.Name)
 	if fe != nil {
 		return nil, fe
 	}
@@ -57,14 +100,19 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 	var step planStep
 	switch op {
 	case "--fail", "--remove":
-		if !isMember(members, req.Device) {
+		// A disk that was unplugged or died completely has no device node and
+		// no /dev path in mdadm --detail: the kernel still lists it under
+		// /sys/block/<md>/md/, and mdadm addresses it as "detached".
+		arg := target
+		vanished := op == "--remove" && !hostExists(target)
+		if vanished {
+			arg = "detached"
+		}
+		if !isMember(members, req.Device) && !(vanished && hostExists("/sys/block/"+req.Name+"/md/dev-"+req.Device)) {
 			return nil, &fsError{Code: "ERR", Message: target + " is not a member of " + raidDev}
 		}
-		// A disk that was unplugged or died completely has no device node:
-		// mdadm addresses it as "detached".
-		arg := target
-		if op == "--remove" && !hostExists(target) {
-			arg = "detached"
+		if op == "--fail" && !canLoseActiveMember(detail, req.Device) {
+			return nil, &fsError{Code: "ERR", Message: raidDev + " has no redundancy left: failing " + target + " would stop the array"}
 		}
 		obs["target"] = arg
 		summary := "Mark " + target + " as failed in " + raidDev + "; the array keeps running without it until a replacement is added"
@@ -75,6 +123,11 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 			}
 		}
 		step = cmdStep(raidDev, summary, []string{"mdadm", "--manage", raidDev, op, arg})
+		// Name the disk by model and serial: kernel names can move after a
+		// reboot, and failing the wrong member of a degraded array loses it.
+		if arg != "detached" {
+			step.Device = hostDescribe(target)
+		}
 	case "--add":
 		if isMember(members, req.Device) {
 			return nil, &fsError{Code: "ERR", Message: target + " is already a member of " + raidDev}

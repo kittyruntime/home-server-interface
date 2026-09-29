@@ -181,6 +181,12 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
               <span class="mt-0.5 w-5 shrink-0 text-right font-mono text-[11px] tabular-nums text-[var(--c-text-3)]">{{ i + 1 }}</span>
               <div class="min-w-0 flex-1">
                 <p class="text-sm text-[var(--c-text-1)]" :class="s.destructive ? 'text-danger' : ''">{{ s.summary }}</p>
+                <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-[var(--c-text-2)]">
+                  <span class="font-mono text-[var(--c-text-1)]">{{ s.device.path }}</span>
+                  <template v-if="s.device.model"> · <span class="font-mono">{{ s.device.model }}</span></template>
+                  <template v-if="s.device.serial"> · <span class="font-mono">{{ s.device.serial }}</span></template>
+                  <template v-if="s.device.size"> · {{ fmtSize(s.device.size) }}</template>
+                </p>
                 <p class="mt-0.5 text-[11px] text-[var(--c-text-3)]">
                   <span class="uppercase tracking-wide">{{ kindLabel[s.kind] ?? s.kind }}</span>
                   <span class="font-mono"> · {{ s.target }}</span>
@@ -229,12 +235,12 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <button v-if="stale" class="btn btn-outline btn-sm" :disabled="loading" @click="load">Review again</button>
         <button
           v-else
-          :class="['btn btn-sm', destructiveSteps.length ? 'btn-danger' : 'btn-primary']"
+          :class="['btn btn-sm', destructiveSteps.length || planRequest.danger ? 'btn-danger' : 'btn-primary']"
           :disabled="loading || applying || !preview"
           @click="apply"
         >
           <LoadingSpinner v-if="applying" label="" class="h-3 w-3" />
-          {{ applying ? 'Applying…' : destructiveSteps.length ? planRequest.actionLabel : 'Apply' }}
+          {{ applying ? 'Applying…' : planRequest.actionLabel || 'Apply' }}
         </button>
       </template>
     </template>

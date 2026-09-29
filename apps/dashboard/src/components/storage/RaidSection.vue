@@ -70,7 +70,7 @@ async function runMemberOp(r: RaidArray, device: string, op: 'fail' | 'remove' |
       : op === 'remove' ? `Remove /dev/${device} from /dev/${r.name}`
       : `Add /dev/${device} to /dev/${r.name}`
     const actionLabel = op === 'fail' ? 'Mark as failed' : op === 'remove' ? 'Remove' : `Add /dev/${device}`
-    await applyPlanned(`raid.${op}`, { name: r.name, device }, { title, actionLabel })
+    await applyPlanned(`raid.${op}`, { name: r.name, device }, { title, actionLabel, danger: op === 'fail' })
     addPicker.value = null
     await refresh()
   } catch (e: any) {

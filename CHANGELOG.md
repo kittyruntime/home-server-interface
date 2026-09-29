@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exactly that plan, or refuses if the server changed since the preview. The
   executed plan is kept in the audit log.
 
+### Fixed
+- **Failing the last redundant RAID member**: marking a member as failed is
+  refused when the array has no redundancy left (it would stop the array), and
+  a disk that was unplugged can now be removed from its array.
+
+
 ## [1.58.0] - 2026-09-29
 
 ### Added
