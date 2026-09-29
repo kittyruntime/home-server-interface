@@ -739,4 +739,38 @@ async function testReviewFixes() {
 
 await testReviewFixes()
 
+const vg = await import("../services/volume-guard")
+
+async function testVolumeGuard() {
+  assert.equal(vg.pathUnder("/mnt/data/x", "/mnt/data"), true)
+  assert.equal(vg.pathUnder("/mnt/data", "/mnt/data"), true)
+  assert.equal(vg.pathUnder("/mnt/data2/x", "/mnt/data"), false)
+
+  const holds = [{ mountPoint: "/mnt/data", status: "blocked", reason: "missing" }, { mountPoint: "/mnt/data/sub", status: "back", reason: "missing" }]
+  assert.equal(vg.holdFor(holds, "/mnt/data/sub/f")?.mountPoint, "/mnt/data/sub")
+  assert.equal(vg.holdFor(holds, "/mnt/data2/f"), null)
+  assert.equal(vg.holdMessage(holds[0]!), "Volume /mnt/data is missing; resume it in Storage first")
+  assert.equal(vg.holdMessage(holds[1]!), "Volume /mnt/data/sub is waiting for confirmation; resume it in Storage first")
+
+  const plan = vg.planHolds(
+    [{ mountPoint: "/a", state: "missing" }, { mountPoint: "/b", state: "ok" }, { mountPoint: "/c", state: "readonly" }, { mountPoint: "/d", state: "ok" }],
+    [{ mountPoint: "/b", status: "blocked", reason: "missing" }, { mountPoint: "/c", status: "back", reason: "missing" }, { mountPoint: "/d", status: "back", reason: "wrong" }],
+  )
+  assert.deepEqual(plan.create, [{ mountPoint: "/a", reason: "missing" }])
+  assert.deepEqual(plan.back, ["/b"])
+  assert.deepEqual(plan.reblock, [{ mountPoint: "/c", reason: "readonly" }])
+
+  assert.deepEqual(vg.appsUnder([{ name: "web", sources: ["/mnt/data/www"] }, { name: "db", sources: ["/srv/db"] }, { name: "x", sources: ["/mnt/data2/y"] }], "/mnt/data"), ["web"])
+
+  assert.deepEqual(vg.backupLocalPaths({ direction: "push", source: "/mnt/data", destination: "/remote", remoteHost: "nas2" }), ["/mnt/data"])
+  assert.deepEqual(vg.backupLocalPaths({ direction: "pull", source: "/remote", destination: "/mnt/b", remoteHost: "nas2" }), ["/mnt/b"])
+  assert.deepEqual(vg.backupLocalPaths({ direction: "push", source: "/mnt/a", destination: "/mnt/b", remoteHost: null }), ["/mnt/a", "/mnt/b"])
+
+  const f = vg.volumeFindings([{ mountPoint: "/a", state: "missing" }, { mountPoint: "/b", state: "readonly" }, { mountPoint: "/c", state: "ok" }, { mountPoint: "/d", state: "wrong" }])
+  assert.deepEqual(f.checked, ["/a", "/b", "/c", "/d"])
+  assert.deepEqual(f.found.map(x => [x.target, x.severity]), [["/a", "critical"], ["/b", "warning"], ["/d", "critical"]])
+}
+
+await testVolumeGuard()
+
 console.log("Backend security tests passed")

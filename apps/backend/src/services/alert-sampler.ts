@@ -4,7 +4,7 @@ import { dispatchEvent, type NotificationEvent, type Severity } from "./notifica
 import { log } from "../utils/log"
 
 type CheckResult = { target: string; message: string; severity: Severity }
-type CheckOutcome = { found: CheckResult[]; checked: string[] }
+export type CheckOutcome = { found: CheckResult[]; checked: string[] }
 type Checker = { source: string; check: () => Promise<CheckOutcome> }
 
 type RaidArray = {
@@ -172,6 +172,34 @@ export function diffAlerts(
   return { raised, cleared }
 }
 
+// Persists one source's findings as alerts and dispatches raise/clear events.
+// Also used by the volume guard (volume-guard.ts), which runs on its own loop.
+export async function reconcileSource(source: string, outcome: CheckOutcome): Promise<void> {
+  const { found, checked } = outcome
+  try {
+    const prev = await prisma.alert.findMany({
+      where: { source },
+      select: { target: true, severity: true, message: true },
+    })
+    const now = new Date().toISOString()
+    const { raised, cleared } = diffAlerts(source, prev, checked, found, now)
+    // Reconcile: persist found (message+severity), delete cleared.
+    if (cleared.length > 0) {
+      await prisma.alert.deleteMany({ where: { source, target: { in: cleared.map(c => c.target) } } })
+    }
+    for (const f of found) {
+      await prisma.alert.upsert({
+        where: { source_target: { source, target: f.target } },
+        create: { source, target: f.target, message: f.message, severity: f.severity },
+        update: { message: f.message, severity: f.severity },
+      })
+    }
+    for (const evt of [...raised, ...cleared]) void dispatchEvent(evt)
+  } catch (e) {
+    log.error({ err: e, source }, "alert-sampler: failed to persist alerts") // non-fatal: sampler errors must not crash the server
+  }
+}
+
 async function runChecks(): Promise<void> {
   for (const { source, check } of checkers) {
     let outcome: CheckOutcome | null
@@ -181,29 +209,7 @@ async function runChecks(): Promise<void> {
       outcome = null // transient failure — leave this source's existing alerts as-is
     }
     if (outcome === null) continue
-    const { found, checked } = outcome
-    try {
-      const prev = await prisma.alert.findMany({
-        where: { source },
-        select: { target: true, severity: true, message: true },
-      })
-      const now = new Date().toISOString()
-      const { raised, cleared } = diffAlerts(source, prev, checked, found, now)
-      // Reconcile: persist found (message+severity), delete cleared.
-      if (cleared.length > 0) {
-        await prisma.alert.deleteMany({ where: { source, target: { in: cleared.map(c => c.target) } } })
-      }
-      for (const f of found) {
-        await prisma.alert.upsert({
-          where: { source_target: { source, target: f.target } },
-          create: { source, target: f.target, message: f.message, severity: f.severity },
-          update: { message: f.message, severity: f.severity },
-        })
-      }
-      for (const evt of [...raised, ...cleared]) void dispatchEvent(evt)
-    } catch (e) {
-      log.error({ err: e, source }, "alert-sampler: failed to persist alerts") // non-fatal: sampler errors must not crash the server
-    }
+    await reconcileSource(source, outcome)
   }
 }
 
