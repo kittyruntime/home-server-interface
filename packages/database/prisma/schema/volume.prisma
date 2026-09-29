@@ -1,0 +1,11 @@
+// A data volume that is not usable (#3) and what HSI blocked because of it.
+// status: blocked (volume missing, wrong or read-only) | back (usable again,
+// waiting for the admin to resume).
+model VolumeHold {
+  mountPoint  String   @id
+  reason      String
+  status      String
+  since       DateTime @default(now())
+  stoppedApps String   @default("[]")
+  strayFiles  Boolean  @default(false)
+}
