@@ -7,7 +7,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
 
   // audit.meta: extra details a procedure adds to its audit entry (e.g. the
   // executed operation plan).
-  return { prisma, req, res, user, audit: {} as { meta?: Record<string, unknown>; success?: boolean } }
+  return { prisma, req, res, user, audit: {} as { meta?: Record<string, unknown>; success?: boolean; target?: string } }
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>

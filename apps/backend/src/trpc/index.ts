@@ -65,6 +65,11 @@ export function extractTarget(input: unknown): string | undefined {
   return v != null ? String(v) : undefined
 }
 
+/** A procedure can name its target itself (e.g. a share by name, not id). */
+export function auditTarget(rawInput: unknown, audit?: { target?: string }): string | undefined {
+  return audit?.target ?? extractTarget(rawInput)
+}
+
 const SENSITIVE_KEY = /pass(word|wd)?|secret|token|key|auth|credential/i
 
 function redact(v: unknown): unknown {
@@ -98,7 +103,7 @@ const auditLog = t.middleware(async (opts) => {
       data: {
         userId:  opts.ctx.user.userId,
         action:  opts.path,
-        target:  extractTarget(opts.rawInput),
+        target:  auditTarget(opts.rawInput, opts.ctx.audit),
         meta:    sanitizeMeta(opts.ctx.audit?.meta ? { input: opts.rawInput, ...opts.ctx.audit.meta } : opts.rawInput),
         ip:      opts.ctx.req.ip ?? opts.ctx.req.headers["x-forwarded-for"]?.toString(),
         // A procedure can report a failure it returns as data (e.g. a plan

@@ -1025,4 +1025,11 @@ async function testSharePlans() {
 }
 await testSharePlans()
 
+// Plans name what they changed in the audit log, not an opaque id.
+{
+  const { auditTarget } = await import("../trpc/index")
+  assert.equal(auditTarget({ op: "share.update", input: { id: "ck1" } }, { target: "media" }), "media")
+  assert.equal(auditTarget({ op: "share.update", input: { id: "ck1" } }, {}), "ck1")
+}
+
 console.log("Backend security tests passed")
