@@ -33,7 +33,8 @@ type planStep struct {
 	Device      *deviceInfo `json:"device,omitempty"`
 	OnFailure   string      `json:"onFailure,omitempty"` // "" stop, "warn", "ignore"
 
-	run func() (detail string, err error)
+	run      func() (detail string, err error)
+	failCode string // error code when this step fails (default ERR)
 }
 
 type opPlan struct {

@@ -256,92 +256,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 
 // handleDiskFormat formats a block device with the requested filesystem.
 // Safety: refuses to format system devices or mounted devices.
-func handleDiskFormat(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Device string `json:"device"` // bare name: "sdb", "sdb1"
-		FsType string `json:"fstype"` // ext4, xfs, btrfs, fat32
-		Label  string `json:"label"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
-		return
-	}
-	if !reBlockDev.MatchString(req.Device) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device name"})
-		return
-	}
-	if systemDeviceNames()[req.Device] {
-		replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "cannot format system device — it is in use by the OS"})
-		return
-	}
-
-	devPath := "/dev/" + req.Device
-
-	// Refuse if mounted
-	if mdata, _ := os.ReadFile("/proc/mounts"); mdata != nil {
-		for _, line := range strings.Split(string(mdata), "\n") {
-			if f := strings.Fields(line); len(f) > 0 && f[0] == devPath {
-				replyErr(nc, msg.Reply, &fsError{Code: "EMNT", Message: "device is mounted — unmount it first"})
-				return
-			}
-		}
-	}
-
-	if member, reason := isRaidOrLvmMember(req.Device); member {
-		replyErr(nc, msg.Reply, &fsError{Code: "EMEMBER", Message: reason + " — remove it from the array/volume group first"})
-		return
-	}
-
-	label := strings.TrimSpace(req.Label)
-	var args []string
-	switch req.FsType {
-	case "ext4":
-		args = []string{"mkfs.ext4", "-F"}
-		if label != "" {
-			args = append(args, "-L", label)
-		}
-	case "xfs":
-		args = []string{"mkfs.xfs", "-f"}
-		if label != "" {
-			args = append(args, "-L", label)
-		}
-	case "btrfs":
-		args = []string{"mkfs.btrfs", "-f"}
-		if label != "" {
-			args = append(args, "-L", label)
-		}
-	case "fat32", "vfat":
-		// Prefer mkfs.fat (newer name); fall back to mkfs.vfat.
-		bin := "mkfs.fat"
-		if _, err := exec.LookPath(bin); err != nil {
-			bin = "mkfs.vfat"
-		}
-		args = []string{bin, "-F", "32"}
-		if label != "" {
-			l := label
-			if len(l) > 11 {
-				l = l[:11]
-			}
-			args = append(args, "-n", strings.ToUpper(l))
-		}
-	default:
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "unsupported filesystem: " + req.FsType})
-		return
-	}
-	args = append(args, devPath)
-
-	out, err := command(args[0], args[1:]...).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-
-	// Notify kernel of new filesystem
-	command("partprobe", devPath).Run()
-	command("udevadm", "settle").Run()
-
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleDiskFormat(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planFormat) }
 
 // handleDiskMount mounts a device at the given mount point, optionally
 // persisting the entry in /etc/fstab via UUID.
@@ -901,110 +816,11 @@ func handleLvmInfo(nc *nats.Conn, msg *nats.Msg) {
 
 var reVGName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
 
-func handlePvCreate(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Devices []string `json:"devices"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
-		return
-	}
-	if len(req.Devices) == 0 {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "no devices specified"})
-		return
-	}
-	sysDevs := systemDeviceNames()
-	devPaths := make([]string, 0, len(req.Devices))
-	for _, d := range req.Devices {
-		if !reBlockDev.MatchString(d) {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device name: " + d})
-			return
-		}
-		if sysDevs[d] {
-			replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: d + " belongs to the system disk"})
-			return
-		}
-		if fe := checkDeviceClaimable(d); fe != nil {
-			replyErr(nc, msg.Reply, fe)
-			return
-		}
-		devPaths = append(devPaths, "/dev/"+d)
-	}
-	// -f skips pvcreate's own "signature detected, wipe it?" prompt; it is only
-	// safe because checkDeviceClaimable refused anything holding data above.
-	args := append([]string{"pvcreate", "-f"}, devPaths...)
-	out, err := command(args[0], args[1:]...).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handlePvCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPvCreate) }
 
-func handleVgCreate(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Name    string   `json:"name"`
-		Devices []string `json:"devices"` // already-PV device names
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
-		return
-	}
-	if !reVGName.MatchString(req.Name) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid VG name (letters, digits, _ - only)"})
-		return
-	}
-	sysDevs := systemDeviceNames()
-	devPaths := make([]string, 0, len(req.Devices))
-	for _, d := range req.Devices {
-		if !reBlockDev.MatchString(d) {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device: " + d})
-			return
-		}
-		if sysDevs[d] {
-			replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: d + " is a system device"})
-			return
-		}
-		devPaths = append(devPaths, "/dev/"+d)
-	}
-	args := append([]string{"vgcreate", req.Name}, devPaths...)
-	out, err := command(args[0], args[1:]...).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleVgCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgCreate) }
 
-func handleLvCreate(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		VGName    string `json:"vgName"`
-		LVName    string `json:"lvName"`
-		SizeBytes int64  `json:"sizeBytes"` // 0 = all free space
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
-		return
-	}
-	if !reVGName.MatchString(req.VGName) || !reVGName.MatchString(req.LVName) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid VG or LV name"})
-		return
-	}
-
-	var args []string
-	if req.SizeBytes == 0 {
-		args = []string{"lvcreate", "-l", "100%FREE", "-n", req.LVName, req.VGName}
-	} else {
-		args = []string{"lvcreate", "-L", fmt.Sprintf("%dB", req.SizeBytes), "-n", req.LVName, req.VGName}
-	}
-	out, err := command(args[0], args[1:]...).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	command("udevadm", "settle").Run()
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleLvCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planLvCreate) }
 
 // lvDmPath returns the /dev/mapper path the kernel actually reports in
 // /proc/mounts for an LV — mount(2) canonicalizes through devicemapper, so
@@ -1016,155 +832,21 @@ func lvDmPath(vgName, lvName string) string {
 	return "/dev/mapper/" + esc(vgName) + "-" + esc(lvName)
 }
 
-func handleLvRemove(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		VGName string `json:"vgName"`
-		LVName string `json:"lvName"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	if !reVGName.MatchString(req.VGName) || !reVGName.MatchString(req.LVName) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid VG or LV name"})
-		return
-	}
-	lvPath := "/dev/" + req.VGName + "/" + req.LVName
-	dmPath := lvDmPath(req.VGName, req.LVName)
-	mdata, _ := os.ReadFile("/proc/mounts")
-	for _, line := range strings.Split(string(mdata), "\n") {
-		if f := strings.Fields(line); len(f) > 0 && (f[0] == lvPath || f[0] == dmPath) {
-			replyErr(nc, msg.Reply, &fsError{Code: "EMNT", Message: "LV is mounted — unmount it first"})
-			return
-		}
-	}
-	out, err := command("lvremove", "-f", lvPath).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleLvRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planLvRemove) }
 
-func handleVgRemove(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		VGName string `json:"vgName"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	if !reVGName.MatchString(req.VGName) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid VG name"})
-		return
-	}
-
-	_, _, lvs := getLvmInfo()
-	mdata, _ := os.ReadFile("/proc/mounts")
-	mounted := map[string]bool{}
-	for _, line := range strings.Split(string(mdata), "\n") {
-		if f := strings.Fields(line); len(f) > 0 {
-			mounted[f[0]] = true
-		}
-	}
-	for _, lv := range lvs {
-		if lv.VGName != req.VGName {
-			continue
-		}
-		if mounted[lv.Path] || mounted[lvDmPath(lv.VGName, lv.Name)] {
-			replyErr(nc, msg.Reply, &fsError{Code: "EMNT", Message: "logical volume " + lv.Name + " is mounted — unmount it first"})
-			return
-		}
-	}
-
-	out, err := command("vgremove", "-f", req.VGName).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleVgRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgRemove) }
 
 // ── Partition management ──────────────────────────────────────────────────────
 
 var rePartNum = regexp.MustCompile(`^[1-9][0-9]?$`) // 1–99
 
 // handlePartitionInit creates a fresh GPT partition table — destroys all data.
-func handlePartitionInit(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Device string `json:"device"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	if !reBlockDev.MatchString(req.Device) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device name"})
-		return
-	}
-	if systemDeviceNames()[req.Device] {
-		replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "cannot modify system disk"})
-		return
-	}
-	if member, reason := isRaidOrLvmMember(req.Device); member {
-		replyErr(nc, msg.Reply, &fsError{Code: "EMEMBER", Message: reason + " — remove it from the array/volume group first"})
-		return
-	}
-	devPath := "/dev/" + req.Device
-	out, err := command("parted", "-s", devPath, "mklabel", "gpt").CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	command("partprobe", devPath).Run()
-	command("udevadm", "settle").Run()
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handlePartitionInit(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartInit) }
 
 // handlePartitionCreate adds a new partition using percentage-based placement.
 // startPct and endPct define the position within the disk (0–100).
 // endPct=0 means "extend to end of disk".
-func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Device   string `json:"device"`
-		StartPct int    `json:"startPct"`
-		EndPct   int    `json:"endPct"` // 0 = 100%
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	if !reBlockDev.MatchString(req.Device) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device name"})
-		return
-	}
-	if systemDeviceNames()[req.Device] {
-		replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "cannot modify system disk"})
-		return
-	}
-	if member, reason := isRaidOrLvmMember(req.Device); member {
-		replyErr(nc, msg.Reply, &fsError{Code: "EBUSY", Message: reason})
-		return
-	}
-	end := req.EndPct
-	if end == 0 {
-		end = 100
-	}
-	if req.StartPct < 0 || end > 100 || req.StartPct >= end {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid start/end percentages"})
-		return
-	}
-	devPath := "/dev/" + req.Device
-	out, err := command("parted", "-s", devPath, "mkpart", "primary",
-		fmt.Sprintf("%d%%", req.StartPct), fmt.Sprintf("%d%%", end)).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	command("partprobe", devPath).Run()
-	command("udevadm", "settle").Run()
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartCreate) }
 
 // ── S.M.A.R.T. ───────────────────────────────────────────────────────────────
 
@@ -1426,47 +1108,4 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 }
 
 // handlePartitionDelete removes a partition by its number.
-func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Device  string `json:"device"`
-		PartNum string `json:"partNum"` // "1", "2", …
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	if !reBlockDev.MatchString(req.Device) || !rePartNum.MatchString(req.PartNum) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid device or partition number"})
-		return
-	}
-	// Derive the partition device name (sdb1, nvme0n1p1, …)
-	base := req.Device
-	partDev := base + req.PartNum
-	if strings.ContainsAny(base, "0123456789") && (strings.HasPrefix(base, "nvme") || strings.HasPrefix(base, "mmcblk")) {
-		partDev = base + "p" + req.PartNum
-	}
-	if systemDeviceNames()[req.Device] || systemDeviceNames()[partDev] {
-		replyErr(nc, msg.Reply, &fsError{Code: "ESYS", Message: "cannot delete partition from system disk"})
-		return
-	}
-	if member, reason := isRaidOrLvmMember(partDev); member {
-		replyErr(nc, msg.Reply, &fsError{Code: "EMEMBER", Message: reason + " — remove it from the array/volume group first"})
-		return
-	}
-	devPath := "/dev/" + partDev
-	mdata, _ := os.ReadFile("/proc/mounts")
-	for _, line := range strings.Split(string(mdata), "\n") {
-		if f := strings.Fields(line); len(f) > 0 && f[0] == devPath {
-			replyErr(nc, msg.Reply, &fsError{Code: "EMNT", Message: "partition is mounted — unmount it first"})
-			return
-		}
-	}
-	out, err := command("parted", "-s", "/dev/"+req.Device, "rm", req.PartNum).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	command("partprobe", "/dev/"+req.Device).Run()
-	command("udevadm", "settle").Run()
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartDelete) }
