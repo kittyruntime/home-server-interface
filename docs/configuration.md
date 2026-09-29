@@ -190,6 +190,17 @@ preview, HSI refuses and asks you to review again. Commands that start
 containers run in the background; follow them in the notifications. After an
 App Store install, HSI opens Apps on the new app and its logs.
 
+### Shares
+
+Creating, editing, enabling, disabling and removing an SMB share (Sharing)
+show the change to `/etc/nasui/samba/smb.conf` as a diff, the systemd drop-in
+that points smbd at that file when it is installed for the first time, and the
+`systemctl` commands that reload smbd. If `smb.conf` changed in between (a
+permission change or a missing volume also rewrites it), HSI refuses and asks
+you to review the new plan. The share is recorded in HSI only once the plan
+ran. When Samba is not installed, removing a share only removes HSI's record of
+it.
+
 ## Missing volumes
 
 Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")
