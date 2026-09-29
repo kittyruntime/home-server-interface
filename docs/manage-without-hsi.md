@@ -131,6 +131,14 @@ cat /etc/fstab              # persisted entries
 mount -a                    # (re)apply fstab by hand
 ```
 
+HSI's entries carry `nofail`, and their mount point directories are made
+immutable while unmounted so nothing writes to the system disk in their place.
+To reuse such a directory by hand, clear the flag first:
+
+```bash
+umount /mnt/data && chattr -i /mnt/data
+```
+
 ## systemd services
 
 HSI itself is three ordinary systemd units grouped under `hsi.target`; see

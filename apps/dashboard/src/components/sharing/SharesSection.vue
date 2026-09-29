@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import Modal from '../ui/Modal.vue'
 import { useConfirm } from '../../lib/confirm'
 
@@ -63,7 +64,12 @@ async function refresh() {
   }
 }
 
-onMounted(refresh)
+const { holdForPath, refreshHolds } = useVolumeHolds()
+
+onMounted(() => {
+  void refresh()
+  void refreshHolds()
+})
 
 function openCreate() {
   editorError.value = ''
@@ -190,6 +196,7 @@ async function removeShare(s: ShareRow) {
               </span>
               <span v-if="s.readOnly" class="badge badge-muted">Read-only</span>
               <span v-if="s.guestOk" class="badge badge-muted">Guest</span>
+              <span v-if="holdForPath(s.placePath)" class="badge bg-danger/10 text-danger" :title="holdLabel(holdForPath(s.placePath)!)">Unavailable</span>
             </div>
             <p class="text-xs text-[var(--c-text-3)] mt-1">
               {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> · {{ s.userCount }} user{{ s.userCount === 1 ? '' : 's' }}

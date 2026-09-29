@@ -5,10 +5,16 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
+import VolumeHealthPanel from './VolumeHealthPanel.vue'
 
 const emit = defineEmits<{ navigate: [section: 'disks' | 'raid' | 'lvm'] }>()
 
-const { loading, error, devices, raids, lvmLVs, refresh } = useStorageData()
+const { loading, error, devices, raids, lvmLVs, refresh: refreshStorage } = useStorageData()
+const volumePanel = ref<InstanceType<typeof VolumeHealthPanel> | null>(null)
+function refresh() {
+  void refreshStorage()
+  void volumePanel.value?.refresh()
+}
 
 // ── Aggregated mount data ─────────────────────────────────────────────────────
 
@@ -204,6 +210,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else>
+      <VolumeHealthPanel ref="volumePanel" />
+
       <!-- Mounted filesystems -->
       <div v-if="mounted.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)] mb-6">
         No filesystems currently mounted.

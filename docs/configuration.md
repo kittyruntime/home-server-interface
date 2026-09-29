@@ -145,6 +145,7 @@ event source prefix and a minimum severity:
 | Source | Events |
 |---|---|
 | `storage.smart`, `storage.raid`, `storage.disk-usage` | Alert raised, alert cleared (including manual clears) |
+| `storage.volume` | A data volume mounted by HSI is missing, replaced by another filesystem (critical) or read-only (warning) |
 | `backup.plan` | A backup run failed |
 | `system.update` | An HSI update did not end on the requested version: reported 5 minutes after HSI restarts on the old version, or 1 hour after the request if HSI never restarted |
 
@@ -162,6 +163,28 @@ again.
 HSI can only notify while it is running. A server that is powered off, frozen or
 unreachable cannot report its own outage: use an external monitor (for example
 an uptime service polling `http://<server>:9001/health`) to detect that.
+
+## Missing volumes
+
+Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")
+are protected when their disk is absent:
+
+- The `/etc/fstab` entry carries `nofail,x-systemd.device-timeout=10s`: the
+  NAS finishes booting (network and HSI included) after 10 seconds instead of
+  stopping in emergency mode.
+- The mount point directory is immutable (`chattr +i`) while nothing is
+  mounted on it, so nothing (Docker, Samba, rsync, a script) can write to the
+  system disk in the volume's place.
+- HSI checks every minute. A missing, wrong or read-only volume raises a
+  `storage.volume` alert and blocks what uses it: apps that bind-mount a path
+  on it are stopped, its shares become unavailable, and backups, uploads and
+  file writes under it are refused with the reason.
+- When the right volume is back (same filesystem UUID), HSI mounts it again
+  and shows it in Storage > Mounts. Nothing restarts until you click Resume.
+
+`hsi-worker volumes` prints the state of each volume from a shell. Existing
+fstab entries written by HSI get the boot options at the next worker start;
+very old entries without the `# HSI-managed mount:` marker are left alone.
 
 ## Ports
 
