@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { trpc } from '../../lib/trpc'
-import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type StorageOp } from '../../lib/plan'
+import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp } from '../../lib/plan'
 
 // Review then apply an operation plan (#36): the exact files, commands and
 // devices HSI is about to touch, and the result of each step.
@@ -29,7 +29,9 @@ async function load() {
   try {
     preview.value = req.domain === 'apps'
       ? await trpc.apps.plan.mutate({ op: req.op as AppOp, input: req.input })
-      : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
+      : req.domain === 'sharing'
+        ? await trpc.sharing.plan.mutate({ op: req.op as ShareOp, input: req.input })
+        : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
   } catch (e) {
     preview.value = null
     loadError.value = e instanceof Error ? e.message : String(e)
@@ -74,7 +76,9 @@ async function apply() {
     const fingerprint = preview.value.fingerprint
     const res: PlanApply = req.domain === 'apps'
       ? await trpc.apps.apply.mutate({ op: req.op as AppOp, input: req.input, fingerprint })
-      : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
+      : req.domain === 'sharing'
+        ? await trpc.sharing.apply.mutate({ op: req.op as ShareOp, input: req.input, fingerprint })
+        : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
     applied.value = res
     if (res.ok) {
       settle({ status: 'applied', result: res })
