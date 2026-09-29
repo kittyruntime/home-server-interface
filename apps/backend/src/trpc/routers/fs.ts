@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { assertVolumeAvailable } from "../../services/volume-guard"
 import crypto from "node:crypto"
 import { readdir, readFile, stat } from "node:fs/promises"
 import { join, normalize, dirname } from "node:path"
@@ -33,6 +34,7 @@ export async function checkPathPerm(
   path: string,
   flag: "canRead" | "canWrite" | "canDelete" | "canShare",
 ): Promise<string | null> {
+  if (flag === "canWrite" || flag === "canDelete") await assertVolumeAvailable(path)
   if (ctx.user.isAdmin) return null
 
   const places = await ctx.prisma.place.findMany()

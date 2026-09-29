@@ -1,6 +1,7 @@
 import { buildApp, connectNats, startEventSubscriber } from "./app"
 import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAlertSampler } from "./services/alert-sampler"
+import { startVolumeGuard } from "./services/volume-guard"
 import { startTelemetry } from "./services/telemetry"
 import { startBackupScheduler } from "./services/backup-scheduler"
 import { ensureDefaultRule } from "./services/notifications"
@@ -42,6 +43,7 @@ const start = async () => {
     await connectNats()
     startMetricsSampler()
     startAlertSampler()
+    startVolumeGuard()
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()

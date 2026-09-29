@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { composeBindSources } from "@app/compose"
+import { assertVolumeAvailable } from "../../services/volume-guard"
 import { TRPCError } from "@trpc/server"
 import { router, adminProcedure, protectedProcedure } from "../index"
 import { publishJob, requestSync } from "../../nats"
@@ -89,7 +91,7 @@ const appRouter = router({
   apply: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
-      await getStack(input.name) // 404 early
+      await assertAppVolumes(input.name) // also 404s early
       await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
       const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
       return { jobId }
@@ -98,6 +100,7 @@ const appRouter = router({
   start: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
+      await assertAppVolumes(input.name)
       return { jobId: await publishJob("container.composeUp", { name: input.name }, ctx.user.userId) }
     }),
 
@@ -110,6 +113,7 @@ const appRouter = router({
   restart: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
+      await assertAppVolumes(input.name)
       return { jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) }
     }),
 
@@ -250,6 +254,12 @@ const networkRouter = router({
 })
 
 // ── Main router ───────────────────────────────────────────────────────────────
+
+// An app bind-mounting a path on a missing volume must not start (#3).
+async function assertAppVolumes(name: string): Promise<void> {
+  const stack = await getStack(name)
+  await assertVolumeAvailable(composeBindSources(stack.rawYaml))
+}
 
 export const containerRouter = router({
   // Whether apps can run on this server; `problem` is the message to show.

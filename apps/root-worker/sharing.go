@@ -50,6 +50,9 @@ type shareDef struct {
 	GuestOk    bool     `json:"guestOk"`
 	ValidUsers []string `json:"validUsers"`
 	WriteUsers []string `json:"writeUsers"`
+	// Unavailable: the share's volume is missing (#3); clients see the share
+	// as unavailable instead of an empty folder on the boot disk.
+	Unavailable bool `json:"unavailable"`
 }
 
 func smbdInstalled() bool {
@@ -148,6 +151,9 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		b.WriteString("\n[" + s.Name + "]\n")
 		b.WriteString("   path = " + s.Path + "\n")
 		b.WriteString("   browseable = yes\n")
+		if s.Unavailable {
+			b.WriteString("   available = no\n")
+		}
 		// Writes are granted exclusively through "write list" — the share
 		// itself always stays "read only = yes".
 		b.WriteString("   read only = yes\n")
@@ -155,7 +161,7 @@ func renderSmbConf(shares []shareDef) (string, error) {
 			b.WriteString("   guest ok = yes\n")
 		} else if len(s.ValidUsers) > 0 {
 			b.WriteString("   valid users = " + strings.Join(s.ValidUsers, " ") + "\n")
-		} else {
+		} else if !s.Unavailable {
 			// An empty "valid users" list means "everyone" to Samba — a share
 			// with no permitted users and no guest access must be disabled.
 			b.WriteString("   available = no\n")

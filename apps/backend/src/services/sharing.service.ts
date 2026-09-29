@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@app/database"
+import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
 
@@ -132,6 +133,9 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
 
   const uniqSorted = (xs: string[]) => [...new Set(xs)].sort()
 
+  // Shares on a volume that is missing or waiting for Resume stay unavailable (#3).
+  const holds = await prisma.volumeHold.findMany()
+
   const defs = []
   for (const s of shares) {
     const users = await resolveShareUsers(prisma, s.placeId)
@@ -142,6 +146,7 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
       guestOk: s.guestOk,
       validUsers: uniqSorted([...users.validUsers, ...adminLinux]),
       writeUsers: s.readOnly ? [] : uniqSorted([...users.writeUsers, ...adminLinux]),
+      unavailable: holdFor(holds, s.place.path) !== null,
     })
   }
   await requestSync("root.sharing.sync", { shares: defs })
