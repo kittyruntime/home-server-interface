@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +33,9 @@ func hsiVolumes(conf string) []volumeEntry {
 		}
 		mp := strings.TrimPrefix(lines[i], hsiMountMarker)
 		f := strings.Fields(lines[i+1])
-		if len(f) < 4 || f[1] != mp {
+		// Only UUID= sources identify the filesystem; a device path could be
+		// another disk after a reboot.
+		if len(f) < 4 || f[1] != mp || !strings.HasPrefix(f[0], "UUID=") {
 			continue
 		}
 		out = append(out, volumeEntry{MountPoint: mp, Source: f[0], UUID: strings.TrimPrefix(f[0], "UUID="), FSType: f[2], Options: f[3]})
@@ -112,16 +116,44 @@ func parseFindmnt(out string) (mounted bool, uuid string, readOnly bool) {
 }
 
 func volumeState(expectedUUID, findmntOut string) string {
+	return volumeStateFor(expectedUUID, "", findmntOut)
+}
+
+// volumeStateFor also takes the fstab options: a volume mounted read-only on
+// purpose is ok; only one that became read-only (e.g. errors=remount-ro) is
+// reported.
+func volumeStateFor(expectedUUID, fstabOpts, findmntOut string) string {
 	mounted, uuid, ro := parseFindmnt(findmntOut)
+	wantRO := false
+	for _, o := range strings.Split(fstabOpts, ",") {
+		if o == "ro" {
+			wantRO = true
+		}
+	}
 	switch {
 	case !mounted:
 		return "missing"
 	case uuid != expectedUUID:
 		return "wrong"
-	case ro:
+	case ro && !wantRO:
 		return "readonly"
 	default:
 		return "ok"
+	}
+}
+
+// missingVolumeAction decides what to do with a volume that is not mounted:
+// remount it only when its disk was seen absent and is present again (it came
+// back). A disk that is present but was never seen absent was unmounted on
+// purpose, or is not mounted yet: leave it alone.
+func missingVolumeAction(devicePresent, seenAbsent bool) (state string, remount, seenAbsentNext bool) {
+	switch {
+	case !devicePresent:
+		return "missing", false, true
+	case seenAbsent:
+		return "missing", true, false
+	default:
+		return "unmounted", false, false
 	}
 }
 
@@ -132,6 +164,26 @@ var (
 	volumeStray   = map[string]bool{}   // mount point -> files found on the boot disk under it
 	volumeGuardEr = map[string]string{} // mount point -> last chattr error
 )
+
+// Mount points whose disk was seen absent, kept in /run (cleared at boot) so
+// the worker service and the `hsi-worker volumes` command share it.
+const volumeAbsentFile = "/run/hsi-worker/volumes-absent.json"
+
+func loadVolumeAbsent() map[string]bool {
+	m := map[string]bool{}
+	if b, err := os.ReadFile(volumeAbsentFile); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	return m
+}
+
+func saveVolumeAbsent(m map[string]bool) {
+	if err := os.MkdirAll(filepath.Dir(volumeAbsentFile), 0700); err != nil {
+		return
+	}
+	b, _ := json.Marshal(m)
+	_ = os.WriteFile(volumeAbsentFile, b, 0600)
+}
 
 func dirHasEntries(dir string) bool {
 	entries, err := os.ReadDir(dir)
@@ -149,6 +201,11 @@ func isMounted(mp string) bool {
 // of the parent filesystem (submounts, including this volume, are not carried
 // over). Reports whether files already sit in that directory.
 func protectMountPoint(mp string) (bool, error) {
+	// Work on the real path: a symlink in a parent component must not lead
+	// the chattr anywhere else.
+	if real, err := filepath.EvalSymlinks(mp); err == nil {
+		mp = real
+	}
 	if !isMounted(mp) {
 		if err := os.MkdirAll(mp, 0755); err != nil {
 			return false, err
@@ -161,19 +218,28 @@ func protectMountPoint(mp string) (bool, error) {
 		return false, err
 	}
 	parent := strings.TrimSpace(string(parentOut))
+	rel := strings.TrimPrefix(mp, strings.TrimSuffix(parent, "/"))
 	tmp, err := os.MkdirTemp("/run", "hsi-under-")
 	if err != nil {
 		return false, err
 	}
 	defer os.Remove(tmp)
-	if err := command("mount", "--bind", parent, tmp).Run(); err != nil {
-		return false, err
+	// In a private mount namespace: the bind never reaches the host (no
+	// propagation, nothing to clean up if we die), and it disappears when the
+	// shell exits. The device check refuses to touch anything that is not on
+	// the parent filesystem (e.g. a symlink escaping into the mounted volume).
+	script := `set -e
+mount --bind "$1" "$2"
+d="$2$3"
+[ "$(stat -c %d "$d")" = "$(stat -c %d "$2")" ] || { echo "mount point is not on its parent filesystem" >&2; exit 3; }
+if [ -n "$(ls -A "$d")" ]; then echo stray; fi
+chattr +i "$d"`
+	out, err := command("unshare", "--mount", "--propagation", "private", "--", "sh", "-c", script, "_", parent, tmp, rel).CombinedOutput()
+	stray := strings.Contains(string(out), "stray")
+	if err != nil {
+		return stray, fmt.Errorf("%s", strings.TrimSpace(strings.ReplaceAll(string(out), "stray", "")))
 	}
-	defer command("umount", tmp).Run()
-	_ = command("mount", "--make-private", tmp).Run()
-	under := filepath.Join(tmp, strings.TrimPrefix(mp, strings.TrimSuffix(parent, "/")))
-	stray := dirHasEntries(under)
-	return stray, command("chattr", "+i", under).Run()
+	return stray, nil
 }
 
 func unprotectMountPoint(mp string) {
@@ -226,19 +292,36 @@ func volumeStatuses() ([]volumeStatus, error) {
 		return nil, err
 	}
 	out := []volumeStatus{}
+	volumeGuardMu.Lock()
+	absent := loadVolumeAbsent()
+	volumeGuardMu.Unlock()
+	defer func() {
+		volumeGuardMu.Lock()
+		saveVolumeAbsent(absent)
+		volumeGuardMu.Unlock()
+	}()
 	for _, v := range hsiVolumes(string(conf)) {
 		findmnt := func() string {
 			o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", v.MountPoint).Output()
 			return string(o)
 		}
-		state := volumeState(v.UUID, findmnt())
-		if state == "missing" && v.UUID != "" {
-			if dev, err := command("blkid", "-U", v.UUID).Output(); err == nil && strings.TrimSpace(string(dev)) != "" {
+		state := volumeStateFor(v.UUID, v.Options, findmnt())
+		if state == "missing" {
+			dev, err := command("blkid", "-U", v.UUID).Output()
+			present := err == nil && strings.TrimSpace(string(dev)) != ""
+			next, remount, seenNext := missingVolumeAction(present, absent[v.MountPoint])
+			state = next
+			if remount {
 				if err := command("mount", v.MountPoint).Run(); err == nil {
 					logger.Info("volume guard: remounted returning volume", "mountPoint", v.MountPoint)
-					state = volumeState(v.UUID, findmnt())
+					state = volumeStateFor(v.UUID, v.Options, findmnt())
+				} else {
+					seenNext = true // try again on the next check
 				}
 			}
+			absent[v.MountPoint] = seenNext
+		} else {
+			delete(absent, v.MountPoint)
 		}
 		volumeGuardMu.Lock()
 		out = append(out, volumeStatus{MountPoint: v.MountPoint, UUID: v.UUID, State: state, StrayFiles: volumeStray[v.MountPoint], GuardError: volumeGuardEr[v.MountPoint]})

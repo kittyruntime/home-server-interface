@@ -27,6 +27,7 @@ const STATE: Record<string, { label: string; cls: string }> = {
   missing:  { label: 'Missing',      cls: 'bg-danger/10 text-danger' },
   wrong:    { label: 'Wrong volume', cls: 'bg-danger/10 text-danger' },
   readonly: { label: 'Read-only',    cls: 'bg-warning/10 text-warning' },
+  unmounted: { label: 'Unmounted',   cls: 'badge-muted' },
 }
 
 function since(d: string | Date): string {

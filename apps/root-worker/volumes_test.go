@@ -90,3 +90,35 @@ func TestDirHasEntries(t *testing.T) {
 		t.Fatal("stray file not reported")
 	}
 }
+
+func TestHsiVolumesSkipsEntriesWithoutUUID(t *testing.T) {
+	conf := "# HSI-managed mount: /mnt/raw\n/dev/sdb1\t/mnt/raw\text4\tdefaults\t0\t2\n"
+	if v := hsiVolumes(conf); len(v) != 0 {
+		t.Fatalf("an entry without UUID= cannot be identified, got %+v", v)
+	}
+}
+
+func TestVolumeStateReadOnlyByChoiceIsOk(t *testing.T) {
+	out := `UUID="aaaa-1111" OPTIONS="ro,relatime"`
+	if got := volumeStateFor("aaaa-1111", "defaults,ro,nofail", out); got != "ok" {
+		t.Fatalf("volume mounted ro on purpose: got %s", got)
+	}
+	if got := volumeStateFor("aaaa-1111", "defaults,nofail", out); got != "readonly" {
+		t.Fatalf("volume remounted ro after errors: got %s", got)
+	}
+}
+
+func TestMissingVolumeAction(t *testing.T) {
+	// Disk absent: missing, and remembered as seen absent.
+	if s, remount, seen := missingVolumeAction(false, false); s != "missing" || remount || !seen {
+		t.Errorf("absent: %s %v %v", s, remount, seen)
+	}
+	// Disk present after being seen absent: it came back, remount it.
+	if s, remount, seen := missingVolumeAction(true, true); s != "missing" || !remount || seen {
+		t.Errorf("returning: %s %v %v", s, remount, seen)
+	}
+	// Disk present, never seen absent: unmounted on purpose (or not yet), leave it.
+	if s, remount, seen := missingVolumeAction(true, false); s != "unmounted" || remount || seen {
+		t.Errorf("unmounted: %s %v %v", s, remount, seen)
+	}
+}
