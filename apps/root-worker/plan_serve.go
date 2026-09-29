@@ -11,19 +11,24 @@ import (
 // ── Preview and apply (#36) ──────────────────────────────────────────────────
 
 var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
-	"format":      planFormat,
-	"part.init":   planPartInit,
-	"part.create": planPartCreate,
-	"part.delete": planPartDelete,
-	"pv.create":   planPvCreate,
-	"vg.create":   planVgCreate,
-	"lv.create":   planLvCreate,
-	"lv.remove":   planLvRemove,
-	"vg.remove":   planVgRemove,
-	"mount":       planMount,
-	"umount":      planUmount,
-	"raid.create": planRaidCreate,
-	"raid.stop":   planRaidStop,
+	"format":          planFormat,
+	"part.init":       planPartInit,
+	"part.create":     planPartCreate,
+	"part.delete":     planPartDelete,
+	"pv.create":       planPvCreate,
+	"vg.create":       planVgCreate,
+	"lv.create":       planLvCreate,
+	"lv.remove":       planLvRemove,
+	"vg.remove":       planVgRemove,
+	"mount":           planMount,
+	"umount":          planUmount,
+	"raid.create":     planRaidCreate,
+	"raid.stop":       planRaidStop,
+	"raid.fail":       planRaidFail,
+	"raid.remove":     planRaidRemove,
+	"raid.add":        planRaidAdd,
+	"import.assemble": planImportAssemble,
+	"import.activate": planImportActivate,
 }
 
 type planPreview struct {

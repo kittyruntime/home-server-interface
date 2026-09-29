@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -145,58 +144,11 @@ var reUUID = regexp.MustCompile(`^[0-9a-fA-F:]{8,64}$`)
 // A degraded array (members missing) is only started when allowDegraded is
 // set: mdadm refuses by default, and forcing it silently could hide a disk
 // that is simply not plugged in.
-func handleImportAssemble(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		UUID          string `json:"uuid"`
-		Name          string `json:"name"` // md device to create, e.g. md1
-		AllowDegraded bool   `json:"allowDegraded"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil || !reUUID.MatchString(req.UUID) || !reMdDev.MatchString(req.Name) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid request"})
-		return
-	}
-	if activeArrayUUIDs()[req.UUID] {
-		replyErr(nc, msg.Reply, &fsError{Code: "EEXIST", Message: "this array is already running"})
-		return
-	}
-	args := []string{"--assemble", "/dev/" + req.Name, "--uuid=" + req.UUID, "--scan"}
-	if req.AllowDegraded {
-		args = append(args, "--run")
-	}
-	out, err := command("mdadm", args...).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	var warnings []string
-	briefOut, berr := command("mdadm", "--detail", "--brief", "/dev/"+req.Name).CombinedOutput()
-	if line := briefArrayLine(string(briefOut)); line != "" {
-		warnings = updateMdadmConf(func(conf string) string { return upsertArrayLine(conf, req.Name, line) })
-	} else {
-		warnings = append(warnings, "could not read the array definition: "+cmdErrMessage(briefOut, berr))
-	}
-	logger.Info("raid imported", "array", req.Name, "uuid", req.UUID, "degraded", req.AllowDegraded)
-	replyOk(nc, msg.Reply, map[string]any{"ok": true, "device": "/dev/" + req.Name, "warnings": warnings})
-}
+func handleImportAssemble(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planImportAssemble) }
 
 // Volume groups made elsewhere may use any name LVM allows (dots, plus signs),
 // unlike the stricter names HSI gives the groups it creates (reVGName).
 var reImportVGName = regexp.MustCompile(`^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$`)
 
 // handleImportActivateVG activates the logical volumes of a found volume group.
-func handleImportActivateVG(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		Name string `json:"name"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil || !reImportVGName.MatchString(req.Name) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid volume group name"})
-		return
-	}
-	out, err := command("vgchange", "-ay", req.Name).CombinedOutput()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-		return
-	}
-	logger.Info("volume group activated", "vg", req.Name)
-	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
+func handleImportActivateVG(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planImportActivate) }
