@@ -91,7 +91,7 @@ func TestPlanFormat(t *testing.T) {
 	if p.Steps[1].OnFailure != "ignore" || p.Steps[2].OnFailure != "ignore" {
 		t.Fatal("partprobe/settle are best effort")
 	}
-	if p.Observed["signatures"] != "sig:/dev/sdb1" {
+	if p.Observed["target:signatures"] != "sig:/dev/sdb1" {
 		t.Fatalf("observed %v", p.Observed)
 	}
 	assertParity(t, p)
@@ -177,5 +177,13 @@ func TestPlanLvm(t *testing.T) {
 	p, fe = build(t, planVgRemove, `{"vgName":"data"}`)
 	if fe != nil || !reflect.DeepEqual(argvs(p)[0], []string{"vgremove", "-f", "data"}) || !p.Steps[0].Destructive {
 		t.Fatalf("vg.remove: %v %v", fe, argvs(p))
+	}
+}
+
+func TestPlanPvCreateNamesEveryDevice(t *testing.T) {
+	stubHost(t)
+	p, _ := build(t, planPvCreate, `{"devices":["sdb","sdc"]}`)
+	if len(p.Steps[0].Devices) != 2 {
+		t.Fatalf("devices %+v", p.Steps[0].Devices)
 	}
 }

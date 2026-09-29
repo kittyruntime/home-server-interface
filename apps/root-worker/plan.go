@@ -23,15 +23,16 @@ type deviceInfo struct {
 }
 
 type planStep struct {
-	Kind        string      `json:"kind"` // create, update, delete (file), run, start, stop, permissions
-	Target      string      `json:"target"`
-	Summary     string      `json:"summary"`
-	Command     []string    `json:"command,omitempty"`
-	Diff        string      `json:"diff,omitempty"`
-	Destructive bool        `json:"destructive,omitempty"`
-	Deferred    bool        `json:"deferred,omitempty"` // exact content known only once earlier steps ran
-	Device      *deviceInfo `json:"device,omitempty"`
-	OnFailure   string      `json:"onFailure,omitempty"` // "" stop, "warn", "ignore"
+	Kind        string       `json:"kind"` // create, update, delete (file), run, start, stop, permissions
+	Target      string       `json:"target"`
+	Summary     string       `json:"summary"`
+	Command     []string     `json:"command,omitempty"`
+	Diff        string       `json:"diff,omitempty"`
+	Destructive bool         `json:"destructive,omitempty"`
+	Deferred    bool         `json:"deferred,omitempty"` // exact content known only once earlier steps ran
+	Device      *deviceInfo  `json:"device,omitempty"`
+	Devices     []deviceInfo `json:"devices,omitempty"`   // every device a destructive step erases
+	OnFailure   string       `json:"onFailure,omitempty"` // "" stop, "warn", "ignore"
 
 	run      func() (detail string, err error)
 	failCode string // error code when this step fails (default ERR)

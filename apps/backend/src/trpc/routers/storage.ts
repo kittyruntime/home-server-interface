@@ -113,6 +113,7 @@ export const storageRouter = router({
         throw new TRPCError({ code: code === "ESTALE" ? "CONFLICT" : "BAD_REQUEST", message })
       }
       ctx.audit.meta = { plan: planAuditMeta(input.op, res.steps, res.results) }
+      ctx.audit.success = res.ok
       return res
     }),
 

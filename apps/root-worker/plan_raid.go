@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -72,7 +73,7 @@ func planRaidCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	args := append([]string{"mdadm", "--create", raidDev, "--level", fmt.Sprintf("%d", req.Level),
 		"--raid-devices", fmt.Sprintf("%d", len(devPaths)), "--run"}, devPaths...)
 	create := cmdStep(raidDev, fmt.Sprintf("Create RAID %d array %s from %s, erasing their contents", req.Level, raidDev, strings.Join(devPaths, ", ")), args)
-	steps := []planStep{destructive(create, devPaths[0])}
+	steps := []planStep{destructiveAll(create, devPaths)}
 
 	// The ARRAY line carries the UUID mdadm assigns at creation: its exact
 	// content is only known once the array exists.
@@ -124,7 +125,11 @@ func planRaidStop(raw json.RawMessage) (*opPlan, *fsError) {
 	if v := hostBlkid(raidDev, "UUID"); v != "" {
 		fstabSources = append(fstabSources, "UUID="+v)
 	}
-	obs := map[string]string{"detail": detail, "fstab": readFstab(), "mdadm.conf": readMdadmConf()}
+	// Only the identity of the array is observed: mdadm --detail also reports
+	// resync progress, event counts and times, which change on their own.
+	sorted := append([]string(nil), members...)
+	sort.Strings(sorted)
+	obs := map[string]string{"members": strings.Join(sorted, " "), "uuid": uuid, "fstab": readFstab(), "mdadm.conf": readMdadmConf()}
 
 	steps := []planStep{cmdStep(raidDev, "Stop the RAID array "+raidDev, []string{"mdadm", "--stop", raidDev})}
 	for _, m := range members {

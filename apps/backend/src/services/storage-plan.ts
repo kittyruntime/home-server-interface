@@ -9,6 +9,8 @@ export const PLAN_OPS = [
 
 export type PlanOp = typeof PLAN_OPS[number]
 
+export interface DeviceInfo { path: string; model?: string; serial?: string; size?: number; contents?: string }
+
 export interface PlanStep {
   kind: string
   target: string
@@ -17,7 +19,8 @@ export interface PlanStep {
   diff?: string
   destructive?: boolean
   deferred?: boolean
-  device?: { path: string; model?: string; serial?: string; size?: number; contents?: string }
+  device?: DeviceInfo
+  devices?: DeviceInfo[]
   onFailure?: string
 }
 

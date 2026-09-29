@@ -801,4 +801,14 @@ async function testStoragePlanAudit() {
 
 await testStoragePlanAudit()
 
+const trpcIndex = await import("../trpc/index")
+
+async function testAuditTargetForPlans() {
+  assert.equal(trpcIndex.extractTarget({ op: "format", input: { device: "sdb1", fstype: "ext4" }, fingerprint: "x" }), "sdb1")
+  assert.equal(trpcIndex.extractTarget({ op: "umount", input: { mountpoint: "/mnt/data" } }), "/mnt/data")
+  assert.equal(trpcIndex.extractTarget({ path: "/a" }), "/a")
+}
+
+await testAuditTargetForPlans()
+
 console.log("Backend security tests passed")
