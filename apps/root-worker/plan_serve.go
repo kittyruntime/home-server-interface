@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -111,4 +113,33 @@ func handlePlanApply(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	replyOk(nc, msg.Reply, res)
+}
+
+func runPlanCLI(args []string) int {
+	usage := "usage: hsi-worker plan preview <op> <input-json> | apply <op> <input-json> <fingerprint>"
+	if len(args) < 3 || (args[0] == "apply" && len(args) < 4) {
+		fmt.Fprintln(os.Stderr, usage)
+		return 2
+	}
+	var out any
+	var fe *fsError
+	switch args[0] {
+	case "preview":
+		out, fe = previewPlan(args[1], json.RawMessage(args[2]))
+	case "apply":
+		out, fe = applyPlan(args[1], json.RawMessage(args[2]), args[3])
+	default:
+		fmt.Fprintln(os.Stderr, usage)
+		return 2
+	}
+	if fe != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", fe.Code, fe.Message)
+		return 1
+	}
+	b, _ := json.MarshalIndent(out, "", "  ")
+	fmt.Println(string(b))
+	if res, ok := out.(*planApply); ok && !res.OK {
+		return 1
+	}
+	return 0
 }
