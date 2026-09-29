@@ -141,12 +141,11 @@ func updateMdadmConf(edit func(string) string) []string {
 	if err != nil && !os.IsNotExist(err) {
 		return []string{fmt.Sprintf("could not read %s: %v", mdadmConfPath, err)}
 	}
-	next := edit(string(current))
-	if next == string(current) {
+	if edit(string(current)) == string(current) {
 		return nil
 	}
-	if err := writeFileAtomic(mdadmConfPath, []byte(next), 0644); err != nil {
-		return []string{fmt.Sprintf("could not update %s: %v", mdadmConfPath, err)}
+	if err := editMdadmConf(edit); err != nil {
+		return []string{err.Error()}
 	}
 	if _, err := exec.LookPath("update-initramfs"); err == nil {
 		if out, err := command("update-initramfs", "-u").CombinedOutput(); err != nil {
@@ -154,6 +153,23 @@ func updateMdadmConf(edit func(string) string) []string {
 		}
 	}
 	return warnings
+}
+
+// editMdadmConf applies edit to mdadm.conf atomically, without refreshing the
+// initramfs (operation plans run that as its own step).
+func editMdadmConf(edit func(string) string) error {
+	current, err := os.ReadFile(mdadmConfPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("could not read %s: %v", mdadmConfPath, err)
+	}
+	next := edit(string(current))
+	if next == string(current) {
+		return nil
+	}
+	if err := writeFileAtomic(mdadmConfPath, []byte(next), 0644); err != nil {
+		return fmt.Errorf("could not update %s: %v", mdadmConfPath, err)
+	}
+	return nil
 }
 
 // parseMdDetail extracts the member devices and array UUID from
