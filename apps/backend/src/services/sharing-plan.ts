@@ -26,7 +26,7 @@ export function overlayShares(rows: ShareRow[], change?: ShareChange): ShareRow[
 export interface SharePlanDeps {
   smbdInstalled(): Promise<boolean>
   defs(): Promise<unknown[]>
-  worker<T>(subject: string, payload: unknown): Promise<T>
+  worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
   commit(): Promise<unknown>
 }
 
