@@ -29,6 +29,7 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"raid.add":        planRaidAdd,
 	"import.assemble": planImportAssemble,
 	"import.activate": planImportActivate,
+	"smb.sync":        planSmbSync,
 }
 
 type planPreview struct {
