@@ -811,4 +811,55 @@ async function testAuditTargetForPlans() {
 
 await testAuditTargetForPlans()
 
+const ap = await import("../services/app-plan")
+
+async function testAppPlanEngine() {
+  const yaml = "services:\n  db:\n    environment:\n      DB_PASSWORD: hunter2\n      TZ: Europe/Paris\n  app:\n    environment:\n      - API_TOKEN=abc\n      - LANG=C\n"
+  const masked = ap.maskSecrets(yaml)
+  assert.ok(!masked.includes("hunter2") && !masked.includes("abc"))
+  assert.match(masked, /DB_PASSWORD: ••••••/)
+  assert.match(masked, /- API_TOKEN=••••••/)
+  assert.match(masked, /TZ: Europe\/Paris/)
+  assert.match(masked, /- LANG=C/)
+
+  const diff = ap.unifiedDiff("/opt/containers/x/compose.yaml", "a\nb\n", "a\nB\n")
+  assert.match(diff, /-b\n\+B\n/)
+  assert.equal(ap.unifiedDiff("/f", "same\n", "same\n"), "")
+
+  const plan = (content: string) => ({
+    op: "app.save" as const,
+    steps: [{ kind: "update", target: "/opt/containers/x/compose.yaml", summary: "Update", diff: "d", run: async () => ({}) }],
+    observed: { content },
+  })
+  const fp = ap.appFingerprint(plan("v1"), { name: "x", b: 1, a: 2 })
+  assert.equal(fp, ap.appFingerprint(plan("v1"), { a: 2, name: "x", b: 1 }))
+  assert.notEqual(fp, ap.appFingerprint(plan("v2"), { name: "x", b: 1, a: 2 }))
+
+  const order: string[] = []
+  const run = await ap.executeAppPlan({
+    op: "app.install",
+    steps: [
+      { kind: "create", target: "/d", summary: "dir", run: async () => { order.push("dir"); return {} } },
+      { kind: "run", target: "x", summary: "up", background: true, run: async () => { order.push("up"); return { jobId: "job-1" } } },
+    ],
+    observed: {},
+  })
+  assert.equal(run.ok, true)
+  assert.deepEqual(run.results.map(r => r.status), ["done", "started"])
+  assert.equal(run.results[1]!.jobId, "job-1")
+  const failed = await ap.executeAppPlan({
+    op: "app.install",
+    steps: [
+      { kind: "create", target: "/d", summary: "dir", run: async () => { throw new Error("nope") } },
+      { kind: "run", target: "x", summary: "up", run: async () => ({}) },
+    ],
+    observed: {},
+  })
+  assert.equal(failed.ok, false)
+  assert.equal(failed.error, "nope")
+  assert.deepEqual(failed.results.map(r => r.status), ["failed", "not-run"])
+}
+
+await testAppPlanEngine()
+
 console.log("Backend security tests passed")
