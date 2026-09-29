@@ -782,4 +782,23 @@ async function testVolumeGuard() {
 
 await testVolumeGuard()
 
+const sp = await import("../services/storage-plan")
+
+async function testStoragePlanAudit() {
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.length === 13)
+  const meta = sp.planAuditMeta("format",
+    [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
+     { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
+    [{ status: "done" }, { status: "failed", error: "boom" }])
+  assert.deepEqual(meta, {
+    op: "format",
+    steps: [
+      { kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: "mkfs.ext4 -F /dev/sdb1", destructive: true, status: "done" },
+      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY", status: "failed", error: "boom" },
+    ],
+  })
+}
+
+await testStoragePlanAudit()
+
 console.log("Backend security tests passed")

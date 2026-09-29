@@ -5,7 +5,9 @@ import { authenticateRequest } from "../utils/request-auth"
 export async function createContext({ req, res }: CreateFastifyContextOptions) {
   const user = await authenticateRequest(req)
 
-  return { prisma, req, res, user }
+  // audit.meta: extra details a procedure adds to its audit entry (e.g. the
+  // executed operation plan).
+  return { prisma, req, res, user, audit: {} as { meta?: Record<string, unknown> } }
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>
