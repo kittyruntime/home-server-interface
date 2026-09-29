@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations } from "../compose.js"
+import { composeBindSources, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations } from "../compose.js"
 import { parseDocument } from "yaml"
 import { STACK_NAME_RE, type AppInput } from "../model.js"
 
@@ -225,5 +225,32 @@ testUnusedGeneratedDeclarationIsRemoved()
 testCustomVolumeDeclarationIsKept()
 testRelativeBindIsNotDeclared()
 testRepairAddsMissingDeclarations()
+
+
+// composeBindSources: host paths bind-mounted by any service (volume guard, #3)
+{
+  const yaml = `services:
+  web:
+    image: nginx
+    volumes:
+      - /mnt/data/www:/usr/share/nginx/html:ro
+      - named:/cache
+      - type: bind
+        source: /mnt/data/conf
+        target: /etc/nginx/conf.d
+  db:
+    image: postgres
+    volumes:
+      - type: volume
+        source: pg
+        target: /var/lib/postgresql/data
+volumes:
+  named: {}
+  pg: {}
+`
+  assert.deepEqual(composeBindSources(yaml).sort(), ["/mnt/data/conf", "/mnt/data/www"])
+  assert.deepEqual(composeBindSources("::: not yaml"), [])
+  assert.deepEqual(composeBindSources("services:\n  a:\n    image: x\n"), [])
+}
 
 console.log("Compose package tests passed")
