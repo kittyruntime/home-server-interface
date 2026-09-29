@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { applyPlanned } from '../../lib/plan'
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { trpc } from '../../lib/trpc'
 import {
   useStorageData, fmtBytes, usagePct, usageBarClass,
   raidLevelLabel, raidDescription, isRaidHealthy, claimableDevices,
@@ -10,7 +9,6 @@ import {
 import { raidCapacity, remainingFaultTolerance } from './raid-capacity'
 import { useHostTools } from './tools'
 import { useToast } from '../../lib/toast'
-import { useConfirm } from '../../lib/confirm'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -28,7 +26,6 @@ const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm']; preselected: []
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
 const toast = useToast()
-const { confirm } = useConfirm()
 
 // ── Member management (replace a failed disk) ────────────────────────────────
 
@@ -69,24 +66,23 @@ const addPicker = ref<string | null>(null) // array name whose picker is open
 async function runMemberOp(r: RaidArray, device: string, op: 'fail' | 'remove' | 'add') {
   memberBusy.value = `${r.name}:${device}`
   try {
-    if (op === 'fail') await trpc.storage.failRaidMember.mutate({ name: r.name, device })
-    else if (op === 'remove') await trpc.storage.removeRaidMember.mutate({ name: r.name, device })
-    else await trpc.storage.addRaidMember.mutate({ name: r.name, device })
+    const title = op === 'fail' ? `Mark /dev/${device} as failed in /dev/${r.name}`
+      : op === 'remove' ? `Remove /dev/${device} from /dev/${r.name}`
+      : `Add /dev/${device} to /dev/${r.name}`
+    const actionLabel = op === 'fail' ? 'Mark as failed' : op === 'remove' ? 'Remove' : `Add /dev/${device}`
+    await applyPlanned(`raid.${op}`, { name: r.name, device }, { title, actionLabel })
     addPicker.value = null
     await refresh()
   } catch (e: any) {
-    toast.error(e?.message ?? `Could not ${op} /dev/${device}`)
+    // An empty message means the plan was cancelled: nothing to report.
+    if (e?.message !== '') toast.error(e?.message ?? `Could not ${op} /dev/${device}`)
   } finally {
     memberBusy.value = null
   }
 }
 
+// The plan dialog is the confirmation for member changes.
 async function failMember(r: RaidArray, m: RaidMember) {
-  const id = memberIdentity(m.name)
-  if (!await confirm(
-    `Mark /dev/${m.name}${id ? ` (${id})` : ''} as failed in /dev/${r.name}? The array keeps running without it until a replacement is added.`,
-    { danger: true, confirmLabel: 'Mark as failed' },
-  )) return
   await runMemberOp(r, m.name, 'fail')
 }
 
@@ -95,11 +91,6 @@ async function removeMember(r: RaidArray, m: RaidMember) {
 }
 
 async function addMember(r: RaidArray, d: BlockDev) {
-  const id = memberIdentity(d.name)
-  if (!await confirm(
-    `Add /dev/${d.name}${id ? ` (${id})` : ''} to /dev/${r.name}? Its current content is overwritten. A degraded array starts rebuilding onto it; otherwise it becomes a spare.`,
-    { danger: true, confirmLabel: 'Add disk' },
-  )) return
   await runMemberOp(r, d.name, 'add')
 }
 

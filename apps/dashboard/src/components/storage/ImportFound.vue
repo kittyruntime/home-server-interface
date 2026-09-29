@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../lib/plan'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
@@ -36,13 +37,15 @@ async function assemble(a: Scan['arrays'][number]) {
   )) return
   busy.value = a.uuid
   try {
-    const res = await trpc.storage.importAssembleRaid.mutate({ uuid: a.uuid, name: nextMdName(), allowDegraded: degraded })
+    const name = nextMdName()
+    const res = await applyPlanned('import.assemble', { uuid: a.uuid, name, allowDegraded: degraded },
+      { title: `Assemble the existing array as /dev/${name}`, actionLabel: degraded ? 'Start degraded' : 'Assemble' })
     for (const w of res.warnings ?? []) toast.error(w)
     toast.success(`Array assembled as ${res.device}`)
     emit('imported')
     await load()
   } catch (e: any) {
-    toast.error(e?.message ?? 'Could not assemble the array')
+    if (e?.message !== '') toast.error(e?.message ?? 'Could not assemble the array')
   } finally {
     busy.value = null
   }
@@ -51,12 +54,13 @@ async function assemble(a: Scan['arrays'][number]) {
 async function activate(vg: Scan['vgs'][number]) {
   busy.value = vg.name
   try {
-    await trpc.storage.importActivateVg.mutate({ name: vg.name })
+    await applyPlanned('import.activate', { name: vg.name },
+      { title: `Activate the volume group ${vg.name}`, actionLabel: 'Activate' })
     toast.success(`Volume group ${vg.name} activated`)
     emit('imported')
     await load()
   } catch (e: any) {
-    toast.error(e?.message ?? 'Could not activate the volume group')
+    if (e?.message !== '') toast.error(e?.message ?? 'Could not activate the volume group')
   } finally {
     busy.value = null
   }

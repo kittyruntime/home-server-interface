@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Preview before storage operations**: formatting, partitions, RAID, LVM and
+- **Preview before storage operations**: formatting, partitions, RAID (including
+  disk replacement and importing existing arrays and volume groups), LVM and
   mounts show the exact plan first (commands, fstab and mdadm.conf diffs, and
   the model, serial and contents of any disk that will be erased). Applying runs
   exactly that plan, or refuses if the server changed since the preview. The
