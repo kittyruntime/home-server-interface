@@ -971,6 +971,18 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
 		os.Exit(runMaintenanceCLI())
 	}
+	// `hsi-worker volumes`: state of every HSI data volume (remounting one
+	// that came back), usable without the backend.
+	if len(os.Args) > 1 && os.Args[1] == "volumes" {
+		vols, err := volumeStatuses()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		b, _ := json.MarshalIndent(vols, "", "  ")
+		fmt.Println(string(b))
+		os.Exit(0)
+	}
 
 	natsURL := getenv("NATS_URL", "nats://127.0.0.1:4222")
 	natsUser := getenv("NATS_USER", "worker")
@@ -992,6 +1004,9 @@ func main() {
 	}
 	defer nc.Drain()
 	log.Printf("Connected to NATS at %s", natsURL)
+
+	// Missing volume guard (#3): boot options and immutable mount points.
+	prepareVolumes()
 
 	js, err := nc.JetStream()
 	if err != nil {
@@ -1040,6 +1055,7 @@ func main() {
 		"root.docker.status":             handleDockerStatus,
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,
+		"root.storage.volumes":           handleVolumes,
 		"root.fs.read-chunk":             handleReadChunk,
 		"root.fs.write-chunk":            handleWriteChunk,
 		"root.fs.zip-temp":               handleZipTemp,
