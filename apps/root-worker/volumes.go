@@ -1,8 +1,12 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	nats "github.com/nats-io/nats.go"
 )
 
 // ── Volumes ──────────────────────────────────────────────────────────────────
@@ -119,4 +123,135 @@ func volumeState(expectedUUID, findmntOut string) string {
 	default:
 		return "ok"
 	}
+}
+
+// ── Host side ────────────────────────────────────────────────────────────────
+
+var (
+	volumeGuardMu sync.Mutex
+	volumeStray   = map[string]bool{}   // mount point -> files found on the boot disk under it
+	volumeGuardEr = map[string]string{} // mount point -> last chattr error
+)
+
+func dirHasEntries(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	return err == nil && len(entries) > 0
+}
+
+func isMounted(mp string) bool {
+	out, _ := command("findmnt", "-n", "-o", "TARGET", "--mountpoint", mp).Output()
+	return strings.TrimSpace(string(out)) != ""
+}
+
+// protectMountPoint makes the directory under a mount point immutable, so
+// nothing can write to the boot disk when the volume is absent. For a mounted
+// volume the hidden directory is reached through a private, non-recursive bind
+// of the parent filesystem (submounts, including this volume, are not carried
+// over). Reports whether files already sit in that directory.
+func protectMountPoint(mp string) (bool, error) {
+	if !isMounted(mp) {
+		if err := os.MkdirAll(mp, 0755); err != nil {
+			return false, err
+		}
+		stray := dirHasEntries(mp)
+		return stray, command("chattr", "+i", mp).Run()
+	}
+	parentOut, err := command("findmnt", "-n", "-o", "TARGET", "-T", filepath.Dir(mp)).Output()
+	if err != nil {
+		return false, err
+	}
+	parent := strings.TrimSpace(string(parentOut))
+	tmp, err := os.MkdirTemp("/run", "hsi-under-")
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(tmp)
+	if err := command("mount", "--bind", parent, tmp).Run(); err != nil {
+		return false, err
+	}
+	defer command("umount", tmp).Run()
+	_ = command("mount", "--make-private", tmp).Run()
+	under := filepath.Join(tmp, strings.TrimPrefix(mp, strings.TrimSuffix(parent, "/")))
+	stray := dirHasEntries(under)
+	return stray, command("chattr", "+i", under).Run()
+}
+
+func unprotectMountPoint(mp string) {
+	if err := command("chattr", "-i", mp).Run(); err != nil {
+		logger.Warn("volume guard: could not clear immutable flag", "mountPoint", mp, "error", err.Error())
+	}
+}
+
+func recordGuard(mp string, stray bool, err error) {
+	volumeGuardMu.Lock()
+	defer volumeGuardMu.Unlock()
+	volumeStray[mp] = stray
+	if err != nil {
+		volumeGuardEr[mp] = err.Error()
+		logger.Warn("volume guard: could not protect mount point", "mountPoint", mp, "error", err.Error())
+	} else {
+		delete(volumeGuardEr, mp)
+	}
+}
+
+// prepareVolumes runs once at worker start: boot options on marked fstab
+// entries, then an immutable mount point for every HSI volume.
+func prepareVolumes() {
+	if err := editFstab(func(conf string) (string, error) { return ensureBootOptions(conf), nil }); err != nil {
+		logger.Warn("volume guard: could not update fstab boot options", "error", err.Error())
+	}
+	conf, err := os.ReadFile(fstabPath)
+	if err != nil {
+		return
+	}
+	for _, v := range hsiVolumes(string(conf)) {
+		stray, err := protectMountPoint(v.MountPoint)
+		recordGuard(v.MountPoint, stray, err)
+	}
+}
+
+type volumeStatus struct {
+	MountPoint string `json:"mountPoint"`
+	UUID       string `json:"uuid"`
+	State      string `json:"state"`
+	StrayFiles bool   `json:"strayFiles"`
+	GuardError string `json:"guardError,omitempty"`
+}
+
+// volumeStatuses reports every HSI volume, remounting one whose filesystem is
+// present again (same UUID, so it is the right one) through its fstab entry.
+func volumeStatuses() ([]volumeStatus, error) {
+	conf, err := os.ReadFile(fstabPath)
+	if err != nil {
+		return nil, err
+	}
+	out := []volumeStatus{}
+	for _, v := range hsiVolumes(string(conf)) {
+		findmnt := func() string {
+			o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", v.MountPoint).Output()
+			return string(o)
+		}
+		state := volumeState(v.UUID, findmnt())
+		if state == "missing" && v.UUID != "" {
+			if dev, err := command("blkid", "-U", v.UUID).Output(); err == nil && strings.TrimSpace(string(dev)) != "" {
+				if err := command("mount", v.MountPoint).Run(); err == nil {
+					logger.Info("volume guard: remounted returning volume", "mountPoint", v.MountPoint)
+					state = volumeState(v.UUID, findmnt())
+				}
+			}
+		}
+		volumeGuardMu.Lock()
+		out = append(out, volumeStatus{MountPoint: v.MountPoint, UUID: v.UUID, State: state, StrayFiles: volumeStray[v.MountPoint], GuardError: volumeGuardEr[v.MountPoint]})
+		volumeGuardMu.Unlock()
+	}
+	return out, nil
+}
+
+func handleVolumes(nc *nats.Conn, msg *nats.Msg) {
+	vols, err := volumeStatuses()
+	if err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "read fstab: " + err.Error()})
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"volumes": vols})
 }

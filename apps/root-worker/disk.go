@@ -408,6 +408,14 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
+	if req.Persist {
+		// Immutable while empty: if the volume is ever missing, nothing can
+		// write to the boot disk in its place (#3). Not fatal: some
+		// filesystems do not support the flag.
+		if err := command("chattr", "+i", mp).Run(); err != nil {
+			logger.Warn("volume guard: could not protect mount point", "mountPoint", mp, "error", err.Error())
+		}
+	}
 	out, err := command("mount", "-o", opts, devPath, mp).CombinedOutput()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
@@ -426,7 +434,7 @@ func handleDiskMount(nc *nats.Conn, msg *nats.Msg) {
 		if uuid != "" {
 			source = "UUID=" + uuid
 		}
-		entry := fmt.Sprintf("%s\t%s\t%s\t%s\t0\t2", source, mp, fstype, opts)
+		entry := fmt.Sprintf("%s\t%s\t%s\t%s\t0\t2", source, mp, fstype, withBootOptions(opts))
 		if err := editFstab(func(conf string) (string, error) {
 			return upsertFstabEntry(conf, mp, source, entry)
 		}); err != nil {
@@ -486,6 +494,8 @@ func handleDiskUmount(nc *nats.Conn, msg *nats.Msg) {
 			replyErr(nc, msg.Reply, &fsError{Code: "EPERSIST", Message: "unmounted " + mp + ", but its fstab entry was not removed: " + err.Error()})
 			return
 		}
+		// No longer an HSI volume: the directory becomes a normal one again.
+		unprotectMountPoint(mp)
 	}
 
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})

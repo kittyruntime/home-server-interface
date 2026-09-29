@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -73,5 +75,18 @@ func TestVolumeState(t *testing.T) {
 		if got := volumeState("aaaa-1111", c.out); got != c.want {
 			t.Errorf("%q: got %s want %s", c.out, got, c.want)
 		}
+	}
+}
+
+func TestDirHasEntries(t *testing.T) {
+	d := t.TempDir()
+	if dirHasEntries(d) {
+		t.Fatal("empty dir reported as non-empty")
+	}
+	if err := os.WriteFile(filepath.Join(d, "x"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if !dirHasEntries(d) {
+		t.Fatal("stray file not reported")
 	}
 }
