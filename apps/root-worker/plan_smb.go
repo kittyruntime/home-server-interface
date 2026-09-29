@@ -3,27 +3,27 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strconv"
+	"sync"
 )
 
 // ── Plan builder: Samba shares (#36) ─────────────────────────────────────────
 
 var (
 	hostSmbdInstalled = smbdInstalled
-	// hostWriteFile writes a file atomically (temp file + rename).
-	hostWriteFile = func(path, content string) error {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return err
-		}
-		tmp := path + ".tmp"
-		if err := os.WriteFile(tmp, []byte(content), 0o644); err != nil {
-			return err
-		}
-		return os.Rename(tmp, path)
-	}
-	errNotExist = os.ErrNotExist
+	hostWriteFile     = writeSmbFile
+	errNotExist       = os.ErrNotExist
 )
+
+// smbMu serializes every write of the Samba configuration: automatic syncs
+// (root.sharing.sync) and applied plans run on separate subscriptions.
+var smbMu sync.Mutex
+
+// writeSmbFile writes through a unique temp file, so concurrent writers never
+// share one.
+func writeSmbFile(path, content string) error {
+	return writeFileAtomic(path, []byte(content), 0o644)
+}
 
 func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {

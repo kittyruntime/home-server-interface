@@ -286,6 +286,8 @@ func handleSharingDiag(nc *nats.Conn, msg *nats.Msg) {
 }
 
 func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
+	smbMu.Lock()
+	defer smbMu.Unlock()
 	p, fe := planSmbSync(msg.Data)
 	if fe != nil {
 		replyErr(nc, msg.Reply, fe)
