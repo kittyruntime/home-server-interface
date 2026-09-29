@@ -106,3 +106,43 @@ func TestPlanImport(t *testing.T) {
 	_, fe = build(t, planImportActivate, `{"name":"bad name"}`)
 	wantErr(t, fe, "ERR")
 }
+
+func TestPlanRaidFailNamesTheDisk(t *testing.T) {
+	stubRaidManageHost(t)
+	p, fe := build(t, planRaidFail, `{"name":"md0","device":"sdb"}`)
+	if fe != nil || p.Steps[0].Device == nil || p.Steps[0].Device.Serial != "WD-sdb" {
+		t.Fatalf("the disk to fail must be named: %v %+v", fe, p.Steps[0])
+	}
+}
+
+func TestPlanRaidFailRefusedWithoutRedundancy(t *testing.T) {
+	stubRaidManageHost(t)
+	degraded := "/dev/md0:\n     Raid Level : raid5\n   Raid Devices : 3\n Active Devices : 2\n           UUID : aa:bb\n" +
+		"    Number   Major   Minor   RaidDevice State\n       0       8       16        0      active sync   /dev/sdb\n" +
+		"       1       8       32        1      active sync   /dev/sdc\n       -       0        0        2      removed\n"
+	hostMdDetail = func(string) (string, error) { return degraded, nil }
+	_, fe := build(t, planRaidFail, `{"name":"md0","device":"sdb"}`)
+	if fe == nil || !strings.Contains(fe.Message, "no redundancy left") {
+		t.Fatalf("failing a member of an array without redundancy must be refused: %+v", fe)
+	}
+	healthy := "/dev/md0:\n     Raid Level : raid1\n   Raid Devices : 2\n Active Devices : 2\n           UUID : aa:bb\n" +
+		"    Number   Major   Minor   RaidDevice State\n       0       8       16        0      active sync   /dev/sdb\n       1       8       32        1      active sync   /dev/sdc\n"
+	hostMdDetail = func(string) (string, error) { return healthy, nil }
+	if _, fe := build(t, planRaidFail, `{"name":"md0","device":"sdb"}`); fe != nil {
+		t.Fatalf("healthy RAID1 member can be failed: %+v", fe)
+	}
+}
+
+func TestPlanRaidRemoveVanishedMember(t *testing.T) {
+	stubRaidManageHost(t)
+	// The disk is gone: mdadm lists its row without a /dev path.
+	gone := "/dev/md0:\n           UUID : aa:bb\n    Number   Major   Minor   RaidDevice State\n       0       8       16        0      active sync   /dev/sdb\n" +
+		"       1       8       32        1      faulty\n"
+	hostMdDetail = func(string) (string, error) { return gone, nil }
+	hostExists = func(p string) bool { return p == "/sys/block/md0/md/dev-sdc" }
+	p, fe := build(t, planRaidRemove, `{"name":"md0","device":"sdc"}`)
+	if fe != nil || !reflect.DeepEqual(argvs(p)[0], []string{"mdadm", "--manage", "/dev/md0", "--remove", "detached"}) {
+		t.Fatalf("vanished member: %v %v", fe, p)
+	}
+	assertParity(t, p)
+}

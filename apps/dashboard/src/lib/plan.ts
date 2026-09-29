@@ -16,8 +16,10 @@ export interface PlanRequest {
   op: PlanOp
   input: Record<string, unknown>
   title: string
-  /** Label of the destructive action, e.g. "Format /dev/sdb1". */
+  /** Label of the action button, e.g. "Format /dev/sdb1". */
   actionLabel: string
+  /** Danger styling even without an erasing step (e.g. giving up redundancy). */
+  danger?: boolean
   resolve: (r: PlanOutcome) => void
 }
 
@@ -38,7 +40,7 @@ let nextId = 0
 export async function applyPlanned(
   op: PlanOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string },
+  opts: { title: string; actionLabel: string; danger?: boolean },
 ): Promise<{ warnings: string[] } & Record<string, unknown>> {
   const outcome = await new Promise<PlanOutcome>(resolve => {
     planRequest.value?.resolve({ status: 'cancelled' })
