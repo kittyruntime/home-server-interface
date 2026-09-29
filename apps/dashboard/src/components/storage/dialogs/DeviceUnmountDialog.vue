@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
-import { trpc } from '../../../lib/trpc'
 import { type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 
@@ -25,7 +25,8 @@ async function doUmount() {
   d.busy = true
   d.err  = ''
   try {
-    await trpc.storage.umountDevice.mutate({ mountpoint: d.dev.mountpoint, removeFromFstab: d.rmFstab })
+    await applyPlanned('umount', { mountpoint: d.dev.mountpoint, removeFromFstab: d.rmFstab },
+      { title: `Unmount ${d.dev.mountpoint}`, actionLabel: 'Unmount' })
     dlg.value = null
     emit('done')
   } catch (e: unknown) {
