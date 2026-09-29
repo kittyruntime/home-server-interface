@@ -1,18 +1,32 @@
 import { ref } from 'vue'
 import { trpc } from './trpc'
 
-// Operation plans (#36): a storage operation is first previewed as the exact
-// steps HSI will take, then applied as that plan. `applyPlanned` opens the
+// Operation plans (#36): a storage or app operation is first previewed as the
+// exact steps HSI will take, then applied as that plan. `applyPlanned` opens the
 // single <PlanDialog/> mounted in the dashboard shell and settles once the
 // plan ran, failed, or was cancelled.
 
-export type PlanOp = Parameters<typeof trpc.storage.plan.mutate>[0]['op']
-export type PlanPreview = Awaited<ReturnType<typeof trpc.storage.plan.mutate>>
-export type PlanStep = PlanPreview['steps'][number]
-export type PlanApply = Awaited<ReturnType<typeof trpc.storage.apply.mutate>>
+export type StorageOp = Parameters<typeof trpc.storage.plan.mutate>[0]['op']
+export type AppOp = Parameters<typeof trpc.apps.plan.mutate>[0]['op']
+export type PlanOp = StorageOp | AppOp
+export type PlanDomain = 'storage' | 'apps'
+
+type StorageStep = Awaited<ReturnType<typeof trpc.storage.plan.mutate>>['steps'][number]
+type AppStep = Awaited<ReturnType<typeof trpc.apps.plan.mutate>>['steps'][number]
+export type PlanStep = StorageStep & Partial<AppStep>
+export interface PlanPreview { steps: PlanStep[]; fingerprint: string }
+export interface PlanApply {
+  ok: boolean
+  error?: string
+  steps: PlanStep[]
+  results: Array<{ status: string; error?: string; detail?: string; jobId?: string }>
+  warnings?: string[]
+  reply?: Record<string, unknown>
+}
 
 export interface PlanRequest {
   id: number
+  domain: PlanDomain
   op: PlanOp
   input: Record<string, unknown>
   title: string
@@ -32,22 +46,37 @@ export const planRequest = ref<PlanRequest | null>(null)
 let nextId = 0
 
 /**
- * Previews then applies a storage operation. Resolves with the worker's reply
- * fields and warnings when it ran; throws with the failure message when a step
+ * Previews then applies an operation (storage by default). Resolves with the
+ * reply fields (`jobId` for an app operation that started a background job)
+ * and warnings when it ran; throws with the failure message when a step
  * failed; throws with an empty message when the user cancelled (callers that
  * show `e.message` then show nothing).
  */
 export async function applyPlanned(
   op: PlanOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string; danger?: boolean },
+  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain },
 ): Promise<{ warnings: string[] } & Record<string, unknown>> {
   const outcome = await new Promise<PlanOutcome>(resolve => {
     planRequest.value?.resolve({ status: 'cancelled' })
-    planRequest.value = { id: nextId++, op, input, ...opts, resolve }
+    planRequest.value = { id: nextId++, op, input, ...opts, domain: opts.domain ?? 'storage', resolve }
   })
   if (outcome.status === 'applied') {
     return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [] }
   }
   throw new Error(outcome.status === 'failed' ? outcome.error : '')
+}
+
+/**
+ * Previews then applies an app operation that starts a background job
+ * (apply, start, remove) and returns that job's id, to follow as before.
+ */
+export async function applyPlannedJob(
+  op: AppOp,
+  input: Record<string, unknown>,
+  opts: { title: string; actionLabel: string; danger?: boolean },
+): Promise<string> {
+  const reply = await applyPlanned(op, input, { ...opts, domain: 'apps' })
+  if (typeof reply.jobId !== 'string') throw new Error('The operation did not start a job')
+  return reply.jobId
 }

@@ -3,6 +3,7 @@ import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
 import { pollJobResult } from '../../lib/jobs'
+import { applyPlanned, applyPlannedJob } from '../../lib/plan'
 import PortsTable,      { type PortMapping }    from './PortsTable.vue'
 import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
@@ -288,12 +289,12 @@ async function save() {
       memoryLimit:   form.memoryLimit,
       pinnedUrl:     form.pinnedUrl || null,
     }
-    if (editing.value) {
-      await trpc.container.app.update.mutate({ name: form.name, data: payload })
-    } else {
-      await trpc.container.app.create.mutate({ data: payload })
-    }
-    const name = editing.value ? form.name : form.name
+    await applyPlanned('app.save', { name: form.name, create: !editing.value, data: payload }, {
+      domain: 'apps',
+      title: editing.value ? `Save ${form.name}` : `Create ${form.name}`,
+      actionLabel: 'Save',
+    })
+    const name = form.name
     editing.value = true // a created app can now be applied/updated in place
     savedName.value = name
     emit('saved', name)
@@ -310,13 +311,17 @@ async function applyNow() {
   applyState.value = 'idle'
   applyError.value = ''
   try {
-    const { jobId } = await trpc.container.app.apply.mutate({ name: savedName.value })
+    const jobId = await applyPlannedJob('app.apply', { name: savedName.value }, {
+      title: `Apply ${savedName.value}`, actionLabel: 'Apply',
+    })
     const result = await pollJobResult(jobId)
     // A failed (or timed out) job must report as an error, not as success.
     if (result.status !== 'completed') throw new Error(result.error ?? 'Apply failed')
     applyState.value = 'applied'
     emit('saved', savedName.value)
   } catch (e: any) {
+    // Cancelled in the plan dialog: nothing happened.
+    if (e?.message === '') { applyState.value = 'idle'; return }
     applyState.value = 'error'
     applyError.value = e?.message ?? 'Apply failed'
   } finally {

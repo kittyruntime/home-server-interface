@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { applyPlanned } from '../../lib/plan'
+import { focusNewApp } from '../../lib/app-focus'
 import type { Place } from '../apps/VolumesTable.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
@@ -186,11 +188,13 @@ async function install() {
       volumes,
     }
 
-    const result = await trpc.catalog.install.mutate(payload)
+    await applyPlanned('app.install', payload, {
+      domain: 'apps', title: `Install ${name.value}`, actionLabel: 'Install',
+    })
     emit('installed')
-    if (result.webPort != null) {
-      window.open(`http://${location.hostname}:${result.webPort}`, '_blank')
-    }
+    // Show the new app in Apps (its start-up logs) rather than opening it
+    // before it is up.
+    focusNewApp(name.value)
   } catch (e: any) {
     installError.value = e?.message ?? 'Failed to install this app'
   } finally {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import AppFormModal from './AppFormModal.vue'
@@ -8,13 +8,13 @@ import UnmanagedContainers from './UnmanagedContainers.vue'
 import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
-import { useConfirm } from '../../lib/confirm'
 import { pollJobResult, JobError } from '../../lib/jobs'
 import { viewableJobId, viewLogsAction } from '../../lib/jobLogs'
 import { useNotifications } from '../../lib/notifications'
 import { useToast } from '../../lib/toast'
+import { applyPlannedJob } from '../../lib/plan'
+import { pendingAppFocus, appToFocus } from '../../lib/app-focus'
 
-const { confirm } = useConfirm()
 const { push: pushNotif, update: updateNotif, dismiss: dismissNotif } = useNotifications()
 const toast = useToast()
 
@@ -59,6 +59,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (refreshTimer !== null) clearInterval(refreshTimer)
+  if (focusTimer !== null) clearTimeout(focusTimer)
 })
 
 function statusDot(status: string) {
@@ -92,13 +93,15 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
   actionLoading.value[id] = action
   const app = apps.value.find(a => a.id === id)
   const actionLabel = { start: 'Starting', stop: 'Stopping', restart: 'Restarting', delete: 'Deleting' }[action]
-  const notifId = action !== 'delete'
+  const planned = action === 'start' || action === 'delete'
+  const notifId = !planned
     ? pushNotif({ type: 'progress', title: `${actionLabel} ${app?.name ?? ''}…`, progress: -1 })
     : null
   try {
     if (action === 'delete') {
-      if (!await confirm('Delete this app? The stack containers will be removed and its compose file deleted.', { danger: true, confirmLabel: 'Delete' })) return
-      const { jobId } = await trpc.container.app.remove.mutate({ name: app?.name ?? id })
+      const jobId = await applyPlannedJob('app.remove', { name: app?.name ?? id }, {
+        title: `Delete ${app?.name ?? id}`, actionLabel: 'Delete', danger: true,
+      })
       const result = await pollJobResult(jobId)
       // Only drop the row when the job actually completed; on failure the row
       // stays and the error is surfaced.
@@ -106,13 +109,16 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
       apps.value = apps.value.filter(a => a.id !== id)
       return
     }
+    const jobId = action === 'start'
+      ? await applyPlannedJob('app.start', { name: app?.name ?? id }, { title: `Start ${app?.name ?? id}`, actionLabel: 'Start' })
+      : (await trpc.container.app[action].mutate({ name: app?.name ?? id })).jobId
     if (app) app.status = 'transitioning'
-    const { jobId } = await (trpc.container.app[action as 'start' | 'stop' | 'restart'] as any).mutate({ name: app?.name ?? id })
     const result = await pollJobResult(jobId)
     if (result.status !== 'completed') throw new JobError(result.error ?? `${action} failed`, jobId)
     if (app) app.status = action === 'start' ? 'running' : 'stopped'
     if (notifId) { updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'}`, progress: undefined }); setTimeout(() => dismissNotif(notifId), 3000) }
   } catch (e: any) {
+    if (planned && e?.message === '') return // cancelled in the plan dialog
     if (app) app.status = 'unknown'
     if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined, jobId: viewableJobId(e) })
     toast.error(e.message ?? `Failed: ${action}`, viewLogsAction(e))
@@ -124,25 +130,30 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
 async function applyApp(id: string) {
   actionLoading.value[id] = 'apply'
   const app = apps.value.find(a => a.id === id)
-  const notifId = pushNotif({ type: 'progress', title: `Applying ${app?.name ?? ''}…`, progress: -1 })
+  let notifId: string | null = null
   try {
-    const { jobId } = await trpc.container.app.apply.mutate({ name: app?.name ?? id })
+    const jobId = await applyPlannedJob('app.apply', { name: app?.name ?? id }, {
+      title: `Apply ${app?.name ?? id}`, actionLabel: 'Apply',
+    })
+    const nid = pushNotif({ type: 'progress', title: `Applying ${app?.name ?? ''}…`, progress: -1 })
+    notifId = nid
     const result = await pollJobResult(jobId)
     if (result.status !== 'completed') {
       // Job failed (or timed out): keep the pending badge and surface the error.
       const msg = result.error ?? 'Apply failed'
       const err = new JobError(msg, jobId)
-      updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined, jobId: viewableJobId(err) })
+      updateNotif(nid, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined, jobId: viewableJobId(err) })
       toast.error(msg, viewLogsAction(err))
       return
     }
-    updateNotif(notifId, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })
-    setTimeout(() => dismissNotif(notifId), 3000)
+    updateNotif(nid, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })
+    setTimeout(() => dismissNotif(nid), 3000)
     // Apply never rewrites the compose file, so the drifted badge must stay
     // until the file is regenerated — only pendingApply is resolved here.
     if (app) app.pendingApply = false
   } catch (e: any) {
-    updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
+    if (e?.message === '') return // cancelled in the plan dialog
+    if (notifId) updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
     toast.error(e?.message ?? 'Failed to apply')
   } finally {
     delete actionLoading.value[id]
@@ -160,6 +171,26 @@ function openEdit(a: App) {
   showModal.value = true
 }
 function openLogs(a: App) { logsApp.value = a }
+
+// A freshly installed app (#36): once listed, scroll to it, mark it for a
+// few seconds and open its logs to follow its start-up.
+const focusedName = ref<string | null>(null)
+let focusTimer: ReturnType<typeof setTimeout> | null = null
+watch([pendingAppFocus, apps], async () => {
+  const app = appToFocus(pendingAppFocus.value, apps.value)
+  if (!app) return
+  pendingAppFocus.value = null
+  focusedName.value = app.name
+  logsApp.value = app
+  if (focusTimer) clearTimeout(focusTimer)
+  focusTimer = setTimeout(() => { focusedName.value = null }, 4000)
+  await nextTick()
+  for (const el of document.querySelectorAll<HTMLElement>(`[data-app-name="${CSS.escape(app.name)}"]`)) {
+    if (el.offsetParent) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
+})
+// Already mounted: pick the new app up without waiting for the next refresh.
+watch(pendingAppFocus, name => { if (name && !loading.value) void silentRefresh() })
 
 defineExpose({ openNew })
 
@@ -270,7 +301,7 @@ async function unpin(app: App) {
 
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
-          <article v-for="app in apps" :key="app.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
+          <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-[var(--c-border)] p-3 transition-colors', focusedName === app.name ? 'bg-[var(--c-accent-subtle)]' : 'bg-[var(--c-surface)]']">
             <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger">Blocked</span><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '—'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
             <div class="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--c-border)] pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" @click="openLogs(app)">Logs</button></div>
           </article>
@@ -291,7 +322,8 @@ async function unpin(app: App) {
           <tbody class="divide-y divide-[var(--c-border)]">
             <tr
               v-for="app in apps" :key="app.id"
-              class="group hover:bg-[var(--c-hover)] transition-colors"
+              :data-app-name="app.name"
+              :class="['group transition-colors', focusedName === app.name ? 'bg-[var(--c-accent-subtle)]' : 'hover:bg-[var(--c-hover)]']"
             >
               <!-- Name -->
               <td class="px-6 py-3.5">

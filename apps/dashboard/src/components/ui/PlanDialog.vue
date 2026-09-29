@@ -3,10 +3,10 @@ import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { trpc } from '../../lib/trpc'
-import { planRequest, type PlanPreview, type PlanApply, type PlanStep } from '../../lib/plan'
+import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type StorageOp } from '../../lib/plan'
 
-// Review then apply a storage operation plan (#36): the exact files, commands
-// and devices HSI is about to touch, and the result of each step.
+// Review then apply an operation plan (#36): the exact files, commands and
+// devices HSI is about to touch, and the result of each step.
 
 const modal = ref<InstanceType<typeof Modal> | null>(null)
 const preview = ref<PlanPreview | null>(null)
@@ -27,7 +27,9 @@ async function load() {
   applied.value = null
   applyError.value = ''
   try {
-    preview.value = await trpc.storage.plan.mutate({ op: req.op, input: req.input })
+    preview.value = req.domain === 'apps'
+      ? await trpc.apps.plan.mutate({ op: req.op as AppOp, input: req.input })
+      : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
   } catch (e) {
     preview.value = null
     loadError.value = e instanceof Error ? e.message : String(e)
@@ -69,7 +71,10 @@ async function apply() {
   applying.value = true
   applyError.value = ''
   try {
-    const res = await trpc.storage.apply.mutate({ op: req.op, input: req.input, fingerprint: preview.value.fingerprint })
+    const fingerprint = preview.value.fingerprint
+    const res: PlanApply = req.domain === 'apps'
+      ? await trpc.apps.apply.mutate({ op: req.op as AppOp, input: req.input, fingerprint })
+      : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
     applied.value = res
     if (res.ok) {
       settle({ status: 'applied', result: res })
@@ -114,6 +119,7 @@ function deviceLine(d: NonNullable<PlanStep['device']>): string[] {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   'done':    { label: 'Done',    cls: 'text-success' },
+  'started': { label: 'Started in the background', cls: 'text-[var(--c-info)]' },
   'warning': { label: 'Warning', cls: 'text-warning' },
   'skipped': { label: 'Skipped', cls: 'text-[var(--c-text-3)]' },
   'failed':  { label: 'Failed',  cls: 'text-danger' },
@@ -191,6 +197,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                   <span class="uppercase tracking-wide">{{ kindLabel[s.kind] ?? s.kind }}</span>
                   <span class="font-mono"> · {{ s.target }}</span>
                   <span v-if="s.onFailure === 'warn'"> · a failure here is reported, not fatal</span>
+                  <span v-if="s.background"> · runs in the background, follow it in notifications</span>
                 </p>
 
                 <details v-if="s.command?.length" class="mt-2">
@@ -198,7 +205,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                   <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-[11px] text-[var(--c-text-1)]">{{ s.command.join(' ') }}</pre>
                 </details>
                 <details v-if="s.diff" class="mt-2" :open="s.kind === 'update' && !done">
-                  <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Changes to {{ s.target }}</summary>
+                  <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">{{ s.kind === 'create' ? 'Content of' : 'Changes to' }} {{ s.target }}</summary>
                   <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-[11px] leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
 </span></pre>
                 </details>
