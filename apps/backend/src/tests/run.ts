@@ -970,4 +970,59 @@ await testAppPlanBuilders()
   assert.equal(masked.fingerprint, "f")
 }
 
+
+async function testSharePlans() {
+  const sp = await import("../services/sharing-plan")
+  const row = (id: string, over: Partial<import("../services/sharing-plan").ShareRow> = {}) =>
+    ({ id, placeId: `p-${id}`, smbName: null, readOnly: false, guestOk: false, enabled: true, place: { name: id, path: `/srv/${id}` }, ...over })
+  const rows = [row("a"), row("b", { enabled: false })]
+
+  // Overlay: nothing written, the change is visible.
+  assert.deepEqual(sp.overlayShares(rows, { kind: "create", row: row("c") }).map(r => r.id), ["a", "b", "c"])
+  assert.equal(sp.overlayShares(rows, { kind: "update", id: "b", patch: { enabled: true } }).find(r => r.id === "b")!.enabled, true)
+  assert.equal(sp.overlayShares(rows, { kind: "update", id: "a", patch: { enabled: false } }).find(r => r.id === "a")!.enabled, false)
+  assert.deepEqual(sp.overlayShares(rows, { kind: "remove", id: "a" }).map(r => r.id), ["b"])
+  assert.equal(rows.length, 2, "overlay must not mutate its input")
+
+  const plan = { steps: [{ kind: "run", target: "smbd", summary: "reload" }], results: [{ status: "done" }] }
+  let commits = 0
+  const deps = (over: Partial<import("../services/sharing-plan").SharePlanDeps> = {}) => ({
+    smbdInstalled: async () => true,
+    defs: async () => [],
+    worker: async (subject: string) => (subject === "root.plan.preview" ? { steps: plan.steps, fingerprint: "f1" } : { ok: true, ...plan }) as any,
+    commit: async () => { commits++ },
+    ...over,
+  })
+
+  // Preview writes nothing.
+  const pv = await sp.previewShareChange("share.create", "media", deps())
+  assert.equal(pv.fingerprint, "f1")
+  assert.equal(commits, 0, "preview must not write the DB")
+
+  // Apply commits only after a successful plan.
+  await sp.applyShareChange("share.create", "media", "f1", deps())
+  assert.equal(commits, 1)
+  const failed = await sp.applyShareChange("share.update", "media", "f1", deps({
+    worker: async () => ({ ok: false, error: "reload smbd failed", steps: plan.steps, results: [{ status: "failed", error: "x" }] }) as any,
+  }))
+  assert.equal(failed.ok, false)
+  assert.equal(commits, 1, "a failed plan must leave the DB unchanged")
+
+  // Stale plan: CONFLICT.
+  await assert.rejects(sp.applyShareChange("share.create", "media", "f1", deps({
+    worker: async () => { throw Object.assign(new Error("changed"), { code: "ESTALE" }) },
+  })), (e: any) => e.code === "CONFLICT")
+
+  // Samba absent: create refused, remove only deletes the record.
+  await assert.rejects(sp.previewShareChange("share.create", "media", deps({ smbdInstalled: async () => false })),
+    (e: any) => e.code === "PRECONDITION_FAILED" && /apt install samba/.test(e.message))
+  const nr = await sp.previewShareChange("share.remove", "media", deps({ smbdInstalled: async () => false }))
+  assert.equal(nr.fingerprint, sp.NO_SAMBA_FINGERPRINT)
+  assert.match(nr.steps[0]!.summary, /Samba is not installed/)
+  const nra = await sp.applyShareChange("share.remove", "media", sp.NO_SAMBA_FINGERPRINT, deps({ smbdInstalled: async () => false }))
+  assert.equal(nra.ok, true)
+  assert.equal(commits, 2)
+}
+await testSharePlans()
+
 console.log("Backend security tests passed")

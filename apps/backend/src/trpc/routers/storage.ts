@@ -2,7 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, storageProcedure, protectedProcedure } from "../index"
 import type { Context } from "../context"
-import { PLAN_OPS, planAuditMeta, type PlanOp, type PlanStep, type StepResult } from "../../services/storage-plan"
+import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep, type StepResult } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
@@ -97,7 +97,6 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
   return { ...rest, ownerUser: owner?.username ?? "" }
 }
 
-type PlanApplyResult = { ok: boolean; error?: string; steps: PlanStep[]; results: StepResult[]; warnings?: string[]; reply?: Record<string, unknown> }
 
 export const storageRouter = router({
   // Operation plans (#36): preview what a storage operation will do, then

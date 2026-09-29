@@ -2,6 +2,7 @@ import type { PrismaClient } from "@app/database"
 import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
+import { overlayShares, type ShareChange } from "./sharing-plan"
 
 // Never expose privileged/system accounts over Samba: writing to shares as root
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
@@ -119,13 +120,13 @@ export function effectiveSmbName(
   return share.smbName ?? sanitizeSmbName(placeName)
 }
 
-/** Pushes the complete desired SMB state to the root-worker. Samba always
- *  reflects the current DB/permission state — no incremental diffing. */
-export async function syncShares(prisma: PrismaClient): Promise<void> {
-  const shares = await prisma.share.findMany({
-    where: { enabled: true },
+/** The share definitions Samba should serve, with `change` applied as if it
+ *  were already in the database (plans preview a change before writing it). */
+export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChange) {
+  const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
   })
+  const shares = overlayShares(rows, change).filter(s => s.enabled)
 
   // Admins always have full access in the app — mirror that into Samba so an
   // admin can read/write every share without needing an explicit per-place grant.
@@ -149,7 +150,13 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
       unavailable: holdFor(holds, s.place.path) !== null,
     })
   }
-  await requestSync("root.sharing.sync", { shares: defs })
+  return defs
+}
+
+/** Pushes the complete desired SMB state to the root-worker. Samba always
+ *  reflects the current DB/permission state, no incremental diffing. */
+export async function syncShares(prisma: PrismaClient): Promise<void> {
+  await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma) })
 }
 
 /** Ensures the *filesystem* access layer for EVERY place that has write-users

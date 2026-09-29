@@ -27,6 +27,8 @@ export interface PlanStep {
 
 export interface StepResult { status: string; error?: string; detail?: string }
 
+export type PlanApplyResult = { ok: boolean; error?: string; steps: PlanStep[]; results: StepResult[]; warnings?: string[]; reply?: Record<string, unknown> }
+
 export function planAuditMeta(op: string, steps: PlanStep[], results: StepResult[]) {
   return {
     op,
