@@ -862,4 +862,79 @@ async function testAppPlanEngine() {
 
 await testAppPlanEngine()
 
+async function testAppPlanBuilders() {
+  const calls: string[] = []
+  let building = true
+  const effect = (name: string) => async (...args: unknown[]) => {
+    if (building) throw new Error(`${name} called while building a plan`)
+    calls.push(`${name}:${String(args[0])}`)
+    return name === "createPlace" ? "place-new" : name === "publishJob" ? "job-7" : undefined
+  }
+  const stacks: Record<string, string> = { web: "services:\n  web:\n    image: nginx:1.27\n" }
+  let secretN = 0
+  const manifest = {
+    id: "demo", name: "Demo", image: "demo/demo:1.0", webUiPort: 80, restartPolicy: "unless-stopped",
+    ports: [{ container: 80, hostDefault: 8080, protocol: "tcp" }],
+    env: [{ key: "ADMIN_PASSWORD", secret: true, required: false }, { key: "TZ", default: "UTC" }],
+    volumes: [{ target: "/data", readOnlyDefault: false }],
+  }
+  const deps: import("../services/app-plan").AppPlanDeps = {
+    stackPath: (n) => `/opt/containers/${n}/compose.yaml`,
+    readStack: async (n) => stacks[n] ?? null,
+    findPlace: async (id) => id === "p1" ? { id: "p1", name: "Media", path: "/mnt/media" } : null,
+    placeAtPath: async (path) => path === "/mnt/taken",
+    catalog: (id) => (id === "demo" ? manifest as any : undefined),
+    secret: () => `generated-${secretN++}`,
+    effects: {
+      writeStack: effect("writeStack") as any, removeStackDir: effect("removeStackDir") as any, mkdirp: effect("mkdirp") as any,
+      createPlace: effect("createPlace") as any, validate: effect("validate") as any, publishJob: effect("publishJob") as any,
+    },
+  }
+
+  // save (update): masked diff against the current file.
+  const upd = await ap.buildAppPlan("app.save", { name: "web", raw: "services:\n  web:\n    image: nginx:1.28\n    environment:\n      DB_PASSWORD: s3cret\n" }, deps)
+  assert.equal(upd.steps[0]!.kind, "update")
+  assert.match(upd.steps[0]!.diff!, /\+    image: nginx:1\.28/)
+  assert.ok(!JSON.stringify(ap.publicSteps(upd)).includes("s3cret"))
+  await assert.rejects(ap.buildAppPlan("app.save", { name: "web", raw: "not: [yaml" }, deps))
+  await assert.rejects(ap.buildAppPlan("app.save", { name: "nope", raw: "services:\n  a:\n    image: x:1\n" }, deps), /not found/i)
+  await assert.rejects(ap.buildAppPlan("app.save", { name: "web", create: true, raw: "services:\n  a:\n    image: x:1\n" }, deps), /already exists/)
+
+  // apply: one background compose up, validate then publish.
+  const apply = await ap.buildAppPlan("app.apply", { name: "web" }, deps)
+  assert.deepEqual(apply.steps[0]!.command, ["docker", "compose", "-f", "/opt/containers/web/compose.yaml", "up", "-d"])
+  assert.equal(apply.steps[0]!.background, true)
+  assert.match(apply.steps[0]!.summary, /nginx:1\.27/)
+
+  // remove: two steps, one job.
+  const rm = await ap.buildAppPlan("app.remove", { name: "web" }, deps)
+  assert.deepEqual(rm.steps.map(s => s.kind), ["run", "delete"])
+  assert.equal(rm.steps[1]!.destructive, true)
+
+  // install: new Place, compose file with a generated secret (masked), up.
+  const inst = { id: "demo", name: "demo1", ports: [], env: [], volumes: [{ target: "/data", source: { kind: "newPlace", name: "Demo data", path: "/srv/demo" } }] }
+  const p1 = await ap.buildAppPlan("app.install", inst, deps)
+  const p2 = await ap.buildAppPlan("app.install", inst, deps)
+  assert.deepEqual(p1.steps.map(s => s.kind), ["create", "create", "create", "run"])
+  assert.ok(!JSON.stringify(ap.publicSteps(p1)).includes("generated-"))
+  assert.equal(ap.appFingerprint(p1, inst), ap.appFingerprint(p2, inst), "a random secret must not make the plan stale")
+  await assert.rejects(ap.buildAppPlan("app.install", { ...inst, volumes: [{ target: "/data", source: { kind: "newPlace", name: "x", path: "/mnt/taken" } }] }, deps), /Place already exists/)
+
+  building = false
+  const res = await ap.executeAppPlan(p1)
+  assert.equal(res.ok, true)
+  assert.deepEqual(calls, ["mkdirp:/srv/demo", "createPlace:Demo data", "writeStack:demo1", "validate:demo1", "publishJob:container.composeUp"])
+  assert.equal(res.results[3]!.jobId, "job-7")
+
+  // A failed validation removes the stack directory; the Place stays.
+  calls.length = 0
+  deps.effects.validate = async () => { throw new Error("invalid compose") }
+  const p3 = await ap.buildAppPlan("app.install", { ...inst, name: "demo2" }, { ...deps, effects: { ...deps.effects } })
+  const failed = await ap.executeAppPlan(p3)
+  assert.equal(failed.ok, false)
+  assert.ok(calls.includes("removeStackDir:demo2") && calls.includes("createPlace:Demo data"))
+}
+
+await testAppPlanBuilders()
+
 console.log("Backend security tests passed")
