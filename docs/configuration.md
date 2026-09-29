@@ -181,6 +181,9 @@ are protected when their disk is absent:
   file writes under it are refused with the reason.
 - When the right volume is back (same filesystem UUID), HSI mounts it again
   and shows it in Storage > Mounts. Nothing restarts until you click Resume.
+- A volume you unmount yourself is never remounted automatically: writes
+  under it are refused until you mount it again and click Resume. A volume
+  mounted read-only on purpose (`ro` in its options) is not reported.
 
 `hsi-worker volumes` prints the state of each volume from a shell. Existing
 fstab entries written by HSI get the boot options at the next worker start;
