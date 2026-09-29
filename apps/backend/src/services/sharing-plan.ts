@@ -28,6 +28,10 @@ export interface SharePlanDeps {
   defs(): Promise<unknown[]>
   worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
   commit(): Promise<unknown>
+  /** Runs defs, plan and commit without an automatic resync in between. */
+  serialize<T>(fn: () => Promise<T>): Promise<T>
+  /** Brings Samba back to what the database says (after a failed apply). */
+  resync(): Promise<void>
 }
 
 export const NO_SAMBA_FINGERPRINT = "no-samba"
@@ -62,10 +66,21 @@ export async function applyShareChange(op: ShareOp, name: string, fingerprint: s
     await deps.commit()
     return { ok: true, steps: [noSambaRemoval(name)], results: [{ status: "done" }] }
   }
-  let res: PlanApplyResult
+  let failed = false
   try {
-    res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: { shares: await deps.defs() }, fingerprint })
-  } catch (e) { workerError(e) }
-  if (res.ok) await deps.commit()
-  return res
+    return await deps.serialize(async () => {
+      let res: PlanApplyResult
+      try {
+        res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: { shares: await deps.defs() }, fingerprint })
+      } catch (e) { workerError(e) }
+      if (!res.ok) { failed = true; return res }
+      try {
+        await deps.commit()
+      } catch (e) { failed = true; throw e }
+      return res
+    })
+  } finally {
+    // smb.conf may already hold the new state: put back what the database says.
+    if (failed) await deps.resync().catch(() => {})
+  }
 }

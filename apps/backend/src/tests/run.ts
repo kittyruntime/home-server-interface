@@ -991,6 +991,8 @@ async function testSharePlans() {
     defs: async () => [],
     worker: async (subject: string) => (subject === "root.plan.preview" ? { steps: plan.steps, fingerprint: "f1" } : { ok: true, ...plan }) as any,
     commit: async () => { commits++ },
+    serialize: <T>(fn: () => Promise<T>) => fn(),
+    resync: async () => {},
     ...over,
   })
 
@@ -1024,6 +1026,35 @@ async function testSharePlans() {
   assert.equal(commits, 2)
 }
 await testSharePlans()
+
+// Review fixes: applying a share plan and automatic resyncs are serialized,
+// and a failed apply brings Samba back to what the database says.
+{
+  const sp = await import("../services/sharing-plan")
+  const { withShareLock } = await import("../services/sharing.service")
+  const order: string[] = []
+  await Promise.all([
+    withShareLock(async () => { order.push("a1"); await new Promise(r => setTimeout(r, 20)); order.push("a2") }),
+    withShareLock(async () => { order.push("b1"); order.push("b2") }),
+  ])
+  assert.deepEqual(order, ["a1", "a2", "b1", "b2"], "share syncs must not interleave")
+
+  let inLock = false, resyncs = 0
+  const base = {
+    smbdInstalled: async () => true,
+    defs: async () => { assert.ok(inLock, "defs must be read under the lock"); return [] },
+    worker: async () => { assert.ok(inLock, "the plan must run under the lock"); return { ok: true, steps: [], results: [] } as any },
+    commit: async () => { assert.ok(inLock, "the DB write must happen under the lock") },
+    serialize: async <T>(fn: () => Promise<T>) => { inLock = true; try { return await fn() } finally { inLock = false } },
+    resync: async () => { assert.ok(!inLock, "resync runs after the lock"); resyncs++ },
+  }
+  await sp.applyShareChange("share.remove", "media", "f1", base)
+  assert.equal(resyncs, 0)
+  await sp.applyShareChange("share.remove", "media", "f1", { ...base, worker: async () => ({ ok: false, steps: [], results: [] }) as any })
+  assert.equal(resyncs, 1, "a failed plan resyncs Samba to the database")
+  await assert.rejects(sp.applyShareChange("share.create", "media", "f1", { ...base, commit: async () => { throw new Error("unique") } }))
+  assert.equal(resyncs, 2, "a failed DB write resyncs Samba to the database")
+}
 
 // Plans name what they changed in the audit log, not an opaque id.
 {
