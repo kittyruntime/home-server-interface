@@ -178,6 +178,18 @@ kept in the audit log.
 From a shell, `hsi-worker plan preview <op> '<json>'` prints the same plan (and
 `hsi-worker plan apply <op> '<json>' <fingerprint>` applies it).
 
+### Apps
+
+Saving an app (from the form or the compose file editor), applying, starting,
+installing from the App Store and deleting are previewed the same way: the
+`compose.yaml` content or its diff, the folders and Places an install creates,
+and the `docker compose` commands. Values of environment variables whose name
+looks secret (password, token, key...) are masked in the preview and in the
+audit log; the written file keeps them. If `compose.yaml` changed since the
+preview, HSI refuses and asks you to review again. Commands that start
+containers run in the background; follow them in the notifications. After an
+App Store install, HSI opens Apps on the new app and its logs.
+
 ## Missing volumes
 
 Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")

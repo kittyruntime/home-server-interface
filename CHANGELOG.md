@@ -14,12 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the model, serial and contents of any disk that will be erased). Applying runs
   exactly that plan, or refuses if the server changed since the preview. The
   executed plan is kept in the audit log.
+- **Preview before app changes**: saving, applying, starting, installing and
+  deleting an app show the `compose.yaml` content or diff (secrets masked), the
+  folders and Places created, and the `docker compose` commands first.
+
+### Changed
+- **After an App Store install**, HSI shows the new app in Apps with its logs
+  instead of opening it in a new tab.
 
 ### Fixed
 - **Failing the last redundant RAID member**: marking a member as failed is
   refused when the array has no redundancy left (it would stop the array), and
   a disk that was unplugged can now be removed from its array.
-
 
 ## [1.58.0] - 2026-09-29
 
