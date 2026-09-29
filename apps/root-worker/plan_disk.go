@@ -34,6 +34,21 @@ func destructive(s planStep, dev string) planStep {
 	return s
 }
 
+// destructiveAll marks a step that erases several devices, naming each one.
+func destructiveAll(s planStep, devs []string) planStep {
+	s.Destructive = true
+	for _, d := range devs {
+		if info := hostDescribe(d); info != nil {
+			s.Devices = append(s.Devices, *info)
+		}
+	}
+	if len(s.Devices) > 0 {
+		first := s.Devices[0]
+		s.Device = &first
+	}
+	return s
+}
+
 func observeDevice(obs map[string]string, key, dev string) {
 	obs[key+":signatures"] = hostSignatures(dev)
 	if d := hostDescribe(dev); d != nil {
@@ -100,7 +115,7 @@ func planFormat(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, &fsError{Code: "ERR", Message: "unsupported filesystem: " + req.FsType}
 	}
 	args = append(args, devPath)
-	obs := map[string]string{"signatures": hostSignatures(devPath)}
+	obs := map[string]string{}
 	observeDevice(obs, "target", devPath)
 	fsName := req.FsType
 	if fsName == "vfat" {
@@ -238,7 +253,7 @@ func planPvCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	steps := []planStep{}
 	s := cmdStep(strings.Join(devPaths, " "), "Make "+strings.Join(devPaths, ", ")+" LVM physical volumes, erasing their contents",
 		append([]string{"pvcreate", "-f"}, devPaths...))
-	steps = append(steps, destructive(s, devPaths[0]))
+	steps = append(steps, destructiveAll(s, devPaths))
 	return &opPlan{Op: "pv.create", Steps: steps, Observed: obs}, nil
 }
 

@@ -106,3 +106,24 @@ func TestParseLsblkDevice(t *testing.T) {
 		t.Fatalf("contents %q", blank.Contents)
 	}
 }
+
+func TestDescribeDevicePartitionUsesParentIdentity(t *testing.T) {
+	prev := hostOutput
+	t.Cleanup(func() { hostOutput = prev })
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		last := args[len(args)-1]
+		switch {
+		case name == "lsblk" && args[0] == "-no":
+			return []byte("sdb\n"), nil
+		case name == "lsblk" && last == "/dev/sdb1":
+			return []byte(`{"blockdevices":[{"path":"/dev/sdb1","model":null,"serial":null,"size":100,"fstype":"ext4","label":"media"}]}`), nil
+		case name == "lsblk" && last == "/dev/sdb":
+			return []byte(`{"blockdevices":[{"path":"/dev/sdb","model":"WDC WD40EFRX","serial":"WD-WX12","size":4000,"fstype":null,"label":null}]}`), nil
+		}
+		return nil, errors.New("unexpected " + name)
+	}
+	d := describeDevice("/dev/sdb1")
+	if d.Model != "WDC WD40EFRX" || d.Serial != "WD-WX12" || d.Size != 100 || d.Contents != `ext4 "media"` {
+		t.Fatalf("got %+v", d)
+	}
+}

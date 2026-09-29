@@ -55,9 +55,11 @@ function hasCapability(capability: Capability) {
 
 // ── Audit logging ────────────────────────────────────────────────────────────
 
-function extractTarget(input: unknown): string | undefined {
+export function extractTarget(input: unknown): string | undefined {
   if (!input || typeof input !== "object") return undefined
-  const i = input as Record<string, unknown>
+  let i = input as Record<string, unknown>
+  // Operation plans wrap the operation's input: { op, input, fingerprint }.
+  if (typeof i["op"] === "string" && i["input"] && typeof i["input"] === "object") i = i["input"] as Record<string, unknown>
   const v = i["path"] ?? i["device"] ?? i["mountpoint"] ?? i["name"] ??
     i["username"] ?? i["vgName"] ?? i["lvName"] ?? i["id"] ?? i["url"]
   return v != null ? String(v) : undefined
@@ -99,7 +101,9 @@ const auditLog = t.middleware(async (opts) => {
         target:  extractTarget(opts.rawInput),
         meta:    sanitizeMeta(opts.ctx.audit?.meta ? { input: opts.rawInput, ...opts.ctx.audit.meta } : opts.rawInput),
         ip:      opts.ctx.req.ip ?? opts.ctx.req.headers["x-forwarded-for"]?.toString(),
-        success: result.ok,
+        // A procedure can report a failure it returns as data (e.g. a plan
+        // whose step failed).
+        success: result.ok && opts.ctx.audit?.success !== false,
       },
     }).catch(() => {})
   }

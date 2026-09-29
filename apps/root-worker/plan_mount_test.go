@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -211,4 +212,40 @@ func TestPlanRaidStop(t *testing.T) {
 	hostProcMounts = func() string { return "/dev/md0 /mnt/r ext4 rw 0 0\n" }
 	_, fe = build(t, planRaidStop, `{"name":"md0"}`)
 	wantErr(t, fe, "EMNT")
+}
+
+func TestPlanRaidStopFingerprintIgnoresResyncProgress(t *testing.T) {
+	stubMountHost(t)
+	stubConfigFiles(t, "", "ARRAY /dev/md0 metadata=1.2 UUID=aa:bb\n")
+	detail := func(pct, events string) string {
+		return "/dev/md0:\n     Raid Level : raid1\n  Resync Status : " + pct + "% complete\n         Events : " + events +
+			"\n           UUID : aa:bb\n    Number   Major   Minor   RaidDevice State\n       0       8       16        0      active sync   /dev/sdb\n       1       8       32        1      active sync   /dev/sdc\n"
+	}
+	in := json.RawMessage(`{"name":"md0"}`)
+	hostMdDetail = func(string) (string, error) { return detail("12", "40"), nil }
+	p1, _ := planRaidStop(in)
+	hostMdDetail = func(string) (string, error) { return detail("13", "41"), nil }
+	p2, _ := planRaidStop(in)
+	if p1.fingerprint(in) != p2.fingerprint(in) {
+		t.Fatal("resync progress must not make the plan stale")
+	}
+	hostMdDetail = func(string) (string, error) {
+		return strings.Replace(detail("13", "41"), "/dev/sdc", "/dev/sdd", 1), nil
+	}
+	p3, _ := planRaidStop(in)
+	if p3.fingerprint(in) == p1.fingerprint(in) {
+		t.Fatal("a different member must make the plan stale")
+	}
+}
+
+func TestPlanRaidCreateNamesEveryMember(t *testing.T) {
+	stubMountHost(t)
+	stubConfigFiles(t, "", "")
+	p, fe := build(t, planRaidCreate, `{"name":"md0","level":5,"devices":["sdb","sdc","sdd"]}`)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	if n := len(p.Steps[0].Devices); n != 3 || p.Steps[0].Devices[2].Path != "/dev/sdd" {
+		t.Fatalf("all erased devices must be named, got %+v", p.Steps[0].Devices)
+	}
 }

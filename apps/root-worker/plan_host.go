@@ -37,14 +37,25 @@ func isMountedSource(procMounts string, sources ...string) bool {
 
 // describeDevice names a device the way a person can recognise it: model,
 // serial, size and what it currently holds.
+// A partition has no model or serial of its own: they come from its disk.
 func describeDevice(dev string) *deviceInfo {
-	out, err := command("lsblk", "-J", "-b", "-o", "PATH,MODEL,SERIAL,SIZE,FSTYPE,LABEL", dev).Output()
+	out, err := hostOutput("lsblk", "-J", "-b", "-o", "PATH,MODEL,SERIAL,SIZE,FSTYPE,LABEL", dev)
 	if err != nil {
 		return &deviceInfo{Path: dev}
 	}
 	d := parseLsblkDevice(out)
 	if d.Path == "" {
 		d.Path = dev
+	}
+	if d.Model == "" && d.Serial == "" {
+		if pk, err := hostOutput("lsblk", "-no", "PKNAME", dev); err == nil {
+			if parent := strings.TrimSpace(strings.SplitN(string(pk), "\n", 2)[0]); parent != "" {
+				if pout, err := hostOutput("lsblk", "-J", "-b", "-o", "PATH,MODEL,SERIAL,SIZE,FSTYPE,LABEL", "/dev/"+parent); err == nil {
+					p := parseLsblkDevice(pout)
+					d.Model, d.Serial = p.Model, p.Serial
+				}
+			}
+		}
 	}
 	return &d
 }

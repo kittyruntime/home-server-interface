@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { trpc } from '../../lib/trpc'
@@ -45,7 +45,11 @@ const steps = computed<PlanStep[]>(() => applied.value?.steps ?? preview.value?.
 const destructiveSteps = computed(() => steps.value.filter(s => s.destructive))
 const destructiveDevices = computed(() => {
   const seen = new Map<string, NonNullable<PlanStep['device']>>()
-  for (const s of destructiveSteps.value) if (s.device && !seen.has(s.device.path)) seen.set(s.device.path, s.device)
+  for (const s of destructiveSteps.value) {
+    for (const d of s.devices?.length ? s.devices : s.device ? [s.device] : []) {
+      if (!seen.has(d.path)) seen.set(d.path, d)
+    }
+  }
   return [...seen.values()]
 })
 
@@ -69,7 +73,14 @@ async function apply() {
     applied.value = res
     if (res.ok) {
       settle({ status: 'applied', result: res })
-      modal.value?.requestClose()
+      // Warnings stay on screen (e.g. mdadm.conf not updated); otherwise the
+      // dialog closes. `applying` must be false first: the Modal refuses to
+      // close while an operation runs.
+      if (!res.warnings?.length) {
+        applying.value = false
+        await nextTick()
+        modal.value?.requestClose()
+      }
     }
   } catch (e) {
     const err = e as { message?: string; data?: { code?: string } }
@@ -210,7 +221,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
 
     <template #footer>
       <div class="flex-1" />
-      <template v-if="failedApply || (loadError && !loading)">
+      <template v-if="failedApply || done || (loadError && !loading)">
         <button class="btn btn-primary btn-sm" @click="modal?.requestClose()">Close</button>
       </template>
       <template v-else>

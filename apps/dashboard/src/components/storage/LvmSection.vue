@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { applyPlanned } from '../../lib/plan'
+import { pvCreateNeeded, withOrphanPvs } from './lvm-wizard'
 import { ref, computed, watch } from 'vue'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, claimableDevices, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { useHostTools } from './tools'
@@ -29,7 +30,8 @@ function lv2bd(lv: LvmLV): BlockDev {
 // ── Computed ──────────────────────────────────────────────────────────────────
 
 // Eligible for LVM PV: free disks/partitions and free assembled RAID arrays (worker usage)
-const eligibleForLvm = computed<BlockDev[]>(() => claimableDevices(devices.value, true))
+// Orphan PVs (left by a wizard stopped after its first plan) are offered again.
+const eligibleForLvm = computed<BlockDev[]>(() => withOrphanPvs(claimableDevices(devices.value, true), devices.value, lvmPVs.value))
 
 // VG free space as percentage
 function vgFreePct(vg: LvmVG): number {
@@ -80,13 +82,20 @@ async function doCreateLvm() {
   const w = lvmWiz.value
   w.busy = true; w.err = ''
   try {
-    await applyPlanned('pv.create', { devices: w.pvDevs },
-      { title: 'Prepare disks for LVM (1 of 3)', actionLabel: 'Prepare disks' })
+    // Disks already made PVs by an earlier, interrupted run are not prepared again.
+    const toPrepare = pvCreateNeeded(w.pvDevs, lvmPVs.value)
+    const total = toPrepare.length ? 3 : 2
+    let n = 1
+    if (toPrepare.length) {
+      await applyPlanned('pv.create', { devices: toPrepare },
+        { title: `Prepare disks for LVM (${n++} of ${total})`, actionLabel: 'Prepare disks' })
+      await refresh()
+    }
     await applyPlanned('vg.create', { name: w.vgName, devices: w.pvDevs },
-      { title: `Create volume group ${w.vgName} (2 of 3)`, actionLabel: 'Create volume group' })
+      { title: `Create volume group ${w.vgName} (${n++} of ${total})`, actionLabel: 'Create volume group' })
     const sizeBytes = w.lvSizeGB > 0 ? Math.floor(w.lvSizeGB * 1024 ** 3) : 0
     await applyPlanned('lv.create', { vgName: w.vgName, lvName: w.lvName, sizeBytes },
-      { title: `Create logical volume ${w.lvName} (3 of 3)`, actionLabel: 'Create logical volume' })
+      { title: `Create logical volume ${w.lvName} (${n} of ${total})`, actionLabel: 'Create logical volume' })
     lvmWiz.value = null
     await refresh()
   } catch (e: any) {
