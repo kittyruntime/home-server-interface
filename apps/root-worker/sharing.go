@@ -107,21 +107,6 @@ func handleSharingCheckPrereqs(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"smbdInstalled": smbdInstalled()})
 }
 
-// ensureDropIn installs the systemd drop-in once. Returns true when it was
-// just created (caller must daemon-reload + restart instead of reload).
-func ensureDropIn() (bool, error) {
-	if _, err := os.Stat(dropInPath); err == nil {
-		return false, nil
-	}
-	if err := os.MkdirAll(dropInDir, 0o755); err != nil {
-		return false, err
-	}
-	if err := os.WriteFile(dropInPath, []byte(dropInContent), 0o644); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 func renderSmbConf(shares []shareDef) (string, error) {
 	var b strings.Builder
 	b.WriteString("# Managed by nasui root-worker — do not edit; regenerated on every sync.\n")
@@ -301,59 +286,18 @@ func handleSharingDiag(nc *nats.Conn, msg *nats.Msg) {
 }
 
 func handleSharingSync(nc *nats.Conn, msg *nats.Msg) {
-	if !smbdInstalled() {
-		replyErr(nc, msg.Reply, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"})
+	p, fe := planSmbSync(msg.Data)
+	if fe != nil {
+		replyErr(nc, msg.Reply, fe)
 		return
 	}
-	var req struct {
-		Shares []shareDef `json:"shares"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
-		return
-	}
-	conf, err := renderSmbConf(req.Shares)
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-	// The filesystem/group layer is handled separately (root.sharing.placeAccess),
-	// so it covers *every* place with write-users — not only SMB shares — and works
-	// even when Samba is absent.
-
-	created, err := ensureDropIn()
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "install drop-in: " + err.Error()})
-		return
-	}
-	if err := os.MkdirAll(smbConfDir, 0o755); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-	tmp := smbConfPath + ".tmp"
-	if err := os.WriteFile(tmp, []byte(conf), 0o644); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-	if err := os.Rename(tmp, smbConfPath); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-	if created {
-		if out, err := command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: cmdErrMessage(out, err)})
-			return
-		}
-		command("systemctl", "enable", "--quiet", "smbd").Run()
-		if out, err := command("systemctl", "restart", "smbd").CombinedOutput(); err != nil {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "restart smbd: " + strings.TrimSpace(string(out))})
-			return
-		}
-	} else {
-		command("systemctl", "enable", "--quiet", "smbd").Run()
-		if out, err := command("systemctl", "reload-or-restart", "smbd").CombinedOutput(); err != nil {
-			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "reload smbd: " + strings.TrimSpace(string(out))})
-			return
+	results, ok, _ := p.execute()
+	if !ok {
+		for i, r := range results {
+			if r.Status == "failed" {
+				replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: p.Steps[i].Summary + ": " + r.Error})
+				return
+			}
 		}
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
