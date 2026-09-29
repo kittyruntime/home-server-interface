@@ -3,9 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import Modal from '../ui/Modal.vue'
-import { useConfirm } from '../../lib/confirm'
+import { applyPlanned } from '../../lib/plan'
 
-const { confirm } = useConfirm()
 
 type ShareRow = {
   id: string
@@ -99,19 +98,19 @@ async function save() {
   editorError.value = ''
   try {
     if (editor.value.id === null) {
-      await trpc.sharing.create.mutate({
+      await applyPlanned('share.create', {
         placeId: editor.value.placeId,
         smbName: editor.value.smbName.trim() || undefined,
         readOnly: editor.value.readOnly,
         guestOk: editor.value.guestOk,
-      })
+      }, { domain: 'sharing', title: 'Create the share', actionLabel: 'Share' })
     } else {
-      await trpc.sharing.update.mutate({
+      await applyPlanned('share.update', {
         id: editor.value.id,
         smbName: editor.value.smbName.trim() || null,
         readOnly: editor.value.readOnly,
         guestOk: editor.value.guestOk,
-      })
+      }, { domain: 'sharing', title: 'Save the share', actionLabel: 'Save' })
     }
     editor.value = null
     await refresh()
@@ -125,7 +124,12 @@ async function save() {
 async function toggleEnabled(s: ShareRow) {
   error.value = ''
   try {
-    await trpc.sharing.update.mutate({ id: s.id, enabled: !s.enabled })
+    await applyPlanned('share.update', { id: s.id, enabled: !s.enabled }, {
+      domain: 'sharing',
+      title: `${s.enabled ? 'Disable' : 'Enable'} the share ${s.effectiveName}`,
+      actionLabel: s.enabled ? 'Disable' : 'Enable',
+      danger: s.enabled,
+    })
     await refresh()
   } catch (e: unknown) {
     error.value = (e as { message?: string })?.message ?? 'Failed to update share'
@@ -133,11 +137,12 @@ async function toggleEnabled(s: ShareRow) {
 }
 
 async function removeShare(s: ShareRow) {
-  if (!await confirm(`Stop sharing "${s.effectiveName}"? Clients will lose access.`, { danger: true, confirmLabel: 'Stop sharing' })) return
   deleting.value = s.id
   error.value = ''
   try {
-    await trpc.sharing.remove.mutate({ id: s.id })
+    await applyPlanned('share.remove', { id: s.id }, {
+      domain: 'sharing', title: `Stop sharing ${s.effectiveName}; clients lose access`, actionLabel: 'Stop sharing', danger: true,
+    })
     await refresh()
   } catch (e: unknown) {
     error.value = (e as { message?: string })?.message ?? 'Failed to delete share'
