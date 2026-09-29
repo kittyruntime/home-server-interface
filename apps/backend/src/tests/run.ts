@@ -759,8 +759,14 @@ async function testVolumeGuard() {
   assert.deepEqual(plan.create, [{ mountPoint: "/a", reason: "missing" }])
   assert.deepEqual(plan.back, ["/b"])
   assert.deepEqual(plan.reblock, [{ mountPoint: "/c", reason: "readonly" }])
+  // A hold whose volume is no longer an HSI volume (fstab entry removed) is released.
+  assert.deepEqual(vg.planHolds([{ mountPoint: "/a", state: "ok" }], [{ mountPoint: "/gone", status: "blocked", reason: "missing" }]).release, ["/gone"])
+  // Unmounted on purpose: blocked (nothing may write there) but no alert.
+  assert.deepEqual(vg.planHolds([{ mountPoint: "/u", state: "unmounted" }], []).create, [{ mountPoint: "/u", reason: "unmounted" }])
 
-  assert.deepEqual(vg.appsUnder([{ name: "web", sources: ["/mnt/data/www"] }, { name: "db", sources: ["/srv/db"] }, { name: "x", sources: ["/mnt/data2/y"] }], "/mnt/data"), ["web"])
+  assert.deepEqual(vg.appsUnder([{ name: "web", sources: ["/mnt/data/www"], running: true }, { name: "db", sources: ["/srv/db"], running: true }, { name: "x", sources: ["/mnt/data2/y"], running: true }], "/mnt/data"), ["web"])
+  // Only apps that are running are recorded: Resume must not start an app the admin had stopped.
+  assert.deepEqual(vg.appsUnder([{ name: "on", sources: ["/mnt/data/a"], running: true }, { name: "off", sources: ["/mnt/data/b"], running: false }], "/mnt/data"), ["on"])
 
   assert.deepEqual(vg.backupLocalPaths({ direction: "push", source: "/mnt/data", destination: "/remote", remoteHost: "nas2" }), ["/mnt/data"])
   assert.deepEqual(vg.backupLocalPaths({ direction: "pull", source: "/remote", destination: "/mnt/b", remoteHost: "nas2" }), ["/mnt/b"])
@@ -769,6 +775,9 @@ async function testVolumeGuard() {
   const f = vg.volumeFindings([{ mountPoint: "/a", state: "missing" }, { mountPoint: "/b", state: "readonly" }, { mountPoint: "/c", state: "ok" }, { mountPoint: "/d", state: "wrong" }])
   assert.deepEqual(f.checked, ["/a", "/b", "/c", "/d"])
   assert.deepEqual(f.found.map(x => [x.target, x.severity]), [["/a", "critical"], ["/b", "warning"], ["/d", "critical"]])
+  const g = vg.volumeFindings([{ mountPoint: "/u", state: "unmounted" }], ["/gone"])
+  assert.deepEqual(g.found, [])
+  assert.deepEqual(g.checked.sort(), ["/gone", "/u"]) // an orphaned alert is checked, so it clears
 }
 
 await testVolumeGuard()

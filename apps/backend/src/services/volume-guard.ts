@@ -3,7 +3,7 @@ import { prisma } from "@app/database"
 import { composeBindSources } from "@app/compose"
 import { requestSync, publishJob } from "../nats"
 import { log } from "../utils/log"
-import { scanStacks } from "./containerStacks"
+import { listStacks } from "./containerStacks"
 import { reconcileSource } from "./alert-sampler"
 
 // Missing volume guard (#3). The worker reports the state of each HSI data
@@ -11,7 +11,7 @@ import { reconcileSource } from "./alert-sampler"
 // shares become unavailable, and backups and file writes under it are refused.
 // When it is usable again the hold waits for the admin to resume.
 
-export type VolumeState = "ok" | "missing" | "wrong" | "readonly"
+export type VolumeState = "ok" | "missing" | "wrong" | "readonly" | "unmounted"
 type Hold = { mountPoint: string; status: string; reason: string }
 
 export function pathUnder(path: string, mountPoint: string): boolean {
@@ -36,17 +36,21 @@ export function planHolds(volumes: Array<{ mountPoint: string; state: string }>,
   const create: Array<{ mountPoint: string; reason: string }> = []
   const back: string[] = []
   const reblock: Array<{ mountPoint: string; reason: string }> = []
+  const present = new Set(volumes.map(v => v.mountPoint))
+  // No longer an HSI volume (fstab entry removed, RAID stopped): nothing to wait for.
+  const release = holds.filter(h => !present.has(h.mountPoint)).map(h => h.mountPoint)
   for (const v of volumes) {
     const h = byMp.get(v.mountPoint)
     if (v.state !== "ok" && !h) create.push({ mountPoint: v.mountPoint, reason: v.state })
     else if (v.state === "ok" && h?.status === "blocked") back.push(v.mountPoint)
     else if (v.state !== "ok" && h?.status === "back") reblock.push({ mountPoint: v.mountPoint, reason: v.state })
   }
-  return { create, back, reblock }
+  return { create, back, reblock, release }
 }
 
-export function appsUnder(apps: Array<{ name: string; sources: string[] }>, mountPoint: string): string[] {
-  return apps.filter(a => a.sources.some(s => pathUnder(s, mountPoint))).map(a => a.name)
+// Only running apps: Resume restarts exactly these, never one the admin stopped.
+export function appsUnder(apps: Array<{ name: string; sources: string[]; running: boolean }>, mountPoint: string): string[] {
+  return apps.filter(a => a.running && a.sources.some(s => pathUnder(s, mountPoint))).map(a => a.name)
 }
 
 // Only local paths count: the remote side of a backup lives on another host.
@@ -61,10 +65,13 @@ const ALERT_MESSAGES: Record<string, string> = {
   readonly: "Volume is mounted read-only",
 }
 
-export function volumeFindings(volumes: Array<{ mountPoint: string; state: string }>) {
+// `alertTargets`: mount points that currently have an alert, so one whose
+// volume left the registry is checked (and cleared) too. An admin unmount is
+// blocked but raises no alert.
+export function volumeFindings(volumes: Array<{ mountPoint: string; state: string }>, alertTargets: string[] = []) {
   return {
-    checked: volumes.map(v => v.mountPoint),
-    found: volumes.filter(v => v.state !== "ok").map(v => ({
+    checked: [...new Set([...volumes.map(v => v.mountPoint), ...alertTargets])],
+    found: volumes.filter(v => v.state !== "ok" && v.state !== "unmounted").map(v => ({
       target: v.mountPoint,
       severity: (v.state === "readonly" ? "warning" : "critical") as "warning" | "critical",
       message: ALERT_MESSAGES[v.state] ?? v.state,
@@ -81,9 +88,9 @@ export async function fetchVolumes(): Promise<WorkerVolume[]> {
   return res.volumes
 }
 
-async function appSources(): Promise<Array<{ name: string; sources: string[] }>> {
-  const stacks = await scanStacks()
-  return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.content) }))
+async function appSources(): Promise<Array<{ name: string; sources: string[]; running: boolean }>> {
+  const stacks = await listStacks()
+  return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.rawYaml), running: s.status === "running" }))
 }
 
 // Loaded lazily: sharing.service imports this module for holdFor.
@@ -99,9 +106,14 @@ export async function runVolumeGuard(): Promise<void> {
   running = true
   try {
     const volumes = await fetchVolumes()
-    await reconcileSource("storage.volume", volumeFindings(volumes))
+    const alerted = await prisma.alert.findMany({ where: { source: "storage.volume" }, select: { target: true } })
+    await reconcileSource("storage.volume", volumeFindings(volumes, alerted.map(a => a.target)))
     const holds = await prisma.volumeHold.findMany()
     const plan = planHolds(volumes, holds)
+    if (plan.release.length > 0) {
+      await prisma.volumeHold.deleteMany({ where: { mountPoint: { in: plan.release } } })
+      log.info({ released: plan.release }, "volume-guard: released holds of volumes HSI no longer manages")
+    }
     if (plan.create.length > 0) {
       const apps = await appSources().catch(() => [])
       for (const c of plan.create) {
@@ -122,6 +134,7 @@ export async function runVolumeGuard(): Promise<void> {
     for (const r of plan.reblock) {
       await prisma.volumeHold.update({ where: { mountPoint: r.mountPoint }, data: { status: "blocked", reason: r.reason } })
     }
+    if (plan.release.length > 0 && plan.create.length === 0) await syncShares()
   } catch (e) {
     log.warn({ err: e }, "volume-guard: check failed")
   } finally {
