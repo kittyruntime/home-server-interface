@@ -97,7 +97,7 @@ const auditLog = t.middleware(async (opts) => {
         userId:  opts.ctx.user.userId,
         action:  opts.path,
         target:  extractTarget(opts.rawInput),
-        meta:    sanitizeMeta(opts.rawInput),
+        meta:    sanitizeMeta(opts.ctx.audit?.meta ? { input: opts.rawInput, ...opts.ctx.audit.meta } : opts.rawInput),
         ip:      opts.ctx.req.ip ?? opts.ctx.req.headers["x-forwarded-for"]?.toString(),
         success: result.ok,
       },

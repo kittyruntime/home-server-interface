@@ -1,6 +1,8 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, storageProcedure, protectedProcedure } from "../index"
+import type { Context } from "../context"
+import { PLAN_OPS, planAuditMeta, type PlanOp, type PlanStep, type StepResult } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
@@ -16,7 +18,104 @@ const zMaintenanceSchedule = z.object({
 })
 type MaintenanceSchedule = z.infer<typeof zMaintenanceSchedule>
 
+
+// Inputs of the operations previewed as plans (#36); the per-op mutations
+// below keep using them for compatibility.
+const reDev = /^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/
+const reDisk = /^[a-z][a-z0-9]+$/
+const reLvm = /^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/
+const PLAN_INPUTS = {
+  "format": z.object({
+    // Bare name (sda1, md0) or relative LVM path (ubuntu-vg/ubuntu-lv)
+    device: z.string().regex(reDev),
+    fstype: z.enum(['ext4', 'xfs', 'btrfs', 'fat32']),
+    label:  z.string().max(64).optional(),
+  }),
+  "mount": z.object({
+    device:     z.string().regex(reDev),
+    // Disallow whitespace and # to prevent fstab field injection
+    mountpoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
+    options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
+    persist:    z.boolean().default(false),
+    // "shared": a freshly formatted volume becomes writable by the user who
+    // mounts it and the hsi-share group. "user": same, owned by ownerUserId.
+    // "keep": leave its root as root:root.
+    access:      z.enum(["shared", "user", "keep"]).default("keep"),
+    ownerUserId: z.string().optional(),
+    // Also prepare a volume that already holds data (confirmed in the UI).
+    force:       z.boolean().default(false),
+  }),
+  "umount": z.object({
+    mountpoint:      z.string().min(2),
+    removeFromFstab: z.boolean().default(false),
+  }),
+  "raid.create": z.object({
+    name:    z.string().regex(/^md[0-9]{1,3}$/),
+    level:   z.number().int().refine(n => [0, 1, 5, 10].includes(n), { message: 'Invalid RAID level' }),
+    devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(2),
+  }),
+  "raid.stop": z.object({ name: z.string().regex(/^md[0-9]{1,3}$/) }),
+  "pv.create": z.object({ devices: z.array(z.string().regex(reDisk)).min(1) }),
+  "vg.create": z.object({ name: z.string().regex(reLvm), devices: z.array(z.string().regex(reDisk)).min(1) }),
+  "lv.create": z.object({ vgName: z.string().regex(reLvm), lvName: z.string().regex(reLvm), sizeBytes: z.number().int().min(0) }),
+  "lv.remove": z.object({ vgName: z.string().regex(reLvm), lvName: z.string().regex(reLvm) }),
+  "vg.remove": z.object({ vgName: z.string().regex(reLvm) }),
+  "part.init": z.object({ device: z.string().regex(reDisk) }),
+  "part.create": z.object({
+    device:   z.string().regex(reDisk),
+    startPct: z.number().int().min(0).max(99).default(0),
+    endPct:   z.number().int().min(1).max(100).default(100),
+  }),
+  "part.delete": z.object({ device: z.string().regex(reDisk), partNum: z.string().regex(/^[1-9][0-9]?$/) }),
+} satisfies Record<PlanOp, z.ZodTypeAny>
+
+// The worker input for an operation: validated, and for a mount the owner is
+// resolved to an HSI user's Linux name (never an arbitrary system account).
+async function workerInput(ctx: Context & { user: { userId: string } }, op: PlanOp, raw: unknown): Promise<Record<string, unknown>> {
+  const parsed = PLAN_INPUTS[op].safeParse(raw)
+  if (!parsed.success) throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error.issues[0]?.message ?? "Invalid input" })
+  if (op !== "mount") return parsed.data as Record<string, unknown>
+  const input = parsed.data as z.infer<typeof PLAN_INPUTS["mount"]>
+  const { ownerUserId, ...rest } = input
+  const ownerId = input.access === "user" ? ownerUserId : ctx.user.userId
+  if (input.access === "user" && !ownerId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the user who will own the volume" })
+  }
+  const owner = ownerId ? await ctx.prisma.user.findUnique({ where: { id: ownerId }, select: { username: true } }) : null
+  if (input.access === "user" && !owner) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown user" })
+  }
+  return { ...rest, ownerUser: owner?.username ?? "" }
+}
+
+type PlanApplyResult = { ok: boolean; error?: string; steps: PlanStep[]; results: StepResult[]; warnings?: string[]; reply?: Record<string, unknown> }
+
 export const storageRouter = router({
+  // Operation plans (#36): preview what a storage operation will do, then
+  // apply exactly that plan. Mutations, so inputs never travel in URLs.
+  plan: storageProcedure
+    .input(z.object({ op: z.enum(PLAN_OPS), input: z.unknown() }))
+    .mutation(async ({ ctx, input }) => {
+      const workerIn = await workerInput(ctx, input.op, input.input)
+      return await requestSync<{ steps: PlanStep[]; fingerprint: string }>("root.plan.preview", { op: input.op, input: workerIn }, 60_000)
+    }),
+
+  apply: storageProcedure
+    .input(z.object({ op: z.enum(PLAN_OPS), input: z.unknown(), fingerprint: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const workerIn = await workerInput(ctx, input.op, input.input)
+      let res: PlanApplyResult
+      try {
+        res = await requestSync<PlanApplyResult>("root.plan.apply", { op: input.op, input: workerIn, fingerprint: input.fingerprint }, 180_000)
+      } catch (e) {
+        const code = (e as { code?: string }).code
+        const message = e instanceof Error ? e.message : String(e)
+        throw new TRPCError({ code: code === "ESTALE" ? "CONFLICT" : "BAD_REQUEST", message })
+      }
+      ctx.audit.meta = { plan: planAuditMeta(input.op, res.steps, res.results) }
+      return res
+    }),
+
   // Missing volume guard (#3): state of each HSI volume and its hold.
   volumes: router({
     list: storageProcedure.query(async () => {
