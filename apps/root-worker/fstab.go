@@ -13,7 +13,7 @@ import (
 // (fstab has no trailing comments). Entries written by earlier HSI versions
 // carry no marker; they are recognised by mount point AND source.
 
-const fstabPath = "/etc/fstab"
+var fstabPath = "/etc/fstab"
 
 const hsiMountMarker = "# HSI-managed mount: "
 
