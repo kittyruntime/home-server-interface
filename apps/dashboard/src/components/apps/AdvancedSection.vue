@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { trpc } from '../../lib/trpc'
+import { applyPlanned } from '../../lib/plan'
 
 export interface AdvancedConfig {
   capAdd:        string[]
@@ -51,7 +51,9 @@ async function saveRawYaml() {
   if (!props.appName) { yamlError.value = 'Save the app first to get a name.'; return }
   yamlSaving.value = true
   try {
-    await trpc.container.app.saveRaw.mutate({ name: props.appName, content: yamlDraft.value })
+    await applyPlanned('app.save', { name: props.appName, raw: yamlDraft.value }, {
+      domain: 'apps', title: `Save the compose file of ${props.appName}`, actionLabel: 'Save',
+    })
     yamlDirty.value = false
     yamlSavedAt.value = true
     emit('raw-saved', yamlDraft.value)
