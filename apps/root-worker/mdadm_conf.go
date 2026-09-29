@@ -26,7 +26,7 @@ func cmdErrMessage(out []byte, err error) string {
 // DEVICE, HOMEHOST and ARRAY lines. HSI only adds, replaces or removes the
 // ARRAY line of arrays it manages, each preceded by a marker comment.
 
-const mdadmConfPath = "/etc/mdadm/mdadm.conf"
+var mdadmConfPath = "/etc/mdadm/mdadm.conf"
 
 const hsiArrayMarker = "# HSI-managed array: "
 

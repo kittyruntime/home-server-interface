@@ -79,3 +79,30 @@ func TestExecuteDeferredDetail(t *testing.T) {
 		t.Fatalf("deferred detail not reported: %+v", res)
 	}
 }
+
+func TestIsMountedSource(t *testing.T) {
+	mounts := "/dev/sda2 / ext4 rw 0 0\n/dev/sdb1 /mnt/data ext4 rw 0 0\n"
+	if !isMountedSource(mounts, "/dev/sdb1") || isMountedSource(mounts, "/dev/sdb2") || !isMountedSource(mounts, "/dev/x", "/dev/sda2") {
+		t.Fatal("isMountedSource mismatch")
+	}
+}
+
+func TestParseLsblkDevice(t *testing.T) {
+	js := `{"blockdevices":[{"path":"/dev/sdb","model":"WDC WD40EFRX","serial":"WD-WX12","size":4000787030016,"fstype":null,"label":null,
+	  "children":[{"path":"/dev/sdb1","model":null,"serial":null,"size":4000785964544,"fstype":"ext4","label":"media"}]}]}`
+	d := parseLsblkDevice([]byte(js))
+	if d.Path != "/dev/sdb" || d.Model != "WDC WD40EFRX" || d.Serial != "WD-WX12" || d.Size != 4000787030016 {
+		t.Fatalf("got %+v", d)
+	}
+	if d.Contents != `1 partition: ext4 "media"` {
+		t.Fatalf("contents %q", d.Contents)
+	}
+	part := parseLsblkDevice([]byte(`{"blockdevices":[{"path":"/dev/sdb1","model":null,"serial":null,"size":10,"fstype":"linux_raid_member","label":null}]}`))
+	if part.Contents != "RAID member" {
+		t.Fatalf("contents %q", part.Contents)
+	}
+	blank := parseLsblkDevice([]byte(`{"blockdevices":[{"path":"/dev/sdc","size":10}]}`))
+	if blank.Contents != "no filesystem" {
+		t.Fatalf("contents %q", blank.Contents)
+	}
+}
