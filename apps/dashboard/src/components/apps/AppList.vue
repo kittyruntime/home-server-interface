@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import AppFormModal from './AppFormModal.vue'
 import ContainerLogsPanel from './ContainerLogsPanel.vue'
 import UnmanagedContainers from './UnmanagedContainers.vue'
@@ -48,7 +49,10 @@ async function silentRefresh() {
   catch { /* keep previous list on error */ }
 }
 
+const { holdForApp, refreshHolds } = useVolumeHolds()
+
 onMounted(async () => {
+  void refreshHolds()
   await load()
   refreshTimer = setInterval(silentRefresh, 10_000)
 })
@@ -267,7 +271,7 @@ async function unpin(app: App) {
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
           <article v-for="app in apps" :key="app.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '—'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger">Blocked</span><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '—'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
             <div class="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--c-border)] pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" @click="openLogs(app)">Logs</button></div>
           </article>
         </div>
@@ -293,6 +297,7 @@ async function unpin(app: App) {
               <td class="px-6 py-3.5">
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-[var(--c-text-2)] text-[13px] font-medium">{{ app.name }}</span>
+                  <span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</span>
                   <svg
                     v-if="app.app?.pinnedUrl"
                     class="w-3 h-3 text-[var(--c-accent)] flex-shrink-0"

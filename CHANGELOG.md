@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Missing volume protection**: a missing data disk no longer stops the boot
+  in emergency mode, and nothing writes to the system disk in its place (mount
+  points are made immutable while unmounted). HSI checks volumes every minute,
+  raises a `storage.volume` alert, stops the apps that use a missing volume,
+  makes its shares unavailable and refuses backups and file writes under it.
+  When the disk is back, Storage > Mounts offers Resume.
 - **Email notifications**: Settings > Notifications can send alerts by email
   over SMTP (STARTTLS, TLS or none; presets for Gmail and Fastmail), with a
   live preview and a test send.
