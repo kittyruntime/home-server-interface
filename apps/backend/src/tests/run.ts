@@ -937,6 +937,29 @@ async function testAppPlanBuilders() {
 
 await testAppPlanBuilders()
 
+// Review fixes (#36 apps): masking must cover values spanning several lines,
+// flag a changed secret in a diff, and honour the manifest's secret keys.
+{
+  const ap = await import("../services/app-plan")
+  const folded = "services:\n  web:\n    environment:\n      DB_PASSWORD: correct horse\n        battery staple\n      API_KEY: |-\n        line1\n        line2\n      TZ: Europe/Paris\n"
+  const m = ap.maskSecrets(folded)
+  for (const leak of ["battery", "line1", "line2", "correct"]) assert.ok(!m.includes(leak), `continuation lines must be masked: ${leak}`)
+  assert.ok(m.includes("TZ: Europe/Paris"), "non-secret values stay visible")
+  assert.ok(!ap.maskSecrets('      "DB_PASSWORD": hunter2\n').includes("hunter2"), "quoted keys are masked")
+
+  const before = "services:\n  web:\n    environment:\n      DB_PASSWORD: old\n"
+  const after  = "services:\n  web:\n    environment:\n      DB_PASSWORD: new\n"
+  const d = ap.maskedDiff("/x/compose.yaml", before, after)
+  assert.ok(d.includes("(changed)") && !d.includes("new") && !d.includes("old"), `a changed secret must show as changed, masked: ${d}`)
+  assert.equal(ap.maskedDiff("/x/compose.yaml", before, before), "", "an unchanged file has no diff")
+
+  assert.ok(!ap.maskSecrets("      APP_SALT: s3cr3t\n", ["APP_SALT"]).includes("s3cr3t"), "manifest secret keys are masked")
+  const { CATALOG } = await import("@app/app-catalog")
+  for (const mf of CATALOG) for (const e of mf.env) if (e.secret) {
+    assert.ok(!ap.maskSecrets(`      ${e.key}: v4lue\n`, ap.manifestSecretKeys(mf)).includes("v4lue"), `${mf.id}: ${e.key} must be masked`)
+  }
+}
+
 // The audit entry of apps.plan/apply must not carry the secrets of a raw
 // compose file (form env entries are redacted by the audit middleware).
 {
