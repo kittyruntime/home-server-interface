@@ -1,4 +1,4 @@
-import { parseDocument, isMap, type YAMLMap } from "yaml"
+import { parse, parseDocument, isMap, type YAMLMap } from "yaml"
 import { zAppInput, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
 
 const HEADER = "# Managed by HSI - editable by hand, re-read on load.\n"
@@ -259,4 +259,27 @@ export function parseComposeYaml(content: string): ParsedCompose {
     if (parsed.success) app = parsed.data
   }
   return { raw: content, services, app, unknownFields }
+}
+
+/** Absolute host paths bind-mounted by any service (missing volume guard, #3). */
+export function composeBindSources(content: string): string[] {
+  let doc: any
+  try {
+    doc = parse(content)
+  } catch {
+    return []
+  }
+  const out = new Set<string>()
+  const services = doc && typeof doc === "object" ? doc.services : null
+  for (const svc of Object.values<any>(services && typeof services === "object" ? services : {})) {
+    for (const v of Array.isArray(svc?.volumes) ? svc.volumes : []) {
+      if (typeof v === "string") {
+        const src = v.split(":")[0] ?? ""
+        if (src.startsWith("/")) out.add(src)
+      } else if (v && v.type === "bind" && typeof v.source === "string" && v.source.startsWith("/")) {
+        out.add(v.source)
+      }
+    }
+  }
+  return [...out]
 }
