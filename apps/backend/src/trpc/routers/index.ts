@@ -18,6 +18,7 @@ import { catalogRouter } from "./catalog"
 import { alertRouter } from "./alert"
 import { notificationsRouter } from "./notifications"
 import { backupRouter } from "./backup"
+import { appsRouter } from "./apps"
 
 export const appRouter = router({
   auth: authRouter,
@@ -28,6 +29,7 @@ export const appRouter = router({
   permission: permissionRouter,
   tasks: tasksRouter,
   container: containerRouter,
+  apps: appsRouter,
   system: systemRouter,
   storage: storageRouter,
   update: updateRouter,
