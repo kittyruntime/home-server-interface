@@ -1056,6 +1056,8 @@ func main() {
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,
 		"root.storage.volumes":           handleVolumes,
+		"root.plan.preview":              handlePlanPreview,
+		"root.plan.apply":                handlePlanApply,
 		"root.fs.read-chunk":             handleReadChunk,
 		"root.fs.write-chunk":            handleWriteChunk,
 		"root.fs.zip-temp":               handleZipTemp,
