@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify"
+import { assertVolumeAvailable } from "../services/volume-guard"
 import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { Readable } from "node:stream"
@@ -103,6 +104,11 @@ async function finalizeUploadState(
 
   // Permissions and the Linux identity can change during a long upload.
   // Revalidate both before publishing the final atomic rename.
+  try {
+    await assertVolumeAvailable(state.destDir)
+  } catch (e) {
+    throw new UploadFinalizeHttpError(409, e instanceof Error ? e.message : String(e))
+  }
   const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, state.destDir, "canWrite")
   if (allowedRoot === undefined) throw new UploadFinalizeHttpError(403, "Forbidden")
   const linuxUser = await getLinuxUser(user.userId)
@@ -481,6 +487,11 @@ export async function fileRoutes(app: FastifyInstance) {
       return reply.status(400).send("Missing or invalid X-Total-Bytes")
     }
 
+    try {
+      await assertVolumeAvailable(destDir)
+    } catch (e) {
+      return reply.status(409).send(e instanceof Error ? e.message : String(e))
+    }
     const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, destDir, "canWrite")
     if (allowedRoot === undefined) return reply.status(403).send("Forbidden")
     const linuxUser = await getLinuxUser(user.userId)

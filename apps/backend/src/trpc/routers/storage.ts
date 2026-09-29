@@ -1,6 +1,8 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, storageProcedure } from "../index"
+import { router, storageProcedure, protectedProcedure } from "../index"
+import { prisma } from "@app/database"
+import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
 
 // Storage router — disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
@@ -15,6 +17,26 @@ const zMaintenanceSchedule = z.object({
 type MaintenanceSchedule = z.infer<typeof zMaintenanceSchedule>
 
 export const storageRouter = router({
+  // Missing volume guard (#3): state of each HSI volume and its hold.
+  volumes: router({
+    list: storageProcedure.query(async () => {
+      const [volumes, holds] = await Promise.all([fetchVolumes().catch(() => []), prisma.volumeHold.findMany()])
+      return volumes.map(v => {
+        const h = holds.find(x => x.mountPoint === v.mountPoint)
+        return {
+          ...v,
+          hold: h ? { status: h.status as "blocked" | "back", reason: h.reason, since: h.since, stoppedApps: JSON.parse(h.stoppedApps) as string[], strayFiles: h.strayFiles } : null,
+        }
+      })
+    }),
+    // Read by the Apps and Sharing views to show what is blocked.
+    holds: protectedProcedure.query(async () => {
+      const holds = await prisma.volumeHold.findMany()
+      return holds.map(h => ({ mountPoint: h.mountPoint, status: h.status, reason: h.reason, stoppedApps: JSON.parse(h.stoppedApps) as string[] }))
+    }),
+    resume: storageProcedure.input(z.object({ mountPoint: z.string() })).mutation(({ input }) => resumeVolume(input.mountPoint)),
+  }),
+
   disks: storageProcedure.query(async () => {
     return await requestSync<{
       disks: Array<{ device: string; mountPoint: string; fsType: string; total: number; used: number; free: number }>

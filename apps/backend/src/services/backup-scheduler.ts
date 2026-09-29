@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server"
+import { assertVolumeAvailable, backupLocalPaths } from "./volume-guard"
 import { prisma } from "@app/database"
 import { publishJob } from "../nats"
 import { dispatchEvent } from "./notifications"
@@ -26,6 +28,7 @@ export function nextBackupRun(schedule: string, hour: number, minute: number, we
 export async function runBackupPlan(id: string, userId?: string) {
   const plan = await prisma.backupPlan.findUniqueOrThrow({ where: { id } })
   if (plan.lastStatus === "pending" || plan.lastStatus === "running") throw new Error("Backup is already running")
+  await assertVolumeAvailable(backupLocalPaths(plan))
   const jobId = await publishJob("backup.rsync", {
     planId: plan.id, direction: plan.direction, source: plan.source, destination: plan.destination,
     remoteHost: plan.remoteHost, remoteUser: plan.remoteUser, remotePort: plan.remotePort,
@@ -55,7 +58,19 @@ async function tick() {
   }
   const due = await prisma.backupPlan.findMany({ where: { enabled: true, schedule: { not: "manual" }, nextRunAt: { lte: now }, OR: [{ lastStatus: null }, { lastStatus: { notIn: ["pending", "running"] } }] } })
   for (const plan of due) {
-    try { await runBackupPlan(plan.id) } catch { /* retried on the next scheduler tick */ }
+    try {
+      await runBackupPlan(plan.id)
+    } catch (e) {
+      // A missing volume (#3) is a failed run, not a silent retry every tick.
+      if (e instanceof TRPCError && e.code === "PRECONDITION_FAILED") {
+        await prisma.backupPlan.update({ where: { id: plan.id }, data: { lastStatus: "failed", lastError: e.message, lastRunAt: now, nextRunAt: nextBackupRun(plan.schedule, plan.scheduleHour, plan.scheduleMinute, plan.scheduleWeekday, now) } })
+        void dispatchEvent({
+          type: "job.failed", severity: "warning", source: "backup.plan", target: plan.name,
+          message: `Backup "${plan.name}" failed: ${e.message}`, time: now.toISOString(),
+        })
+      }
+      /* other errors: retried on the next scheduler tick */
+    }
   }
 }
 
