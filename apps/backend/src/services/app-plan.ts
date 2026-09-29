@@ -1,4 +1,8 @@
 import crypto from "node:crypto"
+import { TRPCError } from "@trpc/server"
+import { z } from "zod"
+import { generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
+import type { AppManifest } from "@app/app-catalog"
 
 // Operation plans for container apps (#36): what saving, applying, installing
 // or removing an app will do (compose.yaml content or diff, Places, compose
@@ -124,4 +128,236 @@ export async function executeAppPlan(plan: AppPlan): Promise<{ ok: boolean; erro
     }
   }
   return { ok: true, results }
+}
+
+// ── Builders ─────────────────────────────────────────────────────────────────
+
+
+export interface AppPlanDeps {
+  stackPath(name: string): string
+  readStack(name: string): Promise<string | null>
+  findPlace(id: string): Promise<{ id: string; name: string; path: string } | null>
+  placeAtPath(path: string): Promise<boolean>
+  catalog(id: string): AppManifest | undefined
+  secret(): string
+  effects: {
+    writeStack(name: string, yaml: string): Promise<void>
+    removeStackDir(name: string): Promise<void>
+    mkdirp(path: string): Promise<void>
+    createPlace(name: string, path: string): Promise<string>
+    validate(name: string): Promise<void>
+    publishJob(action: string, payload: Record<string, unknown>): Promise<string>
+  }
+}
+
+const zName = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/)
+const zInstallVolume = z.object({
+  target: z.string().startsWith("/"),
+  source: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("place"),    placeId: z.string() }),
+    z.object({ kind: z.literal("newPlace"), name: z.string().min(1), path: z.string().startsWith("/") }),
+    z.object({ kind: z.literal("bind"),     path: z.string().startsWith("/") }),
+    z.object({ kind: z.literal("named"),    name: z.string().min(1) }),
+  ]),
+})
+
+export const APP_INPUTS = {
+  "app.save": z.object({ name: zName, create: z.boolean().default(false), data: zAppInput.optional(), raw: z.string().min(1).optional() })
+    .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" }),
+  "app.apply":  z.object({ name: zName }),
+  "app.start":  z.object({ name: zName }),
+  "app.remove": z.object({ name: zName }),
+  "app.install": z.object({
+    id:      z.string(),
+    name:    zName.max(64),
+    ports:   z.array(z.object({ container: z.number().int(), host: z.number().int().min(1).max(65535) })).default([]),
+    env:     z.array(z.object({ key: z.string(), value: z.string() })).default([]),
+    volumes: z.array(zInstallVolume).default([]),
+  }),
+} satisfies Record<AppOp, z.ZodTypeAny>
+
+function bad(message: string): never { throw new TRPCError({ code: "BAD_REQUEST", message }) }
+
+function parse<T extends AppOp>(op: T, input: unknown): z.infer<typeof APP_INPUTS[T]> {
+  const r = APP_INPUTS[op].safeParse(input)
+  if (!r.success) bad(r.error.issues[0]?.message ?? "Invalid input")
+  return r.data as z.infer<typeof APP_INPUTS[T]>
+}
+
+async function existingStack(deps: AppPlanDeps, name: string): Promise<string> {
+  const current = await deps.readStack(name)
+  if (current === null) throw new TRPCError({ code: "NOT_FOUND", message: "App not found" })
+  return current
+}
+
+// Place volumes become bind mounts of the Place's path (as generateComposeYaml requires).
+async function resolvePlaces(deps: AppPlanDeps, volumes: AppInput["volumes"]): Promise<AppInput["volumes"]> {
+  return Promise.all(volumes.map(async v => {
+    if (v.type !== "place") return v
+    const place = await deps.findPlace(v.source)
+    if (!place) throw new TRPCError({ code: "NOT_FOUND", message: `Place ${v.source} not found` })
+    return { ...v, type: "bind" as const, source: place.path }
+  }))
+}
+
+function fileStep(deps: AppPlanDeps, name: string, before: string | null, yaml: string, summary: string, extraRun?: () => Promise<void>): AppStep {
+  const target = deps.stackPath(name)
+  const shown = maskSecrets(yaml)
+  return {
+    kind: before === null ? "create" : "update",
+    target,
+    summary,
+    diff: before === null
+      ? unifiedDiff(target, "", shown)
+      : unifiedDiff(target, maskSecrets(before), shown),
+    run: async () => {
+      await deps.effects.writeStack(name, yaml)
+      if (extraRun) await extraRun()
+      return {}
+    },
+  }
+}
+
+function upStep(deps: AppPlanDeps, name: string, content: string, validate: boolean): AppStep {
+  const parsed = parseComposeYaml(content)
+  const images = parsed.app?.image ? [parsed.app.image] : []
+  const what = parsed.services.length ? `services ${parsed.services.join(", ")}` : "its services"
+  return {
+    kind: "run",
+    target: name,
+    summary: `Start ${name} (${what}${images.length ? `, image ${images.join(", ")}` : ""}); images are pulled if missing`,
+    command: ["docker", "compose", "-f", deps.stackPath(name), "up", "-d"],
+    background: true,
+    run: async () => {
+      if (validate) await deps.effects.validate(name)
+      return { jobId: await deps.effects.publishJob("container.composeUp", { name }) }
+    },
+  }
+}
+
+export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps): Promise<AppPlan> {
+  switch (op) {
+    case "app.save": {
+      const req = parse("app.save", input)
+      const before = await deps.readStack(req.name)
+      if (req.create && before !== null) throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      if (!req.create && before === null) throw new TRPCError({ code: "NOT_FOUND", message: "App not found" })
+      let yaml: string
+      if (req.raw) {
+        let services: string[]
+        try { services = parseComposeYaml(req.raw).services } catch { bad("The file is not valid YAML") }
+        if (services.length === 0) bad("The file must declare at least one service")
+        yaml = req.raw
+      } else {
+        const data = req.data!
+        yaml = generateComposeYaml({ ...data, volumes: await resolvePlaces(deps, data.volumes) } as AppInput, before ?? undefined)
+      }
+      const step = fileStep(deps, req.name, before, yaml,
+        before === null ? `Create the compose file of ${req.name}` : `Update the compose file of ${req.name}; the running containers change only when you apply`)
+      return { op, steps: [step], observed: { content: before ?? "" }, reply: { name: req.name } }
+    }
+    case "app.apply":
+    case "app.start": {
+      const req = parse(op, input)
+      const content = await existingStack(deps, req.name)
+      return { op, steps: [upStep(deps, req.name, content, op === "app.apply")], observed: { content } }
+    }
+    case "app.remove": {
+      const req = parse("app.remove", input)
+      const content = await existingStack(deps, req.name)
+      const path = deps.stackPath(req.name)
+      const dir = path.replace(/\/compose\.yaml$/, "/")
+      return {
+        op,
+        observed: { content },
+        steps: [
+          {
+            kind: "run", target: req.name, background: true,
+            summary: `Stop and remove the containers of ${req.name}`,
+            command: ["docker", "compose", "-f", path, "down"],
+            run: async () => ({ jobId: await deps.effects.publishJob("container.composeDown", { name: req.name, removeFiles: true }) }),
+          },
+          {
+            kind: "delete", target: dir, destructive: true, background: true,
+            summary: `Delete ${dir} (its compose file); named volumes and data folders outside it are kept`,
+            run: async () => ({ detail: "done by the same job as the previous step" }),
+          },
+        ],
+      }
+    }
+    case "app.install":
+      return buildInstallPlan(parse("app.install", input), deps)
+  }
+}
+
+async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>, deps: AppPlanDeps): Promise<AppPlan> {
+  const m = deps.catalog(input.id)
+  if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
+  if (await deps.readStack(input.name) !== null) throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+
+  const manifestTargets = new Set(m.volumes.map(v => v.target))
+  for (const v of input.volumes) if (!manifestTargets.has(v.target)) bad(`Unexpected volume ${v.target}`)
+  const manifestPorts = new Set(m.ports.map(p => p.container))
+  for (const p of input.ports) if (!manifestPorts.has(p.container)) bad(`Unexpected port ${p.container}`)
+
+  const newPlaces = input.volumes.flatMap(v => (v.source.kind === "newPlace" ? [v.source] : []))
+  if (new Set(newPlaces.map(p => p.path)).size !== newPlaces.length) bad("Two volumes cannot create a new Place at the same path")
+  for (const p of newPlaces) {
+    if (await deps.placeAtPath(p.path)) throw new TRPCError({ code: "CONFLICT", message: `A Place already exists at ${p.path}` })
+  }
+
+  const submitted = new Map(input.volumes.map(v => [v.target, v.source]))
+  const volumes: AppInput["volumes"] = await Promise.all(m.volumes.map(async mv => {
+    const s = submitted.get(mv.target)
+    const readOnly = mv.readOnlyDefault
+    if (!s) bad(`Missing volume ${mv.target}`)
+    if (s.kind === "place") {
+      const place = await deps.findPlace(s.placeId)
+      if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Place not found" })
+      return { type: "bind" as const, source: place.path, target: mv.target, readOnly }
+    }
+    if (s.kind === "newPlace") return { type: "bind" as const, source: s.path, target: mv.target, readOnly }
+    if (s.kind === "bind") return { type: "bind" as const, source: s.path, target: mv.target, readOnly }
+    return { type: "named" as const, source: s.name, target: mv.target, readOnly }
+  }))
+
+  const submittedEnv = new Map(input.env.map(e => [e.key, e.value]))
+  const envs = m.env.map(me => {
+    let value = submittedEnv.get(me.key) ?? me.default ?? ""
+    if (!value && me.secret) value = deps.secret()
+    if (!value && me.required) bad(`Missing required setting ${me.key}`)
+    return { key: me.key, value }
+  })
+  const submittedPorts = new Map(input.ports.map(p => [p.container, p.host]))
+  const ports = m.ports.map(mp => ({
+    containerPort: mp.container,
+    hostPort:      submittedPorts.get(mp.container) ?? mp.hostDefault ?? mp.container,
+    protocol:      mp.protocol as "tcp" | "udp",
+    tls:           false,
+  }))
+  const webPort = m.webUiPort != null ? ports.find(p => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort : undefined
+
+  const yaml = generateComposeYaml({
+    name: input.name, image: m.image, ports, envs, volumes, networkNames: [],
+    labels: [{ key: "hsi.catalog.id", value: m.id }], capAdd: [], capDrop: [], extraHosts: [],
+    restartPolicy: m.restartPolicy, hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null,
+  } as AppInput)
+
+  const steps: AppStep[] = []
+  for (const p of newPlaces) {
+    steps.push({ kind: "create", target: p.path, summary: `Create the folder ${p.path}`, run: async () => { await deps.effects.mkdirp(p.path); return {} } })
+    steps.push({ kind: "create", target: `Place "${p.name}"`, summary: `Create the Place "${p.name}" on ${p.path}`, run: async () => { await deps.effects.createPlace(p.name, p.path); return {} } })
+  }
+  // Written then validated with docker compose; an invalid file is removed
+  // again (the Places created above stay, as before).
+  steps.push(fileStep(deps, input.name, null, yaml, `Create the compose file of ${input.name} (${m.name}, ${m.image})`, async () => {
+    try {
+      await deps.effects.validate(input.name)
+    } catch (e) {
+      await deps.effects.removeStackDir(input.name).catch(() => {})
+      throw e
+    }
+  }))
+  steps.push(upStep(deps, input.name, yaml, false))
+  return { op: "app.install", steps, observed: {}, reply: { name: input.name, webPort } }
 }
