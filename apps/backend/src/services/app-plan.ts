@@ -361,3 +361,13 @@ async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>
   steps.push(upStep(deps, input.name, yaml, false))
   return { op: "app.install", steps, observed: {}, reply: { name: input.name, webPort } }
 }
+
+// Input of apps.plan/apply as recorded in the audit log: a raw compose file
+// has its secrets masked like the preview.
+export function appAuditInput(req: { op: string; input?: unknown; fingerprint?: string }): unknown {
+  const input = req.input as Record<string, unknown> | null
+  if (input && typeof input === "object" && typeof input.raw === "string") {
+    return { ...req, input: { ...input, raw: maskSecrets(input.raw) } }
+  }
+  return req
+}

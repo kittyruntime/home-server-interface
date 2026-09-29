@@ -937,4 +937,14 @@ async function testAppPlanBuilders() {
 
 await testAppPlanBuilders()
 
+// The audit entry of apps.plan/apply must not carry the secrets of a raw
+// compose file (form env entries are redacted by the audit middleware).
+{
+  const ap = await import("../services/app-plan")
+  const masked = ap.appAuditInput({ op: "app.save", input: { name: "web", raw: "services:\n  web:\n    environment:\n      DB_PASSWORD: hunter2\n" }, fingerprint: "f" }) as any
+  assert.ok(!JSON.stringify(masked).includes("hunter2"), "raw compose secrets must be masked in the audit input")
+  assert.equal(masked.input.name, "web")
+  assert.equal(masked.fingerprint, "f")
+}
+
 console.log("Backend security tests passed")
