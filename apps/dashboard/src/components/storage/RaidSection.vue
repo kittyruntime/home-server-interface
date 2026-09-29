@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../lib/plan'
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import {
@@ -266,7 +267,8 @@ async function doCreateRaid() {
   w.busy = true
   w.err  = ''
   try {
-    await trpc.storage.createRaid.mutate({ name: w.name, level: w.level, devices: w.devs })
+    await applyPlanned('raid.create', { name: w.name, level: w.level, devices: w.devs },
+      { title: `Create RAID ${w.level} /dev/${w.name}`, actionLabel: `Create /dev/${w.name}` })
     raidWiz.value = null
     await refresh()
   } catch (e: any) {
@@ -294,7 +296,8 @@ async function doDestroyRaid() {
   d.busy = true
   d.err  = ''
   try {
-    const res = await trpc.storage.stopRaid.mutate({ name: d.raid.name })
+    const res = await applyPlanned('raid.stop', { name: d.raid.name },
+      { title: `Delete RAID /dev/${d.raid.name}`, actionLabel: `Delete /dev/${d.raid.name}` })
     // The array is gone; anything left behind (a signature that could not be
     // wiped, a config file that could not be updated) is reported, not fatal.
     for (const w of res.warnings ?? []) toast.error(w)

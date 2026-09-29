@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../lib/plan'
 import { ref, computed, watch } from 'vue'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, claimableDevices, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { useHostTools } from './tools'
-import { trpc } from '../../lib/trpc'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -80,10 +80,13 @@ async function doCreateLvm() {
   const w = lvmWiz.value
   w.busy = true; w.err = ''
   try {
-    await trpc.storage.createPv.mutate({ devices: w.pvDevs })
-    await trpc.storage.createVg.mutate({ name: w.vgName, devices: w.pvDevs })
+    await applyPlanned('pv.create', { devices: w.pvDevs },
+      { title: 'Prepare disks for LVM (1 of 3)', actionLabel: 'Prepare disks' })
+    await applyPlanned('vg.create', { name: w.vgName, devices: w.pvDevs },
+      { title: `Create volume group ${w.vgName} (2 of 3)`, actionLabel: 'Create volume group' })
     const sizeBytes = w.lvSizeGB > 0 ? Math.floor(w.lvSizeGB * 1024 ** 3) : 0
-    await trpc.storage.createLv.mutate({ vgName: w.vgName, lvName: w.lvName, sizeBytes })
+    await applyPlanned('lv.create', { vgName: w.vgName, lvName: w.lvName, sizeBytes },
+      { title: `Create logical volume ${w.lvName} (3 of 3)`, actionLabel: 'Create logical volume' })
     lvmWiz.value = null
     await refresh()
   } catch (e: any) {
@@ -109,7 +112,8 @@ async function doAddLv() {
   d.busy = true; d.err = ''
   try {
     const sizeBytes = d.lvSizeGB > 0 ? Math.floor(d.lvSizeGB * 1024 ** 3) : 0
-    await trpc.storage.createLv.mutate({ vgName: d.vg.name, lvName: d.lvName, sizeBytes })
+    await applyPlanned('lv.create', { vgName: d.vg.name, lvName: d.lvName, sizeBytes },
+      { title: `Create logical volume ${d.lvName}`, actionLabel: 'Create logical volume' })
     addLvDlg.value = null
     await refresh()
   } catch (e: any) {
@@ -128,7 +132,8 @@ async function doRemoveLv() {
   const d = removeLvDlg.value
   d.busy = true; d.err = ''
   try {
-    await trpc.storage.removeLv.mutate({ vgName: d.lv.vgName, lvName: d.lv.name })
+    await applyPlanned('lv.remove', { vgName: d.lv.vgName, lvName: d.lv.name },
+      { title: `Delete logical volume ${d.lv.vgName}/${d.lv.name}`, actionLabel: `Delete ${d.lv.name}` })
     removeLvDlg.value = null
     await refresh()
   } catch (e: any) {
@@ -147,7 +152,8 @@ async function doRemoveVg() {
   const d = removeVgDlg.value
   d.busy = true; d.err = ''
   try {
-    await trpc.storage.removeVg.mutate({ vgName: d.vg.name })
+    await applyPlanned('vg.remove', { vgName: d.vg.name },
+      { title: `Delete volume group ${d.vg.name}`, actionLabel: `Delete ${d.vg.name}` })
     removeVgDlg.value = null
     await refresh()
   } catch (e: any) {

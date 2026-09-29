@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
 import { trpc } from '../../../lib/trpc'
 import { fmtBytes, type BlockDev } from '../store'
@@ -46,11 +47,11 @@ async function doMount() {
   d.err  = ''
   try {
     const device = d.dev.path.replace(/^\/dev\//, '')
-    const res = await trpc.storage.mountDevice.mutate({
+    const res = await applyPlanned('mount', {
       device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist, access: d.access,
       ownerUserId: d.access === 'user' ? d.ownerUserId : undefined,
       force: d.access !== 'keep' && d.force,
-    })
+    }, { title: `Mount ${d.dev.path} on ${d.mp}`, actionLabel: 'Mount' })
     // Mounted: anything left unchanged (existing data, unknown account) is
     // reported without failing the mount.
     for (const w of res.warnings ?? []) toast.info(w)

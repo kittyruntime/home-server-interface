@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
-import { trpc } from '../../../lib/trpc'
 import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 
@@ -41,7 +41,8 @@ async function doFormat() {
   w.err  = ''
   try {
     const device = w.dev.path.replace(/^\/dev\//, '')
-    await trpc.storage.formatDisk.mutate({ device, fstype: w.fstype, label: w.label || undefined })
+    await applyPlanned('format', { device, fstype: w.fstype, label: w.label || undefined },
+      { title: `Format ${w.dev.path}`, actionLabel: `Format ${w.dev.path}` })
     w.step = 4
     emit('done')
   } catch (e: unknown) {

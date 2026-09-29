@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { applyPlanned } from '../../lib/plan'
 import { ref, computed, watch } from 'vue'
-import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
@@ -205,7 +205,8 @@ async function doPartInit() {
   const d = partInitDlg.value
   d.busy = true; d.err = ''
   try {
-    await trpc.storage.initPartitionTable.mutate({ device: d.disk.name })
+    await applyPlanned('part.init', { device: d.disk.name },
+      { title: `New partition table on /dev/${d.disk.name}`, actionLabel: `Erase /dev/${d.disk.name}` })
     partInitDlg.value = null
     await refresh()
   } catch (e: unknown) {
@@ -222,7 +223,8 @@ async function doPartCreate() {
   const d = partCreateDlg.value
   d.busy = true; d.err = ''
   try {
-    await trpc.storage.createPartition.mutate({ device: d.disk.name, startPct: 0, endPct: 100 })
+    await applyPlanned('part.create', { device: d.disk.name, startPct: 0, endPct: 100 },
+      { title: `Add a partition on /dev/${d.disk.name}`, actionLabel: 'Add partition' })
     partCreateDlg.value = null
     await refresh()
   } catch (e: unknown) {
@@ -246,7 +248,8 @@ async function doPartDelete() {
   const num = partNumOf(d.disk.name, d.part.name)
   d.busy = true; d.err = ''
   try {
-    await trpc.storage.deletePartition.mutate({ device: d.disk.name, partNum: num })
+    await applyPlanned('part.delete', { device: d.disk.name, partNum: num },
+      { title: `Delete partition ${d.part.name}`, actionLabel: `Delete ${d.part.name}` })
     partDeleteDlg.value = null
     await refresh()
   } catch (e: unknown) {
