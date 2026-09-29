@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Preview before app changes**: saving, applying, starting, installing and
   deleting an app show the `compose.yaml` content or diff (secrets masked), the
   folders and Places created, and the `docker compose` commands first.
+- **Preview before share changes**: creating, editing, enabling, disabling and
+  removing an SMB share show the `smb.conf` diff and the smbd reload first; the
+  share is recorded only once that plan ran.
 
 ### Changed
 - **After an App Store install**, HSI shows the new app in Apps with its logs
