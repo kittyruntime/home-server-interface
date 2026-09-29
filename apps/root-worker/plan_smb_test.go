@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func stubSmbHost(t *testing.T, conf string, confExists, dropIn bool) *map[string]string {
@@ -89,4 +90,36 @@ func TestPlanSmbSyncRefusals(t *testing.T) {
 	hostSmbdInstalled = func() bool { return false }
 	_, fe = build(t, planSmbSync, oneShare)
 	wantErr(t, fe, "SMBD_MISSING")
+}
+
+func TestSmbConfWriterIsSafeConcurrently(t *testing.T) {
+	path := t.TempDir() + "/smb.conf"
+	errs := make(chan error, 20)
+	for i := 0; i < 20; i++ {
+		go func(i int) { errs <- writeSmbFile(path, strings.Repeat("x", i*1000)) }(i)
+	}
+	for i := 0; i < 20; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("concurrent writes must not fail: %v", err)
+		}
+	}
+}
+
+func TestSmbSyncApplyIsSerialized(t *testing.T) {
+	stubSmbHost(t, "# old\n", true, true)
+	runArgv = func([]string) ([]byte, error) { return nil, nil }
+	in := []byte(oneShare)
+	p, _ := planSmbSync(in)
+	fp := p.fingerprint(in)
+	smbMu.Lock()
+	done := make(chan struct{})
+	go func() { applyPlan("smb.sync", in, fp); close(done) }()
+	select {
+	case <-done:
+		smbMu.Unlock()
+		t.Fatal("an smb.sync apply must wait for a running Samba sync")
+	case <-time.After(50 * time.Millisecond):
+	}
+	smbMu.Unlock()
+	<-done
 }

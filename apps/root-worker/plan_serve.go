@@ -65,6 +65,12 @@ func previewPlan(op string, input json.RawMessage) (*planPreview, *fsError) {
 // applyPlan rebuilds the plan and runs it only if it is still the one that
 // was previewed.
 func applyPlan(op string, input json.RawMessage, fingerprint string) (*planApply, *fsError) {
+	if op == "smb.sync" {
+		// Held from the fingerprint check to the last step: an automatic sync
+		// must not rewrite smb.conf in between.
+		smbMu.Lock()
+		defer smbMu.Unlock()
+	}
 	p, fe := buildPlan(op, input)
 	if fe != nil {
 		return nil, fe
