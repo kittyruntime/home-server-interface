@@ -176,7 +176,7 @@ async function removeShare(s: ShareRow) {
     <div v-else-if="prereq && !prereq.smbdInstalled" class="panel-card bg-[var(--c-surface)] p-6">
       <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-2">Samba is not installed</h3>
       <p class="text-sm text-[var(--c-text-2)] mb-4">
-        SMB sharing needs the Samba server on the host. Install it, then come back here — nothing else to configure.
+        SMB sharing needs the Samba server on the host. Install it, then come back here; nothing else to configure.
       </p>
       <code class="inline-block px-3 py-2 rounded-lg bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] text-sm font-mono text-[var(--c-text-1)]">
         sudo apt install samba
@@ -207,7 +207,7 @@ async function removeShare(s: ShareRow) {
               {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> · {{ s.userCount }} user{{ s.userCount === 1 ? '' : 's' }}
             </p>
             <p v-if="s.excludedUsernames.length > 0" class="status-text text-[var(--c-warning)] mt-2">
-              [WARN] No Linux account for {{ s.excludedUsernames.join(', ') }} — excluded from this share
+              [WARN] No Linux account for {{ s.excludedUsernames.join(', ') }}: excluded from this share
             </p>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
@@ -236,7 +236,7 @@ async function removeShare(s: ShareRow) {
           <p class="eyebrow mb-2">Place</p>
           <select v-model="editor.placeId" class="ui-input w-full">
             <option v-for="p in availablePlaces" :key="p.id" :value="p.id">
-              {{ p.name }} — {{ p.path }}
+              {{ p.name }} · {{ p.path }}
             </option>
           </select>
         </div>

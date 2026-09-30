@@ -297,7 +297,7 @@ const openMenu = ref<string | null>(null)
           <div class="divide-y divide-[var(--c-border)]">
             <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
               class="px-4 py-3 text-[11px] italic text-[var(--c-text-3)]">
-              No logical volumes — click "+ Add LV" to create one.
+              No logical volumes. Click "+ Add LV" to create one.
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
               class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
@@ -318,7 +318,7 @@ const openMenu = ref<string | null>(null)
                   <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
                 </div>
               </div>
-              <!-- LV actions — revealed on hover, hidden by default -->
+              <!-- LV actions: revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
                 <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
                   class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
@@ -423,7 +423,7 @@ const openMenu = ref<string | null>(null)
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
-                Size (GB) <span class="text-[var(--c-text-3)] font-normal">— leave 0 to use all available space</span>
+                Size (GB) <span class="text-[var(--c-text-3)] font-normal">(leave 0 to use all available space</span>
               </label>
               <input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
@@ -483,7 +483,7 @@ const openMenu = ref<string | null>(null)
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
-                Size (GB) <span class="text-[var(--c-text-3)] font-normal">— 0 = all remaining free space</span>
+                Size (GB) <span class="text-[var(--c-text-3)] font-normal">(0 = all remaining free space</span>
               </label>
               <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>

@@ -33,7 +33,7 @@ const emit = defineEmits<{
 }>()
 
 function formatSize(bytes: number | null): string {
-  if (bytes === null) return '—'
+  if (bytes === null) return '-'
   if (bytes === 0)    return '0 B'
   if (bytes < 1024)   return bytes + ' B'
   if (bytes < 1024 ** 2) return (bytes / 1024).toFixed(1) + ' KB'
@@ -189,7 +189,7 @@ function fileExt(name: string): string {
       </tr>
     </thead>
     <tbody class="divide-y divide-[var(--c-border)]">
-      <!-- Upload rows (progress lives in the Transfers tray — this is a placeholder) -->
+      <!-- Upload rows (progress lives in the Transfers tray; this is a placeholder) -->
       <tr v-for="t in uploadTasks" :key="t.id" class="group">
         <td class="pl-3 pr-1 py-2.5 w-7" />
         <td class="px-3 py-2.5" colspan="3">

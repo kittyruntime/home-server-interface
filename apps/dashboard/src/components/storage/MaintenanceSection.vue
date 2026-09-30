@@ -76,7 +76,7 @@ async function runNow(id: TaskId) {
 }
 
 function fmtWhen(v: string | null): string {
-  if (!v) return '—'
+  if (!v) return '-'
   return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(v))
 }
 

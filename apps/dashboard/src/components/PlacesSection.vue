@@ -185,7 +185,7 @@ onMounted(async () => {
         </svg>
         <h4 class="text-sm font-medium text-[var(--c-text-1)] mt-3">No places yet</h4>
         <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-xs mx-auto leading-relaxed">
-          A place shares a folder on your NAS with users and groups — you decide exactly who can read,
+          A place shares a folder on your NAS with users and groups, and you decide exactly who can read,
           write or delete its contents.
         </p>
         <button @click="adding = true" class="btn btn-primary btn-sm mt-4 mx-auto">

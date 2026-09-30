@@ -39,7 +39,7 @@ const nav: NavItem[] = [
   { id: 'profile',     label: 'My Profile',  show: () => true,  group: 'account' },
   { id: 'shares',      label: 'Shared links', show: () => true, group: 'account' },
   // Access control: who can reach what. Users is grouped here even though it's
-  // gated on isUserManager (not isAdmin like the rest) — a user manager
+  // gated on isUserManager (not isAdmin like the rest): a user manager
   // without full admin still needs it alongside the places/perms they manage.
   { id: 'users',       label: 'Users',       show: () => isUserManager.value, group: 'access' },
   { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'access' },

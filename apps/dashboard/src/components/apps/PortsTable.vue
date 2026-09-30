@@ -36,7 +36,7 @@ async function runChecks() {
         port: p.hostPort, protocol: p.protocol, excludeName: props.appName,
       })
       if (r.inUse) next[i] = `Port ${p.hostPort} is already used by ${r.by}.`
-    } catch { /* best-effort — ignore */ }
+    } catch { /* best-effort, ignore */ }
   }))
   warnings.value = next
 }

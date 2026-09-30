@@ -821,7 +821,7 @@ onMounted(async () => {
               Properties
             </button>
           </template>
-          <!-- Compress to ZIP — any selection -->
+          <!-- Compress to ZIP: any selection -->
           <button @click="doZip(); closeContextMenu()" class="ctx-item">
             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
@@ -829,7 +829,7 @@ onMounted(async () => {
             Compress to ZIP
           </button>
 
-          <!-- Extract Here — only for a single .zip file -->
+          <!-- Extract Here: only for a single .zip file -->
           <button
             v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
             @click="doUnzip(); closeContextMenu()"

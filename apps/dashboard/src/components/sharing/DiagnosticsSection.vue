@@ -92,7 +92,7 @@ function dirWritable(s: ShareDiag): boolean {
         <div v-if="s.excluded.length" class="space-y-1">
           <div class="eyebrow">Blocked</div>
           <div v-for="e in s.excluded" :key="e.username" class="text-xs text-[var(--c-warning)]">
-            <span class="font-medium">{{ e.username }}</span> — {{ e.reason }}
+            <span class="font-medium">{{ e.username }}</span>: {{ e.reason }}
           </div>
         </div>
 
@@ -101,7 +101,7 @@ function dirWritable(s: ShareDiag): boolean {
 
         <!-- Dir detail -->
         <p v-if="s.dir" class="text-[11px] text-[var(--c-text-3)] font-mono">
-          group {{ s.dir.group || '—' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> · not found</span>
+          group {{ s.dir.group || '-' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> · not found</span>
         </p>
       </div>
     </div>

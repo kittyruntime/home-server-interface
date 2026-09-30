@@ -27,7 +27,7 @@ function openCtx(menu: CtxMenu) {
 function closeCtx() { ctxMenu.value = null }
 
 // Fires for any right-click that reaches the root div without being stopped
-// first — i.e. genuinely empty desktop space. Widget cards stop propagation
+// first, i.e. genuinely empty desktop space. Widget cards stop propagation
 // themselves (see DesktopWidgets.vue) and emit contextmenu-widget instead;
 // windows stop propagation in DesktopWindow.vue (Step 1 above).
 function onContextmenuEmpty(e: MouseEvent) {

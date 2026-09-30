@@ -40,7 +40,7 @@ function memberDev(name: string): BlockDev | undefined {
   return found
 }
 
-// "WDC WD40EFRX · serial WD-WCC4E1234567" — what to look for on the disk label.
+// "WDC WD40EFRX · serial WD-WCC4E1234567": what to look for on the disk label.
 function memberIdentity(name: string): string {
   const d = memberDev(name)
   // A partition's model/serial are the parent disk's.
@@ -97,7 +97,7 @@ async function addMember(r: RaidArray, d: BlockDev) {
 function syncLabel(r: RaidArray): string {
   if (r.resyncPercent == null) return r.state
   const what = r.syncAction === 'recovery' ? 'Rebuilding' : r.syncAction === 'check' ? 'Checking' : r.syncAction === 'reshape' ? 'Reshaping' : 'Syncing'
-  return `${what} — ${r.resyncPercent.toFixed(1)}%`
+  return `${what}: ${r.resyncPercent.toFixed(1)}%`
 }
 
 // Refresh while an array rebuilds so progress moves without a reload.
@@ -144,7 +144,7 @@ const RAID_LEVELS = [
     level: 0, name: 'RAID 0', sub: 'Striping', minDev: 2,
     redundancy: 'None',
     desc: 'All drives are combined into one large volume. Maximum capacity and speed.',
-    danger: 'No redundancy — if ANY single drive fails, ALL data on the array is lost permanently.',
+    danger: 'No redundancy: if ANY single drive fails, ALL data on the array is lost permanently.',
     capacityHint: 'Capacity = total of all drives',
   },
   {
@@ -510,9 +510,9 @@ const openMenu = ref<string | null>(null)
                   <div class="text-[10px] text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                 </div>
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-[11px] text-[var(--c-text-3)]">
-                  Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span> — not mounted
+                  Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
                 </div>
-                <div v-else class="text-[11px] text-[var(--c-text-3)] italic">No filesystem — format before mounting</div>
+                <div v-else class="text-[11px] text-[var(--c-text-3)] italic">No filesystem: format before mounting</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
                 <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"

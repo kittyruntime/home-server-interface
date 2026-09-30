@@ -214,7 +214,7 @@ onUnmounted(() => controller?.abort())
 
           <!-- Reconnect hint when not connected -->
           <div v-if="!connected && !error && lines.length > 0" class="text-[#484f58] mt-2 italic">
-            — stream ended —
+            [stream ended]
           </div>
         </div>
 

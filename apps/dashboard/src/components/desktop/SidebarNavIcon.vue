@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The sidebar / mobile-nav glyph for a given app id. Kept as one component so the
 // sidebar and bottom nav render identical icons from a data-driven list. These are
-// the sidebar's own glyphs (distinct from the AppIcon launcher set) — `store` and
+// the sidebar's own glyphs (distinct from the AppIcon launcher set): `store` and
 // `sharing` reuse AppIcon, the rest are the existing inline paths.
 import AppIcon from './AppIcon.vue'
 defineProps<{ id: string }>()

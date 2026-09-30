@@ -11,7 +11,7 @@ import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
 import type AppsPanelT from '../apps/AppsPanel.vue'
 import type SettingsPanelT from '../SettingsPanel.vue'
 
-// Split the heavier per-app panels into their own chunks — only the window's
+// Split the heavier per-app panels into their own chunks: only the window's
 // active app is ever mounted, so they need not weigh down the initial bundle.
 const AppsPanel = defineAsyncComponent(() => import('../apps/AppsPanel.vue'))
 const SettingsPanel = defineAsyncComponent(() => import('../SettingsPanel.vue'))

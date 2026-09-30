@@ -1,5 +1,5 @@
 // crypto.randomUUID() is only exposed in secure contexts (HTTPS, or
-// http://localhost) — accessing this dashboard over a plain-HTTP LAN IP
+// http://localhost); accessing this dashboard over a plain-HTTP LAN IP
 // (the common case for a self-hosted NAS) makes it undefined, while
 // crypto.getRandomValues() stays available everywhere. Fall back to
 // building a UUID-shaped string from it rather than throwing.

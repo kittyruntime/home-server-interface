@@ -37,7 +37,7 @@ const danger = ref(false)
 // ── Hierarchy ─────────────────────────────────────────────────────────────────
 // The tree is rooted at the physical disk. Each child node shows what it *feeds*:
 // a partition can be a filesystem (mounted or not), a RAID member, or an LVM PV
-// — in which case its LVs appear as nested children. This mirrors the physical
+// (in which case its LVs appear as nested children). This mirrors the physical
 // reality: disk → partition → RAID/LVM → filesystem → mount point.
 
 // RAID/LVM membership, including members of arrays/VGs that are not active.
@@ -101,7 +101,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
             class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
         </div>
-        <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk — no modifications allowed</div>
+        <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Health badge -->
@@ -322,7 +322,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </div>
             </div>
           </div>
-          <!-- Actions — revealed on hover, hidden by default -->
+          <!-- Actions: revealed on hover, hidden by default -->
           <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
             <button v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
               class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
@@ -361,11 +361,11 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
         </div>
       </div>
-      <!-- Truly blank disk — no partition table, no filesystem -->
+      <!-- Truly blank disk: no partition table, no filesystem -->
       <div v-else class="flex items-center gap-3 px-4 py-2.5">
         <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-text-3)]/20"/>
         <div class="flex-1 min-w-0">
-          <span class="text-[11px] text-[var(--c-text-3)]">No partition table — create one to start using this disk.</span>
+          <span class="text-[11px] text-[var(--c-text-3)]">No partition table. Create one to start using this disk.</span>
         </div>
         <button @click="emit('partInit', disk)"
           class="shrink-0 text-[11px] px-2.5 py-1 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
@@ -374,7 +374,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       </div>
     </div>
 
-    <!-- Expandable danger zone — only for disks that already have partitions -->
+    <!-- Expandable danger zone: only for disks that already have partitions -->
     <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-[var(--c-border)]">
       <button @click="danger = !danger"
         class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">

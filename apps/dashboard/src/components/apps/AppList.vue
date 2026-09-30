@@ -41,7 +41,7 @@ async function load() {
   finally { loading.value = false }
 }
 
-// Background refresh: no loading toggle — the spinner must show on the initial
+// Background refresh: no loading toggle: the spinner must show on the initial
 // mount only, or the whole panel would flicker (and remount UnmanagedContainers)
 // every 10 s.
 async function silentRefresh() {
@@ -84,7 +84,7 @@ function statusText(status: string) {
 
 function portsSummary(app: App): string {
   const ports = app.app?.ports ?? []
-  if (!ports.length) return '—'
+  if (!ports.length) return '-'
   return ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ')
     + (ports.length > 2 ? ` +${ports.length - 2}` : '')
 }
@@ -149,7 +149,7 @@ async function applyApp(id: string) {
     updateNotif(nid, { type: 'success', title: `${app?.name ?? ''} applied`, progress: undefined })
     setTimeout(() => dismissNotif(nid), 3000)
     // Apply never rewrites the compose file, so the drifted badge must stay
-    // until the file is regenerated — only pendingApply is resolved here.
+    // until the file is regenerated; only pendingApply is resolved here.
     if (app) app.pendingApply = false
   } catch (e: any) {
     if (e?.message === '') return // cancelled in the plan dialog
@@ -234,7 +234,7 @@ async function unpin(app: App) {
   <div class="flex flex-col h-full w-full">
 
     <!-- Content -->
-    <!-- Inline form (create / edit) — replaces the list when active -->
+    <!-- Inline form (create / edit): replaces the list when active -->
   <AppFormModal
     v-if="showModal"
     :edit-name="editName"
@@ -302,7 +302,7 @@ async function unpin(app: App) {
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
           <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-[var(--c-border)] p-3 transition-colors', focusedName === app.name ? 'bg-[var(--c-accent-subtle)]' : 'bg-[var(--c-surface)]']">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger">Blocked</span><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '—'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger">Blocked</span><span v-if="app.pendingApply" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-[11px] text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-[11px] text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
             <div class="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--c-border)] pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" @click="openLogs(app)">Logs</button></div>
           </article>
         </div>
@@ -350,7 +350,7 @@ async function unpin(app: App) {
 
               <!-- Image -->
               <td class="px-3 py-3.5 hidden sm:table-cell">
-                <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.app?.image ?? '—' }}</span>
+                <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
               </td>
 
               <!-- Ports -->
@@ -473,7 +473,7 @@ async function unpin(app: App) {
 
       </div>
 
-      <!-- Unmanaged containers — inside the scrollable column so it doesn't
+      <!-- Unmanaged containers: inside the scrollable column so it doesn't
            appear as a fragment sibling in the parent flex row -->
       <UnmanagedContainers v-if="!loading" @imported="load" />
     </div>

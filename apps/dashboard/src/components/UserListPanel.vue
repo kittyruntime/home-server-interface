@@ -79,7 +79,7 @@ async function load() {
     const u = await trpc.user.list.query()
     users.value = u as User[]
     // group.list is admin-only server-side; a non-admin user-manager can still
-    // manage users, just without the groups column — fail soft, not the whole panel.
+    // manage users, just without the groups column: fail soft, not the whole panel.
     try {
       groups.value = await trpc.group.list.query() as Group[]
     } catch {
@@ -290,7 +290,7 @@ onMounted(load)
                       class="badge badge-violet">
                       {{ g.name }}
                     </span>
-                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-[var(--c-text-3)] text-xs">—</span>
+                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-[var(--c-text-3)] text-xs">-</span>
                   </div>
                 </td>
 

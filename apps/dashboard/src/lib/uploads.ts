@@ -43,7 +43,7 @@ export interface PersistedUpload {
 
 const STORAGE_KEY = 'transfers.uploads'
 
-// Module-level — shared across every component that calls useUploads()
+// Module-level: shared across every component that calls useUploads()
 const tasks = ref<Transfer[]>([])
 const pausedIds = new Set<string>()
 const abortControllers = new Map<string, AbortController>()
@@ -77,7 +77,7 @@ function writePersisted(list: PersistedUpload[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
   } catch {
-    // ignore (quota exceeded, private browsing, etc.) — persistence is best-effort
+    // ignore (quota exceeded, private browsing, etc.); persistence is best-effort
   }
 }
 
@@ -158,7 +158,7 @@ export function useUploads() {
     }
   }
 
-  /** Reset byte/chunk progress to zero — called at the start of each upload run
+  /** Reset byte/chunk progress to zero, called at the start of each upload run
    *  (incl. resume/retry) so `updateProgress`'s additive `sentBytes` recomputes
    *  from scratch instead of stacking onto a prior run's total. */
   function resetProgress(id: string) {
@@ -233,7 +233,7 @@ export function useUploads() {
 }
 
 // ── Transfers: copy/move ────────────────────────────────────────────────────
-// Copy/move don't go through the chunked upload runner — each item is a
+// Copy/move don't go through the chunked upload runner: each item is a
 // single tRPC mutate + pollJob call. `trackTransfer` registers the batch as
 // one `copy`/`move` transfer in the tray, drives it via `Promise.allSettled`,
 // and keeps the original ops around so a retry can genuinely re-issue the
@@ -250,7 +250,7 @@ interface TransferSpec {
 
 const transferSpecs = new Map<string, TransferSpec>()
 
-// Module-level store handle — same pattern as `upload-runner.ts`'s `const
+// Module-level store handle, same pattern as `upload-runner.ts`'s `const
 // uploads = useUploads()`: the returned functions all close over the shared
 // module-level `tasks` ref, so a single instance here is equivalent to
 // calling `useUploads()` per-component.

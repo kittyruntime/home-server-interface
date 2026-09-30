@@ -3,7 +3,7 @@ import type { AppId } from '../../lib/desktop'
 
 // Glyphs drawn on a 24px grid, one continuous stroke path plus filled "dot"
 // details (drive LEDs, slider knobs, share nodes). Dots use currentColor so
-// the whole glyph tints as one — monochrome by default, accent when focused.
+// the whole glyph tints as one: monochrome by default, accent when focused.
 interface IconDef {
   stroke: string
   dots: [cx: number, cy: number, r: number][]
@@ -40,7 +40,7 @@ const ICONS: Record<AppId, IconDef> = {
     ],
   },
   store: {
-    // Storefront: a striped awning over a shop with an arched doorway — reads as
+    // Storefront: a striped awning over a shop with an arched doorway, reads as
     // "store" and stays distinct from the `apps` launcher grid.
     stroke:
       'M4 9.5L5.6 5H18.4L20 9.5Z' +                                   // awning canopy

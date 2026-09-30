@@ -10,7 +10,7 @@ import { trpc } from '../../../lib/trpc'
 import { getFormatter, formatContent } from '../../../lib/formatters'
 import { useNotifications } from '../../../lib/notifications'
 
-// Mirrors apps/backend/src/trpc/routers/fs.ts MAX_TEXT_PREVIEW_BYTES — used
+// Mirrors apps/backend/src/trpc/routers/fs.ts MAX_TEXT_PREVIEW_BYTES, used
 // here only to skip a doomed network round-trip; the backend is the real
 // authority (it re-checks via stat() before ever reading the file).
 const MAX_TEXT_PREVIEW_BYTES = 3 * 1024 * 1024
@@ -115,7 +115,7 @@ async function format() {
       const cursorOffset = view!.state.selection.main.head
       const { formatted, cursorOffset: newCursor } = await formatContent(props.name, current, cursorOffset)
       if (view!.state.doc.toString() !== current) {
-        throw new Error('File changed while formatting — try again')
+        throw new Error('File changed while formatting, try again')
       }
       if (formatted !== current) {
         const clamped = Math.min(Math.max(newCursor, 0), formatted.length)
@@ -144,7 +144,7 @@ onBeforeUnmount(() => view?.destroy())
 
     <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
       <div class="text-center space-y-1">
-        <p>Binary file — preview not available.</p>
+        <p>Binary file: preview not available.</p>
         <p class="status-text">{{ name }} · {{ fileSize ?? 0 }} bytes</p>
       </div>
     </div>

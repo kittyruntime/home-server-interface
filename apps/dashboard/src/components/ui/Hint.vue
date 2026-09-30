@@ -4,7 +4,7 @@ import { pushEscLayer } from '../../lib/escLayer'
 
 /* Small inline help affordance: a "?" trigger that reveals a short popover
    on hover, focus or click. Use next to controls whose purpose or effect
-   isn't obvious from their label alone — not as a substitute for good
+   isn't obvious from their label alone, not as a substitute for good
    labels. Keep `text` to one or two sentences; for anything longer, link
    out to docs instead. */
 defineProps<{ text: string }>()
@@ -23,7 +23,7 @@ function hide() {
   releaseEsc = null
 }
 
-// Ignore focus that isn't from keyboard navigation — a dialog's initial
+// Ignore focus that isn't from keyboard navigation: a dialog's initial
 // autofocus can otherwise land here (e.g. when this is the first focusable
 // element) and pop the tooltip open unprompted.
 function onFocus(e: FocusEvent) {

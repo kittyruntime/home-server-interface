@@ -280,7 +280,7 @@ const chartOptions = {
       <LoadingState v-if="historyLoading" />
       <ErrorState v-else-if="historyError" :message="historyError" retry-label="Retry" @retry="loadHistory" />
       <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-[var(--c-text-3)]">
-        No data yet — history is recorded every minute.
+        No data yet: history is recorded every minute.
       </div>
       <template v-else>
         <!-- CPU chart -->

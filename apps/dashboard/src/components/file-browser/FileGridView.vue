@@ -34,7 +34,7 @@ function fileExt(name: string): string {
 
 <template>
   <div class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
-    <!-- Upload cards (progress lives in the Transfers tray — this is a placeholder) -->
+    <!-- Upload cards (progress lives in the Transfers tray; this is a placeholder) -->
     <div
       v-for="t in uploadTasks"
       :key="t.id"
