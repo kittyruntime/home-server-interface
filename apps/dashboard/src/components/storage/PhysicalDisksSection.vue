@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
@@ -21,7 +22,7 @@ import Modal from '../ui/Modal.vue'
 
 const emit = defineEmits<{
   open:     [disk: string]
-  navigate: [section: 'raid' | 'lvm']
+  navigate: [target: 'raid' | 'lvm' | StorageLocation]
   // Start creating an array or a volume group with these whole disks.
   create:   [kind: 'raid' | 'lvm', devices: string[]]
 }>()
@@ -178,7 +179,9 @@ function roleText(r: DiskRow): string {
 
 // Arrays and VGs link to their section.
 function openRole(r: DiskRow) {
-  if (r.role === 'raid' || r.role === 'lvm') emit('navigate', r.role)
+  if (r.role === 'raid' && r.raidOwners[0]) emit('navigate', { kind: 'array', name: r.raidOwners[0] })
+  else if (r.role === 'lvm' && r.vgOwners[0]) emit('navigate', { kind: 'vg', name: r.vgOwners[0] })
+  else if (r.role === 'raid' || r.role === 'lvm') emit('navigate', r.role)
 }
 
 function tempClass(t: number): string {

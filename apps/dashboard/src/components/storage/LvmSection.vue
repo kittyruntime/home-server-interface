@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
@@ -18,7 +19,7 @@ import ImportFound from './ImportFound.vue'
 // `only`: show just this array / volume group (its page, #40), without the
 // section header and create entry points.
 const props = defineProps<{ preselect?: string[]; only?: string }>()
-const emit = defineEmits<{ preselected: [] }>()
+const emit = defineEmits<{ preselected: []; navigate: [target: StorageLocation] }>()
 
 const { loading, error, devices, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -243,7 +244,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="flex items-center gap-3 px-4 py-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
+                <button v-if="!only" class="font-mono text-sm font-semibold text-[var(--c-text-1)] hover:underline underline-offset-2" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</button>
+                <span v-else class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
                 <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
                 <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
                 <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
