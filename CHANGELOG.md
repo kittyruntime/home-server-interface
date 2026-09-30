@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.60.0] - 2026-09-30
+
 ### Changed
 - **Loading indicators**: one spinner and one loading state across the
   dashboard. A loader appears only after 200 ms (no flash on fast loads),
@@ -1156,7 +1158,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.59.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.60.0...HEAD
+[1.60.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.59.0...v1.60.0
 [1.59.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.58.0...v1.59.0
 [1.58.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.57.0...v1.58.0
 [1.57.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.56.0...v1.57.0
