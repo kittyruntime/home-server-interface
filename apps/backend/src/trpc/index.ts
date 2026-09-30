@@ -91,6 +91,8 @@ function redact(v: unknown): unknown {
   return v
 }
 
+export const redactForAudit = redact
+
 function sanitizeMeta(input: unknown): string | undefined {
   if (input == null) return undefined
   return JSON.stringify(redact(input))
