@@ -15,7 +15,9 @@ import LvmIntro from './LvmIntro.vue'
 import ImportFound from './ImportFound.vue'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
-const props = defineProps<{ preselect?: string[] }>()
+// `only`: show just this array / volume group (its page, #40), without the
+// section header and create entry points.
+const props = defineProps<{ preselect?: string[]; only?: string }>()
 const emit = defineEmits<{ preselected: [] }>()
 
 const { loading, error, devices, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
@@ -185,13 +187,15 @@ function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
 function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
 const openMenu = ref<string | null>(null)
+
+const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === props.only) : lvmVGs.value)
 </script>
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-4">
+    <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">LVM</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Volume groups</h2>
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical volumes, volume groups and logical volumes.</p>
       </div>
       <div class="flex items-center gap-2">
@@ -210,9 +214,9 @@ const openMenu = ref<string | null>(null)
       </div>
     </div>
 
-    <LvmIntro />
+    <LvmIntro v-if="!only" />
 
-    <ImportFound kind="lvm" :used-md-names="[]" @imported="refresh" />
+    <ImportFound v-if="!only" kind="lvm" :used-md-names="[]" @imported="refresh" />
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
@@ -220,16 +224,16 @@ const openMenu = ref<string | null>(null)
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
     <!-- VG list -->
-    <div class="flex items-center justify-between mb-3">
+    <div v-if="!only" class="flex items-center justify-between mb-3">
       <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
     </div>
 
-    <div v-if="!loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
+    <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
       No LVM volume groups. Create one to get resizable logical volumes from one or more physical drives.
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="vg in lvmVGs" :key="vg.name"
+      <div v-for="vg in shown" :key="vg.name"
         class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
         :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-[var(--c-border)]'">
         <!-- Left stripe -->
