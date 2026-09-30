@@ -55,7 +55,7 @@ async function copyAll() {
     <template #header>
       <div class="min-w-0">
         <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Operation logs</h3>
-        <p class="text-[11px] font-mono text-[var(--c-text-3)] truncate">{{ jobLogsTarget }}</p>
+        <p class="text-2xs font-mono text-[var(--c-text-3)] truncate">{{ jobLogsTarget }}</p>
       </div>
     </template>
 
@@ -66,7 +66,7 @@ async function copyAll() {
       message="No log lines for this operation"
       description="They may have been rotated away. Set HSI_LOG_LEVEL=debug for more detail."
     />
-    <ol v-else class="divide-y divide-[var(--c-border)] font-mono text-[11px] leading-relaxed">
+    <ol v-else class="divide-y divide-[var(--c-border)] font-mono text-2xs leading-relaxed">
       <li v-for="(l, i) in lines" :key="i" class="px-5 py-2">
         <div class="flex items-baseline gap-2">
           <span class="shrink-0 tabular-nums text-[var(--c-text-3)]">{{ formatTime(l.time) }}</span>
@@ -84,7 +84,7 @@ async function copyAll() {
     </ol>
 
     <template #footer>
-      <p class="text-[11px] text-[var(--c-text-3)]">From app.log and root-worker.log</p>
+      <p class="text-2xs text-[var(--c-text-3)]">From app.log and root-worker.log</p>
       <div class="flex-1" />
       <button v-if="lines.length" @click="copyAll" class="btn btn-ghost btn-sm">Copy</button>
       <button @click="modal?.requestClose()" class="btn btn-primary btn-sm">Close</button>

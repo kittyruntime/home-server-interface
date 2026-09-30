@@ -130,7 +130,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ a.name }}</span>
-                <span class="text-[10px] uppercase tracking-wide text-[var(--c-text-3)] shrink-0">{{ a.category }}</span>
+                <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0">{{ a.category }}</span>
               </div>
               <p class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>

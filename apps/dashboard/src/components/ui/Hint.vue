@@ -37,7 +37,7 @@ onUnmounted(() => releaseEsc?.())
   <span class="relative inline-flex" @mouseenter="show" @mouseleave="hide">
     <button
       type="button"
-      class="grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] font-semibold leading-none text-[var(--c-text-3)] ring-1 ring-inset ring-[var(--c-border-strong)] hover:text-[var(--c-text-1)] hover:ring-[var(--c-text-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--c-accent)]"
+      class="grid h-4 w-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-[var(--c-text-3)] ring-1 ring-inset ring-[var(--c-border-strong)] hover:text-[var(--c-text-1)] hover:ring-[var(--c-text-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--c-accent)]"
       :aria-describedby="id"
       aria-label="More info"
       @click.stop="open = !open"

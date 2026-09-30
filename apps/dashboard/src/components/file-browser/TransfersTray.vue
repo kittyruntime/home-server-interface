@@ -154,7 +154,7 @@ function handleReselectPick(e: Event) {
       <button
         v-if="hasTerminal"
         @click="clearFinished"
-        class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide shrink-0"
+        class="text-2xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-caps shrink-0"
       >
         Clear completed
       </button>
@@ -187,7 +187,7 @@ function handleReselectPick(e: Event) {
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2">
               <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
-              <span class="text-[10px] tabular-nums shrink-0" :class="statusTextClass(t)">{{ statusLabel(t) }}</span>
+              <span class="text-2xs tabular-nums shrink-0" :class="statusTextClass(t)">{{ statusLabel(t) }}</span>
             </div>
 
             <!-- Determinate bar (uploads: sentBytes/totalBytes) -->
@@ -211,12 +211,12 @@ function handleReselectPick(e: Event) {
 
             <!-- Speed (uploads only) -->
             <div v-if="t.kind === 'upload' && t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0"
-              class="text-[10px] text-[var(--c-text-3)] mt-0.5 tabular-nums">
+              class="text-2xs text-[var(--c-text-3)] mt-0.5 tabular-nums">
               {{ speed(t.bytesPerSec ?? 0) }}
             </div>
 
             <!-- Full error, never truncated -->
-            <div v-if="t.status === 'error' && t.error" class="text-[10px] text-danger mt-1 whitespace-pre-wrap break-words">
+            <div v-if="t.status === 'error' && t.error" class="text-2xs text-danger mt-1 whitespace-pre-wrap break-words">
               {{ t.error }}
             </div>
           </div>
@@ -239,7 +239,7 @@ function handleReselectPick(e: Event) {
               </svg>
             </button>
             <button v-if="canRetry(t)" @click="retryOrReselect(t)"
-              class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
+              class="px-1.5 py-0.5 rounded-sm text-2xs font-medium text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </button>
             <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"

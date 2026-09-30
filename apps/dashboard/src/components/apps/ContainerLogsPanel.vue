@@ -147,14 +147,14 @@ onUnmounted(() => controller?.abort())
             <!-- Status dot -->
             <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-[var(--c-text-3)]']" />
             <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
-            <span class="text-[11px] text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
+            <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <!-- Follow toggle -->
             <button
               @click="toggleFollow"
               :title="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
-              :class="['flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border transition-colors',
+              :class="['flex items-center gap-1.5 px-2.5 py-1 text-2xs rounded-md border transition-colors',
                 follow
                   ? 'bg-[var(--c-accent)]/20 border-[var(--c-accent)]/50 text-[var(--c-accent)]'
                   : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58]']"
@@ -168,7 +168,7 @@ onUnmounted(() => controller?.abort())
             <button
               @click="clear"
               title="Clear"
-              class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] border border-[#30363d] text-[#7d8590] rounded-md hover:border-[#484f58] hover:text-[#e6edf3] transition-colors"
+              class="flex items-center gap-1.5 px-2.5 py-1 text-2xs border border-[#30363d] text-[#7d8590] rounded-md hover:border-[#484f58] hover:text-[#e6edf3] transition-colors"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -192,7 +192,7 @@ onUnmounted(() => controller?.abort())
         <div
           ref="logEl"
           @scroll="onScroll"
-          class="flex-1 overflow-y-auto font-mono text-[12px] leading-relaxed p-4 select-text"
+          class="flex-1 overflow-y-auto font-mono text-xs leading-relaxed p-4 select-text"
           style="color: #e6edf3"
         >
           <!-- Error -->
@@ -220,8 +220,8 @@ onUnmounted(() => controller?.abort())
 
         <!-- Bottom status bar -->
         <div class="flex items-center justify-between px-4 py-1.5 border-t border-[#30363d] bg-[#161b22] flex-shrink-0">
-          <span class="text-[11px] text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
-          <span v-if="!follow" class="text-[11px] text-[#7d8590]">
+          <span class="text-2xs text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
+          <span v-if="!follow" class="text-2xs text-[#7d8590]">
             Scroll to bottom to resume auto-scroll
           </span>
         </div>

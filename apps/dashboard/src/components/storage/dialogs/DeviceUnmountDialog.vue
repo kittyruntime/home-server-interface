@@ -56,7 +56,7 @@ defineExpose({ open })
         <input v-model="dlg.rmFstab" type="checkbox" class="mt-0.5 accent-accent"/>
         <div>
           <div class="text-xs font-medium text-[var(--c-text-2)]">Remove from /etc/fstab</div>
-          <div class="text-[10px] text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
+          <div class="text-2xs text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
         </div>
       </label>
       <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>

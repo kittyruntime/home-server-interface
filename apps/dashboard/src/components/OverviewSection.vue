@@ -239,10 +239,10 @@ function relTime(d: string | Date): string {
               </span>
             </div>
             <template v-if="raids.length > 0">
-              <div class="text-[10px] uppercase tracking-wider text-[var(--c-text-3)]">RAID Arrays</div>
+              <div class="text-2xs uppercase tracking-caps text-[var(--c-text-3)]">RAID Arrays</div>
               <div v-for="r in raids" :key="r.name" class="flex items-center justify-between">
                 <span class="text-xs font-mono text-[var(--c-text-2)]">{{ r.name }}</span>
-                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-sm border',
+                <span :class="['text-2xs font-semibold px-2 py-0.5 rounded-sm border',
                   isRaidHealthy(r)
                     ? 'bg-success/10 text-success border-success/20'
                     : 'bg-danger/10 text-danger border-danger/20']">
@@ -259,16 +259,16 @@ function relTime(d: string | Date): string {
           <div class="eyebrow mb-3">Containers</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
-              <div class="text-2xl font-bold text-[var(--c-text-1)] tabular-nums">{{ containerTotal }}</div>
-              <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Total</div>
+              <div class="text-2xl font-bold text-[var(--c-text-1)] font-figure tabular-nums">{{ containerTotal }}</div>
+              <div class="text-2xs text-[var(--c-text-3)] mt-0.5">Total</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-success tabular-nums">{{ containerRunning }}</div>
-              <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Running</div>
+              <div class="text-2xl font-bold text-success font-figure tabular-nums">{{ containerRunning }}</div>
+              <div class="text-2xs text-[var(--c-text-3)] mt-0.5">Running</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-[var(--c-text-2)] tabular-nums">{{ containerStopped }}</div>
-              <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Stopped</div>
+              <div class="text-2xl font-bold text-[var(--c-text-2)] font-figure tabular-nums">{{ containerStopped }}</div>
+              <div class="text-2xs text-[var(--c-text-3)] mt-0.5">Stopped</div>
             </div>
           </div>
         </div>
@@ -278,12 +278,12 @@ function relTime(d: string | Date): string {
           <div class="eyebrow mb-3">LVM</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
-              <div class="text-2xl font-bold text-[var(--c-text-1)] tabular-nums">{{ lvmVGs.length }}</div>
-              <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Volume Groups</div>
+              <div class="text-2xl font-bold text-[var(--c-text-1)] font-figure tabular-nums">{{ lvmVGs.length }}</div>
+              <div class="text-2xs text-[var(--c-text-3)] mt-0.5">Volume Groups</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-[var(--c-text-1)] tabular-nums">{{ lvmLVs.length }}</div>
-              <div class="text-[10px] text-[var(--c-text-3)] mt-0.5">Logical Volumes</div>
+              <div class="text-2xl font-bold text-[var(--c-text-1)] font-figure tabular-nums">{{ lvmLVs.length }}</div>
+              <div class="text-2xs text-[var(--c-text-3)] mt-0.5">Logical Volumes</div>
             </div>
           </div>
         </div>
@@ -295,8 +295,8 @@ function relTime(d: string | Date): string {
           <div v-else class="divide-y divide-[var(--c-border)]">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
               <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-success' : 'bg-danger']" />
-              <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0 w-16">{{ relTime(entry.createdAt) }}</span>
-              <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border shrink-0', categoryClass[actionCategory(entry.action)]]">
+              <span class="text-2xs text-[var(--c-text-3)] tabular-nums shrink-0 w-16">{{ relTime(entry.createdAt) }}</span>
+              <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border shrink-0', categoryClass[actionCategory(entry.action)]]">
                 {{ actionLabel(entry.action) }}
               </span>
               <span class="text-xs text-[var(--c-text-2)] truncate">

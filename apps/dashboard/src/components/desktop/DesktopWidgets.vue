@@ -48,7 +48,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <div class="flex items-end gap-4 flex-1">
           <div class="flex-shrink-0">
             <span
-              class="text-4xl font-semibold tabular-nums leading-none text-[var(--c-text-display)]"
+              class="text-4xl font-semibold font-figure tabular-nums leading-none text-[var(--c-text-display)]"
             >{{ metrics?.cpu ?? '-' }}</span>
             <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
           </div>
@@ -70,7 +70,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <p class="eyebrow mb-3">Memory</p>
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-baseline justify-between mb-3">
-            <span class="text-2xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
+            <span class="text-2xl font-bold text-[var(--c-text-3)] font-figure tabular-nums leading-none">
               {{ metrics ? fmtMem(metrics.memory.used) : '-' }}
             </span>
             <span class="text-xs text-[var(--c-text-3)]">
@@ -95,11 +95,11 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
           <div class="flex items-center justify-between">
             <div class="space-y-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-success)]">↓ rx</span>
+                <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-success)]">↓ rx</span>
                 <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="text-[10px] font-semibold text-[var(--c-accent)] uppercase tracking-widest">↑ tx</span>
+                <span class="text-2xs font-semibold text-[var(--c-accent)] uppercase tracking-caps">↑ tx</span>
                 <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
               </div>
             </div>
@@ -131,16 +131,16 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <p class="eyebrow mb-3">Containers</p>
         <div class="flex-1 flex items-center gap-6">
           <div class="text-center">
-            <p class="text-3xl font-bold tabular-nums leading-none text-[var(--c-success)]">{{ ctrRunning }}</p>
-            <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Running</p>
+            <p class="text-3xl font-bold font-figure tabular-nums leading-none text-[var(--c-success)]">{{ ctrRunning }}</p>
+            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Running</p>
           </div>
           <div class="text-center">
-            <p class="text-3xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">{{ ctrStopped }}</p>
-            <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Stopped</p>
+            <p class="text-3xl font-bold text-[var(--c-text-3)] font-figure tabular-nums leading-none">{{ ctrStopped }}</p>
+            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Stopped</p>
           </div>
           <div class="text-center">
-            <p class="text-3xl font-bold tabular-nums leading-none" :class="ctrError > 0 ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
-            <p class="text-[10px] text-[var(--c-text-3)] uppercase tracking-widest mt-1">Error</p>
+            <p class="text-3xl font-bold font-figure tabular-nums leading-none" :class="ctrError > 0 ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
+            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Error</p>
           </div>
         </div>
       </template>
@@ -155,7 +155,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
           <div v-for="d in disks" :key="d.mountPoint">
             <div class="flex items-baseline justify-between mb-1 gap-2">
               <span class="text-xs font-mono text-[var(--c-text-1)] truncate" :title="d.mountPoint">{{ d.mountPoint }}</span>
-              <span class="text-[11px] text-[var(--c-text-3)] tabular-nums shrink-0">
+              <span class="text-2xs text-[var(--c-text-3)] tabular-nums shrink-0">
                 {{ fmtGB(d.used) }} / {{ fmtGB(d.total) }}
               </span>
             </div>
@@ -204,10 +204,10 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
           <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">
             <span :class="['w-2 h-2 rounded-full shrink-0', SMART_DOT[smartStatus(smart[dev])] ?? SMART_DOT.unknown]"></span>
             <span class="text-xs font-mono text-[var(--c-text-1)]">{{ dev }}</span>
-            <span class="text-[11px] text-[var(--c-text-3)] truncate flex-1" :title="smart[dev]?.modelName">
+            <span class="text-2xs text-[var(--c-text-3)] truncate flex-1" :title="smart[dev]?.modelName">
               {{ smart[dev]?.modelName ?? '' }}
             </span>
-            <span v-if="smart[dev]?.available && smart[dev]?.temperature" class="text-[11px] text-[var(--c-text-2)] tabular-nums shrink-0">
+            <span v-if="smart[dev]?.available && smart[dev]?.temperature" class="text-2xs text-[var(--c-text-2)] tabular-nums shrink-0">
               {{ smart[dev].temperature }}°C
             </span>
           </div>

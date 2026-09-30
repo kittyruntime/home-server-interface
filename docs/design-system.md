@@ -30,6 +30,22 @@ consistent everywhere.
 scale: `sm` inputs/badges · `md` buttons/controls · `lg` cards/panels ·
 `xl` modals/windows.
 
+**Typography** (`@theme`):
+
+| Token | Utility | Use |
+|---|---|---|
+| `--font-sans` (Inter) | `font-sans` (default) | Everything the interface says to the human |
+| `--font-mono` (JetBrains Mono) | `font-mono` | Machine data: paths, devices, commands, identifiers, sizes, form values, code |
+| `--font-figure` (Space Mono) | `font-figure` | Key figures (tiles, widgets, versions) and status lines (`.status-text`) |
+| `--text-2xs` (11px) | `text-2xs` | Labels, badges, meta, dense data; the floor of the scale |
+| `--text-control` (13px) | `text-control` | Button labels, code editor, mobile density |
+| `--tracking-caps` (0.08em) | `tracking-caps` | Every uppercase label |
+
+Sizes come from the scale (`text-2xs`, `text-xs`, `text-control`, `text-sm` and
+up), never arbitrary `text-[Npx]` values. The fonts are self-hosted through
+`@fontsource` (imported in `main.ts`, only the weights in use), so the
+dashboard renders the same without Internet access.
+
 **Motion tokens**: `--dur-fast` (120ms), `--dur-base` (180ms), `--dur-slow`
 (260ms) and `--ease-out`. Under `prefers-reduced-motion: reduce` all durations
 collapse to ~1ms, so every animation degrades to instant.

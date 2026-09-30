@@ -102,14 +102,14 @@ async function save() {
 
             <!-- Mode display -->
             <div class="flex items-center gap-3">
-              <span class="font-mono text-lg text-[var(--c-text-1)] tracking-widest">{{ modeDisplay }}</span>
+              <span class="font-figure text-lg text-[var(--c-text-1)] tracking-widest">{{ modeDisplay }}</span>
               <span class="font-mono text-xs text-[var(--c-text-3)] bg-[var(--c-surface-deep)] px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
             </div>
 
             <!-- Permission grid -->
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-xs text-[var(--c-text-3)] uppercase tracking-wider">
+                <tr class="text-xs text-[var(--c-text-3)] uppercase tracking-caps">
                   <th class="text-left font-medium pb-2 w-20"></th>
                   <th class="text-center font-medium pb-2 w-16">Read</th>
                   <th class="text-center font-medium pb-2 w-16">Write</th>

@@ -80,7 +80,7 @@ async function runChecks() {
 
       <!-- Optional access binding: where this port is reached publicly. -->
       <div class="flex items-center gap-2 flex-wrap pl-1">
-        <span class="text-[11px] uppercase tracking-wide text-[var(--c-text-3)] w-14 shrink-0">Access</span>
+        <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] w-14 shrink-0">Access</span>
         <input
           type="text" placeholder="domain (optional) e.g. app.example.com"
           :value="item.domain ?? ''"

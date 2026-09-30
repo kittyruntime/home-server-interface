@@ -103,9 +103,9 @@ function removeExtraHost(h: string) {
     <!-- Raw compose file (always visible in the advanced tab) -->
     <div class="space-y-2">
       <div class="flex items-center justify-between gap-2">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Compose file (raw)</label>
-        <span v-if="yamlDirty" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Unsaved</span>
-        <span v-else-if="yamlSavedAt" class="text-[10px] leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-success)] border-[var(--c-success)]/40">Saved</span>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Compose file (raw)</label>
+        <span v-if="yamlDirty" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Unsaved</span>
+        <span v-else-if="yamlSavedAt" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-success)] border-[var(--c-success)]/40">Saved</span>
       </div>
       <p class="text-xs text-[var(--c-text-3)]">
         Edit the file directly. Fields HSI does not manage are preserved on save; changes apply on the next <strong>Apply</strong>.
@@ -132,7 +132,7 @@ function removeExtraHost(h: string) {
 
     <!-- Fields HSI does not manage -->
     <div v-if="unknownFields && unknownFields.length" class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Fields HSI does not manage</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Fields HSI does not manage</label>
       <div class="flex flex-wrap gap-1.5">
         <span
           v-for="f in unknownFields" :key="f"
@@ -144,7 +144,7 @@ function removeExtraHost(h: string) {
 
     <!-- Cap Add -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Cap Add</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Cap Add</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capAdd" :key="cap"
@@ -168,7 +168,7 @@ function removeExtraHost(h: string) {
 
     <!-- Cap Drop -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Cap Drop</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Cap Drop</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capDrop" :key="cap"
@@ -192,7 +192,7 @@ function removeExtraHost(h: string) {
 
     <!-- Extra Hosts -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Extra Hosts</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Extra Hosts</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="h in modelValue.extraHosts" :key="h"
@@ -219,7 +219,7 @@ function removeExtraHost(h: string) {
 
     <!-- Restart policy -->
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Restart Policy</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Restart Policy</label>
       <select
         :value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
@@ -235,7 +235,7 @@ function removeExtraHost(h: string) {
     <!-- Hostname / User / Command -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Hostname</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Hostname</label>
         <input
           :value="modelValue.hostname ?? ''" placeholder="my-container"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
@@ -243,7 +243,7 @@ function removeExtraHost(h: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">User</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">User</label>
         <input
           :value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
@@ -252,7 +252,7 @@ function removeExtraHost(h: string) {
       </div>
     </div>
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Command override</label>
+      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Command override</label>
       <input
         :value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
@@ -263,7 +263,7 @@ function removeExtraHost(h: string) {
     <!-- CPU / Memory -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">CPU Limit</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">CPU Limit</label>
         <input
           type="number" min="0" max="64" step="0.1"
           :value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
@@ -272,7 +272,7 @@ function removeExtraHost(h: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Memory Limit</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Memory Limit</label>
         <input
           :value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"

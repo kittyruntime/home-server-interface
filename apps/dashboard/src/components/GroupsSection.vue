@@ -139,7 +139,7 @@ onMounted(load)
 
       <!-- Add group form -->
       <div v-if="addingGroup" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New group</h4>
+        <h4 class="text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">New group</h4>
         <div>
           <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-[var(--c-accent)]">*</span></label>
           <input
@@ -171,11 +171,11 @@ onMounted(load)
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
                 <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Group</SortableHeader>
               </th>
-              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">Members</th>
-              <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">Members</th>
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
               </th>
               <th class="px-4 py-3 w-16"></th>

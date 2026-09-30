@@ -223,7 +223,7 @@ async function install() {
 
       <!-- Name -->
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">App name</label>
+        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">App name</label>
         <input v-model="name" maxlength="64" placeholder="app-name" class="ui-input" />
         <p v-if="!nameValid" class="text-xs text-[var(--c-danger)]">
           Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
@@ -253,7 +253,7 @@ async function install() {
       <div v-if="envRows.length" class="space-y-3">
         <h4 class="eyebrow">Settings</h4>
         <div v-for="e in envRows" :key="e.key" class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">
             {{ e.label }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span>
           </label>
           <input

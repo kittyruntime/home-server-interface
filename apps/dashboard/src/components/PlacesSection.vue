@@ -149,12 +149,12 @@ onMounted(async () => {
           <div class="flex-1">
             <label class="block text-xs text-[var(--c-text-2)] mb-1">Name</label>
             <input v-model="newName" type="text" placeholder="Media" class="ui-input"/>
-            <p class="text-[11px] text-[var(--c-text-3)] mt-1 leading-relaxed">Shown to users in the file browser.</p>
+            <p class="text-2xs text-[var(--c-text-3)] mt-1 leading-relaxed">Shown to users in the file browser.</p>
           </div>
           <div class="flex-[2]">
             <label class="block text-xs text-[var(--c-text-2)] mb-1">Path</label>
             <input v-model="newPath" type="text" placeholder="/mnt/data" class="ui-input font-mono"/>
-            <p class="text-[11px] text-[var(--c-text-3)] mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
+            <p class="text-2xs text-[var(--c-text-3)] mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
           </div>
         </div>
         <div v-if="addError" class="text-[var(--c-accent)] text-xs">{{ addError }}</div>
@@ -233,13 +233,13 @@ onMounted(async () => {
           <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
             <div class="px-4 py-2.5 bg-[var(--c-surface-alt)]">
               <span class="eyebrow">Permissions</span>
-              <p class="text-[11px] text-[var(--c-text-3)] mt-0.5 leading-relaxed">
+              <p class="text-2xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">
                 Choose what each user or group can do in this folder. Admins always have full access.
               </p>
             </div>
             <table class="w-full text-xs">
               <thead>
-                <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
+                <tr class="text-[var(--c-text-3)] uppercase tracking-caps border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
                   <th class="px-4 py-2 text-left font-medium">Subject</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="List and download files">Read</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="Upload, rename and modify files">Write</th>
@@ -268,7 +268,7 @@ onMounted(async () => {
                 <tr v-for="user in users" :key="'user-' + user.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                       <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                       <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
                     </div>

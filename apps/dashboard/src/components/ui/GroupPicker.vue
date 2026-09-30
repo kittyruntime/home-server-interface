@@ -82,13 +82,13 @@ onUnmounted(() => {
       >
         <span
           v-if="item.avatarText"
-          :class="['w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0', item.avatarClass]"
+          :class="['w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
         >{{ item.avatarText }}</span>
         <span v-else class="w-1.5 h-1.5 rounded-full bg-[var(--c-accent)] shrink-0" />
 
         <span class="flex-1 min-w-0 flex items-baseline gap-2">
           <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ item.label }}</span>
-          <span v-if="item.sublabel" class="text-[10px] text-[var(--c-text-3)] uppercase tracking-wide shrink-0">{{ item.sublabel }}</span>
+          <span v-if="item.sublabel" class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </span>
 
         <button
@@ -142,10 +142,10 @@ onUnmounted(() => {
         >
           <span
             v-if="item.avatarText"
-            :class="['w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[9px] font-bold shrink-0', item.avatarClass]"
+            :class="['w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
           >{{ item.avatarText }}</span>
           <span class="text-sm text-[var(--c-text-2)] truncate flex-1">{{ item.label }}</span>
-          <span v-if="item.sublabel" class="text-[10px] text-[var(--c-text-3)] uppercase tracking-wide shrink-0">{{ item.sublabel }}</span>
+          <span v-if="item.sublabel" class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </button>
         <p v-if="filteredAvailable.length === 0" class="px-3 py-2 text-xs text-[var(--c-text-3)] italic">No matches</p>
       </div>

@@ -188,13 +188,13 @@ onMounted(load)
 
       <!-- Add user form -->
       <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-        <h4 class="text-[11px] font-semibold text-[var(--c-text-3)] uppercase tracking-widest">New user</h4>
+        <h4 class="text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">New user</h4>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-[var(--c-accent)]">*</span></label>
             <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
-            <p class="text-[11px] mt-1 leading-relaxed"
+            <p class="text-2xs mt-1 leading-relaxed"
               :class="newUser.username && !usernameValid ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-3)]'">
               Lowercase letters, digits, - or _ (start with a letter or _). Also used for the Linux / SMB account.
             </p>
@@ -242,16 +242,16 @@ onMounted(load)
 
       <!-- Table -->
       <template v-else>
-        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-[var(--c-text-1)]">{{user.username}}</strong><span v-if="user.isAdmin" class="badge badge-admin">admin</span><span v-if="user.isUserManager" class="badge badge-violet">manager</span></div><p v-if="user.displayName" class="truncate text-xs text-[var(--c-text-3)]">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-[var(--c-text-3)]">›</span></div><div class="mt-2 flex flex-wrap gap-1"><span v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id" class="badge badge-muted">{{g.name}}</span></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><button class="btn btn-outline btn-sm" @click="search=''">Clear search</button></template></EmptyState></div>
+        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-[var(--c-text-1)]">{{user.username}}</strong><span v-if="user.isAdmin" class="badge badge-admin">admin</span><span v-if="user.isUserManager" class="badge badge-violet">manager</span></div><p v-if="user.displayName" class="truncate text-xs text-[var(--c-text-3)]">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-[var(--c-text-3)]">›</span></div><div class="mt-2 flex flex-wrap gap-1"><span v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id" class="badge badge-muted">{{g.name}}</span></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><button class="btn btn-outline btn-sm" @click="search=''">Clear search</button></template></EmptyState></div>
         <div class="panel-card hidden sm:block">
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
                   <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">User</SortableHeader>
                 </th>
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Groups</th>
-                <th class="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] hidden sm:table-cell">
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Groups</th>
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">
                   <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
                 </th>
                 <th v-if="isUserManager" class="px-4 py-3 w-16"></th>
@@ -266,16 +266,16 @@ onMounted(load)
                 <!-- User -->
                 <td class="px-5 py-3.5">
                   <div class="flex items-center gap-3">
-                    <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0', avatarGradient(user.username)]">
+                    <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', avatarGradient(user.username)]">
                       {{ user.username.slice(0, 2).toUpperCase() }}
                     </div>
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
                         <span v-if="user.id === currentUserId"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
                         <span v-if="user.isAdmin"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
                         <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
                       </div>
                       <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>

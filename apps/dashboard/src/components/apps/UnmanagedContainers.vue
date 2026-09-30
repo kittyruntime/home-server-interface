@@ -235,9 +235,9 @@ onUnmounted(() => {
 .chevron--open { transform: rotate(90deg); }
 
 .section-label {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--c-text-3);
   transition: color 0.15s;
@@ -251,7 +251,7 @@ onUnmounted(() => {
   min-width: 18px;
   height: 16px;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   line-height: 1;
   color: var(--c-text-3);
@@ -293,7 +293,7 @@ onUnmounted(() => {
 }
 
 .state-msg {
-  font-size: 12px;
+  font-size: var(--text-xs, 0.75rem);
   color: var(--c-text-3);
   padding: 0.25rem 0.5rem 0.5rem;
 }
@@ -352,8 +352,8 @@ onUnmounted(() => {
 }
 
 .container-name {
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 0.875rem);
   font-weight: 500;
   color: var(--c-text-2);
   white-space: nowrap;
@@ -362,8 +362,8 @@ onUnmounted(() => {
 }
 
 .container-image {
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
   color: var(--c-text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -372,8 +372,8 @@ onUnmounted(() => {
 
 /* Ports */
 .ports-label {
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
   color: var(--c-text-3);
   white-space: nowrap;
   flex-shrink: 0;
@@ -386,7 +386,7 @@ onUnmounted(() => {
   display: none;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: #f59e0b;
   white-space: nowrap;
@@ -404,7 +404,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.375rem;
   padding: 0.3125rem 0.75rem;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--c-accent);
   background: var(--c-accent-subtle);

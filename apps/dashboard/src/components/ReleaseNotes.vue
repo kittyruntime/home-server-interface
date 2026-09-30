@@ -61,7 +61,7 @@ const blocks = computed(() => parse(props.source))
   <div class="space-y-1.5">
     <template v-for="(b, i) in blocks" :key="i">
       <!-- Heading -->
-      <p v-if="b.k === 'h'" class="text-[11px] font-semibold uppercase tracking-wider text-[var(--c-text-3)] mt-3 first:mt-0">
+      <p v-if="b.k === 'h'" class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mt-3 first:mt-0">
         <template v-for="(t, j) in b.children" :key="j">
           <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-[var(--c-accent)] hover:underline">{{ t.v }}</a>
           <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-[var(--c-hover)] text-[var(--c-text-2)]">{{ t.v }}</code>

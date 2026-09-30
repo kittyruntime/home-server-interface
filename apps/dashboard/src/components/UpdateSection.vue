@@ -257,7 +257,7 @@ onUnmounted(() => clearInterval(timer))
       <div class="panel-card p-5 flex items-center justify-between gap-6">
         <div>
           <p class="eyebrow mb-1">Current version</p>
-          <p class="font-mono text-xl text-[var(--c-text-1)]">{{ status.current }}</p>
+          <p class="font-figure text-xl text-[var(--c-text-1)]">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
           <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
@@ -265,7 +265,7 @@ onUnmounted(() => clearInterval(timer))
           </svg>
           <div class="text-right">
             <p class="eyebrow mb-1">Available</p>
-            <p class="font-mono text-xl text-[var(--c-accent)]">{{ status.latest }}</p>
+            <p class="font-figure text-xl text-[var(--c-accent)]">{{ status.latest }}</p>
           </div>
         </template>
         <template v-else>

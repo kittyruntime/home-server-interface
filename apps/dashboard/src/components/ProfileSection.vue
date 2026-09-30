@@ -145,7 +145,7 @@ onMounted(async () => {
               {{ me.displayName || me.username }}
             </span>
             <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
-            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
             <span v-if="!meIsAdmin && meCanManage" class="badge badge-violet">manager</span>
           </div>
         </div>
@@ -154,7 +154,7 @@ onMounted(async () => {
       <!-- ── Display name ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Display name</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Display name</h4>
           <button v-if="!editingName" @click="startEditName"
             class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             Edit
@@ -194,7 +194,7 @@ onMounted(async () => {
       <!-- ── Change password ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Password</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Password</h4>
           <button v-if="!pwOpen" @click="openPassword"
             class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
             Change
@@ -249,7 +249,7 @@ onMounted(async () => {
 
       <!-- ── Theme ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Theme</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Theme</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-2">
           <button
             v-for="opt in THEME_OPTIONS"
@@ -267,7 +267,7 @@ onMounted(async () => {
 
       <!-- ── Accent color ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Accent color</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Accent color</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-3">
           <button
             v-for="opt in ACCENT_OPTIONS"
@@ -288,7 +288,7 @@ onMounted(async () => {
 
       <!-- ── Advanced mode ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Advanced mode</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Advanced mode</h4>
         <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between gap-4">
           <p class="text-xs text-[var(--c-text-3)]">
             Show extra technical detail where it's available: raw UID/GID on files, for now.

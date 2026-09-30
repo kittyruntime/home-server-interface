@@ -111,7 +111,7 @@ const statusClass: Record<string, string> = {
             <div class="min-w-0 flex-1">
               <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ t.title }}</h3>
               <p class="text-xs text-[var(--c-text-3)] mt-0.5">{{ t.desc }}</p>
-              <p v-if="t.id === 'raidCheck'" class="text-[11px] text-[var(--c-text-3)] mt-1">
+              <p v-if="t.id === 'raidCheck'" class="text-2xs text-[var(--c-text-3)] mt-1">
                 Ubuntu's mdadm package already runs a monthly check (<code class="font-mono">mdcheck_start.timer</code>).
                 If you schedule one here, you can disable it with <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
               </p>
@@ -148,20 +148,20 @@ const statusClass: Record<string, string> = {
             </template>
           </div>
 
-          <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--c-text-3)] sm:max-w-md">
+          <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-[var(--c-text-3)] sm:max-w-md">
             <div>Last run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
             <div>Next run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
 
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
-            <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-[11px]">
+            <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">
               <span class="shrink-0 rounded-sm px-1.5 py-0.5 font-semibold uppercase" :class="statusClass[r.status]">{{ r.status }}</span>
               <span class="shrink-0 font-mono text-[var(--c-text-1)]">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
               <span v-if="r.serial" class="shrink-0 text-[var(--c-text-3)]">{{ r.serial }}</span>
               <span class="min-w-0 break-words text-[var(--c-text-3)]">{{ r.message }}</span>
             </div>
           </div>
-          <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-[10px] text-[var(--c-text-3)]">
+          <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-[var(--c-text-3)]">
             "Started" means the disk accepted the test; the result appears in each disk's SMART panel when it finishes.
           </p>
         </div>

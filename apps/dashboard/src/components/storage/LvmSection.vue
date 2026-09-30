@@ -219,7 +219,7 @@ const openMenu = ref<string | null>(null)
 
     <!-- VG list -->
     <div class="flex items-center justify-between mb-3">
-      <span v-if="lvmVGs.length" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
+      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
     </div>
 
     <div v-if="!loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
@@ -238,9 +238,9 @@ const openMenu = ref<string | null>(null)
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
-                <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
-                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
+                <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
+                <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
                   <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                   SYSTEM
                 </span>
@@ -250,7 +250,7 @@ const openMenu = ref<string | null>(null)
                 <div class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-[200px]">
                   <div class="h-full rounded-full bg-purple-400/70" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
                 </div>
-                <span class="text-[10px] text-[var(--c-text-3)] tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
+                <span class="text-2xs text-[var(--c-text-3)] tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
@@ -269,7 +269,7 @@ const openMenu = ref<string | null>(null)
                 <div v-if="openMenu === ('vg:' + vg.name)"
                   class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden min-w-[176px]">
                   <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
+                    <p class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Danger zone</p>
                   </div>
                   <button @click="removeVgDlg = { vg, busy: false, err: '' }; openMenu = null"
                     class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
@@ -287,7 +287,7 @@ const openMenu = ref<string | null>(null)
           <div class="px-4 py-2 border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/30">
             <div class="flex flex-wrap gap-1.5">
               <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
-                class="inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border border-[var(--c-border)]">
+                class="inline-flex items-center gap-1.5 text-2xs font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border border-[var(--c-border)]">
                 {{ pv.name }} <span class="text-[var(--c-text-3)]/60">{{ fmtBytes(pv.size) }}</span>
               </span>
             </div>
@@ -296,7 +296,7 @@ const openMenu = ref<string | null>(null)
           <!-- LVs -->
           <div class="divide-y divide-[var(--c-border)]">
             <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
-              class="px-4 py-3 text-[11px] italic text-[var(--c-text-3)]">
+              class="px-4 py-3 text-2xs italic text-[var(--c-text-3)]">
               No logical volumes. Click "+ Add LV" to create one.
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
@@ -306,26 +306,26 @@ const openMenu = ref<string | null>(null)
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
-                  <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
-                  <span v-if="lv2bd(lv).fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
-                  <span v-else class="text-[10px] italic text-[var(--c-text-3)]">unformatted</span>
+                  <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
+                  <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
+                  <span v-else class="text-2xs italic text-[var(--c-text-3)]">unformatted</span>
                 </div>
-                <div v-if="lv2bd(lv).mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
+                <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
                   <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(lv2bd(lv)))" :style="{ width: usagePct(lv2bd(lv)) + '%' }"/>
                   </div>
-                  <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
+                  <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
                 </div>
               </div>
               <!-- LV actions: revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
                 <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
                 <button v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
+                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
                 <button v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
                 <button @click="removeLvDlg = { lv, busy: false, err: '' }"
@@ -355,7 +355,7 @@ const openMenu = ref<string | null>(null)
           <!-- Step indicator -->
           <div class="flex items-center border-b border-[var(--c-border)]">
             <div v-for="(label, i) in ['Select Devices', 'Configure', 'Confirm']" :key="i"
-              :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
+              :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
                 lvmWiz.step === i + 1 ? 'text-purple-400 border-b-2 border-purple-400'
                 : lvmWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
                 : 'text-[var(--c-text-3)]/50']"
@@ -367,7 +367,7 @@ const openMenu = ref<string | null>(null)
             <p class="text-sm text-[var(--c-text-2)]">
               Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
             </p>
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-[11px] text-warning">
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -392,7 +392,7 @@ const openMenu = ref<string | null>(null)
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.type === 'md'" class="ml-2 text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
+                  <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
                   <span v-else-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
                 </div>
                 <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
@@ -414,7 +414,7 @@ const openMenu = ref<string | null>(null)
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Volume Group name</label>
               <input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
-              <p class="text-[10px] text-[var(--c-text-3)] mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
+              <p class="text-2xs text-[var(--c-text-3)] mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">First Logical Volume name</label>

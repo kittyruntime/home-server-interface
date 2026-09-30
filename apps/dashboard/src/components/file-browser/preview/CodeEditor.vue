@@ -32,7 +32,7 @@ let view: EditorView | null = null
 const languageConf = new Compartment()
 
 const theme = EditorView.theme({
-  '&': { backgroundColor: 'var(--c-surface)', color: 'var(--c-text-1)', height: '100%', fontSize: '13px' },
+  '&': { backgroundColor: 'var(--c-surface)', color: 'var(--c-text-1)', height: '100%', fontSize: 'var(--text-control)' },
   '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--c-accent)' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--c-accent)' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--c-accent-subtle) !important' },

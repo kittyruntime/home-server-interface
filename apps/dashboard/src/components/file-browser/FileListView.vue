@@ -60,8 +60,8 @@ function fileExt(name: string): string {
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-2)]'">{{ t.name }}</span>
-      <span v-if="t.status === 'error'" class="text-[10px] text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
-      <span v-else-if="t.status === 'paused'" class="text-[10px] text-[var(--c-warning)] shrink-0">Paused</span>
+      <span v-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
+      <span v-else-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)] shrink-0">Paused</span>
       <svg v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -133,7 +133,7 @@ function fileExt(name: string): string {
       </template>
       <div v-else class="min-w-0 flex-1">
         <div class="truncate text-sm select-none" :class="entry.type === 'dir' ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">{{ entry.name }}</div>
-        <div v-if="entry.type === 'file'" class="text-[10px] text-[var(--c-text-3)] font-mono tabular-nums">
+        <div v-if="entry.type === 'file'" class="text-2xs text-[var(--c-text-3)] font-mono tabular-nums">
           {{ formatSize(entry.size) }} · {{ formatDate(entry.mtime) }}
         </div>
       </div>
@@ -147,7 +147,7 @@ function fileExt(name: string): string {
   <!-- Desktop / tablet: sortable table -->
   <table class="hidden w-full text-sm sm:table">
     <thead class="sticky top-0 bg-[var(--c-bg)] border-b border-[var(--c-border)] z-10">
-      <tr class="text-left text-xs uppercase tracking-wider text-[var(--c-text-3)]">
+      <tr class="text-left text-xs uppercase tracking-caps text-[var(--c-text-3)]">
         <th class="pl-3 pr-1 py-2.5 w-7">
           <input type="checkbox"
             :checked="selected.size === entries.length && entries.length > 0"
@@ -203,8 +203,8 @@ function fileExt(name: string): string {
               :class="t.status === 'error' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-2)]'">
               {{ t.name }}
             </span>
-            <span v-if="t.status === 'error'" class="text-[10px] text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
-            <span v-else-if="t.status === 'paused'" class="text-[10px] text-[var(--c-warning)] shrink-0">Paused</span>
+            <span v-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
+            <span v-else-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)] shrink-0">Paused</span>
             <svg v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -309,7 +309,7 @@ function fileExt(name: string): string {
                     : 'text-[var(--c-text-2)] hover:text-[var(--c-text-1)]']">
                 {{ entry.name }}
               </span>
-              <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-[var(--c-text-3)] text-[10px] font-mono shrink-0">
+              <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-[var(--c-text-3)] text-2xs font-mono shrink-0">
                 {{ fileExt(entry.name) }}
               </span>
               <button

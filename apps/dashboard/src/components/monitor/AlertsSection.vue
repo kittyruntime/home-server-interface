@@ -97,7 +97,7 @@ onMounted(load)
 
     <div v-else class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
       <div class="px-4 py-3 border-b border-[var(--c-border)] flex items-center justify-between gap-3">
-        <span class="text-[11px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+        <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
           Active ({{ filteredAlerts.length }})
         </span>
         <div class="flex items-center gap-3">
@@ -128,8 +128,8 @@ onMounted(load)
             <div class="text-sm text-[var(--c-text-1)] font-mono truncate">{{ a.target }}</div>
             <div class="text-xs text-[var(--c-text-3)] mt-0.5">{{ a.message }}</div>
           </div>
-          <span class="text-[10px] uppercase tracking-wider text-[var(--c-text-3)] shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
-          <div class="text-[11px] text-[var(--c-text-3)] shrink-0 tabular-nums">{{ fmtDate(a.lastSeenAt) }}</div>
+          <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
+          <div class="text-2xs text-[var(--c-text-3)] shrink-0 tabular-nums">{{ fmtDate(a.lastSeenAt) }}</div>
           <button type="button" class="btn btn-ghost btn-xs shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</button>
         </div>
       </div>

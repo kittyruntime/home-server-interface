@@ -79,8 +79,8 @@ defineExpose({ load })
           <span class="font-mono">{{ a.name || a.device }}</span>
           <span class="text-xs text-[var(--c-text-3)] ml-2 uppercase">{{ a.level }}</span>
         </div>
-        <div class="text-[11px] text-[var(--c-text-3)] font-mono break-all">{{ a.members.join(' + ') }}</div>
-        <div v-if="a.missing > 0" class="text-[11px] text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
+        <div class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ a.members.join(' + ') }}</div>
+        <div v-if="a.missing > 0" class="text-2xs text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
       </div>
       <button type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="assemble(a)">
         {{ busy === a.uuid ? 'Assembling…' : a.missing > 0 ? 'Start degraded…' : 'Assemble' }}
@@ -94,7 +94,7 @@ defineExpose({ load })
     <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-[var(--c-border)] first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm font-mono text-[var(--c-text-1)]">{{ vg.name }}</div>
-        <div class="text-[11px] text-[var(--c-text-3)] font-mono break-all">{{ vg.lvs.join(', ') }}</div>
+        <div class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ vg.lvs.join(', ') }}</div>
       </div>
       <button type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="activate(vg)">
         {{ busy === vg.name ? 'Activating…' : 'Activate' }}
