@@ -44,3 +44,10 @@ test('a disk is revealed once per request, when it is listed', () => {
   r.request('sdb')
   assert.equal(r.take(['sdb']), 'sdb', 'asking again reveals it again')
 })
+
+test('a volume opens on top of Volumes', () => {
+  const nav = navOpen(createNav(), { kind: 'volume', id: 'U-1' })
+  assert.equal(sectionOf(nav.current), 'volumes')
+  assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Volumes', 'U-1'])
+  assert.deepEqual(navCrumbs(nav, { 'volume:U-1': 'data' }).map(c => c.label), ['Volumes', 'data'])
+})
