@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import VolumesSection from './VolumesSection.vue'
 import VolumePage from './VolumePage.vue'
+import DiskPage from './DiskPage.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
@@ -143,8 +144,9 @@ const installCommand = computed(() =>
         </nav>
         <VolumePage v-if="location.current.kind === 'volume'" :id="location.current.id"
           @navigate="focusOn" @named="n => { if (location.current.kind === 'volume') names = { ...names, [`volume:${location.current.id}`]: n } }" />
+        <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn" />
         <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" @create="startCreate" />
-        <PhysicalDisksSection v-else-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @create="startCreate" />
+        <PhysicalDisksSection v-else-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
         <LvmSection           v-else-if="active === 'lvm'"

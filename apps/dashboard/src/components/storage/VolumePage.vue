@@ -71,7 +71,8 @@ const targets = computed(() => {
 })
 
 function openLayer(kind: string, name: string) {
-  if (kind === 'disk') emit('navigate', { kind: 'disk', name })
+  // A partition opens its disk's page (which resolves it).
+  if (kind === 'disk' || kind === 'partition') emit('navigate', { kind: 'disk', name })
   else if (kind === 'array') emit('navigate', 'raid')
   else if (kind === 'lv' || kind === 'vg') emit('navigate', 'lvm')
 }
