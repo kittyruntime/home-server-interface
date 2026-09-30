@@ -1,0 +1,117 @@
+import crypto from "node:crypto"
+import { TRPCError } from "@trpc/server"
+import type { PlanApplyResult, PlanStep, StepResult } from "./storage-plan"
+import { workerError } from "./sharing-plan"
+
+// Operation plans for user accounts (#36): the worker previews the Linux and
+// Samba account commands (create) and the smb.conf and share group changes
+// (delete); the HSI database is changed last, only once those ran.
+
+export const USER_OPS = ["user.create", "user.delete"] as const
+export type UserOp = typeof USER_OPS[number]
+
+export interface UserPlanDeps {
+  worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
+  smbdInstalled(): Promise<boolean>
+  /** Share definitions without the deleted user. */
+  shareDefs(): Promise<unknown[]>
+  serialize<T>(fn: () => Promise<T>): Promise<T>
+  resync(): Promise<void>
+  commit(): Promise<unknown>
+}
+
+export interface UserCreateInput { username: string; password: string; samba: boolean }
+type Preview = { steps: PlanStep[]; fingerprint: string }
+
+const SMB_CONF = "/etc/nasui/samba/smb.conf"
+const STALE = "The server changed since this preview; review the plan again"
+
+function createStep(username: string): PlanStep {
+  return { kind: "create", target: username, summary: `Create the HSI user ${username}` }
+}
+
+function deleteStep(username: string): PlanStep {
+  return {
+    kind: "delete", target: username, destructive: true,
+    summary: `Delete the HSI user ${username}; the Linux account and its Samba account stay on the server (see docs/manage-without-hsi.md)`,
+  }
+}
+
+async function preview(deps: UserPlanDeps, op: string, input: Record<string, unknown>): Promise<Preview> {
+  try {
+    return await deps.worker<Preview>("root.plan.preview", { op, input })
+  } catch (e) { workerError(e) }
+}
+
+async function apply(deps: UserPlanDeps, op: string, input: Record<string, unknown>, fingerprint: string): Promise<PlanApplyResult> {
+  try {
+    return await deps.worker<PlanApplyResult>("root.plan.apply", { op, input, fingerprint })
+  } catch (e) { workerError(e) }
+}
+
+export async function previewUserCreate(input: UserCreateInput, deps: UserPlanDeps): Promise<Preview> {
+  const p = await preview(deps, "user.create", { ...input })
+  return { steps: [...p.steps, createStep(input.username)], fingerprint: p.fingerprint }
+}
+
+export async function applyUserCreate(input: UserCreateInput, fingerprint: string, deps: UserPlanDeps): Promise<PlanApplyResult> {
+  const res = await apply(deps, "user.create", { ...input }, fingerprint)
+  const steps = [...res.steps, createStep(input.username)]
+  if (!res.ok) return { ...res, steps, results: [...res.results, { status: "not-run" }] }
+  await deps.commit()
+  return { ...res, steps, results: [...res.results, { status: "done" }] }
+}
+
+// The delete plan is the smb.sync plan (only when smb.conf changes) and the
+// group.leave plan, then the database delete.
+async function deletePreviews(username: string, deps: UserPlanDeps) {
+  let smb: (Preview & { input: Record<string, unknown> }) | null = null
+  if (await deps.smbdInstalled()) {
+    const input = { shares: await deps.shareDefs() }
+    const p = await preview(deps, "smb.sync", input)
+    if (p.steps.some(s => s.target === SMB_CONF)) smb = { ...p, input }
+  }
+  const group = await preview(deps, "group.leave", { username })
+  const fingerprint = crypto.createHash("sha256")
+    .update(JSON.stringify({ smb: smb?.fingerprint ?? null, group: group.fingerprint, username }))
+    .digest("hex")
+  return { smb, group, fingerprint }
+}
+
+export async function previewUserDelete(username: string, deps: UserPlanDeps): Promise<Preview> {
+  const { smb, group, fingerprint } = await deletePreviews(username, deps)
+  return { steps: [...(smb?.steps ?? []), ...group.steps, deleteStep(username)], fingerprint }
+}
+
+export async function applyUserDelete(username: string, fingerprint: string, deps: UserPlanDeps): Promise<PlanApplyResult> {
+  let resync = false
+  try {
+    return await deps.serialize(async () => {
+      const { smb, group, fingerprint: current } = await deletePreviews(username, deps)
+      if (current !== fingerprint) throw new TRPCError({ code: "CONFLICT", message: STALE })
+      const steps: PlanStep[] = []
+      const results: StepResult[] = []
+      const warnings: string[] = []
+      const parts: Array<[string, Record<string, unknown>, string]> = []
+      if (smb) parts.push(["smb.sync", smb.input, smb.fingerprint])
+      parts.push(["group.leave", { username }, group.fingerprint])
+      for (const [op, input, fp] of parts) {
+        const res = await apply(deps, op, input, fp)
+        steps.push(...res.steps)
+        results.push(...res.results)
+        warnings.push(...(res.warnings ?? []))
+        if (!res.ok) {
+          resync = smb !== null
+          return { ok: false, error: res.error, steps: [...steps, deleteStep(username)], results: [...results, { status: "not-run" }], warnings }
+        }
+      }
+      try {
+        await deps.commit()
+      } catch (e) { resync = true; throw e }
+      return { ok: true, steps: [...steps, deleteStep(username)], results: [...results, { status: "done" }], warnings }
+    })
+  } finally {
+    // smb.conf may no longer name a user the database still has.
+    if (resync) await deps.resync().catch(() => {})
+  }
+}

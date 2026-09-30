@@ -1063,4 +1063,69 @@ await testSharePlans()
   assert.equal(auditTarget({ op: "share.update", input: { id: "ck1" } }, {}), "ck1")
 }
 
+{
+  const up = await import("../services/user-plan")
+  const calls: string[] = []
+  let inLock = false
+  const smbStep = { kind: "update", target: "/etc/nasui/samba/smb.conf", summary: "Update" }
+  const deps = (over: Record<string, unknown> = {}): any => ({
+    smbdInstalled: async () => true,
+    shareDefs: async () => [],
+    serialize: async <T>(fn: () => Promise<T>) => { inLock = true; try { return await fn() } finally { inLock = false } },
+    resync: async () => { calls.push("resync") },
+    commit: async () => { calls.push(`commit${inLock ? ":locked" : ""}`) },
+    worker: async (subject: string, payload: any) => {
+      calls.push(`${subject}:${payload.op}`)
+      if (subject === "root.plan.preview") {
+        if (payload.op === "smb.sync") return { steps: [smbStep, { kind: "run", target: "smbd", summary: "reload" }], fingerprint: "s1" }
+        if (payload.op === "group.leave") return { steps: [], fingerprint: "g1" }
+        return { steps: [{ kind: "run", target: "alice", summary: "useradd" }], fingerprint: "u1" }
+      }
+      return { ok: true, steps: [], results: [{ status: "done" }] }
+    },
+    ...over,
+  })
+  const input = { username: "alice", password: "pw123456", samba: true }
+
+  const pc = await up.previewUserCreate(input, deps())
+  assert.equal(pc.steps.at(-1)!.summary, "Create the HSI user alice")
+  assert.ok(!calls.some(c => c.startsWith("commit")), "preview writes nothing")
+
+  calls.length = 0
+  const failed = await up.applyUserCreate(input, "u1", deps({ worker: async () => ({ ok: false, error: "useradd failed", steps: [], results: [{ status: "failed" }] }) }))
+  assert.equal(failed.ok, false)
+  assert.ok(!calls.includes("commit"), "a failed useradd creates no HSI user")
+  const ok = await up.applyUserCreate(input, "u1", deps())
+  assert.equal(ok.ok, true)
+  assert.equal(ok.results.at(-1)!.status, "done")
+
+  // Delete: smb.conf shown when it changes, fingerprint combined, commit under the lock.
+  const pd = await up.previewUserDelete("alice", deps())
+  assert.deepEqual(pd.steps.map(s => s.kind), ["update", "run", "delete"])
+  assert.match(pd.steps.at(-1)!.summary, /stay on the server/)
+  calls.length = 0
+  const d = await up.applyUserDelete("alice", pd.fingerprint, deps())
+  assert.equal(d.ok, true)
+  assert.ok(calls.includes("commit:locked"), "the delete commits under the share lock")
+  await assert.rejects(up.applyUserDelete("alice", "stale", deps()), (e: any) => e.code === "CONFLICT")
+
+  // No share access: no smb.conf step and no reload.
+  const quiet = await up.previewUserDelete("alice", deps({
+    worker: async (subject: string, payload: any) =>
+      payload.op === "smb.sync" ? { steps: [{ kind: "run", target: "smbd", summary: "reload" }], fingerprint: "s0" } : { steps: [], fingerprint: "g0" },
+  }))
+  assert.deepEqual(quiet.steps.map(s => s.kind), ["delete"])
+
+  // A failed DB delete after smb.conf was written resyncs.
+  calls.length = 0
+  await assert.rejects(up.applyUserDelete("alice", pd.fingerprint, deps({ commit: async () => { throw new Error("db") } })))
+  assert.ok(calls.includes("resync"))
+}
+
+{
+  const { dropUserFromDefs } = await import("../services/sharing.service")
+  const defs = [{ name: "m", path: "/m", readOnly: false, guestOk: false, validUsers: ["alice", "bob"], writeUsers: ["alice"], unavailable: false }]
+  assert.deepEqual(dropUserFromDefs(defs, "alice")[0], { ...defs[0], validUsers: ["bob"], writeUsers: [] })
+}
+
 console.log("Backend security tests passed")

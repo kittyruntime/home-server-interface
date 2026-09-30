@@ -120,9 +120,19 @@ export function effectiveSmbName(
   return share.smbName ?? sanitizeSmbName(placeName)
 }
 
+/** Share definitions as they will be once `username` is deleted: the
+ *  username is the user's Linux/Samba account, and their only contribution. */
+export function dropUserFromDefs<T extends { validUsers: string[]; writeUsers: string[] }>(defs: T[], username: string): T[] {
+  return defs.map(d => ({
+    ...d,
+    validUsers: d.validUsers.filter(u => u !== username),
+    writeUsers: d.writeUsers.filter(u => u !== username),
+  }))
+}
+
 /** The share definitions Samba should serve, with `change` applied as if it
  *  were already in the database (plans preview a change before writing it). */
-export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChange) {
+export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
   })
@@ -150,7 +160,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
       unavailable: holdFor(holds, s.place.path) !== null,
     })
   }
-  return defs
+  return opts.withoutUser ? dropUserFromDefs(defs, opts.withoutUser) : defs
 }
 
 // Share syncs and applied share plans run one at a time: a sync reading the
