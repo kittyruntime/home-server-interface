@@ -15,7 +15,7 @@ test('objects push on top of their section, back pops', () => {
   let nav = navOpen(createNav(), { kind: 'array', name: 'md0' })
   assert.deepEqual(nav.stack.map(l => l.kind), ['section', 'array'])
   assert.equal(sectionOf(nav.current), 'raid')
-  assert.deepEqual(navCrumbs(nav).map(c => c.label), ['RAID', 'md0'])
+  assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Arrays', 'md0'])
   nav = navBack(nav)
   assert.deepEqual(nav.current, { kind: 'section', section: 'raid' })
   assert.equal(navBack(nav).stack.length, 1, 'back never empties the stack')
@@ -39,4 +39,10 @@ test('a volume opens on top of Volumes', () => {
   assert.equal(sectionOf(nav.current), 'volumes')
   assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Volumes', 'U-1'])
   assert.deepEqual(navCrumbs(nav, { 'volume:U-1': 'data' }).map(c => c.label), ['Volumes', 'data'])
+})
+
+test('arrays and volume groups open on their renamed sections', () => {
+  assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'array', name: 'md0' })).map(c => c.label), ['Arrays', 'md0'])
+  assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'vg', name: 'data' })).map(c => c.label), ['Volume groups', 'data'])
+  assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'disk', name: 'sdb' })).map(c => c.label), ['Disks', 'sdb'])
 })

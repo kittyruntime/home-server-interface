@@ -27,3 +27,14 @@ export function volumeTargets(v: TargetVolume, rememberedMount?: string): string
   ]
   return [...new Set(names.filter((n): n is string => !!n))].slice(0, 20)
 }
+
+export function arrayTargets(a: { name: string; members: string[] }): string[] {
+  return [...new Set([a.name, `/dev/${a.name}`, ...a.members])].slice(0, 20)
+}
+
+// Device-mapper name of an LV: dashes in the VG and LV names are doubled.
+const dmName = (vg: string, lv: string) => `${vg.replace(/-/g, '--')}-${lv.replace(/-/g, '--')}`
+
+export function vgTargets(vg: { name: string; lvs: string[] }): string[] {
+  return [...new Set([vg.name, ...vg.lvs.flatMap(lv => [`${vg.name}/${lv}`, `mapper/${dmName(vg.name, lv)}`])])].slice(0, 20)
+}

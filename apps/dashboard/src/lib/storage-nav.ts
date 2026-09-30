@@ -10,7 +10,7 @@ export type StorageLocation =
   | { kind: 'vg'; name: string }
 
 export const SECTION_LABELS: Record<StorageSection, string> = {
-  volumes: 'Volumes', disks: 'Devices', raid: 'RAID', lvm: 'LVM', mounts: 'Mounts', maintenance: 'Maintenance',
+  volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance',
 }
 
 export function sectionOf(loc: StorageLocation): StorageSection {
