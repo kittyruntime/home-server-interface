@@ -24,13 +24,16 @@ const active = computed<SectionId>({
   set: section => open({ kind: 'section', section }),
 })
 const crumbs = computed(() => navCrumbs(location.value))
-const revealDisk = computed(() => location.value.current.kind === 'disk' ? location.value.current.name : undefined)
+// A disk to reveal in the device list: bumped on every navigation to a disk,
+// even the current one, so asking again shows it again.
+const revealRequest = ref<{ name: string; nonce: number } | undefined>()
 
 function open(loc: StorageLocation) {
   location.value = navOpen(location.value, loc)
+  if (loc.kind === 'disk') revealRequest.value = { name: loc.name, nonce: (revealRequest.value?.nonce ?? 0) + 1 }
 }
-function focusOn(section: SectionId) {
-  open({ kind: 'section', section })
+function focusOn(target: SectionId | StorageLocation) {
+  open(typeof target === 'string' ? { kind: 'section', section: target } : target)
 }
 
 // Opened on a location from elsewhere (openStorage).
@@ -111,7 +114,7 @@ const installCommand = computed(() =>
     </nav>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto @container/content">
       <div class="p-4 @2xl:p-8 max-w-5xl">
         <div v-if="missingTools.length" role="status"
           class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
@@ -128,7 +131,7 @@ const installCommand = computed(() =>
             <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>
-        <PhysicalDisksSection v-if="active === 'disks'" :reveal="revealDisk" @navigate="focusOn" @create="startCreate" />
+        <PhysicalDisksSection v-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
         <LvmSection           v-else-if="active === 'lvm'"

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
+import { createNav, createReveal, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -32,4 +32,15 @@ test('navTo returns to an earlier crumb', () => {
   nav = navTo(nav, 0)
   assert.deepEqual(nav.stack, [{ kind: 'section', section: 'disks' }])
   assert.equal(navTo(nav, 5).stack.length, 1, 'an index past the stack keeps it')
+})
+
+test('a disk is revealed once per request, when it is listed', () => {
+  const r = createReveal()
+  assert.equal(r.take(['sda']), null, 'nothing requested')
+  r.request('sdb')
+  assert.equal(r.take(['sda']), null, 'waits for the disk to be listed')
+  assert.equal(r.take(['sda', 'sdb']), 'sdb')
+  assert.equal(r.take(['sda', 'sdb']), null, 'a later refresh does not reveal it again')
+  r.request('sdb')
+  assert.equal(r.take(['sdb']), 'sdb', 'asking again reveals it again')
 })
