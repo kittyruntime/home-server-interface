@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/user"
 	"strings"
@@ -59,13 +60,10 @@ func planUserCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	if req.Password == "" || strings.ContainsAny(req.Password, "\n\r") {
 		return nil, &fsError{Code: "ERR", Message: "invalid password"}
 	}
-	shell, exists := hostUserShell(req.Username)
-	// HSI accounts have no login shell. Any other existing account (the
-	// server owner's, a system account) must not get its password replaced
-	// by whoever can create HSI users.
-	if exists && !noLoginShells[shell] {
-		return nil, &fsError{Code: "ERR", Message: "The Linux account " + req.Username + " already exists and is not managed by HSI; choose another username"}
+	if err := checkPasswordTarget(req.Username); err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
+	_, exists := hostUserShell(req.Username)
 	smb := req.Samba && hostLookPath("smbpasswd")
 	var steps []planStep
 	if !exists {
@@ -105,6 +103,17 @@ func planGroupLeave(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 	}
 	return &opPlan{Op: "group.leave", Steps: steps, Observed: map[string]string{"members": sortedJoin(members)}}, nil
+}
+
+// checkPasswordTarget refuses to set the password of an existing account
+// that has a login shell. HSI accounts have none; any other account (the
+// server owner's, a system account) must not have its password replaced by
+// whoever can create HSI users.
+func checkPasswordTarget(username string) error {
+	if shell, exists := hostUserShell(username); exists && !noLoginShells[shell] {
+		return fmt.Errorf("The Linux account %s already exists and is not managed by HSI; choose another username", username)
+	}
+	return nil
 }
 
 var noLoginShells = map[string]bool{"/sbin/nologin": true, "/usr/sbin/nologin": true, "/bin/false": true, "/usr/bin/false": true}
