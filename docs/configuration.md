@@ -201,6 +201,20 @@ you to review the new plan. The share is recorded in HSI only once the plan
 ran. When Samba is not installed, removing a share only removes HSI's record of
 it.
 
+### Users
+
+Creating a user (Users) shows the commands that create its Linux account
+(`useradd`, without a home directory or shell login) and set its Linux and
+Samba passwords (`chpasswd`, `smbpasswd`). The password goes to those commands
+on their standard input: it never appears in the plan, a command line or the
+audit log. If the Linux account cannot be created, the user is not created in
+HSI; a failed password step is reported as a warning.
+
+Deleting a user shows the change to `smb.conf` (the user leaves the shares it
+had access to) and its removal from the `hsi-share` group. The Linux account
+and the Samba account stay on the server; see
+[Managing without HSI](manage-without-hsi.md) to remove them.
+
 ## Missing volumes
 
 Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")
