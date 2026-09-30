@@ -22,7 +22,9 @@ import Hint from '../ui/Hint.vue'
 import ImportFound from './ImportFound.vue'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
-const props = defineProps<{ preselect?: string[] }>()
+// `only`: show just this array / volume group (its page, #40), without the
+// section header and create entry points.
+const props = defineProps<{ preselect?: string[]; only?: string }>()
 const emit = defineEmits<{ navigate: [target: 'disks' | 'lvm' | StorageLocation]; preselected: [] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
@@ -304,13 +306,15 @@ async function doDestroyRaid() {
 }
 
 const openMenu = ref<string | null>(null)
+
+const shown = computed(() => props.only ? raids.value.filter(x => x.name === props.only) : raids.value)
 </script>
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-4">
+    <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">RAID</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Arrays</h2>
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
@@ -329,7 +333,7 @@ const openMenu = ref<string | null>(null)
       </div>
     </div>
 
-    <ImportFound kind="raid" :used-md-names="raids.map(r => r.name)" @imported="refresh" />
+    <ImportFound v-if="!only" kind="raid" :used-md-names="raids.map(r => r.name)" @imported="refresh" />
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
@@ -337,18 +341,18 @@ const openMenu = ref<string | null>(null)
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
     <!-- RAID arrays list -->
-    <div class="flex items-center justify-between mb-3">
+    <div v-if="!only" class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
       </div>
     </div>
 
-    <div v-if="raids.length === 0 && !loading" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
+    <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
       No RAID arrays configured. Create one to combine multiple drives for redundancy or performance.
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="r in raids" :key="r.name"
+      <div v-for="r in shown" :key="r.name"
         class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
         :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-danger/20'">
         <!-- Left accent stripe -->

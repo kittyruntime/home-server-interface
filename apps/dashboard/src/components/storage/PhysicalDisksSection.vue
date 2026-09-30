@@ -298,7 +298,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Devices</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Disks</h2>
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
       </div>
       <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
