@@ -15,7 +15,7 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 
-const { loading, loaded, error, raids, lvmVGs, lvmLVs, lvmPVs } = useStorageData()
+const { loading, loaded, error, devices, raids, lvmVGs, lvmLVs, lvmPVs } = useStorageData()
 const tab = ref<ObjectTab>('overview')
 watch(() => props.name, () => { tab.value = 'overview' })
 
@@ -25,7 +25,8 @@ const pvs = computed(() => lvmPVs.value.filter(p => p.vgName === props.name))
 
 // What each logical volume carries.
 const volumeOf = ref<Record<string, { id: string; name: string; mountPoint?: string }>>({})
-watch(() => props.name, async n => {
+// Reloaded when the store changes, so actions taken on this page show up.
+watch([() => props.name, devices], async ([n]) => {
   try {
     const o = await trpc.storage.volumes.overview.query()
     if (n !== props.name) return

@@ -133,9 +133,12 @@ export const storageRouter = router({
   // Recent operations on a storage object (#40): audit entries whose target
   // is exactly one of the object's names (device, /dev path, mount point, UUID).
   activity: storageProcedure
-    .input(z.object({ targets: z.array(z.string().min(1).max(512)).min(1).max(20) }))
+    .input(z.object({
+      targets: z.array(z.string().min(1).max(512)).min(1).max(20),
+      arrays:  z.array(z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/)).max(5).optional(),
+    }))
     .query(async ({ input }) => activityEntries(await prisma.auditLog.findMany({
-      where: activityWhere(input.targets),
+      where: activityWhere(input.targets, input.arrays),
       orderBy: { createdAt: "desc" },
       take: 20,
       include: { user: { select: { username: true } } },

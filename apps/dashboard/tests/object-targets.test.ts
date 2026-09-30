@@ -14,7 +14,8 @@ test('a missing volume has no UUID target, and a remembered mount point stays', 
 })
 
 test('array and volume group targets match what the audit writes', () => {
-  assert.deepEqual(arrayTargets({ name: 'md0', members: ['sdb1', 'sdc1'] }), ['md0', '/dev/md0', 'sdb1', 'sdc1'])
+  // Members are found through the array name in the logged input (backend).
+  assert.deepEqual(arrayTargets({ name: 'md0' }), ['md0', '/dev/md0'])
   const t = vgTargets({ name: 'vg-0', lvs: ['my-data'] })
   for (const n of ['vg-0', 'vg-0/my-data', 'mapper/vg--0-my--data']) assert.ok(t.includes(n), n)
 })

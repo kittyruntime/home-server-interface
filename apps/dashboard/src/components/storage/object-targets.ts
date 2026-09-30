@@ -28,8 +28,10 @@ export function volumeTargets(v: TargetVolume, rememberedMount?: string): string
   return [...new Set(names.filter((n): n is string => !!n))].slice(0, 20)
 }
 
-export function arrayTargets(a: { name: string; members: string[] }): string[] {
-  return [...new Set([a.name, `/dev/${a.name}`, ...a.members])].slice(0, 20)
+// Member operations (fail, remove, add) are logged under the member device;
+// the activity query finds them through the array name (see storage.activity).
+export function arrayTargets(a: { name: string }): string[] {
+  return [a.name, `/dev/${a.name}`]
 }
 
 // Device-mapper name of an LV: dashes in the VG and LV names are doubled.

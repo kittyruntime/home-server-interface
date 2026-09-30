@@ -49,6 +49,14 @@ export function activityEntries(rows: ActivityRow[]): ActivityEntry[] {
 
 // Previews (storage.plan) are audited like any mutation, with the same target
 // as the apply that follows; they did not change anything.
-export function activityWhere(targets: string[]) {
-  return { target: { in: targets }, action: { notIn: ["storage.plan"] } }
+// An array's member operations (raid.fail/remove/add) are logged under the
+// member device: `arrays` also finds them through the array name in their
+// logged input.
+export function activityWhere(targets: string[], arrays: string[] = []) {
+  const action = { notIn: ["storage.plan"] }
+  if (!arrays.length) return { target: { in: targets }, action }
+  return {
+    OR: [{ target: { in: targets } }, ...arrays.map(a => ({ meta: { contains: `"name":"${a}"` } }))],
+    action,
+  }
 }
