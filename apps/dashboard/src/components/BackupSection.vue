@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { LOADING } from '../lib/loading'
+import BusyLabel from './ui/BusyLabel.vue'
 import { computed, ref } from 'vue'
 import { useAuth } from '../lib/auth'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
@@ -151,8 +153,7 @@ function pollRestoreRestart() {
         <p v-if="complete" class="text-xs text-[var(--c-success)]">Encrypted configuration backup downloaded.</p>
         <div class="flex justify-end">
           <button class="btn btn-primary btn-sm" :disabled="!valid || exporting">
-            <LoadingSpinner v-if="exporting" label="Encrypting" />
-            <template v-else>Export configuration</template>
+            <BusyLabel :busy="exporting" :busy-label="LOADING.encrypting">Export configuration</BusyLabel>
           </button>
         </div>
       </form>
@@ -176,14 +177,13 @@ function pollRestoreRestart() {
           <input v-model="restorePassword" type="password" autocomplete="current-password" minlength="16" maxlength="1024" class="input w-full" placeholder="Password used during export" required>
         </label>
         <div v-if="restoreStep" class="flex items-center gap-2 text-xs text-[var(--c-accent)]">
-          <LoadingSpinner label="" />
+          <LoadingSpinner />
           <span>{{ restoreStep === 'uploading' ? 'Validating and restoring backup…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
         </div>
         <p v-if="restoreError" class="text-xs text-[var(--c-danger)]">{{ restoreError }}</p>
         <div class="flex justify-end">
           <button class="btn btn-danger btn-sm" :disabled="!restoreFile || restorePassword.length < 16 || restoring || !!restoreError">
-            <LoadingSpinner v-if="restoring" label="" />
-            {{ restoring ? 'Restoring…' : 'Restore configuration' }}
+            <BusyLabel :busy="restoring" busy-label="Restoring">Restore configuration</BusyLabel>
           </button>
         </div>
       </form>

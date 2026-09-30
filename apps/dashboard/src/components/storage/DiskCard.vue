@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { LOADING } from '../../lib/loading'
+import LoadingState from '../ui/LoadingState.vue'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { ref, computed } from 'vue'
 import {
   fmtBytes, fmtHours, fmtTiB, usagePct, usageBarClass, lvToDmName,
@@ -112,9 +115,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             status === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
             status === 'loading' ? 'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)]' :
             'bg-[var(--c-surface-deep)] border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-text-2)]']">
-          <svg v-if="status === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
+          <LoadingSpinner v-if="status === 'loading'" class="text-xs" />
           <span v-else class="w-1.5 h-1.5 rounded-full"
             :class="status === 'passed' ? 'bg-success' : status === 'warning' ? 'bg-warning' : status === 'failed' ? 'bg-danger animate-pulse' : 'bg-[var(--c-text-3)]/40'"/>
           <span v-if="status === 'passed'">Healthy</span>
@@ -142,12 +143,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       <!-- eslint-disable-next-line vue/valid-v-for -->
       <template v-for="sc in [smart]" :key="disk.name">
         <!-- Loading -->
-        <div v-if="sc?._loading" class="flex items-center gap-2 px-4 py-4 text-sm text-[var(--c-text-3)]">
-          <svg class="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          Reading S.M.A.R.T. data…
-        </div>
+        <LoadingState v-if="sc?._loading" variant="inline" :label="LOADING.readingSmart" class="px-4 py-4" />
 
         <!-- Error -->
         <div v-else-if="sc?._error" class="px-4 py-3 text-sm text-danger">

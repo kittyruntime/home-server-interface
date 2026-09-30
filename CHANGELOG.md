@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Loading indicators**: one spinner and one loading state across the
+  dashboard. A loader appears only after 200 ms (no flash on fast loads),
+  refreshing a list keeps it on screen, busy buttons all look the same, and
+  every loader is announced to screen readers and respects reduced motion.
 - **Typography**: one type scale across the dashboard (nothing below 11px, one
   tracking for uppercase labels). Machine data (paths, devices, sizes, fields)
   uses JetBrains Mono; key figures and status lines keep Space Mono. Fonts are

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
 /* Scheduled disk checks. The schedule is stored on the server and run hourly by
    a systemd timer (hsi-maintenance.timer), so it keeps running when the
@@ -97,7 +97,7 @@ const statusClass: Record<string, string> = {
       </p>
     </div>
 
-    <div v-if="loading && !data" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
+    <LoadingState v-if="loading && !data" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else-if="data && draft">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
@@ -49,10 +50,7 @@ function fileExt(name: string): string {
         </svg>
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
-          <svg class="w-5 h-5 animate-spin text-[var(--c-accent)] drop-shadow" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
+          <LoadingSpinner class="text-xl text-[var(--c-accent)] drop-shadow" />
         </div>
       </div>
 
@@ -75,10 +73,7 @@ function fileExt(name: string): string {
       <span class="text-xs text-[var(--c-text-3)] italic">New Folder…</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/30">
-        <svg class="w-5 h-5 animate-spin text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
+        <LoadingSpinner class="text-xl text-[var(--c-accent)]" />
       </div>
     </div>
 
@@ -90,10 +85,7 @@ function fileExt(name: string): string {
       <span class="text-xs text-[var(--c-text-3)] italic">New File…</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/30">
-        <svg class="w-5 h-5 animate-spin text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
+        <LoadingSpinner class="text-xl text-[var(--c-accent)]" />
       </div>
     </div>
 
@@ -117,10 +109,7 @@ function fileExt(name: string): string {
       <!-- Pending overlay -->
       <div v-if="pendingPaths?.includes(entry.path)"
         class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/60">
-        <svg class="w-5 h-5 animate-spin text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
+        <LoadingSpinner class="text-xl text-[var(--c-text-3)]" />
       </div>
 
       <!-- Checkbox -->

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
@@ -170,7 +171,7 @@ async function removeShare(s: ShareRow) {
 
     <p v-if="error" class="status-text text-[var(--c-danger)] mb-4">[ERR] {{ error }}</p>
 
-    <div v-if="loading" class="text-sm text-[var(--c-text-3)]">Loading…</div>
+    <LoadingState v-if="loading" variant="compact" />
 
     <!-- Samba missing: guide, never a cryptic error -->
     <div v-else-if="prereq && !prereq.smbdInstalled" class="panel-card bg-[var(--c-surface)] p-6">

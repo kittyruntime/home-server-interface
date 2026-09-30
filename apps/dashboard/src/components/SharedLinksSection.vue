@@ -35,7 +35,7 @@ onMounted(load)
       </p>
     </div>
 
-    <LoadingState v-if="loading" compact />
+    <LoadingState v-if="loading && !links.length" variant="compact" />
     <div v-else-if="links.length === 0" class="rounded-xl border border-dashed border-[var(--c-border-strong)]"><EmptyState message="No shared links yet." description="Share a file or folder from the file browser to create one." /></div>
     <div v-else class="panel-card divide-y divide-[var(--c-border)]">
       <div v-for="l in links" :key="l.id" class="flex items-center gap-3 px-4 py-3">

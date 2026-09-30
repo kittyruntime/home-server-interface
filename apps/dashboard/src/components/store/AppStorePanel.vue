@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
@@ -96,18 +97,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
           :class="['btn btn-xs', category === c ? 'btn-primary' : 'btn-outline']">{{ c }}</button>
       </div>
 
-      <!-- Loading skeleton -->
-      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <div v-for="n in 6" :key="n" class="panel-card p-4 h-[104px] animate-pulse">
-          <div class="flex gap-3">
-            <div class="w-10 h-10 rounded-lg bg-[var(--c-border)] shrink-0" />
-            <div class="flex-1 space-y-2 pt-1">
-              <div class="h-3 w-1/2 rounded bg-[var(--c-border)]" />
-              <div class="h-2.5 w-4/5 rounded bg-[var(--c-border)]" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <LoadingState v-if="loading" />
 
       <!-- No results -->
       <div v-else-if="filtered.length === 0" class="text-center py-16 text-[var(--c-text-3)]">

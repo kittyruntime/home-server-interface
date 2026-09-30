@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LOADING } from '../../lib/loading'
 import { ref, computed } from 'vue'
 import { useUploads, type Transfer, type TransferStatus } from '../../lib/uploads'
 import { resumeByReselect } from '../../lib/upload-runner'
@@ -200,7 +201,7 @@ function handleReselectPick(e: Event) {
 
             <!-- Verifying (server-side checksum before atomic rename) -->
             <div v-else-if="t.status === 'verifying'" class="mt-1">
-              <LoadingSpinner label="Verifying" />
+              <LoadingSpinner :label="LOADING.verifying" />
             </div>
 
             <!-- Indeterminate bar (copy/move in progress) -->

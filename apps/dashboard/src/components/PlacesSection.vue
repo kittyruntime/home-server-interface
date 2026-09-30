@@ -139,7 +139,7 @@ onMounted(async () => {
     </div>
 
     <!-- Loading -->
-    <LoadingState v-if="loading" compact />
+    <LoadingState v-if="loading" variant="compact" />
 
     <template v-else>
       <!-- Add form -->

@@ -41,7 +41,7 @@ onUnmounted(() => {
 
     <p v-if="error" class="status-text text-[var(--c-danger)] mb-4">[ERR] {{ error }}</p>
 
-    <LoadingState v-if="loading" compact />
+    <LoadingState v-if="loading" variant="compact" />
 
     <div v-else-if="connections.length === 0" class="panel-card bg-[var(--c-surface)] p-4"><EmptyState message="No active SMB connections." description="New SMB sessions will appear here automatically." /></div>
 

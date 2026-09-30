@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
 import { pvCreateNeeded, withOrphanPvs } from './lvm-wizard'
 import { ref, computed, watch } from 'vue'
 import { useStorageData, fmtBytes, usagePct, usageBarClass, lvToBlockDev, criticalMountPoints, claimableDevices, type BlockDev, type LvmVG, type LvmLV } from './store'
 import { useHostTools } from './tools'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
@@ -201,7 +202,8 @@ const openMenu = ref<string | null>(null)
           Create VG
         </button>
         <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
-          <svg :class="['w-4 h-4', loading && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <LoadingSpinner v-if="loading" class="text-base" />
+          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
         </button>
@@ -212,7 +214,7 @@ const openMenu = ref<string | null>(null)
 
     <ImportFound kind="lvm" :used-md-names="[]" @imported="refresh" />
 
-    <div v-if="loading && !lvmVGs.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6"><LoadingSpinner /> Loading…</div>
+    <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>

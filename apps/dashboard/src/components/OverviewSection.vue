@@ -186,7 +186,7 @@ function relTime(d: string | Date): string {
     <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Overview</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">Dashboard summary for this NAS.</p>
 
-    <LoadingState v-if="isLoadingAll" compact />
+    <LoadingState v-if="isLoadingAll" variant="compact" />
     <ErrorState v-else-if="error" :message="error" compact />
 
     <template v-else>

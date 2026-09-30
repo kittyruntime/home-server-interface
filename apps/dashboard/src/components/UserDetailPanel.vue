@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
@@ -300,7 +301,7 @@ async function deleteUser() {
     <div v-if="isAdmin" class="space-y-3">
       <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Identity</h4>
 
-      <div v-if="identityLoading" class="text-xs text-[var(--c-text-3)]">Loading…</div>
+      <LoadingState v-if="identityLoading" variant="inline" class="text-xs" />
       <p v-else-if="identityError" class="text-[var(--c-danger)] text-xs">{{ identityError }}</p>
 
       <div v-else-if="identity" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">

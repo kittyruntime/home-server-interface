@@ -6,7 +6,6 @@ import {
   LineElement, Tooltip, Filler,
 } from 'chart.js'
 import { trpc } from '../lib/trpc'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 
@@ -150,9 +149,7 @@ const chartOptions = {
       </button>
     </div>
 
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm">
-      <LoadingSpinner /> Loading…
-    </div>
+    <LoadingState v-if="loading" variant="block" />
     <div v-else-if="error" class="text-sm text-danger">{{ error }}</div>
 
     <div v-else-if="viewMode === 'live'">

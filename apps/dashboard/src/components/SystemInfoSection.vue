@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 type Sysinfo = {
   hostname: string; platform: string; arch: string; release: string
@@ -49,9 +49,7 @@ function fmtUptime(sec: number): string {
       history, see Monitoring.
     </p>
 
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm">
-      <LoadingSpinner /> Loading…
-    </div>
+    <LoadingState v-if="loading" variant="block" />
     <div v-else-if="error" class="text-sm text-danger">{{ error }}</div>
 
     <template v-else-if="sysinfo">
