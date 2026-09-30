@@ -176,7 +176,7 @@ function formatTime(at: string | Date): string {
       Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.
     </p>
 
-    <LoadingState v-if="loading" />
+    <LoadingState v-if="loading && !connectors.length && !rules.length" />
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
     <template v-else>

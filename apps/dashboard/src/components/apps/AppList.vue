@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
@@ -7,7 +8,6 @@ import ContainerLogsPanel from './ContainerLogsPanel.vue'
 import UnmanagedContainers from './UnmanagedContainers.vue'
 import Modal from '../ui/Modal.vue'
 import EmptyState from '../ui/EmptyState.vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { pollJobResult, JobError } from '../../lib/jobs'
 import { viewableJobId, viewLogsAction } from '../../lib/jobLogs'
 import { useNotifications } from '../../lib/notifications'
@@ -245,9 +245,7 @@ async function unpin(app: App) {
   <div v-else class="flex-1 overflow-y-auto flex flex-col min-w-0">
 
       <!-- Loading -->
-      <div v-if="loading" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
-        <LoadingSpinner />
-      </div>
+      <LoadingState v-if="loading && !apps.length" variant="block" />
 
       <!-- Empty state -->
       <div v-else-if="apps.length === 0" class="flex-1 flex items-center justify-center px-8">

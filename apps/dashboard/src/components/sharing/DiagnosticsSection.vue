@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { LOADING } from '../../lib/loading'
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 
@@ -40,7 +42,7 @@ function dirWritable(s: ShareDiag): boolean {
       <button class="btn btn-outline btn-sm shrink-0" :disabled="loading" @click="load">Refresh</button>
     </div>
 
-    <div v-if="loading" class="text-sm text-[var(--c-text-3)]">Analyzing…</div>
+    <LoadingState v-if="loading" variant="compact" :label="LOADING.analyzing" />
     <div v-else-if="error" class="text-sm text-[var(--c-danger)]">{{ error }}</div>
     <div v-else-if="shares.length === 0" class="text-sm text-[var(--c-text-3)]">No active shares.</div>
 

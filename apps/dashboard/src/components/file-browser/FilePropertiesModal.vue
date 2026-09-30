@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useAdvancedMode } from '../../lib/advanced-mode'
 import Modal from '../ui/Modal.vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
 type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -138,9 +138,7 @@ onMounted(async () => {
     </template>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
-      <LoadingSpinner />
-    </div>
+    <LoadingState v-if="loading" variant="compact" />
 
     <!-- Error -->
     <div v-else-if="error" class="p-6 text-sm text-[var(--c-danger)]">{{ error }}</div>

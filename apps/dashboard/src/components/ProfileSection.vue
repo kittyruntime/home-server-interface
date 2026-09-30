@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { useAdvancedMode } from '../lib/advanced-mode'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 import ToggleSwitch from './ui/ToggleSwitch.vue'
 
 type Me = {
@@ -125,9 +125,7 @@ onMounted(async () => {
   <div class="space-y-8">
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm py-4">
-      <LoadingSpinner />
-    </div>
+    <LoadingState v-if="loading" variant="block" />
 
     <template v-else-if="me">
 

@@ -206,7 +206,7 @@ async function install() {
 <template>
   <div class="panel-card p-5 space-y-5">
 
-    <LoadingState v-if="loading" compact />
+    <LoadingState v-if="loading" variant="compact" />
 
     <div v-else-if="loadError"><ErrorState :message="loadError" /><div class="flex justify-center"><button class="btn btn-outline btn-sm" @click="emit('close')">Back</button></div></div>
 

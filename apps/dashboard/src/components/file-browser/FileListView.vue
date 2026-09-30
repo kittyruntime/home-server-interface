@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
@@ -62,10 +63,7 @@ function fileExt(name: string): string {
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-2)]'">{{ t.name }}</span>
       <span v-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
       <span v-else-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)] shrink-0">Paused</span>
-      <svg v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
+      <LoadingSpinner v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="text-sm text-[var(--c-text-3)] shrink-0" />
     </div>
 
     <div v-if="creatingFolder" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
@@ -73,20 +71,14 @@ function fileExt(name: string): string {
         <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
       </svg>
       <span class="flex-1 text-sm italic text-[var(--c-text-3)] select-none">New Folder…</span>
-      <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
+      <LoadingSpinner class="text-sm text-[var(--c-text-3)] shrink-0" />
     </div>
     <div v-if="creatingFile" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
       <svg class="w-4 h-4 text-[var(--c-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
       <span class="flex-1 text-sm italic text-[var(--c-text-3)] select-none">New File…</span>
-      <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
+      <LoadingSpinner class="text-sm text-[var(--c-text-3)] shrink-0" />
     </div>
 
     <article
@@ -137,10 +129,7 @@ function fileExt(name: string): string {
           {{ formatSize(entry.size) }} · {{ formatDate(entry.mtime) }}
         </div>
       </div>
-      <svg v-if="pendingPaths?.includes(entry.path)" class="w-3.5 h-3.5 animate-spin shrink-0 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
+      <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm shrink-0 text-[var(--c-text-3)]" />
     </article>
   </div>
 
@@ -205,10 +194,7 @@ function fileExt(name: string): string {
             </span>
             <span v-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)] shrink-0">{{ t.error }}</span>
             <span v-else-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)] shrink-0">Paused</span>
-            <svg v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
+            <LoadingSpinner v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="text-sm text-[var(--c-text-3)] shrink-0" />
           </div>
         </td>
       </tr>
@@ -222,10 +208,7 @@ function fileExt(name: string): string {
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
             </svg>
             <span class="text-[var(--c-text-3)] text-sm italic select-none">New Folder…</span>
-            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
+            <LoadingSpinner class="text-sm text-[var(--c-text-3)] shrink-0" />
           </div>
         </td>
         <td /><td />
@@ -240,10 +223,7 @@ function fileExt(name: string): string {
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
             <span class="text-[var(--c-text-3)] text-sm italic select-none">New File…</span>
-            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
+            <LoadingSpinner class="text-sm text-[var(--c-text-3)] shrink-0" />
           </div>
         </td>
         <td /><td />
@@ -328,10 +308,7 @@ function fileExt(name: string): string {
         </td>
 
         <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] font-mono text-xs tabular-nums">
-          <svg v-if="pendingPaths?.includes(entry.path)" class="w-3.5 h-3.5 animate-spin ml-auto text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
+          <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm ml-auto text-[var(--c-text-3)]" />
           <template v-else>{{ formatSize(entry.size) }}</template>
         </td>
         <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] text-xs tabular-nums">{{ formatDate(entry.mtime) }}</td>

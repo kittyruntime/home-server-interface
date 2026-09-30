@@ -1,9 +1,11 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ label?: string }>(), { label: 'Loading' })
+// The one spinner of the dashboard. Glyph only by default; it takes the text
+// color and size (1em) of where it sits. A label turns it into a status line.
+withDefaults(defineProps<{ label?: string }>(), { label: '' })
 </script>
 
 <template>
-  <span class="status-text inline-flex items-center gap-1.5 uppercase text-[var(--c-text-3)]">
+  <span :class="['inline-flex items-center gap-1.5', label ? 'status-text uppercase' : '']">
     <!-- 3/4-turn arc; circumference of r=6.5 is ~40.84 so 30.6/10.2 leaves a rounded gap -->
     <svg class="spinner-arc w-[1em] h-[1em] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <circle

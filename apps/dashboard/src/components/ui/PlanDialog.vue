@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import BusyLabel from './BusyLabel.vue'
+import { LOADING } from '../../lib/loading'
+import LoadingState from './LoadingState.vue'
 import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
-import LoadingSpinner from './LoadingSpinner.vue'
 import { trpc } from '../../lib/trpc'
 import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
 
@@ -169,9 +171,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
     </template>
 
     <div class="px-5 py-4 space-y-4">
-      <div v-if="loading" class="flex items-center gap-2 text-sm text-[var(--c-text-3)]">
-        <LoadingSpinner label="" /> Preparing the plan…
-      </div>
+      <LoadingState v-if="loading" variant="inline" :label="LOADING.preparingPlan" />
 
       <p v-else-if="loadError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
 
@@ -254,8 +254,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
           :disabled="loading || applying || !preview"
           @click="apply"
         >
-          <LoadingSpinner v-if="applying" label="" class="h-3 w-3" />
-          {{ applying ? 'Applying…' : planRequest.actionLabel || 'Apply' }}
+          <BusyLabel :busy="applying" busy-label="Applying">{{ planRequest.actionLabel || 'Apply' }}</BusyLabel>
         </button>
       </template>
     </template>

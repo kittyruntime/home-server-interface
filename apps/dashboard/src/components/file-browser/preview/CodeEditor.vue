@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from '../../ui/LoadingState.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState, Compartment, EditorSelection } from '@codemirror/state'
@@ -138,9 +139,7 @@ onBeforeUnmount(() => view?.destroy())
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <div v-if="state === 'loading'" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
-      [LOADING]
-    </div>
+    <LoadingState v-if="state === 'loading'" class="flex-1" />
 
     <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
       <div class="text-center space-y-1">

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
 import { ref, computed, watch } from 'vue'
 import { useAuth } from '../../lib/auth'
@@ -8,7 +10,6 @@ import {
   diskRow, summarize, filterRows, sortRows, groupRows, isSelectable, ROLE_LABELS,
   type DiskRow, type DiskRole, type DiskHealth, type SortKey, type SortDir,
 } from './disk-list'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import DiskCard from './DiskCard.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -279,15 +280,14 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
       </div>
       <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
-        <svg :class="['w-4 h-4', loading && 'animate-spin']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <LoadingSpinner v-if="loading" class="text-base" />
+        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
       </button>
     </div>
 
-    <div v-if="loading && !devices.length" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm mt-6">
-      <LoadingSpinner /> Loading…
-    </div>
+    <LoadingState v-if="loading && !devices.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-if="!loading || devices.length">

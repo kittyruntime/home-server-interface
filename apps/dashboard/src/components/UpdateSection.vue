@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import ReleaseNotes from './ReleaseNotes.vue'
@@ -219,7 +220,7 @@ onUnmounted(() => clearInterval(timer))
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
               <!-- Active spinning -->
-              <LoadingSpinner v-else-if="stepState(step) === 'active'" label="" />
+              <LoadingSpinner v-else-if="stepState(step) === 'active'" />
               <!-- Pending dot -->
               <span v-else class="w-1.5 h-1.5 rounded-full bg-current" />
             </div>
@@ -241,11 +242,7 @@ onUnmounted(() => clearInterval(timer))
       </div>
     </div>
 
-    <!-- ── Loading skeleton ─────────────────────────────────────────────── -->
-    <div v-else-if="loading" class="space-y-3">
-      <div class="h-4 bg-[var(--c-hover)] rounded-sm animate-pulse w-40" />
-      <div class="h-4 bg-[var(--c-hover)] rounded-sm animate-pulse w-64" />
-    </div>
+    <LoadingState v-else-if="loading" variant="compact" />
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->
     <p v-else-if="error" class="text-sm text-[var(--c-accent)]">{{ error }}</p>
@@ -326,7 +323,7 @@ onUnmounted(() => clearInterval(timer))
           :disabled="applying || status.pending || (preflight ? !preflight.canApply : false)"
           class="btn btn-primary btn-sm shrink-0"
         >
-          <LoadingSpinner v-if="applying || status.pending" label="" />
+          <LoadingSpinner v-if="applying || status.pending" />
           {{ applying || status.pending ? 'Scheduling…' : 'Install update' }}
         </button>
       </div>
@@ -354,7 +351,7 @@ onUnmounted(() => clearInterval(timer))
           :disabled="checking || applying || !!status.pending"
           class="btn btn-outline btn-xs"
         >
-          <LoadingSpinner v-if="checking" label="" />
+          <LoadingSpinner v-if="checking" />
           <svg
             v-else class="w-3 h-3"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
@@ -375,7 +372,7 @@ onUnmounted(() => clearInterval(timer))
           :disabled="restarting || applying || !!status.pending"
           class="btn btn-outline btn-sm shrink-0"
         >
-          <LoadingSpinner v-if="restarting" label="" />
+          <LoadingSpinner v-if="restarting" />
           <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.93 4.93A10 10 0 102 12h3m-3 0V7m0 5h5"/>
           </svg>
@@ -393,7 +390,7 @@ onUnmounted(() => clearInterval(timer))
           :disabled="rebooting || restarting || applying || !!status.pending"
           class="btn btn-danger btn-sm shrink-0"
         >
-          <LoadingSpinner v-if="rebooting" label="" />
+          <LoadingSpinner v-if="rebooting" />
           <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v9m6.36-6.36a9 9 0 11-12.72 0"/>
           </svg>

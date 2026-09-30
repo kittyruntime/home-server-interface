@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { LOADING } from '../../lib/loading'
+import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
@@ -15,7 +17,6 @@ import PlacesSidebar from './PlacesSidebar.vue'
 import FileToolbar from './FileToolbar.vue'
 import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
@@ -605,9 +606,7 @@ onMounted(async () => {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm p-6">
-          <LoadingSpinner />
-        </div>
+        <LoadingState v-if="loading" variant="block" />
 
         <!-- Error -->
         <div v-else-if="error" class="flex items-center gap-2 text-[var(--c-accent)] text-sm p-6">
@@ -635,11 +634,7 @@ onMounted(async () => {
               <span v-else>{{ searchResults.length }} result{{ searchResults.length === 1 ? '' : 's' }} for "<span class="font-medium text-[var(--c-text-1)]">{{ searchQuery }}</span>"</span>
             </span>
           </div>
-          <div v-if="searchLoading" class="flex justify-center py-8">
-            <svg class="w-4 h-4 animate-spin text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-          </div>
+          <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
           <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-[var(--c-text-3)]">No results found.</div>
           <div v-else class="divide-y divide-[var(--c-border)] rounded-xl border border-[var(--c-border)] overflow-hidden">
             <button v-for="r in searchResults" :key="r.path"

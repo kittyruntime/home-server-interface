@@ -345,6 +345,15 @@ select:focus-visible,
   letter-spacing: 0.04em;
 }
 
+/* Loading indicators appear only after 200 ms: fast loads do not flash. */
+.loading-appear {
+  animation: loading-appear 1ms linear 200ms both;
+}
+@keyframes loading-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 } /* @layer components */
 
 @media (max-width: 639px) {

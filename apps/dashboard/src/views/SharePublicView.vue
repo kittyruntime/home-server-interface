@@ -81,7 +81,7 @@ onMounted(async () => {
     <div class="w-full max-w-lg panel-card p-6 bg-[var(--c-surface)]">
       <p v-if="loadError && !loading" class="text-sm text-[var(--c-accent)] mb-3">{{ loadError }}</p>
 
-      <LoadingState v-if="loading" compact />
+      <LoadingState v-if="loading" variant="compact" />
 
       <!-- Unavailable states -->
       <div v-else-if="info && info.state !== 'ok'" class="text-center py-8">

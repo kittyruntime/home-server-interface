@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, watch, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useNotifications } from '../lib/notifications'
 import Modal from './ui/Modal.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 
 const props = defineProps<{ path: string }>()
 const emit  = defineEmits<{ (e: 'close'): void }>()
@@ -93,9 +93,7 @@ async function save() {
     </template>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center gap-2 text-[var(--c-text-3)] text-sm p-6">
-      <LoadingSpinner />
-    </div>
+    <LoadingState v-if="loading" variant="compact" />
 
     <template v-else>
       <div class="p-5 space-y-5">

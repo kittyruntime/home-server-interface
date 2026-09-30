@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
@@ -6,7 +7,6 @@ import { useAuth } from '../lib/auth'
 import { useToast } from '../lib/toast'
 import UserDetailPanel from './UserDetailPanel.vue'
 import Pagination from './ui/Pagination.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
 import SortableHeader from './ui/SortableHeader.vue'
 import SearchInput from './ui/SearchInput.vue'
 import EmptyState from './ui/EmptyState.vue'
@@ -228,9 +228,7 @@ onMounted(load)
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="flex items-center text-[var(--c-text-3)] text-sm py-6">
-        <LoadingSpinner />
-      </div>
+      <LoadingState v-if="loading && !users.length" variant="block" />
 
       <!-- Error -->
       <div v-else-if="loadError" class="flex items-center gap-2 text-[var(--c-accent)] text-sm py-4">
