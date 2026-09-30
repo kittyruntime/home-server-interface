@@ -68,7 +68,7 @@ func runAsUser(ctx userCtx, fn func() error) error {
 			ch <- fmt.Errorf("setresgid: %w", err)
 			return
 		}
-		// 3. Effective uid — drop root (keep real uid = 0, saved uid = 0).
+		// 3. Effective uid: drop root (keep real uid = 0, saved uid = 0).
 		if err := syscall.Setresuid(0, int(ctx.uid), 0); err != nil {
 			ch <- fmt.Errorf("setresuid: %w", err)
 			return

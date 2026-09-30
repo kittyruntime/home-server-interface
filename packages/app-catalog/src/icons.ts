@@ -7,7 +7,7 @@
 // root `<svg>` is normalized to a 40x40 box with a viewBox.
 //
 // Kept as plain string constants (rather than `?raw`-imported from the sibling
-// `../icons/*.svg` files) so this module is a completely ordinary ES module —
+// `../icons/*.svg` files) so this module is a completely ordinary ES module:
 // no bundler-specific import suffix and no Node built-ins. The `../icons/*.svg`
 // files remain the canonical source; keep the strings below in sync with them.
 

@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
 
-# Minimal token scope — CI only needs to read the repo to check out and build.
+# Minimal token scope: CI only needs to read the repo to check out and build.
 permissions:
   contents: read
 

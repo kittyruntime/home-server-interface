@@ -3,7 +3,7 @@
   "name": "Vaultwarden",
   "category": "Productivity",
   "tagline": "Lightweight, self-hosted password manager (Bitwarden-compatible).",
-  "description": "Vaultwarden is an unofficial Bitwarden server implementation in Rust — your passwords stay on your NAS.",
+  "description": "Vaultwarden is an unofficial Bitwarden server implementation in Rust; your passwords stay on your NAS.",
   "website": "https://github.com/dani-garcia/vaultwarden",
   "image": "vaultwarden/server:1.32.1",
   "webUiPort": 80,

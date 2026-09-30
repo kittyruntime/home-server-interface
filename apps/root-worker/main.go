@@ -197,7 +197,7 @@ func ensureStream(js nats.JetStreamContext) error {
 func ensureConsumer(js nats.JetStreamContext) {
 	info, err := js.ConsumerInfo("TASKS", "root-worker")
 	if err != nil {
-		return // doesn't exist yet — PullSubscribe will create it
+		return // doesn't exist yet: PullSubscribe will create it
 	}
 	if info.Config.FilterSubject == "root.fs.*" {
 		log.Println("Migrating pull consumer filter from root.fs.* to root.>")
@@ -238,7 +238,7 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad X-Meta: " + err.Error()})
 		return
 	}
-	// uploadId becomes part of a filename — never let it carry path segments.
+	// uploadId becomes part of a filename: never let it carry path segments.
 	if meta.UploadID == "" || strings.ContainsAny(meta.UploadID, "/\\") || strings.Contains(meta.UploadID, "..") {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid uploadId"})
 		return
@@ -467,7 +467,7 @@ func handleReadChunk(nc *nats.Conn, msg *nats.Msg) {
 		replyChunkErr(nc, msg.Reply, fsErr)
 		return
 	}
-	// Raw bytes, not JSON-wrapped — same convention as handleRead. May be
+	// Raw bytes, not JSON-wrapped, same convention as handleRead. May be
 	// shorter than req.Length (EOF) or empty (offset at/past EOF); neither
 	// is an error, the caller's stat-derived end offset is authoritative.
 	_ = nc.Publish(msg.Reply, data)
@@ -596,7 +596,7 @@ type linuxUserInfo struct {
 }
 
 // handleLinuxUserInfo reports the real OS-level account state for a batch of HSI
-// usernames — read-only, no mutation. HSI's own database only ever records that it
+// usernames (read-only, no mutation). HSI's own database only ever records that it
 // *wants* a Linux/Samba account to exist for a user (see user.service.ts's
 // syncSystemPassword); this is the one place that reports what the OS actually
 // has, so the identity status view can show a mismatch instead of assuming sync
@@ -963,7 +963,7 @@ func toFsErr(err error) *fsError {
 func main() {
 	// Group-writable by default: files created 0664, dirs 0775, so content in a
 	// setgid share dir (group hsi-share) is writable by any write-user. Explicit
-	// perms elsewhere (0644 config files) are unaffected — a mask only clears bits.
+	// perms elsewhere (0644 config files) are unaffected: a mask only clears bits.
 	syscall.Umask(int(workerCreateMask))
 
 	// `hsi-worker maintenance`: scheduled disk checks, run by

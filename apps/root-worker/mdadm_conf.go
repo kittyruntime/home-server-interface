@@ -10,7 +10,7 @@ import (
 
 // cmdErrMessage turns a failed external command into a user-facing message:
 // the command's own output when it printed something, otherwise the error
-// itself (e.g. "executable file not found") — never an empty string.
+// itself (e.g. "executable file not found"), never an empty string.
 func cmdErrMessage(out []byte, err error) string {
 	if msg := strings.TrimSpace(string(out)); msg != "" {
 		return msg
