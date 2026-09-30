@@ -20,8 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Preview before share changes**: creating, editing, enabling, disabling and
   removing an SMB share show the `smb.conf` diff and the smbd reload first; the
   share is recorded only once that plan ran.
+- **Preview before user account changes**: creating a user shows the Linux and
+  Samba account commands (the password is never shown), and deleting one shows
+  the `smb.conf` and `hsi-share` group changes.
 
 ### Changed
+- **A user whose Linux account cannot be created is no longer created in HSI**
+  (it used to be created without the account backing its files and SMB access).
 - **After an App Store install**, HSI shows the new app in Apps with its logs
   instead of opening it in a new tab.
 
