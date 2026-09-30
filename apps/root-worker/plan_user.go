@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"os/user"
 	"strings"
 )
@@ -9,7 +10,16 @@ import (
 // ── Plan builders: user accounts (#36) ──────────────────────────────────────
 
 var (
-	hostUserExists   = func(name string) bool { _, err := user.Lookup(name); return err == nil }
+	// hostUserShell reports whether the account exists and its login shell
+	// ("" when it exists outside /etc/passwd, e.g. from a directory service).
+	hostUserShell = func(name string) (string, bool) {
+		b, _ := os.ReadFile("/etc/passwd")
+		if sh, ok := shellFromPasswd(string(b), name); ok {
+			return sh, true
+		}
+		_, err := user.Lookup(name)
+		return "", err == nil
+	}
 	hostGroupMembers = func(group string) []string {
 		b, _ := hostReadFile("/etc/group")
 		for _, line := range strings.Split(string(b), "\n") {
@@ -49,14 +59,24 @@ func planUserCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	if req.Password == "" || strings.ContainsAny(req.Password, "\n\r") {
 		return nil, &fsError{Code: "ERR", Message: "invalid password"}
 	}
-	exists := hostUserExists(req.Username)
+	shell, exists := hostUserShell(req.Username)
+	// HSI accounts have no login shell. Any other existing account (the
+	// server owner's, a system account) must not get its password replaced
+	// by whoever can create HSI users.
+	if exists && !noLoginShells[shell] {
+		return nil, &fsError{Code: "ERR", Message: "The Linux account " + req.Username + " already exists and is not managed by HSI; choose another username"}
+	}
 	smb := req.Samba && hostLookPath("smbpasswd")
 	var steps []planStep
 	if !exists {
 		steps = append(steps, cmdStep(req.Username, "Create the Linux account "+req.Username+" without a home directory or shell login",
 			[]string{"useradd", "-M", "-s", "/sbin/nologin", req.Username}))
 	}
-	steps = append(steps, stdinStep(req.Username, "Set the Linux password to the one you typed (not shown)",
+	pwSummary := "Set the Linux password to the one you typed (not shown)"
+	if exists {
+		pwSummary = "The Linux account " + req.Username + " already exists: replace its password with the one you typed (not shown)"
+	}
+	steps = append(steps, stdinStep(req.Username, pwSummary,
 		[]string{"chpasswd"}, req.Username+":"+req.Password+"\n"))
 	if smb {
 		steps = append(steps, stdinStep(req.Username, "Create the Samba account with the same password (not shown)",
@@ -85,6 +105,18 @@ func planGroupLeave(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 	}
 	return &opPlan{Op: "group.leave", Steps: steps, Observed: map[string]string{"members": sortedJoin(members)}}, nil
+}
+
+var noLoginShells = map[string]bool{"/sbin/nologin": true, "/usr/sbin/nologin": true, "/bin/false": true, "/usr/bin/false": true}
+
+func shellFromPasswd(passwd, name string) (string, bool) {
+	for _, line := range strings.Split(passwd, "\n") {
+		f := strings.Split(line, ":")
+		if len(f) == 7 && f[0] == name {
+			return f[6], true
+		}
+	}
+	return "", false
 }
 
 func boolStr(b bool) string {
