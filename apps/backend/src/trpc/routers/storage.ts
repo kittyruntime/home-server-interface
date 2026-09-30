@@ -3,9 +3,11 @@ import { TRPCError } from "@trpc/server"
 import { router, storageProcedure, protectedProcedure } from "../index"
 import type { Context } from "../context"
 import { normalizeDiskLabel } from "../../services/disk-labels"
+import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
+import { effectiveSmbName } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
-import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
+import { appSources, fetchVolumes, resumeVolume } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
 
 // Storage router: disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
@@ -145,6 +147,30 @@ export const storageRouter = router({
   }),
 
   volumes: router({
+    // The Volumes landing page (#40): every data filesystem with its stack,
+    // redundancy, space, issues and what uses it.
+    overview: storageProcedure.query(async ({ ctx }) => {
+      const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
+        requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
+        requestSync<VolumeInput["lvm"]>("root.sys.lvm.info", {}, 10_000).catch(() => ({ pvs: [], vgs: [], lvs: [] })),
+        fetchVolumes().catch(() => []),
+        ctx.prisma.volumeHold.findMany(),
+        ctx.prisma.place.findMany({ select: { id: true, name: true, path: true } }),
+        ctx.prisma.share.findMany({ where: { enabled: true }, include: { place: { select: { name: true } } } }),
+        appSources().catch(() => []),
+      ])
+      return buildVolumes({
+        devices: block.devices ?? [],
+        raids: block.raids ?? [],
+        lvm,
+        guard,
+        holds,
+        places,
+        shares: shares.map(s => ({ placeId: s.placeId, name: effectiveSmbName(s, s.place.name) })),
+        apps,
+      })
+    }),
+
     list: storageProcedure.query(async () => {
       const [volumes, holds] = await Promise.all([fetchVolumes().catch(() => []), prisma.volumeHold.findMany()])
       return volumes.map(v => {
