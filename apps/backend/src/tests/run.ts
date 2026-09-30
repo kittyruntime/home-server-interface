@@ -894,7 +894,7 @@ async function testAppPlanBuilders() {
   // save (update): masked diff against the current file.
   const upd = await ap.buildAppPlan("app.save", { name: "web", raw: "services:\n  web:\n    image: nginx:1.28\n    environment:\n      DB_PASSWORD: s3cret\n" }, deps)
   assert.equal(upd.steps[0]!.kind, "update")
-  assert.match(upd.steps[0]!.diff!, /\+    image: nginx:1\.28/)
+  assert.match(upd.steps[0]!.diff!, /\+ {4}image: nginx:1\.28/)
   assert.ok(!JSON.stringify(ap.publicSteps(upd)).includes("s3cret"))
   await assert.rejects(ap.buildAppPlan("app.save", { name: "web", raw: "not: [yaml" }, deps))
   await assert.rejects(ap.buildAppPlan("app.save", { name: "nope", raw: "services:\n  a:\n    image: x:1\n" }, deps), /not found/i)
