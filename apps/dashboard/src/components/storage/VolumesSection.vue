@@ -102,10 +102,7 @@ const diskCount = computed(() => new Set([
 const warnings = computed(() => (overview.value?.volumes ?? []).filter(v => health(v).level === 'warning' || health(v).level === 'danger').length)
 
 function openVolume(v: Volume) {
-  // Sub-project 3 gives volumes their own page; until then, the section
-  // that shows them.
-  if (v.state === 'missing' || v.mountPoint) emit('navigate', 'mounts')
-  else if (v.device) emit('navigate', { kind: 'disk', name: v.disks[0]?.name ?? v.device })
+  emit('navigate', { kind: 'volume', id: v.id })
 }
 
 function createVolume() {
