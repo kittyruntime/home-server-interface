@@ -2,6 +2,8 @@
 // role, owners and health, plus the summary counts, filters, sort and grouping
 // the list offers. No Vue or tRPC imports, so it can be unit tested with node.
 
+import { deviceRole } from './device-state.ts'
+
 export type DiskRole = 'system' | 'raid' | 'lvm' | 'mounted' | 'free' | 'unmounted'
 export type DiskHealth = 'passed' | 'warning' | 'failed' | 'unknown'
 export type DiskKind = 'NVMe' | 'SSD' | 'HDD' | 'USB' | ''
@@ -54,15 +56,6 @@ export const ROLE_LABELS: Record<DiskRole, string> = {
 const ROLE_ORDER: DiskRole[] = ['system', 'raid', 'lvm', 'mounted', 'unmounted', 'free']
 const HEALTH_ORDER: DiskHealth[] = ['failed', 'warning', 'unknown', 'passed']
 
-function memberKind(dev: ListDev): 'raid' | 'lvm' | null {
-  // Workers older than the usage field: fall back to the on-disk signature.
-  const usage = dev.usage
-    ?? (dev.fstype === 'linux_raid_member' ? 'raid-member' : dev.fstype === 'LVM2_member' ? 'lvm-pv' : undefined)
-  if (usage === 'raid-member') return 'raid'
-  if (usage === 'lvm-pv') return 'lvm'
-  return null
-}
-
 function walk(dev: ListDev, fn: (d: ListDev) => void) {
   fn(dev)
   dev.children?.forEach(c => walk(c, fn))
@@ -82,7 +75,7 @@ export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart, label = '
   const vgOwners   = new Set<string>()
   let raid = false, lvm = false, mounted = false
   walk(disk, d => {
-    const kind = memberKind(d)
+    const kind = deviceRole(d)?.kind ?? null
     if (kind === 'raid') { raid = true; if (d.owner) raidOwners.add(d.owner) }
     if (kind === 'lvm')  { lvm = true;  if (d.owner) vgOwners.add(d.owner) }
     if (d.mountpoint) mounted = true

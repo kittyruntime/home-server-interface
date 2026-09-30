@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { memberOwner } from './device-state'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -52,17 +53,6 @@ function diskLocked(disk: BlockDev): boolean {
   return isLockedByMembership(disk)
 }
 
-// The array (md0) that uses this device, when it is assembled.
-function raidMemberOf(dev: BlockDev): string | undefined {
-  const role = roleOf(dev)
-  return role?.kind === 'raid' ? role.owner ?? undefined : undefined
-}
-
-// The volume group that uses this device as a PV, when it is known.
-function pvVgOf(dev: BlockDev): string | undefined {
-  const role = roleOf(dev)
-  return role?.kind === 'lvm' ? role.owner ?? undefined : undefined
-}
 
 // LVs belonging to a VG, as display rows.
 function lvsOfVg(vgName: string) {
@@ -289,14 +279,14 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
               <span v-else-if="!roleOf(part)" class="text-2xs italic text-[var(--c-text-3)]/60">unformatted</span>
               <!-- Role: RAID member -->
-              <button v-if="raidMemberOf(part)" @click="emit('navigate', 'raid')"
+              <button v-if="memberOwner(part, 'raid')" @click="emit('navigate', 'raid')"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
-                RAID {{ raidMemberOf(part) }} →
+                RAID {{ memberOwner(part, 'raid') }} →
               </button>
               <!-- Role: LVM PV -->
-              <button v-if="pvVgOf(part)" @click="emit('navigate', 'lvm')"
+              <button v-if="memberOwner(part, 'lvm')" @click="emit('navigate', 'lvm')"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
-                LVM {{ pvVgOf(part) }} →
+                LVM {{ memberOwner(part, 'lvm') }} →
               </button>
               <!-- Role: member of an array/VG that is not active -->
               <span v-if="roleOf(part) && !roleOf(part)!.owner"
@@ -310,8 +300,8 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
             </div>
             <!-- Nested: LVs of the VG this partition is a PV of -->
-            <div v-if="pvVgOf(part) && lvsOfVg(pvVgOf(part)!).length" class="mt-1.5 space-y-1">
-              <div v-for="lv in lvsOfVg(pvVgOf(part)!)" :key="lv.path" class="flex items-center gap-2 text-2xs">
+            <div v-if="memberOwner(part, 'lvm') && lvsOfVg(memberOwner(part, 'lvm')!).length" class="mt-1.5 space-y-1">
+              <div v-for="lv in lvsOfVg(memberOwner(part, 'lvm')!)" :key="lv.path" class="flex items-center gap-2 text-2xs">
                 <span class="text-[var(--c-text-3)]/50">└─</span>
                 <span class="font-mono text-purple-400">{{ lv.vgName }}/{{ lv.name }}</span>
                 <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
