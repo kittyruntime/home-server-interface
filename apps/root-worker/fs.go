@@ -55,7 +55,7 @@ func resolveExisting(p string) (string, error) {
 
 // containedIn resolves p (following symlinks on its existing ancestors) and
 // verifies the result lies within root (also symlink-resolved). An empty
-// root disables the check — used for admin/root-level operations that are
+// root disables the check, used for admin/root-level operations that are
 // intentionally unrestricted to the whole filesystem.
 //
 // This closes the common case of a user planting a symlink inside their
@@ -601,7 +601,7 @@ func doFinalize(tempFile, destFile, expectedSha string) *fsError {
 
 	if expectedSha != "" && hex.EncodeToString(h.Sum(nil)) != strings.ToLower(expectedSha) {
 		os.Remove(tempFile)
-		return &fsError{Code: "ECHECKSUM", Message: "checksum mismatch — file corrupted in transfer"}
+		return &fsError{Code: "ECHECKSUM", Message: "checksum mismatch: file corrupted in transfer"}
 	}
 
 	if err := os.Rename(tempFile, destFile); err != nil {
@@ -947,7 +947,7 @@ func doZipToTemp(srcPath string) (string, int64, *fsError) {
 	tmpDir := os.TempDir()
 
 	// Pre-flight early-reject: the uncompressed total is a rough size estimate
-	// (not a strict upper bound — zip adds per-entry header overhead). The real
+	// (not a strict upper bound: zip adds per-entry header overhead). The real
 	// guarantee against filling the disk is the guardedWriter below, which
 	// re-checks actual free space as it writes.
 	var total int64
@@ -1049,7 +1049,7 @@ func isShareTempPath(p string) bool {
 		strings.HasSuffix(base, ".zip")
 }
 
-// sweepShareTemps removes orphaned share archives older than maxAge — the
+// sweepShareTemps removes orphaned share archives older than maxAge; the
 // safety net for any build whose caller timed out or disconnected before the
 // normal rm-temp cleanup ran. The disk guard prevents saturation regardless;
 // this just stops leaked archives lingering in the (private) temp dir.
@@ -1401,7 +1401,7 @@ func parseMdstat(content string) []raidArray {
 		state := fields[2]
 
 		// Some states carry an optional parenthetical annotation right after
-		// them, e.g. "active (read-only)" / "active (auto-read-only)" — skip
+		// them, e.g. "active (read-only)" / "active (auto-read-only)"; skip
 		// it before looking for the level token.
 		idx := 3
 		if idx < len(fields) && strings.HasPrefix(fields[idx], "(") && strings.HasSuffix(fields[idx], ")") {
@@ -1433,7 +1433,7 @@ func parseMdstat(content string) []raidArray {
 		for j := i + 1; j < len(lines) && j <= i+4; j++ {
 			next := lines[j]
 			if strings.HasPrefix(next, "md") && strings.Contains(next, " : ") {
-				break // reached the next array's own header — stop, don't inherit its data
+				break // reached the next array's own header: stop, don't inherit its data
 			}
 			if active == 0 && total == 0 {
 				if start := strings.Index(next, "["); start >= 0 {

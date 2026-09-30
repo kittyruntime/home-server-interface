@@ -1,6 +1,6 @@
 package main
 
-// disk.go — storage management: block devices, format, mount/umount, RAID, LVM, partitions
+// disk.go: storage management: block devices, format, mount/umount, RAID, LVM, partitions
 
 import (
 	"encoding/json"
@@ -445,21 +445,21 @@ func memberReason(nodes []blkNode) string {
 // mounted, no filesystem, and (for a disk) no partitions that would be lost.
 func claimBlockReason(nodes []blkNode) string {
 	if len(nodes) == 0 {
-		return "could not inspect the device — refusing to proceed"
+		return "could not inspect the device, refusing to proceed"
 	}
 	if r := memberReason(nodes); r != "" {
 		return r
 	}
 	for _, n := range nodes {
 		if n.MountPoint != "" {
-			return "device " + n.Name + " is mounted on " + n.MountPoint + " — unmount it first"
+			return "device " + n.Name + " is mounted on " + n.MountPoint + "; unmount it first"
 		}
 		if n.FsType != "" {
-			return "device " + n.Name + " contains a " + n.FsType + " filesystem — format or wipe it first"
+			return "device " + n.Name + " contains a " + n.FsType + " filesystem; format or wipe it first"
 		}
 	}
 	if len(nodes) > 1 {
-		return "device " + nodes[0].Name + " has partitions — use a partition, or wipe the partition table first"
+		return "device " + nodes[0].Name + " has partitions; use a partition, or wipe the partition table first"
 	}
 	return ""
 }
@@ -473,18 +473,18 @@ func lsblkTree(device string) ([]blkNode, error) {
 }
 
 // isRaidOrLvmMember reports whether device (bare name, e.g. "sdb1") or any of
-// its child partitions is currently a RAID member or LVM physical volume —
+// its child partitions is currently a RAID member or LVM physical volume:
 // even if the array isn't assembled, the VG isn't visible to `pvs` (e.g. an
 // LVM devices-file exclusion), or the member is a partition of the disk
 // being checked rather than the disk itself. Used to block destructive
 // operations (format, partition create/delete/init, mount) that would silently
 // corrupt the array/VG. Fails closed: if lsblk itself can't be queried, the
-// device is treated as a member (block, don't guess) — an unverifiable claim on
+// device is treated as a member (block, don't guess): an unverifiable claim on
 // a path this destructive is treated as "assume dangerous".
 func isRaidOrLvmMember(device string) (bool, string) {
 	nodes, err := lsblkTree(device)
 	if err != nil || len(nodes) == 0 {
-		return true, "could not verify device usage — refusing to proceed"
+		return true, "could not verify device usage, refusing to proceed"
 	}
 	if r := memberReason(nodes); r != "" {
 		return true, r
@@ -520,7 +520,7 @@ func handleVgCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgC
 func handleLvCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planLvCreate) }
 
 // lvDmPath returns the /dev/mapper path the kernel actually reports in
-// /proc/mounts for an LV — mount(2) canonicalizes through devicemapper, so
+// /proc/mounts for an LV: mount(2) canonicalizes through devicemapper, so
 // /dev/<vg>/<lv> (what lvcreate/lvs report) never appears there; only
 // /dev/mapper/<vg>-<lv> does, with any literal "-" in the vg/lv name doubled.
 // Mirrors the frontend's lvToDmName (useStorageData.ts).
@@ -537,7 +537,7 @@ func handleVgRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgR
 
 var rePartNum = regexp.MustCompile(`^[1-9][0-9]?$`) // 1–99
 
-// handlePartitionInit creates a fresh GPT partition table — destroys all data.
+// handlePartitionInit creates a fresh GPT partition table; destroys all data.
 func handlePartitionInit(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartInit) }
 
 // handlePartitionCreate adds a new partition using percentage-based placement.

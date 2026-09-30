@@ -1,7 +1,7 @@
 // One-time, idempotent data migration for the Users+Groups permissions redesign.
 // This project uses `prisma db push` (no migration history); db push DROPS data on
 // destructive changes, so we morph the live DB (schema + data) to match the new
-// Prisma schema here FIRST — a subsequent `db push` is then a no-op.
+// Prisma schema here FIRST; a subsequent `db push` is then a no-op.
 // Run (prod):  pnpm --filter @app/database exec vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts
 // Test (copy): DATABASE_URL="file:/abs/copy.db" pnpm --filter @app/database exec vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts
 import { PrismaClient } from "@prisma/client"
@@ -33,7 +33,7 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "Role" RENAME TO "Group"`,
   `ALTER TABLE "UserRole" RENAME TO "UserGroup"`,
   `ALTER TABLE "UserGroup" RENAME COLUMN "roleId" TO "groupId"`,
-  // 5. Fold personal groups (name==username, single member) into direct UserPlacePermission — insert missing
+  // 5. Fold personal groups (name==username, single member) into direct UserPlacePermission: insert missing
   `INSERT INTO "UserPlacePermission" ("id","userId","placeId","canRead","canWrite","canDelete","canShare")
    SELECT lower(hex(randomblob(16))), u."id", gpp."placeId", gpp."canRead", gpp."canWrite", gpp."canDelete", gpp."canShare"
    FROM "GroupPlacePermission" gpp JOIN "Group" g ON g."id"=gpp."groupId" JOIN "User" u ON u."username"=g."name"

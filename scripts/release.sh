@@ -2,7 +2,7 @@
 # Usage: scripts/release.sh <version>
 # Example: scripts/release.sh 1.10.0
 #
-# Bumps package.json, updates CHANGELOG.md, commits, tags, and pushes —
+# Bumps package.json, updates CHANGELOG.md, commits, tags, and pushes:
 # which triggers the release workflow on GitHub Actions.
 set -euo pipefail
 
@@ -28,7 +28,7 @@ DATE=$(date +%Y-%m-%d)
 cd "$(git rev-parse --show-toplevel)"
 
 if [[ -n "$(git status --porcelain)" ]]; then
-  echo "Working tree is dirty — commit or stash changes first." >&2
+  echo "Working tree is dirty: commit or stash changes first." >&2
   exit 1
 fi
 
@@ -50,7 +50,7 @@ pnpm verify
 
 UNRELEASED=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | sed '/^[[:space:]]*$/d')
 if [[ -z "$UNRELEASED" ]]; then
-  echo "[Unreleased] section in CHANGELOG.md is empty — add your changes before releasing." >&2
+  echo "[Unreleased] section in CHANGELOG.md is empty: add your changes before releasing." >&2
   exit 1
 fi
 
@@ -122,5 +122,5 @@ git push origin main
 git push origin "$TAG"
 
 echo ""
-echo "✓ $TAG pushed — release workflow running at:"
+echo "✓ $TAG pushed, release workflow running at:"
 echo "  https://github.com/$REPO/actions"

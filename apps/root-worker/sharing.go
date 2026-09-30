@@ -18,7 +18,7 @@ import (
 )
 
 // SMB sharing handlers. The app owns /etc/nasui/samba/smb.conf and points
-// smbd at it through a systemd drop-in — the samba package's own
+// smbd at it through a systemd drop-in; the samba package's own
 // /etc/samba/smb.conf is never modified, so apt upgrades stay conflict-free
 // (no dpkg-divert, no conffile prompt).
 const (
@@ -34,7 +34,7 @@ const (
 	shareGroup = "hsi-share"
 )
 
-const dropInContent = `# Managed by nasui — points smbd at the app-owned config instead of the
+const dropInContent = `# Managed by nasui: points smbd at the app-owned config instead of the
 # samba package's /etc/samba/smb.conf (systemd drop-in, no dpkg-divert).
 [Service]
 ExecStart=
@@ -109,7 +109,7 @@ func handleSharingCheckPrereqs(nc *nats.Conn, msg *nats.Msg) {
 
 func renderSmbConf(shares []shareDef) (string, error) {
 	var b strings.Builder
-	b.WriteString("# Managed by nasui root-worker — do not edit; regenerated on every sync.\n")
+	b.WriteString("# Managed by nasui root-worker. Do not edit; regenerated on every sync.\n")
 	b.WriteString("[global]\n")
 	b.WriteString("   server role = standalone server\n")
 	b.WriteString("   server min protocol = SMB2\n")
@@ -139,7 +139,7 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		if s.Unavailable {
 			b.WriteString("   available = no\n")
 		}
-		// Writes are granted exclusively through "write list" — the share
+		// Writes are granted exclusively through "write list"; the share
 		// itself always stays "read only = yes".
 		b.WriteString("   read only = yes\n")
 		if s.GuestOk {
@@ -147,7 +147,7 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		} else if len(s.ValidUsers) > 0 {
 			b.WriteString("   valid users = " + strings.Join(s.ValidUsers, " ") + "\n")
 		} else if !s.Unavailable {
-			// An empty "valid users" list means "everyone" to Samba — a share
+			// An empty "valid users" list means "everyone" to Samba, so a share
 			// with no permitted users and no guest access must be disabled.
 			b.WriteString("   available = no\n")
 		}
@@ -220,7 +220,7 @@ func modeOctal(m os.FileMode) string {
 }
 
 // sambaAccountNames lists the Linux usernames that currently have a Samba
-// password set (pdbedit -L), i.e. an actual Samba account — as opposed to a user
+// password set (pdbedit -L), i.e. an actual Samba account, as opposed to a user
 // HSI merely intends to have one for. Best-effort: an unreadable/absent pdbedit
 // yields an empty set rather than an error, since callers treat "no Samba
 // account" and "couldn't tell" the same way (both mean "don't rely on it").
@@ -309,7 +309,7 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
 		LinuxUsername string `json:"linuxUsername"`
 		Password      string `json:"password"`
-		// SkipSamba: the HSI account has sambaEnabled=false — leave any existing
+		// SkipSamba: the HSI account has sambaEnabled=false: leave any existing
 		// Samba account untouched rather than resetting its password (see
 		// user.service.ts's sambaEnabled handling for why this doesn't remove one).
 		SkipSamba bool `json:"skipSamba"`
@@ -332,7 +332,7 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	// Linux system password. The account keeps its /sbin/nologin shell (see
-	// handleLinuxUserCreate), so this grants no shell/SSH access — it only
+	// handleLinuxUserCreate), so this grants no shell/SSH access; it only
 	// keeps web/Linux/Samba passwords consistent, NAS-style.
 	linuxOk := true
 	chp := command("chpasswd")

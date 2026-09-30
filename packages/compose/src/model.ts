@@ -37,7 +37,7 @@ export const zPortMapping = z.object({
   hostPort:      z.number().int().min(1).max(65535),
   containerPort: z.number().int().min(1).max(65535),
   protocol:      z.enum(["tcp", "udp"]).default("tcp"),
-  // Optional access binding — records that this port is reached at a real URL
+  // Optional access binding: records that this port is reached at a real URL
   // (behind the user's own reverse proxy / tunnel). HSI-side metadata only.
   domain:        z.string().min(1).max(253).optional(),
   tls:           z.boolean().default(false),

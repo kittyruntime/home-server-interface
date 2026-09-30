@@ -4,11 +4,11 @@
 # =============================================================================
 # Two modes:
 #
-#   Release (default) — downloads a pre-built tarball from GitHub:
+#   Release (default): downloads a pre-built tarball from GitHub:
 #     sudo bash install.sh
 #     curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash
 #
-#   Source — builds and installs from the local repository:
+#   Source: builds and installs from the local repository:
 #     sudo ./scripts/install.sh --from-source [BACKEND_USER]
 #
 # Re-run at any time to update; existing data and secrets are preserved.
@@ -132,7 +132,7 @@ cleanup_install_exit() {
       systemctl stop "${APP_NAME}-server" "${APP_NAME}-worker" "${APP_NAME}" "${APP_NAME}-root-worker" >/dev/null 2>&1 || true
     fi
     if [[ -n "$ROLLBACK_DIR" && -d "$ROLLBACK_DIR" ]]; then
-      warn "Install failed — restoring the previous application files."
+      warn "Install failed, restoring the previous application files."
       local rel target backup
       for rel in "${ROLLBACK_REL_PATHS[@]}"; do
         target="$INSTALL_DIR/$rel"
@@ -210,7 +210,7 @@ ensure_dependencies
 # present, migrate it in place. Forward-only and idempotent: every step checks
 # real on-disk state, so a crashed migration resumes on the next run. Legacy
 # unit FILES are only removed in cleanup_legacy_app_units, after the new hsi*
-# units are enabled — the box is never left without unit files.
+# units are enabled, so the box is never left without unit files.
 LEGACY_MIGRATED=0
 LEGACY_UNITS=(app.service app-nats.service app-root-worker.service
   app-update-check.service app-update-check.timer
@@ -391,7 +391,7 @@ if detect_legacy_app_install; then
 fi
 
 echo -e "${BOLD}"
-echo "  Install / Update — $(date '+%Y-%m-%d %H:%M')"
+echo "  Install / Update: $(date '+%Y-%m-%d %H:%M')"
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   echo "  Mode: build from source"
 else
@@ -400,7 +400,7 @@ fi
 echo -e "${NC}"
 
 # =============================================================================
-# SOURCE MODE — resolve paths, check tools, build everything
+# SOURCE MODE: resolve paths, check tools, build everything
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
 
@@ -439,7 +439,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   info "Backend port: $BACKEND_PORT"
 
 # =============================================================================
-# RELEASE MODE — resolve version, create system user, install node via nvm
+# RELEASE MODE: resolve version, create system user, install node via nvm
 # =============================================================================
 else
 
@@ -518,7 +518,7 @@ else
     "
     success "nvm installed"
   else
-    warn "nvm already installed — skipping"
+    warn "nvm already installed, skipping"
   fi
 
   app_exec "nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
@@ -561,7 +561,7 @@ else
 fi
 
 # =============================================================================
-# COMMON — detect fresh install vs update
+# COMMON: detect fresh install vs update
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   DB_DIR="$APP_DIR/packages/database/data"
@@ -579,7 +579,7 @@ fi
 # the schema so update-detection and the pre-push backup point at the REAL DB;
 # using "${APP_NAME}.db" blindly would miss it, mis-detect a fresh install, and
 # skip the data migrations below. Fall back only when no schema is on disk yet
-# (a true first install — nothing extracted).
+# (a true first install, nothing extracted).
 DB_URL_PATH=$(grep -rhoP 'url\s*=\s*"file:\K[^"]+' "$SCHEMA_DIR" 2>/dev/null | head -1)
 if [[ -n "$DB_URL_PATH" ]]; then
   DB_FILE="$DB_DIR/$(basename "$DB_URL_PATH")"
@@ -590,14 +590,14 @@ ENV_FILE="$APP_DIR/.env"
 
 if [[ -f "$DB_FILE" ]]; then
   IS_UPDATE=1
-  warn "Existing installation detected — performing update (data preserved)"
+  warn "Existing installation detected, performing update (data preserved)"
 else
   IS_UPDATE=0
   info "Fresh installation"
 fi
 
 # =============================================================================
-# COMMON — stop running services before updating
+# COMMON: stop running services before updating
 # =============================================================================
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   step "Stopping services before update"
@@ -607,7 +607,7 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
 fi
 
 # =============================================================================
-# SOURCE MODE — pnpm install, Go build, TypeScript build
+# SOURCE MODE: pnpm install, Go build, TypeScript build
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
 
@@ -633,7 +633,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   else
     SERVER_IP=$(hostname -I | awk '{print $1}')
     VITE_API_URL="http://${SERVER_IP}:${BACKEND_PORT}/trpc"
-    warn "nginx not found — dashboard will connect directly to :${BACKEND_PORT}"
+    warn "nginx not found, dashboard will connect directly to :${BACKEND_PORT}"
   fi
   printf 'VITE_API_URL=%s\n' "$VITE_API_URL" > "$APP_DIR/apps/dashboard/.env.production"
   run_as "$APP_USER" "cd '$APP_DIR/apps/dashboard' && pnpm build"
@@ -644,7 +644,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   DB_WORK_DIR="$APP_DIR/packages/database"
 
 # =============================================================================
-# RELEASE MODE — download tarball, extract, install binaries
+# RELEASE MODE: download tarball, extract, install binaries
 # =============================================================================
 else
 
@@ -656,7 +656,7 @@ else
   # the schema dir, so a stale model (e.g. role.prisma after the Roles→Groups
   # redesign) fails `prisma generate` with dangling type refs and aborts the
   # whole update. Wipe the release-owned code dirs first so the new set is
-  # clean — the live DB (database/data) and secrets (.env) live outside these
+  # clean: the live DB (database/data) and secrets (.env) live outside these
   # paths and are preserved.
   ROLLBACK_REL_PATHS=(
     server.js public bin node_modules runtime scripts
@@ -745,7 +745,7 @@ else
 fi
 
 # =============================================================================
-# COMMON — database setup
+# COMMON: database setup
 # =============================================================================
 step "Setting up database"
 mkdir -p "$DB_DIR"
@@ -768,11 +768,11 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   success "Database backed up → $BACKUP"
   ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
 
-  # ── Data migrations (idempotent) — MUST run BEFORE `db push` ────────────────
+  # ── Data migrations (idempotent): MUST run BEFORE `db push` ────────────────
   # `db push --accept-data-loss` DROPS any table/column the new schema removed.
   # A migration that folds data out of a soon-to-be-dropped table (e.g. old
   # Role/Permission grants → UserPlacePermission) must therefore run against the
-  # OLD shape, before the push — otherwise that data is gone. Each script self-
+  # OLD shape, before the push, otherwise that data is gone. Each script self-
   # guards and is idempotent, so running the whole directory on every update is
   # safe (already-applied migrations no-op). An absolute DATABASE_URL is passed
   # so the transform hits the live DB regardless of CWD (the schema's relative
@@ -795,7 +795,7 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
 
   # --accept-data-loss is required for column-type changes (e.g. Int -> BigInt);
   # Prisma flags those as lossy even when SQLite preserves the values. The DB was
-  # just backed up above, so this is safe — and without the flag such schema
+  # just backed up above, so this is safe, and without the flag such schema
   # changes silently fail on update, leaving the running DB stale.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
     run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
@@ -826,11 +826,11 @@ if [[ "${SKIP_SEED}" != "1" ]]; then
 fi
 
 # =============================================================================
-# COMMON — generate JWT secret and backend .env
+# COMMON: generate JWT secret and backend .env
 # =============================================================================
 step "Generating secrets"
 if [[ -f "$ENV_FILE" ]]; then
-  warn ".env already exists — keeping existing secrets"
+  warn ".env already exists, keeping existing secrets"
 else
   JWT_SECRET=$(openssl rand -hex 32)
   printf 'NODE_ENV=production\nJWT_SECRET=%s\n' "$JWT_SECRET" > "$ENV_FILE"
@@ -846,7 +846,7 @@ chown "$APP_USER:" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 
 # =============================================================================
-# COMMON — install NATS server binary
+# COMMON: install NATS server binary
 # =============================================================================
 step "Installing NATS server ($NATS_SERVER_VERSION)"
 
@@ -871,7 +871,7 @@ if ! id "nats" &>/dev/null; then
 fi
 
 # =============================================================================
-# COMMON — configure NATS (credentials, nats.conf, worker.env)
+# COMMON: configure NATS (credentials, nats.conf, worker.env)
 # =============================================================================
 step "Configuring NATS"
 
@@ -892,14 +892,14 @@ if [[ ! -f "$APP_CONF_DIR/.nats-credentials" ]]; then
   chmod 600 "$APP_CONF_DIR/.nats-credentials"
   success "Generated NATS credentials → $APP_CONF_DIR/.nats-credentials"
 else
-  warn "NATS credentials already exist — reusing"
+  warn "NATS credentials already exist, reusing"
 fi
 
 # shellcheck source=/dev/null
 source "$APP_CONF_DIR/.nats-credentials"
 
 cat > "$NATS_CONF" <<EOF
-# NATS configuration — generated by install.sh on $(date)
+# NATS configuration, generated by install.sh on $(date)
 max_payload: 67108864  # 64 MB
 
 jetstream {
@@ -957,7 +957,7 @@ EOF
 success "Backend NATS credentials → $ENV_FILE"
 
 # =============================================================================
-# COMMON — install systemd services
+# COMMON: install systemd services
 # =============================================================================
 step "Installing systemd services"
 
@@ -967,7 +967,7 @@ LOG_DIR="/var/log/${APP_NAME}"
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$LOG_DIR"
 
 # Keep those files from growing unbounded. copytruncate because systemd holds
-# the file open (StandardOutput=append:) — no service restart needed to rotate.
+# the file open (StandardOutput=append:); no service restart needed to rotate.
 cat > /etc/logrotate.d/${APP_NAME} <<ROTATE
 $LOG_DIR/*.log {
   weekly
@@ -1134,7 +1134,7 @@ fi
 success "All services started"
 
 # =============================================================================
-# RELEASE MODE — install update checker (systemd timer + path unit)
+# RELEASE MODE: install update checker (systemd timer + path unit)
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 0 ]]; then
   step "Installing update checker"
@@ -1230,7 +1230,7 @@ EOF
 fi
 
 # =============================================================================
-# SOURCE MODE — record version from package.json
+# SOURCE MODE: record version from package.json
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   PKG_VERSION=$(node -e "process.stdout.write(require('$APP_DIR/package.json').version)" 2>/dev/null || echo "0.0.0")
@@ -1242,7 +1242,7 @@ fi
 cleanup_legacy_app_units
 
 # =============================================================================
-# COMMON — nginx reverse proxy (optional)
+# COMMON: nginx reverse proxy (optional)
 # =============================================================================
 if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"

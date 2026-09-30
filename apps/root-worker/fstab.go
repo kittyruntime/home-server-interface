@@ -58,7 +58,7 @@ func upsertFstabEntry(conf, mountPoint, source, entry string) (string, error) {
 	for _, l := range lines {
 		if src, mp := fstabFields(l); mp == mountPoint {
 			if src != source {
-				return "", fmt.Errorf("%s already has an entry for %s (%s) that HSI did not write — edit it by hand or choose another mount point", fstabPath, mountPoint, src)
+				return "", fmt.Errorf("%s already has an entry for %s (%s) that HSI did not write; edit it by hand or choose another mount point", fstabPath, mountPoint, src)
 			}
 			continue // legacy HSI entry, replaced below
 		}
