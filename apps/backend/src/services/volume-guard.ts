@@ -88,7 +88,7 @@ export async function fetchVolumes(): Promise<WorkerVolume[]> {
   return res.volumes
 }
 
-async function appSources(): Promise<Array<{ name: string; sources: string[]; running: boolean }>> {
+export async function appSources(): Promise<Array<{ name: string; sources: string[]; running: boolean }>> {
   const stacks = await listStacks()
   return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.rawYaml), running: s.status === "running" }))
 }
