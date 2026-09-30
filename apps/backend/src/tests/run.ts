@@ -1128,4 +1128,11 @@ await testSharePlans()
   assert.deepEqual(dropUserFromDefs(defs, "alice")[0], { ...defs[0], validUsers: ["bob"], writeUsers: [] })
 }
 
+// The password of a planned user creation never reaches the audit log.
+{
+  const { redactForAudit } = await import("../trpc/index")
+  const logged = JSON.stringify(redactForAudit({ op: "user.create", input: { username: "alice", password: "pw123456" }, fingerprint: "f" }))
+  assert.ok(!logged.includes("pw123456") && logged.includes("alice"))
+}
+
 console.log("Backend security tests passed")

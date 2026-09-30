@@ -1,7 +1,15 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
-import { userSelect, createUser, changePassword, reLinuxUsername, getIdentityStatus } from "../../services/user.service"
+import { userSelect, createUser, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
+import { requestSync } from "../../nats"
+import { desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
+import { planAuditMeta } from "../../services/storage-plan"
+import {
+  USER_OPS, applyUserCreate, applyUserDelete, previewUserCreate, previewUserDelete,
+  type UserOp, type UserPlanDeps,
+} from "../../services/user-plan"
+import type { Context } from "../context"
 import { syncSharesBestEffort } from "../../services/sharing.service"
 import { signToken } from "../auth"
 
@@ -18,7 +26,87 @@ function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
   return r.success ? r.data : {}
 }
 
+const zCreateInput = z.object({
+  username: z.string().regex(
+    reLinuxUsername,
+    "Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.",
+  ),
+  password: z.string().min(6).max(128),
+  displayName: z.string().max(64).optional(),
+})
+const zDeleteInput = z.object({ userId: z.string() })
+
+function parsed<T extends z.ZodTypeAny>(schema: T, input: unknown): z.infer<T> {
+  const r = schema.safeParse(input)
+  if (!r.success) throw new TRPCError({ code: "BAD_REQUEST", message: r.error.issues[0]?.message ?? "Invalid input" })
+  return r.data
+}
+
+type Caller = { userId: string; isAdmin: boolean }
+
+// Today's checks for a planned user change, and what the plan needs.
+async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: unknown, timeout: number) {
+  const deps = (username: string, commit: () => Promise<unknown>): UserPlanDeps => ({
+    worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
+    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    shareDefs: () => desiredShareDefs(ctx.prisma, undefined, { withoutUser: username }),
+    serialize: withShareLock,
+    resync: () => syncSharesBestEffort(ctx.prisma),
+    commit,
+  })
+  if (op === "user.create") {
+    const input = parsed(zCreateInput, raw)
+    await assertCreatable(ctx.prisma, input.username)
+    let created: unknown = null
+    const d = deps(input.username, async () => { created = await createUserRecord(ctx.prisma, input) })
+    // New users have Samba enabled by default (sambaEnabled).
+    const planInput = { username: input.username, password: input.password, samba: true }
+    return {
+      username: input.username,
+      preview: () => previewUserCreate(planInput, d),
+      apply: async (fp: string) => ({ res: await applyUserCreate(planInput, fp, d), reply: { user: created } }),
+    }
+  }
+  const input = parsed(zDeleteInput, raw)
+  if (input.userId === caller.userId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "You cannot delete your own account" })
+  const target = await ctx.prisma.user.findUnique({ where: { id: input.userId }, select: { isAdmin: true, username: true } })
+  if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+  if (target.isAdmin && !caller.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
+  const d = deps(target.username, async () => {
+    await ctx.prisma.user.delete({ where: { id: input.userId } })
+    void syncPlaceAccess(ctx.prisma).catch(() => {})
+  })
+  return {
+    username: target.username,
+    preview: () => previewUserDelete(target.username, d),
+    apply: async (fp: string) => ({ res: await applyUserDelete(target.username, fp, d), reply: {} }),
+  }
+}
+
 export const userRouter = router({
+  // Operation plans (#36): preview the Linux/Samba account commands of a user
+  // creation or deletion, then apply exactly that plan.
+  plan: userManagerProcedure
+    .input(z.object({ op: z.enum(USER_OPS), input: z.unknown() }))
+    .mutation(async ({ ctx, input }) => {
+      const p = await prepareUserPlan(ctx, ctx.user, input.op, input.input, 60_000)
+      ctx.audit.target = p.username
+      return p.preview()
+    }),
+
+  apply: userManagerProcedure
+    .input(z.object({ op: z.enum(USER_OPS), input: z.unknown(), fingerprint: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const p = await prepareUserPlan(ctx, ctx.user, input.op, input.input, 180_000)
+      ctx.audit.target = p.username
+      const { res, reply } = await p.apply(input.fingerprint)
+      ctx.audit.meta = { plan: planAuditMeta(input.op, res.steps, res.results) }
+      ctx.audit.success = res.ok
+      return { ...res, reply }
+    }),
+
   list: protectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findMany({ select: userSelect, orderBy: { createdAt: "asc" } })
   }),
