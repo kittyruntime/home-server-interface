@@ -72,12 +72,12 @@ export function useNotifications() {
     )
     const failed = results.filter(r => r.status === 'rejected').length
     if (failed === 0) {
-      update(id, { type: 'success', title: `${title} — done`, progress: undefined })
+      update(id, { type: 'success', title: `${title}: done`, progress: undefined })
       setTimeout(() => dismiss(id), 3000)
     } else {
       const firstError = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')?.reason
       const detail = firstError instanceof Error ? firstError.message : firstError ? String(firstError) : undefined
-      update(id, { type: 'error', title: `${title} — ${failed} failed`, detail, progress: undefined, jobId: viewableJobId(firstError) })
+      update(id, { type: 'error', title: `${title}: ${failed} failed`, detail, progress: undefined, jobId: viewableJobId(firstError) })
       toast.error(`${title}: ${failed} of ${ops.length} failed${detail ? ` (${detail})` : ''}`, viewLogsAction(firstError))
     }
     return results

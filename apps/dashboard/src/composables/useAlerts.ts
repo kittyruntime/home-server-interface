@@ -9,7 +9,7 @@ let refCount = 0
 
 async function fetchAlerts() {
   try { alerts.value = await trpc.alert.list.query() as Alert[] }
-  catch { /* non-admin/non-storage-capability, or transient error — leave last-known state */ }
+  catch { /* non-admin/non-storage-capability, or transient error: leave last-known state */ }
 }
 
 /** Module-level singleton (same pattern as apps/dashboard/src/lib/uploads.ts's `tasks`):

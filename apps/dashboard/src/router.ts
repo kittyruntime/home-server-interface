@@ -28,7 +28,7 @@ const router = createRouter({
         if (!token) return '/login'
 
         const payload = parseJwt(token)
-        // Token predates the isAdmin field — force a fresh login
+        // Token predates the isAdmin field: force a fresh login
         if (typeof payload.isAdmin !== 'boolean') {
           clearAuth()
           return '/login'

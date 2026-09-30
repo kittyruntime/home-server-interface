@@ -176,7 +176,7 @@ export function useDashboardWidgets() {
 
   // Reads live state on every call (not captured in a closure at timer-creation time) so
   // toggling which slow widget is present while the timer is already running never leaves a
-  // stale gate — see commit 08d5cc8's follow-up fix for the bug this replaced.
+  // stale gate (see commit 08d5cc8's follow-up fix for the bug this replaced).
   function fetchSlow() {
     if (isAdmin.value && hasType('sysinfo')) fetchSysinfo()
     if (canStorage() && hasType('storage')) fetchDisks()

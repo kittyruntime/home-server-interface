@@ -38,7 +38,7 @@ async function copy() {
   try {
     await navigator.clipboard.writeText(url.value)
     copied.value = true; setTimeout(() => (copied.value = false), 1500)
-  } catch { /* clipboard unavailable (non-secure context) — the URL stays selectable in the field */ }
+  } catch { /* clipboard unavailable (non-secure context); the URL stays selectable in the field */ }
 }
 </script>
 

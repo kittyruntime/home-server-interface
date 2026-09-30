@@ -135,7 +135,7 @@ async function toggleAccountFlag(flag: 'isAdmin' | 'isUserManager') {
   }
 }
 
-// Named distinctly from useAuth()'s hasCapability (not imported in this file) —
+// Named distinctly from useAuth()'s hasCapability (not imported in this file):
 // that one checks the viewing session's own JWT claims; this one checks the
 // capabilities of the `user` prop being edited, read from userSelect's output.
 function userHasCapability(capability: 'storage'): boolean {

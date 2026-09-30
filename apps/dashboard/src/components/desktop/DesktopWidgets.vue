@@ -49,7 +49,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
           <div class="flex-shrink-0">
             <span
               class="text-4xl font-semibold tabular-nums leading-none text-[var(--c-text-display)]"
-            >{{ metrics?.cpu ?? '—' }}</span>
+            >{{ metrics?.cpu ?? '-' }}</span>
             <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
           </div>
           <div class="flex-1 min-w-0">
@@ -71,10 +71,10 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-baseline justify-between mb-3">
             <span class="text-2xl font-bold text-[var(--c-text-3)] tabular-nums leading-none">
-              {{ metrics ? fmtMem(metrics.memory.used) : '—' }}
+              {{ metrics ? fmtMem(metrics.memory.used) : '-' }}
             </span>
             <span class="text-xs text-[var(--c-text-3)]">
-              of {{ metrics ? fmtMem(metrics.memory.total) : '—' }}
+              of {{ metrics ? fmtMem(metrics.memory.total) : '-' }}
             </span>
           </div>
           <div class="space-y-1.5">
@@ -96,11 +96,11 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
             <div class="space-y-0.5">
               <div class="flex items-center gap-1.5">
                 <span class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-success)]">↓ rx</span>
-                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.rx) : '—' }}</span>
+                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="text-[10px] font-semibold text-[var(--c-accent)] uppercase tracking-widest">↑ tx</span>
-                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.tx) : '—' }}</span>
+                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
               </div>
             </div>
             <div class="flex-1 min-w-0 ml-4">
@@ -171,7 +171,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
       <!-- ---- System info ---- -->
       <template v-else-if="w.type === 'sysinfo'">
         <p class="eyebrow mb-3">System</p>
-        <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-[var(--c-text-3)]">—</div>
+        <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-[var(--c-text-3)]">-</div>
         <dl v-else class="flex-1 flex flex-col justify-center gap-2 text-sm">
           <div class="flex justify-between gap-3">
             <dt class="text-[var(--c-text-3)]">Host</dt>

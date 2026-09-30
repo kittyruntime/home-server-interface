@@ -95,7 +95,7 @@ export const criticalMountPoints: Record<string, boolean> = {
 }
 
 export function fmtBytes(n: number): string {
-  if (!n || n <= 0)   return '—'
+  if (!n || n <= 0)   return '-'
   if (n < 1024)       return `${n} B`
   if (n < 1024 ** 2)  return `${(n / 1024).toFixed(1)} KB`
   if (n < 1024 ** 3)  return `${(n / 1024 ** 2).toFixed(1)} MB`
@@ -138,11 +138,11 @@ export function raidLevelLabel(level: string): string {
 
 export function raidDescription(level: string): string {
   const m: Record<string, string> = {
-    raid0:  'Striping — no redundancy, max throughput',
-    raid1:  'Mirroring — 1 drive fault tolerance',
-    raid5:  'Parity striping — 1 drive fault tolerance',
-    raid6:  'Double parity — 2 drive fault tolerance',
-    raid10: 'Mirror + stripe — high performance & redundancy',
+    raid0:  'Striping: no redundancy, max throughput',
+    raid1:  'Mirroring: 1 drive fault tolerance',
+    raid5:  'Parity striping: 1 drive fault tolerance',
+    raid6:  'Double parity: 2 drive fault tolerance',
+    raid10: 'Mirror + stripe: high performance & redundancy',
     linear: 'Linear concatenation',
   }
   return m[level] ?? ''

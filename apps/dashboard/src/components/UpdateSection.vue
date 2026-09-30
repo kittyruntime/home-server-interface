@@ -318,7 +318,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
         <p class="text-xs text-[var(--c-text-3)]">
-          <template v-if="preflight && !preflight.canApply">A pre-flight check is failing — resolve it before installing.</template>
+          <template v-if="preflight && !preflight.canApply">A pre-flight check is failing: resolve it before installing.</template>
           <template v-else>The server will restart after installation (~30s downtime).</template>
         </p>
         <button
@@ -336,7 +336,7 @@ onUnmounted(() => clearInterval(timer))
         <div>
           <p class="text-xs text-[var(--c-text-3)]">
             <template v-if="status.checkedAt">Last checked {{ formatDate(status.checkedAt) }}</template>
-            <template v-else>Never checked — runs daily via systemd timer</template>
+            <template v-else>Never checked (runs daily via systemd timer)</template>
           </p>
           <a
             :href="`${status.repoUrl}/releases`"

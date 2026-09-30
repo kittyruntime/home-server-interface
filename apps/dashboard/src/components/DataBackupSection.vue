@@ -12,7 +12,7 @@ const plans=ref<Plan[]>([]), loading=ref(true), saving=ref(false), adding=ref(fa
 const form=ref(empty())
 let poll:number|undefined
 const hasRunning=computed(()=>plans.value.some(p=>['pending','running'].includes(p.lastStatus??'')))
-const fmt=(v:string|null)=>v?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—'
+const fmt=(v:string|null)=>v?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'-'
 async function load(){ plans.value=await trpc.backup.list.query() as Plan[] }
 const payload=()=>({...form.value,remoteHost:remote.value?form.value.remoteHost:null,remoteUser:remote.value?form.value.remoteUser:null,sshKeyPath:remote.value?form.value.sshKeyPath:null,excludes:excludeText.value.split('\n').map(x=>x.trim()).filter(Boolean)})
 function cancelEdit(){form.value=empty();excludeText.value='';remote.value=false;adding.value=false;editingId.value=null}

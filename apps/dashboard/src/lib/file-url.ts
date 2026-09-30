@@ -3,7 +3,7 @@ import { trpc } from './trpc'
 const BASE_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/trpc$/, '') : ''
 
 // Mints a short-lived, single-path-scoped file token (fs.createFileToken)
-// and builds the /files/download URL around it — never the long-lived
+// and builds the /files/download URL around it, never the long-lived
 // session JWT, which would otherwise sit in URLs, browser history, and
 // server access logs for as long as the session lives.
 async function fileUrl(path: string, inline: boolean): Promise<string> {

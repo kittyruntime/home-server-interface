@@ -10,14 +10,14 @@
   --font-mono: "Space Mono", "JetBrains Mono", "SF Mono", monospace;
 }
 
-/* Elevation — two subtle shadow levels paired with the existing border
+/* Elevation: two subtle shadow levels paired with the existing border
    (never shadow-only, to avoid glassmorphism). */
 :root {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Motion — short, functional; no bounces. Components override the default
+/* Motion: short, functional; no bounces. Components override the default
    duration by setting --ui-dur on the transitioned element. */
 :root {
   --dur-fast: 120ms;
@@ -33,7 +33,7 @@
   }
 }
 
-/* Accent — signal red by default. User-selectable overrides kept for
+/* Accent: signal red by default. User-selectable overrides kept for
    personalization; treat as the one "interrupt" color, not decoration. */
 :root {
   --c-accent:        #d71921;
@@ -55,7 +55,7 @@
 :root[data-accent="green"]  { --c-accent: #22c55e; }
 :root[data-accent="purple"] { --c-accent: #a855f7; }
 
-/* Light — "printed technical manual": off-white paper, black ink */
+/* Light: "printed technical manual": off-white paper, black ink */
 :root {
   --c-bg:            #f7f7f8;
   --c-sidebar:       #ffffff;
@@ -76,7 +76,7 @@
   --c-info: #007aff;
 }
 
-/* Dark — "instrument panel in a dark room": OLED black, glowing data */
+/* Dark: "instrument panel in a dark room": OLED black, glowing data */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --c-bg:            #0a0a0b;
@@ -136,7 +136,7 @@
   --color-accent:  var(--c-accent);
 }
 
-/* Radius scale — token-backed so Tailwind's rounded-* utilities and the
+/* Radius scale: token-backed so Tailwind's rounded-* utilities and the
    var(--radius-*) references in @layer components share one source.
    Element mapping: sm = inputs/badges/small buttons · md = buttons/controls
    · lg = cards/panels/rows · xl = modals/desktop windows. */
@@ -178,12 +178,12 @@ select:not(:disabled),
    Use these classes in components instead of repeating Tailwind strings.
    Wrapped in @layer components so Tailwind utility classes (e.g. pl-8 on an
    input that also has .ui-input) always win the cascade, regardless of
-   source order — otherwise a shorthand like `.ui-input { padding: ... }`
+   source order, otherwise a shorthand like `.ui-input { padding: ... }`
    silently overrides longhand utilities like `pl-8`/`pr-8`.
    ─────────────────────────────────────────────────────────────────────────── */
 @layer components {
 
-/* Buttons — Inter, sentence case, moderate radius (--radius-md); hover
+/* Buttons: Inter, sentence case, moderate radius (--radius-md); hover
    changes color/border/background rather than scale. */
 .btn {
   display: inline-flex;
@@ -270,7 +270,7 @@ select:focus-visible,
   outline-offset: 2px;
 }
 
-/* Badges / tags — soft tinted backgrounds, moderate radius */
+/* Badges / tags: soft tinted backgrounds, moderate radius */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -290,7 +290,7 @@ select:focus-visible,
 /* Dividers */
 .ui-divider { height: 1px; background-color: var(--c-border-strong); margin: 0.25rem 0.5rem; }
 
-/* Eyebrow / section titles — instrument-panel labels */
+/* Eyebrow / section titles: instrument-panel labels */
 .eyebrow {
   font-family: var(--font-body);
   font-size: 0.6875rem;
@@ -300,7 +300,7 @@ select:focus-visible,
   color: var(--c-text-3);
 }
 
-/* Panel cards — border + subtle resting shadow (--shadow-sm), elevated on hover (--shadow-md) */
+/* Panel cards: border + subtle resting shadow (--shadow-sm), elevated on hover (--shadow-md) */
 .panel-card {
   border-radius: var(--radius-lg);
   border: 1px solid var(--c-border);
@@ -312,7 +312,7 @@ select:focus-visible,
   box-shadow: var(--shadow-md);
 }
 
-/* Inline status text — replaces toast popups. Space Mono bracket tags. */
+/* Inline status text: replaces toast popups. Space Mono bracket tags. */
 .status-text {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -341,7 +341,7 @@ select:focus-visible,
 }
 .ui-fade-enter-from,
 .ui-fade-leave-to { opacity: 0; }
-/* View fade — route changes (App.vue) and classic-mode app switches
+/* View fade: route changes (App.vue) and classic-mode app switches
    (DashboardLayout) run at --dur-fast. Scoped via class instead of an
    inline --ui-dur, which would inherit to every descendant transition. */
 .route-fade.ui-fade-enter-active,

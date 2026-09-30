@@ -54,7 +54,7 @@ const volumeRows = ref<VolumeRow[]>([])
 const installing   = ref(false)
 const installError = ref('')
 
-/** Last path segment — used to derive default volume names/paths. */
+/** Last path segment, used to derive default volume names/paths. */
 function basename(path: string): string {
   const parts = path.split('/').filter(Boolean)
   return parts[parts.length - 1] ?? path
@@ -111,12 +111,12 @@ async function load() {
   try {
     places.value = await trpc.place.list.query() as Place[]
   } catch {
-    // Non-fatal — the "existing place" volume mode will just show no options.
+    // Non-fatal: the "existing place" volume mode will just show no options.
   }
 }
 onMounted(load)
 
-// Lowercase only — Compose v2 lowercases project names (must match the
+// Lowercase only: Compose v2 lowercases project names (must match the
 // backend's stack-name rules).
 const nameValid = computed(() => /^[a-z0-9][a-z0-9._-]{0,63}$/.test(name.value))
 
@@ -146,7 +146,7 @@ async function checkPorts() {
     try {
       const r = await trpc.container.app.checkPort.query({ port: p.host, protocol: p.protocol })
       if (r.inUse) next[`${p.container}-${p.protocol}`] = `Port ${p.host} is already used by ${r.by}.`
-    } catch { /* best-effort — ignore */ }
+    } catch { /* best-effort, ignore */ }
   }))
   portWarnings.value = next
 }
@@ -294,11 +294,11 @@ async function install() {
             @change="v.placeId = ($event.target as HTMLSelectElement).value"
             class="ui-input"
           >
-            <option value="">— select a place —</option>
+            <option value="">Select a place</option>
             <option v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }} ({{ pl.path }})</option>
           </select>
           <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-[var(--c-text-3)]">
-            No places yet — create one from the Places page, or pick another source.
+            No places yet. Create one from the Places page, or pick another source.
           </p>
 
           <div v-else-if="v.mode === 'newPlace'" class="grid grid-cols-1 sm:grid-cols-2 gap-2">

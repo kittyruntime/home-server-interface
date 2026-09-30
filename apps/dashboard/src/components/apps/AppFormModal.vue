@@ -345,7 +345,7 @@ async function applyNow() {
         </svg>
       </button>
       <h2 class="text-sm font-semibold text-[var(--c-text-1)] flex-1">
-        {{ editName ? `Edit — ${editName}` : 'New App' }}
+        {{ editName ? `Edit ${editName}` : 'New App' }}
       </h2>
       <button
         v-if="!editName && !multiSvc"

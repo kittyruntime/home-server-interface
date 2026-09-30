@@ -234,7 +234,7 @@ const newMenuOpen = ref(false)
         </button>
       </div>
 
-      <!-- Search — collapsed to an icon until opened, so it doesn't permanently
+      <!-- Search: collapsed to an icon until opened, so it doesn't permanently
            claim ~150px from the breadcrumb (tight in a narrow desktop-mode
            window, tighter still on a phone). -->
       <div v-if="currentPath" class="flex items-center ml-1 border-l border-[var(--c-border)] pl-2">

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /* Compact block-distribution diagram for a RAID level, used in the "choose a
-   level" step of the create wizard. Purely illustrative — not proportional
-   to a real stripe/parity layout — just enough to make striping vs mirroring
+   level" step of the create wizard. Purely illustrative, not proportional
+   to a real stripe/parity layout, just enough to make striping vs mirroring
    vs parity visually distinct at a glance. */
 const props = defineProps<{ level: number }>()
 
 type Block = { label: string; kind: 'a' | 'b' | 'parity' }
 
 const LAYOUTS: Record<number, Block[][]> = {
-  // Striping: each drive holds a different block — no duplication.
+  // Striping: each drive holds a different block, no duplication.
   0: [[{ label: 'A', kind: 'a' }], [{ label: 'B', kind: 'b' }], [{ label: 'C', kind: 'a' }]],
   // Mirroring: every drive holds an identical copy.
   1: [[{ label: 'A', kind: 'a' }], [{ label: 'A', kind: 'a' }]],

@@ -198,11 +198,11 @@ function relTime(d: string | Date): string {
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs text-[var(--c-text-3)]">Hostname</span>
-              <span class="text-sm font-medium text-[var(--c-text-1)] font-mono">{{ sysinfo?.hostname ?? '—' }}</span>
+              <span class="text-sm font-medium text-[var(--c-text-1)] font-mono">{{ sysinfo?.hostname ?? '-' }}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs text-[var(--c-text-3)]">Uptime</span>
-              <span class="text-sm text-[var(--c-text-2)] tabular-nums">{{ metrics ? fmtUptime(metrics.uptime) : '—' }}</span>
+              <span class="text-sm text-[var(--c-text-2)] tabular-nums">{{ metrics ? fmtUptime(metrics.uptime) : '-' }}</span>
             </div>
             <div v-if="metrics" class="space-y-1.5">
               <div class="flex justify-between text-xs">
@@ -300,7 +300,7 @@ function relTime(d: string | Date): string {
                 {{ actionLabel(entry.action) }}
               </span>
               <span class="text-xs text-[var(--c-text-2)] truncate">
-                {{ entry.user?.displayName || entry.user?.username || '—' }}
+                {{ entry.user?.displayName || entry.user?.username || '-' }}
               </span>
             </div>
           </div>

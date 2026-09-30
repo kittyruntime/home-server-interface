@@ -58,7 +58,7 @@ function placePath(id: string): string | null {
         @change="update({ source: ($event.target as HTMLSelectElement).value })"
         class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
       >
-        <option value="">— select place —</option>
+        <option value="">Select a place</option>
         <option v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
       </select>
 

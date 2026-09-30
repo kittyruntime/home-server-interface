@@ -2,7 +2,7 @@ import { trpc } from './trpc'
 
 // Backend mutations that dispatch work to the root-worker (fs ops, container
 // actions, ...) return a jobId the instant the job is *queued* on NATS, not
-// when it actually finishes — completion is recorded later, asynchronously,
+// when it actually finishes: completion is recorded later, asynchronously,
 // by a separate event subscriber. Callers that need the real-world effect
 // to be visible (e.g. before refreshing a file listing) must poll this
 // until the job leaves the pending/running state.

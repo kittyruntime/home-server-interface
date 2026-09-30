@@ -24,7 +24,7 @@ const filtered = computed(() => apps.value.filter(a =>
 const installedCount = computed(() => apps.value.filter(a => a.installed).length)
 
 /** Collapse the persisted container status into a card state. Freshly-installed
- *  apps sit in pending/unknown/created until the worker reports them running —
+ *  apps sit in pending/unknown/created until the worker reports them running:
  *  we surface that as "Installing…" so the ◐ → ● transition is visible. */
 type CardState = 'none' | 'installing' | 'running' | 'stopped' | 'error'
 function cardState(a: Entry): CardState {

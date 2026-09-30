@@ -3,7 +3,7 @@
 // Replaces the old inline chunk loop that used to live in FileBrowserPanel.vue:
 // each chunk now survives transient network blips (retry with backoff) and
 // fails fast on errors a retry can't fix (4xx). Uploads also resume correctly
-// after an error — the server tracks which chunks it already staged
+// after an error: the server tracks which chunks it already staged
 // (`GET /files/upload/status`), so retrying/resuming just skips them.
 //
 // Framework-light on purpose: no component imports, just the transfers store
@@ -83,7 +83,7 @@ interface UploadStatus {
   jobError?: string | null
 }
 
-/** GET /files/upload/status — raw server view of what's already staged for `uploadId`. */
+/** GET /files/upload/status: raw server view of what's already staged for `uploadId`. */
 async function fetchUploadStatus(uploadId: string): Promise<UploadStatus | null> {
   try {
     const resp = await fetch(`${BASE_URL}/files/upload/status?uploadId=${encodeURIComponent(uploadId)}`, {
@@ -98,7 +98,7 @@ async function fetchUploadStatus(uploadId: string): Promise<UploadStatus | null>
 
 /** Which chunk indices the server already staged (best-effort: empty on any failure). */
 async function fetchStagedChunks(uploadId: string): Promise<Set<number>> {
-  // Best-effort — if the status check itself fails, just re-send every chunk
+  // Best-effort: if the status check itself fails, just re-send every chunk
   // (the server treats an already-staged chunk as a harmless rewrite).
   const status = await fetchUploadStatus(uploadId)
   return status?.known ? new Set(status.staged) : new Set()
@@ -148,7 +148,7 @@ async function sendChunkWithRetry(
         body: body as BodyInit,
       })
     } catch (e) {
-      // Network error (offline, DNS, connection reset, ...) — retryable,
+      // Network error (offline, DNS, connection reset, ...): retryable,
       // unless it's actually our own abort.
       if (ac.signal.aborted) throw abortError()
       if (attempt === MAX_ATTEMPTS) throw e
@@ -160,7 +160,7 @@ async function sendChunkWithRetry(
 
     const bodyText = await resp.text()
     if (resp.status < 500) {
-      // Client error — won't be fixed by retrying (401 unauthenticated, 413
+      // Client error: won't be fixed by retrying (401 unauthenticated, 413
       // too large, 403 forbidden, ...). Fail fast with the server's message.
       throw new Error(bodyText || `Upload failed (HTTP ${resp.status})`)
     }
@@ -197,11 +197,11 @@ async function completeUpload(uploadId: string, sha256: string, ac: AbortControl
 
 // Map a failed finalize job to a user-facing message. The worker publishes the
 // fsError *message* (not its code), so a checksum mismatch surfaces as
-// "checksum mismatch — file corrupted in transfer" — a Retry re-hashes,
+// "checksum mismatch: file corrupted in transfer"; a Retry re-hashes,
 // re-sends the missing chunks and re-verifies, so it's worth surfacing plainly.
 function finalizeErrorMessage(error: string | null): string {
   if (error && /checksum/i.test(error)) {
-    return 'File corrupted during transfer — please retry'
+    return 'File corrupted during transfer, please retry'
   }
   return error || 'Failed to finalize the file on the server'
 }
@@ -215,7 +215,7 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
 
   try {
     // Recompute progress from scratch for this run (resume/retry reuses the same
-    // transfer, whose sentBytes still holds the prior run's total — additive
+    // transfer, whose sentBytes still holds the prior run's total, additive
     // updateProgress would otherwise overshoot >100%).
     uploads.resetProgress(t.id)
 
@@ -252,19 +252,19 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
 
     // Explicit, retryable completion: the server finalizes the staged chunks
     // and verifies this whole-file digest before accepting the file. A lost
-    // response no longer means a false success — completion is idempotent
+    // response no longer means a false success: completion is idempotent
     // while the upload state + staging survive (bounded by UPLOAD_TTL GC).
     const sha = hasher.digest('hex')
     const jobId = await completeUpload(uploadId, sha, ac)
 
-    // Server-side finalize hashes the whole file before the atomic rename —
+    // Server-side finalize hashes the whole file before the atomic rename,
     // surface that as a distinct "verifying" phase instead of a bar stuck
     // at 100%.
     uploads.setStatus(t.id, 'verifying')
 
     // Server-side finalize streams+hashes the whole file, so give the poll a
     // deadline that scales with size (assume a pessimistic ~10 MB/s floor)
-    // rather than the 30 s default — otherwise a large file times out into a
+    // rather than the 30 s default, otherwise a large file times out into a
     // false "failed" while finalize is still legitimately running.
     const finalizeDeadline = 60_000 + Math.ceil(file.size / (10 * 1024 * 1024)) * 1000
     const res = await pollJobResult(jobId, finalizeDeadline)
@@ -294,7 +294,7 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
       clearPersisted(t.id)
       setTimeout(() => uploads.remove(t.id), 2500)
     } else {
-      // Persistent failure — keep the persisted metadata around (not
+      // Persistent failure: keep the persisted metadata around (not
       // cleared) so resume/retry can pick the upload back up.
       const message = e instanceof Error ? e.message : String(e)
       uploads.setStatus(t.id, 'error', message)
@@ -331,7 +331,7 @@ export function startUpload(file: File, destDir: string, opts: UploadOpts = {}):
 }
 
 /**
- * Re-run an existing (errored) transfer with a file reference — used both by
+ * Re-run an existing (errored) transfer with a file reference, used both by
  * the retry handler below (same-session retry, `file` already on `t`) and by
  * the reload/re-select flow (Task 5: `interrupted` transfer, freshly
  * re-selected `file` from the user).
@@ -363,14 +363,14 @@ async function monitorHydratedFinalization(id: string, jobId: string, totalBytes
   }
   task.interrupted = true
   const message = res.status === 'timeout'
-    ? 'Verification is still in progress — re-select the file to continue'
-    : `${finalizeErrorMessage(res.error)} — re-select the file to retry`
+    ? 'Verification is still in progress: re-select the file to continue'
+    : `${finalizeErrorMessage(res.error)}: re-select the file to retry`
   uploads.setStatus(id, 'error', message)
 }
 
 /**
  * Re-hydrate transfers for uploads that were mid-flight when the page was
- * reloaded (`localStorage`-persisted metadata, no in-memory `Transfer` — the
+ * reloaded (`localStorage`-persisted metadata, no in-memory `Transfer`; the
  * `File` object itself never survives a reload, that's a hard browser
  * limitation, not a bug). For each persisted entry, ask the server what it
  * already has staged:
@@ -388,7 +388,7 @@ export async function hydrateInterruptedUploads(): Promise<void> {
     let uploadId = p.uploadId ?? p.id
     const status = await fetchUploadStatus(uploadId)
 
-    if (!status) continue // network hiccup — leave the bookmark, retry next reload
+    if (!status) continue // network hiccup: leave the bookmark, retry next reload
 
     if (!status.known) {
       clearPersisted(p.id)
@@ -435,10 +435,10 @@ export async function hydrateInterruptedUploads(): Promise<void> {
     }
 
     const error = phase === 'staged' || phase === 'finalizing'
-      ? 'Upload staged — re-select the file to verify and finish'
+      ? 'Upload staged: re-select the file to verify and finish'
       : phase === 'failed'
-        ? `${finalizeErrorMessage(status.jobError ?? null)} — re-select the file to retry`
-        : 'Interrupted — re-select the file to resume'
+        ? `${finalizeErrorMessage(status.jobError ?? null)}: re-select the file to retry`
+        : 'Interrupted: re-select the file to resume'
 
     uploads.register({
       id: p.id,
@@ -464,7 +464,7 @@ export async function hydrateInterruptedUploads(): Promise<void> {
  * re-selected a file. The browser gives us no way to reconnect to the
  * original `File` handle across a reload (no File System Access API in use
  * here), so this is the only possible resume path: validate the re-selected
- * file is (almost certainly) the same one — matching name + exact byte size —
+ * file is (almost certainly) the same one (matching name + exact byte size)
  * then attach it and let `runUpload`'s existing staged-chunk skip do the rest.
  *
  * A mismatch never attaches the file and never flips off `interrupted`: the
@@ -476,8 +476,8 @@ export function resumeByReselect(id: string, file: File): void {
   if (!t) return
 
   if (file.name !== t.name || file.size !== t.totalBytes) {
-    toast.error('Different file — please select the same file')
-    uploads.setStatus(id, 'error', 'Different file — please select the same file')
+    toast.error('Different file, please select the same file')
+    uploads.setStatus(id, 'error', 'Different file, please select the same file')
     return
   }
 
@@ -490,10 +490,10 @@ registerRetryHandler('upload', id => {
   if (t?.file) {
     resumeUpload(id, t.file)
   }
-  // else: the transfer lost its File reference (page reload) — it's marked
+  // else: the transfer lost its File reference (page reload): it's marked
   // `interrupted`, and the tray never routes this case through `uploads.retry()`
   // in the first place (see TransfersTray.vue: interrupted rows open a hidden
   // file input directly instead of calling retry). This branch is therefore a
-  // documented no-op/safety net — the real resume path is `resumeByReselect`
+  // documented no-op/safety net; the real resume path is `resumeByReselect`
   // above, invoked once the tray has a freshly re-selected `File`.
 })

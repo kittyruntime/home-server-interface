@@ -50,7 +50,7 @@ async function clearAll() {
   }
 }
 
-// Source filter — 'all' or a source prefix like 'storage.'. The list of known
+// Source filter: 'all' or a source prefix like 'storage.'. The list of known
 // prefixes is derived from the alerts themselves so future checkers (#12) show
 // up without touching this component.
 const sourceFilter = ref<string>('all')

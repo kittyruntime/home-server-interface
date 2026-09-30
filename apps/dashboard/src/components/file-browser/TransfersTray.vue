@@ -8,14 +8,14 @@ const uploads = useUploads()
 const collapsed = ref(false)
 
 // Hidden input used to re-select a file for an `interrupted` (post-reload)
-// transfer — the browser has no way to reconnect to the original File handle
+// transfer: the browser has no way to reconnect to the original File handle
 // across a reload, so resuming requires the user to pick the file again.
 const reselectInput = ref<HTMLInputElement | null>(null)
 const reselectTargetId = ref<string | null>(null)
 
-// Non-terminal — still doing (or about to do) something.
+// Non-terminal: still doing (or about to do) something.
 const ACTIVE: TransferStatus[] = ['uploading', 'verifying', 'running', 'paused', 'queued']
-// Done, one way or another — safe to dismiss.
+// Done, one way or another, safe to dismiss.
 const TERMINAL: TransferStatus[] = ['done', 'cancelled', 'error']
 // Pause/resume + cancel both make sense on these.
 const PAUSABLE: TransferStatus[] = ['uploading', 'running', 'paused']
@@ -23,7 +23,7 @@ const PAUSABLE: TransferStatus[] = ['uploading', 'running', 'paused']
 const activeCount = computed(() => uploads.tasks.value.filter(t => ACTIVE.includes(t.status)).length)
 const hasTerminal = computed(() => uploads.tasks.value.some(t => TERMINAL.includes(t.status)))
 
-// Newest first — a fresh array, never touches the reactive `tasks` in place.
+// Newest first: a fresh array, never touches the reactive `tasks` in place.
 const reversedTasks = computed(() => [...uploads.tasks.value].reverse())
 
 // Overall mini bar: byte-weighted average across active transfers that report
@@ -102,7 +102,7 @@ function clearFinished() {
 }
 
 // `interrupted` (post-reload, no in-memory File) needs a re-select before it
-// can resume at all — open the hidden picker instead of the in-session retry
+// can resume at all: open the hidden picker instead of the in-session retry
 // path. A normal `error` transfer still has its File, so the existing
 // `uploads.retry()` → registerRetryHandler('upload') path just re-sends it.
 function retryOrReselect(t: Transfer) {
@@ -115,7 +115,7 @@ function retryOrReselect(t: Transfer) {
 }
 
 // Validation (same name + exact byte size) and the mismatch toast both live
-// in `resumeByReselect` — the tray just wires the picked File through to it.
+// in `resumeByReselect`; the tray just wires the picked File through to it.
 function handleReselectPick(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -141,7 +141,7 @@ function handleReselectPick(e: Event) {
         <svg class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
         </svg>
-        Transfers — {{ activeCount }} active
+        Transfers · {{ activeCount }} active
       </button>
 
       <!-- Mini overall progress bar -->
@@ -253,7 +253,7 @@ function handleReselectPick(e: Event) {
       </div>
     </div>
 
-    <!-- Hidden re-select input for `interrupted` (post-reload) transfers —
+    <!-- Hidden re-select input for `interrupted` (post-reload) transfers:
          `retryOrReselect` opens this, `handleReselectPick` hands the file to
          `resumeByReselect`, which validates it's the same file before resuming. -->
     <input ref="reselectInput" type="file" class="hidden" @change="handleReselectPick" />

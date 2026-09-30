@@ -392,13 +392,13 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
                 <span v-else/>
                 <span class="font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
-                <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '—' }}</span>
+                <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
                 <span class="font-mono text-[10px] text-[var(--c-text-3)] min-w-0">
-                  <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '—' }}</span>
+                  <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '-' }}</span>
                   <span v-if="r.disk.wwn" class="block truncate opacity-70" :title="r.disk.wwn">{{ r.disk.wwn }}</span>
                 </span>
                 <span class="text-right tabular-nums text-[var(--c-text-2)]">{{ fmtBytes(r.disk.size) }}</span>
-                <span class="text-[var(--c-text-3)]">{{ r.kind || '—' }}</span>
+                <span class="text-[var(--c-text-3)]">{{ r.kind || '-' }}</span>
                 <span class="min-w-0">
                   <button v-if="r.role === 'raid' || r.role === 'lvm'" @click.stop="openRole(r)"
                     :class="['max-w-full truncate text-[10px] px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
@@ -407,7 +407,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <span class="flex items-center gap-1.5 text-[var(--c-text-2)]">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
                 </span>
-                <span class="text-right tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature ? `${r.temperature}°C` : '—' }}</span>
+                <span class="text-right tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature ? `${r.temperature}°C` : '-' }}</span>
                 <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                 </svg>
@@ -483,7 +483,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <ConfirmDestroyDialog
       v-if="partInitDlg"
       title="Create partition table"
-      subtitle="Writes a new GPT partition table — all existing data on the disk will be lost."
+      subtitle="Writes a new GPT partition table: all existing data on the disk will be lost."
       :confirm-word="partInitDlg.disk.name"
       action-label="Create partition table"
       busy-label="Creating…"

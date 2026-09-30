@@ -265,7 +265,7 @@ onUnmounted(() => {
 
         <div class="w-8 border-t border-[var(--c-border)] mb-3" />
 
-        <!-- App nav (drag an icon to reorder — persisted per browser) -->
+        <!-- App nav (drag an icon to reorder, persisted per browser) -->
         <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
           <div
             v-for="item in navItems"
@@ -419,7 +419,7 @@ onUnmounted(() => {
     <!-- Main area -->
     <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Forced password change: this account was created with its password still
-           at the value it was seeded with. Not dismissible — the server refuses
+           at the value it was seeded with. Not dismissible: the server refuses
            every other mutation until it's changed (see blockIfMustChangePassword
            in trpc/index.ts), so leaving this open to close would just be confusing. -->
       <div
@@ -436,7 +436,7 @@ onUnmounted(() => {
       </div>
       <DesktopShell v-if="desktopMode && !isMobile" />
       <template v-else>
-        <!-- Top bar (hidden for files — FileToolbar acts as the header) -->
+        <!-- Top bar (hidden for files: FileToolbar acts as the header) -->
         <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b border-[var(--c-border)] flex-shrink-0 bg-[var(--c-surface-alt)]">
           <span class="eyebrow">{{ activeAppLabel }}</span>
           <button
@@ -451,7 +451,7 @@ onUnmounted(() => {
           </button>
         </header>
 
-        <!-- Content — the keyed wrapper (not the panels: FileBrowserPanel is
+        <!-- Content: the keyed wrapper (not the panels: FileBrowserPanel is
              multi-root) cross-fades on app switch, like routes do. -->
         <div :class="['min-w-0 flex-1', activeApp !== 'dashboard' ? 'overflow-hidden' : 'overflow-auto']">
           <Transition name="ui-fade" mode="out-in">

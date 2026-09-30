@@ -191,7 +191,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       <div class="space-y-2 sm:hidden">
         <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
           <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-[var(--c-text-2)]" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-danger'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--c-text-3)]"><span>{{ fmtDate(entry.createdAt) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '—' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--c-text-3)]"><span>{{ fmtDate(entry.createdAt) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
           <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-[var(--c-border)] pt-3"><p class="break-all font-mono text-[10px] text-[var(--c-text-3)]">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--c-surface-deep)] p-2 text-[10px] text-[var(--c-text-2)]">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
@@ -221,7 +221,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-if="entry.user" class="text-[var(--c-text-1)] font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
                   </span>
-                  <span v-else class="text-[var(--c-text-3)] text-xs italic">—</span>
+                  <span v-else class="text-[var(--c-text-3)] text-xs italic">-</span>
                 </td>
                 <td class="px-4 py-2.5">
                   <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
@@ -232,10 +232,10 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-if="entry.target" class="font-mono text-xs text-[var(--c-text-2)] truncate block" :title="entry.target">
                     {{ entry.target }}
                   </span>
-                  <span v-else class="text-[var(--c-text-3)] text-xs">—</span>
+                  <span v-else class="text-[var(--c-text-3)] text-xs">-</span>
                 </td>
                 <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-3)] whitespace-nowrap">
-                  {{ entry.ip ?? '—' }}
+                  {{ entry.ip ?? '-' }}
                 </td>
                 <td class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"

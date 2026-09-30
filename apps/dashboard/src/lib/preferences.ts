@@ -20,7 +20,7 @@ function schedulePush() {
       theme:        theme.value,
       accent:       accent.value,
       sidebarOrder: [...orderedIds.value],
-    }).catch(() => { /* best-effort — localStorage remains the source of truth */ })
+    }).catch(() => { /* best-effort, localStorage remains the source of truth */ })
   }, 600)
 }
 
@@ -38,7 +38,7 @@ export async function syncPreferences() {
     if (p.accent) setAccent(p.accent as Accent)
     if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
   } catch {
-    // Not authenticated / offline — keep whatever localStorage already had.
+    // Not authenticated / offline: keep whatever localStorage already had.
   }
 
   // Register AFTER hydration so applying server values above doesn't echo back.
