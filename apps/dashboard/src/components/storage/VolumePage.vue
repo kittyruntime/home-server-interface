@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
@@ -7,6 +7,7 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { volumeTargets } from './object-targets'
 
 // The page of one volume (#40): where the data lives, what it is made of,
 // what uses it, and what was done to it.
@@ -62,12 +63,25 @@ const health = computed(() => {
 })
 const usedPct = computed(() => volume.value?.space ? Math.round((volume.value.space.used / volume.value.space.total) * 100) : 0)
 
-// Audit targets naming this volume.
-const targets = computed(() => {
-  const v = volume.value
-  if (!v) return []
-  return [v.device, v.device && `/dev/${v.device}`, v.mountPoint, v.id.startsWith('missing:') ? '' : v.id]
-    .filter((t): t is string => !!t)
+// Audit targets naming this volume. The last mount point seen is kept: an
+// unmount clears it from the volume but is logged under it.
+const lastMount = ref<string | undefined>()
+watch(() => volume.value?.mountPoint, mp => { if (mp) lastMount.value = mp }, { immediate: true })
+const targets = computed(() => volume.value ? volumeTargets(volume.value, lastMount.value) : [])
+
+// Keep the page current while it is open: the volume may be unmounted by the
+// missing-volume guard or its disk unplugged.
+function onFocus() { if (!document.hidden) void load() }
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  window.addEventListener('focus', onFocus)
+  document.addEventListener('visibilitychange', onFocus)
+  timer = setInterval(() => { if (!document.hidden) void load() }, 60_000)
+})
+onUnmounted(() => {
+  window.removeEventListener('focus', onFocus)
+  document.removeEventListener('visibilitychange', onFocus)
+  if (timer) clearInterval(timer)
 })
 
 function openLayer(kind: string, name: string) {
@@ -91,8 +105,10 @@ async function device(): Promise<BlockDev | undefined> {
 }
 const mountDlg  = ref<InstanceType<typeof DeviceMountDialog> | null>(null)
 const umountDlg = ref<InstanceType<typeof DeviceUnmountDialog> | null>(null)
-async function mount()   { const d = await device(); if (d) mountDlg.value?.open(d) }
-async function unmount() { const d = await device(); if (d) umountDlg.value?.open(d) }
+// The device may have gone since the page loaded: reload instead of doing
+// nothing.
+async function mount()   { const d = await device(); if (d) mountDlg.value?.open(d); else void load() }
+async function unmount() { const d = await device(); if (d) umountDlg.value?.open(d); else void load() }
 async function afterChange() { await refreshDevices(); await load() }
 </script>
 

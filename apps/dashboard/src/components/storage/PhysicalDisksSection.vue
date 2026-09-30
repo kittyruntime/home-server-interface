@@ -2,9 +2,8 @@
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
-import { createReveal } from '../../lib/storage-nav'
 import { trpc } from '../../lib/trpc'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
@@ -19,9 +18,6 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
-
-// A disk to show (#40 navigation): expanded and scrolled into view.
-const props = defineProps<{ revealRequest?: { name: string; nonce: number } }>()
 
 const emit = defineEmits<{
   open:     [disk: string]
@@ -148,25 +144,7 @@ function clearFilters() {
 
 const expanded = computed(() => new Set(prefs.value.expanded))
 
-// Show the disk a link pointed at, once, when it is listed. Later refreshes
-// of the list leave the user's view alone; an unknown name (a disk that is
-// gone) leaves the list as it is.
-const reveal = createReveal()
-watch(() => props.revealRequest?.nonce, () => {
-  if (props.revealRequest) reveal.request(props.revealRequest.name)
-}, { immediate: true })
-watch([() => props.revealRequest?.nonce, physicalDisks], async () => {
-  // A partition (an array member like sdb1) reveals its disk.
-  const asked = reveal.take(physicalDisks.value.flatMap(d => [d.name, ...(d.children ?? []).map(c => c.name)]))
-  const name = asked && physicalDisks.value.find(d => d.name === asked || d.children?.some(c => c.name === asked))?.name
-  if (!name) return
-  if (!visibleRows.value.some(r => r.disk.name === name)) clearFilters()
-  if (!prefs.value.expanded.includes(name)) prefs.value.expanded = [...prefs.value.expanded, name]
-  await nextTick()
-  for (const el of document.querySelectorAll<HTMLElement>(`[data-disk="${CSS.escape(name)}"]`)) {
-    if (el.offsetParent) el.scrollIntoView({ block: 'nearest' })
-  }
-}, { immediate: true })
+
 function toggleExpanded(name: string) {
   const e = prefs.value.expanded
   const i = e.indexOf(name)

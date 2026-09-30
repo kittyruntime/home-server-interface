@@ -46,3 +46,9 @@ export function activityEntries(rows: ActivityRow[]): ActivityEntry[] {
     }
   })
 }
+
+// Previews (storage.plan) are audited like any mutation, with the same target
+// as the apply that follows; they did not change anything.
+export function activityWhere(targets: string[]) {
+  return { target: { in: targets }, action: { notIn: ["storage.plan"] } }
+}

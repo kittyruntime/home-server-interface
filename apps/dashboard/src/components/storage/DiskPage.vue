@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
@@ -22,6 +22,20 @@ const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] 
 const { loading, error, devices, lvmLVs, refresh } = useStorageData()
 const tab = ref<ObjectTab>('overview')
 onMounted(() => { void refresh() })
+
+// Keep the page current while it is open (a disk can be unplugged).
+function onFocus() { if (!document.hidden) void refresh() }
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  window.addEventListener('focus', onFocus)
+  document.addEventListener('visibilitychange', onFocus)
+  timer = setInterval(() => { if (!document.hidden) void refresh() }, 60_000)
+})
+onUnmounted(() => {
+  window.removeEventListener('focus', onFocus)
+  document.removeEventListener('visibilitychange', onFocus)
+  if (timer) clearInterval(timer)
+})
 watch(() => props.name, () => { tab.value = 'overview' })
 
 // A link may name a partition (an array member like sdc1): show its disk.
@@ -116,6 +130,7 @@ function manageInDevices() { emit('navigate', 'disks') }
 
     <template v-if="disk" #overview>
       <div class="space-y-4">
+        <p v-if="error" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> Could not refresh this disk: {{ error }}. What is shown may be out of date.</p>
         <dl class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] divide-y divide-[var(--c-border)] text-sm">
           <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">Model</dt><dd class="text-[var(--c-text-1)]">{{ disk.model || '-' }}</dd></div>
           <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">Serial</dt><dd class="font-mono text-xs self-center text-[var(--c-text-1)]">{{ disk.serial || '-' }}</dd></div>
@@ -134,8 +149,8 @@ function manageInDevices() { emit('navigate', 'disks') }
             <ul v-if="criticalAttrs.length" class="space-y-1">
               <li v-for="a in criticalAttrs" :key="a.id" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ a.name }}: {{ a.raw }}</li>
             </ul>
-            <button class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]" :aria-expanded="smartOpen" @click="smartOpen = !smartOpen">
-              {{ smartOpen ? 'Hide SMART details' : 'Show SMART details' }}
+            <button class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]" @click="smartOpen = true; tab = 'structure'">
+              Show SMART details
             </button>
           </div>
         </div>

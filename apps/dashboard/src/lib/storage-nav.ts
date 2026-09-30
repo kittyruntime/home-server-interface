@@ -62,18 +62,3 @@ export function navCrumbs(nav: StorageNav, names: LocationNames = {}): { label: 
 export function navTo(nav: StorageNav, index: number): StorageNav {
   return index >= 0 && index < nav.stack.length - 1 ? make(nav.stack.slice(0, index + 1)) : nav
 }
-
-/** A disk to reveal once: requested by a navigation, taken the first time the
- *  disk is listed, so later refreshes of the list leave the user's view alone. */
-export function createReveal() {
-  let pending: string | null = null
-  return {
-    request(name: string) { pending = name },
-    take(listed: string[]): string | null {
-      if (!pending || !listed.includes(pending)) return null
-      const name = pending
-      pending = null
-      return name
-    },
-  }
-}

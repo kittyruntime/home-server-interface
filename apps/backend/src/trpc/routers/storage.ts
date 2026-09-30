@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, storageProcedure, protectedProcedure } from "../index"
 import type { Context } from "../context"
 import { normalizeDiskLabel } from "../../services/disk-labels"
-import { activityEntries } from "../../services/storage-activity"
+import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
 import { effectiveSmbName } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
@@ -135,7 +135,7 @@ export const storageRouter = router({
   activity: storageProcedure
     .input(z.object({ targets: z.array(z.string().min(1).max(512)).min(1).max(20) }))
     .query(async ({ input }) => activityEntries(await prisma.auditLog.findMany({
-      where: { target: { in: input.targets } },
+      where: activityWhere(input.targets),
       orderBy: { createdAt: "desc" },
       take: 20,
       include: { user: { select: { username: true } } },
