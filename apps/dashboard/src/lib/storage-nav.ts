@@ -4,6 +4,7 @@
 export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
+  | { kind: 'volume'; id: string }
   | { kind: 'disk'; name: string }
   | { kind: 'array'; name: string }
   | { kind: 'vg'; name: string }
@@ -15,14 +16,20 @@ export const SECTION_LABELS: Record<StorageSection, string> = {
 export function sectionOf(loc: StorageLocation): StorageSection {
   switch (loc.kind) {
     case 'section': return loc.section
+    case 'volume':  return 'volumes'
     case 'disk':    return 'disks'
     case 'array':   return 'raid'
     case 'vg':      return 'lvm'
   }
 }
 
-export function locationLabel(loc: StorageLocation): string {
-  return loc.kind === 'section' ? SECTION_LABELS[loc.section] : loc.name
+/** Resolved names of objects, keyed `kind:key` (a volume's name for its id). */
+export type LocationNames = Record<string, string>
+
+export function locationLabel(loc: StorageLocation, names: LocationNames = {}): string {
+  if (loc.kind === 'section') return SECTION_LABELS[loc.section]
+  const key = loc.kind === 'volume' ? loc.id : loc.name
+  return names[`${loc.kind}:${key}`] ?? key
 }
 
 export interface StorageNav { stack: StorageLocation[]; current: StorageLocation }
@@ -47,8 +54,8 @@ export function navBack(nav: StorageNav): StorageNav {
   return nav.stack.length > 1 ? make(nav.stack.slice(0, -1)) : nav
 }
 
-export function navCrumbs(nav: StorageNav): { label: string; index: number }[] {
-  return nav.stack.map((loc, index) => ({ label: locationLabel(loc), index }))
+export function navCrumbs(nav: StorageNav, names: LocationNames = {}): { label: string; index: number }[] {
+  return nav.stack.map((loc, index) => ({ label: locationLabel(loc, names), index }))
 }
 
 /** Back to crumb `index` (0 = the section). */
