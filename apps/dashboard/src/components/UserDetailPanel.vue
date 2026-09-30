@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
+import { applyPlanned } from '../lib/plan'
 import { useAuth } from '../lib/auth'
 
 type User = {
@@ -77,7 +78,6 @@ const capabilityBusy  = ref<Record<'storage', boolean>>({ storage: false })
 const capabilityError = ref('')
 
 const deleteBusy    = ref(false)
-const deleteConfirm = ref(false)
 const deleteError   = ref('')
 
 const isSelf = computed(() => props.user.id === currentUserId.value)
@@ -164,13 +164,14 @@ async function deleteUser() {
   deleteBusy.value = true
   deleteError.value = ''
   try {
-    await trpc.user.delete.mutate({ userId: props.user.id })
+    await applyPlanned('user.delete', { userId: props.user.id }, {
+      domain: 'users', title: `Delete ${props.user.username}`, actionLabel: 'Delete user', danger: true,
+    })
     emit('back')
   } catch (e: any) {
     deleteError.value = e?.message ?? 'Failed to delete user'
   } finally {
     deleteBusy.value = false
-    deleteConfirm.value = false
   }
 }
 </script>
@@ -366,29 +367,14 @@ async function deleteUser() {
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-medium text-[var(--c-text-1)]">Delete account</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Permanently remove this user and all associated data.</p>
+            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Remove this user from HSI. Their Linux and Samba accounts stay on the server.</p>
           </div>
 
-          <template v-if="!deleteConfirm">
-            <button
-              @click="deleteConfirm = true"
-              class="btn btn-sm shrink-0 text-[var(--c-danger)] border border-[var(--c-danger)]/30 hover:bg-[var(--c-danger-subtle)] transition-colors"
-            >Delete</button>
-          </template>
-          <template v-else>
-            <div class="flex items-center gap-2 shrink-0">
-              <span class="text-xs text-[var(--c-danger)]">Are you sure?</span>
-              <button
-                @click="deleteUser"
-                :disabled="deleteBusy"
-                class="px-2.5 py-1 text-xs rounded-lg bg-[var(--c-danger)] text-[var(--c-accent-fg)] hover:opacity-85 disabled:opacity-40 transition-colors"
-              >{{ deleteBusy ? '…' : 'Yes, delete' }}</button>
-              <button
-                @click="deleteConfirm = false"
-                class="px-2.5 py-1 text-xs rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors"
-              >Cancel</button>
-            </div>
-          </template>
+          <button
+            @click="deleteUser"
+            :disabled="deleteBusy"
+            class="btn btn-sm shrink-0 text-[var(--c-danger)] border border-[var(--c-danger)]/30 hover:bg-[var(--c-danger-subtle)] transition-colors"
+          >Delete</button>
         </div>
         <p v-if="deleteError" class="mt-2 text-[var(--c-danger)] text-xs">{{ deleteError }}</p>
       </div>
