@@ -1162,4 +1162,87 @@ await testSharePlans()
   assert.throws(() => normalizeDiskLabel("bay\n3"), /control characters/)
 }
 
+// Volumes (#40)
+{
+  const { buildVolumes } = await import("../services/volumes")
+  const dev = (o: any) => ({ fstype: "", mountpoint: "", uuid: "", size: 4e12, model: "", isSystem: false, usageTotal: 0, usageUsed: 0, usageFree: 0, children: [], ...o })
+  const lvNode = dev({ name: "data-data", type: "lvm", fstype: "ext4", uuid: "U-LV", mountpoint: "/srv/data", usageTotal: 4e12, usageUsed: 3.8e12, usageFree: 2e11 })
+  const md0 = dev({ name: "md0", type: "raid1", fstype: "LVM2_member", usage: "lvm-pv", owner: "data", children: [lvNode] })
+  const devices = [
+    dev({ name: "sda", type: "disk", isSystem: true, model: "SSD", children: [dev({ name: "sda1", type: "part", isSystem: true, fstype: "ext4", mountpoint: "/", uuid: "U-ROOT", usageTotal: 5e11, usageFree: 2e11 }), dev({ name: "sda2", type: "part", isSystem: true, fstype: "vfat", mountpoint: "/boot/efi", uuid: "U-EFI" })] }),
+    dev({ name: "sdb", type: "disk", model: "WDC", serial: "WD-1", children: [dev({ name: "sdb1", type: "part", fstype: "linux_raid_member", usage: "raid-member", owner: "md0", children: [md0] })] }),
+    dev({ name: "sdc", type: "disk", model: "WDC", serial: "WD-2", children: [dev({ name: "sdc1", type: "part", fstype: "linux_raid_member", usage: "raid-member", owner: "md0", children: [md0] })] }),
+    dev({ name: "sdd", type: "disk", model: "Toshiba", serial: "T-1", fstype: "xfs", uuid: "U-SCR", label: "scratch", mountpoint: "", usage: "filesystem" }),
+    dev({ name: "sde", type: "disk", model: "Seagate", serial: "S-1", usage: "free" }),
+  ]
+  const input = {
+    devices,
+    raids: [{ name: "md0", level: "raid1", state: "active", devices: ["sdb1", "sdc1"], active: 1, total: 2, resyncPercent: 42, syncAction: "recovery" }],
+    lvm: { pvs: [{ name: "/dev/md0", vgName: "data", size: 4e12, free: 0 }], vgs: [{ name: "data", size: 4e12, free: 0, pvCount: 1, lvCount: 1 }], lvs: [{ name: "data", vgName: "data", size: 4e12, path: "/dev/data/data" }] },
+    guard: [{ mountPoint: "/srv/media", uuid: "U-GONE", state: "missing" as const, strayFiles: false }],
+    holds: [],
+    places: [{ id: "p1", name: "Photos", path: "/srv/data/photos" }, { id: "p2", name: "Root", path: "/srv" }],
+    shares: [{ placeId: "p1", name: "photos" }],
+    apps: [{ name: "immich", sources: ["/srv/data/photos"] }],
+  }
+  const o = buildVolumes(input as any)
+
+  // The mirrored LVM volume: once, full stack, both disks, issues.
+  const data = o.volumes.find(v => v.id === "U-LV")!
+  assert.equal(data.name, "data", "LV name when there is no label")
+  assert.equal(data.state, "mounted")
+  assert.equal(data.redundancy, "raid1")
+  assert.equal(data.tolerates, 1)
+  assert.deepEqual(data.stack.map(s => s.kind), ["filesystem", "lv", "vg", "array", "partition", "partition", "disk", "disk"])
+  assert.deepEqual(data.disks.map(d => d.name), ["sdb", "sdc"])
+  assert.deepEqual(data.issues.map(i => i.kind).sort(), ["degraded", "nearly-full", "rebuilding"])
+  assert.deepEqual(data.usedBy, { places: [{ id: "p1", name: "Photos" }], shares: ["photos"], apps: ["immich"] })
+  assert.equal(o.volumes.filter(v => v.id === "U-LV").length, 1, "an array repeated under each member is one volume")
+
+  // Whole-disk filesystem, not mounted, named by its label.
+  const scr = o.volumes.find(v => v.id === "U-SCR")!
+  assert.equal(scr.name, "scratch")
+  assert.equal(scr.state, "not-mounted")
+  assert.equal(scr.redundancy, "none")
+  assert.equal(scr.space, undefined)
+
+  // Missing #3 volume, first in the list.
+  assert.equal(o.volumes[0]!.state, "missing")
+  assert.equal(o.volumes[0]!.mountPoint, "/srv/media")
+  assert.equal(o.volumes[0]!.name, "media")
+
+  // System disk excluded, summarised; free disks listed.
+  assert.ok(!o.volumes.some(v => v.mountPoint === "/" || v.mountPoint === "/boot/efi"))
+  assert.equal(o.system?.free, 2e11)
+  assert.deepEqual(o.freeDisks.map(d => d.name), ["sde"])
+
+  // A Place on /srv (no volume) attaches to nothing; nested places go to the most specific volume.
+  assert.ok(!o.volumes.some(v => v.usedBy.places.some(p => p.id === "p2")))
+}
+
+// A VG spanning a mirror and a plain partition has no redundancy.
+{
+  const { buildVolumes } = await import("../services/volumes")
+  const dev = (o: any) => ({ fstype: "", mountpoint: "", uuid: "", size: 1e12, model: "", isSystem: false, usageTotal: 0, usageUsed: 0, usageFree: 0, children: [], ...o })
+  const lv = dev({ name: "big-vol", type: "lvm", fstype: "ext4", uuid: "U-BIG", mountpoint: "/srv/big", usageTotal: 2e12, usageUsed: 1e12, usageFree: 1e12 })
+  const md1 = dev({ name: "md1", type: "raid1", fstype: "LVM2_member", usage: "lvm-pv", owner: "big", children: [lv] })
+  const o = buildVolumes({
+    devices: [
+      dev({ name: "sdb", type: "disk", children: [dev({ name: "sdb1", type: "part", fstype: "linux_raid_member", usage: "raid-member", owner: "md1", children: [md1] })] }),
+      dev({ name: "sdc", type: "disk", children: [dev({ name: "sdc1", type: "part", fstype: "linux_raid_member", usage: "raid-member", owner: "md1", children: [md1] })] }),
+      dev({ name: "sdd", type: "disk", children: [dev({ name: "sdd1", type: "part", fstype: "LVM2_member", usage: "lvm-pv", owner: "big", children: [lv] })] }),
+    ],
+    raids: [{ name: "md1", level: "raid1", state: "active", devices: ["sdb1", "sdc1"], active: 2, total: 2 }],
+    lvm: { pvs: [{ name: "/dev/md1", vgName: "big", size: 1e12, free: 0 }, { name: "/dev/sdd1", vgName: "big", size: 1e12, free: 0 }], vgs: [{ name: "big", size: 2e12, free: 0, pvCount: 2, lvCount: 1 }], lvs: [{ name: "vol", vgName: "big", size: 2e12, path: "/dev/big/vol" }] },
+    guard: [], holds: [], places: [], shares: [], apps: [],
+  } as any)
+  assert.equal(o.volumes.length, 1)
+  const v = o.volumes[0]!
+  assert.equal(v.name, "vol")
+  assert.equal(v.redundancy, "none", "a PV outside the mirror removes the redundancy")
+  assert.equal(v.tolerates, 0)
+  assert.deepEqual(v.disks.map(d => d.name), ["sdb", "sdc", "sdd"])
+  assert.deepEqual(v.issues, [])
+}
+
 console.log("Backend security tests passed")
