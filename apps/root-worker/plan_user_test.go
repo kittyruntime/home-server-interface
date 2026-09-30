@@ -132,3 +132,19 @@ func TestUserShellFromPasswd(t *testing.T) {
 		t.Fatal("bob does not exist")
 	}
 }
+
+func TestPasswordTargetMustBeHSIAccount(t *testing.T) {
+	stubUserHost(t, true, true, nil)
+	hostUserShell = func(string) (string, bool) { return "/bin/bash", true }
+	if err := checkPasswordTarget("theophile"); err == nil {
+		t.Fatal("a login account's password must never be set by HSI")
+	}
+	hostUserShell = func(string) (string, bool) { return "/usr/sbin/nologin", true }
+	if err := checkPasswordTarget("alice"); err != nil {
+		t.Fatal(err)
+	}
+	hostUserShell = func(string) (string, bool) { return "", false }
+	if err := checkPasswordTarget("bob"); err != nil {
+		t.Fatal("a missing account is created by HSI afterwards")
+	}
+}

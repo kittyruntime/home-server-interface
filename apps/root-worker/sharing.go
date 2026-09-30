@@ -326,6 +326,11 @@ func handleSharingSetPassword(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid password"})
 		return
 	}
+	// Also covers the login backfill and the direct user.create path.
+	if err := checkPasswordTarget(req.LinuxUsername); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
 	// Linux system password. The account keeps its /sbin/nologin shell (see
 	// handleLinuxUserCreate), so this grants no shell/SSH access — it only
 	// keeps web/Linux/Samba passwords consistent, NAS-style.
