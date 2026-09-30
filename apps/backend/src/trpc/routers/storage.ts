@@ -2,6 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, storageProcedure, protectedProcedure } from "../index"
 import type { Context } from "../context"
+import { normalizeDiskLabel } from "../../services/disk-labels"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
@@ -126,6 +127,23 @@ export const storageRouter = router({
     }),
 
   // Missing volume guard (#3): state of each HSI volume and its hold.
+  // Names given to physical disks, by serial (#32).
+  diskLabels: router({
+    list: storageProcedure.query(async () =>
+      (await prisma.diskLabel.findMany()).map(l => ({ serial: l.serial, label: l.label }))),
+    set: storageProcedure
+      .input(z.object({ serial: z.string().trim().min(1).max(128), label: z.string().max(200) }))
+      .mutation(async ({ input }) => {
+        const label = normalizeDiskLabel(input.label)
+        if (label === null) {
+          await prisma.diskLabel.deleteMany({ where: { serial: input.serial } })
+        } else {
+          await prisma.diskLabel.upsert({ where: { serial: input.serial }, create: { serial: input.serial, label }, update: { label } })
+        }
+        return { serial: input.serial, label }
+      }),
+  }),
+
   volumes: router({
     list: storageProcedure.query(async () => {
       const [volumes, holds] = await Promise.all([fetchVolumes().catch(() => []), prisma.volumeHold.findMany()])

@@ -1153,4 +1153,13 @@ await testSharePlans()
   assert.ok(!logged.includes("pw123456") && logged.includes("alice"))
 }
 
+// Disk labels (#32): trimmed, bounded, no control characters; empty removes.
+{
+  const { normalizeDiskLabel } = await import("../services/disk-labels")
+  assert.equal(normalizeDiskLabel("  bay 3, top "), "bay 3, top")
+  assert.equal(normalizeDiskLabel("   "), null)
+  assert.throws(() => normalizeDiskLabel("x".repeat(41)), /40 characters/)
+  assert.throws(() => normalizeDiskLabel("bay\n3"), /control characters/)
+}
+
 console.log("Backend security tests passed")
