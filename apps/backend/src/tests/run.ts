@@ -1289,7 +1289,7 @@ await testSharePlans()
     { id: "a2", action: "storage.mount", target: "sdb1", success: false, createdAt: at, user: null, meta: "{not json" },
   ]
   const out = activityEntries(rows as any)
-  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, at: at.toISOString(), user: "admin", steps: [{ summary: "Format", status: "done" }] })
+  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, at: at.toISOString(), user: "admin", op: "format", steps: [{ summary: "Format", status: "done" }] })
   assert.deepEqual(out[1], { id: "a2", action: "storage.mount", target: "sdb1", success: false, at: at.toISOString(), user: null })
 }
 
