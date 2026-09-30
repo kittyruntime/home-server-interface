@@ -192,7 +192,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <ol class="divide-y divide-[var(--c-border)] rounded-lg border border-[var(--c-border)]">
           <li v-for="(s, i) in steps" :key="i" class="px-4 py-3">
             <div class="flex items-start gap-3">
-              <span class="mt-0.5 w-5 shrink-0 text-right font-mono text-[11px] tabular-nums text-[var(--c-text-3)]">{{ i + 1 }}</span>
+              <span class="mt-0.5 w-5 shrink-0 text-right font-mono text-2xs tabular-nums text-[var(--c-text-3)]">{{ i + 1 }}</span>
               <div class="min-w-0 flex-1">
                 <p class="text-sm text-[var(--c-text-1)]" :class="s.destructive ? 'text-danger' : ''">{{ s.summary }}</p>
                 <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-[var(--c-text-2)]">
@@ -201,8 +201,8 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                   <template v-if="s.device.serial"> · <span class="font-mono">{{ s.device.serial }}</span></template>
                   <template v-if="s.device.size"> · {{ fmtSize(s.device.size) }}</template>
                 </p>
-                <p class="mt-0.5 text-[11px] text-[var(--c-text-3)]">
-                  <span class="uppercase tracking-wide">{{ kindLabel[s.kind] ?? s.kind }}</span>
+                <p class="mt-0.5 text-2xs text-[var(--c-text-3)]">
+                  <span class="uppercase tracking-caps">{{ kindLabel[s.kind] ?? s.kind }}</span>
                   <span class="font-mono"> · {{ s.target }}</span>
                   <span v-if="s.onFailure === 'warn'"> · a failure here is reported, not fatal</span>
                   <span v-if="s.background"> · runs in the background, follow it in notifications</span>
@@ -210,14 +210,14 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
 
                 <details v-if="s.command?.length" class="mt-2">
                   <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Command</summary>
-                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-[11px] text-[var(--c-text-1)]">{{ s.command.join(' ') }}</pre>
+                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-2xs text-[var(--c-text-1)]">{{ s.command.join(' ') }}</pre>
                 </details>
                 <details v-if="s.diff" class="mt-2" :open="s.kind === 'update' && !done">
                   <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">{{ s.kind === 'create' ? 'Content of' : 'Changes to' }} {{ s.target }}</summary>
-                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-[11px] leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
+                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-2xs leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
 </span></pre>
                 </details>
-                <p v-else-if="s.deferred" class="mt-1 text-[11px] text-[var(--c-text-3)]">The exact change is computed when the step runs and shown here afterwards.</p>
+                <p v-else-if="s.deferred" class="mt-1 text-2xs text-[var(--c-text-3)]">The exact change is computed when the step runs and shown here afterwards.</p>
 
                 <p v-if="resultOf(i)?.error" class="status-text mt-2" :class="resultOf(i)?.status === 'failed' ? 'text-danger' : 'text-warning'">
                   <span class="status-tag">{{ resultOf(i)?.status === 'failed' ? '[ERR]' : '[WARN]' }}</span> {{ resultOf(i)?.error }}

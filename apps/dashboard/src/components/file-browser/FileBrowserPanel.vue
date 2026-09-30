@@ -686,7 +686,7 @@ onMounted(async () => {
               @keydown.escape="closeFilter"
               class="flex-1 bg-transparent text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] outline-none"
             />
-            <span v-if="filterQuery" class="text-[10px] text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+            <span v-if="filterQuery" class="text-2xs text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
             <button @click="closeFilter" class="text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors p-0.5">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

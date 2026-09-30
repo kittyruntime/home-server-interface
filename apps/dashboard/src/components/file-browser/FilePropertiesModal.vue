@@ -132,7 +132,7 @@ onMounted(async () => {
         </svg>
         <div class="min-w-0">
           <div class="text-sm font-semibold text-[var(--c-text-1)] truncate">{{ displayName }}</div>
-          <div class="text-[11px] text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ targetPath }}</div>
+          <div class="text-2xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ targetPath }}</div>
         </div>
       </div>
     </template>
@@ -150,7 +150,7 @@ onMounted(async () => {
 
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Storage</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Storage</div>
         <div class="w-full h-2 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
           <div
             class="h-full rounded-full transition-all"
@@ -167,7 +167,7 @@ onMounted(async () => {
 
       <!-- General -->
       <div class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">General</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">General</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
             <dt class="text-[var(--c-text-3)] shrink-0">Kind</dt>
@@ -186,7 +186,7 @@ onMounted(async () => {
 
       <!-- Dates -->
       <div v-if="stat?.mtime" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Dates</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Dates</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
             <dt class="text-[var(--c-text-3)] shrink-0">Modified</dt>
@@ -202,7 +202,7 @@ onMounted(async () => {
       <!-- Permissions -->
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Permissions</div>
+          <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Permissions</div>
           <button
             v-if="isAdmin"
             @click="emit('close'); emit('openPermissions')"

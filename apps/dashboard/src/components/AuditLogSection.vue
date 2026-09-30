@@ -190,15 +190,15 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <template v-else>
       <div class="space-y-2 sm:hidden">
         <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
-          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-[var(--c-text-2)]" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-danger'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--c-text-3)]"><span>{{ fmtDate(entry.createdAt) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
-          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-[var(--c-border)] pt-3"><p class="break-all font-mono text-[10px] text-[var(--c-text-3)]">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--c-surface-deep)] p-2 text-[10px] text-[var(--c-text-2)]">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
+          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-[var(--c-text-2)]" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-danger'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-[var(--c-text-3)]"><span>{{ fmtDate(entry.createdAt) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-[var(--c-border)] pt-3"><p class="break-all font-mono text-2xs text-[var(--c-text-3)]">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--c-surface-deep)] p-2 text-2xs text-[var(--c-text-2)]">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
       <div class="hidden rounded-xl border border-[var(--c-border)] overflow-hidden sm:block">
         <table class="w-full text-sm border-collapse">
           <thead>
-            <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-wide">
+            <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-caps">
               <th class="text-left px-4 py-3 font-medium w-44">Time</th>
               <th class="text-left px-4 py-3 font-medium w-32">User</th>
               <th class="text-left px-4 py-3 font-medium">Action</th>
@@ -224,7 +224,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-else class="text-[var(--c-text-3)] text-xs italic">-</span>
                 </td>
                 <td class="px-4 py-2.5">
-                  <span :class="['inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
+                  <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
                     {{ actionLabel(entry.action) }}
                   </span>
                 </td>
@@ -239,11 +239,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 </td>
                 <td class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
+                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
                     <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-danger/10 text-danger">
+                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-danger/10 text-danger">
                     <span class="w-1.5 h-1.5 rounded-full bg-danger"/>Fail
                   </span>
                 </td>
@@ -252,7 +252,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
               <!-- Expanded detail row -->
               <tr v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
                 <td colspan="6" class="px-4 pb-4 pt-2 bg-[var(--c-surface-deep)]/50">
-                  <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">Detail</div>
+                  <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-2">Detail</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
                     <div><span class="text-[var(--c-text-3)]">ID </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.id }}</span></div>
                     <div><span class="text-[var(--c-text-3)]">Action </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.action }}</span></div>
@@ -263,8 +263,8 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                     <div v-if="entry.target"><span class="text-[var(--c-text-3)]">Target </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.target }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
-                    <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-1.5">Input</div>
-                    <pre class="text-[10px] font-mono bg-[var(--c-surface-deep)] border border-[var(--c-border)] rounded-lg px-3 py-2 overflow-x-auto text-[var(--c-text-2)] whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
+                    <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-1.5">Input</div>
+                    <pre class="text-2xs font-mono bg-[var(--c-surface-deep)] border border-[var(--c-border)] rounded-lg px-3 py-2 overflow-x-auto text-[var(--c-text-2)] whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
                   </template>
                 </td>
               </tr>

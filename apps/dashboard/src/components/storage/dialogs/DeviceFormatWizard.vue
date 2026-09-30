@@ -68,7 +68,7 @@ defineExpose({ open })
     <!-- Step indicator -->
     <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-[var(--c-border)]">
       <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
-        :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
+        :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
           wiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
           : wiz.step > i + 1  ? 'text-[var(--c-text-3)]'
           : 'text-[var(--c-text-3)]/50']"
@@ -124,7 +124,7 @@ defineExpose({ open })
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-sm"
+              <span class="text-2xs px-1.5 py-0.5 rounded-sm"
                 :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
               >{{ fs.tag }}</span>
             </div>

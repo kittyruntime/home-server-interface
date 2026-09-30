@@ -34,8 +34,8 @@ const command = computed(() => {
         Apps and the App Store run on Docker. Run this on the server, then check again:
       </p>
       <code class="mt-3 block rounded-lg bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-xs text-[var(--c-text-1)] select-all break-all">{{ command }}</code>
-      <p v-if="status?.detail" class="mt-2 text-[11px] text-[var(--c-text-3)] break-words">{{ status.detail }}</p>
-      <p class="mt-3 text-[11px] text-[var(--c-text-3)]">
+      <p v-if="status?.detail" class="mt-2 text-2xs text-[var(--c-text-3)] break-words">{{ status.detail }}</p>
+      <p class="mt-3 text-2xs text-[var(--c-text-3)]">
         Other install options:
         <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank" rel="noopener" class="underline decoration-dotted underline-offset-2 hover:text-[var(--c-text-1)]">Docker's instructions for Ubuntu</a>
       </p>

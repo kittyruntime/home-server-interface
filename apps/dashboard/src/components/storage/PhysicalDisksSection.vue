@@ -304,14 +304,14 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
               <button v-if="summary.roles[role]" @click="toggleRole(role)" :aria-pressed="prefs.role === role"
-                :class="['text-[11px] px-2 py-1 rounded-lg border transition-colors', ROLE_CLASS[role],
+                :class="['text-2xs px-2 py-1 rounded-lg border transition-colors', ROLE_CLASS[role],
                   prefs.role === role ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
                 {{ ROLE_LABELS[role] }} <span class="font-semibold tabular-nums">{{ summary.roles[role] }}</span>
               </button>
             </template>
             <template v-for="h in (['failed', 'warning'] as DiskHealth[])" :key="h">
               <button v-if="summary.health[h]" @click="toggleHealth(h)" :aria-pressed="prefs.health === h"
-                :class="['inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border transition-colors',
+                :class="['inline-flex items-center gap-1.5 text-2xs px-2 py-1 rounded-lg border transition-colors',
                   h === 'failed' ? 'bg-danger/10 text-danger border-danger/25' : 'bg-warning/10 text-warning border-warning/25',
                   prefs.health === h ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
                 <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[h]"/>
@@ -350,7 +350,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </div>
         </div>
 
-        <div v-if="filtered && visibleRows.length" class="mb-2 text-[11px] text-[var(--c-text-3)]">
+        <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-[var(--c-text-3)]">
           Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
           <button @click="clearFilters" class="text-[var(--c-accent)] hover:underline">Clear filters</button>
         </div>
@@ -370,7 +370,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
         <div v-else-if="view === 'table'" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
           <!-- Header (desktop) -->
-          <div class="hidden sm:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[11px] font-medium text-[var(--c-text-3)]">
+          <div class="hidden sm:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
             <span/>
             <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
               :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
@@ -381,7 +381,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </div>
 
           <template v-for="g in groups" :key="g.key">
-            <div v-if="g.label" class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] bg-[var(--c-surface-deep)]/60 border-b border-[var(--c-border)]">
+            <div v-if="g.label" class="px-3 py-1.5 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] bg-[var(--c-surface-deep)]/60 border-b border-[var(--c-border)]">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
@@ -393,7 +393,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <span v-else/>
                 <span class="font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
                 <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
-                <span class="font-mono text-[10px] text-[var(--c-text-3)] min-w-0">
+                <span class="font-mono text-2xs text-[var(--c-text-3)] min-w-0">
                   <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '-' }}</span>
                   <span v-if="r.disk.wwn" class="block truncate opacity-70" :title="r.disk.wwn">{{ r.disk.wwn }}</span>
                 </span>
@@ -401,8 +401,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <span class="text-[var(--c-text-3)]">{{ r.kind || '-' }}</span>
                 <span class="min-w-0">
                   <button v-if="r.role === 'raid' || r.role === 'lvm'" @click.stop="openRole(r)"
-                    :class="['max-w-full truncate text-[10px] px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
-                  <span v-else :class="['text-[10px] px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
+                    :class="['max-w-full truncate text-2xs px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
+                  <span v-else :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
                 </span>
                 <span class="flex items-center gap-1.5 text-[var(--c-text-2)]">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
@@ -419,18 +419,18 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span :class="['text-[10px] px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
-                    <span class="inline-flex items-center gap-1 text-[10px] text-[var(--c-text-2)]">
+                    <span :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
+                    <span class="inline-flex items-center gap-1 text-2xs text-[var(--c-text-2)]">
                       <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
                     </span>
-                    <span v-if="r.temperature" class="text-[10px] tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
+                    <span v-if="r.temperature" class="text-2xs tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
                   </div>
                   <div class="mt-1 text-xs">
                     <span class="font-mono font-semibold text-[var(--c-text-1)]">/dev/{{ r.disk.name }}</span>
                     <span class="text-[var(--c-text-3)] tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
                     <span v-if="r.kind" class="text-[var(--c-text-3)]"> · {{ r.kind }}</span>
                   </div>
-                  <div class="text-[10px] text-[var(--c-text-3)] truncate">
+                  <div class="text-2xs text-[var(--c-text-3)] truncate">
                     {{ r.disk.model }}<span v-if="r.disk.serial" class="font-mono"> · {{ r.disk.serial }}</span>
                   </div>
                 </div>
@@ -455,7 +455,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- ═══ Detailed view: the full tree of every disk ═══ -->
         <div v-else class="space-y-3">
           <template v-for="g in groups" :key="g.key">
-            <div v-if="g.label" class="pt-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">
+            <div v-if="g.label" class="pt-2 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" class="flex items-start gap-2">

@@ -58,7 +58,7 @@ async function resume(mp: string) {
           <span :class="['badge', STATE[v.state]?.cls ?? 'badge-muted']">{{ STATE[v.state]?.label ?? v.state }}</span>
           <span v-if="v.hold?.status === 'blocked'" class="badge bg-danger/10 text-danger">Blocked</span>
         </div>
-        <p v-if="v.guardError" class="mt-1 text-[11px] text-[var(--c-warning)]">Not protected against writes while unmounted: {{ v.guardError }}</p>
+        <p v-if="v.guardError" class="mt-1 text-2xs text-[var(--c-warning)]">Not protected against writes while unmounted: {{ v.guardError }}</p>
 
         <p v-if="v.hold?.status === 'blocked'" class="mt-2 text-xs text-[var(--c-text-2)]">
           Blocked since {{ since(v.hold.since) }}: apps using it are stopped, its shares are unavailable, backups and file writes are refused.

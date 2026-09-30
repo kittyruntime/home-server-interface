@@ -73,7 +73,7 @@ onMounted(load)
 
 <template>
   <section>
-    <h3 class="text-xs font-medium uppercase tracking-widest text-[var(--c-text-3)] mb-3 px-1">Permissions</h3>
+    <h3 class="text-xs font-medium uppercase tracking-caps text-[var(--c-text-3)] mb-3 px-1">Permissions</h3>
 
     <div v-if="places.length === 0" class="text-sm text-[var(--c-text-3)] px-1">No places yet. Add one in the Places tab, then grant users or groups access here.</div>
 
@@ -102,10 +102,10 @@ onMounted(load)
 
         <!-- Permission matrix -->
         <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
-          <p class="px-4 py-1.5 text-[11px] text-[var(--c-text-3)] leading-relaxed">Admins always have full access.</p>
+          <p class="px-4 py-1.5 text-2xs text-[var(--c-text-3)] leading-relaxed">Admins always have full access.</p>
           <table class="w-full text-xs">
             <thead>
-              <tr class="text-[var(--c-text-3)] uppercase tracking-wider border-b border-[var(--c-border)]">
+              <tr class="text-[var(--c-text-3)] uppercase tracking-caps border-b border-[var(--c-border)]">
                 <th class="px-4 py-2 text-left font-medium">Subject</th>
                 <th class="px-3 py-2 text-center font-medium w-16">Read</th>
                 <th class="px-3 py-2 text-center font-medium w-16">Write</th>
@@ -135,7 +135,7 @@ onMounted(load)
               <tr v-for="user in users" :key="'user-' + user.id">
                 <td class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
                     <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
                     <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
                   </div>

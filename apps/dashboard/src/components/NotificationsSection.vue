@@ -240,7 +240,7 @@ function formatTime(at: string | Date): string {
                 <div class="flex flex-wrap gap-1.5 mt-1.5">
                   <span
                     v-for="t in ruleTargets(r)" :key="t"
-                    class="inline-flex items-center text-[11px] font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-2)] border border-[var(--c-border)] rounded-sm px-1.5 py-0.5"
+                    class="inline-flex items-center text-2xs font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-2)] border border-[var(--c-border)] rounded-sm px-1.5 py-0.5"
                   >{{ t }}</span>
                 </div>
               </div>

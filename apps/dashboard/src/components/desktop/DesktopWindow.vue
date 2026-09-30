@@ -153,7 +153,7 @@ function onMaximizeClick() {
       <div v-if="win.appId === 'file-preview'" class="flex items-center gap-2 min-w-0">
         <span class="text-xs text-[var(--c-text-1)] truncate" :title="win.filePreview?.name">{{ win.filePreview?.name }}</span>
         <span v-if="filePreviewExt" class="badge badge-muted shrink-0">{{ filePreviewExt }}</span>
-        <span v-if="win.dirty" class="status-text text-[var(--c-warning)] shrink-0 text-[10px]">[UNSAVED]</span>
+        <span v-if="win.dirty" class="status-text text-[var(--c-warning)] shrink-0 text-2xs">[UNSAVED]</span>
       </div>
       <div v-else class="flex items-center gap-2 min-w-0">
         <AppIcon :app="win.appId" :stroke-width="2" class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" />

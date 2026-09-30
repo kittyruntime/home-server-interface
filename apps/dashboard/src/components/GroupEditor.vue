@@ -154,7 +154,7 @@ async function toggleMember(userId: string) {
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Members</h4>
+        <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Members</h4>
         <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 

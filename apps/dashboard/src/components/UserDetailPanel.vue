@@ -199,9 +199,9 @@ async function deleteUser() {
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-base font-semibold text-[var(--c-text-1)]">{{ user.username }}</span>
           <span v-if="isSelf"
-            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
           <span v-if="user.isAdmin"
-            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
           <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
         </div>
         <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] mt-0.5">{{ user.displayName }}</div>
@@ -210,7 +210,7 @@ async function deleteUser() {
 
     <!-- ── Profile fields ──────────────────────────────────────────────────── -->
     <div class="space-y-4">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Profile</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Profile</h4>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1.5">
@@ -246,7 +246,7 @@ async function deleteUser() {
 
     <!-- ── Account (admin only) ──────────────────────────────────────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Account</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Account</h4>
 
       <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
@@ -298,7 +298,7 @@ async function deleteUser() {
 
     <!-- ── Identity (Linux + Samba, as the OS actually sees it) ─────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Identity</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Identity</h4>
 
       <div v-if="identityLoading" class="text-xs text-[var(--c-text-3)]">Loading…</div>
       <p v-else-if="identityError" class="text-[var(--c-danger)] text-xs">{{ identityError }}</p>
@@ -319,7 +319,7 @@ async function deleteUser() {
           <div class="text-right shrink-0">
             <template v-if="identity.linuxExists">
               <div class="text-xs font-mono text-[var(--c-text-2)]">uid={{ identity.uid }} gid={{ identity.gid }}</div>
-              <div v-if="identity.groups?.length" class="text-[11px] text-[var(--c-text-3)] mt-0.5">{{ identity.groups.join(', ') }}</div>
+              <div v-if="identity.groups?.length" class="text-2xs text-[var(--c-text-3)] mt-0.5">{{ identity.groups.join(', ') }}</div>
             </template>
             <span v-else class="text-xs text-[var(--c-danger)]">Missing</span>
           </div>
@@ -350,7 +350,7 @@ async function deleteUser() {
 
     <!-- ── Groups (read-only) ───────────────────────────────────────────────── -->
     <div class="space-y-3">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Groups</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Groups</h4>
 
       <div class="flex flex-wrap gap-1.5">
         <span v-for="g in memberGroups" :key="g.id" class="badge badge-violet">{{ g.name }}</span>
@@ -361,7 +361,7 @@ async function deleteUser() {
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-danger)]/70">Danger zone</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-danger)]/70">Danger zone</h4>
 
       <div class="border border-[var(--c-danger)]/20 rounded-xl p-4 bg-[var(--c-danger)]/5">
         <div class="flex items-start justify-between gap-4">

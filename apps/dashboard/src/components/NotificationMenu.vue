@@ -59,7 +59,7 @@ function formatTime(createdAt: string): string {
       >
         <!-- Header -->
         <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--c-border)] shrink-0">
-          <span class="text-xs font-semibold text-[var(--c-text-2)] uppercase tracking-wider">Activity</span>
+          <span class="text-xs font-semibold text-[var(--c-text-2)] uppercase tracking-caps">Activity</span>
           <button @click="$emit('close')" aria-label="Close activity panel" class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -95,10 +95,10 @@ function formatTime(createdAt: string): string {
 
               <div class="flex-1 min-w-0">
                 <span class="block text-xs text-[var(--c-text-1)] leading-snug truncate">{{ op.title }}</span>
-                <p v-if="op.detail" class="text-[10px] mt-0.5 leading-snug break-words"
+                <p v-if="op.detail" class="text-2xs mt-0.5 leading-snug break-words"
                   :class="op.type === 'error' ? 'text-danger' : 'text-[var(--c-text-3)]'">{{ op.detail }}</p>
                 <button v-if="op.jobId" @click="viewLogs(op.jobId)"
-                  class="mt-0.5 text-[10px] text-[var(--c-accent)] hover:underline">View logs</button>
+                  class="mt-0.5 text-2xs text-[var(--c-accent)] hover:underline">View logs</button>
                 <SegmentedBar
                   v-if="op.type === 'progress'"
                   class="mt-1.5"
@@ -135,11 +135,11 @@ function formatTime(createdAt: string): string {
               <!-- Title + detail -->
               <div class="flex-1 min-w-0">
                 <span class="block text-xs text-[var(--c-text-1)] leading-snug truncate">{{ itemTitle(n) }}</span>
-                <p class="text-[10px] text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.message }}</p>
+                <p class="text-2xs text-[var(--c-text-3)] mt-0.5 leading-snug truncate">{{ n.message }}</p>
               </div>
 
               <!-- Time -->
-              <span class="shrink-0 text-[10px] text-[var(--c-text-3)] leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
+              <span class="shrink-0 text-2xs text-[var(--c-text-3)] leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
             </div>
           </div>
 
@@ -158,7 +158,7 @@ function formatTime(createdAt: string): string {
           <button
             @click="markAllRead()"
             :disabled="!hasUnread"
-            class="text-[10px] text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-wide disabled:opacity-50 disabled:hover:text-[var(--c-text-3)] disabled:cursor-default"
+            class="text-2xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-caps disabled:opacity-50 disabled:hover:text-[var(--c-text-3)] disabled:cursor-default"
           >
             Mark all read
           </button>

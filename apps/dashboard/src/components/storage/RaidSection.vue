@@ -336,7 +336,7 @@ const openMenu = ref<string | null>(null)
     <!-- RAID arrays list -->
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <span v-if="raids.length" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
+        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
       </div>
     </div>
 
@@ -353,20 +353,20 @@ const openMenu = ref<string | null>(null)
         <div class="flex-1 min-w-0">
           <!-- Header -->
           <div class="flex items-center gap-3 px-4 pt-3.5 pb-2">
-            <span class="text-[11px] font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
+            <span class="text-2xs font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
               :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-danger/10 text-danger'">
               {{ raidLevelLabel(r.level) }}
             </span>
             <span class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
-              <span class="text-[11px] text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
+              <span class="text-2xs text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
+              <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-danger animate-pulse'"/>
                 {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
               <button v-if="raidPvVg(r.name)" @click="emit('navigate', 'lvm')"
-                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                 LVM {{ raidPvVg(r.name) }} →
               </button>
               <!-- ⋯ menu -->
@@ -380,7 +380,7 @@ const openMenu = ref<string | null>(null)
                 <div v-if="openMenu === r.name"
                   class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden min-w-[176px]">
                   <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)]">Danger zone</p>
+                    <p class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Danger zone</p>
                   </div>
                   <button @click="openDestroy(r); openMenu = null"
                     class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
@@ -393,10 +393,10 @@ const openMenu = ref<string | null>(null)
               </div>
             </div>
           </div>
-          <p v-if="raidDescription(r.level)" class="text-[11px] text-[var(--c-text-3)] px-4 pb-1">{{ raidDescription(r.level) }}</p>
-          <p class="text-[11px] text-[var(--c-text-2)] px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
+          <p v-if="raidDescription(r.level)" class="text-2xs text-[var(--c-text-3)] px-4 pb-1">{{ raidDescription(r.level) }}</p>
+          <p class="text-2xs text-[var(--c-text-2)] px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
           <!-- Built from: member devices, completing the disk → RAID chain started in Devices -->
-          <p class="text-[11px] text-[var(--c-text-3)] px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
+          <p class="text-2xs text-[var(--c-text-3)] px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
 
           <!-- Drive bay -->
           <div class="px-4 pb-4">
@@ -422,7 +422,7 @@ const openMenu = ref<string | null>(null)
                     </svg>
                   </div>
                   <button @click="emit('navigate', 'disks')"
-                    class="text-[10px] font-mono hover:underline transition-colors"
+                    class="text-2xs font-mono hover:underline transition-colors"
                     :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
                     /dev/{{ dev }}
                   </button>
@@ -436,8 +436,8 @@ const openMenu = ref<string | null>(null)
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
                 <div>
-                  <div class="text-[11px] font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
-                  <div class="text-[10px] text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}</div>
+                  <div class="text-2xs font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
+                  <div class="text-2xs text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}</div>
                 </div>
               </div>
             </div>
@@ -446,7 +446,7 @@ const openMenu = ref<string | null>(null)
           <!-- Disks: identify, fail, remove, add a replacement -->
           <div class="px-4 pb-4">
             <div v-if="r.resyncPercent != null" class="mb-3">
-              <div class="flex justify-between text-[11px] text-[var(--c-text-2)] mb-1">
+              <div class="flex justify-between text-2xs text-[var(--c-text-2)] mb-1">
                 <span>{{ syncLabel(r) }}</span>
                 <span v-if="r.syncAction === 'recovery'" class="text-[var(--c-text-3)]">redundancy returns when it finishes</span>
               </div>
@@ -456,14 +456,14 @@ const openMenu = ref<string | null>(null)
             </div>
             <div class="rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
               <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
-                <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
+                <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
                   :class="m.role === 'faulty' ? 'bg-danger/10 text-danger' : m.role === 'spare' ? 'bg-info/10 text-info' : 'bg-success/10 text-success'">
                   {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : 'Active' }}
                 </span>
                 <div class="min-w-0 flex-1">
                   <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ m.name }}</span>
-                  <span v-if="memberSize(m.name)" class="text-[11px] text-[var(--c-text-3)] ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
-                  <p v-if="memberIdentity(m.name)" class="text-[10px] text-[var(--c-text-3)] truncate">{{ memberIdentity(m.name) }}</p>
+                  <span v-if="memberSize(m.name)" class="text-2xs text-[var(--c-text-3)] ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
+                  <p v-if="memberIdentity(m.name)" class="text-2xs text-[var(--c-text-3)] truncate">{{ memberIdentity(m.name) }}</p>
                 </div>
                 <button v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="btn btn-ghost btn-xs shrink-0"
                   :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</button>
@@ -472,7 +472,7 @@ const openMenu = ref<string | null>(null)
                   {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
                 </button>
               </div>
-              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-[11px] text-danger">
+              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-danger">
                 {{ emptySlots(r) }} empty slot{{ emptySlots(r) > 1 ? 's' : '' }}: add a replacement disk to restore redundancy.
               </div>
             </div>
@@ -481,14 +481,14 @@ const openMenu = ref<string | null>(null)
               <button v-if="addPicker !== r.name" type="button" class="btn btn-ghost btn-xs" :disabled="memberBusy !== null"
                 @click="addPicker = r.name">+ Add a disk</button>
               <div v-else class="rounded-lg border border-[var(--c-border)] p-2 space-y-1">
-                <p class="text-[11px] text-[var(--c-text-3)] px-1">Free disks at least as large as the smallest member:</p>
-                <p v-if="!replacementCandidates(r).length" class="text-[11px] text-[var(--c-text-3)] px-1 py-1">No suitable disk is free.</p>
+                <p class="text-2xs text-[var(--c-text-3)] px-1">Free disks at least as large as the smallest member:</p>
+                <p v-if="!replacementCandidates(r).length" class="text-2xs text-[var(--c-text-3)] px-1 py-1">No suitable disk is free.</p>
                 <button v-for="d in replacementCandidates(r)" :key="d.name" type="button"
                   class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-[var(--c-hover)]"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
                   <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ d.name }}</span>
-                  <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(d.size) }}</span>
-                  <span v-if="memberIdentity(d.name)" class="text-[10px] text-[var(--c-text-3)] truncate">{{ memberIdentity(d.name) }}</span>
+                  <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(d.size) }}</span>
+                  <span v-if="memberIdentity(d.name)" class="text-2xs text-[var(--c-text-3)] truncate">{{ memberIdentity(d.name) }}</span>
                 </button>
                 <button type="button" class="btn btn-ghost btn-xs" @click="addPicker = null">Cancel</button>
               </div>
@@ -501,18 +501,18 @@ const openMenu = ref<string | null>(null)
               <div class="flex-1 min-w-0">
                 <div v-if="raidBlockDev(r.name)!.mountpoint">
                   <div class="flex justify-between items-baseline mb-1.5">
-                    <span class="text-[11px] font-mono text-[var(--c-text-3)]">{{ raidBlockDev(r.name)!.mountpoint }}</span>
-                    <span class="text-[11px] text-[var(--c-text-3)]">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
+                    <span class="text-2xs font-mono text-[var(--c-text-3)]">{{ raidBlockDev(r.name)!.mountpoint }}</span>
+                    <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
                   </div>
                   <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(raidBlockDev(r.name)!))" :style="{ width: usagePct(raidBlockDev(r.name)!) + '%' }"/>
                   </div>
-                  <div class="text-[10px] text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
+                  <div class="text-2xs text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                 </div>
-                <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-[11px] text-[var(--c-text-3)]">
+                <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-[var(--c-text-3)]">
                   Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
                 </div>
-                <div v-else class="text-[11px] text-[var(--c-text-3)] italic">No filesystem: format before mounting</div>
+                <div v-else class="text-2xs text-[var(--c-text-3)] italic">No filesystem: format before mounting</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
                 <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
@@ -547,7 +547,7 @@ const openMenu = ref<string | null>(null)
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
             <div v-for="(label, i) in ['RAID Level', 'Select Drives', 'Confirm']" :key="i"
-              :class="['flex-1 py-2.5 text-center text-[11px] font-semibold transition-colors',
+              :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
                 raidWiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
                 : raidWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
                 : 'text-[var(--c-text-3)]/50']"
@@ -572,10 +572,10 @@ const openMenu = ref<string | null>(null)
               >
                 <div class="flex items-center gap-2 mb-1">
                   <span class="text-sm font-bold text-[var(--c-text-1)]">{{ lvl.name }}</span>
-                  <span class="text-[10px] text-[var(--c-text-3)]">{{ lvl.sub }}</span>
+                  <span class="text-2xs text-[var(--c-text-3)]">{{ lvl.sub }}</span>
                 </div>
-                <div class="text-[11px] text-[var(--c-text-3)] leading-relaxed">{{ lvl.desc }}</div>
-                <div class="flex items-center gap-3 mt-2 text-[10px]">
+                <div class="text-2xs text-[var(--c-text-3)] leading-relaxed">{{ lvl.desc }}</div>
+                <div class="flex items-center gap-3 mt-2 text-2xs">
                   <span class="text-[var(--c-text-3)]">Min: {{ lvl.minDev }} drives</span>
                   <span :class="lvl.redundancy === 'None' ? 'text-danger' : 'text-success'">
                     Redundancy: {{ lvl.redundancy }}
@@ -586,7 +586,7 @@ const openMenu = ref<string | null>(null)
             </div>
 
             <!-- Selected level danger notice -->
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-[11px] text-warning">
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
               <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
@@ -613,10 +613,10 @@ const openMenu = ref<string | null>(null)
                 of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)
                 · {{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}
               </div>
-              <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-[11px] text-warning">
+              <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-2xs text-warning">
                 {{ fmtBytes(w.bytes) }} unused on /dev/{{ w.name }} (drives are used at the size of the smallest one)
               </div>
-              <div class="text-[11px] text-[var(--c-text-3)]">{{ selectedRaidLevel.capacityHint }}</div>
+              <div class="text-2xs text-[var(--c-text-3)]">{{ selectedRaidLevel.capacityHint }}</div>
             </div>
 
             <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
@@ -647,7 +647,7 @@ const openMenu = ref<string | null>(null)
               </label>
             </div>
 
-            <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-[11px] text-warning px-1">
+            <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-2xs text-warning px-1">
               {{ selectedRaidLevel.name }} requires at least {{ selectedRaidLevel.minDev }} drives ({{ raidWiz.devs.length }} selected).
             </div>
 
@@ -660,7 +660,7 @@ const openMenu = ref<string | null>(null)
                 placeholder="md0"
                 class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
               />
-              <p class="text-[10px] text-[var(--c-text-3)] mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
+              <p class="text-2xs text-[var(--c-text-3)] mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
             </div>
 
             <div class="flex gap-2 pt-1">

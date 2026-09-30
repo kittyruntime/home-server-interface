@@ -117,7 +117,7 @@ function isFocused(id: string): boolean {
           <template v-if="ctxMenu.kind === 'empty'">
             <button class="ctx-item" @click="openWallpaperPicker">Change wallpaper...</button>
             <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
-            <p class="px-3 py-1 text-[10px] uppercase tracking-widest text-[var(--c-text-3)]">Add widget</p>
+            <p class="px-3 py-1 text-2xs uppercase tracking-caps text-[var(--c-text-3)]">Add widget</p>
             <button
               v-for="cat in widgetsRef?.addableTypes ?? []" :key="cat.type"
               class="ctx-item"

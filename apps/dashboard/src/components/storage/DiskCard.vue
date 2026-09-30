@@ -89,24 +89,24 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="font-mono text-sm font-semibold text-[var(--c-text-1)]">/dev/{{ disk.name }}</span>
-          <span v-if="disk.model" class="text-[11px] text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
-          <span class="text-[11px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(disk.size) }}</span>
-          <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
+          <span v-if="disk.model" class="text-2xs text-[var(--c-text-3)] truncate">{{ disk.model }}</span>
+          <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(disk.size) }}</span>
+          <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
             <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
             SYSTEM
           </span>
-          <span v-if="disk.isRemovable" class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
+          <span v-if="disk.isRemovable" class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
           <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
           <button v-if="roleOf(disk)" @click="emit('navigate', roleOf(disk)!.kind === 'raid' ? 'raid' : 'lvm')"
             :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
-            class="text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
+            class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
         </div>
-        <div v-if="disk.isSystem" class="text-[10px] text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
+        <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Health badge -->
         <button @click="emit('toggleSmart')" title="S.M.A.R.T. health"
-          :class="['inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors',
+          :class="['inline-flex items-center gap-1.5 text-2xs font-semibold px-2 py-1 rounded-lg border transition-colors',
             status === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
             status === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
             status === 'failed'  ? 'bg-danger/10 border-danger/25 text-danger hover:bg-danger/20' :
@@ -170,7 +170,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
                 :class="status === 'passed' ? 'text-success' : status === 'warning' ? 'text-warning' : status === 'failed' ? 'text-danger' : 'text-[var(--c-text-3)]'">
                 {{ smartHealth(sc) === 'passed' ? 'PASSED' : smartHealth(sc) === 'failed' ? 'FAILED' : 'NO HEALTH STATUS' }}
               </span>
-              <span v-for="w in sc.warnings ?? []" :key="w" class="text-[11px] text-warning">· {{ w }}</span>
+              <span v-for="w in sc.warnings ?? []" :key="w" class="text-2xs text-warning">· {{ w }}</span>
             </div>
             <div v-if="sc.temperature" class="flex items-center gap-1 text-xs">
               <span :class="sc.temperature >= 55 ? 'text-danger font-semibold' : sc.temperature >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'">
@@ -183,13 +183,13 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             <div v-if="sc.powerCycles" class="text-xs text-[var(--c-text-3)]">
               {{ sc.powerCycles.toLocaleString() }} power cycles
             </div>
-            <div class="ml-auto text-[10px] px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-[var(--c-text-3)]">
+            <div class="ml-auto text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-[var(--c-text-3)]">
               {{ sc.nvme ? 'NVMe' : sc.rotationRate === 0 ? 'SSD' : `HDD ${sc.rotationRate} RPM` }}
             </div>
           </div>
 
           <!-- Device info row -->
-          <div v-if="sc.serialNumber || sc.firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--c-text-3)] border-b border-[var(--c-border)]">
+          <div v-if="sc.serialNumber || sc.firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-[var(--c-text-3)] border-b border-[var(--c-border)]">
             <span v-if="sc.modelFamily"><span class="text-[var(--c-text-2)]">Family</span> {{ sc.modelFamily }}</span>
             <span v-if="sc.serialNumber"><span class="text-[var(--c-text-2)]">S/N</span> <span class="font-mono">{{ sc.serialNumber }}</span></span>
             <span v-if="sc.firmware"><span class="text-[var(--c-text-2)]">FW</span> <span class="font-mono">{{ sc.firmware }}</span></span>
@@ -197,7 +197,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 
           <!-- NVMe health log -->
           <div v-if="sc.nvme" class="px-4 py-3 space-y-2">
-            <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">NVMe Health Log</div>
+            <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-2">NVMe Health Log</div>
             <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
                 <span class="text-[var(--c-text-3)]">Critical Warning</span>
@@ -228,9 +228,9 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 
           <!-- ATA attributes table -->
           <div v-if="sc.attributes.length > 0" class="px-4 pb-4 pt-3">
-            <div class="text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] mb-2">ATA Attributes</div>
+            <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-2">ATA Attributes</div>
             <div class="rounded-lg overflow-hidden border border-[var(--c-border)]">
-              <table class="w-full text-[11px] border-collapse">
+              <table class="w-full text-2xs border-collapse">
                 <thead>
                   <tr class="bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">
                     <th class="text-left px-2.5 py-1.5 font-medium w-8">ID</th>
@@ -288,33 +288,33 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="font-mono text-xs text-[var(--c-text-2)]">/dev/{{ part.name }}</span>
-              <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
-              <span v-if="part.fstype" class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
-              <span v-else-if="!roleOf(part)" class="text-[10px] italic text-[var(--c-text-3)]/60">unformatted</span>
+              <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
+              <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
+              <span v-else-if="!roleOf(part)" class="text-2xs italic text-[var(--c-text-3)]/60">unformatted</span>
               <!-- Role: RAID member -->
               <button v-if="raidMemberOf(part)" @click="emit('navigate', 'raid')"
-                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
+                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
                 RAID {{ raidMemberOf(part) }} →
               </button>
               <!-- Role: LVM PV -->
               <button v-if="pvVgOf(part)" @click="emit('navigate', 'lvm')"
-                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                 LVM {{ pvVgOf(part) }} →
               </button>
               <!-- Role: member of an array/VG that is not active -->
               <span v-if="roleOf(part) && !roleOf(part)!.owner"
-                class="text-[10px] px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">{{ roleLabel(roleOf(part)!) }}</span>
+                class="text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">{{ roleLabel(roleOf(part)!) }}</span>
             </div>
-            <div v-if="part.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ part.mountpoint }}</div>
+            <div v-if="part.mountpoint" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ part.mountpoint }}</div>
             <div v-if="part.usageTotal > 0" class="mt-1.5 flex items-center gap-2">
               <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
                 <div class="h-full rounded-full" :class="usageBarClass(usagePct(part))" :style="{ width: usagePct(part) + '%' }"/>
               </div>
-              <span class="text-[10px] text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
+              <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
             </div>
             <!-- Nested: LVs of the VG this partition is a PV of -->
             <div v-if="pvVgOf(part) && lvsOfVg(pvVgOf(part)!).length" class="mt-1.5 space-y-1">
-              <div v-for="lv in lvsOfVg(pvVgOf(part)!)" :key="lv.path" class="flex items-center gap-2 text-[10px]">
+              <div v-for="lv in lvsOfVg(pvVgOf(part)!)" :key="lv.path" class="flex items-center gap-2 text-2xs">
                 <span class="text-[var(--c-text-3)]/50">└─</span>
                 <span class="font-mono text-purple-400">{{ lv.vgName }}/{{ lv.name }}</span>
                 <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
@@ -325,11 +325,11 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <!-- Actions: revealed on hover, hidden by default -->
           <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
             <button v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
-              class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+              class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
             <button v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="emit('mount', part)"
-              class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
+              class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
             <button v-if="part.mountpoint" @click="emit('umount', part)"
-              class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+              class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
             <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
             <button v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
               title="Delete this partition"
@@ -349,26 +349,26 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       <div v-if="disk.fstype" class="flex items-center gap-3 px-4 py-2.5">
         <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-accent)]/60"/>
         <div class="flex-1 min-w-0">
-          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
-          <div v-if="disk.mountpoint" class="text-[10px] font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
+          <span class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ disk.fstype }}</span>
+          <div v-if="disk.mountpoint" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ disk.mountpoint }}</div>
         </div>
         <div class="flex items-center gap-1 shrink-0">
           <button v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('format', disk)"
-            class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
+            class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
           <button v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('mount', disk)"
-            class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
+            class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
           <button v-if="disk.mountpoint" @click="emit('umount', disk)"
-            class="text-[11px] px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+            class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
         </div>
       </div>
       <!-- Truly blank disk: no partition table, no filesystem -->
       <div v-else class="flex items-center gap-3 px-4 py-2.5">
         <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--c-text-3)]/20"/>
         <div class="flex-1 min-w-0">
-          <span class="text-[11px] text-[var(--c-text-3)]">No partition table. Create one to start using this disk.</span>
+          <span class="text-2xs text-[var(--c-text-3)]">No partition table. Create one to start using this disk.</span>
         </div>
         <button @click="emit('partInit', disk)"
-          class="shrink-0 text-[11px] px-2.5 py-1 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+          class="shrink-0 text-2xs px-2.5 py-1 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
           Create partition table…
         </button>
       </div>
@@ -377,7 +377,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     <!-- Expandable danger zone: only for disks that already have partitions -->
     <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-[var(--c-border)]">
       <button @click="danger = !danger"
-        class="w-full flex items-center gap-2 px-4 py-2 text-[10px] text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
+        class="w-full flex items-center gap-2 px-4 py-2 text-2xs text-[var(--c-text-3)]/60 hover:text-[var(--c-text-3)] transition-colors">
         <svg class="w-3 h-3 shrink-0 transition-transform" :class="danger ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
@@ -389,10 +389,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
           </svg>
           <div class="flex-1 min-w-0">
-            <p class="text-[11px] text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
-            <p class="text-[10px] text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
+            <p class="text-2xs text-[var(--c-text-2)] font-medium mb-0.5">Wipe and create a new partition table</p>
+            <p class="text-2xs text-[var(--c-text-3)]">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
             <button @click="emit('partInit', disk)"
-              class="mt-2 text-[11px] px-2.5 py-1 rounded-sm border border-danger/30 text-danger/80 hover:border-danger/60 hover:text-danger hover:bg-danger/10 transition-colors">
+              class="mt-2 text-2xs px-2.5 py-1 rounded-sm border border-danger/30 text-danger/80 hover:border-danger/60 hover:text-danger hover:bg-danger/10 transition-colors">
               Create partition table…
             </button>
           </div>

@@ -440,21 +440,21 @@ async function applyNow() {
       <!-- Basic -->
       <div v-if="activeTab === 'basic'" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Container name *</label>
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Container name *</label>
           <input
             v-model="form.name" placeholder="my-app" :disabled="editing"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">Image *</label>
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Image *</label>
           <input
             v-model="form.image" placeholder="nginx:alpine"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
           />
         </div>
         <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-wide">URL sidebar (optional)</label>
+          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">URL sidebar (optional)</label>
           <input
             v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
             class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"

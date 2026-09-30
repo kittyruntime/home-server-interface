@@ -36,7 +36,7 @@ const BLOCK_CLASS: Record<Block['kind'], string> = {
       <div class="flex flex-col-reverse gap-0.5">
         <div
           v-for="(b, j) in drive" :key="j"
-          :class="['flex h-5 w-6 items-center justify-center rounded-sm border text-[9px] font-bold', BLOCK_CLASS[b.kind]]"
+          :class="['flex h-5 w-6 items-center justify-center rounded-sm border text-2xs font-bold', BLOCK_CLASS[b.kind]]"
         >{{ b.label }}</div>
       </div>
       <div class="h-1 w-7 rounded-full bg-[var(--c-border-strong)]"/>

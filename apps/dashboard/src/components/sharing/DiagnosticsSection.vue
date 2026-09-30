@@ -97,10 +97,10 @@ function dirWritable(s: ShareDiag): boolean {
         </div>
 
         <!-- Guest note -->
-        <p v-if="s.guestOk" class="text-[11px] text-[var(--c-text-3)]">Guest access enabled (read-only for unauthenticated users).</p>
+        <p v-if="s.guestOk" class="text-2xs text-[var(--c-text-3)]">Guest access enabled (read-only for unauthenticated users).</p>
 
         <!-- Dir detail -->
-        <p v-if="s.dir" class="text-[11px] text-[var(--c-text-3)] font-mono">
+        <p v-if="s.dir" class="text-2xs text-[var(--c-text-3)] font-mono">
           group {{ s.dir.group || '-' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> · not found</span>
         </p>
       </div>

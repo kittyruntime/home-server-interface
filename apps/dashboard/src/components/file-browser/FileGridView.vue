@@ -63,8 +63,8 @@ function fileExt(name: string): string {
         {{ t.name }}
       </span>
 
-      <span v-if="t.status === 'paused'" class="text-[9px] text-[var(--c-warning)]">Paused</span>
-      <span v-else-if="t.status === 'error'" class="text-[9px] text-[var(--c-danger)]">Failed</span>
+      <span v-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)]">Paused</span>
+      <span v-else-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)]">Failed</span>
     </div>
 
     <!-- Ghost card while creating a folder -->
@@ -143,7 +143,7 @@ function fileExt(name: string): string {
         <svg class="w-9 h-11 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
         </svg>
-        <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-[8px] font-bold text-[var(--c-text-3)] bg-[var(--c-bg)] px-1 rounded-sm leading-tight">
+        <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-[var(--c-text-3)] bg-[var(--c-bg)] px-1 rounded-sm leading-tight">
           {{ fileExt(entry.name) }}
         </span>
         <button

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Typography**: one type scale across the dashboard (nothing below 11px, one
+  tracking for uppercase labels). Machine data (paths, devices, sizes, fields)
+  uses JetBrains Mono; key figures and status lines keep Space Mono. Fonts are
+  now bundled with HSI instead of loaded from Google Fonts, so the dashboard
+  renders the same without Internet access.
 - **Punctuation**: interface texts, messages and documentation no longer use
   em dashes; CI refuses new ones. Empty values in tables show `-`.
 

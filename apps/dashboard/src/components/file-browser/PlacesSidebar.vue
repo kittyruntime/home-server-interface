@@ -11,7 +11,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
 
 <template>
   <aside class="w-44 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] flex flex-col">
-    <div class="px-3 pt-3.5 pb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--c-text-3)] select-none">
+    <div class="px-3 pt-3.5 pb-2 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] select-none">
       Places
     </div>
     <nav class="flex flex-col gap-0.5 px-2 pb-3 overflow-y-auto flex-1">
