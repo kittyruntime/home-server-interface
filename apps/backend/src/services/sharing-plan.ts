@@ -41,7 +41,7 @@ function noSambaRemoval(name: string): PlanStep {
   return { kind: "delete", target: name, summary: `Samba is not installed; only HSI's record of the share ${name} is removed` }
 }
 
-function workerError(e: unknown): never {
+export function workerError(e: unknown): never {
   const code = (e as { code?: string }).code
   const message = e instanceof Error ? e.message : String(e)
   if (code === "SMBD_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })

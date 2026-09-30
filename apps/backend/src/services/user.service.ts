@@ -24,19 +24,21 @@ export const userSelect = {
 // Linux + Samba (SMB) account. Enforced at the API boundary (user.create).
 export const reLinuxUsername = /^[a-z_][a-z0-9_-]{0,31}$/
 
-export async function createUser(
+/** Refuses a reserved or taken username. */
+export async function assertCreatable(prisma: PrismaClient, username: string): Promise<void> {
+  if (RESERVED_USERNAMES.has(username))
+    throw new TRPCError({ code: "BAD_REQUEST", message: "That username is reserved" })
+  const existing = await prisma.user.findUnique({ where: { username } })
+  if (existing) throw new TRPCError({ code: "CONFLICT", message: "Username already taken" })
+}
+
+/** The HSI user row only; the Linux/Samba account is handled by the caller. */
+export async function createUserRecord(
   prisma: PrismaClient,
   input: { username: string; password: string; displayName?: string },
 ) {
-  if (RESERVED_USERNAMES.has(input.username))
-    throw new TRPCError({ code: "BAD_REQUEST", message: "That username is reserved" })
-
-  const existing = await prisma.user.findUnique({ where: { username: input.username } })
-  if (existing) throw new TRPCError({ code: "CONFLICT", message: "Username already taken" })
-
   const hashedPassword = await bcrypt.hash(input.password, 12)
-
-  const user = await prisma.user.create({
+  return prisma.user.create({
     data: {
       username: input.username,
       password: hashedPassword,
@@ -44,6 +46,14 @@ export async function createUser(
     },
     select: userSelect,
   })
+}
+
+export async function createUser(
+  prisma: PrismaClient,
+  input: { username: string; password: string; displayName?: string },
+) {
+  await assertCreatable(prisma, input.username)
+  const user = await createUserRecord(prisma, input)
 
   // Provisions the backing Linux/Samba account (idempotent) and sets its
   // password. syncSystemPassword is self-contained best-effort, so a worker
