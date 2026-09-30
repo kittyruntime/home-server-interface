@@ -2,7 +2,7 @@
 
 HSI is a control panel over standard Linux tools, not a replacement for them. For
 every area below, the underlying files and commands are the same ones you'd use if
-HSI weren't installed — so a stopped `hsi` service, a broken update, or a full
+HSI weren't installed, so a stopped `hsi` service, a broken update, or a full
 uninstall never leaves the server itself unmanageable.
 
 This page intentionally doesn't cover the file manager or the App Store: browsing
@@ -12,16 +12,16 @@ App Store installs is a normal container, covered under Docker below.
 ## Docker
 
 Containers created through the App Store or the Containers app are ordinary Docker
-containers under their configured name — nothing about them depends on HSI staying
+containers under their configured name; nothing about them depends on HSI staying
 up. Each app managed by HSI is a Docker Compose project under
-`/opt/containers/<name>/compose.yaml` — the file is the source of truth, usable
+`/opt/containers/<name>/compose.yaml`: the file is the source of truth, usable
 without HSI:
 
 ```bash
 docker ps -a                  # list containers, including stopped ones
 docker logs -f <name>
 docker start|stop|restart <name>
-docker inspect <name>         # ports, mounts, env, labels — everything HSI showed you
+docker inspect <name>         # ports, mounts, env, labels, everything HSI showed you
 
 # Compose project (the file HSI generates/edits):
 docker compose -f /opt/containers/<name>/compose.yaml ps
@@ -30,11 +30,11 @@ docker compose -f /opt/containers/<name>/compose.yaml logs -f
 docker compose -f /opt/containers/<name>/compose.yaml down
 ```
 
-`x-hsi:` keys in the compose file are HSI metadata (pinned URL, UI hints) — safe
+`x-hsi:` keys in the compose file are HSI metadata (pinned URL, UI hints), safe
 to ignore or delete.
 
 Directories under `/opt/containers` whose names HSI cannot represent (spaces,
-leading dot) are ignored by the app list — manage them with plain docker compose.
+leading dot) are ignored by the app list; manage them with plain docker compose.
 
 ## Samba (SMB shares)
 
@@ -49,24 +49,24 @@ smbstatus                               # who's connected, to which share
 systemctl restart smbd                  # apply a config change by hand
 ```
 
-Samba's user database is managed the normal way (`smbpasswd`) — HSI keeps it in
+Samba's user database is managed the normal way (`smbpasswd`); HSI keeps it in
 sync when you change a password through the UI, but doesn't replace it with its own
 store.
 
 ```bash
 pdbedit -L                    # list Samba accounts
-smbpasswd -x <username>       # remove one — e.g. after disabling "Samba identity"
+smbpasswd -x <username>       # remove one, e.g. after disabling "Samba identity"
                                # for a user in HSI, which stops syncing it but never
                                # deletes it for you
 ```
 
 ## Users (Linux/Samba identity)
 
-Every HSI user maps 1:1 to a Linux account by username (`/sbin/nologin` shell — no
+Every HSI user maps 1:1 to a Linux account by username (`/sbin/nologin` shell, no
 shell/SSH access, it only exists to own files and back Samba). A Samba account is
 provisioned for it too, unless "Samba identity" is turned off for that user
 (Settings → Users → a user → Identity). HSI never invents its own separate
-user/permission store for either — `id <username>`, `getent passwd <username>`, and
+user/permission store for either: `id <username>`, `getent passwd <username>`, and
 `pdbedit -L` are always the ground truth, and HSI's Identity panel is a read-only
 view over exactly those facts, not a cache that can drift from them.
 
@@ -160,7 +160,7 @@ Users/groups and LVM are also implemented as standard Linux mechanisms (Linux
 accounts, `lvm2`) rather than HSI-private state, but don't have a documented
 manual-recovery workflow yet. Scheduled rsync backups are the one exception worth
 flagging explicitly: the schedule itself (`apps/backend/src/services/
-backup-scheduler.ts`) is HSI-internal, not `cron` — a plan won't run on its own if
+backup-scheduler.ts`) is HSI-internal, not `cron`: a plan won't run on its own if
 `hsi` is stopped. The `rsync` command a plan builds, though, is a normal one you can
 always run by hand from the plan's source/destination and options.
 

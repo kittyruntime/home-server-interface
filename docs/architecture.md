@@ -9,10 +9,10 @@ an isolated worker over a message broker.
 
 **HSI manages your server, not owns it. The DB describes HSI; files describe the server.**
 
-1. Server configuration lives in files at each tool's native location — never in a DB table.
+1. Server configuration lives in files at each tool's native location, never in a DB table.
 2. Files stay readable, backupable and hand-editable; HSI re-reads manual edits and flags what it
    cannot represent (nothing is silently dropped).
-3. HSI only writes its own dedicated files — never a package-owned file. Use `conf.d`/drop-in
+3. HSI only writes its own dedicated files, never a package-owned file. Use `conf.d`/drop-in
    patterns when the tool offers them.
 4. Editing is not applying: edits write the file; applying to the system is an explicit step
    (validated first).
@@ -51,7 +51,7 @@ Browser ───────────▶  backend  ◀───────�
 The backend never shells out as root. When it needs a privileged action it
 publishes a request on NATS; the root-worker consumes it, performs the syscall,
 and replies. Heavy work (large copies/moves, upload assembly) is run as a
-**background job** the UI polls to completion — no browser tab needs to stay open.
+**background job** the UI polls to completion; no browser tab needs to stay open.
 
 ## Tech stack
 
@@ -73,8 +73,8 @@ and replies. Heavy work (large copies/moves, upload assembly) is run as a
 - Chart.js (metrics), CodeMirror (file preview/edit), lazy-loaded per app
 
 **Shared packages**
-- `packages/database` — Prisma schema (`prisma/schema/`) and generated client
-- `packages/shared-types` — types shared between backend and dashboard
+- `packages/database`: Prisma schema (`prisma/schema/`) and generated client
+- `packages/shared-types`: types shared between backend and dashboard
 
 ## tRPC routers
 
@@ -88,22 +88,22 @@ mapping to a feature area:
 ## Places
 
 A **Place** (`packages/database/prisma/schema/place.prisma`) is a name HSI gives to an
-absolute path that already exists on the server — nothing more. Creating one doesn't
+absolute path that already exists on the server, nothing more. Creating one doesn't
 move data, format anything, or create a new storage unit; it just registers `{ name,
 path }` so the rest of HSI has something to point at.
 
 Everything else attaches to that record:
 
-- **Permissions** — Read/Write/Delete/Share, per user or per group, are granted against
+- **Permissions**: Read/Write/Delete/Share, per user or per group, are granted against
   a Place (see [Permissions model](#permissions-model) below).
-- **Sharing** — a Place can optionally have one `Share` (SMB), which exposes its path
+- **Sharing**: a Place can optionally have one `Share` (SMB), which exposes its path
   over Samba under the permissions already set on the Place.
-- **The file manager** — browsing "start" at a Place; HSI never lets you browse or
+- **The file manager**: browsing "start" at a Place; HSI never lets you browse or
   share a path that isn't backed by one.
 
 A Place is a pointer with policy attached, not a storage abstraction: it doesn't care
 whether the path underneath is a plain directory, a mounted RAID array, or an LVM
-logical volume — that's decided one layer down, in Storage. Deleting a Place removes
+logical volume: that's decided one layer down, in Storage. Deleting a Place removes
 the HSI-side registration (permissions, share); it never touches the files at that path.
 
 ## Permissions model
@@ -116,7 +116,7 @@ the HSI-side registration (permissions, share); it never touches the files at th
   checks) and **User manager** (can create/edit/delete other user accounts, but not
   grant admin/user-manager/capabilities on them).
 - **Capabilities** grant a non-admin account a specific admin-adjacent power without
-  making them a full admin — e.g. the `storage` capability unlocks disk/RAID/LVM/
+  making them a full admin; e.g. the `storage` capability unlocks disk/RAID/LVM/
   partition management. Admin implies every capability. New capabilities are added
   by inserting rows, not by adding new account-level flags.
 - Every privileged action is written to the **audit log**.
@@ -129,4 +129,4 @@ the HSI-side registration (permissions, share); it never touches the files at th
 3. Backend publishes a copy request to NATS; the root-worker performs the
    ownership-preserving copy as root.
 4. The dashboard polls `tasks` for progress and shows a notification on
-   completion — no open tab required.
+   completion, no open tab required.
