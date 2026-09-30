@@ -16,7 +16,7 @@ consistent everywhere.
 
 **Semantic colors** (`--c-*`) are exposed as Tailwind utilities through an
 `@theme inline` bridge, so components write `text-danger`, `bg-success/10`,
-`accent-accent`, `text-violet`, etc. — not raw palette classes.
+`accent-accent`, `text-violet`, etc., not raw palette classes.
 
 | Token | Utility | Use |
 |---|---|---|
@@ -41,26 +41,26 @@ Three plain-CSS Vue transitions are available anywhere as
 `TransitionGroup` reordering), and `ui-slide-up`. Duration defaults to
 `--dur-base`; override per element with `--ui-dur`.
 
-> Custom properties inherit — an inline `--ui-dur` leaks to descendant
+> Custom properties inherit: an inline `--ui-dur` leaks to descendant
 > transitions. Scope duration with a **class** (e.g. `.route-fade`) instead of an
 > inline style when the transitioned element has animated children.
 
 ## Shared components
 
-- **`ui/Modal.vue`** — the one modal used across the app. Handles enter/leave
+- **`ui/Modal.vue`**: the one modal used across the app. Handles enter/leave
   animation, teleports to a **host window** when opened inside desktop mode
   (via `provide`/`inject` of `modal-host`) and otherwise to `<body>`, and joins
   the layered **Escape** stack. Props: `panelClass`, `closeOnBackdrop`,
   `showClose`, `preventClose` (blocks Escape/backdrop during a busy operation).
-- **`lib/escLayer.ts`** — a shared Escape-key stack so only the topmost overlay
+- **`lib/escLayer.ts`**: a shared Escape-key stack so only the topmost overlay
   closes on `Escape` (used by Modal, Launchpad and dropdowns).
-- **`lib/confirm.ts` + `ui/ConfirmDialog.vue`** — promise-based `useConfirm()`
+- **`lib/confirm.ts` + `ui/ConfirmDialog.vue`**: promise-based `useConfirm()`
   styled like the rest of the app; prefer it over `window.confirm`.
-- **`components/storage/dialogs/`** — device dialogs (`DeviceFormatWizard`,
+- **`components/storage/dialogs/`**: device dialogs (`DeviceFormatWizard`,
   `DeviceMountDialog`, `DeviceUnmountDialog`) and a generic
   `ConfirmDestroyDialog` (optional "type NAME to confirm" gate), reused by all
   four storage sections instead of duplicating markup.
-- **`components/desktop/AppIcon.vue`** — the custom monochrome app-glyph family
+- **`components/desktop/AppIcon.vue`**: the custom monochrome app-glyph family
   (24px grid, consistent stroke, filled-dot details), keyed by `AppId`.
 
 ## Shared utility classes

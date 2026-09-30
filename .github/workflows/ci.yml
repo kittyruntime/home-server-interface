@@ -41,6 +41,9 @@ jobs:
       - name: Check UI strings are English
         run: scripts/check-i18n.sh
 
+      - name: No em dashes
+        run: scripts/check-no-em-dash.sh
+
       - name: Check and vet Go
         run: pnpm check:go
 

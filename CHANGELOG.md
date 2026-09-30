@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Punctuation**: interface texts, messages and documentation no longer use
+  em dashes; CI refuses new ones. Empty values in tables show `-`.
+
 ## [1.59.0] - 2026-09-30
 
 ### Added
@@ -242,18 +246,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Declarative container apps**: container apps are now Docker Compose projects
-  in `/opt/containers/<name>/compose.yaml` — the file is the source of truth,
+  in `/opt/containers/<name>/compose.yaml`: the file is the source of truth,
   HSI re-reads manual edits (drift + unmanaged-field detection, nothing silently
   dropped), and applying is an explicit, validated step. Existing apps are
   migrated to compose files on update (zero downtime; each stack is adopted on
   its first Apply). Apps keep working with `docker compose` even when HSI is off.
 - **User identity status**: a user's edit panel now shows a dedicated Identity
-  section — HSI identity, real Linux account state (exists / uid / gid / groups,
+  section: HSI identity, real Linux account state (exists / uid / gid / groups,
   read from the OS, not assumed from the database), and Samba account state. Flags
   the common mismatches (no Linux account yet, Samba enabled but not synced,
   Samba disabled but an account still exists) with a plain-language explanation.
 - **Samba identity toggle**: each user can now opt out of having a Samba account
-  synced at all (`sambaEnabled`, default on — no behavior change for existing
+  synced at all (`sambaEnabled`, default on, no behavior change for existing
   accounts). Turning it off stops future password syncs from touching Samba; it
   does not delete an account that already exists (see docs/manage-without-hsi.md
   for the manual `smbpasswd -x` command). Re-enabling syncs on the user's next
@@ -267,7 +271,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reorganized into four labelled groups (Account, Access control, System,
   Backups).
 - **Root worker slimmed (compose-only Docker ops)**: `docker.go` no longer
-  builds privileged container definitions — it only executes `docker compose`
+  builds privileged container definitions; it only executes `docker compose`
   commands against the generated files (up/stop/restart/down + validate).
   Networks and volumes live inside each app's compose file; the standalone
   Networks/Volumes panels and their DB registries are gone (shared networks via
@@ -281,7 +285,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Update pre-flight checks**: before installing an update, HSI now runs five
-  checks — free disk space on the install partition (fails under 500 MB), HSI
+  checks: free disk space on the install partition (fails under 500 MB), HSI
   systemd services active, no update already pending, current version known, and
   release info fetched. The Updates screen lists each check with its status and
   blocks the Install button when a check fails (warnings are non-blocking).
@@ -293,11 +297,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moved from the `system` tRPC router to a dedicated `storage` router
   (`trpc.storage.*`); `system` now only carries metrics, metrics history and static
   system info. The audit log records new storage actions under their `storage.*`
-  path — entries logged before this change keep their historical `system.*` action
+  path; entries logged before this change keep their historical `system.*` action
   string and still render with the same labels in the UI.
 - **Storage is now a self-contained sub-application**: its data layer
   (`store.ts`/`smart.ts`) lives inside `components/storage/`, and the Disks tab
-  became **Devices** — a physical-first tree where each disk shows its partitions,
+  became **Devices**, a physical-first tree where each disk shows its partitions,
   their role (filesystem, RAID member or LVM PV with cross-navigation), and the
   logical volumes nested under their PV, mirroring the real hardware hierarchy.
   RAID arrays display their member devices under the header.
@@ -330,10 +334,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **File browser toolbar**: "New folder" and "New file" are now a single "New" menu, and the
-  always-open search field collapses to an icon until clicked — both free up room for the
+  always-open search field collapses to an icon until clicked; both free up room for the
   breadcrumb in a narrow window or on a phone.
 - **File list view on phones**: the file table now switches to a card layout below the `sm`
-  breakpoint instead of squeezing (or horizontally scrolling) a 4-column table — the same
+  breakpoint instead of squeezing (or horizontally scrolling) a 4-column table, the same
   treatment every other table in the app already had.
 
 ### Fixed
@@ -347,7 +351,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   but the unprivileged backend wrote the pending-update marker directly into it, failing with
   `EACCES: permission denied, open '.../.pending-update'` whenever an admin applied an update
   from the dashboard. The marker now lives in `database/data`, the one directory install.sh
-  guarantees the app user owns — the update-apply systemd path unit and service, and the
+  guarantees the app user owns: the update-apply systemd path unit and service, and the
   legacy-migration stale-marker cleanup, were updated to match.
 
 ## [1.50.0] - 2026-08-20
@@ -502,7 +506,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **RAID/SMART alerting**: a red dot now appears on the Storage nav entry (sidebar, mobile, and
   desktop-mode Launchpad/Dock) when a RAID array is degraded or a disk's SMART status turns
-  warning/failed — checked every 5 minutes in the background, so you don't have to open Storage
+  warning/failed, checked every 5 minutes in the background, so you don't have to open Storage
   to notice. Rebuilding arrays also show their resync progress percentage.
 
 ## [1.42.0] - 2026-08-10
@@ -527,7 +531,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **One progress bar per upload**: an upload's live progress (bar, percentage, speed) now shows
-  only in the Transfers tray — it no longer also duplicates as a second live progress bar
+  only in the Transfers tray; it no longer also duplicates as a second live progress bar
   inline in the file list/grid.
 
 ## [1.40.1] - 2026-08-05
@@ -562,7 +566,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Faster, clearer upload finalization**: uploaded chunks now stream into a single
   temporary file instead of a folder of parts, so finishing an upload no longer
-  rewrites the whole file — the server just verifies the SHA-256 checksum and
+  rewrites the whole file: the server just verifies the SHA-256 checksum and
   atomically renames the file into place. The transfers tray shows this as a new
   "Verifying" step, and peak disk usage during an upload drops by half.
 - **New loading spinner**: the blinking [Loading] text is replaced by a rotating
@@ -571,7 +575,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.37.0] - 2026-07-24
 
 ### Security
-- **Permission changes take effect immediately**: admin and user-manager rights are now checked against the database on every request instead of being baked into the 7-day session token. Demoting an account (or deleting it) cuts its elevated access on the very next request — no more waiting for the session to expire or asking people to sign out and back in after a rights change.
+- **Permission changes take effect immediately**: admin and user-manager rights are now checked against the database on every request instead of being baked into the 7-day session token. Demoting an account (or deleting it) cuts its elevated access on the very next request, no more waiting for the session to expire or asking people to sign out and back in after a rights change.
 - **Login attempts are rate-limited**: after 5 failed sign-ins for a username (or from one IP address) within 15 minutes, further attempts are blocked until the window expires, and the login page shows how long to wait. Slows credential-guessing to a crawl; a successful sign-in clears the counter.
 
 ### Fixed
@@ -580,7 +584,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.36.0] - 2026-07-23
 
 ### Added
-- **New dashboard widgets — Storage, System, Disk Health**: the dashboard and desktop widget picker gain three widgets: **Storage** (usage per disk), **System** (hostname, OS, CPU count, load average, uptime), and **Disk Health** (live SMART status per drive). Like the Containers widget, they rely on admin-only data, so they only appear in the widget catalog for administrator accounts.
+- **New dashboard widgets: Storage, System, Disk Health**: the dashboard and desktop widget picker gain three widgets: **Storage** (usage per disk), **System** (hostname, OS, CPU count, load average, uptime), and **Disk Health** (live SMART status per drive). Like the Containers widget, they rely on admin-only data, so they only appear in the widget catalog for administrator accounts.
 
 ### Changed
 - **Refreshed sign-in page**: the login screen is now a centered card with the app logo, an ambient background, and a show/hide toggle on the password field.
@@ -588,9 +592,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.35.0] - 2026-07-21
 
 ### Changed
-- **Simpler permissions — Users + Groups, no more Roles**: the old glob-permission role system (`files.write`, `places.*`, `*.*`, plus an auto-created "personal" role per user) is gone. Access is now just: grant **Read / Write / Delete / Share** on each **place**, to a **user** directly or to a **group** the user belongs to. "Roles" in Settings became **Groups** — a group is only a name plus its members. Two account tiers survive as simple switches on a user: **Admin** and **User manager**.
-- **Admin means full access, shown as such**: an administrator is now a flag on the account with implicit Read/Write/Delete/Share on every place. In the Permissions matrix, admins appear as a row with all four boxes checked (and locked) instead of being hidden — so "who can do what" is visible at a glance, and the admin account works over SMB and in the web file manager like any other member.
-- **One identity**: an account's **username is its Linux and Samba account** — there's no separate "Linux username" field to set anymore. New users are created with a valid Linux account name up front, so sharing "just works" without a second step.
+- **Simpler permissions: Users + Groups, no more Roles**: the old glob-permission role system (`files.write`, `places.*`, `*.*`, plus an auto-created "personal" role per user) is gone. Access is now just: grant **Read / Write / Delete / Share** on each **place**, to a **user** directly or to a **group** the user belongs to. "Roles" in Settings became **Groups**: a group is only a name plus its members. Two account tiers survive as simple switches on a user: **Admin** and **User manager**.
+- **Admin means full access, shown as such**: an administrator is now a flag on the account with implicit Read/Write/Delete/Share on every place. In the Permissions matrix, admins appear as a row with all four boxes checked (and locked) instead of being hidden, so "who can do what" is visible at a glance, and the admin account works over SMB and in the web file manager like any other member.
+- **One identity**: an account's **username is its Linux and Samba account**; there's no separate "Linux username" field to set anymore. New users are created with a valid Linux account name up front, so sharing "just works" without a second step.
 - **Container & app management is admin-only**: installing, editing, starting/stopping containers, apps, networks and volumes (and viewing container logs) now requires the **Admin** flag. Any non-admin who previously had container permissions via a role will lose that access and must be made an admin to keep it. After updating, user-manager accounts should sign out and back in to refresh their session.
 
 ### Fixed
@@ -599,34 +603,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.34.1] - 2026-07-19
 
 ### Fixed
-- **English UI**: the file-transfers tray, sharing diagnostics, and upload/disk error messages shipped with hardcoded French labels — they are now in English like the rest of the interface.
+- **English UI**: the file-transfers tray, sharing diagnostics, and upload/disk error messages shipped with hardcoded French labels; they are now in English like the rest of the interface.
 
 ## [1.34.0] - 2026-07-19
 
 ### Added
-- **Upload integrity checks**: large uploads are now verified end-to-end. The browser computes the whole file's SHA-256 as it reads it, and the server re-computes the same hash while assembling the staged chunks — if they don't match, the file is rejected and the transfer shows "Fichier corrompu pendant le transfert — réessaie" (Retry re-sends and re-verifies). Before the first chunk goes up, HSI checks the destination has room and rejects the upload up front (instead of failing halfway) if it won't fit. Assembly is now an explicit, retryable step, so a dropped response at the very end no longer reports a false success.
-- **Robust file transfers**: uploads now survive network blips — each chunk retries with backoff and resumes from where it stopped instead of failing the whole file — and progress moved into a docked **Transfers** tray inside the file browser (out of the notification bell), with full untruncated errors and a **Retry** button. An upload interrupted by a page reload reappears in the tray; re-select the same file to resume from the chunks already uploaded. Copies and moves show in the same tray with their own retry.
+- **Upload integrity checks**: large uploads are now verified end-to-end. The browser computes the whole file's SHA-256 as it reads it, and the server re-computes the same hash while assembling the staged chunks: if they don't match, the file is rejected and the transfer shows "Fichier corrompu pendant le transfert, réessaie" (Retry re-sends and re-verifies). Before the first chunk goes up, HSI checks the destination has room and rejects the upload up front (instead of failing halfway) if it won't fit. Assembly is now an explicit, retryable step, so a dropped response at the very end no longer reports a false success.
+- **Robust file transfers**: uploads now survive network blips: each chunk retries with backoff and resumes from where it stopped instead of failing the whole file, and progress moved into a docked **Transfers** tray inside the file browser (out of the notification bell), with full untruncated errors and a **Retry** button. An upload interrupted by a page reload reappears in the tray; re-select the same file to resume from the chunks already uploaded. Copies and moves show in the same tray with their own retry.
 - **Sharing diagnostics**: a new **Diagnostics** tab under Sharing shows, per share, who can actually read/write (with a dot marking whether each account has a Samba password), who is permitted but **blocked and why** (no Linux account, or a `root`/system account that can't be used for SMB), and whether the share directory is group-writable. Turns a "why can't I write?" into a glance instead of digging through logs and `smb.conf`.
 
 ### Fixed
-- **Web file manager couldn't write to places without an SMB share**: writing through the built-in file browser acts as your Linux user (same as SMB), so it hit the same wall — the shared-group/writable-directory setup only ran for SMB shares. Now **every place you're granted write on** is placed in the `hsi-share` group (setgid, group-writable), share or not, so the web file manager can write there too. Applies the next time a permission changes (or on the next sync).
+- **Web file manager couldn't write to places without an SMB share**: writing through the built-in file browser acts as your Linux user (same as SMB), so it hit the same wall: the shared-group/writable-directory setup only ran for SMB shares. Now **every place you're granted write on** is placed in the `hsi-share` group (setgid, group-writable), share or not, so the web file manager can write there too. Applies the next time a permission changes (or on the next sync).
 
 ### Security
-- **`root` can no longer be an SMB share account**: HSI never adds `root` (e.g. an admin account mapped to the Linux `root` user) to a share's Samba valid-users / write-list, nor to the `hsi-share` group. Writing to shares as root is unsafe and Samba refuses a root login anyway (it falls back to guest → read-only), so mapping an account to root produced a share only "root" could write — which nothing could actually use. Give SMB users a normal (non-root) Linux account.
+- **`root` can no longer be an SMB share account**: HSI never adds `root` (e.g. an admin account mapped to the Linux `root` user) to a share's Samba valid-users / write-list, nor to the `hsi-share` group. Writing to shares as root is unsafe and Samba refuses a root login anyway (it falls back to guest → read-only), so mapping an account to root produced a share only "root" could write, which nothing could actually use. Give SMB users a normal (non-root) Linux account.
 
 ## [1.33.1] - 2026-07-15
 
 ### Fixed
-- **Can't write to an SMB share (even as admin)**: writes failed for two reasons — admins were never added to a share's Samba *write list*, and shared directories were created root-owned and not writable by the users granted write (which also affected the web file browser, since both write as your Linux user). Now admins always get read+write on every share, and each writable share directory is placed in a shared `hsi-share` group — setgid and group-writable, with the write-permitted users as members — so both SMB and the web file manager can write. New files are group-writable too. Takes effect on the next share sync; SMB clients may need to reconnect once for the new group membership to apply.
+- **Can't write to an SMB share (even as admin)**: writes failed for two reasons: admins were never added to a share's Samba *write list*, and shared directories were created root-owned and not writable by the users granted write (which also affected the web file browser, since both write as your Linux user). Now admins always get read+write on every share, and each writable share directory is placed in a shared `hsi-share` group (setgid and group-writable, with the write-permitted users as members), so both SMB and the web file manager can write. New files are group-writable too. Takes effect on the next share sync; SMB clients may need to reconnect once for the new group membership to apply.
 
 ## [1.33.0] - 2026-07-15
 
 ### Added
-- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like — the order is saved to your account and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
+- **Reorderable sidebar**: drag any app icon in the sidebar to arrange the nav in whatever order you like; the order is saved to your account and mirrored in the mobile bottom bar. A plain click still opens the app, and keyboard users can move a focused icon with Alt+↑ / Alt+↓. "Reset sidebar order" (in the profile menu) restores the default.
 - **Preferences follow your account**: your theme, accent colour and sidebar order now sync across the browsers and devices you sign in on (loaded on login, saved as you change them; localStorage stays the instant local cache). Device-specific settings like desktop mode remain per-browser.
 
 ### Fixed
-- **App Store live status**: catalog cards now show each app's real container state (Running / Stopped) read from Docker, instead of a persisted status that was never refreshed after install — so a freshly-installed app correctly moves from "Installing…" to "Running" on its own.
+- **App Store live status**: catalog cards now show each app's real container state (Running / Stopped) read from Docker, instead of a persisted status that was never refreshed after install, so a freshly-installed app correctly moves from "Installing…" to "Running" on its own.
 
 ### Security
 - **Audit log**: user-submitted secret env **values** (e.g. an `ADMIN_TOKEN` you type at install) are now redacted in the audit log. Previously the redaction matched only the field *name*, so the secret in `value` was written in cleartext; the setting's name is now kept for auditability while its value is masked. (Server-generated secrets were never logged.)
@@ -634,28 +638,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.32.0] - 2026-07-15
 
 ### Added
-- **Host-port conflict warning**: when you pick a host port for an app (App Store install wizard or the container form), HSI now warns if that port is already taken — by another HSI app, any Docker container (incl. Compose stacks), or a non-Docker process on the host. It's a non-blocking heads-up (the port still binds), so you can fix it before Docker fails to start the second app.
-- **Per-port access binding**: each published port can record where it's actually reached — an optional domain, an HTTPS toggle, and an optional external port — set in the app's settings (Ports). HSI doesn't terminate TLS or run a proxy; it just stores the binding so the **Open** button goes to the real URL (e.g. `https://jellyfin.example.com`) instead of `http://<host>:<port>`. Universal because it's plain per-container metadata, whatever handles TLS externally (your reverse proxy, tunnel, or router).
+- **Host-port conflict warning**: when you pick a host port for an app (App Store install wizard or the container form), HSI now warns if that port is already taken: by another HSI app, any Docker container (incl. Compose stacks), or a non-Docker process on the host. It's a non-blocking heads-up (the port still binds), so you can fix it before Docker fails to start the second app.
+- **Per-port access binding**: each published port can record where it's actually reached: an optional domain, an HTTPS toggle, and an optional external port, set in the app's settings (Ports). HSI doesn't terminate TLS or run a proxy; it just stores the binding so the **Open** button goes to the real URL (e.g. `https://jellyfin.example.com`) instead of `http://<host>:<port>`. Universal because it's plain per-container metadata, whatever handles TLS externally (your reverse proxy, tunnel, or router).
 
 ## [1.31.1] - 2026-07-14
 
 ### Changed
-- **App Store polish**: the catalog now shows each app's **real logo** instead of a generic glyph, and the App Store launcher icon is a storefront (clearer, and distinct from the Apps grid). Each catalog card shows the app's live state — Not installed, Installing…, Running, Stopped or Error — with a contextual **Install** or **Open** action (Open launches the app's web UI on its mapped port). The screen refreshes on its own so a fresh install visibly moves from "Installing…" to "Running", and it now shows a loading skeleton and a "no results" state.
+- **App Store polish**: the catalog now shows each app's **real logo** instead of a generic glyph, and the App Store launcher icon is a storefront (clearer, and distinct from the Apps grid). Each catalog card shows the app's live state (Not installed, Installing…, Running, Stopped or Error) with a contextual **Install** or **Open** action (Open launches the app's web UI on its mapped port). The screen refreshes on its own so a fresh install visibly moves from "Installing…" to "Running", and it now shows a loading skeleton and a "no results" state.
 
 ## [1.31.0] - 2026-07-13
 
 ### Added
-- **App Store**: a new admin-only "App Store" app that installs curated self-hosted apps in one guided flow. Browse a catalog of 10 apps (Jellyfin, Vaultwarden, Navidrome, AdGuard Home, Syncthing, qBittorrent, Uptime Kuma, File Browser, Homarr, IT-Tools) with search and category filters, then install through a wizard that lets you set the app name, remap host ports, fill in settings, and — for each volume — pick an existing Place, create a new Place, use a host path (bind mount), or a named Docker volume. It reuses the existing container-create pipeline: images are pinned (never `:latest`), secrets like admin tokens are generated for you, and installed apps are tagged so the store shows what's already installed. Creating a new Place during install stays admin-only.
+- **App Store**: a new admin-only "App Store" app that installs curated self-hosted apps in one guided flow. Browse a catalog of 10 apps (Jellyfin, Vaultwarden, Navidrome, AdGuard Home, Syncthing, qBittorrent, Uptime Kuma, File Browser, Homarr, IT-Tools) with search and category filters, then install through a wizard that lets you set the app name, remap host ports, fill in settings, and, for each volume, pick an existing Place, create a new Place, use a host path (bind mount), or a named Docker volume. It reuses the existing container-create pipeline: images are pinned (never `:latest`), secrets like admin tokens are generated for you, and installed apps are tagged so the store shows what's already installed. Creating a new Place during install stays admin-only.
 - **Read-only volume mounts**: container volumes can now be mounted read-only (`:ro`), used by the App Store for library volumes (e.g. a media folder mounted read-only).
 
 ## [1.30.0] - 2026-07-12
 
 ### Added
-- **Download a shared folder as a zip**: public folder share links now have a "Download all as .zip" button. The worker builds the archive into a private temp dir with a hard disk-space guard — it re-checks free space as it writes and aborts before the (limited) temp filesystem can fill, plus a size cap — streams it to the visitor, then removes it (no temp file ever lands inside the shared tree). Concurrent builds are capped and any orphaned archive is swept periodically.
+- **Download a shared folder as a zip**: public folder share links now have a "Download all as .zip" button. The worker builds the archive into a private temp dir with a hard disk-space guard (it re-checks free space as it writes and aborts before the (limited) temp filesystem can fill, plus a size cap), streams it to the visitor, then removes it (no temp file ever lands inside the shared tree). Concurrent builds are capped and any orphaned archive is swept periodically.
 
 ### Changed
 - Relicense the project under the Mozilla Public License 2.0 (`MPL-2.0`), replacing the previous source-available, non-commercial license.
-- **User accounts require a Linux-valid username**: creating a user now requires the username to be a valid Linux account name (lowercase letters/digits/`-`/`_`, starting with a letter or `_`), enforced in the create form and server-side. This guarantees every account can back a Linux and Samba (SMB) account — previously an invalid name (uppercase, dots…) silently produced an account with no file-server or SMB access.
+- **User accounts require a Linux-valid username**: creating a user now requires the username to be a valid Linux account name (lowercase letters/digits/`-`/`_`, starting with a letter or `_`), enforced in the create form and server-side. This guarantees every account can back a Linux and Samba (SMB) account; previously an invalid name (uppercase, dots…) silently produced an account with no file-server or SMB access.
 
 ## [1.29.2] - 2026-07-11
 
@@ -671,23 +675,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.29.0] - 2026-07-11
 
 ### Added
-- **Public file sharing**: share any file or folder over a public link (`/s/<token>`) with no account required for the recipient. Each link supports an optional password, an expiry, and a maximum download count, and can be revoked at any time. Visitors get a page that downloads the file or lets them browse a read-only folder listing; the link inherits the creator's read permission (re-checked on every access) and is contained to the shared path — symlink- and traversal-safe — on the privileged worker. Creating links is gated by a new per-place **Share** permission, grantable to a user or a role like Read/Write/Delete. Manage your links from Settings → Shared links.
+- **Public file sharing**: share any file or folder over a public link (`/s/<token>`) with no account required for the recipient. Each link supports an optional password, an expiry, and a maximum download count, and can be revoked at any time. Visitors get a page that downloads the file or lets them browse a read-only folder listing; the link inherits the creator's read permission (re-checked on every access) and is contained to the shared path (symlink- and traversal-safe) on the privileged worker. Creating links is gated by a new per-place **Share** permission, grantable to a user or a role like Read/Write/Delete. Manage your links from Settings → Shared links.
 
 ### Changed
 - **Logs**: the backend and the root worker now write their output to `/var/log/hsi/app.log` and `/var/log/hsi/root-worker.log` (created on install, rotated weekly) instead of only the systemd journal, so operators have plain log files to tail and ship.
 
 ### Fixed
-- **Samba password sync**: password sync now logs a clear warning when the Samba (`smbpasswd`) or Linux (`chpasswd`) step fails, instead of swallowing it silently — making a refused SMB login diagnosable from the backend log.
+- **Samba password sync**: password sync now logs a clear warning when the Samba (`smbpasswd`) or Linux (`chpasswd`) step fails, instead of swallowing it silently, making a refused SMB login diagnosable from the backend log.
 
 ## [1.28.6] - 2026-07-10
 
 ### Changed
-- **License**: strengthened the non-commercial license — an explicit "source-available, NON-COMMERCIAL" header, a definitions section (notably a broad definition of "commercial use"), a clear commercial-use prohibition that reserves a written commercial-license option, and added trademark, termination and full no-warranty clauses. Renamed the project from "Brume" to **HSI (Home Server Interface)** in the license and NATS config (the rest of the codebase already used the current name).
+- **License**: strengthened the non-commercial license: an explicit "source-available, NON-COMMERCIAL" header, a definitions section (notably a broad definition of "commercial use"), a clear commercial-use prohibition that reserves a written commercial-license option, and added trademark, termination and full no-warranty clauses. Renamed the project from "Brume" to **HSI (Home Server Interface)** in the license and NATS config (the rest of the codebase already used the current name).
 
 ## [1.28.5] - 2026-07-10
 
 ### Changed
-- **Places settings**: reworked the Places screen to explain what a place is and guide setup — a descriptive header, per-field hints on the add form, a guided empty state, and a short explanation of the read / write / delete permissions (with per-column tooltips and a note that admins always have full access). The "Add place" trigger now uses the shared button style.
+- **Places settings**: reworked the Places screen to explain what a place is and guide setup: a descriptive header, per-field hints on the add form, a guided empty state, and a short explanation of the read / write / delete permissions (with per-column tooltips and a note that admins always have full access). The "Add place" trigger now uses the shared button style.
 
 ### Fixed
 - **Update release notes**: the "What's new" panel now renders release notes as formatted text (headings, lists, bold, inline code, links) instead of raw Markdown. The Updates screen also links out to the specific release and to the project on GitHub.
@@ -719,12 +723,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.28.1] - 2026-07-06
 
 ### Changed
-- **Navigation**: reordered the app nav to a more natural flow — Overview, Files, Apps, then the admin tools (Storage, Monitor, Sharing), with Settings last, consistent across the classic sidebar, mobile bar and Launchpad. The Storage → Disks tab also gets a clearer hard-drive icon.
+- **Navigation**: reordered the app nav to a more natural flow: Overview, Files, Apps, then the admin tools (Storage, Monitor, Sharing), with Settings last, consistent across the classic sidebar, mobile bar and Launchpad. The Storage → Disks tab also gets a clearer hard-drive icon.
 
 ## [1.28.0] - 2026-07-06
 
 ### Changed
-- **Storage dialogs**: the format wizard, mount/unmount, LVM/RAID wizards and partition/destroy confirmations now use the shared modal component — so they animate in and out, join the layered-Escape stack, and (in desktop mode) render inside their window instead of covering the whole screen, matching every other dialog in the app.
+- **Storage dialogs**: the format wizard, mount/unmount, LVM/RAID wizards and partition/destroy confirmations now use the shared modal component, so they animate in and out, join the layered-Escape stack, and (in desktop mode) render inside their window instead of covering the whole screen, matching every other dialog in the app.
 
 ### Performance
 - **Smaller initial load**: the Storage, Monitor, Apps, Settings and Sharing panels are now code-split into separate chunks loaded on first open. The initial JavaScript bundle drops from ~865 KB to ~274 KB.
@@ -732,12 +736,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.27.2] - 2026-07-06
 
 ### Security
-- Updated dependencies to clear all 25 known vulnerabilities (12 high) reported by `pnpm audit` / Dependabot — notably fastify, vite, rollup and Prisma patch/minor bumps, and `@fastify/static` 8 → 9 which fixes a path traversal and a route-guard bypass in the layer that serves the dashboard.
+- Updated dependencies to clear all 25 known vulnerabilities (12 high) reported by `pnpm audit` / Dependabot, notably fastify, vite, rollup and Prisma patch/minor bumps, and `@fastify/static` 8 → 9 which fixes a path traversal and a route-guard bypass in the layer that serves the dashboard.
 
 ## [1.27.1] - 2026-07-06
 
 ### Added
-- **Sharing in classic mode**: the SMB Sharing app is now reachable outside desktop mode — admin-only entry in the classic sidebar and the mobile bottom nav.
+- **Sharing in classic mode**: the SMB Sharing app is now reachable outside desktop mode: admin-only entry in the classic sidebar and the mobile bottom nav.
 
 ### Changed
 - **Classic mode animations**: switching apps in classic (non-desktop) mode now cross-fades, matching the motion system introduced in 1.27.0.
@@ -748,7 +752,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.27.0] - 2026-07-06
 
 ### Added
-- **Motion system**: the dashboard now animates on design-token durations/easing — modals and confirm dialogs pop in and out, the launchpad zooms, desktop windows animate on open/close/minimize, pinned apps slide into place when added or removed, and route changes cross-fade. Everything collapses to instant under `prefers-reduced-motion`.
+- **Motion system**: the dashboard now animates on design-token durations/easing: modals and confirm dialogs pop in and out, the launchpad zooms, desktop windows animate on open/close/minimize, pinned apps slide into place when added or removed, and route changes cross-fade. Everything collapses to instant under `prefers-reduced-motion`.
 
 ### Changed
 - **Design tokens**: finished migrating the remaining raw palette colors to semantic status tokens (storage sections, overview, audit log, notifications, profile, permissions, RAID drive-bay illustration), exposed them as Tailwind utilities, and moved all radii to the shared token scale. Destructive/confirm buttons keep a visible hover state; the audit-log `fs` category gets a proper violet token with a dark-mode variant.
@@ -760,7 +764,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.26.0] - 2026-07-03
 
 ### Changed
-- **App icons**: redesigned the seven desktop app glyphs (Dock, Launchpad, window title bars) as a custom monochrome family — consistent rounded stroke on a 24px grid with filled-dot details (drive LEDs, share nodes, slider knobs); Settings trades the cog for three sliders and the dock's Launchpad button becomes a four-dot grid. Icons are now rendered by a shared `AppIcon` component instead of three inline SVG copies.
+- **App icons**: redesigned the seven desktop app glyphs (Dock, Launchpad, window title bars) as a custom monochrome family: consistent rounded stroke on a 24px grid with filled-dot details (drive LEDs, share nodes, slider knobs); Settings trades the cog for three sliders and the dock's Launchpad button becomes a four-dot grid. Icons are now rendered by a shared `AppIcon` component instead of three inline SVG copies.
 
 ## [1.25.0] - 2026-07-02
 
@@ -771,13 +775,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.24.0] - 2026-07-01
 
 ### Fixed
-- **Wallpaper upload**: fixed `ENOENT` failure on every wallpaper image upload in production installs. The backend's bundled `server.js` sits directly at `INSTALL_DIR`'s root, so the storage path fallback (relative to the *unbundled* dev source tree) walked two directories above `INSTALL_DIR` and tried to write to `/data` at the filesystem root — outside the systemd sandbox's writable paths. Now resolves against `INSTALL_DIR` directly.
+- **Wallpaper upload**: fixed `ENOENT` failure on every wallpaper image upload in production installs. The backend's bundled `server.js` sits directly at `INSTALL_DIR`'s root, so the storage path fallback (relative to the *unbundled* dev source tree) walked two directories above `INSTALL_DIR` and tried to write to `/data` at the filesystem root, outside the systemd sandbox's writable paths. Now resolves against `INSTALL_DIR` directly.
 
 ## [1.23.2] - 2026-07-01
 
 ### Fixed
-- **Updates**: fixed the update UI getting permanently stuck on "Restarting" — it only detected a thrown `fetch()` exception as "server down," so it missed nginx's 502 (backend port closed) and the backend's own 503 (NATS not yet reconnected), both successful HTTP responses. A manual page reload was required after every update; now the UI correctly detects the restart and reloads automatically.
-- **Design system**: finished the refresh consistency pass — Overview summary cards now use the shared `.panel-card` (elevation/radius), remaining pill-shaped badges (audit categories, RAID/LVM tags and counters) moved to the moderate radius token, and destructive UI (delete confirmations, danger zone) now uses the fixed `--c-danger` color instead of the user's accent color.
+- **Updates**: fixed the update UI getting permanently stuck on "Restarting": it only detected a thrown `fetch()` exception as "server down," so it missed nginx's 502 (backend port closed) and the backend's own 503 (NATS not yet reconnected), both successful HTTP responses. A manual page reload was required after every update; now the UI correctly detects the restart and reloads automatically.
+- **Design system**: finished the refresh consistency pass: Overview summary cards now use the shared `.panel-card` (elevation/radius), remaining pill-shaped badges (audit categories, RAID/LVM tags and counters) moved to the moderate radius token, and destructive UI (delete confirmations, danger zone) now uses the fixed `--c-danger` color instead of the user's accent color.
 
 ## [1.23.1] - 2026-07-01
 
@@ -787,27 +791,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.23.0] - 2026-07-01
 
 ### Changed
-- **Design system refresh**: moved away from the flat/monochrome "Nothing" look toward a warmer, softer balance — Inter replaces Space Mono for buttons, badges, labels, and nav (Space Mono now scoped to technical data values only: metrics, file sizes, IPs, hashes); buttons and badges lose their pill shape for a moderate rounded radius; cards and modals gain a subtle resting/hover shadow; destructive actions now use a fixed danger color independent of the accent picker; backgrounds are slightly warmed in both light and dark mode.
+- **Design system refresh**: moved away from the flat/monochrome "Nothing" look toward a warmer, softer balance: Inter replaces Space Mono for buttons, badges, labels, and nav (Space Mono now scoped to technical data values only: metrics, file sizes, IPs, hashes); buttons and badges lose their pill shape for a moderate rounded radius; cards and modals gain a subtle resting/hover shadow; destructive actions now use a fixed danger color independent of the accent picker; backgrounds are slightly warmed in both light and dark mode.
 
 ## [1.22.0] - 2026-07-01
 
 ### Changed
-- **Updates**: reworked update UI — version comparison card, release notes panel (populated after "Check now"), 4-step restart timeline (Scheduled → Restarting → Reconnecting → Ready), and auto-reload countdown once the server is back up.
+- **Updates**: reworked update UI: version comparison card, release notes panel (populated after "Check now"), 4-step restart timeline (Scheduled → Restarting → Reconnecting → Ready), and auto-reload countdown once the server is back up.
 
 ## [1.21.0] - 2026-07-01
 
 ### Changed
-- **Storage** is now a dedicated desktop app (Disks, RAID, LVM, Mounts) — accessible from the Launchpad and the non-desktop sidebar (admin only).
-- **Monitor** is now a dedicated desktop app (Overview, System, Audit Log) — accessible from the Launchpad and the non-desktop sidebar (admin only).
+- **Storage** is now a dedicated desktop app (Disks, RAID, LVM, Mounts), accessible from the Launchpad and the non-desktop sidebar (admin only).
+- **Monitor** is now a dedicated desktop app (Overview, System, Audit Log), accessible from the Launchpad and the non-desktop sidebar (admin only).
 - **Settings** is now purely configuration: Profile, Users, Places, Permissions, Roles, Updates.
 
 ## [1.20.0] - 2026-07-01
 
 ### Added
-- **Permissions**: new Settings → Permissions section — per-place access control matrix (read/write/delete) for every role and user.
-- **Overview**: new Settings → Overview dashboard — live summary cards for system health (CPU/RAM/uptime), storage (disks, RAID status), containers (running/stopped), LVM, and recent audit activity.
-- **File search**: search bar in the file browser — searches by filename within the current place, results navigate to the containing directory.
-- **Historical metrics**: Settings → System → History tab — CPU %, RAM, and network charts (Chart.js) with 1h/6h/24h/7d periods; metrics sampled every 60 seconds and retained for 30 days.
+- **Permissions**: new Settings → Permissions section: per-place access control matrix (read/write/delete) for every role and user.
+- **Overview**: new Settings → Overview dashboard: live summary cards for system health (CPU/RAM/uptime), storage (disks, RAID status), containers (running/stopped), LVM, and recent audit activity.
+- **File search**: search bar in the file browser: searches by filename within the current place, results navigate to the containing directory.
+- **Historical metrics**: Settings → System → History tab: CPU %, RAM, and network charts (Chart.js) with 1h/6h/24h/7d periods; metrics sampled every 60 seconds and retained for 30 days.
 
 ## [1.19.1] - 2026-06-30
 
@@ -818,10 +822,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Storage split**: replaced the monolithic `DisksSection.vue` (2191 lines, 3 internal tabs) with four independent nav sections under Settings → admin:
-  - **Disques** (`PhysicalDisksSection`) — physical disk cards, S.M.A.R.T. health, partition management.
-  - **RAID** (`RaidSection`) — RAID array creation, destruction, live status, device bay.
-  - **LVM** (`LvmSection`) — PV / VG / LV lifecycle (create, remove, resize).
-  - **Montages** (`MountsSection`) — centralized view of all mounted and unmounted filesystems across disks, RAID arrays, and LVM logical volumes, with mount/unmount/format actions and clickable source badges that navigate to the owning section.
+  - **Disques** (`PhysicalDisksSection`): physical disk cards, S.M.A.R.T. health, partition management.
+  - **RAID** (`RaidSection`): RAID array creation, destruction, live status, device bay.
+  - **LVM** (`LvmSection`): PV / VG / LV lifecycle (create, remove, resize).
+  - **Montages** (`MountsSection`): centralized view of all mounted and unmounted filesystems across disks, RAID arrays, and LVM logical volumes, with mount/unmount/format actions and clickable source badges that navigate to the owning section.
 - Shared `useStorageData` singleton composable: one reactive store, one fetch cycle, one `refresh()` shared across all four sections. Navigating between storage sections never triggers duplicate API calls.
 - Cross-section navigation: disk used as RAID member → badge links to RAID; disk or RAID used as LVM PV → badge links to LVM; RAID member drives clickable → links to Disques.
 
@@ -862,7 +866,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.16.0] - 2026-06-29
 
 ### Added
-- Storage section is now split into three focused tabs: **Disks**, **RAID**, and **LVM** — each with a live count badge.
+- Storage section is now split into three focused tabs: **Disks**, **RAID**, and **LVM**, each with a live count badge.
 - LVM wizard: assembled RAID arrays (md devices) can now be selected as Physical Volume candidates, enabling LVM-over-RAID setups. They appear in the picker with a RAID badge.
 
 ### Fixed
@@ -870,7 +874,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LVM wizard: disks that are RAID members are now excluded from the PV picker.
 - LVM format and mount operations now send the correct `/dev/vg-name/lv-name` symlink path to the worker instead of a constructed dm name that does not exist as a device file.
 - `lvToBlockDev` now correctly resolves the dm device using the LVM double-hyphen naming convention, so filesystem type, mount point, and usage data appear correctly for logical volumes.
-- System LVM protection: Volume Groups whose Logical Volumes are mounted at critical paths (`/`, `/boot`, `/var`, etc.) are now correctly detected as system VGs — all destructive actions (Remove VG, Remove LV) are hidden.
+- System LVM protection: Volume Groups whose Logical Volumes are mounted at critical paths (`/`, `/boot`, `/var`, etc.) are now correctly detected as system VGs: all destructive actions (Remove VG, Remove LV) are hidden.
 - FAT32 formatting now tries `mkfs.fat` first (modern name) before falling back to `mkfs.vfat`.
 - Device name validation in Go and tRPC now accepts hyphens and one forward slash, allowing relative LVM paths (`ubuntu-vg/ubuntu-lv`) to pass through.
 
@@ -878,15 +882,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Disk management UI: redesigned storage section to be more professional and less error-prone. Destructive actions (Destroy RAID, Remove VG) are now hidden behind a ⋯ dropdown menu instead of inline red buttons. Per-partition and per-LV Delete buttons are now invisible by default and only appear on row hover. "Init GPT" (wipes partition table) is now collapsed inside an expandable "Advanced" section at the bottom of each disk card rather than shown inline next to "+ Partition". Cards now have colored left-edge accent stripes for visual type identification.
-- Disk management UI: system VGs (Volume Groups that contain a mounted system partition) are now protected — the ⋯ menu and all destructive actions are hidden, and a SYSTEM badge is shown in orange.
+- Disk management UI: system VGs (Volume Groups that contain a mounted system partition) are now protected: the ⋯ menu and all destructive actions are hidden, and a SYSTEM badge is shown in orange.
 - Go worker: `Children` field on block devices was omitted from JSON when empty (due to `omitempty`), causing the dashboard to crash with `TypeError: can't access property Symbol.iterator, G.children is undefined`. The field now always serializes as `[]` instead of being omitted.
 
 ## [1.15.0] - 2026-06-29
 
 ### Added
 - LVM management: create Volume Groups from one or more physical devices, with a 3-step wizard (select PV devices → name VG/LV/optional size → confirm). Logical Volumes appear as manageable entries with Format, Mount/Unmount, and Delete actions. Per-VG controls: Add LV and Remove VG (with typed confirmation). LVM info is loaded in parallel with block devices on page open.
-- Partition management: each non-system disk now has an inline partition toolbar with "Init GPT" (wipes partition table — requires typed confirmation) and "+ Partition" (creates a partition spanning all free space). Each partition row gains a "Delete" button (when unmounted and not a system partition).
-- Seven new dialogs for all LVM and partition operations: LVM Create Wizard, Add LV, Remove LV, Remove VG, Init GPT, Add Partition, Delete Partition — all include warnings and typed or explicit confirmation before any destructive action.
+- Partition management: each non-system disk now has an inline partition toolbar with "Init GPT" (wipes partition table, requires typed confirmation) and "+ Partition" (creates a partition spanning all free space). Each partition row gains a "Delete" button (when unmounted and not a system partition).
+- Seven new dialogs for all LVM and partition operations: LVM Create Wizard, Add LV, Remove LV, Remove VG, Init GPT, Add Partition, Delete Partition: all include warnings and typed or explicit confirmation before any destructive action.
 - LVM Logical Volumes behave as first-class block devices: they show filesystem type, mount point, and usage bar if mounted, and reuse the existing Format/Mount/Unmount wizards.
 
 ## [1.14.0] - 2026-06-29
@@ -918,7 +922,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.12.2] - 2026-06-29
 
 ### Added
-- File browser: uploads now appear inline as ghost rows/cards in the directory they're targeting. Each shows a live progress bar, transfer speed, and a spinner on the icon — visible immediately when the upload starts, before the file exists on disk. Works for all uploads in the current browser session (any logged-in user). The ghost disappears and is replaced by the real entry once the upload completes.
+- File browser: uploads now appear inline as ghost rows/cards in the directory they're targeting. Each shows a live progress bar, transfer speed, and a spinner on the icon, visible immediately when the upload starts, before the file exists on disk. Works for all uploads in the current browser session (any logged-in user). The ghost disappears and is replaced by the real entry once the upload completes.
 
 ## [1.12.1] - 2026-06-29
 
@@ -929,11 +933,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Toast notifications: errors and confirmations now appear as floating overlays in the top-right corner, auto-dismissing after a few seconds. Errors persist 7 s; successes 3.5 s.
-- Container actions (start, stop, restart, recreate) now show live progress in the Activity bell — a spinner while the job runs, then a green check or red cross on completion.
+- Container actions (start, stop, restart, recreate) now show live progress in the Activity bell: a spinner while the job runs, then a green check or red cross on completion.
 - Creating an HSI user now automatically provisions a Linux system user (`useradd -M -s /sbin/nologin`) with the same username. The Linux username is stored in `linuxUsername` and shown in the user table. No home directory and no SSH login are created by default.
 
 ### Fixed
-- All `alert()` browser dialogs (container action errors, network/volume delete failures, unmanaged-container import errors) replaced with toast notifications — no more browser-native popups blocking the page.
+- All `alert()` browser dialogs (container action errors, network/volume delete failures, unmanaged-container import errors) replaced with toast notifications; no more browser-native popups blocking the page.
 
 ## [1.11.5] - 2026-06-29
 
@@ -944,7 +948,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.11.4] - 2026-06-29
 
 ### Added
-- Container form: new "Extra Hosts" field in the Advanced tab — adds `--add-host hostname:ip` entries that map to `/etc/hosts` inside the container. Supports tag-based input with `hostname:ip` format validation. Compose import parses `extra_hosts` (array or map form).
+- Container form: new "Extra Hosts" field in the Advanced tab: adds `--add-host hostname:ip` entries that map to `/etc/hosts` inside the container. Supports tag-based input with `hostname:ip` format validation. Compose import parses `extra_hosts` (array or map form).
 
 ## [1.11.3] - 2026-06-29
 
@@ -957,7 +961,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.11.2] - 2026-06-29
 
 ### Added
-- Places: when creating a place with a path that doesn't exist, a "Create directory and add place" link appears below the error — clicking it runs `mkdir -p` on the path and automatically retries the creation.
+- Places: when creating a place with a path that doesn't exist, a "Create directory and add place" link appears below the error; clicking it runs `mkdir -p` on the path and automatically retries the creation.
 
 ## [1.11.1] - 2026-06-29
 
@@ -969,17 +973,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.11.0] - 2026-06-27
 
 ### Added
-- Settings → System: new admin section showing live host information — hostname, platform, architecture, kernel version, uptime, CPU model and core count with usage bar and 1/5/15-minute load averages, memory usage bar, and network interfaces with per-address IPv4/IPv6 badges and live RX/TX throughput. Metrics refresh every 3 seconds.
-- Settings → Disks: RAID arrays now rendered as a visual drive bay — each member disk drawn as an illustrated HDD (platter rings, arm, activity LED) with green/red coloring per active/degraded state, chevrons between drives, and an arrow showing the logical RAID output and mount point. Usage bar appears at the bottom when the array is mounted.
+- Settings → System: new admin section showing live host information: hostname, platform, architecture, kernel version, uptime, CPU model and core count with usage bar and 1/5/15-minute load averages, memory usage bar, and network interfaces with per-address IPv4/IPv6 badges and live RX/TX throughput. Metrics refresh every 3 seconds.
+- Settings → Disks: RAID arrays now rendered as a visual drive bay, each member disk drawn as an illustrated HDD (platter rings, arm, activity LED) with green/red coloring per active/degraded state, chevrons between drives, and an arrow showing the logical RAID output and mount point. Usage bar appears at the bottom when the array is mounted.
 
 ### Fixed
-- Activity notifications were displayed twice — once as bottom-right toasts (`NotificationsContainer`) and once in the bell menu. `NotificationsContainer` is now removed; the bell panel is the single source.
+- Activity notifications were displayed twice: once as bottom-right toasts (`NotificationsContainer`) and once in the bell menu. `NotificationsContainer` is now removed; the bell panel is the single source.
 
 ## [1.10.2] - 2026-06-27
 
 ### Changed
 - File browser: folders now require a double-click to navigate into them; single click selects the item (consistent with files). Applies to both list and grid views.
-- File browser: activity panel (bell menu) redesigned — uploads and job notifications unified into a single flat list with inline progress bars, replacing the previous two-section card layout.
+- File browser: activity panel (bell menu) redesigned: uploads and job notifications unified into a single flat list with inline progress bars, replacing the previous two-section card layout.
 
 ### Fixed
 - File browser: filter bar (Cmd/Ctrl+K) was rendering but hiding the file list due to a Vue v-if chain bug; the filter bar and views are now correctly independent.
@@ -1007,7 +1011,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0] - 2026-06-23
 
 ### Added
-- Chunked large-file downloads for impersonated users: a new `root.fs.read-chunk` NATS subject reads files in 4 MB slices (mirroring the existing chunked-upload path), and the backend streams those slices directly into the HTTP response via a Node `Readable` — no full-file buffering, no NATS payload limit.
+- Chunked large-file downloads for impersonated users: a new `root.fs.read-chunk` NATS subject reads files in 4 MB slices (mirroring the existing chunked-upload path), and the backend streams those slices directly into the HTTP response via a Node `Readable`, no full-file buffering, no NATS payload limit.
 
 ### Fixed
 - Impersonated file downloads were silently truncated at 64 MB due to the existing `root.fs.read` NATS payload cap; files larger than that now download completely.

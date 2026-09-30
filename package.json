@@ -17,7 +17,7 @@
     "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
     "smoke:backend": "node scripts/smoke-backend.mjs",
     "check:go": "test -z \"$(gofmt -l apps/root-worker)\" && cd apps/root-worker && go vet ./...",
-    "verify": "pnpm lint && scripts/check-i18n.sh && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",
+    "verify": "pnpm lint && scripts/check-i18n.sh && scripts/check-no-em-dash.sh && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "dev": "pnpm -r dev",

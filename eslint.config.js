@@ -20,7 +20,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   // `essential` = correctness/reactivity rules only. We deliberately skip the
   // opinionated template-formatting rules (indent, attribute order, line breaks)
-  // that a linter shouldn't own — those are left to the editor/formatter.
+  // that a linter shouldn't own; those are left to the editor/formatter.
   ...pluginVue.configs["flat/essential"],
 
   {

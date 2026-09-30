@@ -139,14 +139,14 @@ docs/            This documentation
 ```
 
 Dashboard source of note:
-- `src/components/ui/Modal.vue` — the shared modal (animation, window-scoping, Escape stack)
-- `src/components/storage/dialogs/` — shared device/destroy dialogs reused by all storage sections
-- `src/lib/` — composables and helpers (`confirm.ts`, `escLayer.ts`, `desktop.ts`, `trpc.ts`, …)
-- `src/style.css` — design tokens and shared utility classes
+- `src/components/ui/Modal.vue`: the shared modal (animation, window-scoping, Escape stack)
+- `src/components/storage/dialogs/`: shared device/destroy dialogs reused by all storage sections
+- `src/lib/`: composables and helpers (`confirm.ts`, `escLayer.ts`, `desktop.ts`, `trpc.ts`, …)
+- `src/style.css`: design tokens and shared utility classes
 
 ## Release process
 
-Releases are **manual and batched** — group related changes, then cut one
+Releases are **manual and batched**: group related changes, then cut one
 release. Never release automatically.
 
 1. Add your changes under `## [Unreleased]` in `CHANGELOG.md`.
@@ -158,7 +158,7 @@ release. Never release automatically.
    ```
 
    It bumps `package.json`, moves the `[Unreleased]` notes under the new version,
-   commits, tags `v<version>`, and pushes `main` + the tag — which triggers the
+   commits, tags `v<version>`, and pushes `main` + the tag, which triggers the
    GitHub Actions release workflow.
 
 The script refuses to run on a dirty tree, off `main`, with an existing tag, or
