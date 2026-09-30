@@ -29,13 +29,8 @@ const active = computed<SectionId>({
 // Names of the objects on the stack, as their pages resolve them.
 const names = ref<Record<string, string>>({})
 const crumbs = computed(() => navCrumbs(location.value, names.value))
-// A disk to reveal in the device list: bumped on every navigation to a disk,
-// even the current one, so asking again shows it again.
-const revealRequest = ref<{ name: string; nonce: number } | undefined>()
-
 function open(loc: StorageLocation) {
   location.value = navOpen(location.value, loc)
-  if (loc.kind === 'disk') revealRequest.value = { name: loc.name, nonce: (revealRequest.value?.nonce ?? 0) + 1 }
 }
 function focusOn(target: SectionId | StorageLocation) {
   open(typeof target === 'string' ? { kind: 'section', section: target } : target)
@@ -146,7 +141,7 @@ const installCommand = computed(() =>
           @navigate="focusOn" @named="n => { if (location.current.kind === 'volume') names = { ...names, [`volume:${location.current.id}`]: n } }" />
         <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn" />
         <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" @create="startCreate" />
-        <PhysicalDisksSection v-else-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
+        <PhysicalDisksSection v-else-if="active === 'disks'" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
         <LvmSection           v-else-if="active === 'lvm'"

@@ -1293,4 +1293,10 @@ await testSharePlans()
   assert.deepEqual(out[1], { id: "a2", action: "storage.mount", target: "sdb1", success: false, at: at.toISOString(), user: null })
 }
 
+// Activity lists what ran, not the previews shown before it.
+{
+  const { activityWhere } = await import("../services/storage-activity")
+  assert.deepEqual(activityWhere(["sdb1"]), { target: { in: ["sdb1"] }, action: { notIn: ["storage.plan"] } })
+}
+
 console.log("Backend security tests passed")
