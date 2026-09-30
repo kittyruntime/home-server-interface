@@ -22,7 +22,7 @@ export const groupRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Cascade removes the group's GroupPlacePermission rows, so users who had
-      // share access only through this group lose it — resync so smb.conf drops
+      // share access only through this group lose it: resync so smb.conf drops
       // them from valid/write lists instead of leaving stale network access.
       const r = await ctx.prisma.group.delete({ where: { id: input.id } })
       void syncSharesBestEffort(ctx.prisma)

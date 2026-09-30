@@ -59,7 +59,7 @@ type SmartResult = {
   nvme?: { criticalWarning: number; mediaErrors: number }
 }
 
-// Mirrors apps/dashboard/src/composables/useSmart.ts's smartStatus — same
+// Mirrors apps/dashboard/src/composables/useSmart.ts's smartStatus, same
 // classification over the same already-computed (root-worker-side) data,
 // duplicated here (not shared) since it's 6 lines and this is the only other
 // place that needs it.
@@ -85,7 +85,7 @@ async function checkSmart(): Promise<CheckOutcome> {
     try {
       smart = await requestSync<SmartResult>("root.sys.smart", { device: d.name, noWake: true }, 15_000)
     } catch {
-      continue // unreadable this tick — not checked, leave any existing alert alone
+      continue // unreadable this tick: not checked, leave any existing alert alone
     }
     if (!smart.available) {
       // No SMART support is a final answer: count the disk as checked so a
@@ -112,7 +112,7 @@ async function getThresholds(): Promise<{ warning: number; critical: number }> {
 }
 
 // One Place can share a filesystem with another (two Places under the same
-// mount) — check each distinct path once, not once per Place, so a full
+// mount): check each distinct path once, not once per Place, so a full
 // filesystem doesn't produce N identical alerts for N Places on it.
 async function checkDiskUsage(): Promise<CheckOutcome> {
   const places = await prisma.place.findMany({ select: { path: true } })
@@ -125,7 +125,7 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
     try {
       usage = await requestSync<{ total: number; free: number }>("root.fs.diskusage", { path, allowedRoot: "" }, 15_000)
     } catch {
-      continue // unreadable this tick (e.g. Place path temporarily gone) — leave any existing alert alone
+      continue // unreadable this tick (e.g. Place path temporarily gone): leave any existing alert alone
     }
     if (usage.total <= 0) continue
     checked.push(path)
@@ -206,7 +206,7 @@ async function runChecks(): Promise<void> {
     try {
       outcome = await check()
     } catch {
-      outcome = null // transient failure — leave this source's existing alerts as-is
+      outcome = null // transient failure: leave this source's existing alerts as-is
     }
     if (outcome === null) continue
     await reconcileSource(source, outcome)

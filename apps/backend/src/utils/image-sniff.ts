@@ -1,5 +1,5 @@
 // Cheap magic-byte sniff for the three image types the wallpaper upload
-// accepts — mirrors utils/text-sniff.ts's "don't trust the client's
+// accepts, mirrors utils/text-sniff.ts's "don't trust the client's
 // Content-Type, look at the actual bytes" approach.
 export function detectImageType(buf: Buffer): "png" | "jpeg" | "webp" | null {
   if (buf.length < 12) return null

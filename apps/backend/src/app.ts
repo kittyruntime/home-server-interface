@@ -25,7 +25,7 @@ const DASHBOARD_DIR = process.env.DASHBOARD_PATH
 export function buildApp() {
     const app = Fastify({
         logger: loggerOptions,
-        bodyLimit: 50 * 1024 * 1024, // 50 MB — covers 2 MB chunks with headroom
+        bodyLimit: 50 * 1024 * 1024, // 50 MB, covers 2 MB chunks with headroom
         // Production nginx connects over IPv4 loopback. Trust forwarded client
         // addresses only from loopback peers, so direct clients cannot spoof
         // req.ip (used by rate limiting and audit logs).
@@ -34,13 +34,13 @@ export function buildApp() {
     })
     setLogger(app.log)
 
-    // Disable cross-origin requests — the frontend is served from the same origin.
+    // Disable cross-origin requests: the frontend is served from the same origin.
     app.register(cors, { origin: false })
 
-    // Global rate limit — high ceiling to accommodate chunked file uploads.
+    // Global rate limit: high ceiling to accommodate chunked file uploads.
     app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
 
-    // Stricter rate limit on sensitive credential-guessing endpoints — the
+    // Stricter rate limit on sensitive credential-guessing endpoints: the
     // login form and the public share-link password unlock: 20 req/min per IP,
     // via a simple in-memory sliding-window counter keyed by endpoint + IP.
     const sensitiveAttempts = new Map<string, { count: number; resetAt: number }>()
@@ -79,7 +79,7 @@ export function buildApp() {
         },
     })
 
-    // Serve the dashboard SPA — registered last so API routes take priority.
+    // Serve the dashboard SPA, registered last so API routes take priority.
     // wildcard: true (default) registers GET /* which serves existing files and
     // calls reply.callNotFound() for missing ones, triggering the handler below.
     app.register(fastifyStatic, {

@@ -8,7 +8,7 @@ import { requestSync } from "../nats"
 export const STACKS_DIR = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
 
 // Names end up as path segments under STACKS_DIR (compose.yaml ops, recursive
-// delete), so reject traversal/absolute/dotted names at the service boundary —
+// delete), so reject traversal/absolute/dotted names at the service boundary:
 // the router validates too, but the destructive primitives must not trust it.
 function assertValidStackName(name: string): void {
   if (!STACK_NAME_RE.test(name)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid app name" })
@@ -76,7 +76,7 @@ type ObservedContainer = {
 
 async function observedContainers(): Promise<ObservedContainer[]> {
   // Same root.container.listAll subject as dockerContainers(), which caches
-  // for 5s — reuse that instead of firing an uncached request per call.
+  // for 5s; reuse that instead of firing an uncached request per call.
   // Degrades to empty when the worker/docker is unavailable.
   return (await dockerContainers()) as unknown as ObservedContainer[]
 }

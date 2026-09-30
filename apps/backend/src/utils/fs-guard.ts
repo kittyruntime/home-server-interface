@@ -20,7 +20,7 @@ async function resolveExisting(p: string): Promise<string> {
  * Verifies that p (after resolving symlinks on its existing ancestors)
  * lies within root. Used on the rare paths where the backend process
  * touches the filesystem directly instead of delegating to root-worker
- * (e.g. a user with Place access but no mapped Linux user) — those reads
+ * (e.g. a user with Place access but no mapped Linux user): those reads
  * are exposed to the same symlink-escape trick the worker guards against.
  */
 export async function isWithinRoot(p: string, root: string): Promise<boolean> {

@@ -22,7 +22,7 @@ export function guessMime(filename: string): string {
 
 // Whitelist of MIME types it's safe to serve with Content-Disposition: inline
 // (i.e. rendered directly by the browser instead of forced to save-as).
-// Restricted to passive media (image/video/audio) — explicitly excludes
+// Restricted to passive media (image/video/audio), explicitly excludes
 // image/svg+xml (can embed <script>, executes if framed/navigated-to
 // directly), text/html, and XML variants, since those would otherwise
 // execute as an active document on this backend's own origin (where the

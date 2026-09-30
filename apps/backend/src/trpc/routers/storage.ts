@@ -7,7 +7,7 @@ import { prisma } from "@app/database"
 import { fetchVolumes, resumeVolume } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
 
-// Storage router — disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
+// Storage router: disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
 // thin zod-validated proxy over a privileged NATS subject handled by the root-worker
 // (apps/root-worker/disk.go). Monitoring/sysinfo live in the `system` router instead.
 const zMaintenanceSchedule = z.object({

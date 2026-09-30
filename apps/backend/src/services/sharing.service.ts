@@ -6,21 +6,21 @@ import { overlayShares, type ShareChange } from "./sharing-plan"
 
 // Never expose privileged/system accounts over Samba: writing to shares as root
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
-// read-only). A user mapped to such an account simply isn't a share user — use a
+// read-only). A user mapped to such an account simply isn't a share user; use a
 // normal account for SMB.
 const NON_SHAREABLE_LINUX = new Set(["root"])
 function isShareableLinux(linux: string | null | undefined): linux is string {
   return !!linux && !NON_SHAREABLE_LINUX.has(linux)
 }
 
-/** Why a permitted user can't actually use file sharing — null if they can. */
+/** Why a permitted user can't actually use file sharing, or null if they can. */
 export function shareExclusionReason(linuxUsername: string | null | undefined): string | null {
-  if (!linuxUsername) return "No Linux account — set a Linux username for this account."
-  if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `System account "${linuxUsername}" is not allowed over SMB — use a non-root account.`
+  if (!linuxUsername) return "No Linux account: set a Linux username for this account."
+  if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `System account "${linuxUsername}" is not allowed over SMB; use a non-root account.`
   return null
 }
 
-/** Linux usernames of all admins (excluding root/system accounts) — admins have
+/** Linux usernames of all admins (excluding root/system accounts): admins have
  *  full access, so they're added to every share/place's write set. */
 export async function adminLinuxUsers(prisma: PrismaClient): Promise<string[]> {
   const admins = await prisma.user.findMany({
@@ -39,15 +39,15 @@ export interface ShareUserEntry {
 export interface ResolvedShareUsers {
   validUsers: string[]
   writeUsers: string[]
-  /** App usernames that have access to the Place but no linuxUsername — they
+  /** App usernames that have access to the Place but no linuxUsername: they
    *  cannot get a Samba account and are excluded from the effective share. */
   excludedUsernames: string[]
   /** Every app-user with a permission on the place (for diagnostics). */
   entries: ShareUserEntry[]
 }
 
-/** Aggregates UserPlacePermission + GroupPlacePermission for a Place — same
- *  read/write semantics as the rest of the app — into Samba user lists. */
+/** Aggregates UserPlacePermission + GroupPlacePermission for a Place (same
+ *  read/write semantics as the rest of the app) into Samba user lists. */
 export async function resolveShareUsers(
   prisma: PrismaClient,
   placeId: string,
@@ -138,7 +138,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
   })
   const shares = overlayShares(rows, change).filter(s => s.enabled)
 
-  // Admins always have full access in the app — mirror that into Samba so an
+  // Admins always have full access in the app: mirror that into Samba so an
   // admin can read/write every share without needing an explicit per-place grant.
   const adminLinux = await adminLinuxUsers(prisma)
 

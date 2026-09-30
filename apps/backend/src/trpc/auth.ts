@@ -15,7 +15,7 @@ if (isProd && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
 }
 if (!process.env.JWT_SECRET) {
   log.warn(
-    "JWT_SECRET is not set — using an insecure development default. " +
+    "JWT_SECRET is not set; using an insecure development default. " +
     "Set JWT_SECRET in your environment before deploying to production.",
   )
 }
@@ -50,7 +50,7 @@ export function verifyToken(token: string): TokenPayload {
 // Short-lived, single-path-scoped tokens for the `<img>`/`<video>`/download
 // URLs that have to carry auth in the query string (can't set an Authorization
 // header on those tags). Minted just-in-time via fs.createFileToken, never the
-// long-lived session JWT — keeps that 7-day full-account credential out of
+// long-lived session JWT: keeps that 7-day full-account credential out of
 // URLs, browser history, and server access logs.
 export interface FileTokenPayload {
   userId: string
@@ -109,7 +109,7 @@ export function verifyShareToken(token: string): ShareTokenPayload {
 
 // ── In-memory token blacklist ─────────────────────────────────────────────────
 // Holds JTIs of logged-out tokens until they expire.
-// Lost on restart — acceptable since restarts already invalidate all jobs.
+// Lost on restart, acceptable since restarts already invalidate all jobs.
 
 const blacklist = new Set<string>()
 

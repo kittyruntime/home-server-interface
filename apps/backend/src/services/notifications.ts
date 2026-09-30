@@ -23,7 +23,7 @@ export interface NotificationEvent {
 export const SEVERITY_RANK: Record<string, number> = { info: 0, warning: 1, critical: 2 }
 
 // Replace {{vars}} with JSON-escaped values (a message containing quotes or
-// newlines must never break a JSON body). Unknown variables are left as-is —
+// newlines must never break a JSON body). Unknown variables are left as-is:
 // they are immediately visible in the Send test result.
 export function interpolateTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (match, key: string) => {
@@ -57,7 +57,7 @@ export function selectConnectorIds(
   for (const rule of rules) {
     if (!ruleMatches(rule, event)) continue
     try {
-      // Shape guard: accept only a JSON array of strings — a wrong-shape row
+      // Shape guard: accept only a JSON array of strings; a wrong-shape row
       // ("w1", {"w1": true}, numbers) must not slip through (a bare string
       // would iterate as characters).
       const parsed = JSON.parse(rule.connectorIds) as unknown
@@ -66,7 +66,7 @@ export function selectConnectorIds(
           if (typeof id === "string") ids.add(id)
         }
       }
-    } catch { /* corrupted rule row — skip its targets */ }
+    } catch { /* corrupted rule row: skip its targets */ }
   }
   return [...ids]
 }
@@ -160,7 +160,7 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
     method: "POST",
     url: "",
     headers: '{"Content-Type":"application/json"}',
-    bodyTemplate: `{"content":"[{{event.severity}}] {{event.source}} — {{event.message}} ({{event.target}})"}`,
+    bodyTemplate: `{"content":"[{{event.severity}}] {{event.source}}: {{event.message}} ({{event.target}})"}`,
   },
   {
     id: "slack",
@@ -168,7 +168,7 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
     method: "POST",
     url: "",
     headers: '{"Content-Type":"application/json"}',
-    bodyTemplate: `{"text":"[{{event.severity}}] {{event.source}} — {{event.message}} ({{event.target}})"}`,
+    bodyTemplate: `{"text":"[{{event.severity}}] {{event.source}}: {{event.message}} ({{event.target}})"}`,
   },
   {
     id: "ntfy",
