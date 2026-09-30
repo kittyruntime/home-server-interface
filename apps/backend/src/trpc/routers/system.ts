@@ -3,7 +3,7 @@ import * as fs from "fs"
 import { z } from "zod"
 import { router, protectedProcedure, adminProcedure } from "../index"
 
-// System router — live metrics, metrics history, and static system info. Disk/RAID/
+// System router: live metrics, metrics history, and static system info. Disk/RAID/
 // LVM/mount management moved to the `storage` router.
 
 // --- CPU delta ---

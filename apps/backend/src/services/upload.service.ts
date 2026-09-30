@@ -160,7 +160,7 @@ export function getUploadPhase(state: UploadState, finalizeJobStatus?: string | 
 /**
  * Start a periodic GC that evicts uploads silent for more than UPLOAD_TTL_MS.
  * `onStale` is called for each evicted entry so the caller can schedule
- * worker cleanup and emit logs.  Idempotent — safe to call multiple times.
+ * worker cleanup and emit logs.  Idempotent: safe to call multiple times.
  */
 export function startUploadGc(onStale: (id: string, state: UploadState) => void): void {
   if (gcStarted) return

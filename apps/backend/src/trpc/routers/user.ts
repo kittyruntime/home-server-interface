@@ -144,7 +144,7 @@ export const userRouter = router({
 
   // Lightweight security posture for the current account. Superseded by
   // ctx.user.mustChangePassword (carried in the JWT, decoded client-side) for the
-  // forced-change flow — kept as a query only as a fallback for a token issued
+  // forced-change flow, kept as a query only as a fallback for a token issued
   // before this field existed, or one that's simply gone stale mid-session.
   securityStatus: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.prisma.user.findUniqueOrThrow({
@@ -182,7 +182,7 @@ export const userRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
       if ((input.isAdmin !== undefined || input.isUserManager !== undefined) && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN" })
-      // An admin may not strip their own admin flag — the UI disables this, but
+      // An admin may not strip their own admin flag: the UI disables this, but
       // a direct API call could otherwise lock out the last administrator.
       if (input.isAdmin === false && input.userId === ctx.user.userId)
         throw new TRPCError({ code: "FORBIDDEN", message: "You can't remove your own admin access" })
@@ -220,7 +220,7 @@ export const userRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = await changePassword(ctx.prisma, ctx.user.userId, input.currentPassword, input.newPassword)
       // ctx.user's existing claims are still valid post-change (only the password
-      // moved) — re-sign rather than re-query, so a forced change unblocks the
+      // moved): re-sign rather than re-query, so a forced change unblocks the
       // account immediately instead of waiting for the next login.
       const token = signToken(ctx.user.userId, ctx.user.isAdmin, ctx.user.isUserManager, ctx.user.capabilities, false)
       return { ...result, token }
@@ -243,8 +243,8 @@ export const userRouter = router({
       return result
     }),
 
-  // Real Linux/Samba account state per user, alongside what HSI expects — see
-  // user.service.ts's getIdentityStatus for the reconciliation rule.
+  // Real Linux/Samba account state per user, alongside what HSI expects (see
+  // user.service.ts's getIdentityStatus for the reconciliation rule).
   identityStatus: userManagerProcedure.query(({ ctx }) => getIdentityStatus(ctx.prisma)),
 
   setSambaEnabled: userManagerProcedure

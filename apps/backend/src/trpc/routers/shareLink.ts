@@ -4,7 +4,7 @@ import { basename, normalize } from "node:path"
 import bcrypt from "bcryptjs"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, publicProcedure } from "../index"
-import { checkPathPerm } from "./fs"           // see Step 2 — must be exported
+import { checkPathPerm } from "./fs"           // see Step 2: must be exported
 import { verifyShareToken, signShareToken } from "../auth"
 import { requestSync } from "../../nats"
 
@@ -28,7 +28,7 @@ export type LoadedLink = {
   maxDownloads: number | null; downloads: number
   creatorId: string; linuxUser: string
   // Worker containment root for root.fs.* calls: always the shared path itself,
-  // for every creator (including admins) — nothing outside it is reachable.
+  // for every creator (including admins); nothing outside it is reachable.
   allowedRoot: string
 }
 
@@ -46,7 +46,7 @@ export async function loadLink(prisma: any, token: string):
     where: { id: row.creatorId }, select: { username: true },
   })
   if (!creator) return { ok: false, reason: "creator" }
-  // Authorization only — does not determine the worker containment root.
+  // Authorization only: does not determine the worker containment root.
   const authRoot = await creatorAllowedRoot(prisma, row.creatorId, row.path)
   if (authRoot === undefined) return { ok: false, reason: "creator" }
 
@@ -57,7 +57,7 @@ export async function loadLink(prisma: any, token: string):
       maxDownloads: row.maxDownloads, downloads: row.downloads,
       creatorId: row.creatorId, linuxUser: creator.username,
       // Containment root is always the shared path itself, never the admin
-      // "no root" sentinel — the worker must not allow escaping this dir.
+      // "no root" sentinel: the worker must not allow escaping this dir.
       allowedRoot: row.path,
     },
   }
@@ -186,7 +186,7 @@ export const shareLinkRouter = router({
   unlock: publicProcedure
     .input(z.object({ token: z.string().max(200), password: z.string().max(200) }))
     .mutation(async ({ ctx, input }) => {
-      // Unauthenticated by design — this is the public unlock attempt itself — so
+      // Unauthenticated by design (this is the public unlock attempt itself), so
       // it can't ride the auditLog tRPC middleware (protectedProcedure-only, and
       // keyed to a signed-in userId). Logged manually instead, same pattern as
       // auth.login: every attempt against a password-protected link, success or

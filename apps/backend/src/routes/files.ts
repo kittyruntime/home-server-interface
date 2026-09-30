@@ -54,7 +54,7 @@ function parseRange(
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 // Returns the matched Place's root path on success (null when the caller is
-// an admin — unrestricted), or undefined when access is denied.
+// an admin, unrestricted), or undefined when access is denied.
 async function resolveAllowedRoot(
   userId: string,
   isAdmin: boolean,
@@ -174,7 +174,7 @@ async function uploadFinalizationIsActive(state: UploadState): Promise<boolean> 
 }
 
 // Pulls one 4 MB chunk at a time from the worker via requestReadChunk and
-// feeds it to whoever is reading the stream (Fastify, in this route) —
+// feeds it to whoever is reading the stream (Fastify, in this route):
 // bytes reach the HTTP response as they arrive instead of only after the
 // whole file has been read into memory. Mirrors the existing chunked
 // upload path (writeChunk / root.fs.write-chunk) in the opposite direction.
@@ -198,7 +198,7 @@ export function chunkedReadStream(
         const chunk = await requestReadChunk(filePath, offset, len, linuxUser, allowedRoot)
         if (chunk.length === 0) {
           // EOF reached earlier than the stat-derived `end` (file shrank
-          // mid-download) — end the stream early rather than erroring.
+          // mid-download): end the stream early rather than erroring.
           this.push(null)
           return
         }
@@ -206,7 +206,7 @@ export function chunkedReadStream(
         this.push(chunk)
       } catch (err) {
         // Headers are already sent by this point, so the response can't
-        // fail with a clean status code — destroying the stream aborts
+        // fail with a clean status code: destroying the stream aborts
         // the connection. Same failure mode the direct/createReadStream
         // branch below already has if the file disappears mid-stream.
         this.destroy(err as Error)
@@ -240,7 +240,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // ── GET /files/download?path=<path>&token=<file-token>[&inline=1] ────────
   //
   // `token` here is a short-lived (15m), single-path-scoped token minted via
-  // fs.createFileToken — NOT the long-lived session JWT. <img>/<video> tags
+  // fs.createFileToken, NOT the long-lived session JWT. <img>/<video> tags
   // and download links can't carry an Authorization header, so this keeps
   // the powerful 7-day session credential out of URLs, browser history, and
   // server access logs; a leaked file token only grants read access to the
@@ -248,7 +248,7 @@ export async function fileRoutes(app: FastifyInstance) {
   //
   // Default behavior (no `inline`) is unchanged: forces a save-as download
   // as application/octet-stream. `inline=1` is used by the in-app preview
-  // (image/video/audio tags) — it sets a real Content-Type and an `inline`
+  // (image/video/audio tags): it sets a real Content-Type and an `inline`
   // disposition, and both branches below support HTTP Range so `<video>`
   // seeking works.
   app.get("/files/download", async (req, reply) => {
@@ -281,7 +281,7 @@ export async function fileRoutes(app: FastifyInstance) {
     const name = basename(filePath)
     const mime = guessMime(name)
     // Only ever honor `inline=1` for passive media we know is safe to render
-    // (image/video/audio, excluding SVG) — anything else silently falls
+    // (image/video/audio, excluding SVG); anything else silently falls
     // back to a forced attachment download, regardless of what the caller
     // requested. See isInlineSafe() for why.
     const isInline = inline === "1" && isInlineSafe(mime)
@@ -368,7 +368,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // Same rationale as /files/download's token: a CSS background-image URL
   // can't carry an Authorization header, so this is gated by a short-lived
   // (15m) token scoped to exactly "this user's wallpaper", minted via
-  // wallpaper.createImageToken — never the long-lived session JWT.
+  // wallpaper.createImageToken, never the long-lived session JWT.
   app.get("/files/wallpaper-image", async (req, reply) => {
     const { token } = req.query as Record<string, string>
     if (!token) return reply.status(400).send("Missing token")
@@ -403,30 +403,30 @@ export async function fileRoutes(app: FastifyInstance) {
   // ── POST /files/upload/chunk ──────────────────────────────────────────────
   //
   // Headers:
-  //   X-Upload-Id      — unique ID per file upload (UUID)
-  //   X-Chunk-Index    — 0-based chunk index
-  //   X-Total-Chunks   — total number of chunks
-  //   X-Chunk-Offset   — byte offset of this chunk within the final file
-  //   X-File-Name      — URI-encoded filename
-  //   X-Dest-Dir       — URI-encoded destination directory
-  //   X-Total-Bytes    — required on the first chunk; total upload size,
+  //   X-Upload-Id      : unique ID per file upload (UUID)
+  //   X-Chunk-Index    : 0-based chunk index
+  //   X-Total-Chunks   : total number of chunks
+  //   X-Chunk-Offset   : byte offset of this chunk within the final file
+  //   X-File-Name      : URI-encoded filename
+  //   X-Dest-Dir       : URI-encoded destination directory
+  //   X-Total-Bytes    : required on the first chunk; total upload size,
   //                       used for a one-time disk-space preflight and to
   //                       bound every subsequent chunk's byte offset
   //
   // Body: raw binary (application/octet-stream)
   //
   // Chunks are written by the root worker DIRECTLY at their byte offset into
-  // <destDir>/.upload-<uploadId>.part under the linuxUser's identity — a
+  // <destDir>/.upload-<uploadId>.part under the linuxUser's identity: a
   // single temp file, no staging dir, no separate assembly pass.
   //
-  // This route only WRITES chunks — it never triggers finalize. The
+  // This route only WRITES chunks; it never triggers finalize. The
   // last-chunk response is just { ok: true, done: true }; the client must
   // call POST /files/upload/complete to actually publish the finalize job
   // (see below), which makes finalize explicit and retryable.
   //
   // Exempt from the global rate limiter: one request per CHUNK_SIZE (2MB,
   // see FileBrowserPanel.vue), so a large file alone can need thousands of
-  // requests inside a minute — request-count throttling doesn't apply to an
+  // requests inside a minute: request-count throttling doesn't apply to an
   // already-authenticated, already-permission-checked transfer whose volume
   // scales with file size by design.
   app.post("/files/upload/chunk", { config: { rateLimit: false } }, async (req, reply) => {
@@ -453,7 +453,7 @@ export async function fileRoutes(app: FastifyInstance) {
         !destDir.startsWith("/") || destDir.includes("\0"))
       return reply.status(400).send("Missing upload metadata")
 
-    // uploadId ends up in a filename on disk — enforce an opaque-token shape.
+    // uploadId ends up in a filename on disk: enforce an opaque-token shape.
     if (!UPLOAD_ID_RE.test(uploadId))
       return reply.status(400).send("Invalid upload id")
 
@@ -499,7 +499,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
     // Resolve state (init on first chunk).
     if (!state) {
-      // Disk preflight — only done once, when the upload state is created.
+      // Disk preflight: only done once, when the upload state is created.
       try {
         const { free } = await requestSync<{ total: number; free: number }>(
           "root.fs.diskusage",
@@ -513,7 +513,7 @@ export async function fileRoutes(app: FastifyInstance) {
         return reply.status(500).send(e?.message ?? "Disk usage check failed")
       }
 
-      // Temp file lives directly inside destDir — same filesystem, so the
+      // Temp file lives directly inside destDir: same filesystem, so the
       // finalize rename is atomic and there is no double-write.
       const tempPath = join(destDir, `.upload-${uploadId}.part`)
       const newState: UploadState = {
@@ -571,26 +571,26 @@ export async function fileRoutes(app: FastifyInstance) {
       markUploadActive(state)
     }
 
-    // All chunks written — but finalize is no longer auto-triggered here.
+    // All chunks written, but finalize is no longer auto-triggered here.
     // The client must call POST /files/upload/complete (with the expected
     // sha256) to actually publish the finalize job; that makes finalize an
     // explicit, retryable step instead of tying it to whichever request
     // happens to land last. State is deliberately kept (not deleted) so a
-    // retry of /complete can still find it — UPLOAD_TTL GC bounds the leak.
+    // retry of /complete can still find it; UPLOAD_TTL GC bounds the leak.
     return reply.send({ ok: true, done: state.received.size === totalChunks })
   })
 
   // ── POST /files/upload/complete ───────────────────────────────────────────
   //
   // Explicit, retryable finalize trigger. The chunk route only writes bytes
-  // into the upload temp file now (see above) — this is the one place that
+  // into the upload temp file now (see above); this is the one place that
   // publishes fs.finalize, and it can be called again (e.g. after a client
   // crash/timeout waiting on the job) as long as the upload state + temp file
   // are still around: it republishes the same finalize job against the same
   // temp file. The worker hashes the temp file, verifies it against
   // expectedSha, and atomically renames it to destFile.
   //
-  // Body: { uploadId: string, sha256: string } — sha256 is passed through to
+  // Body: { uploadId: string, sha256: string }; sha256 is passed through to
   // the worker as expectedSha so the write is verified end-to-end.
   app.post("/files/upload/complete", async (req, reply) => {
     const user = await authenticateRequest(req)
@@ -626,7 +626,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
     // Uploads land through this raw HTTP route rather than a tRPC fs.* mutation
     // (chunking binary data doesn't fit tRPC well), so they never pass through
-    // the auditLog middleware every other fs write gets automatically — logged
+    // the auditLog middleware every other fs write gets automatically, logged
     // here by hand instead, once per upload rather than once per chunk.
     const uploadTarget = join(state.destDir, state.fileName)
     try {
@@ -656,7 +656,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // indices are already staged on disk, so it can skip re-sending them.
   //
   // Resolves via the in-memory upload state keyed by uploadId (like DELETE
-  // /files/upload/cancel) — never hand-building a path from client input, so an
+  // /files/upload/cancel), never hand-building a path from client input, so an
   // unknown/evicted uploadId always reports known:false. The staged set comes
   // from `state.received` (chunks the server successfully wrote and acked),
   // which is the authoritative, truncation-safe source: a chunk left partially

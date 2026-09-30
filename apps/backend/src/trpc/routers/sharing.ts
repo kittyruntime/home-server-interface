@@ -301,7 +301,7 @@ export const sharingRouter = router({
       )
       sambaUsers = diag.sambaUsers ?? []
       dirs = diag.dirs ?? []
-    } catch { /* worker/samba unavailable — degrade gracefully */ }
+    } catch { /* worker/samba unavailable, degrade gracefully */ }
     const sambaSet = new Set(sambaUsers)
     const dirByPath = new Map(dirs.map((d) => [d.path, d]))
     const withSamba = (linux: string) => ({ linuxUsername: linux, hasSamba: sambaSet.has(linux) })

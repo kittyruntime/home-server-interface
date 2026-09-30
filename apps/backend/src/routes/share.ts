@@ -31,7 +31,7 @@ export async function shareRoutes(app: FastifyInstance) {
     const abs = link.isDir ? resolveSubPath(link, rawPath ?? "") : link.path
     if (!abs) return reply.status(400).send("Invalid path")
 
-    // Stat it (as the creator) — must be a file to download.
+    // Stat it (as the creator): must be a file to download.
     let size: number
     try {
       const s = await requestSync<{ type: string; size: number | null }>(
@@ -73,7 +73,7 @@ export async function shareRoutes(app: FastifyInstance) {
     }
     reply.header("Content-Length", String(size))
 
-    // Audit the public download (no user identity — record token + ip; the
+    // Audit the public download (no user identity: record token + ip; the
     // AuditLog schema has no free-text "detail" column, so the token goes
     // in `meta` as JSON and the resolved path in `target`).
     try {
@@ -92,7 +92,7 @@ export async function shareRoutes(app: FastifyInstance) {
 
   // Download a shared *folder* as a single .zip. The worker builds the archive
   // into its (PrivateTmp) temp dir with a hard disk guard, we stream it out via
-  // read-chunk, then remove it — no temp file ever lands inside the shared tree.
+  // read-chunk, then remove it; no temp file ever lands inside the shared tree.
   app.get("/s/:token/zip", async (req, reply) => {
     const { token } = req.params as { token: string }
     const { access } = req.query as Record<string, string>
@@ -124,18 +124,18 @@ export async function shareRoutes(app: FastifyInstance) {
       return reply.status(500).send("Could not build the archive")
     }
 
-    // The archive now exists in the worker's temp dir — it MUST always be
+    // The archive now exists in the worker's temp dir: it MUST always be
     // removed. Wire cleanup up immediately (idempotent), covering: a client that
     // already disconnected during the long build, any failure below, and the
-    // normal end-of-response. (A leaked archive can't saturate disk — the worker
-    // guards that — but it wastes temp space until the periodic sweep.)
+    // normal end-of-response. (A leaked archive can't saturate disk (the worker
+    // guards that), but it wastes temp space until the periodic sweep.)
     let cleaned = false
     const cleanup = () => { if (cleaned) return; cleaned = true; void requestRmTemp(tmp.path).catch(() => {}) }
     if (reply.raw.destroyed) { cleanup(); return reply }
     reply.raw.on("close", cleanup)
 
     // Atomic download-limit guard (same as /download). If we can't count it,
-    // don't serve — and clean up the archive we just built.
+    // don't serve, and clean up the archive we just built.
     let updated: { count: number }
     try {
       updated = await prisma.shareLink.updateMany({

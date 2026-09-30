@@ -18,7 +18,7 @@ function installDir(): string {
 // install.sh chowns INSTALL_DIR/database/data to the app user but leaves
 // INSTALL_DIR itself root-owned (0755) once the release install/update flow
 // has run. The backend runs unprivileged, so the pending-update marker must
-// live somewhere it can actually create a file — database/data is the one
+// live somewhere it can actually create a file: database/data is the one
 // directory install.sh guarantees it owns. Mirrored in scripts/install.sh
 // (stale-marker cleanup, the update-apply path unit and its service).
 //
@@ -165,7 +165,7 @@ export const updateRouter = router({
     if (free < 0) {
       checks.push({ id: "disk", label: "Free disk space", status: "warn", detail: "Could not determine free space" })
     } else if (free < MIN_FREE_BYTES) {
-      checks.push({ id: "disk", label: "Free disk space", status: "fail", detail: `Only ${fmtMb(free)} free — ${fmtMb(MIN_FREE_BYTES)} recommended` })
+      checks.push({ id: "disk", label: "Free disk space", status: "fail", detail: `Only ${fmtMb(free)} free, ${fmtMb(MIN_FREE_BYTES)} recommended` })
     } else {
       checks.push({ id: "disk", label: "Free disk space", status: "ok", detail: `${fmtMb(free)} available` })
     }
@@ -186,7 +186,7 @@ export const updateRouter = router({
     const pending = fs.existsSync(pendingUpdateFile())
     checks.push(
       pending
-        ? { id: "pending", label: "No pending update", status: "fail", detail: "An update is already scheduled — restart to apply it first" }
+        ? { id: "pending", label: "No pending update", status: "fail", detail: "An update is already scheduled: restart to apply it first" }
         : { id: "pending", label: "No pending update", status: "ok" },
     )
 
@@ -203,7 +203,7 @@ export const updateRouter = router({
     checks.push(
       check
         ? { id: "release", label: "Release info", status: "ok", detail: `Last checked ${check.checkedAt}` }
-        : { id: "release", label: "Release info", status: "warn", detail: "Never checked for updates — run a check first" },
+        : { id: "release", label: "Release info", status: "warn", detail: "Never checked for updates: run a check first" },
     )
 
     const canApply = checks.every(c => c.status !== "fail")

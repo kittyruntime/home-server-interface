@@ -43,7 +43,7 @@ export async function containerRoutes(app: FastifyInstance) {
       return
     }
 
-    // Set SSE headers — must happen before any write.
+    // Set SSE headers: must happen before any write.
     reply.raw.setHeader("Content-Type", "text/event-stream")
     reply.raw.setHeader("Cache-Control", "no-cache")
     reply.raw.setHeader("Connection", "keep-alive")

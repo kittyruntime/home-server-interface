@@ -12,7 +12,7 @@ import { looksBinary } from "../../utils/text-sniff"
 import { signFileToken } from "../auth"
 
 // Hard cap on what the text/code preview will read into memory and hand to
-// the frontend editor — checked via stat() *before* reading, so an
+// the frontend editor, checked via stat() *before* reading, so an
 // oversized file never gets pulled into memory for this path.
 const MAX_TEXT_PREVIEW_BYTES = 3 * 1024 * 1024
 
@@ -28,7 +28,7 @@ async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Pro
 
 // Returns the matched Place's root path so callers can pass it to the
 // worker for symlink-aware containment checks, or null when the caller is
-// an admin (unrestricted — no containment check performed by the worker).
+// an admin (unrestricted: no containment check performed by the worker).
 export async function checkPathPerm(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } },
   path: string,
@@ -156,7 +156,7 @@ export const fsRouter = router({
       }
     }),
 
-  // ── diskUsage (sync) — filesystem capacity for a Place path ─────────────────
+  // ── diskUsage (sync): filesystem capacity for a Place path ─────────────────
   diskUsage: protectedProcedure
     .input(z.object({ path: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -172,7 +172,7 @@ export const fsRouter = router({
       }
     }),
 
-  // ── createFileToken (sync) — mint a short-lived, path-scoped token for the
+  // ── createFileToken (sync): mint a short-lived, path-scoped token for the
   // /files/download URL (img/video/audio src, download links) ─────────────────
   createFileToken: protectedProcedure
     .input(z.object({ path: z.string() }))
@@ -182,7 +182,7 @@ export const fsRouter = router({
       return { token: signFileToken(ctx.user.userId, p) }
     }),
 
-  // ── readText (sync) — preview/edit content, with a binary + size guard ───────
+  // ── readText (sync): preview/edit content, with a binary + size guard ───────
   readText: protectedProcedure
     .input(z.object({ path: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -231,7 +231,7 @@ export const fsRouter = router({
       return { ok: true as const, content: data.toString("utf-8"), size: data.length }
     }),
 
-  // ── writeText (async) — save editor content, reusing the upload pipeline ────
+  // ── writeText (async): save editor content, reusing the upload pipeline ────
   //
   // There's no "overwrite whole file" worker command; this reuses the exact
   // same offset-write + finalize path as a real file upload (single
@@ -240,7 +240,7 @@ export const fsRouter = router({
   // rename in apps/root-worker/fs.go doFinalize. Zero changes to the
   // root-worker needed. Unlike a real upload, the whole buffer is already in
   // memory here, so the expected SHA-256 is computed directly instead of
-  // being supplied by the client — the finalize job still verifies it before
+  // being supplied by the client; the finalize job still verifies it before
   // renaming into place.
   writeText: protectedProcedure
     .input(z.object({ path: z.string(), content: z.string() }))
@@ -294,7 +294,7 @@ export const fsRouter = router({
       return { jobId }
     }),
 
-  // ── touch (async) — create an empty file ──────────────────────────────────────
+  // ── touch (async): create an empty file ──────────────────────────────────────
   touch: protectedProcedure
     .input(z.object({ parentPath: z.string(), name: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
@@ -398,7 +398,7 @@ export const fsRouter = router({
       return { jobId }
     }),
 
-  // ── search (sync) — recursive filename search within a place ─────────────────
+  // ── search (sync): recursive filename search within a place ─────────────────
   search: protectedProcedure
     .input(z.object({
       placeId: z.string(),

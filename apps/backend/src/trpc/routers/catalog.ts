@@ -30,7 +30,7 @@ export const catalogRouter = router({
       const stack = stacks.find((s) =>
         s.app?.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
       )
-      // The web-UI port row (if any) — carries both the mapped host port (fallback
+      // The web-UI port row (if any): carries both the mapped host port (fallback
       // URL) and its optional domain/HTTPS binding (the "Open" URL when set).
       const webRow = stack?.app && m.webUiPort != null
         ? stack.app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
@@ -88,7 +88,7 @@ export const catalogRouter = router({
 
       // Fail fast on newPlace path collisions before any side effect, so a
       // duplicate path surfaces as a clean CONFLICT instead of an uncaught
-      // Prisma P2002 (Place.path is unique) mid-way through resolution — which
+      // Prisma P2002 (Place.path is unique) mid-way through resolution, which
       // would leave earlier newPlace dirs/rows orphaned.
       const newPlacePaths = input.volumes.flatMap((v) => (v.source.kind === "newPlace" ? [v.source.path] : []))
       if (new Set(newPlacePaths).size !== newPlacePaths.length) {
@@ -114,7 +114,7 @@ export const catalogRouter = router({
         }
         if (s.kind === "newPlace") {
           // Creating a new Place (and mkdir-ing arbitrary host paths as root
-          // via root.fs.mkdirp — which has NO path-containment check on the
+          // via root.fs.mkdirp, which has NO path-containment check on the
           // worker side) is normally gated behind adminProcedure in place.ts
           // (`place.create` / `place.mkdir`). This mutation is admin-only, but
           // the check stays explicit for defence in depth.
@@ -134,7 +134,7 @@ export const catalogRouter = router({
       const envs = m.env.map((me) => {
         let value = submittedEnv.get(me.key) ?? me.default ?? ""
         if (!value && me.secret) value = crypto.randomBytes(24).toString("base64url")
-        // Enforce `required` server-side too — don't rely solely on the wizard
+        // Enforce `required` server-side too: don't rely solely on the wizard
         // disabling Install; a required env with no default/value would launch
         // the container mis-configured.
         if (!value && me.required) {
@@ -154,7 +154,7 @@ export const catalogRouter = router({
 
       // Derive the web UI's actual host port from the resolved `ports` list
       // (rather than recomputing the same fallback logic a second time) so the
-      // wizard can build `http://<host>:<webPort>` itself — the backend has no
+      // wizard can build `http://<host>:<webPort>` itself; the backend has no
       // notion of the browser's hostname, so `pinnedUrl` is intentionally left
       // unset here (container.app.pin can set it later once the frontend knows
       // the URL).
@@ -186,7 +186,7 @@ export const catalogRouter = router({
       const yaml = generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] })
       await writeStack(input.name, yaml)
 
-      // Wizard UX: validate the freshly written file, then apply immediately —
+      // Wizard UX: validate the freshly written file, then apply immediately:
       // the worker's compose up job creates+starts the stack. On invalid YAML
       // remove the half-created stack dir: an invalid compose.yaml left on
       // disk would break later compose ops and reappear on every stack scan.

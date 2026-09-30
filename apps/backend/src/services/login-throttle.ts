@@ -36,7 +36,7 @@ export function assertNotThrottled(keys: string[]): void {
         : `${retryAfterSec} seconds`
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
-        message: `Too many failed login attempts — try again in ${wait}`,
+        message: `Too many failed login attempts. Try again in ${wait}`,
       })
     }
   }

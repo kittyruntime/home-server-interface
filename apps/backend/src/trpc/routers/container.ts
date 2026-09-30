@@ -151,8 +151,8 @@ const appRouter = router({
       return { ok: true }
     }),
 
-  // Warn (non-blocking) when a host port is already taken — by another managed
-  // app, any Docker container, or a non-Docker host process. Returns a human
+  // Warn (non-blocking) when a host port is already taken (by another managed
+  // app, any Docker container, or a non-Docker host process). Returns a human
   // string in `by` for the UI to show.
   checkPort: adminProcedure
     .input(z.object({
@@ -170,7 +170,7 @@ const appRouter = router({
         }
       }
       // 2) any Docker container (managed or unmanaged/compose). The app being
-      //    edited runs as a container of the same name — don't flag it against itself.
+      //    edited runs as a container of the same name; don't flag it against itself.
       const dockerName = (await dockerBoundPorts()).get(`${input.port}/${input.protocol}`)
       if (dockerName && !stacks.some(s => s.name === dockerName && s.name === input.excludeName)) {
         return { inUse: true, by: `container "${dockerName}"` }
@@ -181,7 +181,7 @@ const appRouter = router({
           "root.sys.port.check", { port: input.port, protocol: input.protocol }, 5_000,
         )
         if (probe.inUse) return { inUse: true, by: "another process on the host" }
-      } catch { /* worker unavailable — best-effort */ }
+      } catch { /* worker unavailable, best-effort */ }
       return { inUse: false, by: null }
     }),
 

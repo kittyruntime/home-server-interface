@@ -15,7 +15,7 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 
 // A user created with mustChangePassword set (currently: only the seeded bootstrap
 // admin) can't perform any mutation except changing their own password or logging
-// out, until they do. Queries stay open — the dashboard still needs to load to show
+// out, until they do. Queries stay open: the dashboard still needs to load to show
 // the change-password screen. Enforced server-side, not just by the UI redirect,
 // since the JWT carrying this flag is trusted for its full 7-day life either way.
 const EXEMPT_WHILE_MUST_CHANGE_PASSWORD = new Set(["user.changePassword", "auth.logout"])
@@ -77,7 +77,7 @@ function redact(v: unknown): unknown {
   if (v && typeof v === "object") {
     const rec = v as Record<string, unknown>
     // {key, value} entries (env vars, labels…): the secret is in `value`, named by
-    // `key` — so redact based on the key's *value*, not the "key"/"value" property
+    // `key`, so redact based on the key's *value*, not the "key"/"value" property
     // names (which would otherwise leave the actual secret in `value` untouched).
     if (typeof rec.key === "string" && "value" in rec) {
       return { ...rec, value: SENSITIVE_KEY.test(rec.key) ? "[REDACTED]" : redact(rec.value) }

@@ -6,7 +6,7 @@ import { log } from "../utils/log"
 
 // System account names that may never be claimed as an HSI username, since
 // the username doubles as the backing Linux/Samba account. "admin" is
-// deliberately excluded — it's a valid (and commonly used) HSI username.
+// deliberately excluded: it's a valid (and commonly used) HSI username.
 export const RESERVED_USERNAMES = new Set(["root", "daemon", "bin", "sys", "nobody", "www-data"])
 
 export const userSelect = {
@@ -80,7 +80,7 @@ export async function changePassword(
   const newHashed = await bcrypt.hash(newPassword, 12)
   const result = await prisma.user.update({
     where: { id: userId },
-    // A changed password can never leave mustChangePassword set — that flag only
+    // A changed password can never leave mustChangePassword set: that flag only
     // ever means "still on the value it was created with".
     data: { password: newHashed, mustChangePassword: false },
     select: { id: true, username: true },
@@ -90,11 +90,11 @@ export async function changePassword(
 }
 
 /** NAS-style single password: pushes the plaintext to the root-worker which
- *  sets it on the Linux account (chpasswd — shell stays /sbin/nologin, no
+ *  sets it on the Linux account (chpasswd; the shell stays /sbin/nologin, no
  *  login access) and the Samba account (smbpasswd). Called at the only
  *  moments plaintext exists: user creation, password change, and login
  *  (login backfills accounts that predate this feature). Best-effort by
- *  design — a sync failure must never break the calling flow. */
+ *  design: a sync failure must never break the calling flow. */
 export async function syncSystemPassword(
   prisma: PrismaClient,
   userId: string,
@@ -107,7 +107,7 @@ export async function syncSystemPassword(
     })
     if (!user?.username) return
     // Ensure the backing Linux account exists before setting its password. The
-    // username IS the Linux/Samba account, but the account may not exist yet —
+    // username IS the Linux/Samba account, but the account may not exist yet,
     // e.g. the seeded `admin`, or any user whose row predates this identity
     // model. chpasswd/smbpasswd both require an existing Unix account, so
     // create it first. The worker's create is idempotent (useradd exit 9 =
@@ -121,17 +121,17 @@ export async function syncSystemPassword(
     )
     // The worker replies ok even when a sub-step fails (best-effort). Surface a
     // partial failure so "can't connect to SMB" is diagnosable from the logs
-    // instead of silent — the most common cause of Samba auth being refused.
-    // Skipped-by-choice (sambaEnabled=false) is not a failure — don't warn on it.
+    // instead of silent: the most common cause of Samba auth being refused.
+    // Skipped-by-choice (sambaEnabled=false) is not a failure, don't warn on it.
     if (res?.smbOk === false && !res.smbSkipped) {
       log.warn(
         { username: user.username },
-        "password-sync: Samba password NOT set — smbpasswd failed (is samba installed, and does the Linux account exist?). " +
+        "password-sync: Samba password NOT set: smbpasswd failed (is samba installed, and does the Linux account exist?). " +
           "SMB auth will be refused for this user until this succeeds.",
       )
     }
     if (res?.linuxOk === false) {
-      log.warn({ username: user.username }, "password-sync: Linux password NOT set — chpasswd failed")
+      log.warn({ username: user.username }, "password-sync: Linux password NOT set: chpasswd failed")
     }
   } catch (e) {
     log.warn({ err: e }, "password-sync failed (non-fatal)")
@@ -149,7 +149,7 @@ export type IdentityStatus = {
   groups?: string[]
   sambaEnabled: boolean
   sambaExists: boolean
-  /** Human-readable summary of the one thing worth flagging, if any — null when
+  /** Human-readable summary of the one thing worth flagging, if any, or null when
    *  Linux/Samba state matches what HSI expects. Kept server-side so the
    *  reconciliation rule lives in one place, not duplicated into the frontend. */
   issue: string | null
@@ -158,13 +158,13 @@ export type IdentityStatus = {
 function describeIssue(u: {
   linuxExists: boolean; sambaEnabled: boolean; sambaExists: boolean
 }): string | null {
-  if (!u.linuxExists) return "No Linux account — password sync has never succeeded for this user."
-  if (u.sambaEnabled && !u.sambaExists) return "Samba enabled, but no Samba account exists yet — will sync on next login or password change."
-  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists — see docs/manage-without-hsi.md to remove it."
+  if (!u.linuxExists) return "No Linux account: password sync has never succeeded for this user."
+  if (u.sambaEnabled && !u.sambaExists) return "Samba enabled, but no Samba account exists yet; it will sync on next login or password change."
+  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists; see docs/manage-without-hsi.md to remove it."
   return null
 }
 
-/** Real OS-level identity for every HSI user, alongside what HSI itself expects —
+/** Real OS-level identity for every HSI user, alongside what HSI itself expects:
  *  the "Account / HSI identity / Linux identity / Samba identity" view. One batch
  *  call to the root-worker rather than one per user. */
 export async function getIdentityStatus(prisma: PrismaClient): Promise<IdentityStatus[]> {
@@ -184,7 +184,7 @@ export async function getIdentityStatus(prisma: PrismaClient): Promise<IdentityS
     )
     infos = res.users
   } catch {
-    // Worker unreachable — fall through with linuxExists:false for everyone below,
+    // Worker unreachable: fall through with linuxExists:false for everyone below,
     // which correctly reads as "can't confirm" rather than a thrown error.
   }
   const byUsername = new Map(infos.map(i => [i.username, i]))

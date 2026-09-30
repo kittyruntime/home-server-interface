@@ -54,7 +54,7 @@ export async function connectNats(): Promise<void> {
   }
   js = nc.jetstream()
 
-  // Ensure the task stream exists (idempotent — worker does the same).
+  // Ensure the task stream exists (idempotent: the worker does the same).
   const jsm: JetStreamManager = await nc.jetstreamManager()
   try {
     await jsm.streams.add(TASK_STREAM as any)
@@ -148,7 +148,7 @@ export async function requestRmTemp(path: string): Promise<void> {
   await requestSync<{ ok: boolean }>("root.fs.rm-temp", { path })
 }
 
-// Download uses binary reply — worker sends raw bytes, not JSON.
+// Download uses binary reply: the worker sends raw bytes, not JSON.
 export async function requestRead(
   path: string,
   linuxUsername: string,
@@ -163,11 +163,11 @@ export async function requestRead(
   return Buffer.from(msg.data)
 }
 
-// Chunked counterpart to requestRead — fetches at most `length` bytes
+// Chunked counterpart to requestRead: fetches at most `length` bytes
 // starting at `offset` (the worker caps this at 4 MB server-side
 // regardless of what's requested). Binary reply, same as requestRead.
 // May return fewer bytes than requested (EOF) or an empty buffer (offset
-// at/past EOF) — both are valid; the caller's own end-offset bookkeeping
+// at/past EOF); both are valid; the caller's own end-offset bookkeeping
 // decides when to stop asking for more.
 export async function requestReadChunk(
   path: string,
