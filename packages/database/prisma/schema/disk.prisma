@@ -1,0 +1,7 @@
+// A name the admin gives a physical disk ("bay 3, top"), stored by serial so
+// it follows the disk when its kernel name (sdb) changes.
+model DiskLabel {
+  serial    String   @id
+  label     String
+  updatedAt DateTime @updatedAt
+}
