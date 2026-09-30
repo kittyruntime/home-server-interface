@@ -1,0 +1,35 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { createNav, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
+
+test('opening a section resets the stack to it', () => {
+  let nav = createNav()
+  assert.deepEqual(nav.current, { kind: 'section', section: 'disks' })
+  nav = navOpen(nav, { kind: 'disk', name: 'sdb' })
+  nav = navOpen(nav, { kind: 'section', section: 'raid' })
+  assert.equal(nav.stack.length, 1)
+  assert.deepEqual(nav.current, { kind: 'section', section: 'raid' })
+})
+
+test('objects push on top of their section, back pops', () => {
+  let nav = navOpen(createNav(), { kind: 'array', name: 'md0' })
+  assert.deepEqual(nav.stack.map(l => l.kind), ['section', 'array'])
+  assert.equal(sectionOf(nav.current), 'raid')
+  assert.deepEqual(navCrumbs(nav).map(c => c.label), ['RAID', 'md0'])
+  nav = navBack(nav)
+  assert.deepEqual(nav.current, { kind: 'section', section: 'raid' })
+  assert.equal(navBack(nav).stack.length, 1, 'back never empties the stack')
+})
+
+test('opening the current location again does not grow the stack', () => {
+  let nav = navOpen(createNav(), { kind: 'disk', name: 'sdb' })
+  nav = navOpen(nav, { kind: 'disk', name: 'sdb' })
+  assert.equal(nav.stack.length, 2)
+})
+
+test('navTo returns to an earlier crumb', () => {
+  let nav = navOpen(createNav(), { kind: 'disk', name: 'sdb' })
+  nav = navTo(nav, 0)
+  assert.deepEqual(nav.stack, [{ kind: 'section', section: 'disks' }])
+  assert.equal(navTo(nav, 5).stack.length, 1, 'an index past the stack keeps it')
+})
