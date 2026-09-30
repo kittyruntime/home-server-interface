@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
@@ -22,7 +23,7 @@ import ImportFound from './ImportFound.vue'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 const props = defineProps<{ preselect?: string[] }>()
-const emit = defineEmits<{ navigate: [section: 'disks' | 'lvm']; preselected: [] }>()
+const emit = defineEmits<{ navigate: [target: 'disks' | 'lvm' | StorageLocation]; preselected: [] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -423,7 +424,7 @@ const openMenu = ref<string | null>(null)
                       <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
                     </svg>
                   </div>
-                  <button @click="emit('navigate', 'disks')"
+                  <button @click="emit('navigate', { kind: 'disk', name: dev })"
                     class="text-2xs font-mono hover:underline transition-colors"
                     :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
                     /dev/{{ dev }}
@@ -563,7 +564,8 @@ const openMenu = ref<string | null>(null)
               <Hint text="Each diagram shows how one chunk of data is placed on the drives. Same letter = identical copy. Different letters = split across drives. P = a parity block, used to rebuild data if a drive fails." />
             </p>
 
-            <div class="grid grid-cols-1 @2xl:grid-cols-2 gap-2">
+            <!-- Own container: the dialog is teleported out of the Storage panel. -->
+            <div class="@container"><div class="grid grid-cols-1 @md:grid-cols-2 gap-2">
               <button
                 v-for="lvl in RAID_LEVELS" :key="lvl.level"
                 @click="raidWiz.level = lvl.level"
@@ -585,7 +587,7 @@ const openMenu = ref<string | null>(null)
                 </div>
                 <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-[var(--c-border)]" />
               </button>
-            </div>
+            </div></div>
 
             <!-- Selected level danger notice -->
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">

@@ -2,6 +2,7 @@
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
+import { createReveal } from '../../lib/storage-nav'
 import { trpc } from '../../lib/trpc'
 import { ref, computed, watch, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
@@ -20,7 +21,7 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 
 // A disk to show (#40 navigation): expanded and scrolled into view.
-const props = defineProps<{ reveal?: string }>()
+const props = defineProps<{ revealRequest?: { name: string; nonce: number } }>()
 
 const emit = defineEmits<{
   navigate: [section: 'raid' | 'lvm']
@@ -146,10 +147,18 @@ function clearFilters() {
 
 const expanded = computed(() => new Set(prefs.value.expanded))
 
-// Show the disk a link pointed at, once it is listed; an unknown name (a
-// disk that is gone) leaves the list as it is.
-watch([() => props.reveal, physicalDisks], async ([name]) => {
-  if (!name || !physicalDisks.value.some(d => d.name === name)) return
+// Show the disk a link pointed at, once, when it is listed. Later refreshes
+// of the list leave the user's view alone; an unknown name (a disk that is
+// gone) leaves the list as it is.
+const reveal = createReveal()
+watch(() => props.revealRequest?.nonce, () => {
+  if (props.revealRequest) reveal.request(props.revealRequest.name)
+}, { immediate: true })
+watch([() => props.revealRequest?.nonce, physicalDisks], async () => {
+  // A partition (an array member like sdb1) reveals its disk.
+  const asked = reveal.take(physicalDisks.value.flatMap(d => [d.name, ...(d.children ?? []).map(c => c.name)]))
+  const name = asked && physicalDisks.value.find(d => d.name === asked || d.children?.some(c => c.name === asked))?.name
+  if (!name) return
   if (!visibleRows.value.some(r => r.disk.name === name)) clearFilters()
   if (!prefs.value.expanded.includes(name)) prefs.value.expanded = [...prefs.value.expanded, name]
   await nextTick()
@@ -370,7 +379,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <option v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</option>
           </select>
           <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
-            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && '@2xl:hidden']">
+            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && '@4xl/content:hidden']">
             <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
           </select>
           <label class="flex items-center gap-1.5 text-xs text-[var(--c-text-2)] cursor-pointer">
@@ -404,7 +413,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
         <div v-else-if="view === 'table'" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
           <!-- Header (desktop) -->
-          <div class="hidden @2xl:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
+          <div class="hidden @4xl/content:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
             <span/>
             <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
               :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
@@ -420,7 +429,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
               <!-- Row (desktop) -->
-              <div class="group hidden @2xl:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
+              <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
@@ -451,7 +460,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               </div>
 
               <!-- Row (mobile): role and health first -->
-              <div class="group @2xl:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
+              <div class="group @4xl/content:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
                 <div class="flex-1 min-w-0">
