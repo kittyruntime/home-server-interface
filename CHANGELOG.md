@@ -20,10 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Storage, with Overview, Structure and Activity tabs: what a volume is made
   of from the folder down to the disks, what uses it, a disk's identity and
   SMART health, the volumes it carries, and the operations recorded on each.
+- **Array and volume group pages**: each RAID array and each LVM volume group
+  has its own page (state, members, what it carries, operations), and every
+  reference in Storage links to it.
 - **Stable disk names**: each disk shows its `/dev/disk/by-id` name next to the
   kernel name (`/dev/sdb`), which can change between boots.
 
 ### Changed
+- **Storage sections renamed**: Disks, Arrays and Volume groups (were Devices,
+  RAID and LVM).
 - **Storage follows its window**: in desktop mode the Storage app lays out by
   the width of its window, not of the screen, so a small window gets the
   compact layout. Links between Storage sections open the right place (a disk

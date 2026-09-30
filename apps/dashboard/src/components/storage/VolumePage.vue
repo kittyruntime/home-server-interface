@@ -87,8 +87,12 @@ onUnmounted(() => {
 function openLayer(kind: string, name: string) {
   // A partition opens its disk's page (which resolves it).
   if (kind === 'disk' || kind === 'partition') emit('navigate', { kind: 'disk', name })
-  else if (kind === 'array') emit('navigate', 'raid')
-  else if (kind === 'lv' || kind === 'vg') emit('navigate', 'lvm')
+  else if (kind === 'array') emit('navigate', { kind: 'array', name })
+  else if (kind === 'vg') emit('navigate', { kind: 'vg', name })
+  else if (kind === 'lv') {
+    const vg = volume.value?.stack.find(l => l.kind === 'vg')?.name
+    emit('navigate', vg ? { kind: 'vg', name: vg } : 'lvm')
+  }
 }
 
 async function device(): Promise<BlockDev | undefined> {

@@ -364,7 +364,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-danger/10 text-danger'">
               {{ raidLevelLabel(r.level) }}
             </span>
-            <span class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
+            <button v-if="!only" class="font-mono text-sm text-[var(--c-text-1)] hover:underline underline-offset-2" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</button>
+            <span v-else class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
               <span class="text-2xs text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
               <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
@@ -372,7 +373,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
-              <button v-if="raidPvVg(r.name)" @click="emit('navigate', 'lvm')"
+              <button v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                 LVM {{ raidPvVg(r.name) }} →
               </button>

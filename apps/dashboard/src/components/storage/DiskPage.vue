@@ -19,7 +19,7 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 
-const { loading, error, devices, lvmLVs, refresh } = useStorageData()
+const { loading, loaded, error, devices, lvmLVs, refresh } = useStorageData()
 const tab = ref<ObjectTab>('overview')
 onMounted(() => { void refresh() })
 
@@ -74,8 +74,9 @@ const roleText = computed(() => {
   return ROLE_LABELS[r.role]
 })
 function openOwner() {
-  if (row.value?.role === 'raid') emit('navigate', 'raid')
-  else if (row.value?.role === 'lvm') emit('navigate', 'lvm')
+  const r = row.value
+  if (r?.role === 'raid') emit('navigate', r.raidOwners[0] ? { kind: 'array', name: r.raidOwners[0] } : 'raid')
+  else if (r?.role === 'lvm') emit('navigate', r.vgOwners[0] ? { kind: 'vg', name: r.vgOwners[0] } : 'lvm')
 }
 
 // Volumes this disk carries.
@@ -106,9 +107,9 @@ function manageInDevices() { emit('navigate', 'disks') }
     v-model:tab="tab"
     :title="`/dev/${diskName}`"
     :subtitle="disk ? [disk.model, disk.serial].filter(Boolean).join(' · ') : ''"
-    :loading="loading && !disk"
+    :loading="!loaded && !error"
     :error="error && !disk ? error : ''"
-    :gone="!loading && !disk ? { text: 'This disk is no longer connected.', back: 'Back to Devices' } : undefined"
+    :gone="loaded && !loading && !disk ? { text: 'This disk is no longer connected.', back: 'Back to Disks' } : undefined"
     @back="emit('navigate', 'disks')"
   >
     <template v-if="disk && row" #chips>
