@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Disk labels**: name a physical disk ("bay 3, top") from Storage > Devices.
   The label is stored by serial number, so it follows the disk when its
   kernel name changes, and the search finds disks by label.
+- **Volumes page**: Storage now opens on its volumes, where the data lives:
+  each data filesystem with its redundancy (mirror, RAID 5...), space, health
+  (degraded or rebuilding array, missing at boot, nearly full, SMART) and what
+  uses it (Places, shares, apps), plus free disks and the system disk's free
+  space. Unmounted volumes can be mounted from there.
 - **Stable disk names**: each disk shows its `/dev/disk/by-id` name next to the
   kernel name (`/dev/sdb`), which can change between boots.
 

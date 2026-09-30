@@ -4,7 +4,7 @@ import { createNav, createReveal, navOpen, navBack, navCrumbs, navTo, sectionOf 
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
-  assert.deepEqual(nav.current, { kind: 'section', section: 'disks' })
+  assert.deepEqual(nav.current, { kind: 'section', section: 'volumes' }, 'Storage opens on Volumes')
   nav = navOpen(nav, { kind: 'disk', name: 'sdb' })
   nav = navOpen(nav, { kind: 'section', section: 'raid' })
   assert.equal(nav.stack.length, 1)
