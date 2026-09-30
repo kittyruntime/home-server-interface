@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.59.0] - 2026-09-30
+
 ### Added
 - **Preview before storage operations**: formatting, partitions, RAID (including
   disk replacement and importing existing arrays and volume groups), LVM and
@@ -1141,7 +1143,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.58.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.59.0...HEAD
+[1.59.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.58.0...v1.59.0
 [1.58.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.57.0...v1.58.0
 [1.57.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.56.0...v1.57.0
 [1.56.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.55.1...v1.56.0
