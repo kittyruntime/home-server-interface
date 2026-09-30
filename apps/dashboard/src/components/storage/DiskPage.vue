@@ -81,7 +81,7 @@ function openOwner() {
 
 // Volumes this disk carries.
 const volumes = ref<Array<{ id: string; name: string; mountPoint?: string }>>([])
-watch(diskName, async n => {
+watch([diskName, devices], async ([n]) => {
   try {
     const o = await trpc.storage.volumes.overview.query()
     volumes.value = o.volumes.filter(v => v.disks.some(d => d.name === n))
@@ -176,7 +176,7 @@ function manageInDevices() { emit('navigate', 'disks') }
         @navigate="s => emit('navigate', s)" @toggle-smart="smartOpen = !smartOpen"
         @format="(d: BlockDev) => formatWiz?.open(d)" @mount="(d: BlockDev) => mountDlg?.open(d)" @umount="(d: BlockDev) => umountDlg?.open(d)"
         @part-init="manageInDevices" @part-create="manageInDevices" @part-delete="manageInDevices" />
-      <p class="mt-2 text-xs text-[var(--c-text-3)]">Partition tables and partitions are managed from <button class="underline underline-offset-2 hover:text-[var(--c-text-1)]" @click="manageInDevices">Devices</button>.</p>
+      <p class="mt-2 text-xs text-[var(--c-text-3)]">Partition tables and partitions are managed from <button class="underline underline-offset-2 hover:text-[var(--c-text-1)]" @click="manageInDevices">Disks</button>.</p>
     </template>
 
     <template v-if="disk" #activity>

@@ -4,7 +4,7 @@ import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 
 // Recent operations on one storage object (#40), from the audit log.
-const props = defineProps<{ targets: string[] }>()
+const props = defineProps<{ targets: string[]; arrays?: string[] }>()
 
 type Entry = Awaited<ReturnType<typeof trpc.storage.activity.query>>[number]
 const entries = ref<Entry[]>([])
@@ -32,7 +32,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    entries.value = props.targets.length ? await trpc.storage.activity.query({ targets: props.targets.slice(0, 20) }) : []
+    entries.value = props.targets.length ? await trpc.storage.activity.query({ targets: props.targets.slice(0, 20), arrays: props.arrays }) : []
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Could not read the activity'
   } finally {

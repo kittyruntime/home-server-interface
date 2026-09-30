@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageLocation } from '../../lib/storage-nav'
 import { memberOwner } from './device-state'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
@@ -23,7 +24,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  navigate:    [section: 'raid' | 'lvm']
+  navigate:    [target: 'raid' | 'lvm' | StorageLocation]
   toggleSmart: []
   format:      [dev: BlockDev]
   mount:       [dev: BlockDev]
@@ -47,6 +48,12 @@ const danger = ref(false)
 // RAID/LVM membership, including members of arrays/VGs that are not active.
 function roleOf(dev: BlockDev): DeviceRole | null {
   return deviceRole(dev)
+}
+
+// A member opens the page of its array or volume group when it is known.
+function openRole(role: { kind: 'raid' | 'lvm'; owner: string | null }) {
+  if (role.owner) emit('navigate', role.kind === 'raid' ? { kind: 'array', name: role.owner } : { kind: 'vg', name: role.owner })
+  else emit('navigate', role.kind)
 }
 
 function diskLocked(disk: BlockDev): boolean {
@@ -90,7 +97,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           </span>
           <span v-if="disk.isRemovable" class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
           <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
-          <button v-if="roleOf(disk)" @click="emit('navigate', roleOf(disk)!.kind === 'raid' ? 'raid' : 'lvm')"
+          <button v-if="roleOf(disk)" @click="openRole(roleOf(disk)!)"
             :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
             class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
         </div>
@@ -279,12 +286,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
               <span v-else-if="!roleOf(part)" class="text-2xs italic text-[var(--c-text-3)]/60">unformatted</span>
               <!-- Role: RAID member -->
-              <button v-if="memberOwner(part, 'raid')" @click="emit('navigate', 'raid')"
+              <button v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
                 RAID {{ memberOwner(part, 'raid') }} →
               </button>
               <!-- Role: LVM PV -->
-              <button v-if="memberOwner(part, 'lvm')" @click="emit('navigate', 'lvm')"
+              <button v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
                 LVM {{ memberOwner(part, 'lvm') }} →
               </button>

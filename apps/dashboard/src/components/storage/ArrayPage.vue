@@ -45,7 +45,8 @@ const vg = computed(() => lvmPVs.value.find(p => p.name === `/dev/${props.name}`
 
 // Volumes built on this array.
 const volumes = ref<Array<{ id: string; name: string; mountPoint?: string }>>([])
-watch(() => props.name, async n => {
+// Reloaded when the store changes, so actions taken on this page show up.
+watch([() => props.name, devices], async ([n]) => {
   try {
     const o = await trpc.storage.volumes.overview.query()
     if (n !== props.name) return
@@ -54,7 +55,7 @@ watch(() => props.name, async n => {
   } catch { volumes.value = [] }
 }, { immediate: true })
 
-const targets = computed(() => arrayTargets({ name: props.name, members: members.value }))
+const targets = computed(() => arrayTargets({ name: props.name }))
 </script>
 
 <template>
@@ -111,7 +112,7 @@ const targets = computed(() => arrayTargets({ name: props.name, members: members
     </template>
 
     <template v-if="array" #activity>
-      <ActivityList :targets="targets" />
+      <ActivityList :targets="targets" :arrays="[name]" />
     </template>
   </ObjectPage>
 </template>

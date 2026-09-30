@@ -1297,6 +1297,12 @@ await testSharePlans()
 {
   const { activityWhere } = await import("../services/storage-activity")
   assert.deepEqual(activityWhere(["sdb1"]), { target: { in: ["sdb1"] }, action: { notIn: ["storage.plan"] } })
+  // An array's member operations are logged under the member device; the
+  // array is found through the input they carry.
+  assert.deepEqual(activityWhere(["md0", "/dev/md0"], ["md0"]), {
+    OR: [{ target: { in: ["md0", "/dev/md0"] } }, { meta: { contains: '"name":"md0"' } }],
+    action: { notIn: ["storage.plan"] },
+  })
 }
 
 console.log("Backend security tests passed")
