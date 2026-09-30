@@ -24,6 +24,7 @@ import Modal from '../ui/Modal.vue'
 const props = defineProps<{ revealRequest?: { name: string; nonce: number } }>()
 
 const emit = defineEmits<{
+  open:     [disk: string]
   navigate: [section: 'raid' | 'lvm']
   // Start creating an array or a volume group with these whole disks.
   create:   [kind: 'raid' | 'lvm', devices: string[]]
@@ -435,7 +436,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
                 <span v-else/>
                 <span class="min-w-0">
-                  <span class="block font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
+                  <button class="block max-w-full font-mono font-semibold text-[var(--c-text-1)] truncate hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </span>
                 <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
@@ -472,7 +473,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     <span v-if="r.temperature" class="text-2xs tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
                   </div>
                   <div class="mt-1 text-xs">
-                    <span class="font-mono font-semibold text-[var(--c-text-1)]">/dev/{{ r.disk.name }}</span>
+                    <button class="font-mono font-semibold text-[var(--c-text-1)] hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
                     <span class="text-[var(--c-text-3)] tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
                     <span v-if="r.kind" class="text-[var(--c-text-3)]"> · {{ r.kind }}</span>
                   </div>

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (degraded or rebuilding array, missing at boot, nearly full, SMART) and what
   uses it (Places, shares, apps), plus free disks and the system disk's free
   space. Unmounted volumes can be mounted from there.
+- **Volume and disk pages**: each volume and each disk has its own page in
+  Storage, with Overview, Structure and Activity tabs: what a volume is made
+  of from the folder down to the disks, what uses it, a disk's identity and
+  SMART health, the volumes it carries, and the operations recorded on each.
 - **Stable disk names**: each disk shows its `/dev/disk/by-id` name next to the
   kernel name (`/dev/sdb`), which can change between boots.
 
