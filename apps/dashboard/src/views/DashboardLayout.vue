@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
 import { pendingAppFocus } from '../lib/app-focus'
+import { pendingStorageLocation } from '../lib/storage-open'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -69,6 +70,13 @@ const badgeCount = computed(() => unread.value + operations.value.filter(n => n.
 // Refreshing on close keeps the badge accurate right after the user has read
 // the list, without waiting for the next 60s poll.
 watch(notifMenuOpen, open => { if (!open) void refreshNotifications() })
+
+// Storage opened on a location from elsewhere (#40): the panel navigates.
+watch(pendingStorageLocation, loc => {
+  if (!loc) return
+  if (desktopMode.value && !isMobile.value) openApp('storage')
+  else activeApp.value = 'storage'
+})
 
 // A freshly installed app is shown in Apps (#36).
 watch(pendingAppFocus, name => {

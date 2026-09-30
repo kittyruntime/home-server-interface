@@ -1,35 +1,50 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
 import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
+import { createNav, navOpen, navCrumbs, navTo, sectionOf, SECTION_LABELS, type StorageLocation, type StorageSection } from '../../lib/storage-nav'
+import { pendingStorageLocation } from '../../lib/storage-open'
 
-type SectionId = 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
+type SectionId = StorageSection
 
 interface NavItem { id: SectionId; label: string }
 
-const nav: NavItem[] = [
-  { id: 'disks',  label: 'Devices' },
-  { id: 'raid',   label: 'RAID' },
-  { id: 'lvm',    label: 'LVM' },
-  { id: 'mounts', label: 'Mounts' },
-  { id: 'maintenance', label: 'Maintenance' },
-]
+const nav: NavItem[] = (['disks', 'raid', 'lvm', 'mounts', 'maintenance'] as const)
+  .map(id => ({ id, label: SECTION_LABELS[id] }))
 
-const active = ref<SectionId>('disks')
+// Where this panel is (#40). Each Storage panel (the classic view, a desktop
+// window) keeps its own history.
+const location = ref(createNav())
+const active = computed<SectionId>({
+  get: () => sectionOf(location.value.current),
+  set: section => open({ kind: 'section', section }),
+})
+const crumbs = computed(() => navCrumbs(location.value))
+const revealDisk = computed(() => location.value.current.kind === 'disk' ? location.value.current.name : undefined)
 
-function focusOn(section: SectionId) {
-  active.value = section
+function open(loc: StorageLocation) {
+  location.value = navOpen(location.value, loc)
 }
+function focusOn(section: SectionId) {
+  open({ kind: 'section', section })
+}
+
+// Opened on a location from elsewhere (openStorage).
+watch(pendingStorageLocation, loc => {
+  if (!loc) return
+  open(loc)
+  pendingStorageLocation.value = null
+}, { immediate: true })
 
 // Free disks picked in Devices, handed to the RAID or LVM create wizard.
 const preselect = ref<{ kind: 'raid' | 'lvm'; devices: string[] } | null>(null)
 function startCreate(kind: 'raid' | 'lvm', devices: string[]) {
   preselect.value = { kind, devices }
-  active.value = kind
+  open({ kind: 'section', section: kind })
 }
 
 const { load: loadTools, missingStorageTools } = useHostTools()
@@ -103,7 +118,14 @@ const installCommand = computed(() =>
           </p>
           <p class="mt-1 text-[var(--c-text-3)]">Install them with <code class="font-mono text-[var(--c-text-2)]">{{ installCommand }}</code></p>
         </div>
-        <PhysicalDisksSection v-if="active === 'disks'"  @navigate="focusOn" @create="startCreate" />
+        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-[var(--c-text-3)]">
+          <template v-for="(c, i) in crumbs" :key="c.index">
+            <span v-if="i > 0" aria-hidden="true">›</span>
+            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-[var(--c-text-1)]" @click="location = navTo(location, c.index)">{{ c.label }}</button>
+            <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
+          </template>
+        </nav>
+        <PhysicalDisksSection v-if="active === 'disks'" :reveal="revealDisk" @navigate="focusOn" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
         <LvmSection           v-else-if="active === 'lvm'"
