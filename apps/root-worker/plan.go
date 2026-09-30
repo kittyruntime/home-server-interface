@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 )
 
 // ── Operation plans (#36) ────────────────────────────────────────────────────
@@ -43,6 +44,9 @@ type opPlan struct {
 	Steps    []planStep
 	Observed map[string]string
 	Reply    map[string]any // merged into the success reply
+	// FingerprintInput replaces the input in the fingerprint when set (an
+	// input carrying a secret, such as a password).
+	FingerprintInput json.RawMessage
 }
 
 type stepResult struct {
@@ -54,6 +58,13 @@ type stepResult struct {
 // runArgv runs a command step; tests swap it to record or forbid execution.
 var runArgv = func(argv []string) ([]byte, error) {
 	return command(argv[0], argv[1:]...).CombinedOutput()
+}
+
+// runStdin runs a command step that reads a secret on stdin; tests swap it.
+var runStdin = func(argv []string, stdin string) ([]byte, error) {
+	c := command(argv[0], argv[1:]...)
+	c.Stdin = strings.NewReader(stdin)
+	return c.CombinedOutput()
 }
 
 type cmdError struct{ msg string }
@@ -71,6 +82,9 @@ func cmdStep(target, summary string, argv []string) planStep {
 }
 
 func (p *opPlan) fingerprint(input json.RawMessage) string {
+	if p.FingerprintInput != nil {
+		input = p.FingerprintInput
+	}
 	var decoded any
 	_ = json.Unmarshal(input, &decoded)
 	steps := make([]planStep, len(p.Steps))

@@ -30,6 +30,8 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"import.assemble": planImportAssemble,
 	"import.activate": planImportActivate,
 	"smb.sync":        planSmbSync,
+	"user.create":     planUserCreate,
+	"group.leave":     planGroupLeave,
 }
 
 type planPreview struct {
