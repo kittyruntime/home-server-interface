@@ -1279,4 +1279,18 @@ await testSharePlans()
   assert.deepEqual(o.freeDisks.map(d => d.name), ["sdg"], "an empty device is not a free disk")
 }
 
+// Storage activity (#40): audit rows of an object, with their plan steps.
+{
+  const { activityEntries } = await import("../services/storage-activity")
+  const at = new Date("2026-09-30T10:00:00Z")
+  const rows = [
+    { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, createdAt: at, user: { username: "admin" },
+      meta: JSON.stringify({ input: {}, plan: { op: "format", steps: [{ kind: "run", target: "/dev/sdb1", summary: "Format", status: "done" }] } }) },
+    { id: "a2", action: "storage.mount", target: "sdb1", success: false, createdAt: at, user: null, meta: "{not json" },
+  ]
+  const out = activityEntries(rows as any)
+  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, at: at.toISOString(), user: "admin", steps: [{ summary: "Format", status: "done" }] })
+  assert.deepEqual(out[1], { id: "a2", action: "storage.mount", target: "sdb1", success: false, at: at.toISOString(), user: null })
+}
+
 console.log("Backend security tests passed")
