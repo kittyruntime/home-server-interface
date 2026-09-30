@@ -1245,4 +1245,38 @@ await testSharePlans()
   assert.deepEqual(v.issues, [])
 }
 
+// Volumes review fixes: only real data filesystems, unique ids, holds waiting
+// for Resume, system mounts not flagged by the worker, empty devices.
+{
+  const { buildVolumes } = await import("../services/volumes")
+  const dev = (o: any) => ({ fstype: "", mountpoint: "", uuid: "", size: 1e12, model: "", isSystem: false, usageTotal: 0, usageUsed: 0, usageFree: 0, children: [], ...o })
+  const o = buildVolumes({
+    devices: [
+      dev({ name: "loop0", type: "loop", fstype: "squashfs", mountpoint: "/snap/core/1", uuid: "", usageTotal: 1e8, usageUsed: 1e8, usageFree: 0 }),
+      dev({ name: "mmcblk0", type: "disk", children: [
+        dev({ name: "mmcblk0p1", type: "part", fstype: "vfat", mountpoint: "/boot/firmware", uuid: "U-FW" }),
+        dev({ name: "mmcblk0p2", type: "part", fstype: "ext4", mountpoint: "/", uuid: "U-ROOT", usageTotal: 3e10, usageFree: 1e10 }),
+      ] }),
+      dev({ name: "sdb", type: "disk", children: [dev({ name: "sdb1", type: "part", fstype: "crypto_LUKS", uuid: "U-LUKS" })] }),
+      dev({ name: "sdc", type: "disk", fstype: "btrfs", uuid: "U-BTR", mountpoint: "/srv/pool", usageTotal: 2e12, usageUsed: 1e11, usageFree: 1.9e12 }),
+      dev({ name: "sdd", type: "disk", fstype: "btrfs", uuid: "U-BTR" }),
+      dev({ name: "sde", type: "disk", fstype: "ext4", uuid: "U-BACK", mountpoint: "/srv/back", usageTotal: 1e12, usageUsed: 1e11, usageFree: 9e11 }),
+      dev({ name: "sdf", type: "disk", size: 0, usage: "free" }),
+      dev({ name: "sdg", type: "disk", usage: "free" }),
+    ],
+    raids: [], lvm: { pvs: [], vgs: [], lvs: [] },
+    guard: [], holds: [{ mountPoint: "/srv/back", reason: "The volume came back", status: "back" }],
+    places: [], shares: [], apps: [],
+  } as any)
+  const mounts = o.volumes.map(v => v.mountPoint)
+  assert.ok(!mounts.includes("/snap/core/1"), "snap loop devices are not volumes")
+  assert.ok(!mounts.includes("/") && !mounts.includes("/boot/firmware"), "system mounts are not volumes even when not flagged")
+  assert.ok(!o.volumes.some(v => v.fstype === "crypto_LUKS"), "a LUKS container is not a mountable volume")
+  assert.equal(new Set(o.volumes.map(v => v.id)).size, o.volumes.length, "volume ids are unique")
+  assert.equal(o.system?.free, 1e10)
+  const back = o.volumes.find(v => v.mountPoint === "/srv/back")!
+  assert.ok(back.issues.some(i => i.kind === "blocked"), "a hold waiting for Resume is an issue")
+  assert.deepEqual(o.freeDisks.map(d => d.name), ["sdg"], "an empty device is not a free disk")
+}
+
 console.log("Backend security tests passed")

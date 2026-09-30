@@ -65,7 +65,14 @@ export type VolumeOverview = {
   system?: { mountPoint: "/"; free: number; total: number }
 }
 
-const NOT_FILESYSTEMS = new Set(["", "linux_raid_member", "LVM2_member", "swap"])
+// Filesystems that hold data a user can mount. Everything else (RAID and LVM
+// members, LUKS containers, swap, squashfs snaps, ZFS/bcache members) is not
+// a volume here.
+const DATA_FILESYSTEMS = new Set(["ext2", "ext3", "ext4", "xfs", "btrfs", "vfat", "exfat", "ntfs", "ntfs3", "f2fs", "jfs", "reiserfs"])
+const NOT_DEVICES = new Set(["loop", "zram", "ram", "rom"])
+// Mount points of the operating system, excluded even when the worker could
+// not flag their device as a system device (e.g. /dev/root on a Raspberry Pi).
+const isSystemMount = (mp: string) => mp === "/" || mp === "/boot" || mp.startsWith("/boot/") || mp === "/efi" || mp.startsWith("/efi/")
 const NEARLY_FULL = 0.9
 
 // Device-mapper name of an LV: dashes in the VG and LV names are doubled.
@@ -135,9 +142,20 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
   const guardByUuid = new Map(input.guard.map(g => [g.uuid, g]))
   const guardByMount = new Map(input.guard.map(g => [g.mountPoint, g]))
 
+  // A filesystem spread over several devices (btrfs) or copied (an LVM
+  // snapshot) shows the same UUID on each: one volume, the mounted device.
+  const byUuid = new Map<string, VDev>()
+  for (const d of nodes.values()) {
+    if (!d.uuid || !DATA_FILESYSTEMS.has(d.fstype)) continue
+    const kept = byUuid.get(d.uuid)
+    if (!kept || (!kept.mountpoint && d.mountpoint)) byUuid.set(d.uuid, d)
+  }
+
   const volumes: Volume[] = []
   for (const dev of nodes.values()) {
-    if (NOT_FILESYSTEMS.has(dev.fstype) || system.has(dev.name) || dev.type === "rom") continue
+    if (!DATA_FILESYSTEMS.has(dev.fstype) || NOT_DEVICES.has(dev.type) || system.has(dev.name)) continue
+    if (dev.mountpoint && isSystemMount(dev.mountpoint)) continue
+    if (dev.uuid && byUuid.get(dev.uuid) !== dev) continue
 
     const up = ancestors(dev.name)
     const lv = dev.type === "lvm" ? lvByDm.get(dev.name) : undefined
@@ -170,8 +188,9 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
     if (guard?.state === "missing") issues.push({ kind: "missing", text: "Not found at boot" })
     else if (guard && (guard.state === "wrong" || guard.state === "readonly"))
       issues.push({ kind: "blocked", text: guard.state === "readonly" ? "Mounted read-only" : "Another device is mounted there" })
-    const hold = dev.mountpoint ? input.holds.find(h => h.mountPoint === dev.mountpoint && h.status === "blocked") : undefined
-    if (hold && !issues.some(i => i.kind === "blocked" || i.kind === "missing")) issues.push({ kind: "blocked", text: hold.reason })
+    const hold = dev.mountpoint ? input.holds.find(h => h.mountPoint === dev.mountpoint) : undefined
+    if (hold && !issues.some(i => i.kind === "blocked" || i.kind === "missing"))
+      issues.push({ kind: "blocked", text: hold.status === "back" ? "Back online, waiting for Resume" : hold.reason })
 
     const mounted = !!dev.mountpoint
     const space = mounted && dev.usageTotal > 0 ? { total: dev.usageTotal, used: dev.usageUsed, free: dev.usageFree } : undefined
@@ -227,7 +246,7 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
   volumes.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
 
   const freeDisks = input.devices
-    .filter(d => d.type === "disk" && d.usage === "free" && !d.isSystem)
+    .filter(d => d.type === "disk" && d.usage === "free" && !d.isSystem && d.size > 0)
     .map(d => ({ name: d.name, size: d.size, model: d.model, serial: d.serial }))
 
   const root = [...nodes.values()].find(d => d.mountpoint === "/")
