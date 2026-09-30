@@ -8,9 +8,14 @@ import (
 
 func stubUserHost(t *testing.T, exists, smbpasswd bool, members []string) *[]string {
 	t.Helper()
-	pe, pl, pg, pr, ps := hostUserExists, hostLookPath, hostGroupMembers, runArgv, runStdin
-	t.Cleanup(func() { hostUserExists, hostLookPath, hostGroupMembers, runArgv, runStdin = pe, pl, pg, pr, ps })
-	hostUserExists = func(string) bool { return exists }
+	pe, pl, pg, pr, ps := hostUserShell, hostLookPath, hostGroupMembers, runArgv, runStdin
+	t.Cleanup(func() { hostUserShell, hostLookPath, hostGroupMembers, runArgv, runStdin = pe, pl, pg, pr, ps })
+	hostUserShell = func(string) (string, bool) {
+		if exists {
+			return "/usr/sbin/nologin", true
+		}
+		return "", false
+	}
 	hostLookPath = func(name string) bool { return name != "smbpasswd" || smbpasswd }
 	hostGroupMembers = func(string) []string { return members }
 	var ran []string
@@ -101,5 +106,29 @@ func TestPlanGroupLeave(t *testing.T) {
 	p, _ = build(t, planGroupLeave, `{"username":"alice"}`)
 	if len(p.Steps) != 0 {
 		t.Fatal("a non-member has nothing to leave")
+	}
+}
+
+func TestPlanUserCreateRefusesLoginAccounts(t *testing.T) {
+	stubUserHost(t, true, true, nil)
+	hostUserShell = func(string) (string, bool) { return "/bin/bash", true }
+	_, fe := build(t, planUserCreate, `{"username":"theophile","password":"x","samba":true}`)
+	if fe == nil || !strings.Contains(fe.Message, "not managed by HSI") {
+		t.Fatalf("an existing login account must not get its password replaced: %+v", fe)
+	}
+	hostUserShell = func(string) (string, bool) { return "/usr/sbin/nologin", true }
+	p, fe := build(t, planUserCreate, `{"username":"alice","password":"x","samba":true}`)
+	if fe != nil || !strings.Contains(p.Steps[0].Summary, "already exists") {
+		t.Fatalf("an existing HSI-style account is reused, and the plan says so: %v %+v", fe, p)
+	}
+}
+
+func TestUserShellFromPasswd(t *testing.T) {
+	passwd := "root:x:0:0:root:/root:/bin/bash\nalice:x:1001:1001::/home/alice:/usr/sbin/nologin\n"
+	if sh, ok := shellFromPasswd(passwd, "alice"); !ok || sh != "/usr/sbin/nologin" {
+		t.Fatalf("alice: %q %v", sh, ok)
+	}
+	if _, ok := shellFromPasswd(passwd, "bob"); ok {
+		t.Fatal("bob does not exist")
 	}
 }
