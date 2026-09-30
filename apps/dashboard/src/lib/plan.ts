@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { trpc } from './trpc'
 
-// Operation plans (#36): a storage, app or share operation is first previewed as the
+// Operation plans (#36): a storage, app, share or user account operation is first previewed as the
 // exact steps HSI will take, then applied as that plan. `applyPlanned` opens the
 // single <PlanDialog/> mounted in the dashboard shell and settles once the
 // plan ran, failed, or was cancelled.
@@ -9,8 +9,9 @@ import { trpc } from './trpc'
 export type StorageOp = Parameters<typeof trpc.storage.plan.mutate>[0]['op']
 export type AppOp = Parameters<typeof trpc.apps.plan.mutate>[0]['op']
 export type ShareOp = Parameters<typeof trpc.sharing.plan.mutate>[0]['op']
-export type PlanOp = StorageOp | AppOp | ShareOp
-export type PlanDomain = 'storage' | 'apps' | 'sharing'
+export type UserOp = Parameters<typeof trpc.user.plan.mutate>[0]['op']
+export type PlanOp = StorageOp | AppOp | ShareOp | UserOp
+export type PlanDomain = 'storage' | 'apps' | 'sharing' | 'users'
 
 type StorageStep = Awaited<ReturnType<typeof trpc.storage.plan.mutate>>['steps'][number]
 type AppStep = Awaited<ReturnType<typeof trpc.apps.plan.mutate>>['steps'][number]

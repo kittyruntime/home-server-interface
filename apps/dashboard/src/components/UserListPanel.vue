@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
+import { applyPlanned } from '../lib/plan'
 import { useAuth } from '../lib/auth'
 import { useToast } from '../lib/toast'
 import UserDetailPanel from './UserDetailPanel.vue'
@@ -123,16 +124,17 @@ async function submitAdd() {
   if (newUser.password !== newUser.confirmPassword) { addError.value = 'Passwords do not match'; return }
   addLoading.value = true
   try {
-    await trpc.user.create.mutate({
+    await applyPlanned('user.create', {
       username:    newUser.username.trim(),
       password:    newUser.password,
       displayName: newUser.displayName.trim() || undefined,
-    })
+    }, { domain: 'users', title: `Create ${newUser.username.trim()}`, actionLabel: 'Create user' })
     addingUser.value = false
     toast.success(`User "${newUser.username.trim()}" created`)
     await load()
     page.value = pageCount.value
   } catch (e: any) {
+    if (e?.message === '') return // cancelled in the plan dialog
     addError.value = e?.message ?? 'Failed to create user'
     toast.error(e?.message ?? 'Failed to create user')
   } finally {
