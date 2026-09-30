@@ -15,6 +15,7 @@ export type BlockDev = {
   uuid:        string
   serial?:     string
   wwn?:        string
+  byId?:       string
   isSystem:    boolean
   isRemovable: boolean
   usageTotal:  number

@@ -16,6 +16,7 @@ export type ListDev = {
   model:       string
   serial?:     string
   wwn?:        string
+  byId?:       string
   isSystem:    boolean
   isRemovable: boolean
   usage?:      string
@@ -36,6 +37,8 @@ export type DiskRow<D extends ListDev = ListDev> = {
   health:      DiskHealth
   temperature: number
   kind:        DiskKind
+  /** The admin's name for the disk (#32), '' when none. */
+  label:       string
 }
 
 export const ROLE_LABELS: Record<DiskRole, string> = {
@@ -74,7 +77,7 @@ export function diskKind(disk: ListDev, smart?: DiskSmart): DiskKind {
 
 /** One row per physical disk. The role is the most significant thing the disk
  *  or anything on it is used for: system, then RAID, LVM, a mount. */
-export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart): DiskRow<D> {
+export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart, label = ''): DiskRow<D> {
   const raidOwners = new Set<string>()
   const vgOwners   = new Set<string>()
   let raid = false, lvm = false, mounted = false
@@ -98,6 +101,7 @@ export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart): DiskRow<
     health:      smart?.health ?? 'unknown',
     temperature: smart?.temperature ?? 0,
     kind:        diskKind(disk, smart),
+    label,
   }
 }
 
@@ -133,9 +137,9 @@ export type DiskFilter = {
 }
 
 /** Text a search matches against: kernel names (disk and partitions), model,
- *  serial, WWN and the arrays/VGs using the disk. */
+ *  serial, WWN, by-id name, label and the arrays/VGs using the disk. */
 function searchText(r: DiskRow): string {
-  const parts: string[] = [r.disk.model, r.disk.serial ?? '', r.disk.wwn ?? '', ...r.raidOwners, ...r.vgOwners]
+  const parts: string[] = [r.disk.model, r.disk.serial ?? '', r.disk.wwn ?? '', r.disk.byId ?? '', r.label, ...r.raidOwners, ...r.vgOwners]
   walk(r.disk, d => parts.push(d.name, '/dev/' + d.name, d.mountpoint))
   return parts.join(' ').toLowerCase()
 }
