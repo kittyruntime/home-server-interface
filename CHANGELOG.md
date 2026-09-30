@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **A user whose Linux account cannot be created is no longer created in HSI**
   (it used to be created without the account backing its files and SMB access).
+- **After an App Store install**, HSI shows the new app in Apps with its logs
+  instead of opening it in a new tab.
+
+### Fixed
+- **Failing the last redundant RAID member**: marking a member as failed is
+  refused when the array has no redundancy left (it would stop the array), and
+  a disk that was unplugged can now be removed from its array.
 
 ### Security
 - **HSI no longer sets the password of an existing Linux account that has a
@@ -35,13 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   account's password. HSI accounts have no login shell and are not affected; an
   HSI user whose name matches a login account keeps its Linux and Samba
   passwords unchanged.
-- **After an App Store install**, HSI shows the new app in Apps with its logs
-  instead of opening it in a new tab.
-
-### Fixed
-- **Failing the last redundant RAID member**: marking a member as failed is
-  refused when the array has no redundancy left (it would stop the array), and
-  a disk that was unplugged can now be removed from its array.
 
 ## [1.58.0] - 2026-09-29
 
