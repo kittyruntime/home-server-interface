@@ -1,6 +1,7 @@
 // apps/dashboard/src/components/storage/store.ts
 import { reactive, toRefs, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { deviceRole, type DeviceRole } from './device-state'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,18 +52,7 @@ export type LvmLV = { name: string; vgName: string; size: number; path: string }
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
-// A device that belongs to a RAID array or an LVM volume group. `owner` is null
-// when the on-disk signature says so but the array/VG is not assembled/visible.
-export type DeviceRole = { kind: 'raid' | 'lvm'; owner: string | null }
-
-export function deviceRole(dev: BlockDev): DeviceRole | null {
-  const usage = dev.usage
-    // Workers older than the usage field: fall back to the on-disk signature.
-    ?? (dev.fstype === 'linux_raid_member' ? 'raid-member' : dev.fstype === 'LVM2_member' ? 'lvm-pv' : undefined)
-  if (usage === 'raid-member') return { kind: 'raid', owner: dev.owner || null }
-  if (usage === 'lvm-pv') return { kind: 'lvm', owner: dev.owner || null }
-  return null
-}
+export { deviceRole, type DeviceRole }
 
 // A member device, or a disk with a member partition, is read-only in the UI:
 // formatting, mounting, partitioning or wiping it would break the array/VG.
