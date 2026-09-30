@@ -109,6 +109,7 @@ type BlockDev struct {
 	UUID        string `json:"uuid"`
 	Serial      string `json:"serial,omitempty"`
 	WWN         string `json:"wwn,omitempty"`
+	ByID        string `json:"byId,omitempty"` // preferred /dev/disk/by-id name
 	IsSystem    bool   `json:"isSystem"`
 	IsRemovable bool   `json:"isRemovable"`
 	UsageTotal  int64  `json:"usageTotal"`
@@ -241,6 +242,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 		assignUsage(&dev, pvVG)
 		devices = append(devices, dev)
 	}
+	assignByID(devices, preferredByID(hostByIDLinks()))
 
 	mdData, _ := os.ReadFile("/proc/mdstat")
 	raids := parseMdstat(string(mdData))
