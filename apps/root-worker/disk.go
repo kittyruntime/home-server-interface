@@ -90,6 +90,7 @@ type lsblkRaw struct {
 	RM         interface{} `json:"rm"`
 	Serial     interface{} `json:"serial"`
 	WWN        interface{} `json:"wwn"`
+	Label      interface{} `json:"label"`
 	Children   []lsblkRaw  `json:"children"`
 }
 
@@ -107,6 +108,7 @@ type BlockDev struct {
 	MountPoint  string `json:"mountpoint"`
 	Model       string `json:"model"`
 	UUID        string `json:"uuid"`
+	Label       string `json:"label,omitempty"` // filesystem label
 	Serial      string `json:"serial,omitempty"`
 	WWN         string `json:"wwn,omitempty"`
 	ByID        string `json:"byId,omitempty"` // preferred /dev/disk/by-id name
@@ -177,6 +179,7 @@ func convertDev(r lsblkRaw, sysDevs map[string]bool, parentSys bool) BlockDev {
 		UUID:        ifaceStr(r.UUID),
 		Serial:      ifaceStr(r.Serial),
 		WWN:         ifaceStr(r.WWN),
+		Label:       ifaceStr(r.Label),
 		IsSystem:    isSys,
 		IsRemovable: ifaceBool(r.RM),
 		Children:    []BlockDev{},
@@ -218,7 +221,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	sysDevs := systemDeviceNames()
 
 	out, err := command("lsblk", "-J", "-b", "-o",
-		"NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL,UUID,RM,SERIAL,WWN").Output()
+		"NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL,UUID,RM,SERIAL,WWN,LABEL").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "lsblk failed: " + err.Error()})
 		return
