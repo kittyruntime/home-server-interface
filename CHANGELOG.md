@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stable disk names**: each disk shows its `/dev/disk/by-id` name next to the
   kernel name (`/dev/sdb`), which can change between boots.
 
+### Changed
+- **Storage follows its window**: in desktop mode the Storage app lays out by
+  the width of its window, not of the screen, so a small window gets the
+  compact layout. Links between Storage sections open the right place (a disk
+  opens the device list with that disk expanded).
+
 ## [1.60.0] - 2026-09-30
 
 ### Changed

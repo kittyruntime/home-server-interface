@@ -148,7 +148,7 @@ const statusClass: Record<string, string> = {
             </template>
           </div>
 
-          <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-[var(--c-text-3)] sm:max-w-md">
+          <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-[var(--c-text-3)] @2xl:max-w-md">
             <div>Last run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
             <div>Next run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
