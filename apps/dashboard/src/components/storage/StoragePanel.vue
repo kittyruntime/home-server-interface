@@ -55,17 +55,20 @@ const installCommand = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row h-full">
+  <!-- Size container: layouts follow the width of this panel (a desktop
+       window or the classic view), not the screen (#40). -->
+  <div class="@container h-full">
+  <div class="flex flex-col @2xl:flex-row h-full">
 
     <!-- Mobile picker -->
-    <div class="sm:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
+    <div class="@2xl:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
       <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
         <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
       </select>
     </div>
 
     <!-- Left nav -->
-    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
       <div v-for="item in nav" :key="item.id" class="relative flex items-center">
         <span
           v-if="active === item.id"
@@ -109,7 +112,7 @@ const installCommand = computed(() =>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
-      <div class="p-4 sm:p-8 max-w-5xl">
+      <div class="p-4 @2xl:p-8 max-w-5xl">
         <div v-if="missingTools.length" role="status"
           class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
           <p class="text-[var(--c-text-1)]">
@@ -135,5 +138,6 @@ const installCommand = computed(() =>
       </div>
     </div>
 
+  </div>
   </div>
 </template>

@@ -563,7 +563,7 @@ const openMenu = ref<string | null>(null)
               <Hint text="Each diagram shows how one chunk of data is placed on the drives. Same letter = identical copy. Different letters = split across drives. P = a parity block, used to rebuild data if a drive fails." />
             </p>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 @2xl:grid-cols-2 gap-2">
               <button
                 v-for="lvl in RAID_LEVELS" :key="lvl.level"
                 @click="raidWiz.level = lvl.level"

@@ -54,7 +54,7 @@ async function save() {
       v-else-if="serial"
       type="button"
       :class="['max-w-full truncate text-left text-2xs rounded-sm hover:text-[var(--c-text-1)] focus-visible:text-[var(--c-text-1)]',
-        label ? 'text-[var(--c-text-2)]' : 'text-[var(--c-text-3)] sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100']"
+        label ? 'text-[var(--c-text-2)]' : 'text-[var(--c-text-3)] @2xl:opacity-0 @2xl:group-hover:opacity-100 focus-visible:opacity-100']"
       :title="label ? 'Rename this disk' : 'Name this disk, for example by its bay'"
       @click="start"
     >{{ label || 'Add label' }}</button>

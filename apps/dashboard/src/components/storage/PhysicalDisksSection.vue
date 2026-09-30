@@ -370,7 +370,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <option v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</option>
           </select>
           <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
-            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && 'sm:hidden']">
+            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && '@2xl:hidden']">
             <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
           </select>
           <label class="flex items-center gap-1.5 text-xs text-[var(--c-text-2)] cursor-pointer">
@@ -404,7 +404,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
         <div v-else-if="view === 'table'" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
           <!-- Header (desktop) -->
-          <div class="hidden sm:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
+          <div class="hidden @2xl:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
             <span/>
             <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
               :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
@@ -420,7 +420,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
               <!-- Row (desktop) -->
-              <div class="group hidden sm:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
+              <div class="group hidden @2xl:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
@@ -451,7 +451,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               </div>
 
               <!-- Row (mobile): role and health first -->
-              <div class="group sm:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
+              <div class="group @2xl:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
                 <div class="flex-1 min-w-0">
