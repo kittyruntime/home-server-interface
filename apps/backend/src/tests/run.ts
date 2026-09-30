@@ -1071,6 +1071,7 @@ await testSharePlans()
   const deps = (over: Record<string, unknown> = {}): any => ({
     smbdInstalled: async () => true,
     shareDefs: async () => [],
+    currentShareDefs: async () => [{ validUsers: ["alice"] }],
     serialize: async <T>(fn: () => Promise<T>) => { inLock = true; try { return await fn() } finally { inLock = false } },
     resync: async () => { calls.push("resync") },
     commit: async () => { calls.push(`commit${inLock ? ":locked" : ""}`) },
@@ -1111,10 +1112,27 @@ await testSharePlans()
 
   // No share access: no smb.conf step and no reload.
   const quiet = await up.previewUserDelete("alice", deps({
+    currentShareDefs: async () => [],
     worker: async (subject: string, payload: any) =>
       payload.op === "smb.sync" ? { steps: [{ kind: "run", target: "smbd", summary: "reload" }], fingerprint: "s0" } : { steps: [], fingerprint: "g0" },
   }))
   assert.deepEqual(quiet.steps.map(s => s.kind), ["delete"])
+
+  // No share access, but smb.conf out of date: the user's delete does not
+  // reconcile unrelated drift (no smb.conf step, no smbd reload).
+  const drift = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [] }))
+  assert.deepEqual(drift.steps.map(s => s.kind), ["delete"], "only shares naming the user bring smb.conf into the plan")
+
+  // group.leave failing with an exception after smb.conf was written resyncs.
+  calls.length = 0
+  const baseWorker = deps().worker
+  await assert.rejects(up.applyUserDelete("alice", pd.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.apply" && payload.op === "group.leave") throw Object.assign(new Error("changed"), { code: "ESTALE" })
+      return baseWorker(subject, payload)
+    },
+  })))
+  assert.ok(calls.includes("resync"), "a worker error after smb.conf was written resyncs")
 
   // A failed DB delete after smb.conf was written resyncs.
   calls.length = 0

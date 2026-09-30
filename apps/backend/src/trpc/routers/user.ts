@@ -50,6 +50,7 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
     shareDefs: () => desiredShareDefs(ctx.prisma, undefined, { withoutUser: username }),
+    currentShareDefs: () => desiredShareDefs(ctx.prisma),
     serialize: withShareLock,
     resync: () => syncSharesBestEffort(ctx.prisma),
     commit,

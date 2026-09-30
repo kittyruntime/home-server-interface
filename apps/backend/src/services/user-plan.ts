@@ -15,6 +15,8 @@ export interface UserPlanDeps {
   smbdInstalled(): Promise<boolean>
   /** Share definitions without the deleted user. */
   shareDefs(): Promise<unknown[]>
+  /** Share definitions as they are now. */
+  currentShareDefs(): Promise<unknown[]>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   commit(): Promise<unknown>
@@ -23,7 +25,6 @@ export interface UserPlanDeps {
 export interface UserCreateInput { username: string; password: string; samba: boolean }
 type Preview = { steps: PlanStep[]; fingerprint: string }
 
-const SMB_CONF = "/etc/nasui/samba/smb.conf"
 const STALE = "The server changed since this preview; review the plan again"
 
 function createStep(username: string): PlanStep {
@@ -62,14 +63,16 @@ export async function applyUserCreate(input: UserCreateInput, fingerprint: strin
   return { ...res, steps, results: [...res.results, { status: "done" }] }
 }
 
-// The delete plan is the smb.sync plan (only when smb.conf changes) and the
-// group.leave plan, then the database delete.
+// The delete plan is the smb.sync plan (only when a share names the user) and
+// the group.leave plan, then the database delete. Deciding on the definitions,
+// not on the file, keeps unrelated drift in smb.conf out of a user deletion.
 async function deletePreviews(username: string, deps: UserPlanDeps) {
   let smb: (Preview & { input: Record<string, unknown> }) | null = null
-  if (await deps.smbdInstalled()) {
-    const input = { shares: await deps.shareDefs() }
-    const p = await preview(deps, "smb.sync", input)
-    if (p.steps.some(s => s.target === SMB_CONF)) smb = { ...p, input }
+  const shares = await deps.shareDefs()
+  const named = JSON.stringify(shares) !== JSON.stringify(await deps.currentShareDefs())
+  if (named && await deps.smbdInstalled()) {
+    const input = { shares }
+    smb = { ...await preview(deps, "smb.sync", input), input }
   }
   const group = await preview(deps, "group.leave", { username })
   const fingerprint = crypto.createHash("sha256")
@@ -97,17 +100,17 @@ export async function applyUserDelete(username: string, fingerprint: string, dep
       parts.push(["group.leave", { username }, group.fingerprint])
       for (const [op, input, fp] of parts) {
         const res = await apply(deps, op, input, fp)
+        // From here smb.conf may no longer name a user the database still has.
+        if (op === "smb.sync") resync = true
         steps.push(...res.steps)
         results.push(...res.results)
         warnings.push(...(res.warnings ?? []))
         if (!res.ok) {
-          resync = smb !== null
           return { ok: false, error: res.error, steps: [...steps, deleteStep(username)], results: [...results, { status: "not-run" }], warnings }
         }
       }
-      try {
-        await deps.commit()
-      } catch (e) { resync = true; throw e }
+      await deps.commit()
+      resync = false
       return { ok: true, steps: [...steps, deleteStep(username)], results: [...results, { status: "done" }], warnings }
     })
   } finally {
