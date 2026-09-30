@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
+import VolumesSection from './VolumesSection.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
@@ -13,7 +14,7 @@ type SectionId = StorageSection
 
 interface NavItem { id: SectionId; label: string }
 
-const nav: NavItem[] = (['disks', 'raid', 'lvm', 'mounts', 'maintenance'] as const)
+const nav: NavItem[] = (['volumes', 'disks', 'raid', 'lvm', 'mounts', 'maintenance'] as const)
   .map(id => ({ id, label: SECTION_LABELS[id] }))
 
 // Where this panel is (#40). Each Storage panel (the classic view, a desktop
@@ -86,8 +87,14 @@ const installCommand = computed(() =>
               : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
           ]"
         >
+          <!-- Volumes -->
+          <svg v-if="item.id === 'volumes'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <rect x="3" y="4" width="18" height="7" rx="2" stroke-linejoin="round"/>
+            <rect x="3" y="13" width="18" height="7" rx="2" stroke-linejoin="round"/>
+            <path stroke-linecap="round" d="M7 7.5h.01M7 16.5h.01"/>
+          </svg>
           <!-- Disks -->
-          <svg v-if="item.id === 'disks'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <svg v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M22 12H2"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 16h.01M10 16h.01"/>
@@ -131,7 +138,8 @@ const installCommand = computed(() =>
             <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>
-        <PhysicalDisksSection v-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @create="startCreate" />
+        <VolumesSection v-if="active === 'volumes'" @navigate="focusOn" @create="startCreate" />
+        <PhysicalDisksSection v-else-if="active === 'disks'" :reveal-request="revealRequest" @navigate="focusOn" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />
         <LvmSection           v-else-if="active === 'lvm'"

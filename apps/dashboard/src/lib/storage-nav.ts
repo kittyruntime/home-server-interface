@@ -1,7 +1,7 @@
 // Where the Storage app is (#40): a section, or an object shown in its
 // section. Each Storage panel keeps its own stack of locations.
 
-export type StorageSection = 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
+export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
   | { kind: 'disk'; name: string }
@@ -9,7 +9,7 @@ export type StorageLocation =
   | { kind: 'vg'; name: string }
 
 export const SECTION_LABELS: Record<StorageSection, string> = {
-  disks: 'Devices', raid: 'RAID', lvm: 'LVM', mounts: 'Mounts', maintenance: 'Maintenance',
+  volumes: 'Volumes', disks: 'Devices', raid: 'RAID', lvm: 'LVM', mounts: 'Mounts', maintenance: 'Maintenance',
 }
 
 export function sectionOf(loc: StorageLocation): StorageSection {
@@ -30,7 +30,7 @@ export interface StorageNav { stack: StorageLocation[]; current: StorageLocation
 const same = (a: StorageLocation, b: StorageLocation) => JSON.stringify(a) === JSON.stringify(b)
 const make = (stack: StorageLocation[]): StorageNav => ({ stack, current: stack[stack.length - 1]! })
 
-export function createNav(initial: StorageLocation = { kind: 'section', section: 'disks' }): StorageNav {
+export function createNav(initial: StorageLocation = { kind: 'section', section: 'volumes' }): StorageNav {
   return navOpen(make([{ kind: 'section', section: sectionOf(initial) }]), initial)
 }
 
