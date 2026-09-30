@@ -104,6 +104,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
             class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
         </div>
+        <div v-if="disk.byId" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5 truncate" :title="`/dev/disk/by-id/${disk.byId}: stable name, unlike /dev/${disk.name}`">/dev/disk/by-id/{{ disk.byId }}</div>
         <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">

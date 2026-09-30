@@ -109,3 +109,12 @@ test('groups array and volume group members together', () => {
 test('only free, non-system whole disks can be selected', () => {
   assert.deepEqual(rows.filter(isSelectable).map(r => r.disk.name), ['sdf'])
 })
+
+test('search finds a disk by its label and its by-id name', () => {
+  const disk = { name: 'sdc', size: 4e12, type: 'disk', fstype: '', mountpoint: '', model: 'WDC', serial: 'WD-1', byId: 'ata-WDC_WD40_WD-1', isSystem: false, isRemovable: false }
+  const row = diskRow(disk, undefined, 'bay 3, top')
+  assert.equal(row.label, 'bay 3, top')
+  assert.equal(filterRows([row], { search: 'bay 3' }).length, 1)
+  assert.equal(filterRows([row], { search: 'ata-wdc' }).length, 1)
+  assert.equal(filterRows([row], { search: 'bay 7' }).length, 0)
+})

@@ -2,6 +2,7 @@
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
+import { trpc } from '../../lib/trpc'
 import { ref, computed, watch } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
@@ -11,6 +12,7 @@ import {
   type DiskRow, type DiskRole, type DiskHealth, type SortKey, type SortDir,
 } from './disk-list'
 import DiskCard from './DiskCard.vue'
+import DiskLabel from './DiskLabel.vue'
 import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
@@ -61,9 +63,26 @@ function healthOf(s: SmartResult | undefined): DiskHealth {
   return st === 'loading' ? 'unknown' : st
 }
 
+// Disk labels by serial (#32).
+const labels = ref<Record<string, string>>({})
+async function loadLabels() {
+  try {
+    labels.value = Object.fromEntries((await trpc.storage.diskLabels.list.query()).map(l => [l.serial, l.label]))
+  } catch { /* labels are optional; the list works without them */ }
+}
+void loadLabels()
+function setLabel(serial: string | undefined, label: string) {
+  if (!serial) return
+  const next = { ...labels.value }
+  if (label) next[serial] = label
+  else delete next[serial]
+  labels.value = next
+}
+
 const rows = computed<DiskRow<BlockDev>[]>(() => physicalDisks.value.map(d => {
   const s = smartCache.value[d.name]
-  return diskRow(d, s && { health: healthOf(s), temperature: s.temperature, rotationRate: s.rotationRate, available: s.available })
+  return diskRow(d, s && { health: healthOf(s), temperature: s.temperature, rotationRate: s.rotationRate, available: s.available },
+    d.serial ? labels.value[d.serial] ?? '' : '')
 }))
 const summary = computed(() => summarize(rows.value))
 
@@ -386,12 +405,15 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
               <!-- Row (desktop) -->
-              <div class="hidden sm:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
+              <div class="group hidden sm:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
                 <span v-else/>
-                <span class="font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
+                <span class="min-w-0">
+                  <span class="block font-mono font-semibold text-[var(--c-text-1)] truncate">/dev/{{ r.disk.name }}</span>
+                  <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
+                </span>
                 <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
                 <span class="font-mono text-2xs text-[var(--c-text-3)] min-w-0">
                   <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '-' }}</span>
@@ -414,7 +436,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               </div>
 
               <!-- Row (mobile): role and health first -->
-              <div class="sm:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
+              <div class="group sm:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
                 <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
                   :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
                 <div class="flex-1 min-w-0">
@@ -433,6 +455,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   <div class="text-2xs text-[var(--c-text-3)] truncate">
                     {{ r.disk.model }}<span v-if="r.disk.serial" class="font-mono"> · {{ r.disk.serial }}</span>
                   </div>
+                  <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </div>
                 <svg class="w-3.5 h-3.5 mt-1 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
