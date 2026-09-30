@@ -3,7 +3,7 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { applyPlanned } from '../../lib/plan'
 import { trpc } from '../../lib/trpc'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
@@ -18,6 +18,9 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
+
+// A disk to show (#40 navigation): expanded and scrolled into view.
+const props = defineProps<{ reveal?: string }>()
 
 const emit = defineEmits<{
   navigate: [section: 'raid' | 'lvm']
@@ -142,6 +145,18 @@ function clearFilters() {
 }
 
 const expanded = computed(() => new Set(prefs.value.expanded))
+
+// Show the disk a link pointed at, once it is listed; an unknown name (a
+// disk that is gone) leaves the list as it is.
+watch([() => props.reveal, physicalDisks], async ([name]) => {
+  if (!name || !physicalDisks.value.some(d => d.name === name)) return
+  if (!visibleRows.value.some(r => r.disk.name === name)) clearFilters()
+  if (!prefs.value.expanded.includes(name)) prefs.value.expanded = [...prefs.value.expanded, name]
+  await nextTick()
+  for (const el of document.querySelectorAll<HTMLElement>(`[data-disk="${CSS.escape(name)}"]`)) {
+    if (el.offsetParent) el.scrollIntoView({ block: 'nearest' })
+  }
+}, { immediate: true })
 function toggleExpanded(name: string) {
   const e = prefs.value.expanded
   const i = e.indexOf(name)
@@ -403,7 +418,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <div v-if="g.label" class="px-3 py-1.5 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] bg-[var(--c-surface-deep)]/60 border-b border-[var(--c-border)]">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
-            <div v-for="r in g.rows" :key="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
+            <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
               <!-- Row (desktop) -->
               <div class="group hidden sm:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
@@ -481,7 +496,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <div v-if="g.label" class="pt-2 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
-            <div v-for="r in g.rows" :key="r.disk.name" class="flex items-start gap-2">
+            <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="flex items-start gap-2">
               <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @change="toggleSelected(r.disk.name)"
                 :aria-label="`Select /dev/${r.disk.name}`" class="mt-4 accent-accent"/>
               <DiskCard class="flex-1 min-w-0" :disk="r.disk" :smart="smartCache[r.disk.name]" :smart-open="smartOpen.has(r.disk.name)"
