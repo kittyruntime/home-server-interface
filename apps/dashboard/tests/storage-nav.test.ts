@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, takeRequest, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
+import { createNav, takeRequest, navOpen, navBack, navCrumbs, navTo, sectionOf, leavesWizard } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -58,4 +58,12 @@ test('the create volume wizard opens on top of Volumes', () => {
   const nav = navOpen(createNav({ kind: 'section', section: 'disks' }), { kind: 'create-volume', disks: ['sdf'] })
   assert.equal(sectionOf(nav.current), 'volumes')
   assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Volumes', 'Create volume'])
+})
+
+test('leavesWizard: any move away from Create volume, by crumb or link', () => {
+  const inWizard = navOpen(createNav(), { kind: 'create-volume' })
+  assert.equal(leavesWizard(inWizard, navTo(inWizard, 0)), true, 'a breadcrumb back to Volumes')
+  assert.equal(leavesWizard(inWizard, navOpen(inWizard, { kind: 'section', section: 'disks' })), true)
+  assert.equal(leavesWizard(inWizard, inWizard), false)
+  assert.equal(leavesWizard(createNav(), navOpen(createNav(), { kind: 'section', section: 'disks' })), false)
 })

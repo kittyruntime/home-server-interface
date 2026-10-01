@@ -16,6 +16,9 @@ test('usable space and tolerance per level', () => {
   assert.equal(usableBytes('raid5', four), 9e12)
   assert.equal(usableBytes('raid6', four), 6e12)
   assert.equal(usableBytes('raid10', four), 6e12)
+  // mdadm raid10 (near=2) keeps two copies of every block: an odd count still
+  // gives half the raw space.
+  assert.equal(usableBytes('raid10', [3e12, 3e12, 3e12, 3e12, 3e12]), 7.5e12)
   assert.equal(tolerance('raid1', 3), 2)
   assert.equal(tolerance('raid5', 4), 1)
   assert.equal(tolerance('raid6', 4), 2)

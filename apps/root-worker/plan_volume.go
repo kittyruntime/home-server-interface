@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -22,6 +23,22 @@ var (
 			names = append(names, r.Name)
 		}
 		return names
+	}
+	// /dev/md* nodes too: an array stopped but still configured keeps its name.
+	hostMdNodes = func() []string {
+		var names []string
+		for _, pat := range []string{"/dev/md[0-9]*", "/dev/md/*"} {
+			m, _ := filepath.Glob(pat)
+			for _, p := range m {
+				names = append(names, filepath.Base(p))
+			}
+		}
+		return names
+	}
+	// A whole disk: lsblk type "disk" (not a partition, md or dm device).
+	hostWholeDisk = func(name string) bool {
+		out, err := command("lsblk", "-dn", "-o", "TYPE", "/dev/"+name).Output()
+		return err == nil && strings.TrimSpace(string(out)) == "disk"
 	}
 	hostVgNames = func() []string {
 		out, _ := hostOutput("vgs", "--noheadings", "-o", "vg_name")
@@ -44,10 +61,18 @@ var volumeLevels = map[string]struct {
 	"raid1": {2, "1"}, "raid5": {3, "5"}, "raid6": {4, "6"}, "raid10": {4, "10"},
 }
 
-func nextMdName(used []string) string {
+// nextMdName returns the first mdN name not used by a running array, a
+// /dev node, or an ARRAY line of mdadm.conf (an array that is not assembled
+// right now would lose its line otherwise).
+func nextMdName(used []string, mdadmConf string) string {
 	taken := map[string]bool{}
 	for _, n := range used {
 		taken[n] = true
+	}
+	for _, l := range splitConf(mdadmConf) {
+		if dev, _ := arrayLineFields(strings.TrimSpace(l)); dev != "" {
+			taken[filepath.Base(dev)] = true
+		}
 	}
 	for i := 0; ; i++ {
 		if n := fmt.Sprintf("md%d", i); !taken[n] {
@@ -104,6 +129,12 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	if criticalMountPoints[mp] {
 		return nil, &fsError{Code: "ESYS", Message: "cannot mount over system directory " + mp}
 	}
+	fstab := readFstab()
+	for _, l := range splitConf(fstab) {
+		if _, m := fstabFields(l); m == mp {
+			return nil, &fsError{Code: "EEXIST", Message: fstabPath + " already has an entry for " + mp + "; choose another folder"}
+		}
+	}
 	exists := hostExists(mp)
 	if exists && !hostDirEmpty(mp) {
 		return nil, &fsError{Code: "ERR", Message: mp + " is not empty; choose another folder"}
@@ -118,14 +149,23 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	sys := hostSystemDevs()
-	obs := map[string]string{"fstab": readFstab(), "mdadm.conf": readMdadmConf(), "mountpoint": fmt.Sprint(exists)}
+	mdConf := readMdadmConf()
+	obs := map[string]string{"fstab": fstab, "mdadm.conf": mdConf, "mountpoint": fmt.Sprint(exists)}
 	disks := make([]string, 0, len(req.Disks))
+	seen := map[string]bool{}
 	for _, d := range req.Disks {
 		if !reBlockDev.MatchString(d) {
 			return nil, &fsError{Code: "ERR", Message: "invalid device name: " + d}
 		}
+		if seen[d] {
+			return nil, &fsError{Code: "ERR", Message: d + " is listed twice"}
+		}
+		seen[d] = true
 		if sys[d] {
 			return nil, &fsError{Code: "ESYS", Message: "device " + d + " belongs to the system disk"}
+		}
+		if !hostWholeDisk(d) {
+			return nil, &fsError{Code: "ERR", Message: d + " is not a whole disk; a volume is built from whole disks"}
 		}
 		if fe := hostClaimable(d); fe != nil {
 			return nil, fe
@@ -137,7 +177,7 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	var steps []planStep
 	pvs := disks
 	if req.Redundancy != "none" {
-		name := nextMdName(hostMdNames())
+		name := nextMdName(append(hostMdNames(), hostMdNodes()...), mdConf)
 		obs["md"] = name
 		raidDev := "/dev/" + name
 		lvl := volumeLevels[req.Redundancy].level
@@ -162,11 +202,14 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 			steps = append(steps, s)
 		}
 		pvs = []string{raidDev}
+		// Old signatures inside the new array (an LVM label from a previous
+		// life of these disks) would make pvcreate stop and ask.
+		steps = append(steps, cmdStep(raidDev, "Clear old signatures inside "+raidDev, []string{"wipefs", "-a", raidDev}))
 	}
 
-	pv := cmdStep(req.VG, "Prepare "+strings.Join(pvs, ", ")+" for LVM", append([]string{"pvcreate"}, pvs...))
+	pv := cmdStep(req.VG, "Prepare "+strings.Join(pvs, ", ")+" for LVM", append([]string{"pvcreate", "-f"}, pvs...))
 	if req.Redundancy == "none" {
-		pv = destructiveAll(cmdStep(req.VG, "Prepare "+strings.Join(pvs, ", ")+" for LVM, erasing their contents", append([]string{"pvcreate"}, pvs...)), pvs)
+		pv = destructiveAll(cmdStep(req.VG, "Prepare "+strings.Join(pvs, ", ")+" for LVM, erasing their contents", append([]string{"pvcreate", "-f"}, pvs...)), pvs)
 	}
 	lvDev := "/dev/" + req.VG + "/" + req.LV
 	steps = append(steps,
@@ -174,7 +217,7 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 		cmdStep(req.VG, "Create the volume group "+req.VG, append([]string{"vgcreate", req.VG}, pvs...)),
 		cmdStep(lvDev, fmt.Sprintf("Create the logical volume %s using %d%% of the volume group", req.LV, req.LVPercent),
 			[]string{"lvcreate", "-y", "-l", fmt.Sprintf("%d%%FREE", req.LVPercent), "-n", req.LV, req.VG}),
-		cmdStep(lvDev, "Create an ext4 filesystem labelled "+req.Label, []string{"mkfs.ext4", "-F", "-L", req.Label, lvDev}),
+		cmdStep(lvDev, "Create an ext4 filesystem labelled "+req.Label, []string{"mkfs.ext4", "-F", "-E", "nodiscard", "-L", req.Label, lvDev}),
 	)
 
 	if !exists {

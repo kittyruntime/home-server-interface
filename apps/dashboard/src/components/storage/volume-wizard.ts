@@ -19,7 +19,7 @@ export function usableBytes(level: Level, sizes: number[]): number {
     case 'raid1':  return min
     case 'raid5':  return (n - 1) * min
     case 'raid6':  return (n - 2) * min
-    case 'raid10': return Math.floor(n / 2) * min
+    case 'raid10': return Math.floor(n * min / 2)
     default:       return sizes.reduce((a, b) => a + b, 0)
   }
 }

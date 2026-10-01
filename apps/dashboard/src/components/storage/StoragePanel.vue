@@ -13,7 +13,7 @@ import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
 import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
-import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, SECTION_LABELS, type StorageLocation, type StorageSection } from '../../lib/storage-nav'
+import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, type StorageLocation, type StorageNav, type StorageSection } from '../../lib/storage-nav'
 import { pendingStorageLocation } from '../../lib/storage-open'
 
 type SectionId = StorageSection
@@ -38,12 +38,16 @@ const wizardDirty = ref(false)
 const panelEmit = defineEmits<{ dirty: [dirty: boolean] }>()
 watch(wizardDirty, d => panelEmit('dirty', d))
 const { confirm } = useConfirm()
-async function open(loc: StorageLocation) {
-  if (wizardDirty.value && location.value.current.kind === 'create-volume' && loc.kind !== 'create-volume') {
-    if (!await confirm('Leave the Create volume wizard? Your choices will be lost.', { confirmLabel: 'Leave' })) return
+// Every move goes through here: links, sections and breadcrumbs alike.
+async function go(next: StorageNav) {
+  if (leavesWizard(location.value, next)) {
+    if (wizardDirty.value && !await confirm('Leave the Create volume wizard? Your choices will be lost.', { confirmLabel: 'Leave' })) return
     wizardDirty.value = false
   }
-  location.value = navOpen(location.value, loc)
+  location.value = next
+}
+function open(loc: StorageLocation) {
+  return go(navOpen(location.value, loc))
 }
 function focusOn(target: SectionId | StorageLocation) {
   open(typeof target === 'string' ? { kind: 'section', section: target } : target)
@@ -148,7 +152,7 @@ const installCommand = computed(() =>
         <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-[var(--c-text-3)]">
           <template v-for="(c, i) in crumbs" :key="c.index">
             <span v-if="i > 0" aria-hidden="true">›</span>
-            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-[var(--c-text-1)]" @click="location = navTo(location, c.index)">{{ c.label }}</button>
+            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-[var(--c-text-1)]" @click="go(navTo(location, c.index))">{{ c.label }}</button>
             <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>

@@ -1450,6 +1450,36 @@ await testSharePlans()
   assert.equal(noPlace.ok, false)
   assert.deepEqual(noPlace.results.slice(-2).map(r => r.status), ["failed", "not-run"])
 
+  // The share fails after the disks were erased: a partial result, not an error
+  // that reads as "nothing happened".
+  const applyOk = (op: string) => ({ ok: true, steps: [volStep], results: [{ status: "done" }], reply: { mountpoint: "/srv/data" }, op })
+  const previewOk = (payload: any) => payload.op === "smb.sync" ? { steps: [smbStep], fingerprint: "s1" } : { steps: [volStep], fingerprint: "v1" }
+  calls.length = 0
+  const staleShare = await vp.applyVolume(input as any, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return previewOk(payload)
+      if (payload.op === "smb.sync") throw Object.assign(new Error("smb.conf changed"), { code: "ESTALE" })
+      return applyOk(payload.op)
+    },
+  }))
+  assert.equal(staleShare.ok, false)
+  assert.match(staleShare.error!, /volume and its Place are ready, but sharing failed: smb.conf changed/)
+  assert.equal(staleShare.results.length, staleShare.steps.length)
+  assert.equal(staleShare.results.at(-1)!.status, "failed")
+  assert.equal(staleShare.reply?.placeId, "p-new")
+  const rowFails = await vp.applyVolume(input as any, pv.fingerprint, deps({ createShare: async () => { throw new Error("Unique constraint") } }))
+  assert.equal(rowFails.ok, false)
+  assert.match(rowFails.error!, /sharing failed: Unique constraint/)
+  assert.ok(calls.includes("resync"), "Samba is resynced to the stored shares")
+
+  // The volume apply times out: it may still be running, say so.
+  await assert.rejects(vp.applyVolume(input as any, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return previewOk(payload)
+      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+    },
+  })), (e: any) => /may still be running/.test(e.message))
+
   // Stale: CONFLICT.
   await assert.rejects(vp.applyVolume(input as any, "other", deps()), (e: any) => e.code === "CONFLICT")
   // Places and shares are for admins.

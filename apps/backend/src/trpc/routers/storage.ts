@@ -105,13 +105,15 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
 
 const zVolumeInput = z.object({
   volume: z.object({
-    disks:      z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1).max(24),
+    disks:      z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1).max(24)
+      .refine(d => new Set(d).size === d.length, "A disk is listed twice"),
     redundancy: z.enum(["none", "raid1", "raid5", "raid6", "raid10"]),
     vg:         z.string().min(1).max(31),
     lv:         z.string().min(1).max(31),
     lvPercent:  z.number().int().min(1).max(100),
     label:      z.string().min(1).max(16),
-    mountpoint: z.string().startsWith("/").max(255),
+    // One spelling for the Place path, the audit target and the worker.
+    mountpoint: z.string().startsWith("/").max(255).transform(p => p.replace(/\/{2,}/g, "/").replace(/(.)\/$/, "$1")),
     // As for Mount: "shared" (the caller and hsi-share), "user" (ownerUserId),
     // "keep" (root:root). The owner is an HSI user, resolved here.
     access:      z.enum(["shared", "user", "keep"]).default("shared"),
@@ -186,7 +188,6 @@ export const storageRouter = router({
       return res
     }),
 
-  // Missing volume guard (#3): state of each HSI volume and its hold.
   // Create volume (#40): the worker chain, a Place and a share, as one plan.
   volumePlan: storageProcedure
     .input(z.object({ input: zVolumeInput }))
@@ -237,6 +238,7 @@ export const storageRouter = router({
       }),
   }),
 
+  // Missing volume guard (#3): state of each HSI volume and its hold.
   volumes: router({
     // The Volumes landing page (#40): every data filesystem with its stack,
     // redundancy, space, issues and what uses it.

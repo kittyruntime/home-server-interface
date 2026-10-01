@@ -80,7 +80,15 @@ export async function applyVolume(input: VolumeInput, fingerprint: string, deps:
   let vol: PlanApplyResult
   try {
     vol = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "volume.create", input: input.volume, fingerprint: volume.fingerprint })
-  } catch (e) { workerError(e) }
+  } catch (e) {
+    const code = (e as { code?: string }).code
+    if (code === "ERR" || code === "ESTALE" || code === "SMBD_MISSING") workerError(e)
+    // No answer: the chain may be running on the host right now.
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `No answer from the host (${e instanceof Error ? e.message : String(e)}). The volume creation may still be running: check the Storage page before trying again.`,
+    })
+  }
   const steps = [...vol.steps, ...later]
   if (!vol.ok) return { ...vol, steps, results: [...vol.results, ...notRun(later.length)] }
 
@@ -99,19 +107,34 @@ export async function applyVolume(input: VolumeInput, fingerprint: string, deps:
   const reply = { ...(vol.reply ?? {}), placeId }
   if (!smb) return { ok: true, steps, results, warnings, reply }
 
-  // The share: its smb.sync plan, then its row, under the share lock.
+  // The share: its smb.sync plan, then its row, under the share lock. The
+  // disks are erased by now, so a failure here is a partial result, never an
+  // error that reads as "nothing happened".
+  const sharingFailed = (why: string): PlanApplyResult => {
+    const error = `The volume and its Place are ready, but sharing failed: ${why}`
+    const done = results.slice(0, steps.length)
+    const missing = steps.length - done.length
+    const tail: StepResult[] = missing > 0 ? [{ status: "failed", error }, ...notRun(missing - 1)] : []
+    return { ok: false, error, steps, results: [...done, ...tail], warnings, reply }
+  }
   let resync = false
   try {
     return await deps.serialize(async () => {
       let res: PlanApplyResult
       try {
         res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: smb.input, fingerprint: smb.fingerprint })
-      } catch (e) { workerError(e) }
+      } catch (e) {
+        return sharingFailed(e instanceof Error ? e.message : String(e))
+      }
       resync = true
       results.push(...res.results)
       warnings.push(...(res.warnings ?? []))
-      if (!res.ok) return { ok: false, error: `The volume and its Place are ready, but sharing failed: ${res.error ?? "a step failed"}`, steps, results, warnings, reply }
-      await deps.createShare(placeId)
+      if (!res.ok) return sharingFailed(res.error ?? "a step failed")
+      try {
+        await deps.createShare(placeId)
+      } catch (e) {
+        return sharingFailed(e instanceof Error ? e.message : String(e))
+      }
       resync = false
       return { ok: true, steps, results, warnings, reply }
     })

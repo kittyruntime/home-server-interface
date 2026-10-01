@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { applyPlanned } from '../../lib/plan'
@@ -61,8 +61,13 @@ onMounted(async () => {
 watch([loaded, freeDisks], () => {
   if (!loaded.value) return
   const ok = new Set(freeDisks.value.map(d => d.name))
+  const gone = [...s.disks].filter(n => !ok.has(n))
+  if (!gone.length) return
   s.disks = new Set([...s.disks].filter(n => ok.has(n)))
+  notice.value = `${gone.join(', ')} ${gone.length === 1 ? 'is' : 'are'} no longer free and left the selection.`
 })
+// Something changed the choices behind the admin's back: say so.
+const notice = ref('')
 
 function setName(n: string) {
   s.name = n; s.vg = n; s.lv = n; s.label = n.slice(0, 16)
@@ -71,6 +76,7 @@ function setName(n: string) {
 }
 
 function toggleDisk(name: string) {
+  notice.value = ''
   const next = new Set(s.disks)
   if (next.has(name)) next.delete(name)
   else next.add(name)
@@ -81,7 +87,6 @@ const chosen = computed(() => freeDisks.value.filter(d => s.disks.has(d.name)))
 const levels = computed(() => possibleLevels(chosen.value.length))
 // Until the admin picks a level, follow the most redundant one possible.
 const levelPicked = ref(false)
-watch(levels, ls => { if (!levelPicked.value || !ls.includes(s.level)) s.level = ls[0] ?? 'none' }, { immediate: true })
 const usable = computed(() => Math.floor(usableBytes(s.level, chosen.value.map(d => d.size)) * s.lvPercent / 100))
 const tolerates = computed(() => tolerance(s.level, chosen.value.length))
 
@@ -92,6 +97,13 @@ const LEVEL_TEXT: Record<Level, { title: string; text: string }> = {
   raid10: { title: 'RAID 10', text: 'Mirrored pairs, striped together.' },
   none:   { title: 'No redundancy', text: 'All the space is usable, but one failing disk loses the whole volume.' },
 }
+watch(levels, ls => {
+  if (levelPicked.value && !ls.includes(s.level)) {
+    notice.value = `${LEVEL_TEXT[s.level].title} needs more disks: the redundancy is now ${LEVEL_TEXT[ls[0] ?? 'none'].title}.`
+    levelPicked.value = false
+  }
+  if (!levelPicked.value) s.level = ls[0] ?? 'none'
+}, { immediate: true })
 function levelLine(l: Level): string {
   const t = tolerance(l, chosen.value.length)
   const use = fmtBytes(usableBytes(l, chosen.value.map(d => d.size)))
@@ -123,6 +135,7 @@ const canNext = computed(() => {
 // Anything chosen makes leaving ask first, until the volume is created.
 const done = ref(false)
 watch(() => [s.disks.size, step.value], () => emit('dirty', !done.value && (s.disks.size > 0 || step.value > 0)), { immediate: true })
+onBeforeUnmount(() => emit('dirty', false))
 
 function input() {
   const place = isAdmin.value && s.createPlace ? { name: s.placeName.trim() } : undefined
@@ -151,6 +164,9 @@ async function create() {
     emit('navigate', v ? { kind: 'volume', id: v.id } : 'volumes')
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
+    // A run that failed part way may have erased the disks already: the
+    // wizard's choices no longer describe the host, so it is not run again.
+    if (error.value) { done.value = true; emit('dirty', false) }
   }
 }
 
@@ -176,6 +192,7 @@ function diskLabel(d: BlockDev): string {
       <span class="font-mono">{{ s.mountpoint }}</span>
     </p>
 
+    <p v-if="notice" role="status" class="mb-4 status-text text-warning"><span class="status-tag">[WARN]</span> {{ notice }}</p>
     <div class="grid @3xl/content:grid-cols-[1fr_15rem] gap-6">
       <section class="min-w-0">
         <!-- 1. Disks -->
@@ -314,6 +331,7 @@ function diskLabel(d: BlockDev): string {
       <button v-if="step > 0" class="btn btn-ghost btn-sm" @click="step--">Back</button>
       <button v-else class="btn btn-ghost btn-sm" @click="emit('navigate', 'volumes')">Cancel</button>
       <button v-if="step < STEPS.length - 1" class="btn btn-primary btn-sm" :disabled="!canNext" @click="step++">Next: {{ STEPS[step + 1] }}</button>
+      <button v-else-if="done" class="btn btn-primary btn-sm" @click="emit('navigate', 'volumes')">Go to Volumes</button>
       <button v-else class="btn btn-danger btn-sm" :disabled="!chosen.length" @click="create">Create volume</button>
     </div>
   </div>

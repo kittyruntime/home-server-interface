@@ -66,6 +66,11 @@ export function navTo(nav: StorageNav, index: number): StorageNav {
   return index >= 0 && index < nav.stack.length - 1 ? make(nav.stack.slice(0, index + 1)) : nav
 }
 
+/** Moving from `from` to `to` leaves the Create volume wizard. */
+export function leavesWizard(from: StorageNav, to: StorageNav): boolean {
+  return from.current.kind === 'create-volume' && to.current.kind !== 'create-volume'
+}
+
 /** A location asked for with openStorage, and when. */
 export type LocationRequest = { loc: StorageLocation; at: number }
 const REQUEST_TTL_MS = 10_000
