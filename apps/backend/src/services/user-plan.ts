@@ -59,7 +59,14 @@ export async function applyUserCreate(input: UserCreateInput, fingerprint: strin
   const res = await apply(deps, "user.create", { ...input }, fingerprint)
   const steps = [...res.steps, createStep(input.username)]
   if (!res.ok) return { ...res, steps, results: [...res.results, { status: "not-run" }] }
-  await deps.commit()
+  try {
+    await deps.commit()
+  } catch (e) {
+    // The Linux account exists (nologin, harmless; a retry reuses it): report
+    // what ran so it is audited and shown, with the database error.
+    const error = e instanceof Error ? e.message : String(e)
+    return { ...res, ok: false, error, steps, results: [...res.results, { status: "failed", error }] }
+  }
   return { ...res, steps, results: [...res.results, { status: "done" }] }
 }
 
@@ -109,7 +116,12 @@ export async function applyUserDelete(username: string, fingerprint: string, dep
           return { ok: false, error: res.error, steps: [...steps, deleteStep(username)], results: [...results, { status: "not-run" }], warnings }
         }
       }
-      await deps.commit()
+      try {
+        await deps.commit()
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e)
+        return { ok: false, error, steps: [...steps, deleteStep(username)], results: [...results, { status: "failed", error }], warnings }
+      }
       resync = false
       return { ok: true, steps: [...steps, deleteStep(username)], results: [...results, { status: "done" }], warnings }
     })

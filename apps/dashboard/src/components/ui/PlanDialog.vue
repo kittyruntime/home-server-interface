@@ -17,6 +17,7 @@ const loadError = ref('')
 const applying = ref(false)
 const applied = ref<PlanApply | null>(null)
 const stale = ref(false)
+const staleReason = ref('')
 const applyError = ref('')
 let settled = false
 
@@ -99,7 +100,9 @@ async function apply() {
     }
   } catch (e) {
     const err = e as { message?: string; data?: { code?: string } }
-    if (err.data?.code === 'CONFLICT') stale.value = true
+    // CONFLICT is a stale plan or a check that now fails (the name got taken):
+    // show the server's reason either way.
+    if (err.data?.code === 'CONFLICT') { stale.value = true; staleReason.value = err.message ?? '' }
     else applyError.value = err.message ?? 'The operation failed'
   } finally {
     applying.value = false
@@ -231,7 +234,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         </ol>
 
         <p v-if="stale" role="alert" class="status-text text-warning">
-          <span class="status-tag">[WARN]</span> The server changed since this preview. Review the new plan before applying it.
+          <span class="status-tag">[WARN]</span> {{ staleReason || 'The server changed since this preview. Review the new plan before applying it.' }}
         </p>
         <p v-if="applyError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ applyError }}</p>
         <p v-if="failedApply" role="alert" class="status-text text-danger">

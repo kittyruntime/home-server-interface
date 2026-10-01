@@ -31,7 +31,7 @@ const zCreateInput = z.object({
     reLinuxUsername,
     "Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.",
   ),
-  password: z.string().min(6).max(128),
+  password: z.string().min(6).max(128).regex(/^[^\r\n]*$/, "A password cannot contain line breaks"),
   displayName: z.string().max(64).optional(),
 })
 const zDeleteInput = z.object({ userId: z.string() })

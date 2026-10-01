@@ -170,6 +170,7 @@ async function deleteUser() {
     })
     emit('back')
   } catch (e: any) {
+    if (e?.message === '') return // cancelled in the plan dialog
     deleteError.value = e?.message ?? 'Failed to delete user'
   } finally {
     deleteBusy.value = false

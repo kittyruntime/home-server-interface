@@ -1136,7 +1136,9 @@ await testSharePlans()
 
   // A failed DB delete after smb.conf was written resyncs.
   calls.length = 0
-  await assert.rejects(up.applyUserDelete("alice", pd.fingerprint, deps({ commit: async () => { throw new Error("db") } })))
+  const failedDelete = await up.applyUserDelete("alice", pd.fingerprint, deps({ commit: async () => { throw new Error("db") } }))
+  assert.equal(failedDelete.ok, false, "a failed database delete is reported with the steps that ran")
+  assert.equal(failedDelete.results.at(-1)!.status, "failed")
   assert.ok(calls.includes("resync"))
 }
 
@@ -1347,6 +1349,57 @@ await testSharePlans()
   const g = o.volumes.find(v => v.id === "U-G")!
   assert.equal(g.state, "not-mounted")
   assert.deepEqual(g.usedBy.places, [{ id: "p1", name: "Archive" }], "a guarded volume keeps its Places while not mounted")
+}
+
+// Plan follow-ups (#36): apps, shares, users.
+{
+  const ap = await import("../services/app-plan")
+  const stacks: Record<string, string> = {
+    web: "services:\n  web:\n    image: nginx:1.27\n",
+    broken: "services: [unclosed\n",
+    duo: "services:\n  db:\n    image: postgres:16\n  app:\n    image: ghcr.io/x/app:2\n",
+  }
+  const fx = async () => undefined
+  const deps: any = {
+    stackPath: (n: string) => `/opt/containers/${n}/compose.yaml`,
+    readStack: async (n: string) => stacks[n] ?? null,
+    findPlace: async () => null, placeAtPath: async () => false, catalog: () => undefined, secret: () => "x",
+    effects: { writeStack: fx, removeStackDir: fx, mkdirp: fx, createPlace: fx, validate: fx, publishJob: async () => "job-1" },
+  }
+  // A hand-broken compose file is a clear error, not an internal one.
+  await assert.rejects(ap.buildAppPlan("app.apply", { name: "broken" }, deps), (e: any) => e.code === "BAD_REQUEST" && /not valid YAML/.test(e.message))
+  // Every service image is named.
+  const duo = await ap.buildAppPlan("app.start", { name: "duo" }, deps)
+  assert.match(duo.steps[0]!.summary, /postgres:16/)
+  assert.match(duo.steps[0]!.summary, /ghcr\.io\/x\/app:2/)
+  // Saving the same content says so.
+  const same = await ap.buildAppPlan("app.save", { name: "web", raw: stacks.web }, deps)
+  assert.match(same.steps[0]!.summary, /No change/)
+  // The form's name must be the app's name.
+  const data = { name: "other", image: "nginx:1", ports: [], envs: [], volumes: [], networkNames: [], labels: [], capAdd: [], capDrop: [], extraHosts: [], restartPolicy: "unless-stopped", hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null }
+  await assert.rejects(ap.buildAppPlan("app.save", { name: "web", data }, deps), /name/i)
+  // Secrets in flow lists (command: ["--password=x"]) are masked.
+  const masked = ap.maskSecrets('    command: ["--db-password=hunter2", "--port=80"]\n')
+  assert.ok(!masked.includes("hunter2") && masked.includes("--port=80"), masked)
+
+  // Share plans: an unexpected worker failure is a server error.
+  const { workerError } = await import("../services/sharing-plan")
+  assert.throws(() => workerError(Object.assign(new Error("nats: timeout"), {})), (e: any) => e.code === "INTERNAL_SERVER_ERROR")
+  assert.throws(() => workerError(Object.assign(new Error("invalid share name"), { code: "ERR" })), (e: any) => e.code === "BAD_REQUEST")
+
+  // User creation: a failed database write after the worker plan ran is
+  // reported with the steps that ran (so it is audited), not thrown away.
+  const up = await import("../services/user-plan")
+  const res = await up.applyUserCreate({ username: "alice", password: "pw123456", samba: true }, "f", {
+    worker: async () => ({ ok: true, steps: [{ kind: "run", target: "alice", summary: "useradd" }], results: [{ status: "done" }] }),
+    smbdInstalled: async () => true, shareDefs: async () => [], currentShareDefs: async () => [],
+    serialize: (fn: any) => fn(), resync: async () => {},
+    commit: async () => { throw new Error("Unique constraint failed") },
+  } as any)
+  assert.equal(res.ok, false)
+  assert.equal(res.results.at(-1)!.status, "failed")
+  assert.match(res.error!, /Unique constraint/)
+  assert.equal(res.steps.length, 2, "the worker step and the HSI user step")
 }
 
 console.log("Backend security tests passed")
