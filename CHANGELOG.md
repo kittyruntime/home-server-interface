@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.61.0] - 2026-10-01
-
 ### Added
 - **Create volume wizard**: from free disks to a ready-to-use volume in one
   flow (Storage > Volumes > Create volume): choose the disks, the redundancy
@@ -16,6 +14,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the folder, who owns it, and, for admins, a Place and an SMB share. The size,
   redundancy and folder are shown as you choose; one plan lists every command
   and file change, and names the erased disks, before anything runs.
+
+### Fixed
+- **App plans**: a compose file broken by hand gives a clear error at Apply or
+  Start; the start summary names every service image; saving an unchanged
+  file says so; a secret passed as a flag in a command list is masked.
+- **Plans**: when a plan can no longer be applied, the dialog shows why (for
+  example, the name is now taken).
+- **Users**: a user whose database write fails after its accounts were set up
+  is reported with the steps that ran; a password with a line break is refused
+  in the form.
+- **Shares**: an unexpected worker failure is reported as a server error; the
+  Samba configuration lists shares in a fixed order.
+
+## [1.61.0] - 2026-10-01
+
+### Added
 - **Disk labels**: name a physical disk ("bay 3, top") from Storage > Devices.
   The label is stored by serial number, so it follows the disk when its
   kernel name changes, and the search finds disks by label.
@@ -43,16 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opens the device list with that disk expanded).
 
 ### Fixed
-- **App plans**: a compose file broken by hand gives a clear error at Apply or
-  Start; the start summary names every service image; saving an unchanged
-  file says so; a secret passed as a flag in a command list is masked.
-- **Plans**: when a plan can no longer be applied, the dialog shows why (for
-  example, the name is now taken).
-- **Users**: a user whose database write fails after its accounts were set up
-  is reported with the steps that ran; a password with a line break is refused
-  in the form.
-- **Shares**: an unexpected worker failure is reported as a server error; the
-  Samba configuration lists shares in a fixed order.
 - **Storage pages**: array and volume group pages stay current and have a
   Refresh button; their activity includes unmounts; a physical volume that is
   not a disk or an array is no longer a dead link; an LVM read error is shown
