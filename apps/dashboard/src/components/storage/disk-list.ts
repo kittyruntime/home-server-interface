@@ -2,7 +2,7 @@
 // role, owners and health, plus the summary counts, filters, sort and grouping
 // the list offers. No Vue or tRPC imports, so it can be unit tested with node.
 
-import { deviceRole } from './device-state.ts'
+import { deviceRole, isFreeDisk } from './device-state.ts'
 
 export type DiskRole = 'system' | 'raid' | 'lvm' | 'mounted' | 'free' | 'unmounted'
 export type DiskHealth = 'passed' | 'warning' | 'failed' | 'unknown'
@@ -210,5 +210,6 @@ export function groupRows<R extends DiskRow>(rows: R[]): DiskGroup<R>[] {
 
 /** Disks a new RAID array or volume group can take as a whole. */
 export function isSelectable(r: DiskRow): boolean {
-  return r.role === 'free' && !r.disk.isSystem && r.disk.type === 'disk'
+  // role 'free' also covers older workers without the usage field.
+  return r.role === 'free' && isFreeDisk({ ...r.disk, usage: 'free', size: r.disk.size })
 }

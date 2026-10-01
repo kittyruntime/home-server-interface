@@ -30,13 +30,18 @@ export function volumeTargets(v: TargetVolume, rememberedMount?: string): string
 
 // Member operations (fail, remove, add) are logged under the member device;
 // the activity query finds them through the array name (see storage.activity).
-export function arrayTargets(a: { name: string }): string[] {
-  return [a.name, `/dev/${a.name}`]
+export function arrayTargets(a: { name: string; mountPoint?: string }): string[] {
+  // An unmount is logged under the mount point.
+  return [a.name, `/dev/${a.name}`, ...(a.mountPoint ? [a.mountPoint] : [])]
 }
 
 // Device-mapper name of an LV: dashes in the VG and LV names are doubled.
 const dmName = (vg: string, lv: string) => `${vg.replace(/-/g, '--')}-${lv.replace(/-/g, '--')}`
 
-export function vgTargets(vg: { name: string; lvs: string[] }): string[] {
-  return [...new Set([vg.name, ...vg.lvs.flatMap(lv => [`${vg.name}/${lv}`, `mapper/${dmName(vg.name, lv)}`])])].slice(0, 20)
+export function vgTargets(vg: { name: string; lvs: string[]; mountPoints?: string[] }): string[] {
+  return [...new Set([
+    vg.name,
+    ...vg.lvs.flatMap(lv => [`${vg.name}/${lv}`, `mapper/${dmName(vg.name, lv)}`]),
+    ...(vg.mountPoints ?? []),
+  ])].slice(0, 20)
 }
