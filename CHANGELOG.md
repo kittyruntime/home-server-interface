@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.61.0] - 2026-10-01
 
 ### Added
+- **Create volume wizard**: from free disks to a ready-to-use volume in one
+  flow (Storage > Volumes > Create volume): choose the disks, the redundancy
+  (mirror, RAID 5, 6, 10, or none), the LVM layout, the filesystem label and
+  the folder, who owns it, and, for admins, a Place and an SMB share. The size,
+  redundancy and folder are shown as you choose; one plan lists every command
+  and file change, and names the erased disks, before anything runs.
 - **Disk labels**: name a physical disk ("bay 3, top") from Storage > Devices.
   The label is stored by serial number, so it follows the disk when its
   kernel name changes, and the search finds disks by label.

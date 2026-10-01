@@ -112,12 +112,25 @@ const zVolumeInput = z.object({
     lvPercent:  z.number().int().min(1).max(100),
     label:      z.string().min(1).max(16),
     mountpoint: z.string().startsWith("/").max(255),
-    access:     z.enum(["", "shared", "user"]).default(""),
-    ownerUser:  z.string().max(32).default(""),
+    // As for Mount: "shared" (the caller and hsi-share), "user" (ownerUserId),
+    // "keep" (root:root). The owner is an HSI user, resolved here.
+    access:      z.enum(["shared", "user", "keep"]).default("shared"),
+    ownerUserId: z.string().optional(),
   }),
   place: z.object({ name: z.string().trim().min(1).max(64) }).optional(),
   share: z.object({ smbName: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/).optional() }).optional(),
 })
+
+// The worker's volume.create input: the owner resolved to its account name.
+async function workerVolume(ctx: Context & { user: { userId: string } }, v: z.infer<typeof zVolumeInput>["volume"]) {
+  const { ownerUserId, access, ...rest } = v
+  if (access === "keep") return { ...rest, access: "", ownerUser: "" }
+  const ownerId = access === "user" ? ownerUserId : ctx.user.userId
+  if (!ownerId) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the user who will own the volume" })
+  const owner = await ctx.prisma.user.findUnique({ where: { id: ownerId }, select: { username: true } })
+  if (!owner) throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown user" })
+  return { ...rest, access, ownerUser: owner.username }
+}
 
 // Dependencies of a create-volume plan, with today's Place and share checks.
 async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, timeout: number): Promise<VolumePlanDeps> {
@@ -180,14 +193,14 @@ export const storageRouter = router({
     .mutation(async ({ ctx, input }) => {
       ctx.audit.target = input.input.volume.mountpoint
       const deps = await volumeDeps(ctx, input.input, 60_000)
-      return previewVolume(input.input, deps)
+      return previewVolume({ ...input.input, volume: await workerVolume(ctx, input.input.volume) }, deps)
     }),
   volumeApply: storageProcedure
     .input(z.object({ input: zVolumeInput, fingerprint: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       ctx.audit.target = input.input.volume.mountpoint
       const deps = await volumeDeps(ctx, input.input, 900_000)
-      const res = await applyVolume(input.input, input.fingerprint, deps)
+      const res = await applyVolume({ ...input.input, volume: await workerVolume(ctx, input.input.volume) }, input.fingerprint, deps)
       ctx.audit.meta = { plan: planAuditMeta("volume.create", res.steps, res.results) }
       ctx.audit.success = res.ok
       return res

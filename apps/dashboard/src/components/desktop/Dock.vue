@@ -22,7 +22,7 @@ function onIconClick(id: string) {
   if (w.minimized) {
     focusWindow(id)
   } else if (isFocused(id)) {
-    if (w.appId === 'file-preview' && w.dirty && !confirm('Discard unsaved changes?')) return
+    if (w.dirty && !confirm('Discard unsaved changes?')) return
     toggleMinimize(id)
   } else {
     focusWindow(id)
