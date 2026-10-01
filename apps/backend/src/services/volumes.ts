@@ -39,12 +39,14 @@ export type VolumeInput = {
   apps: Array<{ name: string; sources: string[] }>
 }
 
-export type Redundancy = "none" | "raid0" | "raid1" | "raid5" | "raid6" | "raid10"
+export type Redundancy = "none" | "raid0" | "raid1" | "raid4" | "raid5" | "raid6" | "raid10"
 export type VolumeIssue = { kind: "degraded" | "rebuilding" | "missing" | "blocked" | "nearly-full"; text: string }
 export type StackLayer = { kind: "filesystem" | "partition" | "lv" | "vg" | "array" | "disk"; name: string }
 
 export type Volume = {
   id: string
+  /** Where HSI mounts it (#3), when it is guarded but not mounted now. */
+  expectedMountPoint?: string
   name: string
   state: "mounted" | "not-mounted" | "missing"
   device?: string
@@ -74,18 +76,21 @@ const NOT_DEVICES = new Set(["loop", "zram", "ram", "rom"])
 // not flag their device as a system device (e.g. /dev/root on a Raspberry Pi).
 const isSystemMount = (mp: string) => mp === "/" || mp === "/boot" || mp.startsWith("/boot/") || mp === "/efi" || mp.startsWith("/efi/")
 const NEARLY_FULL = 0.9
+// recovery: rebuilding onto a new member; resync: after an unclean stop.
+const SYNC_WORD: Record<string, string> = { recovery: "rebuilding", resync: "resyncing", reshape: "reshaping" }
 
 // Device-mapper name of an LV: dashes in the VG and LV names are doubled.
 const dmName = (vg: string, lv: string) => `${vg.replace(/-/g, "--")}-${lv.replace(/-/g, "--")}`
 const basename = (p: string) => p.replace(/\/+$/, "").split("/").pop() || p
 
 function levelOf(level: string): Redundancy {
-  return (["raid0", "raid1", "raid5", "raid6", "raid10"] as const).find(l => l === level) ?? "none"
+  return (["raid0", "raid1", "raid4", "raid5", "raid6", "raid10"] as const).find(l => l === level) ?? "none"
 }
 
 function tolerance(level: Redundancy, members: number): number {
   switch (level) {
     case "raid1":  return Math.max(0, members - 1)
+    case "raid4":  return 1
     case "raid5":  return 1
     case "raid6":  return 2
     case "raid10": return 1
@@ -182,7 +187,7 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
       const r = raids.get(a)!
       if (r.active < r.total) issues.push({ kind: "degraded", text: `${a} is missing ${r.total - r.active} of ${r.total} disks` })
       if (r.syncAction && ["recovery", "resync", "reshape"].includes(r.syncAction) && r.resyncPercent != null)
-        issues.push({ kind: "rebuilding", text: `${a} is rebuilding (${Math.round(r.resyncPercent)}%)` })
+        issues.push({ kind: "rebuilding", text: `${a} is ${SYNC_WORD[r.syncAction] ?? "rebuilding"} (${Math.round(r.resyncPercent)}%)` })
     }
     const guard = (dev.uuid && guardByUuid.get(dev.uuid)) || (dev.mountpoint ? guardByMount.get(dev.mountpoint) : undefined)
     if (guard?.state === "missing") issues.push({ kind: "missing", text: "Not found at boot" })
@@ -204,6 +209,7 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
       device: dev.name,
       fstype: dev.fstype,
       mountPoint: dev.mountpoint || undefined,
+      ...(!dev.mountpoint && guard ? { expectedMountPoint: guard.mountPoint } : {}),
       redundancy: red.level,
       tolerates: red.tolerates,
       stack,
@@ -228,9 +234,10 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
   }
 
   // What uses each volume: the most specific mount point holding the path.
+  const where = (v: Volume) => v.mountPoint ?? v.expectedMountPoint
   const holder = (path: string) => volumes
-    .filter(v => v.mountPoint && pathUnder(path, v.mountPoint))
-    .sort((a, b) => b.mountPoint!.length - a.mountPoint!.length)[0]
+    .filter(v => where(v) && pathUnder(path, where(v)!))
+    .sort((a, b) => where(b)!.length - where(a)!.length)[0]
   for (const p of input.places) {
     const v = holder(p.path)
     if (!v) continue
