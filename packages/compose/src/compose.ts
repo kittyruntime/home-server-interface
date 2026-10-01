@@ -283,3 +283,11 @@ export function composeBindSources(content: string): string[] {
   }
   return [...out]
 }
+
+/** The image of every service, in file order (services without one are skipped). */
+export function composeImages(content: string): string[] {
+  const json = parse(content) as { services?: Record<string, { image?: unknown }> } | null
+  return Object.values(json?.services ?? {})
+    .map(s => (typeof s?.image === "string" ? s.image : ""))
+    .filter(Boolean)
+}

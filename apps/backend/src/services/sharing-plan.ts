@@ -45,7 +45,10 @@ export function workerError(e: unknown): never {
   const code = (e as { code?: string }).code
   const message = e instanceof Error ? e.message : String(e)
   if (code === "SMBD_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
-  throw new TRPCError({ code: code === "ESTALE" ? "CONFLICT" : "BAD_REQUEST", message })
+  if (code === "ESTALE") throw new TRPCError({ code: "CONFLICT", message })
+  // The worker refused the request (code ERR); anything else (a timeout, the
+  // worker down) is a server error, not the user's.
+  throw new TRPCError({ code: code === "ERR" ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message })
 }
 
 export async function previewShareChange(op: ShareOp, name: string, deps: SharePlanDeps): Promise<{ steps: PlanStep[]; fingerprint: string }> {

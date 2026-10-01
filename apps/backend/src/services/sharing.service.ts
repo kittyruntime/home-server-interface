@@ -135,6 +135,8 @@ export function dropUserFromDefs<T extends { validUsers: string[]; writeUsers: s
 export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
+    // A fixed order: the plan fingerprint and smb.conf must not depend on scan order.
+    orderBy: { createdAt: "asc" },
   })
   const shares = overlayShares(rows, change).filter(s => s.enabled)
 
@@ -187,6 +189,12 @@ export async function syncShares(prisma: PrismaClient): Promise<void> {
  *  writes as the connecting Linux user, same as SMB) even without a share. Runs
  *  independently of Samba. */
 export async function syncPlaceAccess(prisma: PrismaClient): Promise<void> {
+  // Under the share lock: a user deletion removes its user from hsi-share in
+  // its plan, and an older roster must not put it back.
+  await withShareLock(() => syncPlaceAccessNow(prisma))
+}
+
+async function syncPlaceAccessNow(prisma: PrismaClient): Promise<void> {
   const places = await prisma.place.findMany({ select: { id: true, path: true } })
   const adminLinux = await adminLinuxUsers(prisma)
   const defs: { path: string; writeUsers: string[] }[] = []

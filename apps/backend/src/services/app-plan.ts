@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
-import { generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
+import { composeImages, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
 import type { AppManifest } from "@app/app-catalog"
 
 // Operation plans for container apps (#36): what saving, applying, installing
@@ -65,10 +65,13 @@ function maskLines(yaml: string, extraKeys: readonly string[] = []): MaskedLine[
       open = { indent: map[1]!.length, line: ml }
       continue
     }
-    out.push({ shown: line })
+    // A secret passed as a flag or KEY=value inside a flow list, e.g.
+    // command: ["--db-password=x"].
+    out.push({ shown: line.replace(SECRET_ASSIGN, (_m, key: string) => `${key}=${MASK}`) })
   }
   return out
 }
+const SECRET_ASSIGN = /((?:--)?[A-Za-z0-9_.-]*(?:pass(?:word|wd)?|secret|token|key|auth|credential)[A-Za-z0-9_.-]*)=[^\s,"'\]]+/gi
 
 /** Masks environment values whose key looks like a secret (or is listed), in map and list syntax. */
 export function maskSecrets(yaml: string, extraKeys: readonly string[] = []): string {
@@ -203,7 +206,8 @@ const zInstallVolume = z.object({
 
 export const APP_INPUTS = {
   "app.save": z.object({ name: zName, create: z.boolean().default(false), data: zAppInput.optional(), raw: z.string().min(1).optional() })
-    .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" }),
+    .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" })
+    .refine(v => !v.data || v.data.name === v.name, { message: "The app name in the form must be the app's name" }),
   "app.apply":  z.object({ name: zName }),
   "app.start":  z.object({ name: zName }),
   "app.remove": z.object({ name: zName }),
@@ -258,13 +262,20 @@ function fileStep(deps: AppPlanDeps, name: string, before: string | null, yaml: 
 }
 
 function upStep(deps: AppPlanDeps, name: string, content: string, validate: boolean): AppStep {
-  const parsed = parseComposeYaml(content)
-  const images = parsed.app?.image ? [parsed.app.image] : []
+  // A file broken by hand is the admin's to fix: say so plainly.
+  let parsed: ReturnType<typeof parseComposeYaml>
+  let images: string[]
+  try {
+    parsed = parseComposeYaml(content)
+    images = composeImages(content)
+  } catch {
+    bad("The compose file is not valid YAML; fix it in the compose editor")
+  }
   const what = parsed.services.length ? `services ${parsed.services.join(", ")}` : "its services"
   return {
     kind: "run",
     target: name,
-    summary: `Start ${name} (${what}${images.length ? `, image ${images.join(", ")}` : ""}); images are pulled if missing`,
+    summary: `Start ${name} (${what}${images.length ? `, ${images.length === 1 ? "image" : "images"} ${images.join(", ")}` : ""}); images are pulled if missing`,
     command: ["docker", "compose", "-f", deps.stackPath(name), "up", "-d"],
     background: true,
     run: async () => {
@@ -292,7 +303,9 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
         yaml = generateComposeYaml({ ...data, volumes: await resolvePlaces(deps, data.volumes) } as AppInput, before ?? undefined)
       }
       const step = fileStep(deps, req.name, before, yaml,
-        before === null ? `Create the compose file of ${req.name}` : `Update the compose file of ${req.name}; the running containers change only when you apply`)
+        before === null ? `Create the compose file of ${req.name}`
+          : before === yaml ? `No change to the compose file of ${req.name}; it is written as it is`
+          : `Update the compose file of ${req.name}; the running containers change only when you apply`)
       return { op, steps: [step], observed: { content: before ?? "" }, reply: { name: req.name } }
     }
     case "app.apply":
