@@ -8,7 +8,7 @@ import { buildVolumes, type VDev, type VolumeInput } from "../../services/volume
 import { effectiveSmbName } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
-import { appSources, fetchVolumes, resumeVolume } from "../../services/volume-guard"
+import { appSources, fetchVolumes, resumeVolume, volumeStates } from "../../services/volume-guard"
 import { requestSync } from "../../nats"
 
 // Storage router: disks, partitions, RAID, LVM, mounts, SMART. Every procedure is a
@@ -168,7 +168,7 @@ export const storageRouter = router({
       const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
         requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
         requestSync<VolumeInput["lvm"]>("root.sys.lvm.info", {}, 10_000).catch(() => ({ pvs: [], vgs: [], lvs: [] })),
-        fetchVolumes().catch(() => []),
+        volumeStates.get().catch(() => []),
         ctx.prisma.volumeHold.findMany(),
         ctx.prisma.place.findMany({ select: { id: true, name: true, path: true } }),
         ctx.prisma.share.findMany({ where: { enabled: true }, include: { place: { select: { name: true } } } }),

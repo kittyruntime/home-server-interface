@@ -88,6 +88,24 @@ export async function fetchVolumes(): Promise<WorkerVolume[]> {
   return res.volumes
 }
 
+// Volume states for readers (the Volumes page): the guard loop's last result
+// while it is recent, so opening Storage does not run the worker's check,
+// which may mount a returning volume and saves its state.
+const VOLUME_CACHE_MS = 90_000
+export function createVolumeCache(fetch: () => Promise<WorkerVolume[]>, now: () => number = Date.now) {
+  let last: { at: number; volumes: WorkerVolume[] } | null = null
+  return {
+    set(volumes: WorkerVolume[]) { last = { at: now(), volumes } },
+    async get(): Promise<WorkerVolume[]> {
+      if (last && now() - last.at < VOLUME_CACHE_MS) return last.volumes
+      const volumes = await fetch()
+      last = { at: now(), volumes }
+      return volumes
+    },
+  }
+}
+export const volumeStates = createVolumeCache(fetchVolumes)
+
 export async function appSources(): Promise<Array<{ name: string; sources: string[]; running: boolean }>> {
   const stacks = await listStacks()
   return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.rawYaml), running: s.status === "running" }))
@@ -106,6 +124,7 @@ export async function runVolumeGuard(): Promise<void> {
   running = true
   try {
     const volumes = await fetchVolumes()
+    volumeStates.set(volumes)
     const alerted = await prisma.alert.findMany({ where: { source: "storage.volume" }, select: { target: true } })
     await reconcileSource("storage.volume", volumeFindings(volumes, alerted.map(a => a.target)))
     const holds = await prisma.volumeHold.findMany()
