@@ -1284,12 +1284,12 @@ await testSharePlans()
   const { activityEntries } = await import("../services/storage-activity")
   const at = new Date("2026-09-30T10:00:00Z")
   const rows = [
-    { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, createdAt: at, user: { username: "admin" },
+    { id: "a1", action: "storage.apply", target: "sdb1", success: true, createdAt: at, user: { username: "admin" },
       meta: JSON.stringify({ input: {}, plan: { op: "format", steps: [{ kind: "run", target: "/dev/sdb1", summary: "Format", status: "done" }] } }) },
     { id: "a2", action: "storage.mount", target: "sdb1", success: false, createdAt: at, user: null, meta: "{not json" },
   ]
   const out = activityEntries(rows as any)
-  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "/dev/sdb", success: true, at: at.toISOString(), user: "admin", op: "format", steps: [{ summary: "Format", status: "done" }] })
+  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "sdb1", success: true, at: at.toISOString(), user: "admin", op: "format", steps: [{ summary: "Format", status: "done" }] })
   assert.deepEqual(out[1], { id: "a2", action: "storage.mount", target: "sdb1", success: false, at: at.toISOString(), user: null })
 }
 
@@ -1320,6 +1320,33 @@ await testSharePlans()
   now += 120_000
   await cache.get()
   assert.equal(calls, 2, "a stale result is fetched again")
+}
+
+// Volume details: RAID 4 tolerance, resync wording, a guarded volume present
+// but not mounted keeps what uses it.
+{
+  const { buildVolumes } = await import("../services/volumes")
+  const dev = (o: any) => ({ fstype: "", mountpoint: "", uuid: "", size: 1e12, model: "", isSystem: false, usageTotal: 0, usageUsed: 0, usageFree: 0, children: [], ...o })
+  const md4 = dev({ name: "md4", type: "raid4", fstype: "ext4", uuid: "U-R4", mountpoint: "/srv/r4", usageTotal: 3e12, usageUsed: 1e12, usageFree: 2e12 })
+  const o = buildVolumes({
+    devices: [
+      dev({ name: "sdb", type: "disk", children: [dev({ name: "sdb1", type: "part", fstype: "linux_raid_member", children: [md4] })] }),
+      dev({ name: "sdc", type: "disk", fstype: "ext4", uuid: "U-G" }),
+    ],
+    raids: [{ name: "md4", level: "raid4", state: "active", active: 3, total: 3, resyncPercent: 12, syncAction: "resync" }],
+    lvm: { pvs: [], vgs: [], lvs: [] },
+    guard: [{ mountPoint: "/srv/guarded", uuid: "U-G", state: "missing" }],
+    holds: [],
+    places: [{ id: "p1", name: "Archive", path: "/srv/guarded/archive" }],
+    shares: [], apps: [],
+  } as any)
+  const r4 = o.volumes.find(v => v.id === "U-R4")!
+  assert.equal(r4.redundancy, "raid4")
+  assert.equal(r4.tolerates, 1)
+  assert.match(r4.issues.find(i => i.kind === "rebuilding")!.text, /resyncing/)
+  const g = o.volumes.find(v => v.id === "U-G")!
+  assert.equal(g.state, "not-mounted")
+  assert.deepEqual(g.usedBy.places, [{ id: "p1", name: "Archive" }], "a guarded volume keeps its Places while not mounted")
 }
 
 console.log("Backend security tests passed")
