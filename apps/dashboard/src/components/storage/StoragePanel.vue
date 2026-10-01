@@ -11,7 +11,7 @@ import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
 import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
-import { createNav, navOpen, navCrumbs, navTo, sectionOf, SECTION_LABELS, type StorageLocation, type StorageSection } from '../../lib/storage-nav'
+import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, SECTION_LABELS, type StorageLocation, type StorageSection } from '../../lib/storage-nav'
 import { pendingStorageLocation } from '../../lib/storage-open'
 
 type SectionId = StorageSection
@@ -39,10 +39,11 @@ function focusOn(target: SectionId | StorageLocation) {
 }
 
 // Opened on a location from elsewhere (openStorage).
-watch(pendingStorageLocation, loc => {
-  if (!loc) return
-  open(loc)
+watch(pendingStorageLocation, req => {
+  if (!req) return
+  const loc = takeRequest(req, Date.now())
   pendingStorageLocation.value = null
+  if (loc) open(loc)
 }, { immediate: true })
 
 // Free disks picked in Devices, handed to the RAID or LVM create wizard.

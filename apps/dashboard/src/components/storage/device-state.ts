@@ -21,3 +21,8 @@ export function memberOwner(dev: MemberDev, kind: 'raid' | 'lvm'): string | unde
   const role = deviceRole(dev)
   return role?.kind === kind ? role.owner ?? undefined : undefined
 }
+
+/** A whole disk with nothing on it that a new array or volume group may use. */
+export function isFreeDisk(dev: { type: string; usage?: string; isSystem: boolean; size: number }): boolean {
+  return dev.type === 'disk' && dev.usage === 'free' && !dev.isSystem && dev.size > 0
+}

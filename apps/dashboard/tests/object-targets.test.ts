@@ -19,3 +19,8 @@ test('array and volume group targets match what the audit writes', () => {
   const t = vgTargets({ name: 'vg-0', lvs: ['my-data'] })
   for (const n of ['vg-0', 'vg-0/my-data', 'mapper/vg--0-my--data']) assert.ok(t.includes(n), n)
 })
+
+test('unmounts are found through the mount points', () => {
+  assert.deepEqual(arrayTargets({ name: 'md0', mountPoint: '/srv/md' }), ['md0', '/dev/md0', '/srv/md'])
+  assert.ok(vgTargets({ name: 'vg0', lvs: ['data'], mountPoints: ['/srv/data'] }).includes('/srv/data'))
+})

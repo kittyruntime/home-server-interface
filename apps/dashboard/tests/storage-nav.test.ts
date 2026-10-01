@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
+import { createNav, takeRequest, navOpen, navBack, navCrumbs, navTo, sectionOf } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -45,4 +45,11 @@ test('arrays and volume groups open on their renamed sections', () => {
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'array', name: 'md0' })).map(c => c.label), ['Arrays', 'md0'])
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'vg', name: 'data' })).map(c => c.label), ['Volume groups', 'data'])
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'disk', name: 'sdb' })).map(c => c.label), ['Disks', 'sdb'])
+})
+
+test('a requested location expires if no Storage panel takes it', () => {
+  const req = { loc: { kind: 'disk', name: 'sdb' } as const, at: 1000 }
+  assert.deepEqual(takeRequest(req, 5000), req.loc)
+  assert.equal(takeRequest(req, 1000 + 11_000), null)
+  assert.equal(takeRequest(null, 1000), null)
 })
