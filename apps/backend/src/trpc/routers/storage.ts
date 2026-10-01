@@ -4,8 +4,9 @@ import { router, storageProcedure, protectedProcedure } from "../index"
 import type { Context } from "../context"
 import { normalizeDiskLabel } from "../../services/disk-labels"
 import { activityEntries, activityWhere } from "../../services/storage-activity"
+import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
-import { effectiveSmbName } from "../../services/sharing.service"
+import { desiredShareDefs, effectiveSmbName, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { appSources, fetchVolumes, resumeVolume, volumeStates } from "../../services/volume-guard"
@@ -102,6 +103,49 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
 }
 
 
+const zVolumeInput = z.object({
+  volume: z.object({
+    disks:      z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1).max(24),
+    redundancy: z.enum(["none", "raid1", "raid5", "raid6", "raid10"]),
+    vg:         z.string().min(1).max(31),
+    lv:         z.string().min(1).max(31),
+    lvPercent:  z.number().int().min(1).max(100),
+    label:      z.string().min(1).max(16),
+    mountpoint: z.string().startsWith("/").max(255),
+    access:     z.enum(["", "shared", "user"]).default(""),
+    ownerUser:  z.string().max(32).default(""),
+  }),
+  place: z.object({ name: z.string().trim().min(1).max(64) }).optional(),
+  share: z.object({ smbName: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/).optional() }).optional(),
+})
+
+// Dependencies of a create-volume plan, with today's Place and share checks.
+async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, timeout: number): Promise<VolumePlanDeps> {
+  const mp = input.volume.mountpoint
+  if (input.place && await ctx.prisma.place.findFirst({ where: { path: mp } }))
+    throw new TRPCError({ code: "CONFLICT", message: `A Place already exists at ${mp}` })
+  const placeName = input.place?.name ?? ""
+  const smbName = input.share ? effectiveSmbName({ smbName: input.share.smbName ?? null }, placeName) : ""
+  if (input.share) {
+    const others = await ctx.prisma.share.findMany({ include: { place: { select: { name: true } } } })
+    if (others.some(s => effectiveSmbName(s, s.place.name).toLowerCase() === smbName.toLowerCase()))
+      throw new TRPCError({ code: "CONFLICT", message: `Share name "${smbName}" is already in use` })
+  }
+  return {
+    isAdmin: !!ctx.user?.isAdmin,
+    worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
+    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    shareDefs: () => desiredShareDefs(ctx.prisma, { kind: "create", row: {
+      id: "(new)", placeId: "(new place)", smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false, enabled: true,
+      place: { name: placeName, path: mp },
+    } }),
+    serialize: withShareLock,
+    resync: () => syncSharesBestEffort(ctx.prisma),
+    createPlace: () => ctx.prisma.place.create({ data: { name: placeName, path: mp }, select: { id: true } }),
+    createShare: (placeId: string) => ctx.prisma.share.create({ data: { placeId, smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false } }),
+  }
+}
+
 export const storageRouter = router({
   // Operation plans (#36): preview what a storage operation will do, then
   // apply exactly that plan. Mutations, so inputs never travel in URLs.
@@ -130,6 +174,25 @@ export const storageRouter = router({
     }),
 
   // Missing volume guard (#3): state of each HSI volume and its hold.
+  // Create volume (#40): the worker chain, a Place and a share, as one plan.
+  volumePlan: storageProcedure
+    .input(z.object({ input: zVolumeInput }))
+    .mutation(async ({ ctx, input }) => {
+      ctx.audit.target = input.input.volume.mountpoint
+      const deps = await volumeDeps(ctx, input.input, 60_000)
+      return previewVolume(input.input, deps)
+    }),
+  volumeApply: storageProcedure
+    .input(z.object({ input: zVolumeInput, fingerprint: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      ctx.audit.target = input.input.volume.mountpoint
+      const deps = await volumeDeps(ctx, input.input, 900_000)
+      const res = await applyVolume(input.input, input.fingerprint, deps)
+      ctx.audit.meta = { plan: planAuditMeta("volume.create", res.steps, res.results) }
+      ctx.audit.success = res.ok
+      return res
+    }),
+
   // Recent operations on a storage object (#40): audit entries whose target
   // is exactly one of the object's names (device, /dev path, mount point, UUID).
   activity: storageProcedure

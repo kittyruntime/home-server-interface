@@ -1402,4 +1402,60 @@ await testSharePlans()
   assert.equal(res.steps.length, 2, "the worker step and the HSI user step")
 }
 
+// Create volume (#40): one plan from the worker chain, a Place and a share.
+{
+  const vp = await import("../services/volume-plan")
+  const calls: string[] = []
+  const volStep = { kind: "run", target: "/dev/md0", summary: "Create the array" }
+  const smbStep = { kind: "update", target: "/etc/nasui/samba/smb.conf", summary: "Update the Samba configuration" }
+  const deps = (over: Record<string, unknown> = {}): any => ({
+    isAdmin: true,
+    smbdInstalled: async () => true,
+    shareDefs: async () => [],
+    serialize: async (fn: any) => fn(),
+    resync: async () => { calls.push("resync") },
+    createPlace: async () => { calls.push("place"); return { id: "p-new" } },
+    createShare: async (id: string) => { calls.push(`share:${id}`) },
+    worker: async (subject: string, payload: any) => {
+      calls.push(`${subject}:${payload.op}`)
+      if (subject === "root.plan.preview") return payload.op === "smb.sync" ? { steps: [smbStep], fingerprint: "s1" } : { steps: [volStep], fingerprint: "v1" }
+      return { ok: true, steps: payload.op === "smb.sync" ? [smbStep] : [volStep], results: [{ status: "done" }] }
+    },
+    ...over,
+  })
+  const input = { volume: { disks: ["sdf", "sdg"], mountpoint: "/srv/data" }, place: { name: "Data" }, share: { smbName: "data" } }
+
+  const pv = await vp.previewVolume(input as any, deps())
+  assert.deepEqual(pv.steps.map(s => s.summary), ["Create the array", 'Create the Place "Data" on /srv/data', "Update the Samba configuration"])
+
+  calls.length = 0
+  const ok = await vp.applyVolume(input as any, pv.fingerprint, deps())
+  assert.equal(ok.ok, true)
+  assert.ok(calls.indexOf("place") < calls.indexOf("share:p-new"), "the Place exists before its share")
+  assert.equal(ok.reply?.placeId, "p-new")
+
+  // A failed worker plan: no Place, no share.
+  calls.length = 0
+  const failed = await vp.applyVolume(input as any, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => subject === "root.plan.preview"
+      ? (payload.op === "smb.sync" ? { steps: [smbStep], fingerprint: "s1" } : { steps: [volStep], fingerprint: "v1" })
+      : { ok: false, error: "mkfs failed", steps: [volStep], results: [{ status: "failed", error: "mkfs failed" }] },
+  }))
+  assert.equal(failed.ok, false)
+  assert.ok(!calls.includes("place"), "no Place after a failed volume")
+  assert.deepEqual(failed.results.slice(-2).map(r => r.status), ["not-run", "not-run"])
+
+  // A failed Place write: the share does not run.
+  const noPlace = await vp.applyVolume(input as any, pv.fingerprint, deps({ createPlace: async () => { throw new Error("path taken") } }))
+  assert.equal(noPlace.ok, false)
+  assert.deepEqual(noPlace.results.slice(-2).map(r => r.status), ["failed", "not-run"])
+
+  // Stale: CONFLICT.
+  await assert.rejects(vp.applyVolume(input as any, "other", deps()), (e: any) => e.code === "CONFLICT")
+  // Places and shares are for admins.
+  await assert.rejects(vp.previewVolume(input as any, deps({ isAdmin: false })), (e: any) => e.code === "FORBIDDEN")
+  // Without a Place there is no share.
+  await assert.rejects(vp.previewVolume({ volume: input.volume, share: { smbName: "x" } } as any, deps()), (e: any) => e.code === "BAD_REQUEST")
+}
+
 console.log("Backend security tests passed")
