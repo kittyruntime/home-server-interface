@@ -26,7 +26,7 @@ var (
 
 // criticalMountPoints must never be unmounted or shadowed by a new mount.
 var criticalMountPoints = map[string]bool{
-	"/": true, "/boot": true, "/boot/efi": true, "/boot/grub": true,
+	"/": true, "/boot": true, "/boot/efi": true, "/boot/grub": true, "/boot/firmware": true, "/efi": true,
 	"/usr": true, "/var": true, "/home": true, "/tmp": true,
 	"/etc": true, "/proc": true, "/sys": true, "/dev": true,
 }
@@ -46,17 +46,9 @@ func systemDeviceNames() map[string]bool {
 
 	// Collect devices mounted at critical paths.
 	critDevs := []string{}
-	for _, line := range strings.Split(string(data), "\n") {
-		f := strings.Fields(line)
-		if len(f) < 2 {
-			continue
-		}
-		dev, mnt := f[0], f[1]
-		if criticalMountPoints[mnt] && strings.HasPrefix(dev, "/dev/") && !strings.HasPrefix(dev, "/dev/loop") {
-			name := strings.TrimPrefix(dev, "/dev/")
-			result[name] = true
-			critDevs = append(critDevs, dev)
-		}
+	for _, name := range systemMountDevices(string(data), rootDeviceName) {
+		result[name] = true
+		critDevs = append(critDevs, "/dev/"+name)
 	}
 
 	// Walk up to the parent disk via lsblk.
@@ -73,6 +65,48 @@ func systemDeviceNames() map[string]bool {
 	}
 
 	return result
+}
+
+// systemMountDevices returns the lsblk names of the devices mounted at a
+// critical path. /dev/mapper/X is X in lsblk; /dev/root (Raspberry Pi and
+// some initramfs setups) is resolved through rootDevice.
+func systemMountDevices(procMounts string, rootDevice func() string) []string {
+	var out []string
+	for _, line := range strings.Split(procMounts, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 || !criticalMountPoints[f[1]] || !strings.HasPrefix(f[0], "/dev/") || strings.HasPrefix(f[0], "/dev/loop") {
+			continue
+		}
+		name := strings.TrimPrefix(f[0], "/dev/")
+		name = strings.TrimPrefix(name, "mapper/")
+		if name == "root" {
+			if name = rootDevice(); name == "" {
+				continue
+			}
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
+// rootDeviceName finds the block device of / from its device number
+// (/sys/dev/block/<major>:<minor>), for a root mounted as /dev/root.
+func rootDeviceName() string {
+	var st syscall.Stat_t
+	if err := syscall.Stat("/", &st); err != nil {
+		return ""
+	}
+	major, minor := (st.Dev>>8)&0xfff|(st.Dev>>32)&^0xfff, st.Dev&0xff|(st.Dev>>12)&^0xff
+	b, err := os.ReadFile(fmt.Sprintf("/sys/dev/block/%d:%d/uevent", major, minor))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if v, ok := strings.CutPrefix(line, "DEVNAME="); ok {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
 }
 
 // ── lsblk types ───────────────────────────────────────────────────────────────
