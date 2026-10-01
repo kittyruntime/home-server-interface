@@ -56,12 +56,12 @@ watch(() => props.win.focusNonce, () => {
 })
 
 function onCloseClick() {
-  if (props.win.appId === 'file-preview' && props.win.dirty && !confirm('Discard unsaved changes?')) return
+  if (props.win.dirty && !confirm('Discard unsaved changes?')) return
   closeWindow(props.win.id)
 }
 
 function onMinimizeClick() {
-  if (props.win.appId === 'file-preview' && props.win.dirty && !confirm('Discard unsaved changes?')) return
+  if (props.win.dirty && !confirm('Discard unsaved changes?')) return
   toggleMinimize(props.win.id)
 }
 
@@ -216,7 +216,7 @@ function onMaximizeClick() {
       <FileBrowserPanel v-if="win.appId === 'files'" class="h-full" :desktopWindow="true" />
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
-      <StoragePanel v-else-if="win.appId === 'storage'" class="h-full" />
+      <StoragePanel v-else-if="win.appId === 'storage'" class="h-full" @dirty="setDirty(win.id, $event)" />
       <AppStorePanel v-else-if="win.appId === 'store'" class="h-full" />
       <MonitorPanel v-else-if="win.appId === 'monitor'" class="h-full" />
       <SharingPanel v-else-if="win.appId === 'sharing'" class="h-full" />

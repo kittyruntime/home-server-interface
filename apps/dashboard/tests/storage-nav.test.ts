@@ -53,3 +53,9 @@ test('a requested location expires if no Storage panel takes it', () => {
   assert.equal(takeRequest(req, 1000 + 11_000), null)
   assert.equal(takeRequest(null, 1000), null)
 })
+
+test('the create volume wizard opens on top of Volumes', () => {
+  const nav = navOpen(createNav({ kind: 'section', section: 'disks' }), { kind: 'create-volume', disks: ['sdf'] })
+  assert.equal(sectionOf(nav.current), 'volumes')
+  assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Volumes', 'Create volume'])
+})

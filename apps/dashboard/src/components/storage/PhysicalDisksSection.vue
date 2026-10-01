@@ -24,7 +24,7 @@ const emit = defineEmits<{
   open:     [disk: string]
   navigate: [target: 'raid' | 'lvm' | StorageLocation]
   // Start creating an array or a volume group with these whole disks.
-  create:   [kind: 'raid' | 'lvm', devices: string[]]
+  create:   [kind: 'raid' | 'lvm' | 'volume', devices: string[]]
 }>()
 
 const { loading, error, devices, lvmLVs, refresh } = useStorageData()
@@ -216,7 +216,7 @@ function toggleSelected(name: string) {
   selected.value = s
 }
 
-function startCreate(kind: 'raid' | 'lvm') {
+function startCreate(kind: 'raid' | 'lvm' | 'volume') {
   const names = [...selected.value]
   selected.value = new Set()
   emit('create', kind, names)
@@ -383,7 +383,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- Selected free disks -->
         <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-[var(--c-border-strong)] bg-[var(--c-surface)] text-xs">
           <span class="text-[var(--c-text-2)]">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
-          <button v-if="selected.size >= 2" @click="startCreate('raid')" class="btn btn-primary text-xs">Create RAID…</button>
+          <button @click="startCreate('volume')" class="btn btn-primary text-xs">Create volume…</button>
+          <button v-if="selected.size >= 2" @click="startCreate('raid')" class="btn btn-outline text-xs">Create RAID…</button>
           <button @click="startCreate('lvm')" class="btn btn-outline text-xs">Create volume group…</button>
           <button @click="selected = new Set()" class="ml-auto text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Clear</button>
         </div>

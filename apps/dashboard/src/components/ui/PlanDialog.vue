@@ -36,7 +36,9 @@ async function load() {
         ? await trpc.sharing.plan.mutate({ op: req.op as ShareOp, input: req.input })
         : req.domain === 'users'
           ? await trpc.user.plan.mutate({ op: req.op as UserOp, input: req.input })
-          : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
+          : req.domain === 'volume'
+            ? await trpc.storage.volumePlan.mutate({ input: req.input as never })
+            : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
   } catch (e) {
     preview.value = null
     loadError.value = e instanceof Error ? e.message : String(e)
@@ -85,7 +87,9 @@ async function apply() {
         ? await trpc.sharing.apply.mutate({ op: req.op as ShareOp, input: req.input, fingerprint })
         : req.domain === 'users'
           ? await trpc.user.apply.mutate({ op: req.op as UserOp, input: req.input, fingerprint })
-          : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
+          : req.domain === 'volume'
+            ? await trpc.storage.volumeApply.mutate({ input: req.input as never, fingerprint })
+            : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
     applied.value = res
     if (res.ok) {
       settle({ status: 'applied', result: res })

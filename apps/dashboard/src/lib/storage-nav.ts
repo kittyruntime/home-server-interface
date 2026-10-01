@@ -5,6 +5,7 @@ export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'mounts' | '
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
   | { kind: 'volume'; id: string }
+  | { kind: 'create-volume'; disks?: string[] }
   | { kind: 'disk'; name: string }
   | { kind: 'array'; name: string }
   | { kind: 'vg'; name: string }
@@ -17,6 +18,7 @@ export function sectionOf(loc: StorageLocation): StorageSection {
   switch (loc.kind) {
     case 'section': return loc.section
     case 'volume':  return 'volumes'
+    case 'create-volume': return 'volumes'
     case 'disk':    return 'disks'
     case 'array':   return 'raid'
     case 'vg':      return 'lvm'
@@ -28,6 +30,7 @@ export type LocationNames = Record<string, string>
 
 export function locationLabel(loc: StorageLocation, names: LocationNames = {}): string {
   if (loc.kind === 'section') return SECTION_LABELS[loc.section]
+  if (loc.kind === 'create-volume') return 'Create volume'
   const key = loc.kind === 'volume' ? loc.id : loc.name
   return names[`${loc.kind}:${key}`] ?? key
 }

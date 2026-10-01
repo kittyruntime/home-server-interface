@@ -10,8 +10,8 @@ export type StorageOp = Parameters<typeof trpc.storage.plan.mutate>[0]['op']
 export type AppOp = Parameters<typeof trpc.apps.plan.mutate>[0]['op']
 export type ShareOp = Parameters<typeof trpc.sharing.plan.mutate>[0]['op']
 export type UserOp = Parameters<typeof trpc.user.plan.mutate>[0]['op']
-export type PlanOp = StorageOp | AppOp | ShareOp | UserOp
-export type PlanDomain = 'storage' | 'apps' | 'sharing' | 'users'
+export type PlanOp = StorageOp | AppOp | ShareOp | UserOp | 'volume.create'
+export type PlanDomain = 'storage' | 'apps' | 'sharing' | 'users' | 'volume'
 
 type StorageStep = Awaited<ReturnType<typeof trpc.storage.plan.mutate>>['steps'][number]
 type AppStep = Awaited<ReturnType<typeof trpc.apps.plan.mutate>>['steps'][number]

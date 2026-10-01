@@ -5,6 +5,8 @@ import VolumesSection from './VolumesSection.vue'
 import VolumePage from './VolumePage.vue'
 import DiskPage from './DiskPage.vue'
 import ArrayPage from './ArrayPage.vue'
+import CreateVolumeWizard from './CreateVolumeWizard.vue'
+import { useConfirm } from '../../lib/confirm'
 import VgPage from './VgPage.vue'
 import RaidSection from './RaidSection.vue'
 import LvmSection from './LvmSection.vue'
@@ -31,7 +33,16 @@ const active = computed<SectionId>({
 // Names of the objects on the stack, as their pages resolve them.
 const names = ref<Record<string, string>>({})
 const crumbs = computed(() => navCrumbs(location.value, names.value))
-function open(loc: StorageLocation) {
+// The wizard has choices made: leaving it asks first (#40).
+const wizardDirty = ref(false)
+const panelEmit = defineEmits<{ dirty: [dirty: boolean] }>()
+watch(wizardDirty, d => panelEmit('dirty', d))
+const { confirm } = useConfirm()
+async function open(loc: StorageLocation) {
+  if (wizardDirty.value && location.value.current.kind === 'create-volume' && loc.kind !== 'create-volume') {
+    if (!await confirm('Leave the Create volume wizard? Your choices will be lost.', { confirmLabel: 'Leave' })) return
+    wizardDirty.value = false
+  }
   location.value = navOpen(location.value, loc)
 }
 function focusOn(target: SectionId | StorageLocation) {
@@ -48,9 +59,10 @@ watch(pendingStorageLocation, req => {
 
 // Free disks picked in Devices, handed to the RAID or LVM create wizard.
 const preselect = ref<{ kind: 'raid' | 'lvm'; devices: string[] } | null>(null)
-function startCreate(kind: 'raid' | 'lvm', devices: string[]) {
+function startCreate(kind: 'raid' | 'lvm' | 'volume', devices: string[]) {
+  if (kind === 'volume') { void open({ kind: 'create-volume', disks: devices }); return }
   preselect.value = { kind, devices }
-  open({ kind: 'section', section: kind })
+  void open({ kind: 'section', section: kind })
 }
 
 const { load: loadTools, missingStorageTools } = useHostTools()
@@ -142,6 +154,8 @@ const installCommand = computed(() =>
         </nav>
         <VolumePage v-if="location.current.kind === 'volume'" :id="location.current.id"
           @navigate="focusOn" @named="n => { if (location.current.kind === 'volume') names = { ...names, [`volume:${location.current.id}`]: n } }" />
+        <CreateVolumeWizard v-else-if="location.current.kind === 'create-volume'" :disks="location.current.disks"
+          @navigate="focusOn" @dirty="d => wizardDirty = d" />
         <ArrayPage v-else-if="location.current.kind === 'array'" :name="location.current.name" @navigate="focusOn" />
         <VgPage v-else-if="location.current.kind === 'vg'" :name="location.current.name" @navigate="focusOn" />
         <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn"

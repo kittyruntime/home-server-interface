@@ -110,8 +110,7 @@ function openVolume(v: Volume) {
 }
 
 function createVolume() {
-  const free = (overview.value?.freeDisks ?? []).map(d => d.name)
-  emit('create', free.length >= 2 ? 'raid' : 'lvm', free)
+  emit('navigate', { kind: 'create-volume' })
 }
 
 const mountDlg = ref<InstanceType<typeof DeviceMountDialog> | null>(null)
