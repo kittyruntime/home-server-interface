@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.61.0] - 2026-10-01
+
 ### Added
 - **Disk labels**: name a physical disk ("bay 3, top") from Storage > Devices.
   The label is stored by serial number, so it follows the disk when its
@@ -1199,7 +1201,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.60.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.61.0...HEAD
+[1.61.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.60.0...v1.61.0
 [1.60.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.59.0...v1.60.0
 [1.59.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.58.0...v1.59.0
 [1.58.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.57.0...v1.58.0
