@@ -144,7 +144,8 @@ const installCommand = computed(() =>
           @navigate="focusOn" @named="n => { if (location.current.kind === 'volume') names = { ...names, [`volume:${location.current.id}`]: n } }" />
         <ArrayPage v-else-if="location.current.kind === 'array'" :name="location.current.name" @navigate="focusOn" />
         <VgPage v-else-if="location.current.kind === 'vg'" :name="location.current.name" @navigate="focusOn" />
-        <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn" />
+        <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn"
+          @named="n => { if (location.current.kind === 'disk') names = { ...names, [`disk:${location.current.name}`]: n } }" />
         <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" @create="startCreate" />
         <PhysicalDisksSection v-else-if="active === 'disks'" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"

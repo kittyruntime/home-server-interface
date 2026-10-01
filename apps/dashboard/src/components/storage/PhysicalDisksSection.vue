@@ -7,7 +7,7 @@ import { trpc } from '../../lib/trpc'
 import { ref, computed, watch } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
-import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
+import { type SmartResult, smartStatus, fetchSmartInto, sharedSmart } from './smart'
 import {
   diskRow, summarize, filterRows, sortRows, groupRows, isSelectable, ROLE_LABELS,
   type DiskRow, type DiskRole, type DiskHealth, type SortKey, type SortDir,
@@ -34,7 +34,7 @@ const { currentUsername } = useAuth()
 // Every disk's health is read when the list loads, without waking disks in
 // standby (they show as unknown until their SMART panel is opened).
 
-const smartCache = ref<Record<string, SmartResult>>({})
+const smartCache = sharedSmart
 const smartOpen  = ref<Set<string>>(new Set())
 
 function toggleSmart(diskName: string) {

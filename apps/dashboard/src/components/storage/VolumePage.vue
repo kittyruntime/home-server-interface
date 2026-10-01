@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { usePageRefresh } from './page-refresh'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -26,13 +27,19 @@ const loading = ref(true)
 const error   = ref('')
 const gone    = ref(false)
 const tab     = ref<ObjectTab>('overview')
-const { devices, refresh: refreshDevices } = useStorageData()
+const { devices, refresh: refreshDevices } = useStorageData({ autoRefresh: false })
 
 async function load() {
   error.value = ''
   try {
     const o = await trpc.storage.volumes.overview.query()
-    volume.value = o.volumes.find(v => v.id === props.id) ?? null
+    // A volume keeps its page when its id changes (formatted again, or a
+    // missing volume that came back): found again by its mount point.
+    const was = volume.value
+    volume.value = o.volumes.find(v => v.id === props.id)
+      ?? (was?.mountPoint || was?.expectedMountPoint
+        ? o.volumes.find(v => (v.mountPoint ?? v.expectedMountPoint) === (was.mountPoint ?? was.expectedMountPoint)) ?? null
+        : null)
     gone.value = !volume.value
     if (volume.value) emit('named', volume.value.name)
   } catch (e) {
@@ -45,7 +52,7 @@ watch(() => props.id, () => { loading.value = true; tab.value = 'overview'; void
 
 const REDUNDANCY: Record<string, string> = {
   none: 'No redundancy', raid0: 'Striped, no redundancy', raid1: 'Mirror',
-  raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
+  raid4: 'RAID 4', raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
 }
 const LAYER: Record<string, string> = {
   filesystem: 'Folder', lv: 'Logical volume', vg: 'Volume group', array: 'RAID array', partition: 'Partition', disk: 'Disk',
@@ -69,20 +76,9 @@ const lastMount = ref<string | undefined>()
 watch(() => volume.value?.mountPoint, mp => { if (mp) lastMount.value = mp }, { immediate: true })
 const targets = computed(() => volume.value ? volumeTargets(volume.value, lastMount.value) : [])
 
-// Keep the page current while it is open: the volume may be unmounted by the
-// missing-volume guard or its disk unplugged.
-function onFocus() { if (!document.hidden) void load() }
-let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  window.addEventListener('focus', onFocus)
-  document.addEventListener('visibilitychange', onFocus)
-  timer = setInterval(() => { if (!document.hidden) void load() }, 60_000)
-})
-onUnmounted(() => {
-  window.removeEventListener('focus', onFocus)
-  document.removeEventListener('visibilitychange', onFocus)
-  if (timer) clearInterval(timer)
-})
+// Keep the page current while it is open (a disk can be unplugged, the
+// missing-volume guard can unmount a volume).
+usePageRefresh(load)
 
 function openLayer(kind: string, name: string) {
   // A partition opens its disk's page (which resolves it).

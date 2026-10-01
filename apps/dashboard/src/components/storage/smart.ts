@@ -1,4 +1,4 @@
-import { type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 
 export type SmartAttr = {
@@ -70,4 +70,18 @@ export async function fetchSmartInto(
       [device]: emptySmart(device, { _error: (e as { message?: string })?.message ?? 'SMART query failed' }),
     }
   }
+}
+
+/** SMART results shared by the Disks and Volumes lists, so each disk is read
+ *  once while the user moves between them. */
+export const sharedSmart = ref<Record<string, SmartResult>>({})
+
+/** Standby-safe reads for a list of disks, at most `concurrency` at a time,
+ *  skipping disks already read; stops when `cancelled()` turns true. */
+export async function readSmartList(names: string[], cancelled: () => boolean, concurrency = 3): Promise<void> {
+  const queue = names.filter(n => !sharedSmart.value[n] || sharedSmart.value[n]!._error)
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    for (let n = queue.shift(); n && !cancelled(); n = queue.shift()) await fetchSmartInto(sharedSmart, n, { noWake: true })
+  })
+  await Promise.all(workers)
 }

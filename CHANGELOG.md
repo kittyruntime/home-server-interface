@@ -34,6 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compact layout. Links between Storage sections open the right place (a disk
   opens the device list with that disk expanded).
 
+### Fixed
+- **Storage pages**: array and volume group pages stay current and have a
+  Refresh button; their activity includes unmounts; a physical volume that is
+  not a disk or an array is no longer a dead link; an LVM read error is shown
+  instead of "no longer there"; a volume keeps its page when it is formatted
+  again; Mounts links open the device's page; SMART reads are shared between
+  the Disks and Volumes lists and run three at a time.
+- **System disk detection**: a root filesystem on LVM (`/dev/mapper`), a
+  Raspberry Pi root (`/dev/root`), `/boot/firmware` and `/efi` are recognised
+  as the system disk.
+- **Volumes**: opening Storage no longer runs the volume check that may mount a
+  returning volume; RAID 4 tolerates one failed disk; a resync is no longer
+  called a rebuild; a guarded volume that is not mounted keeps its Places.
+
 ## [1.60.0] - 2026-09-30
 
 ### Changed
