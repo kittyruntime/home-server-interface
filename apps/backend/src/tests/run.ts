@@ -1305,4 +1305,21 @@ await testSharePlans()
   })
 }
 
+// The volumes page reuses the guard loop's last volume states instead of
+// running the worker's (mounting, state-saving) check on every open.
+{
+  const { createVolumeCache } = await import("../services/volume-guard")
+  let calls = 0, now = 1000
+  const cache = createVolumeCache(async () => { calls++; return [{ mountPoint: "/srv", uuid: "u", state: "ok" as const, strayFiles: false }] }, () => now)
+  await cache.get()
+  assert.equal(calls, 1, "first read fetches")
+  cache.set([{ mountPoint: "/srv", uuid: "u", state: "missing", strayFiles: false }])
+  now += 30_000
+  assert.equal((await cache.get())[0]!.state, "missing", "a recent guard result is reused")
+  assert.equal(calls, 1)
+  now += 120_000
+  await cache.get()
+  assert.equal(calls, 2, "a stale result is fetched again")
+}
+
 console.log("Backend security tests passed")
