@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed } from 'vue'
@@ -8,7 +9,7 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import VolumeHealthPanel from './VolumeHealthPanel.vue'
 
-const emit = defineEmits<{ navigate: [section: 'disks' | 'raid' | 'lvm'] }>()
+const emit = defineEmits<{ navigate: [target: StorageLocation] }>()
 
 const { loading, error, devices, raids, lvmLVs, refresh: refreshStorage } = useStorageData()
 const volumePanel = ref<InstanceType<typeof VolumeHealthPanel> | null>(null)
@@ -28,6 +29,8 @@ type MountEntry = {
   fstype:     string
   source:     MountSource
   sourceLabel: string     // "RAID 1" | "LVM vg0/lv0" | "sdb"
+  /** The page of the device the mount comes from (#40). */
+  target:     StorageLocation
   usageTotal: number
   usageUsed:  number
   usageFree:  number
@@ -40,6 +43,7 @@ type UnmountedEntry = {
   fstype:      string
   source:      MountSource
   sourceLabel: string
+  target:      StorageLocation
   size:        number
   bd:          BlockDev
 }
@@ -69,6 +73,7 @@ const mounted = computed<MountEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'disk',
       sourceLabel: parentDisk?.name ?? bd.name,
+      target:      { kind: 'disk', name: parentDisk?.name ?? bd.name },
       usageTotal:  bd.usageTotal,
       usageUsed:   bd.usageUsed,
       usageFree:   bd.usageFree,
@@ -87,6 +92,7 @@ const mounted = computed<MountEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'raid',
       sourceLabel: raidLevelLabel(r.level),
+      target:      { kind: 'array', name: r.name },
       usageTotal:  bd.usageTotal,
       usageUsed:   bd.usageUsed,
       usageFree:   bd.usageFree,
@@ -105,6 +111,7 @@ const mounted = computed<MountEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'lvm',
       sourceLabel: `${lv.vgName}/${lv.name}`,
+      target:      { kind: 'vg', name: lv.vgName },
       usageTotal:  bd.usageTotal,
       usageUsed:   bd.usageUsed,
       usageFree:   bd.usageFree,
@@ -133,6 +140,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'disk',
       sourceLabel: parentDisk?.name ?? bd.name,
+      target:      { kind: 'disk', name: parentDisk?.name ?? bd.name },
       size:        bd.size,
       bd,
     })
@@ -147,6 +155,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'raid',
       sourceLabel: raidLevelLabel(r.level),
+      target:      { kind: 'array', name: r.name },
       size:        bd.size,
       bd,
     })
@@ -161,6 +170,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
       fstype:      bd.fstype,
       source:      'lvm',
       sourceLabel: `${lv.vgName}/${lv.name}`,
+      target:      { kind: 'vg', name: lv.vgName },
       size:        lv.size,
       bd,
     })
@@ -168,12 +178,6 @@ const unmounted = computed<UnmountedEntry[]>(() => {
 
   return entries
 })
-
-const sourceNavTarget: Record<MountSource, 'disks' | 'raid' | 'lvm'> = {
-  disk: 'disks',
-  raid: 'raid',
-  lvm:  'lvm',
-}
 
 const sourceBadgeClass: Record<MountSource, string> = {
   disk:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)] hover:border-[var(--c-border-strong)]',
@@ -219,7 +223,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         No filesystems currently mounted.
       </div>
       <div v-else class="mb-8">
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-[var(--c-text-1)]" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-[var(--c-text-3)]" :title="e.device">{{e.device}}</p></div><span class="badge badge-muted">{{e.fstype}}</span></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-[var(--c-text-3)]"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-[var(--c-surface-deep)]"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><button @click="emit('navigate',sourceNavTarget[e.source])" class="text-xs text-[var(--c-text-3)]">{{e.sourceLabel}} →</button><button v-if="!e.bd.isSystem" class="btn btn-outline btn-xs" @click="openUmount(e.bd)">Unmount</button></div></article></div>
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-[var(--c-text-1)]" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-[var(--c-text-3)]" :title="e.device">{{e.device}}</p></div><span class="badge badge-muted">{{e.fstype}}</span></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-[var(--c-text-3)]"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-[var(--c-surface-deep)]"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><button @click="emit('navigate',e.target)" class="text-xs text-[var(--c-text-3)]">{{e.sourceLabel}} →</button><button v-if="!e.bd.isSystem" class="btn btn-outline btn-xs" @click="openUmount(e.bd)">Unmount</button></div></article></div>
         <div class="hidden rounded-xl border border-[var(--c-border)] overflow-hidden @3xl/content:block">
         <table class="w-full text-sm border-collapse">
           <thead>
@@ -237,7 +241,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-1)]">{{ e.mountpoint }}</td>
               <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-3)] truncate max-w-0 w-40">{{ e.device }}</td>
               <td class="px-4 py-2.5">
-                <button @click="emit('navigate', sourceNavTarget[e.source])"
+                <button @click="emit('navigate', e.target)"
                   :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                   {{ e.sourceLabel }} →
                 </button>
@@ -287,7 +291,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <tr v-for="e in unmounted" :key="e.key" class="hover:bg-[var(--c-hover)]/30 transition-colors">
                 <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-2)]">{{ e.device }}</td>
                 <td class="px-4 py-2.5">
-                  <button @click="emit('navigate', sourceNavTarget[e.source])"
+                  <button @click="emit('navigate', e.target)"
                     :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                     {{ e.sourceLabel }} →
                   </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, useId } from 'vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { nextTab } from '../../lib/tabs'
 
@@ -25,6 +25,7 @@ const TABS: { id: ObjectTab; label: string }[] = [
   { id: 'activity',  label: 'Activity' },
 ]
 const tabEls = ref<HTMLButtonElement[]>([])
+const uid = useId()
 
 async function onKey(e: KeyboardEvent) {
   const next = nextTab(TABS.map(t => t.id), tab.value, e.key) as ObjectTab | null
@@ -63,9 +64,9 @@ async function onKey(e: KeyboardEvent) {
           v-for="t in TABS" :key="t.id"
           :ref="el => { if (el) tabEls[TABS.indexOf(t)] = el as HTMLButtonElement }"
           role="tab"
-          :id="`tab-${t.id}`"
+          :id="`${uid}-tab-${t.id}`"
           :aria-selected="tab === t.id"
-          :aria-controls="`panel-${t.id}`"
+          :aria-controls="tab === t.id ? `${uid}-panel-${t.id}` : undefined"
           :tabindex="tab === t.id ? 0 : -1"
           :class="['pb-2 -mb-px text-sm whitespace-nowrap border-b-2 transition-colors',
             tab === t.id ? 'border-[var(--c-accent)] text-[var(--c-text-1)] font-medium' : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-1)]']"
@@ -73,7 +74,7 @@ async function onKey(e: KeyboardEvent) {
         >{{ t.label }}</button>
       </div>
 
-      <section :id="`panel-${tab}`" role="tabpanel" :aria-labelledby="`tab-${tab}`">
+      <section :id="`${uid}-panel-${tab}`" role="tabpanel" :aria-labelledby="`${uid}-tab-${tab}`">
         <slot v-if="tab === 'overview'" name="overview" />
         <slot v-else-if="tab === 'structure'" name="structure" />
         <slot v-else name="activity" />

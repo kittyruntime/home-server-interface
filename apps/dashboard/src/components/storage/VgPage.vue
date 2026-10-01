@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { usePageRefresh } from './page-refresh'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
 import LvmSection from './LvmSection.vue'
@@ -15,7 +16,8 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 
-const { loading, loaded, error, devices, raids, lvmVGs, lvmLVs, lvmPVs } = useStorageData()
+const { loading, loaded, error, lvmError, devices, raids, lvmVGs, lvmLVs, lvmPVs, refresh } = useStorageData()
+usePageRefresh(refresh)
 const tab = ref<ObjectTab>('overview')
 watch(() => props.name, () => { tab.value = 'overview' })
 
@@ -40,34 +42,58 @@ watch([() => props.name, devices], async ([n]) => {
   } catch { volumeOf.value = {} }
 }, { immediate: true })
 
-// A PV is an array (md0) or a disk or partition.
-function openPv(pvName: string) {
+// A PV is an array (md0), or a disk or partition: those have pages. Others
+// (a LUKS mapping, an array partition) are listed without a link.
+function pvTarget(pvName: string): StorageLocation | null {
   const dev = pvName.replace(/^\/dev\//, '')
-  if (raids.value.some(r => r.name === dev)) emit('navigate', { kind: 'array', name: dev })
-  else emit('navigate', { kind: 'disk', name: dev })
+  if (raids.value.some(r => r.name === dev)) return { kind: 'array', name: dev }
+  const isDisk = devices.value.some(d => d.type === 'disk' && (d.name === dev || (d.children ?? []).some(c => c.name === dev)))
+  return isDisk ? { kind: 'disk', name: dev } : null
 }
 
-const targets = computed(() => vgTargets({ name: props.name, lvs: lvs.value.map(l => l.name) }))
+// Mount points of the LVs (an unmount is logged under it).
+function lvMount(lv: string): string | undefined {
+  const dm = `${props.name.replace(/-/g, '--')}-${lv.replace(/-/g, '--')}`
+  const walk = (list: typeof devices.value): string | undefined => {
+    for (const d of list) {
+      if (d.name === dm && d.mountpoint) return d.mountpoint
+      const m = walk(d.children ?? [])
+      if (m) return m
+    }
+    return undefined
+  }
+  return walk(devices.value)
+}
+
+const targets = computed(() => vgTargets({
+  name: props.name,
+  lvs: lvs.value.map(l => l.name),
+  mountPoints: lvs.value.map(l => lvMount(l.name)).filter((m): m is string => !!m),
+}))
 </script>
 
 <template>
   <ObjectPage
     v-model:tab="tab"
     :title="name"
-    :subtitle="vg ? `${vg.pvCount} physical ${vg.pvCount === 1 ? 'volume' : 'volumes'} · ${vg.lvCount} logical ${vg.lvCount === 1 ? 'volume' : 'volumes'}` : ''"
     :loading="!loaded && !error"
-    :error="error && !vg ? error : ''"
-    :gone="loaded && !loading && !vg ? { text: 'This volume group is no longer there.', back: 'Back to Volume groups' } : undefined"
+    :error="(error || lvmError) && !vg ? (error || lvmError) : ''"
+    :gone="loaded && !loading && !lvmError && !vg ? { text: 'This volume group is no longer there.', back: 'Back to Volume groups' } : undefined"
     @back="emit('navigate', 'lvm')"
   >
     <template v-if="vg" #chips>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">Volume group</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ vg.lvCount }} {{ vg.lvCount === 1 ? 'logical volume' : 'logical volumes' }}</span>
     </template>
     <template v-if="vg" #figure>
       <div class="flex items-baseline gap-2">
         <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(vg.size) }}</span>
         <span class="text-xs text-[var(--c-text-3)]">{{ vg.free > 0 ? `${fmtBytes(vg.free)} free` : "no free space" }}</span>
       </div>
+    </template>
+
+    <template #actions>
+      <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refresh">Refresh</button>
     </template>
 
     <template v-if="vg" #overview>
@@ -96,11 +122,13 @@ const targets = computed(() => vgTargets({ name: props.name, lvs: lvs.value.map(
           <h3 class="eyebrow mb-2">Physical volumes</h3>
           <ul class="space-y-1.5">
             <li v-for="pv in pvs" :key="pv.name">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm hover:border-[var(--c-border-strong)] transition-colors" @click="openPv(pv.name)">
+              <component :is="pvTarget(pv.name) ? 'button' : 'div'"
+                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-[var(--c-border-strong)] transition-colors']"
+                @click="pvTarget(pv.name) && emit('navigate', pvTarget(pv.name)!)">
                 <span class="font-mono text-xs flex-1 text-left">{{ pv.name }}</span>
                 <span class="tabular-nums text-xs text-[var(--c-text-3)]">{{ fmtBytes(pv.size) }}</span>
-                <span aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
-              </button>
+                <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+              </component>
             </li>
           </ul>
         </div>

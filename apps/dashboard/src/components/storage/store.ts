@@ -188,6 +188,8 @@ const state = reactive({
   lvmVGs:  [] as LvmVG[],
   lvmLVs:  [] as LvmLV[],
   loaded:  false,
+  /** The LVM read failed: volume groups are unknown, not absent. */
+  lvmError: '',
 })
 
 let inflight: Promise<void> | null = null
@@ -198,7 +200,10 @@ async function fetchAll(): Promise<void> {
   try {
     const [blk, lvm] = await Promise.all([
       trpc.storage.blockDevices.query() as Promise<{ devices: BlockDev[]; raids: RaidArray[] }>,
-      trpc.storage.lvmInfo.query().catch(() => ({ pvs: [], vgs: [], lvs: [] })),
+      trpc.storage.lvmInfo.query().then(r => { state.lvmError = ''; return r }).catch((e: unknown) => {
+        state.lvmError = (e as { message?: string })?.message ?? 'Could not read LVM'
+        return { pvs: [], vgs: [], lvs: [] }
+      }),
     ])
     state.devices = blk.devices ?? []
     state.raids   = blk.raids   ?? []
@@ -214,11 +219,12 @@ async function fetchAll(): Promise<void> {
   }
 }
 
-export function useStorageData() {
+/** `autoRefresh: false` for views that only need the data on demand. */
+export function useStorageData(opts: { autoRefresh?: boolean } = {}) {
   function refresh(): Promise<void> {
     if (!inflight) inflight = fetchAll()
     return inflight
   }
-  onMounted(() => { refresh() })
+  if (opts.autoRefresh !== false) onMounted(() => { refresh() })
   return { ...toRefs(state), refresh }
 }

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
+import { actionLabel } from '../../lib/audit-labels'
 
 // Recent operations on one storage object (#40), from the audit log.
 const props = defineProps<{ targets: string[]; arrays?: string[] }>()
@@ -23,8 +24,7 @@ const OP_LABELS: Record<string, string> = {
 }
 function label(e: Entry): string {
   if (e.op) return OP_LABELS[e.op] ?? e.op
-  const tail = e.action.split('.').pop() ?? e.action
-  return tail.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase())
+  return actionLabel(e.action)
 }
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { usePageRefresh } from './page-refresh'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
 import DiskCard from './DiskCard.vue'
@@ -17,31 +18,23 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 // carries, and what was done to it.
 
 const props = defineProps<{ name: string }>()
-const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
+const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation]; named: [name: string] }>()
 
 const { loading, loaded, error, devices, lvmLVs, refresh } = useStorageData()
 const tab = ref<ObjectTab>('overview')
 onMounted(() => { void refresh() })
 
-// Keep the page current while it is open (a disk can be unplugged).
-function onFocus() { if (!document.hidden) void refresh() }
-let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  window.addEventListener('focus', onFocus)
-  document.addEventListener('visibilitychange', onFocus)
-  timer = setInterval(() => { if (!document.hidden) void refresh() }, 60_000)
-})
-onUnmounted(() => {
-  window.removeEventListener('focus', onFocus)
-  document.removeEventListener('visibilitychange', onFocus)
-  if (timer) clearInterval(timer)
-})
+// Keep the page current while it is open (a disk can be unplugged, the
+// missing-volume guard can unmount a volume).
+usePageRefresh(refresh)
 watch(() => props.name, () => { tab.value = 'overview' })
 
 // A link may name a partition (an array member like sdc1): show its disk.
 const disk = computed(() => devices.value.find(d => d.type === 'disk'
   && (d.name === props.name || (d.children ?? []).some(c => c.name === props.name))) ?? null)
 const diskName = computed(() => disk.value?.name ?? props.name)
+// The crumb shows the disk, also when the link named a partition.
+watch(diskName, n => emit('named', n), { immediate: true })
 
 // SMART: the full read, since the admin opened this disk.
 const smart = ref<Record<string, SmartResult>>({})
@@ -84,6 +77,7 @@ const volumes = ref<Array<{ id: string; name: string; mountPoint?: string }>>([]
 watch([diskName, devices], async ([n]) => {
   try {
     const o = await trpc.storage.volumes.overview.query()
+    if (n !== diskName.value) return // a later request owns the list
     volumes.value = o.volumes.filter(v => v.disks.some(d => d.name === n))
       .map(v => ({ id: v.id, name: v.name, mountPoint: v.mountPoint }))
   } catch { volumes.value = [] }

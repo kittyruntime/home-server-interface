@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import { useStorageData, fmtBytes } from './store'
-import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
+import { smartStatus, sharedSmart, readSmartList } from './smart'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 
 // The Storage landing page (#40): where the data lives. One row per volume
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const overview = ref<Overview | null>(null)
 const loading  = ref(true)
 const error    = ref('')
-const { devices, refresh: refreshDevices } = useStorageData()
+const { devices, refresh: refreshDevices } = useStorageData({ autoRefresh: false })
 
 async function load() {
   error.value = ''
@@ -30,6 +30,7 @@ async function load() {
     overview.value = await trpc.storage.volumes.overview.query()
     void loadSmart()
   } catch (e) {
+    // A failed reload keeps the list shown; the error appears above it.
     error.value = e instanceof Error ? e.message : 'Could not read the volumes'
   } finally {
     loading.value = false
@@ -37,11 +38,14 @@ async function load() {
 }
 onMounted(load)
 
-// SMART of the disks under the volumes, read without waking sleeping disks.
-const smart = ref<Record<string, SmartResult>>({})
+// SMART of the disks under the volumes, read without waking sleeping disks,
+// shared with the Disks list and stopped when the page is left.
+const smart = sharedSmart
+let left = false
+onUnmounted(() => { left = true })
 async function loadSmart() {
   const names = [...new Set((overview.value?.volumes ?? []).flatMap(v => v.disks.map(d => d.name)))]
-  for (const n of names) await fetchSmartInto(smart, n, { noWake: true })
+  await readSmartList(names, () => left)
 }
 function smartIssue(v: Volume): string | null {
   for (const d of v.disks) {
@@ -70,7 +74,7 @@ const HEALTH_TEXT: Record<Health, string> = { ok: 'text-[var(--c-text-2)]', idle
 
 const REDUNDANCY: Record<string, string> = {
   none: 'No redundancy', raid0: 'Striped, no redundancy', raid1: 'Mirror',
-  raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
+  raid4: 'RAID 4', raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
 }
 
 function usedByText(v: Volume): string {
@@ -123,6 +127,7 @@ async function mount(v: Volume) {
   }
   const dev = find(devices.value)
   if (dev) mountDlg.value?.open(dev)
+  else void load() // the device has gone since the list loaded
 }
 </script>
 
@@ -137,13 +142,14 @@ async function mount(v: Volume) {
           <span v-if="warnings" class="text-warning"> · {{ warnings }} {{ warnings === 1 ? 'needs attention' : 'need attention' }}</span>
         </p>
       </div>
-      <button class="btn btn-primary btn-sm shrink-0" @click="createVolume">Create volume</button>
+      <button class="btn btn-primary btn-sm shrink-0" :disabled="!overview?.freeDisks.length"
+        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume</button>
     </div>
 
     <LoadingState v-if="loading" />
-    <p v-else-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="status-text text-danger mb-3"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
-    <template v-else-if="overview">
+    <template v-if="!loading && overview">
       <div v-if="!volumes.length" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-8 text-center text-sm text-[var(--c-text-3)]">
         No data volume yet. Create one from free disks to store files, shares and apps.
       </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { usePageRefresh } from './page-refresh'
 import ObjectPage, { type ObjectTab } from './ObjectPage.vue'
 import ActivityList from './ActivityList.vue'
 import RaidSection from './RaidSection.vue'
@@ -14,7 +15,8 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 
-const { loading, loaded, error, devices, raids, lvmPVs } = useStorageData()
+const { loading, loaded, error, devices, raids, lvmPVs, refresh } = useStorageData()
+usePageRefresh(refresh)
 const tab = ref<ObjectTab>('overview')
 watch(() => props.name, () => { tab.value = 'overview' })
 
@@ -55,7 +57,7 @@ watch([() => props.name, devices], async ([n]) => {
   } catch { volumes.value = [] }
 }, { immediate: true })
 
-const targets = computed(() => arrayTargets({ name: props.name }))
+const targets = computed(() => arrayTargets({ name: props.name, mountPoint: findDev(devices.value, props.name)?.mountpoint || undefined }))
 </script>
 
 <template>
@@ -74,6 +76,10 @@ const targets = computed(() => arrayTargets({ name: props.name }))
     </template>
     <template v-if="array && size" #figure>
       <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(size) }}</span>
+    </template>
+
+    <template #actions>
+      <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refresh">Refresh</button>
     </template>
 
     <template v-if="array" #overview>
