@@ -10,9 +10,13 @@ func stubVolumeHost(t *testing.T) {
 	t.Helper()
 	stubMountHost(t)
 	stubConfigFiles(t, "UUID=root / ext4 defaults 0 1\n", "")
-	pm, pv, pd, pk := hostMdNames, hostVgNames, hostDirEmpty, hostMkdir
-	t.Cleanup(func() { hostMdNames, hostVgNames, hostDirEmpty, hostMkdir = pm, pv, pd, pk })
+	pm, pv, pd, pk, pw, pn := hostMdNames, hostVgNames, hostDirEmpty, hostMkdir, hostWholeDisk, hostMdNodes
+	t.Cleanup(func() {
+		hostMdNames, hostVgNames, hostDirEmpty, hostMkdir, hostWholeDisk, hostMdNodes = pm, pv, pd, pk, pw, pn
+	})
+	hostMdNodes = func() []string { return nil }
 	hostMkdir = func(string) error { return nil }
+	hostWholeDisk = func(string) bool { return true }
 	hostMdNames = func() []string { return nil }
 	hostVgNames = func() []string { return nil }
 	hostDirEmpty = func(string) bool { return true }
@@ -30,10 +34,11 @@ func TestPlanVolumeCreateMirror(t *testing.T) {
 	want := [][]string{
 		{"mdadm", "--create", "/dev/md0", "--level", "1", "--raid-devices", "2", "--run", "/dev/sdf", "/dev/sdg"},
 		{"update-initramfs", "-u"},
-		{"pvcreate", "/dev/md0"},
+		{"wipefs", "-a", "/dev/md0"},
+		{"pvcreate", "-f", "/dev/md0"},
 		{"vgcreate", "data", "/dev/md0"},
 		{"lvcreate", "-y", "-l", "100%FREE", "-n", "data", "data"},
-		{"mkfs.ext4", "-F", "-L", "data", "/dev/data/data"},
+		{"mkfs.ext4", "-F", "-E", "nodiscard", "-L", "data", "/dev/data/data"},
 		{"chattr", "+i", "/srv/data"},
 		{"mount", "/dev/data/data", "/srv/data"},
 	}
@@ -61,7 +66,7 @@ func TestPlanVolumeCreateWithoutRedundancy(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe)
 	}
-	if got := argvs(p)[0]; !reflect.DeepEqual(got, []string{"pvcreate", "/dev/sdf"}) || !p.Steps[0].Destructive {
+	if got := argvs(p)[0]; !reflect.DeepEqual(got, []string{"pvcreate", "-f", "/dev/sdf"}) || !p.Steps[0].Destructive {
 		t.Fatalf("a single disk becomes a PV, erased and named: %v %+v", got, p.Steps[0])
 	}
 	for _, a := range argvs(p) {
@@ -111,5 +116,52 @@ func TestPlanVolumeCreateNextMdName(t *testing.T) {
 	p, _ := build(t, planVolumeCreate, mirrorReq)
 	if argvs(p)[0][2] != "/dev/md2" {
 		t.Fatalf("the first free md name: %v", argvs(p)[0])
+	}
+}
+
+func TestPlanVolumeCreateSafety(t *testing.T) {
+	stubVolumeHost(t)
+	// Only whole disks.
+	hostWholeDisk = func(d string) bool { return d != "sdg1" }
+	if _, fe := build(t, planVolumeCreate, strings.Replace(mirrorReq, `"sdg"`, `"sdg1"`, 1)); fe == nil {
+		t.Fatal("a partition must be refused")
+	}
+	hostWholeDisk = func(string) bool { return true }
+	// Not twice the same disk.
+	if _, fe := build(t, planVolumeCreate, strings.Replace(mirrorReq, `"sdg"`, `"sdf"`, 1)); fe == nil {
+		t.Fatal("a disk given twice must be refused")
+	}
+	// Not the system disk.
+	hostSystemDevs = func() map[string]bool { return map[string]bool{"sdf": true} }
+	if _, fe := build(t, planVolumeCreate, mirrorReq); fe == nil || fe.Code != "ESYS" {
+		t.Fatalf("the system disk must be refused: %+v", fe)
+	}
+	hostSystemDevs = func() map[string]bool { return map[string]bool{} }
+	// An fstab entry for the folder is refused before anything is erased.
+	stubConfigFiles(t, "UUID=old /srv/data ext4 defaults 0 2\n", "")
+	if _, fe := build(t, planVolumeCreate, mirrorReq); fe == nil || !strings.Contains(fe.Message, "fstab") {
+		t.Fatalf("an fstab entry for the mount point must be refused at preview: %+v", fe)
+	}
+	stubConfigFiles(t, "", "ARRAY /dev/md0 metadata=1.2 UUID=aa:bb\n")
+	// An array configured but not assembled keeps its name.
+	p, _ := build(t, planVolumeCreate, mirrorReq)
+	if argvs(p)[0][2] != "/dev/md1" {
+		t.Fatalf("md0 is configured in mdadm.conf: %v", argvs(p)[0])
+	}
+}
+
+func TestPlanVolumeCreateStale(t *testing.T) {
+	stubVolumeHost(t)
+	in := []byte(mirrorReq)
+	p1, _ := planVolumeCreate(in)
+	hostSignatures = func(dev string) string {
+		if dev == "/dev/sdg" {
+			return `{"signatures":[{"type":"ext4"}]}`
+		}
+		return ""
+	}
+	p2, _ := planVolumeCreate(in)
+	if p1.fingerprint(in) == p2.fingerprint(in) {
+		t.Fatal("a disk that changed after the preview must make the plan stale")
 	}
 }
