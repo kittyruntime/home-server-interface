@@ -57,6 +57,9 @@ func TestPlanVolumeRemoveMirror(t *testing.T) {
 		{"update-initramfs", "-u"},
 		{"wipefs", "-a", "/dev/sda"},
 		{"wipefs", "-a", "/dev/sdb"},
+		// udev re-reads the disks, so they show as free right away.
+		{"udevadm", "trigger", "--action=change", "/dev/sda", "/dev/sdb"},
+		{"udevadm", "settle"},
 		// Last: until the volume is fully gone, the empty folder stays
 		// protected against writes landing on the system disk.
 		{"chattr", "-i", "/srv/data"},
@@ -121,7 +124,7 @@ func TestPlanVolumeRemovePlainDisk(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe)
 	}
-	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/sdf"}, {"chattr", "-i", "/srv/data"}}
+	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/sdf"}, {"udevadm", "trigger", "--action=change", "/dev/sdf"}, {"udevadm", "settle"}, {"chattr", "-i", "/srv/data"}}
 	if !reflect.DeepEqual(argvs(p), want) {
 		t.Fatalf("commands: %v", argvs(p))
 	}
@@ -294,7 +297,7 @@ func TestPlanVolumeRemoveMultiDeviceBtrfs(t *testing.T) {
 	if fe != nil {
 		t.Fatalf("a btrfs on two disks is one volume: %+v", fe)
 	}
-	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/sdf"}, {"wipefs", "-a", "/dev/sdg"}, {"chattr", "-i", "/srv/data"}}
+	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/sdf"}, {"wipefs", "-a", "/dev/sdg"}, {"udevadm", "trigger", "--action=change", "/dev/sdf", "/dev/sdg"}, {"udevadm", "settle"}, {"chattr", "-i", "/srv/data"}}
 	if !reflect.DeepEqual(argvs(p), want) {
 		t.Fatalf("commands: %v", argvs(p))
 	}
