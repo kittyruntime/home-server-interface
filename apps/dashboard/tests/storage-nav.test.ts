@@ -60,6 +60,11 @@ test('the create volume wizard opens on top of Volumes', () => {
   assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Volumes', 'Create volume'])
 })
 
+test('the new volume replaces the wizard in the breadcrumb', () => {
+  const nav = navOpen(navOpen(createNav(), { kind: 'create-volume' }), { kind: 'volume', id: 'U-1' })
+  assert.deepEqual(nav.stack.map(l => l.kind), ['section', 'volume'])
+})
+
 test('leavesWizard: any move away from Create volume, by crumb or link', () => {
   const inWizard = navOpen(createNav(), { kind: 'create-volume' })
   assert.equal(leavesWizard(inWizard, navTo(inWizard, 0)), true, 'a breadcrumb back to Volumes')

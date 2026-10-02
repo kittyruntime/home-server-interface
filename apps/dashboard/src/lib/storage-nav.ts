@@ -49,7 +49,9 @@ export function navOpen(nav: StorageNav, loc: StorageLocation): StorageNav {
   if (same(nav.current, loc)) return nav
   const base: StorageLocation = { kind: 'section', section: sectionOf(loc) }
   // Opening an object from another section starts from that section.
-  const stack = sectionOf(nav.current) === base.section ? nav.stack : [base]
+  let stack = sectionOf(nav.current) === base.section ? nav.stack : [base]
+  // The wizard is a step, not a place to come back to: what it opens replaces it.
+  if (stack.length > 1 && stack[stack.length - 1]!.kind === 'create-volume') stack = stack.slice(0, -1)
   return make([...stack, loc])
 }
 
