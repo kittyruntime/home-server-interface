@@ -187,7 +187,7 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
       const r = raids.get(a)!
       // A member being rebuilt onto (role active, not yet in sync) is not
       // missing: the rebuilding issue covers it.
-      const present = r.members ? r.members.filter(m => m.role === "active").length : r.active
+      const present = r.members ? r.members.filter(m => m.role === "active" || m.role === "rebuilding").length : r.active
       const missing = r.total - Math.max(present, r.active)
       if (missing > 0) issues.push({ kind: "degraded", text: `${a} is missing ${missing} of ${r.total} disks` })
       if (r.syncAction && ["recovery", "resync", "reshape"].includes(r.syncAction) && r.resyncPercent != null)

@@ -37,3 +37,24 @@ func TestReplacementSizeProblem(t *testing.T) {
 		t.Error("unknown member sizes must be refused")
 	}
 }
+
+// While an array recovers, the disk it rebuilds onto is listed without (S)
+// but is not in sync yet: sysfs says "spare". It is rebuilding, not active.
+func TestMarkRebuilding(t *testing.T) {
+	ps := hostMdMemberState
+	t.Cleanup(func() { hostMdMemberState = ps })
+	hostMdMemberState = func(md, dev string) string {
+		if md == "md2" && dev == "sde" {
+			return "spare"
+		}
+		return "in_sync"
+	}
+	raids := []raidArray{
+		{Name: "md2", SyncAction: "recovery", Members: []raidMember{{Name: "sde", Role: "active"}, {Name: "sdc", Role: "active"}}},
+		{Name: "md1", Members: []raidMember{{Name: "sda", Role: "active"}}},
+	}
+	markRebuilding(raids)
+	if raids[0].Members[0].Role != "rebuilding" || raids[0].Members[1].Role != "active" || raids[1].Members[0].Role != "active" {
+		t.Fatalf("roles: %+v %+v", raids[0].Members, raids[1].Members)
+	}
+}

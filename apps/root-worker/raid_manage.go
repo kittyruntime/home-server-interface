@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -56,3 +58,26 @@ func replacementSizeProblem(device string, size int64, memberSizes []int64) stri
 func handleRaidFail(nc *nats.Conn, msg *nats.Msg)   { servePlanOp(nc, msg, planRaidFail) }
 func handleRaidRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planRaidRemove) }
 func handleRaidAdd(nc *nats.Conn, msg *nats.Msg)    { servePlanOp(nc, msg, planRaidAdd) }
+
+// hostMdMemberState reads the md state of one member ("in_sync", "spare",
+// "faulty", ...).
+var hostMdMemberState = func(md, dev string) string {
+	b, _ := os.ReadFile(filepath.Join("/sys/block", md, "md", "dev-"+dev, "state"))
+	return strings.TrimSpace(string(b))
+}
+
+// markRebuilding gives the disk a recovering array rebuilds onto the role
+// "rebuilding": /proc/mdstat lists it like an active member.
+func markRebuilding(raids []raidArray) {
+	for i := range raids {
+		if raids[i].SyncAction != "recovery" {
+			continue
+		}
+		for j := range raids[i].Members {
+			m := &raids[i].Members[j]
+			if m.Role == "active" && strings.Contains(hostMdMemberState(raids[i].Name, m.Name), "spare") {
+				m.Role = "rebuilding"
+			}
+		}
+	}
+}

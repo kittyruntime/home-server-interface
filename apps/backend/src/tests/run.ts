@@ -1206,6 +1206,9 @@ await testSharePlans()
   const issuesWith = (r: any) => buildVolumes({ ...input, raids: [{ ...input.raids[0], ...r }] } as any).volumes.find(v => v.id === "U-LV")!.issues
   const building = issuesWith({ level: "raid5", active: 2, total: 3, members: [{ name: "sdb1", role: "active" }, { name: "sdc1", role: "active" }, { name: "sdd1", role: "active" }] })
   assert.deepEqual(building.filter(i => i.kind !== "nearly-full").map(i => i.text), ["md0 is rebuilding (42%)"])
+  // The worker names the disk being rebuilt onto: present, not missing.
+  const named = issuesWith({ level: "raid1", active: 1, total: 2, members: [{ name: "sdb1", role: "active" }, { name: "sdc1", role: "rebuilding" }] })
+  assert.ok(!named.some(i => i.kind === "degraded"), "a rebuilding member is not missing")
   // One rebuilding, one really gone.
   const oneGone = issuesWith({ level: "raid6", active: 2, total: 4, members: [{ name: "sdb1", role: "active" }, { name: "sdc1", role: "active" }, { name: "sdd1", role: "active" }, { name: "sde1", role: "faulty" }] })
   assert.ok(oneGone.some(i => i.text === "md0 is missing 1 of 4 disks"))

@@ -1378,6 +1378,7 @@ func doListDisks() (*disksResult, *fsError) {
 
 	mdData, _ := os.ReadFile("/proc/mdstat")
 	raids := parseMdstat(string(mdData))
+	markRebuilding(raids)
 
 	return &disksResult{Disks: disks, Raids: raids}, nil
 }

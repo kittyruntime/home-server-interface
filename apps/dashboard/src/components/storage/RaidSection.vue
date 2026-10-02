@@ -445,7 +445,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 </svg>
                 <div>
                   <div class="text-2xs font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
-                  <div class="text-2xs text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || 'not mounted' }}</div>
+                  <div class="text-2xs text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : 'not mounted') }}</div>
                 </div>
               </div>
             </div>
@@ -465,8 +465,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <div class="rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
               <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
                 <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
-                  :class="m.role === 'faulty' ? 'bg-danger/10 text-danger' : m.role === 'spare' ? 'bg-info/10 text-info' : 'bg-success/10 text-success'">
-                  {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : 'Active' }}
+                  :class="m.role === 'faulty' ? 'bg-danger/10 text-danger' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
+                  {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : m.role === 'rebuilding' ? 'Rebuilding' : 'Active' }}
                 </span>
                 <div class="min-w-0 flex-1">
                   <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ m.name }}</span>
@@ -475,7 +475,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 </div>
                 <button v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="btn btn-ghost btn-xs shrink-0"
                   :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</button>
-                <button v-else-if="m.role !== 'active'" type="button" class="btn btn-outline btn-xs shrink-0"
+                <button v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="btn btn-outline btn-xs shrink-0"
                   :disabled="memberBusy !== null" @click="removeMember(r, m)">
                   {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
                 </button>

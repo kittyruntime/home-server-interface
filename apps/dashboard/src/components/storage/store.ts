@@ -44,7 +44,7 @@ export type RaidArray = {
   members?: RaidMember[]
 }
 
-export type RaidMember = { name: string; role: 'active' | 'faulty' | 'spare' }
+export type RaidMember = { name: string; role: 'active' | 'faulty' | 'spare' | 'rebuilding' }
 
 export type LvmPV = { name: string; vgName: string; size: number; free: number }
 export type LvmVG = { name: string; size: number; free: number; pvCount: number; lvCount: number }
