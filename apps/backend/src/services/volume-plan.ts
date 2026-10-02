@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import type { PlanApplyResult, PlanStep, StepResult } from "./storage-plan"
-import { workerError } from "./sharing-plan"
+import { noAnswer, workerError } from "./sharing-plan"
 
 // Create volume (#40): one plan to review from the worker chain
 // (volume.create), a Place on the new folder, and an SMB share of it. Applied
@@ -81,8 +81,7 @@ export async function applyVolume(input: VolumeInput, fingerprint: string, deps:
   try {
     vol = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "volume.create", input: input.volume, fingerprint: volume.fingerprint })
   } catch (e) {
-    const code = (e as { code?: string }).code
-    if (code === "ERR" || code === "ESTALE" || code === "SMBD_MISSING") workerError(e)
+    if (!noAnswer(e)) workerError(e)
     // No answer: the chain may be running on the host right now.
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",

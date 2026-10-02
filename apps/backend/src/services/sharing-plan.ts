@@ -41,6 +41,13 @@ function noSambaRemoval(name: string): PlanStep {
   return { kind: "delete", target: name, summary: `Samba is not installed; only HSI's record of the share ${name} is removed` }
 }
 
+/** The worker never answered (timeout, not running): the operation may still
+ *  be running on the host. Any other error is the worker's answer. */
+export function noAnswer(e: unknown): boolean {
+  const code = (e as { code?: string }).code
+  return code === undefined || code === "TIMEOUT" || code === "503"
+}
+
 export function workerError(e: unknown): never {
   const code = (e as { code?: string }).code
   const message = e instanceof Error ? e.message : String(e)
