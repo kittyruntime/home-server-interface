@@ -313,6 +313,15 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 		steps = append(steps, s)
 	}
+	// Erasing a filesystem signature sends no uevent: without this, lsblk
+	// keeps showing the old filesystem on the freed disks.
+	if len(base) > 0 {
+		trigger := cmdStep("udev", "Have udev read "+strings.Join(base, ", ")+" again", append([]string{"udevadm", "trigger", "--action=change"}, base...))
+		trigger.OnFailure = "ignore"
+		settle := cmdStep("udev", "Wait for udev", []string{"udevadm", "settle"})
+		settle.OnFailure = "ignore"
+		steps = append(steps, trigger, settle)
+	}
 	// Last: until the volume is fully gone, the empty folder stays immutable,
 	// so a share brought back after a failure cannot write to the system disk.
 	if mp != "" && (mounted || hostExists(mp)) {
