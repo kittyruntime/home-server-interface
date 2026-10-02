@@ -1497,4 +1497,76 @@ await testSharePlans()
   await assert.rejects(vp.previewVolume({ volume: input.volume, share: { smbName: "x" } } as any, deps()), (e: any) => e.code === "BAD_REQUEST")
 }
 
+// Remove volume (#40): shares off first, then the worker chain, then the Places.
+{
+  const vr = await import("../services/volume-remove-plan")
+  const calls: string[] = []
+  const volStep = { kind: "run", target: "/dev/data/data", summary: "Delete the logical volume" }
+  const smbStep = { kind: "update", target: "/etc/nasui/samba/smb.conf", summary: "Update the Samba configuration" }
+  const preview = (payload: any) => payload.op === "smb.sync" ? { steps: [smbStep], fingerprint: "s1" } : { steps: [volStep], fingerprint: "v1" }
+  const deps = (over: Record<string, unknown> = {}): any => ({
+    smbdInstalled: async () => true,
+    shareDefsWithout: async () => [],
+    serialize: async (fn: any) => fn(),
+    resync: async () => { calls.push("resync") },
+    deletePlace: async (id: string) => { calls.push(`place:${id}`) },
+    releaseHold: async (mp: string) => { calls.push(`hold:${mp}`) },
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return preview(payload)
+      calls.push(`apply:${payload.op}`)
+      return { ok: true, steps: payload.op === "smb.sync" ? [smbStep] : [volStep], results: [{ status: "done" }], reply: { freed: ["/dev/sda"] } }
+    },
+    ...over,
+  })
+  const target = { uuid: "fs-1", mountPoint: "/srv/data", name: "data", places: [{ id: "p1", name: "Photos" }], apps: [], shared: true }
+
+  const pv = await vr.previewVolumeRemove(target, deps())
+  assert.deepEqual(pv.steps.map(s => s.summary), ["Update the Samba configuration", "Delete the logical volume", 'Delete the Place "Photos"'])
+  const unshared = await vr.previewVolumeRemove({ ...target, shared: false }, deps())
+  assert.equal(unshared.steps[0]!.summary, "Delete the logical volume", "no Samba part without a share")
+
+  await assert.rejects(vr.previewVolumeRemove({ ...target, apps: ["immich"] }, deps()),
+    (e: any) => e.code === "PRECONDITION_FAILED" && /immich/.test(e.message))
+
+  calls.length = 0
+  const ok = await vr.applyVolumeRemove(target, pv.fingerprint, deps())
+  assert.equal(ok.ok, true)
+  assert.deepEqual(calls, ["apply:smb.sync", "apply:volume.remove", "place:p1", "hold:/srv/data"])
+  assert.equal(ok.results.length, ok.steps.length)
+
+  // The chain fails: the Places stay, Samba gets its shares back.
+  calls.length = 0
+  const failed = await vr.applyVolumeRemove(target, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return preview(payload)
+      calls.push(`apply:${payload.op}`)
+      return payload.op === "smb.sync"
+        ? { ok: true, steps: [smbStep], results: [{ status: "done" }] }
+        : { ok: false, error: "vgremove failed", steps: [volStep], results: [{ status: "failed", error: "vgremove failed" }] }
+    },
+  }))
+  assert.equal(failed.ok, false)
+  assert.ok(!calls.some(c => c.startsWith("place:")), "no Place deleted")
+  assert.ok(calls.includes("resync"))
+  assert.equal(failed.results.at(-1)!.status, "not-run")
+
+  // No answer from the host.
+  calls.length = 0
+  await assert.rejects(vr.applyVolumeRemove(target, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return preview(payload)
+      if (payload.op === "smb.sync") return { ok: true, steps: [smbStep], results: [{ status: "done" }] }
+      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+    },
+  })), (e: any) => /may still be running/.test(e.message))
+  assert.ok(calls.includes("resync"))
+
+  // The Place cannot be deleted after the disks are erased.
+  const noPlace = await vr.applyVolumeRemove(target, pv.fingerprint, deps({ deletePlace: async () => { throw new Error("locked") } }))
+  assert.equal(noPlace.ok, false)
+  assert.match(noPlace.error!, /^The disks are free, but the Place "Photos" could not be deleted: locked/)
+
+  await assert.rejects(vr.applyVolumeRemove(target, "other", deps()), (e: any) => e.code === "CONFLICT")
+}
+
 console.log("Backend security tests passed")
