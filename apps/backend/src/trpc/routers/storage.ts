@@ -7,7 +7,7 @@ import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
 import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
-import { desiredShareDefs, effectiveSmbName, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
+import { desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { appSources, fetchVolumes, resumeVolume, volumeStates } from "../../services/volume-guard"
@@ -195,6 +195,8 @@ async function removeTarget(ctx: Context, id: string): Promise<RemoveTarget> {
 
 function removeDeps(ctx: Context, timeout: number): VolumeRemoveDeps {
   return {
+    isAdmin: !!ctx.user?.isAdmin,
+    syncAccess: () => syncPlaceAccess(ctx.prisma),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
     shareDefsWithout: async (placeIds: string[]) => {

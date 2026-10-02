@@ -38,6 +38,8 @@ export interface PlanRequest {
   danger?: boolean
   /** The action stays disabled until this text is typed (a name to erase). */
   confirmText?: string
+  /** A line the review opens with, e.g. what data is lost. */
+  notice?: string
   resolve: (r: PlanOutcome) => void
 }
 
@@ -59,7 +61,7 @@ let nextId = 0
 export async function applyPlanned(
   op: PlanOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain; confirmText?: string },
+  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain; confirmText?: string; notice?: string },
 ): Promise<{ warnings: string[] } & Record<string, unknown>> {
   const outcome = await new Promise<PlanOutcome>(resolve => {
     planRequest.value?.resolve({ status: 'cancelled' })

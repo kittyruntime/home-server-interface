@@ -194,6 +194,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
 
       <template v-else-if="steps.length">
         <!-- What will be erased: named, not hinted at. -->
+        <p v-if="planRequest.notice && !done" class="text-sm font-medium text-danger">{{ planRequest.notice }}</p>
         <section v-if="destructiveSteps.length && !done" class="rounded-lg border border-[var(--c-danger)]/40 px-4 py-3">
           <p class="text-sm font-medium text-danger">
             {{ destructiveSteps.length === 1 ? '1 step erases data' : `${destructiveSteps.length} steps erase data` }}

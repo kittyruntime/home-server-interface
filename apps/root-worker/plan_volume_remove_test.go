@@ -252,3 +252,58 @@ func TestParseFuser(t *testing.T) {
 		t.Fatalf("an idle mount is not busy: %v", got)
 	}
 }
+
+func TestPlanVolumeRemoveNamedArrayPV(t *testing.T) {
+	stubRemoveHost(t)
+	pr := hostRealPath
+	t.Cleanup(func() { hostRealPath = pr })
+	// LVM reports the PV by the array's name link.
+	hostPvs = func() []lvmPV { return []lvmPV{{Name: "/dev/md/data", VGName: "data"}} }
+	hostRealPath = func(p string) string {
+		if p == "/dev/md/data" {
+			return "/dev/md1"
+		}
+		return p
+	}
+	p, fe := build(t, planVolumeRemove, removeReq)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	got := argvs(p)
+	found := false
+	for _, a := range got {
+		found = found || reflect.DeepEqual(a, []string{"mdadm", "--stop", "/dev/md1"})
+	}
+	if !found {
+		t.Fatalf("the array behind /dev/md/data is stopped: %v", got)
+	}
+}
+
+func TestPlanVolumeRemoveMultiDeviceBtrfs(t *testing.T) {
+	stubRemoveHost(t)
+	stubConfigFiles(t, "UUID=fs-1 /srv/data btrfs defaults,nofail 0 0\n", "")
+	hostDevsByUUID = func(string) []string { return []string{"/dev/sdf", "/dev/sdg"} }
+	hostBlkid = func(dev, tag string) string {
+		if tag == "TYPE" {
+			return "btrfs"
+		}
+		return ""
+	}
+	hostProcMounts = func() string { return "/dev/sdf /srv/data btrfs rw 0 0\n" }
+	p, fe := build(t, planVolumeRemove, removeReq)
+	if fe != nil {
+		t.Fatalf("a btrfs on two disks is one volume: %+v", fe)
+	}
+	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/sdf"}, {"wipefs", "-a", "/dev/sdg"}, {"chattr", "-i", "/srv/data"}}
+	if !reflect.DeepEqual(argvs(p), want) {
+		t.Fatalf("commands: %v", argvs(p))
+	}
+	if !reflect.DeepEqual(p.Reply["freed"], []string{"/dev/sdf", "/dev/sdg"}) {
+		t.Fatalf("both disks are freed: %v", p.Reply["freed"])
+	}
+	// Two ext4 with one UUID stay a clone: refused.
+	hostBlkid = func(dev, tag string) string { return "ext4" }
+	if _, fe := build(t, planVolumeRemove, removeReq); fe == nil {
+		t.Fatal("a cloned ext4 is refused")
+	}
+}

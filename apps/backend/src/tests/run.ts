@@ -1489,6 +1489,14 @@ await testSharePlans()
     },
   })), (e: any) => /may still be running/.test(e.message))
 
+  // A refusal from the worker at apply time is an answer, shown as such.
+  await assert.rejects(vp.applyVolume(input as any, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return previewOk(payload)
+      throw Object.assign(new Error("sdf belongs to the system disk"), { code: "ESYS" })
+    },
+  })), (e: any) => /system disk/.test(e.message) && !/may still be running/.test(e.message))
+
   // Stale: CONFLICT.
   await assert.rejects(vp.applyVolume(input as any, "other", deps()), (e: any) => e.code === "CONFLICT")
   // Places and shares are for admins.
@@ -1505,6 +1513,8 @@ await testSharePlans()
   const smbStep = { kind: "update", target: "/etc/nasui/samba/smb.conf", summary: "Update the Samba configuration" }
   const preview = (payload: any) => payload.op === "smb.sync" ? { steps: [smbStep], fingerprint: "s1" } : { steps: [volStep], fingerprint: "v1" }
   const deps = (over: Record<string, unknown> = {}): any => ({
+    isAdmin: true,
+    syncAccess: async () => {},
     smbdInstalled: async () => true,
     shareDefsWithout: async () => [],
     serialize: async (fn: any) => fn(),
@@ -1585,6 +1595,27 @@ await testSharePlans()
   })
   const sp = await vr.previewVolumeRemove(target, strict)
   assert.equal((await vr.applyVolumeRemove(target, sp.fingerprint, strict)).ok, true, "apply sends the previewed input")
+
+  // A refusal from the worker at apply time is an answer, shown as such.
+  await assert.rejects(vr.applyVolumeRemove(target, pv.fingerprint, deps({
+    worker: async (subject: string, payload: any) => {
+      if (subject === "root.plan.preview") return preview(payload)
+      if (payload.op === "smb.sync") return { ok: true, steps: [smbStep], results: [{ status: "done" }] }
+      throw Object.assign(new Error("/srv/data is in use by bash; stop them first"), { code: "EBUSY" })
+    },
+  })), (e: any) => /in use by bash/.test(e.message) && !/may still be running/.test(e.message))
+
+  // Admins only, checked by the plan itself too.
+  await assert.rejects(vr.previewVolumeRemove(target, deps({ isAdmin: false })), (e: any) => e.code === "FORBIDDEN")
+
+  // The hsi-share roster follows the deleted Places, after the share lock.
+  calls.length = 0
+  let locked = false
+  await vr.applyVolumeRemove(target, pv.fingerprint, deps({
+    serialize: async (fn: any) => { locked = true; try { return await fn() } finally { locked = false } },
+    syncAccess: async () => { calls.push(locked ? "access:locked" : "access") },
+  }))
+  assert.equal(calls.at(-1), "access")
 
   // The volume as the Volumes page knows it.
   const vol = (o: any) => ({ id: "fs-1", name: "data", state: "mounted", mountPoint: "/srv/data", usedBy: { places: [], shares: [], apps: [] }, ...o })

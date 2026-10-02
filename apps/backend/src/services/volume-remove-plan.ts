@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import type { PlanApplyResult, PlanStep, StepResult } from "./storage-plan"
-import { workerError } from "./sharing-plan"
+import { noAnswer, workerError } from "./sharing-plan"
 
 // Remove volume (#40): one plan to review from the shares of the volume's
 // Places (smb.sync, so Samba lets go of the folder before it is unmounted),
@@ -21,6 +21,9 @@ export type RemoveTarget = {
 }
 
 export interface VolumeRemoveDeps {
+  isAdmin: boolean
+  /** Brings the hsi-share roster in line with the Places left (takes the share lock). */
+  syncAccess(): Promise<void>
   worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
   smbdInstalled(): Promise<boolean>
   /** Share definitions without the shares of these Places. */
@@ -55,7 +58,8 @@ export function removeTargetOf(v: {
 const placeStep = (p: { name: string }): PlanStep => ({ kind: "remove", target: p.name, summary: `Delete the Place "${p.name}"` })
 const notRun = (n: number): StepResult[] => Array.from({ length: n }, () => ({ status: "not-run" }))
 
-function check(t: RemoveTarget) {
+function check(t: RemoveTarget, deps: VolumeRemoveDeps) {
+  if (!deps.isAdmin) throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can remove a volume" })
   if (t.apps.length)
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: `${t.apps.join(", ")} ${t.apps.length === 1 ? "stores" : "store"} data on this volume: remove ${t.apps.length === 1 ? "it" : "them"} or move the data first` })
 }
@@ -80,19 +84,21 @@ async function parts(t: RemoveTarget, deps: VolumeRemoveDeps) {
 }
 
 export async function previewVolumeRemove(t: RemoveTarget, deps: VolumeRemoveDeps): Promise<Preview> {
-  check(t)
+  check(t, deps)
   const { smb, volume, fingerprint } = await parts(t, deps)
   return { steps: [...(smb?.steps ?? []), ...volume.steps, ...t.places.map(placeStep)], fingerprint }
 }
 
 export async function applyVolumeRemove(t: RemoveTarget, fingerprint: string, deps: VolumeRemoveDeps): Promise<PlanApplyResult> {
-  check(t)
+  check(t, deps)
   // Resync runs after the share lock is released: it takes the lock itself.
   let resync = false
+  let placesGone = false
   try {
     return await deps.serialize(() => run())
   } finally {
     if (resync) await deps.resync().catch(() => {})
+    if (placesGone) await deps.syncAccess().catch(() => {})
   }
 
   async function run(): Promise<PlanApplyResult> {
@@ -124,8 +130,7 @@ export async function applyVolumeRemove(t: RemoveTarget, fingerprint: string, de
     try {
       vol = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "volume.remove", input: workerInput(t, !!smb), fingerprint: volume.fingerprint })
     } catch (e) {
-      const code = (e as { code?: string }).code
-      if (code === "ERR" || code === "ESTALE") workerError(e)
+      if (!noAnswer(e)) workerError(e)
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: `No answer from the host (${e instanceof Error ? e.message : String(e)}). The removal may still be running: check the Storage page before trying again.`,
@@ -140,6 +145,7 @@ export async function applyVolumeRemove(t: RemoveTarget, fingerprint: string, de
     for (const p of t.places) {
       try {
         await deps.deletePlace(p.id)
+        placesGone = true
         results.push({ status: "done" })
       } catch (e) {
         const error = `The disks are free, but the Place "${p.name}" could not be deleted: ${e instanceof Error ? e.message : String(e)}`

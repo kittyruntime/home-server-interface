@@ -19,7 +19,14 @@ var (
 		out, _ := command("blkid", "-o", "device", "-t", "UUID="+uuid).Output()
 		return strings.Fields(string(out))
 	}
-	hostPvs  = func() []lvmPV { pvs, _, _ := getLvmInfo(); return pvs }
+	hostPvs = func() []lvmPV { pvs, _, _ := getLvmInfo(); return pvs }
+	// /dev/md/<name> and other links, resolved to the kernel device.
+	hostRealPath = func(p string) string {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			return r
+		}
+		return p
+	}
 	hostBusy = func(mp string) []string {
 		// The PIDs go to stdout, the table to stderr.
 		out, _ := command("fuser", "-vm", mp).CombinedOutput()
@@ -101,8 +108,15 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	if len(devs) == 0 {
 		return nil, &fsError{Code: "ENOENT", Message: "no filesystem with UUID " + req.UUID + " on this server"}
 	}
-	if len(devs) > 1 {
-		return nil, &fsError{Code: "ERR", Message: "several devices carry this filesystem (" + strings.Join(devs, ", ") + "), a clone or a snapshot: remove it by hand"}
+	// A btrfs spread over several disks carries its UUID on each of them;
+	// anything else carrying a UUID twice is a clone or a snapshot.
+	multi := len(devs) > 1
+	if multi {
+		for _, d := range devs {
+			if hostBlkid(d, "TYPE") != "btrfs" {
+				return nil, &fsError{Code: "ERR", Message: "several devices carry this filesystem (" + strings.Join(devs, ", ") + "), a clone or a snapshot: remove it by hand"}
+			}
+		}
 	}
 	dev := devs[0]
 
@@ -115,7 +129,7 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 			break
 		}
 	}
-	aliases := []string{dev}
+	aliases := append([]string{}, devs...)
 	if lv != nil {
 		aliases = append(aliases, lv.Path, lvDmPath(lv.VGName, lv.Name))
 	}
@@ -185,6 +199,7 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	var arrays []array
 	addArray := func(d string) bool {
+		d = hostRealPath(d)
 		name := filepath.Base(d)
 		if !reMdDev.MatchString(name) {
 			return false
@@ -208,6 +223,8 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 				base = append(base, p)
 			}
 		}
+	case lv == nil && multi:
+		base = append(base, devs...)
 	case lv == nil:
 		if addArray(dev) {
 			base = append(base, arrays[len(arrays)-1].members...)

@@ -10,6 +10,7 @@ import { useStorageData, fmtBytes, type BlockDev } from './store'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { volumeTargets } from './object-targets'
 import { applyPlanned } from '../../lib/plan'
+import { removeNotice } from '../../lib/confirm-text'
 import { useAuth } from '../../lib/auth'
 
 // The page of one volume (#40): where the data lives, what it is made of,
@@ -41,6 +42,7 @@ async function removeVolume() {
   try {
     await applyPlanned('volume.remove', { id: v.id }, {
       domain: 'volume', title: `Remove the volume ${v.name}`, actionLabel: 'Remove volume', danger: true, confirmText: v.name,
+      notice: removeNotice(v.name, v.space ? fmtBytes(v.space.used) : undefined),
     })
     emit('navigate', 'volumes')
   } catch (e) {
