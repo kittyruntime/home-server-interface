@@ -26,7 +26,7 @@ export type VDev = {
 
 export type VolumeInput = {
   devices: VDev[]
-  raids: Array<{ name: string; level: string; state: string; active: number; total: number; resyncPercent?: number | null; syncAction?: string }>
+  raids: Array<{ name: string; level: string; state: string; active: number; total: number; resyncPercent?: number | null; syncAction?: string; members?: Array<{ name: string; role: string }> }>
   lvm: {
     pvs: Array<{ name: string; vgName: string }>
     vgs: Array<{ name: string }>
@@ -185,7 +185,11 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
     const issues: VolumeIssue[] = []
     for (const a of sorted(arrays)) {
       const r = raids.get(a)!
-      if (r.active < r.total) issues.push({ kind: "degraded", text: `${a} is missing ${r.total - r.active} of ${r.total} disks` })
+      // A member being rebuilt onto (role active, not yet in sync) is not
+      // missing: the rebuilding issue covers it.
+      const present = r.members ? r.members.filter(m => m.role === "active").length : r.active
+      const missing = r.total - Math.max(present, r.active)
+      if (missing > 0) issues.push({ kind: "degraded", text: `${a} is missing ${missing} of ${r.total} disks` })
       if (r.syncAction && ["recovery", "resync", "reshape"].includes(r.syncAction) && r.resyncPercent != null)
         issues.push({ kind: "rebuilding", text: `${a} is ${SYNC_WORD[r.syncAction] ?? "rebuilding"} (${Math.round(r.resyncPercent)}%)` })
     }

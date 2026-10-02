@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { possibleLevels, usableBytes, tolerance, proposeName, mountFor } from '../src/components/storage/volume-wizard.ts'
+import { possibleLevels, usableBytes, tolerance, proposeName, mountFor, levelsHint } from '../src/components/storage/volume-wizard.ts'
 
 test('only the levels the disk count allows', () => {
   assert.deepEqual(possibleLevels(1), ['none'])
@@ -30,4 +30,10 @@ test('proposed names avoid what exists', () => {
   assert.equal(proposeName(['data'], []), 'data2')
   assert.equal(proposeName(['data'], ['/srv/data2']), 'data3')
   assert.equal(mountFor('media'), '/srv/media')
+})
+
+test('levelsHint names only the levels still out of reach', () => {
+  assert.equal(levelsHint(2), 'RAID 5 needs 3 disks, RAID 6 and RAID 10 need 4.')
+  assert.equal(levelsHint(3), 'RAID 6 and RAID 10 need 4 disks.')
+  assert.equal(levelsHint(4), '')
 })

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Volumes**: a new RAID 5 or 6 that is still building its parity shows as
+  rebuilding, not as missing a disk.
+- **Create volume wizard**: after creating a volume, the breadcrumb goes from
+  Volumes straight to the new volume; the redundancy step only names the
+  levels that need more disks.
+
 ## [1.62.0] - 2026-10-01
 
 ### Added

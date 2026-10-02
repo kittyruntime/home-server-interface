@@ -10,6 +10,13 @@ export function possibleLevels(n: number): Level[] {
   return [...redundant, 'none']
 }
 
+/** What more disks would allow, for the levels `n` disks cannot do yet. */
+export function levelsHint(n: number): string {
+  if (n < 3) return 'RAID 5 needs 3 disks, RAID 6 and RAID 10 need 4.'
+  if (n < 4) return 'RAID 6 and RAID 10 need 4 disks.'
+  return ''
+}
+
 /** Usable bytes: arrays size every member to the smallest disk. */
 export function usableBytes(level: Level, sizes: number[]): number {
   if (!sizes.length) return 0

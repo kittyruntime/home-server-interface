@@ -5,7 +5,7 @@ import { useAuth } from '../../lib/auth'
 import { applyPlanned } from '../../lib/plan'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { isFreeDisk } from './device-state'
-import { possibleLevels, usableBytes, tolerance, proposeName, mountFor, type Level } from './volume-wizard'
+import { possibleLevels, usableBytes, tolerance, proposeName, mountFor, levelsHint, type Level } from './volume-wizard'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 
 // Create volume (#40): free disks to a mounted, owned, optionally shared
@@ -228,7 +228,7 @@ function diskLabel(d: BlockDev): string {
               </span>
             </label>
           </div>
-          <p v-if="chosen.length < 4" class="mt-3 text-xs text-[var(--c-text-3)]">RAID 5 needs 3 disks, RAID 6 and RAID 10 need 4.</p>
+          <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-[var(--c-text-3)]">{{ levelsHint(chosen.length) }}</p>
         </template>
 
         <!-- 3. Layout -->
