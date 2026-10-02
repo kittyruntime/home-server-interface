@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names the erased disks and the deleted Places; Remove stays disabled until
   the volume name is typed. A volume an app stores data on cannot be removed.
 
+### Fixed
+- **RAID arrays**: the mdadm.conf line of a new RAID 5 or 6 no longer records
+  the disk it was still building onto as a spare, which made the mdadm
+  monitor report a missing spare once the build ended.
+
 ## [1.62.1] - 2026-10-02
 
 ### Fixed
