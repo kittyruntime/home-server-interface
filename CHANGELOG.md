@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.62.1] - 2026-10-02
+
 ### Fixed
 - **Volumes**: a new RAID 5 or 6 that is still building its parity shows as
   rebuilding, not as missing a disk.
@@ -1230,7 +1232,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.1...HEAD
+[1.62.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.0...v1.62.1
 [1.62.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.61.0...v1.62.0
 [1.61.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.60.0...v1.61.0
 [1.60.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.59.0...v1.60.0
