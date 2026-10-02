@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RAID arrays**: the mdadm.conf line of a new RAID 5 or 6 no longer records
   the disk it was still building onto as a spare, which made the mdadm
   monitor report a missing spare once the build ended.
+- **Create volume wizard**: when the server refuses the creation as it starts
+  (a disk in use, a system disk), the wizard shows the reason instead of
+  saying the creation may still be running.
 
 ## [1.62.1] - 2026-10-02
 
