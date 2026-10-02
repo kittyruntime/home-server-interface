@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.63.0] - 2026-10-02
+
 ### Added
 - **Remove volume**: from a volume's page (Overview > Remove this volume), one
   plan stops sharing its Places, unmounts it, removes it from fstab, deletes
@@ -1248,7 +1250,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.63.0...HEAD
+[1.63.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.1...v1.63.0
 [1.62.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.0...v1.62.1
 [1.62.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.61.0...v1.62.0
 [1.61.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.60.0...v1.61.0
