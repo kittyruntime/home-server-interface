@@ -1,10 +1,11 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, storageProcedure, protectedProcedure } from "../index"
+import { router, storageProcedure, protectedProcedure, adminProcedure } from "../index"
 import type { Context } from "../context"
 import { normalizeDiskLabel } from "../../services/disk-labels"
 import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
+import { applyVolumeRemove, previewVolumeRemove, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
 import { desiredShareDefs, effectiveSmbName, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
@@ -161,6 +162,56 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
   }
 }
 
+// Every data volume with its stack and what uses it (#40).
+async function loadVolumes(ctx: Context) {
+  const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
+    requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
+    requestSync<VolumeInput["lvm"]>("root.sys.lvm.info", {}, 10_000).catch(() => ({ pvs: [], vgs: [], lvs: [] })),
+    volumeStates.get().catch(() => []),
+    ctx.prisma.volumeHold.findMany(),
+    ctx.prisma.place.findMany({ select: { id: true, name: true, path: true } }),
+    ctx.prisma.share.findMany({ where: { enabled: true }, include: { place: { select: { name: true } } } }),
+    appSources().catch(() => []),
+  ])
+  return buildVolumes({
+    devices: block.devices ?? [],
+    raids: block.raids ?? [],
+    lvm,
+    guard,
+    holds,
+    places,
+    shares: shares.map(s => ({ placeId: s.placeId, name: effectiveSmbName(s, s.place.name) })),
+    apps,
+  })
+}
+
+// The volume to remove and what uses it, read from the server now.
+async function removeTarget(ctx: Context, id: string): Promise<RemoveTarget> {
+  const v = (await loadVolumes(ctx)).volumes.find(x => x.id === id)
+  if (!v) throw new TRPCError({ code: "NOT_FOUND", message: "This volume is no longer on the server" })
+  if (v.state === "missing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This volume is missing: its disks are not connected" })
+  return {
+    uuid: v.id, mountPoint: v.mountPoint ?? v.expectedMountPoint ?? "", name: v.name,
+    places: v.usedBy.places, apps: v.usedBy.apps, shared: v.usedBy.shares.length > 0,
+  }
+}
+
+function removeDeps(ctx: Context, timeout: number): VolumeRemoveDeps {
+  return {
+    worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
+    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    shareDefsWithout: async (placeIds: string[]) => {
+      const gone = await ctx.prisma.place.findMany({ where: { id: { in: placeIds } }, select: { path: true } })
+      const paths = new Set(gone.map(p => p.path))
+      return (await desiredShareDefs(ctx.prisma)).filter(d => !paths.has(d.path))
+    },
+    serialize: withShareLock,
+    resync: () => syncSharesBestEffort(ctx.prisma),
+    deletePlace: async (id: string) => { await ctx.prisma.place.delete({ where: { id } }) },
+    releaseHold: async (mountPoint: string) => { await ctx.prisma.volumeHold.deleteMany({ where: { mountPoint } }) },
+  }
+}
+
 export const storageRouter = router({
   // Operation plans (#36): preview what a storage operation will do, then
   // apply exactly that plan. Mutations, so inputs never travel in URLs.
@@ -207,6 +258,25 @@ export const storageRouter = router({
       return res
     }),
 
+  // Remove volume (#40): its shares, the worker chain and its Places, as one plan.
+  volumeRemovePlan: adminProcedure
+    .input(z.object({ id: z.string().min(1).max(128) }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await removeTarget(ctx, input.id)
+      ctx.audit.target = target.mountPoint || target.name
+      return previewVolumeRemove(target, removeDeps(ctx, 60_000))
+    }),
+  volumeRemoveApply: adminProcedure
+    .input(z.object({ id: z.string().min(1).max(128), fingerprint: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await removeTarget(ctx, input.id)
+      ctx.audit.target = target.mountPoint || target.name
+      const res = await applyVolumeRemove(target, input.fingerprint, removeDeps(ctx, 900_000))
+      ctx.audit.meta = { plan: planAuditMeta("volume.remove", res.steps, res.results) }
+      ctx.audit.success = res.ok
+      return res
+    }),
+
   // Recent operations on a storage object (#40): audit entries whose target
   // is exactly one of the object's names (device, /dev path, mount point, UUID).
   activity: storageProcedure
@@ -242,27 +312,7 @@ export const storageRouter = router({
   volumes: router({
     // The Volumes landing page (#40): every data filesystem with its stack,
     // redundancy, space, issues and what uses it.
-    overview: storageProcedure.query(async ({ ctx }) => {
-      const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
-        requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
-        requestSync<VolumeInput["lvm"]>("root.sys.lvm.info", {}, 10_000).catch(() => ({ pvs: [], vgs: [], lvs: [] })),
-        volumeStates.get().catch(() => []),
-        ctx.prisma.volumeHold.findMany(),
-        ctx.prisma.place.findMany({ select: { id: true, name: true, path: true } }),
-        ctx.prisma.share.findMany({ where: { enabled: true }, include: { place: { select: { name: true } } } }),
-        appSources().catch(() => []),
-      ])
-      return buildVolumes({
-        devices: block.devices ?? [],
-        raids: block.raids ?? [],
-        lvm,
-        guard,
-        holds,
-        places,
-        shares: shares.map(s => ({ placeId: s.placeId, name: effectiveSmbName(s, s.place.name) })),
-        apps,
-      })
-    }),
+    overview: storageProcedure.query(({ ctx }) => loadVolumes(ctx)),
 
     list: storageProcedure.query(async () => {
       const [volumes, holds] = await Promise.all([fetchVolumes().catch(() => []), prisma.volumeHold.findMany()])
