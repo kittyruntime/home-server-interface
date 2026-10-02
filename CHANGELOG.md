@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Remove volume**: from a volume's page (Overview > Remove this volume), one
+  plan stops sharing its Places, unmounts it, removes it from fstab, deletes
+  its logical volume, and its volume group and RAID array when they serve only
+  this volume, then erases the disks so they show as free again. The review
+  names the erased disks and the deleted Places; Remove stays disabled until
+  the volume name is typed. A volume an app stores data on cannot be removed.
+
 ## [1.62.1] - 2026-10-02
 
 ### Fixed

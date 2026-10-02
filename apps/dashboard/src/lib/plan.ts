@@ -10,7 +10,7 @@ export type StorageOp = Parameters<typeof trpc.storage.plan.mutate>[0]['op']
 export type AppOp = Parameters<typeof trpc.apps.plan.mutate>[0]['op']
 export type ShareOp = Parameters<typeof trpc.sharing.plan.mutate>[0]['op']
 export type UserOp = Parameters<typeof trpc.user.plan.mutate>[0]['op']
-export type PlanOp = StorageOp | AppOp | ShareOp | UserOp | 'volume.create'
+export type PlanOp = StorageOp | AppOp | ShareOp | UserOp | 'volume.create' | 'volume.remove'
 export type PlanDomain = 'storage' | 'apps' | 'sharing' | 'users' | 'volume'
 
 type StorageStep = Awaited<ReturnType<typeof trpc.storage.plan.mutate>>['steps'][number]
@@ -36,6 +36,8 @@ export interface PlanRequest {
   actionLabel: string
   /** Danger styling even without an erasing step (e.g. giving up redundancy). */
   danger?: boolean
+  /** The action stays disabled until this text is typed (a name to erase). */
+  confirmText?: string
   resolve: (r: PlanOutcome) => void
 }
 
@@ -57,7 +59,7 @@ let nextId = 0
 export async function applyPlanned(
   op: PlanOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain },
+  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain; confirmText?: string },
 ): Promise<{ warnings: string[] } & Record<string, unknown>> {
   const outcome = await new Promise<PlanOutcome>(resolve => {
     planRequest.value?.resolve({ status: 'cancelled' })

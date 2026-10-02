@@ -5,6 +5,7 @@ import LoadingState from './LoadingState.vue'
 import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
 import { trpc } from '../../lib/trpc'
+import { confirmMatches } from '../../lib/confirm-text'
 import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
 
 // Review then apply an operation plan (#36): the exact files, commands and
@@ -37,7 +38,9 @@ async function load() {
         : req.domain === 'users'
           ? await trpc.user.plan.mutate({ op: req.op as UserOp, input: req.input })
           : req.domain === 'volume'
-            ? await trpc.storage.volumePlan.mutate({ input: req.input as never })
+            ? req.op === 'volume.remove'
+              ? await trpc.storage.volumeRemovePlan.mutate(req.input as { id: string })
+              : await trpc.storage.volumePlan.mutate({ input: req.input as never })
             : await trpc.storage.plan.mutate({ op: req.op as StorageOp, input: req.input })
   } catch (e) {
     preview.value = null
@@ -47,7 +50,12 @@ async function load() {
   }
 }
 
+// Typed confirmation (e.g. the name of a volume to remove).
+const typed = ref('')
+const confirmed = computed(() => !planRequest.value?.confirmText || confirmMatches(typed.value, planRequest.value.confirmText))
+
 watch(() => planRequest.value?.id, id => {
+  typed.value = ''
   settled = false
   if (id !== undefined) void load()
 }, { immediate: true })
@@ -88,7 +96,9 @@ async function apply() {
         : req.domain === 'users'
           ? await trpc.user.apply.mutate({ op: req.op as UserOp, input: req.input, fingerprint })
           : req.domain === 'volume'
-            ? await trpc.storage.volumeApply.mutate({ input: req.input as never, fingerprint })
+            ? req.op === 'volume.remove'
+              ? await trpc.storage.volumeRemoveApply.mutate({ ...(req.input as { id: string }), fingerprint })
+              : await trpc.storage.volumeApply.mutate({ input: req.input as never, fingerprint })
             : await trpc.storage.apply.mutate({ op: req.op as StorageOp, input: req.input, fingerprint })
     applied.value = res
     if (res.ok) {
@@ -244,6 +254,10 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <p v-if="failedApply" role="alert" class="status-text text-danger">
           <span class="status-tag">[ERR]</span> The operation stopped at a failed step; later steps did not run.
         </p>
+        <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
+          <span class="text-xs text-[var(--c-text-2)]">Type <span class="font-mono text-[var(--c-text-1)]">{{ planRequest.confirmText }}</span> to confirm</span>
+          <input v-model="typed" class="input mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
+        </label>
       </template>
     </div>
 
@@ -258,7 +272,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <button
           v-else
           :class="['btn btn-sm', destructiveSteps.length || planRequest.danger ? 'btn-danger' : 'btn-primary']"
-          :disabled="loading || applying || !preview"
+          :disabled="loading || applying || !preview || !confirmed"
           @click="apply"
         >
           <BusyLabel :busy="applying" busy-label="Applying">{{ planRequest.actionLabel || 'Apply' }}</BusyLabel>
