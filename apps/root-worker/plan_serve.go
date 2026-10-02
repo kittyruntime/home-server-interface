@@ -33,6 +33,7 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"user.create":     planUserCreate,
 	"group.leave":     planGroupLeave,
 	"volume.create":   planVolumeCreate,
+	"volume.remove":   planVolumeRemove,
 }
 
 type planPreview struct {
