@@ -48,9 +48,14 @@ func TestPlanVolumeRemoveMirror(t *testing.T) {
 	}
 	want := [][]string{
 		{"umount", "/srv/data"},
+		// The filesystem's own signature first: lvremove and pvremove leave
+		// the data area as it was, and a partition later created at the
+		// same offset would show the old filesystem again.
+		{"wipefs", "-a", "/dev/data/data"},
 		{"lvremove", "-f", "/dev/data/data"},
 		{"vgremove", "-f", "data"},
 		{"pvremove", "-f", "/dev/md1"},
+		{"wipefs", "-a", "/dev/md1"},
 		{"mdadm", "--stop", "/dev/md1"},
 		{"mdadm", "--zero-superblock", "/dev/sda"},
 		{"mdadm", "--zero-superblock", "/dev/sdb"},
@@ -103,7 +108,7 @@ func TestPlanVolumeRemoveSharedVG(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe)
 	}
-	want := [][]string{{"umount", "/srv/data"}, {"lvremove", "-f", "/dev/data/data"}, {"chattr", "-i", "/srv/data"}}
+	want := [][]string{{"umount", "/srv/data"}, {"wipefs", "-a", "/dev/data/data"}, {"lvremove", "-f", "/dev/data/data"}, {"chattr", "-i", "/srv/data"}}
 	if !reflect.DeepEqual(argvs(p), want) {
 		t.Fatalf("commands: %v", argvs(p))
 	}

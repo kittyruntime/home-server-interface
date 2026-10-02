@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Arrays**: while an array rebuilds, the disk it rebuilds onto shows as
+  Rebuilding instead of Active (with a "Mark as failed" button), and the
+  Volumes page does not count it as missing. An array that carries an LVM
+  volume group shows that group instead of "not mounted".
+- **Remove volume**: the filesystem signature of the volume and the LVM label
+  inside its array are erased too, so a partition later created on a freed
+  disk no longer shows the removed volume again.
+
 ## [1.63.0] - 2026-10-02
 
 ### Added

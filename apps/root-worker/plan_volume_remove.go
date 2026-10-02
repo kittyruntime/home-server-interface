@@ -264,6 +264,9 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	if lv != nil {
+		// Its own signature first: lvremove leaves the data area as it was, and
+		// a partition later created at the same offset would show it again.
+		steps = append(steps, cmdStep(lv.Path, "Erase the filesystem signature of "+lv.Path, []string{"wipefs", "-a", lv.Path}))
 		steps = append(steps, destructive(cmdStep(lv.Path, "Delete the logical volume "+lv.Path+" and everything on it",
 			[]string{"lvremove", "-f", lv.Path}), lv.Path))
 		if vgExclusive {
@@ -279,6 +282,7 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 		conf := obs["mdadm.conf"]
 		changed := false
 		for _, a := range arrays {
+			steps = append(steps, cmdStep(a.dev, "Erase the signatures inside "+a.dev, []string{"wipefs", "-a", a.dev}))
 			steps = append(steps, cmdStep(a.dev, "Stop the RAID array "+a.dev, []string{"mdadm", "--stop", a.dev}))
 			a := a
 			edit := func(c string) string { return removeArrayEntries(c, a.name, a.uuid) }
