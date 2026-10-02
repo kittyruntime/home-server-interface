@@ -5,7 +5,7 @@ import type { Context } from "../context"
 import { normalizeDiskLabel } from "../../services/disk-labels"
 import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
-import { applyVolumeRemove, previewVolumeRemove, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
+import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
 import { desiredShareDefs, effectiveSmbName, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
@@ -163,15 +163,15 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
 }
 
 // Every data volume with its stack and what uses it (#40).
-async function loadVolumes(ctx: Context) {
+async function loadVolumes(ctx: Context, opts: { strict?: boolean } = {}) {
   const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
     requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
     requestSync<VolumeInput["lvm"]>("root.sys.lvm.info", {}, 10_000).catch(() => ({ pvs: [], vgs: [], lvs: [] })),
-    volumeStates.get().catch(() => []),
+    opts.strict ? volumeStates.get() : volumeStates.get().catch(() => []),
     ctx.prisma.volumeHold.findMany(),
     ctx.prisma.place.findMany({ select: { id: true, name: true, path: true } }),
     ctx.prisma.share.findMany({ where: { enabled: true }, include: { place: { select: { name: true } } } }),
-    appSources().catch(() => []),
+    opts.strict ? appSources() : appSources().catch(() => []),
   ])
   return buildVolumes({
     devices: block.devices ?? [],
@@ -187,13 +187,10 @@ async function loadVolumes(ctx: Context) {
 
 // The volume to remove and what uses it, read from the server now.
 async function removeTarget(ctx: Context, id: string): Promise<RemoveTarget> {
-  const v = (await loadVolumes(ctx)).volumes.find(x => x.id === id)
+  // Strict: an unreadable app list or volume guard must not read as "unused".
+  const v = (await loadVolumes(ctx, { strict: true })).volumes.find(x => x.id === id)
   if (!v) throw new TRPCError({ code: "NOT_FOUND", message: "This volume is no longer on the server" })
-  if (v.state === "missing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This volume is missing: its disks are not connected" })
-  return {
-    uuid: v.id, mountPoint: v.mountPoint ?? v.expectedMountPoint ?? "", name: v.name,
-    places: v.usedBy.places, apps: v.usedBy.apps, shared: v.usedBy.shares.length > 0,
-  }
+  return removeTargetOf(v)
 }
 
 function removeDeps(ctx: Context, timeout: number): VolumeRemoveDeps {

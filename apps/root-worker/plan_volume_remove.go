@@ -14,28 +14,42 @@ import (
 // VG, PVs, array), and erase the signatures so the disks show as free.
 
 var (
-	hostDevByUUID = func(uuid string) string {
-		out, _ := command("blkid", "-U", uuid).Output()
-		return strings.TrimSpace(string(out))
+	// Every device carrying the UUID: a clone or a snapshot carries it too.
+	hostDevsByUUID = func(uuid string) []string {
+		out, _ := command("blkid", "-o", "device", "-t", "UUID="+uuid).Output()
+		return strings.Fields(string(out))
 	}
 	hostPvs  = func() []lvmPV { pvs, _, _ := getLvmInfo(); return pvs }
 	hostBusy = func(mp string) []string {
-		// fuser prints the PIDs on stdout and the "USER PID ACCESS COMMAND"
-		// table on stderr; the command names are the last column.
+		// The PIDs go to stdout, the table to stderr.
 		out, _ := command("fuser", "-vm", mp).CombinedOutput()
-		seen := map[string]bool{}
-		var names []string
-		for _, l := range strings.Split(string(out), "\n")[1:] {
-			f := strings.Fields(l)
-			if len(f) < 2 || f[len(f)-1] == "kernel" || seen[f[len(f)-1]] {
-				continue
-			}
-			seen[f[len(f)-1]] = true
-			names = append(names, f[len(f)-1])
-		}
-		return names
+		return parseFuser(string(out))
 	}
 )
+
+// parseFuser returns the commands using a mount from "fuser -vm" output:
+//
+//	                     USER        PID ACCESS COMMAND
+//	/srv/data:           root     kernel mount /srv/data
+//	                     theo       1234 ..c.. bash
+//
+// The kernel's own mount row is not a process.
+func parseFuser(out string) []string {
+	seen := map[string]bool{}
+	var names []string
+	for _, l := range strings.Split(out, "\n") {
+		f := strings.Fields(l)
+		if len(f) < 4 || f[len(f)-1] == "COMMAND" || containsString(f, "kernel") {
+			continue
+		}
+		if name := f[len(f)-1]; !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
 
 // mountPointOf returns where dev (or one of its aliases) is mounted, if it is.
 func mountPointOf(procMounts string, aliases ...string) string {
@@ -53,10 +67,11 @@ func mountPointOf(procMounts string, aliases ...string) string {
 	return ""
 }
 
-// fstabMountPointFor returns the mount point of the fstab entry for UUID=uuid.
-func fstabMountPointFor(conf, uuid string) string {
+// fstabMountPointFor returns the mount point of the first fstab entry whose
+// source is one of sources.
+func fstabMountPointFor(conf string, sources []string) string {
 	for _, l := range splitConf(conf) {
-		if src, mp := fstabFields(l); src == "UUID="+uuid {
+		if src, mp := fstabFields(l); src != "" && containsString(sources, src) {
 			return mp
 		}
 	}
@@ -66,6 +81,10 @@ func fstabMountPointFor(conf, uuid string) string {
 func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
 		UUID string `json:"uuid"`
+		// SMB shares of this volume the caller removed from Samba before this
+		// plan runs: their open sessions are closed before the unmount, so
+		// smbd holding the folder at preview time is expected.
+		CloseShares []string `json:"closeShares"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return nil, badRequest(err)
@@ -73,10 +92,19 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	if req.UUID == "" || strings.ContainsAny(req.UUID, " \t\n/") {
 		return nil, &fsError{Code: "ERR", Message: "invalid volume id"}
 	}
-	dev := hostDevByUUID(req.UUID)
-	if dev == "" {
+	for _, n := range req.CloseShares {
+		if !reSmbShareName.MatchString(n) {
+			return nil, &fsError{Code: "ERR", Message: "invalid share name: " + n}
+		}
+	}
+	devs := hostDevsByUUID(req.UUID)
+	if len(devs) == 0 {
 		return nil, &fsError{Code: "ENOENT", Message: "no filesystem with UUID " + req.UUID + " on this server"}
 	}
+	if len(devs) > 1 {
+		return nil, &fsError{Code: "ERR", Message: "several devices carry this filesystem (" + strings.Join(devs, ", ") + "), a clone or a snapshot: remove it by hand"}
+	}
+	dev := devs[0]
 
 	// The LV this filesystem is on, if any.
 	var lv *lvmLV
@@ -91,19 +119,28 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	if lv != nil {
 		aliases = append(aliases, lv.Path, lvDmPath(lv.VGName, lv.Name))
 	}
+	// Every way fstab can name this filesystem: the device is destroyed, so
+	// none of its entries may stay (one without nofail would stop the boot).
+	sources := append(append([]string{}, aliases...), "UUID="+req.UUID)
 
 	fstab := readFstab()
 	mounts := hostProcMounts()
 	mp := mountPointOf(mounts, aliases...)
 	mounted := mp != ""
 	if !mounted {
-		mp = fstabMountPointFor(fstab, req.UUID)
+		mp = fstabMountPointFor(fstab, sources)
 	}
 	if mp != "" && criticalMountPoints[filepath.Clean(mp)] {
 		return nil, &fsError{Code: "ESYS", Message: mp + " is a system directory"}
 	}
 	if mounted {
-		if who := hostBusy(mp); len(who) > 0 {
+		var who []string
+		for _, w := range hostBusy(mp) {
+			if !(len(req.CloseShares) > 0 && w == "smbd") {
+				who = append(who, w)
+			}
+		}
+		if len(who) > 0 {
 			return nil, &fsError{Code: "EBUSY", Message: mp + " is in use by " + strings.Join(who, ", ") + "; stop them first"}
 		}
 	}
@@ -193,19 +230,20 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	if mounted {
+		for _, n := range req.CloseShares {
+			c := cmdStep("smbd", "Close the open SMB sessions on the share "+n, []string{"smbcontrol", "smbd", "close-share", n})
+			c.OnFailure = "ignore"
+			steps = append(steps, c)
+		}
 		steps = append(steps, cmdStep(mp, "Unmount "+mp, []string{"umount", mp}))
 	}
-	if mp != "" {
-		if s, _ := fstabStep("Stop mounting "+mp+" at boot", fstab, func(conf string) (string, error) {
-			return removeFstabLines(conf, mp, append(aliases, "UUID="+req.UUID)...), nil
-		}); s.Diff != "" {
-			steps = append(steps, s)
+	if s, _ := fstabStep("Stop mounting "+mp+" at boot", fstab, func(conf string) (string, error) {
+		if mp != "" {
+			conf = removeFstabLines(conf, mp, sources...)
 		}
-		if mounted || hostExists(mp) {
-			unprotect := cmdStep(mp, "Make "+mp+" an ordinary folder again", []string{"chattr", "-i", mp})
-			unprotect.OnFailure = "warn"
-			steps = append(steps, unprotect)
-		}
+		return removeFstabSources(conf, sources...), nil
+	}); s.Diff != "" {
+		steps = append(steps, s)
 	}
 
 	if lv != nil {
@@ -219,35 +257,51 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	if len(arrays) > 0 {
-		var names []string
+		// Stop, forget, then erase: a failed erase leaves no ARRAY line that
+		// would bring a half-erased array back at boot.
+		conf := obs["mdadm.conf"]
+		changed := false
 		for _, a := range arrays {
-			names = append(names, a.dev)
 			steps = append(steps, cmdStep(a.dev, "Stop the RAID array "+a.dev, []string{"mdadm", "--stop", a.dev}))
+			a := a
+			edit := func(c string) string { return removeArrayEntries(c, a.name, a.uuid) }
+			if after := edit(conf); after != conf {
+				steps = append(steps, planStep{Kind: "update", Target: mdadmConfPath, OnFailure: "warn",
+					Summary: "Forget " + a.dev + " in mdadm.conf", Diff: unifiedDiff(mdadmConfPath, conf, after),
+					run: func() (string, error) { return "", editMdadmConf(edit) }})
+				conf, changed = after, true
+			}
 			for _, m := range a.members {
 				steps = append(steps, destructive(cmdStep(m, "Erase the RAID signature on "+m,
 					[]string{"mdadm", "--zero-superblock", m}), m))
 			}
 		}
-		edit := func(conf string) string {
-			for _, a := range arrays {
-				conf = removeArrayEntries(conf, a.name, a.uuid)
-			}
-			return conf
-		}
-		before := obs["mdadm.conf"]
-		if after := edit(before); after != before {
-			s := planStep{Kind: "update", Target: mdadmConfPath, OnFailure: "warn",
-				Summary: "Forget " + strings.Join(names, ", ") + " in mdadm.conf", Diff: unifiedDiff(mdadmConfPath, before, after),
-				run: func() (string, error) { return "", editMdadmConf(edit) }}
-			steps = append(steps, s)
+		if changed {
 			if s, ok := initramfsStep(); ok {
 				steps = append(steps, s)
 			}
 		}
 	}
 
+	named := map[string]bool{} // disks an earlier step already names as erased
+	for _, a := range arrays {
+		for _, m := range a.members {
+			named[m] = true
+		}
+	}
 	for _, d := range base {
-		steps = append(steps, cmdStep(d, "Erase the remaining signatures on "+d+" so it shows as free", []string{"wipefs", "-a", d}))
+		s := cmdStep(d, "Erase the remaining signatures on "+d+" so it shows as free", []string{"wipefs", "-a", d})
+		if !named[d] {
+			s = destructive(s, d)
+		}
+		steps = append(steps, s)
+	}
+	// Last: until the volume is fully gone, the empty folder stays immutable,
+	// so a share brought back after a failure cannot write to the system disk.
+	if mp != "" && (mounted || hostExists(mp)) {
+		unprotect := cmdStep(mp, "Make "+mp+" an ordinary folder again", []string{"chattr", "-i", mp})
+		unprotect.OnFailure = "warn"
+		steps = append(steps, unprotect)
 	}
 	freed := append([]string{}, base...)
 	return &opPlan{Op: "volume.remove", Steps: steps, Observed: obs,

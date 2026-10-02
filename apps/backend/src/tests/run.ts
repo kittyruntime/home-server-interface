@@ -1518,7 +1518,7 @@ await testSharePlans()
     },
     ...over,
   })
-  const target = { uuid: "fs-1", mountPoint: "/srv/data", name: "data", places: [{ id: "p1", name: "Photos" }], apps: [], shared: true }
+  const target = { uuid: "fs-1", mountPoint: "/srv/data", name: "data", places: [{ id: "p1", name: "Photos" }], apps: [], shared: true, shareNames: ["photos"] }
 
   const pv = await vr.previewVolumeRemove(target, deps())
   assert.deepEqual(pv.steps.map(s => s.summary), ["Update the Samba configuration", "Delete the logical volume", 'Delete the Place "Photos"'])
@@ -1567,6 +1567,17 @@ await testSharePlans()
   assert.match(noPlace.error!, /^The disks are free, but the Place "Photos" could not be deleted: locked/)
 
   await assert.rejects(vr.applyVolumeRemove(target, "other", deps()), (e: any) => e.code === "CONFLICT")
+
+  // Samba is told to let go first: the worker accepts smbd holding the folder.
+  const inputs: any[] = []
+  await vr.previewVolumeRemove(target, deps({ worker: async (subject: string, payload: any) => { inputs.push(payload); return preview(payload) } }))
+  assert.deepEqual(inputs.find(p => p.op === "volume.remove").input, { uuid: "fs-1", closeShares: ["photos"] })
+
+  // The volume as the Volumes page knows it.
+  const vol = (o: any) => ({ id: "fs-1", name: "data", state: "mounted", mountPoint: "/srv/data", usedBy: { places: [], shares: [], apps: [] }, ...o })
+  assert.equal(vr.removeTargetOf(vol({})).uuid, "fs-1")
+  assert.throws(() => vr.removeTargetOf(vol({ id: "dev:sdf" })), (e: any) => e.code === "PRECONDITION_FAILED" && /no filesystem UUID/.test(e.message))
+  assert.throws(() => vr.removeTargetOf(vol({ state: "missing" })), (e: any) => e.code === "PRECONDITION_FAILED")
 }
 
 console.log("Backend security tests passed")
