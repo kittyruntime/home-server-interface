@@ -52,7 +52,7 @@ export function removeTargetOf(v: {
   }
 }
 
-const placeStep = (p: { name: string }): PlanStep => ({ kind: "delete", target: p.name, summary: `Delete the Place "${p.name}"` })
+const placeStep = (p: { name: string }): PlanStep => ({ kind: "remove", target: p.name, summary: `Delete the Place "${p.name}"` })
 const notRun = (n: number): StepResult[] => Array.from({ length: n }, () => ({ status: "not-run" }))
 
 function check(t: RemoveTarget) {
@@ -122,7 +122,7 @@ export async function applyVolumeRemove(t: RemoveTarget, fingerprint: string, de
     // their shares back.
     let vol: PlanApplyResult
     try {
-      vol = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "volume.remove", input: { uuid: t.uuid }, fingerprint: volume.fingerprint })
+      vol = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "volume.remove", input: workerInput(t, !!smb), fingerprint: volume.fingerprint })
     } catch (e) {
       const code = (e as { code?: string }).code
       if (code === "ERR" || code === "ESTALE") workerError(e)

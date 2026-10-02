@@ -67,3 +67,13 @@ func TestBriefArrayLine(t *testing.T) {
 		t.Errorf("briefArrayLine() = %q, want empty", got)
 	}
 }
+
+// A new RAID 5 is captured while it builds onto its last disk, which mdadm
+// counts as a spare: the line must not ask --monitor for a spare that will
+// not exist once the build ends.
+func TestBriefArrayLineDropsSpares(t *testing.T) {
+	out := "ARRAY /dev/md2 metadata=1.2 spares=1 UUID=2c36c59a:059e68e0:5a54f2fa:c5051027\n"
+	if got := briefArrayLine(out); got != "ARRAY /dev/md2 metadata=1.2 UUID=2c36c59a:059e68e0:5a54f2fa:c5051027" {
+		t.Fatalf("briefArrayLine() = %q", got)
+	}
+}

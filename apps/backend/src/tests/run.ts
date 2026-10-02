@@ -1573,6 +1573,19 @@ await testSharePlans()
   await vr.previewVolumeRemove(target, deps({ worker: async (subject: string, payload: any) => { inputs.push(payload); return preview(payload) } }))
   assert.deepEqual(inputs.find(p => p.op === "volume.remove").input, { uuid: "fs-1", closeShares: ["photos"] })
 
+  // Like the worker: an apply is only accepted with the input of its preview.
+  const seen = new Map<string, string>()
+  const strict = deps({
+    worker: async (subject: string, payload: any) => {
+      const key = JSON.stringify(payload.input)
+      if (subject === "root.plan.preview") { const p = preview(payload); seen.set(p.fingerprint, key); return { ...p, fingerprint: `${p.fingerprint}:${key}` } }
+      if (payload.fingerprint !== `${payload.fingerprint.split(":")[0]}:${key}`) throw Object.assign(new Error("stale"), { code: "ESTALE" })
+      return { ok: true, steps: [volStep], results: [{ status: "done" }] }
+    },
+  })
+  const sp = await vr.previewVolumeRemove(target, strict)
+  assert.equal((await vr.applyVolumeRemove(target, sp.fingerprint, strict)).ok, true, "apply sends the previewed input")
+
   // The volume as the Volumes page knows it.
   const vol = (o: any) => ({ id: "fs-1", name: "data", state: "mounted", mountPoint: "/srv/data", usedBy: { places: [], shares: [], apps: [] }, ...o })
   assert.equal(vr.removeTargetOf(vol({})).uuid, "fs-1")

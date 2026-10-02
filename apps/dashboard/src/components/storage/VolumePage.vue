@@ -195,7 +195,7 @@ async function afterChange() { await refreshDevices(); await load() }
         <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-danger/30 px-4 py-3">
           <h3 class="text-sm font-semibold text-danger">Remove this volume</h3>
           <p class="mt-1 text-xs text-[var(--c-text-2)]">
-            Erases <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds and </template>its disks, which become free again.
+            Erases <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds</template><template v-else>its data</template>. Disks used only by this volume become free again; the review lists them.
             <template v-if="volume.usedBy.places.length">Its Places and their shares are deleted.</template>
           </p>
           <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
