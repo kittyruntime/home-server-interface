@@ -16,6 +16,8 @@ export type RemoveTarget = {
   apps: string[]
   /** One of the Places is shared over SMB. */
   shared: boolean
+  /** The SMB names of those shares. */
+  shareNames: string[]
 }
 
 export interface VolumeRemoveDeps {
@@ -30,6 +32,25 @@ export interface VolumeRemoveDeps {
 }
 
 type Preview = { steps: PlanStep[]; fingerprint: string }
+
+// When the smb.sync part drops the volume's shares first, the worker closes
+// their open sessions before unmounting (a reload keeps them open).
+const workerInput = (t: RemoveTarget, sharesDropped: boolean) =>
+  (sharesDropped && t.shareNames.length ? { uuid: t.uuid, closeShares: t.shareNames } : { uuid: t.uuid })
+
+/** The removal target of a volume of the Volumes page. */
+export function removeTargetOf(v: {
+  id: string; name: string; state: string; mountPoint?: string; expectedMountPoint?: string
+  usedBy: { places: { id: string; name: string }[]; shares: string[]; apps: string[] }
+}): RemoveTarget {
+  if (v.state === "missing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This volume is missing: its disks are not connected" })
+  if (v.id.startsWith("dev:"))
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This volume has no filesystem UUID; remove it from Disks instead" })
+  return {
+    uuid: v.id, mountPoint: v.mountPoint ?? v.expectedMountPoint ?? "", name: v.name,
+    places: v.usedBy.places, apps: v.usedBy.apps, shared: v.usedBy.shares.length > 0, shareNames: v.usedBy.shares,
+  }
+}
 
 const placeStep = (p: { name: string }): PlanStep => ({ kind: "delete", target: p.name, summary: `Delete the Place "${p.name}"` })
 const notRun = (n: number): StepResult[] => Array.from({ length: n }, () => ({ status: "not-run" }))
@@ -51,7 +72,7 @@ async function parts(t: RemoveTarget, deps: VolumeRemoveDeps) {
     const smbInput = { shares: await deps.shareDefsWithout(t.places.map(p => p.id)) }
     smb = { ...await preview(deps, "smb.sync", smbInput), input: smbInput }
   }
-  const volume = await preview(deps, "volume.remove", { uuid: t.uuid })
+  const volume = await preview(deps, "volume.remove", workerInput(t, !!smb))
   const fingerprint = crypto.createHash("sha256")
     .update(JSON.stringify({ smb: smb?.fingerprint ?? null, volume: volume.fingerprint, places: t.places.map(p => p.id) }))
     .digest("hex")
