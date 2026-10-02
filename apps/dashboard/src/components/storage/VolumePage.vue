@@ -9,6 +9,8 @@ import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { volumeTargets } from './object-targets'
+import { applyPlanned } from '../../lib/plan'
+import { useAuth } from '../../lib/auth'
 
 // The page of one volume (#40): where the data lives, what it is made of,
 // what uses it, and what was done to it.
@@ -28,6 +30,23 @@ const error   = ref('')
 const gone    = ref(false)
 const tab     = ref<ObjectTab>('overview')
 const { devices, refresh: refreshDevices } = useStorageData({ autoRefresh: false })
+const { isAdmin } = useAuth()
+
+// Remove volume (#40): one plan for its shares, its stack and its Places.
+const removeError = ref('')
+async function removeVolume() {
+  const v = volume.value
+  if (!v) return
+  removeError.value = ''
+  try {
+    await applyPlanned('volume.remove', { id: v.id }, {
+      domain: 'volume', title: `Remove the volume ${v.name}`, actionLabel: 'Remove volume', danger: true, confirmText: v.name,
+    })
+    emit('navigate', 'volumes')
+  } catch (e) {
+    removeError.value = e instanceof Error ? e.message : String(e)
+  }
+}
 
 async function load() {
   error.value = ''
@@ -172,6 +191,19 @@ async function afterChange() { await refreshDevices(); await load() }
           <template v-if="volume.tolerates"> · survives {{ volume.tolerates }} failed {{ volume.tolerates === 1 ? 'disk' : 'disks' }}</template>
           <template v-else-if="volume.state !== 'missing'"> · a failed disk loses this volume</template>
         </p>
+
+        <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-danger/30 px-4 py-3">
+          <h3 class="text-sm font-semibold text-danger">Remove this volume</h3>
+          <p class="mt-1 text-xs text-[var(--c-text-2)]">
+            Erases <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds and </template>its disks, which become free again.
+            <template v-if="volume.usedBy.places.length">Its Places and their shares are deleted.</template>
+          </p>
+          <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
+            <span class="status-tag">[WARN]</span> {{ volume.usedBy.apps.join(', ') }} {{ volume.usedBy.apps.length === 1 ? 'stores' : 'store' }} data here: remove {{ volume.usedBy.apps.length === 1 ? 'it' : 'them' }} first.
+          </p>
+          <p v-if="removeError" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
+          <button class="btn btn-danger btn-sm mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">Remove volume…</button>
+        </section>
       </div>
     </template>
 
