@@ -162,7 +162,7 @@ function diffLineClass(line: string): string {
 }
 
 const kindLabel: Record<string, string> = {
-  create: 'Create', update: 'Edit file', delete: 'Delete file', run: 'Run', start: 'Start', stop: 'Stop', permissions: 'Permissions',
+  create: 'Create', update: 'Edit file', delete: 'Delete file', remove: 'Remove', info: 'Note', run: 'Run', start: 'Start', stop: 'Stop', permissions: 'Permissions',
 }
 
 const done = computed(() => applied.value !== null)
@@ -256,7 +256,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         </p>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
           <span class="text-xs text-[var(--c-text-2)]">Type <span class="font-mono text-[var(--c-text-1)]">{{ planRequest.confirmText }}</span> to confirm</span>
-          <input v-model="typed" class="input mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
+          <input v-model="typed" class="ui-input mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
         </label>
       </template>
     </div>

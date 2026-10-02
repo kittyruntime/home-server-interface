@@ -90,10 +90,19 @@ func upsertArrayLine(conf, name, arrayLine string) string {
 }
 
 // briefArrayLine extracts the ARRAY line from `mdadm --detail --brief` output.
+// The spares= count is dropped: a new parity array is captured while it
+// builds onto its last disk, which mdadm counts as a spare, and --monitor
+// would then report a missing spare forever after the build.
 func briefArrayLine(out string) string {
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "ARRAY ") {
-			return strings.TrimSpace(line)
+			var keep []string
+			for _, f := range strings.Fields(line) {
+				if !strings.HasPrefix(f, "spares=") {
+					keep = append(keep, f)
+				}
+			}
+			return strings.Join(keep, " ")
 		}
 	}
 	return ""
