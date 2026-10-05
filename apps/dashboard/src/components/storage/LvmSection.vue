@@ -217,7 +217,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
     <LvmIntro v-if="!only" />
 
-    <ImportFound v-if="!only" kind="lvm" :used-md-names="[]" @imported="refresh" />
+    <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>

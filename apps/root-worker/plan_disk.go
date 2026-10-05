@@ -72,7 +72,7 @@ func planFormat(raw json.RawMessage) (*opPlan, *fsError) {
 	if hostSystemDevs()[req.Device] {
 		return nil, &fsError{Code: "ESYS", Message: "cannot format system device; it is in use by the OS"}
 	}
-	devPath := "/dev/" + req.Device
+	devPath := devPathFor(req.Device)
 	if isMountedSource(hostProcMounts(), devPath) {
 		return nil, &fsError{Code: "EMNT", Message: "device is mounted; unmount it first"}
 	}

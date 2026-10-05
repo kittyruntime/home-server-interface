@@ -168,24 +168,49 @@ func planImportAssemble(raw json.RawMessage) (*opPlan, *fsError) {
 		Name          string `json:"name"`
 		AllowDegraded bool   `json:"allowDegraded"`
 	}
-	if err := json.Unmarshal(raw, &req); err != nil || !reUUID.MatchString(req.UUID) || !reMdDev.MatchString(req.Name) {
+	if err := json.Unmarshal(raw, &req); err != nil || !reUUID.MatchString(req.UUID) || (req.Name != "" && !reMdDev.MatchString(req.Name)) {
 		return nil, &fsError{Code: "ERR", Message: "invalid request"}
 	}
 	active := hostActiveArrays()
 	if active[req.UUID] {
 		return nil, &fsError{Code: "EEXIST", Message: "this array is already running"}
 	}
+	// The name: the first mdN not running, not in /dev and not recorded in
+	// mdadm.conf for another array (it would get two ARRAY lines).
+	conf := readMdadmConf()
+	used := append(hostMdNames(), hostMdNodes()...)
+	free := nextMdName(used, conf)
+	if req.Name == "" {
+		req.Name = free
+	} else if containsString(append(used, mdadmConfNames(conf)...), req.Name) {
+		return nil, &fsError{Code: "EEXIST", Message: "/dev/" + req.Name + " is already used by another array; " + free + " is free"}
+	}
 	var running []string
 	for u := range active {
 		running = append(running, u)
 	}
+	// The members recorded on the disks, named explicitly: with --scan, mdadm
+	// only assembles a device name that mdadm.conf already lists.
+	var found *foundArray
+	for _, a := range parseExamineScan(hostExamineScan()) {
+		if a.UUID == req.UUID {
+			a := a
+			found = &a
+		}
+	}
+	if found == nil || len(found.Members) == 0 {
+		return nil, &fsError{Code: "ENOENT", Message: "no disk here carries the array " + req.UUID + "; scan again"}
+	}
+	members := append([]string(nil), found.Members...)
+	sort.Strings(members)
 	raidDev := "/dev/" + req.Name
-	args := []string{"mdadm", "--assemble", raidDev, "--uuid=" + req.UUID, "--scan"}
+	args := []string{"mdadm", "--assemble", raidDev, "--uuid=" + req.UUID}
 	summary := "Assemble the existing array " + req.UUID + " as " + raidDev + " without changing its data"
 	if req.AllowDegraded {
 		args = append(args, "--run")
 		summary = "Assemble the existing array " + req.UUID + " as " + raidDev + " and start it even though members are missing (degraded)"
 	}
+	args = append(args, members...)
 	steps := []planStep{cmdStep(raidDev, summary, args)}
 	steps = append(steps, planStep{Kind: "update", Target: mdadmConfPath, Deferred: true, OnFailure: "warn",
 		Summary: "Add the ARRAY line of " + raidDev + " to mdadm.conf so it assembles under the same name at boot",
@@ -204,7 +229,7 @@ func planImportAssemble(raw json.RawMessage) (*opPlan, *fsError) {
 	if s, ok := initramfsStep(); ok {
 		steps = append(steps, s)
 	}
-	obs := map[string]string{"active": sortedJoin(running), "mdadm.conf": readMdadmConf()}
+	obs := map[string]string{"active": sortedJoin(running), "mdadm.conf": conf, "members": strings.Join(members, " ")}
 	return &opPlan{Op: "import.assemble", Steps: steps, Observed: obs, Reply: map[string]any{"device": raidDev}}, nil
 }
 

@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Found storage on Volumes**: when the disks carry arrays or volume groups
+  that are not running (moved from another machine, or after a reinstall),
+  the Volumes page says so and links to the import.
+
 ### Fixed
+- **Import existing arrays**: assembling an array found on the disks failed
+  ("not identified in config file"); its members are now named explicitly,
+  and HSI picks a name no other array uses, including names kept in
+  mdadm.conf.
+- **Mount**: a logical volume can be mounted from the Volumes page (its device
+  was looked up under the wrong path), and mounting on a folder where another
+  volume is already mounted is refused instead of hiding that volume.
 - **Arrays**: while an array rebuilds, the disk it rebuilds onto shows as
   Rebuilding instead of Active (with a "Mark as failed" button), and the
   Volumes page does not count it as missing. An array that carries an LVM

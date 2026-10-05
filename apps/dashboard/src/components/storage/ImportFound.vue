@@ -9,7 +9,7 @@ import { useConfirm } from '../../lib/confirm'
    or disks moved from another machine). Import never formats anything: arrays
    are assembled from their own superblocks, volume groups are activated. The
    filesystems they hold then appear in Mounts, ready to be mounted. */
-const props = defineProps<{ kind: 'raid' | 'lvm'; usedMdNames: string[] }>()
+defineProps<{ kind: 'raid' | 'lvm' }>()
 const emit = defineEmits<{ imported: [] }>()
 
 type Scan = Awaited<ReturnType<typeof trpc.storage.importScan.query>>
@@ -23,12 +23,6 @@ async function load() {
 }
 onMounted(load)
 
-function nextMdName(): string {
-  const used = new Set(props.usedMdNames)
-  for (let i = 0; i < 128; i++) if (!used.has(`md${i}`)) return `md${i}`
-  return 'md127'
-}
-
 async function assemble(a: Scan['arrays'][number]) {
   const degraded = a.missing > 0
   if (degraded && !await confirm(
@@ -37,9 +31,9 @@ async function assemble(a: Scan['arrays'][number]) {
   )) return
   busy.value = a.uuid
   try {
-    const name = nextMdName()
-    const res = await applyPlanned('import.assemble', { uuid: a.uuid, name, allowDegraded: degraded },
-      { title: `Assemble the existing array as /dev/${name}`, actionLabel: degraded ? 'Start degraded' : 'Assemble' })
+    // The server picks the name: it knows the names mdadm.conf keeps.
+    const res = await applyPlanned('import.assemble', { uuid: a.uuid, allowDegraded: degraded },
+      { title: `Assemble the existing array ${a.name || a.device}`, actionLabel: degraded ? 'Start degraded' : 'Assemble' })
     for (const w of res.warnings ?? []) toast.error(w)
     toast.success(`Array assembled as ${res.device}`)
     emit('imported')

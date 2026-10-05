@@ -125,3 +125,15 @@ func parseLsblkDevice(raw []byte) deviceInfo {
 	}
 	return d
 }
+
+// devPathFor returns the node of a device named as lsblk names it: a logical
+// volume or a mapping is "vg-lv", whose node is /dev/mapper/vg-lv.
+func devPathFor(name string) string {
+	if p := "/dev/" + name; hostExists(p) || strings.Contains(name, "/") {
+		return p
+	}
+	if p := "/dev/mapper/" + name; hostExists(p) {
+		return p
+	}
+	return "/dev/" + name
+}

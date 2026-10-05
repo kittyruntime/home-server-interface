@@ -76,7 +76,13 @@ func planMount(raw json.RawMessage) (*opPlan, *fsError) {
 	if criticalMountPoints[mp] {
 		return nil, &fsError{Code: "ESYS", Message: "cannot mount over system directory " + mp}
 	}
-	devPath := "/dev/" + req.Device
+	devPath := devPathFor(req.Device)
+	// Another volume already mounted there would be hidden, not replaced.
+	for _, l := range strings.Split(hostProcMounts(), "\n") {
+		if f := strings.Fields(l); len(f) >= 2 && f[1] == mp {
+			return nil, &fsError{Code: "EBUSY", Message: f[0] + " is already mounted on " + mp + "; choose another folder"}
+		}
+	}
 	if member, reason := hostMemberOf(req.Device); member {
 		return nil, &fsError{Code: "EBUSY", Message: reason}
 	}
