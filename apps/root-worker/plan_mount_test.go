@@ -249,3 +249,28 @@ func TestPlanRaidCreateNamesEveryMember(t *testing.T) {
 		t.Fatalf("all erased devices must be named, got %+v", p.Steps[0].Devices)
 	}
 }
+
+// lsblk names a logical volume "vg-lv": its node is /dev/mapper/vg-lv.
+func TestPlanMountLogicalVolumeByLsblkName(t *testing.T) {
+	stubMountHost(t)
+	stubConfigFiles(t, "", "")
+	hostExists = func(p string) bool { return p != "/dev/oldvg-files" && p != "/srv/files" }
+	p, fe := build(t, planMount, `{"device":"oldvg-files","mountpoint":"/srv/files","persist":false}`)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	got := argvs(p)
+	if last := got[len(got)-1]; last[len(last)-2] != "/dev/mapper/oldvg-files" {
+		t.Fatalf("mounts the mapper node: %v", got)
+	}
+}
+
+// Mounting over a folder where another volume is mounted would hide it.
+func TestPlanMountRefusesAnOccupiedMountPoint(t *testing.T) {
+	stubMountHost(t)
+	stubConfigFiles(t, "", "")
+	hostProcMounts = func() string { return "/dev/sda2 / ext4 rw 0 0\n/dev/mapper/data-data /srv/data ext4 rw 0 0\n" }
+	if _, fe := build(t, planMount, `{"device":"sdb1","mountpoint":"/srv/data"}`); fe == nil || fe.Code != "EBUSY" || !strings.Contains(fe.Message, "/srv/data") {
+		t.Fatalf("an occupied mount point is refused: %+v", fe)
+	}
+}

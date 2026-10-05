@@ -121,14 +121,18 @@ func activeArrayUUIDs() map[string]bool {
 	return active
 }
 
-func handleImportScan(nc *nats.Conn, msg *nats.Msg) {
-	arrays := []foundArray{}
-	if _, err := exec.LookPath("mdadm"); err == nil {
-		// --examine only reads superblocks; nothing is assembled here.
-		if out, err := command("mdadm", "--examine", "--scan", "--verbose").Output(); err == nil {
-			arrays = unassembledArrays(parseExamineScan(string(out)), activeArrayUUIDs())
-		}
+// hostExamineScan reads the md superblocks on the disks (--examine only
+// reads; nothing is assembled).
+var hostExamineScan = func() string {
+	if _, err := exec.LookPath("mdadm"); err != nil {
+		return ""
 	}
+	out, _ := command("mdadm", "--examine", "--scan", "--verbose").Output()
+	return string(out)
+}
+
+func handleImportScan(nc *nats.Conn, msg *nats.Msg) {
+	arrays := unassembledArrays(parseExamineScan(hostExamineScan()), activeArrayUUIDs())
 	vgs := []foundVG{}
 	if _, err := exec.LookPath("lvs"); err == nil {
 		if out, err := command("lvs", "--noheadings", "--separator", ":", "-o", "vg_name,lv_name,lv_active").Output(); err == nil {

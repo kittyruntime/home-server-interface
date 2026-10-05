@@ -12,8 +12,16 @@ const md0Detail = "/dev/md0:\n  Resync Status : 40% complete\n         Events : 
 
 func stubRaidManageHost(t *testing.T) {
 	stubMountHost(t)
-	ps, pa := hostDeviceSize, hostActiveArrays
-	t.Cleanup(func() { hostDeviceSize, hostActiveArrays = ps, pa })
+	ps, pa, pm, pn := hostDeviceSize, hostActiveArrays, hostMdNames, hostMdNodes
+	t.Cleanup(func() { hostDeviceSize, hostActiveArrays, hostMdNames, hostMdNodes = ps, pa, pm, pn })
+	// The host's own arrays must not leak into the tests.
+	pe := hostExamineScan
+	t.Cleanup(func() { hostExamineScan = pe })
+	hostExamineScan = func() string {
+		return "ARRAY /dev/md/storage level=raid1 metadata=1.2 num-devices=2 UUID=aa:bb:cc:dd name=othernas:storage\n   devices=/dev/sdc,/dev/sdf\n"
+	}
+	hostMdNames = func() []string { return nil }
+	hostMdNodes = func() []string { return nil }
 	hostMdDetail = func(string) (string, error) { return md0Detail, nil }
 	hostDeviceSize = func(string) (int64, error) { return 1000, nil }
 	hostActiveArrays = func() map[string]bool { return map[string]bool{} }
@@ -88,8 +96,10 @@ func TestPlanRaidManageStableDuringResync(t *testing.T) {
 func TestPlanImport(t *testing.T) {
 	stubRaidManageHost(t)
 	stubConfigFiles(t, "", "")
+	// The members found on the disks are named: with --scan, mdadm only
+	// assembles a device that mdadm.conf already lists.
 	p, fe := build(t, planImportAssemble, `{"uuid":"aa:bb:cc:dd","name":"md1","allowDegraded":true}`)
-	if fe != nil || !reflect.DeepEqual(argvs(p)[0], []string{"mdadm", "--assemble", "/dev/md1", "--uuid=aa:bb:cc:dd", "--scan", "--run"}) {
+	if fe != nil || !reflect.DeepEqual(argvs(p)[0], []string{"mdadm", "--assemble", "/dev/md1", "--uuid=aa:bb:cc:dd", "--run", "/dev/sdc", "/dev/sdf"}) {
 		t.Fatalf("assemble: %v %v", fe, argvs(p))
 	}
 	if !strings.Contains(p.Steps[0].Summary, "missing") || !p.Steps[1].Deferred || p.Reply["device"] != "/dev/md1" {
@@ -145,4 +155,28 @@ func TestPlanRaidRemoveVanishedMember(t *testing.T) {
 		t.Fatalf("vanished member: %v %v", fe, p)
 	}
 	assertParity(t, p)
+}
+
+// The worker names the imported array: never an mdN already running, present
+// in /dev, or recorded in mdadm.conf for another array.
+func TestPlanImportPicksAFreeName(t *testing.T) {
+	stubRaidManageHost(t)
+	stubConfigFiles(t, "", "ARRAY /dev/md0 metadata=1.2 UUID=0f:0f:0f:0f\n")
+	hostMdNames = func() []string { return []string{"md1", "md2"} }
+	p, fe := build(t, planImportAssemble, `{"uuid":"aa:bb:cc:dd"}`)
+	if fe != nil || argvs(p)[0][2] != "/dev/md3" || p.Reply["device"] != "/dev/md3" {
+		t.Fatalf("first free name: %v %v", fe, argvs(p))
+	}
+	// A name the caller asks for must be free too.
+	if _, fe := build(t, planImportAssemble, `{"uuid":"aa:bb:cc:dd","name":"md0"}`); fe == nil {
+		t.Fatal("md0 belongs to another array in mdadm.conf")
+	}
+}
+
+func TestPlanImportUnknownArray(t *testing.T) {
+	stubRaidManageHost(t)
+	stubConfigFiles(t, "", "")
+	if _, fe := build(t, planImportAssemble, `{"uuid":"ee:ee:ee:ee"}`); fe == nil || fe.Code != "ENOENT" {
+		t.Fatalf("an array not on the disks: %+v", fe)
+	}
 }

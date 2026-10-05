@@ -78,7 +78,7 @@ const PLAN_INPUTS = {
   "raid.add":    z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }),
   "import.assemble": z.object({
     uuid:          z.string().regex(/^[0-9a-fA-F:]{8,64}$/),
-    name:          z.string().regex(/^md[0-9]{1,3}$/),
+    name:          z.string().regex(/^md[0-9]{1,3}$/).optional(),
     allowDegraded: z.boolean().default(false),
   }),
   "import.activate": z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }),

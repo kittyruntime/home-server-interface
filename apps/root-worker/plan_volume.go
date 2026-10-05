@@ -64,6 +64,17 @@ var volumeLevels = map[string]struct {
 // nextMdName returns the first mdN name not used by a running array, a
 // /dev node, or an ARRAY line of mdadm.conf (an array that is not assembled
 // right now would lose its line otherwise).
+// mdadmConfNames returns the mdN names of the ARRAY lines of mdadm.conf.
+func mdadmConfNames(conf string) []string {
+	var names []string
+	for _, l := range splitConf(conf) {
+		if dev, _ := arrayLineFields(strings.TrimSpace(l)); dev != "" {
+			names = append(names, filepath.Base(dev))
+		}
+	}
+	return names
+}
+
 func nextMdName(used []string, mdadmConf string) string {
 	taken := map[string]bool{}
 	for _, n := range used {

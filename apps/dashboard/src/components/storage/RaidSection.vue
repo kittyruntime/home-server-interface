@@ -333,7 +333,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       </div>
     </div>
 
-    <ImportFound v-if="!only" kind="raid" :used-md-names="raids.map(r => r.name)" @imported="refresh" />
+    <ImportFound v-if="!only" kind="raid" @imported="refresh" />
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
     <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>

@@ -505,7 +505,7 @@ func claimBlockReason(nodes []blkNode) string {
 }
 
 func lsblkTree(device string) ([]blkNode, error) {
-	out, err := command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", "/dev/"+device).Output()
+	out, err := command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", devPathFor(device)).Output()
 	if err != nil {
 		return nil, err
 	}

@@ -24,8 +24,18 @@ const loading  = ref(true)
 const error    = ref('')
 const { devices, refresh: refreshDevices } = useStorageData({ autoRefresh: false })
 
+// Storage from another machine or an earlier install, not running here (#6).
+const found = ref<{ arrays: number; vgs: number }>({ arrays: 0, vgs: 0 })
+async function loadFound() {
+  try {
+    const s = await trpc.storage.importScan.query()
+    found.value = { arrays: s.arrays.length, vgs: s.vgs.length }
+  } catch { found.value = { arrays: 0, vgs: 0 } }
+}
+
 async function load() {
   error.value = ''
+  void loadFound()
   try {
     overview.value = await trpc.storage.volumes.overview.query()
     void loadSmart()
@@ -143,6 +153,15 @@ async function mount(v: Volume) {
       </div>
       <button class="btn btn-primary btn-sm shrink-0" :disabled="!overview?.freeDisks.length"
         :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume</button>
+    </div>
+
+    <div v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3">
+      <p class="text-sm text-[var(--c-text-1)]">
+        Existing storage was found on the disks:
+        <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>.
+        Importing keeps its data.
+      </p>
+      <button class="btn btn-outline btn-sm shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</button>
     </div>
 
     <LoadingState v-if="loading" />
