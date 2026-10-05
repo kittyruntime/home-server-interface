@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Expand a volume**: from a volume's page (Expand...), grow it in place
+  without reformatting: into the free space of its volume group, with a disk
+  added to its RAID 5/6 array or to a volume without redundancy, or into the
+  larger disks of its mirror. A RAID reshape takes hours: the volume stays
+  usable and HSI grows LVM and the filesystem (ext4, XFS, btrfs) when it ends,
+  then sends a notification with the new size. Rewriting an array asks to
+  confirm that a backup exists.
 - **SMART self-test results on Maintenance**: each disk's scheduled or manual
   self-test shows as Running (with what is left), then Passed or Failed, on
   the Maintenance page instead of only "Started".

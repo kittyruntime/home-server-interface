@@ -52,10 +52,14 @@ async function load() {
 
 // Typed confirmation (e.g. the name of a volume to remove).
 const typed = ref('')
-const confirmed = computed(() => !planRequest.value?.confirmText || confirmMatches(typed.value, planRequest.value.confirmText))
+const acked = ref(false)
+const confirmed = computed(() =>
+  (!planRequest.value?.confirmText || confirmMatches(typed.value, planRequest.value.confirmText)) &&
+  (!planRequest.value?.acknowledge || acked.value))
 
 watch(() => planRequest.value?.id, id => {
   typed.value = ''
+  acked.value = false
   settled = false
   if (id !== undefined) void load()
 }, { immediate: true })
@@ -255,6 +259,10 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <p v-if="failedApply" role="alert" class="status-text text-danger">
           <span class="status-tag">[ERR]</span> The operation stopped at a failed step; later steps did not run.
         </p>
+        <label v-if="planRequest.acknowledge && preview && !done && !failedApply" class="flex items-start gap-2 text-sm text-[var(--c-text-1)]">
+          <input v-model="acked" type="checkbox" class="mt-0.5 accent-accent" :disabled="applying" />
+          <span>{{ planRequest.acknowledge }}</span>
+        </label>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
           <span class="text-xs text-[var(--c-text-2)]">Type <span class="font-mono text-[var(--c-text-1)]">{{ planRequest.confirmText }}</span> to confirm</span>
           <input v-model="typed" class="ui-input mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />

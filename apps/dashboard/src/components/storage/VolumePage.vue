@@ -11,6 +11,8 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { volumeTargets } from './object-targets'
 import { applyPlanned } from '../../lib/plan'
 import { removeNotice } from '../../lib/confirm-text'
+import ExpandVolumeDialog from './dialogs/ExpandVolumeDialog.vue'
+import { expansionLine } from './expand'
 import { useAuth } from '../../lib/auth'
 
 // The page of one volume (#40): where the data lives, what it is made of,
@@ -33,6 +35,22 @@ const tab     = ref<ObjectTab>('overview')
 const { devices, refresh: refreshDevices } = useStorageData({ autoRefresh: false })
 const { isAdmin } = useAuth()
 
+// Expand (#7): the dialog, and an expansion waiting for its array.
+const expandDlg = ref<InstanceType<typeof ExpandVolumeDialog> | null>(null)
+type Pending = Awaited<ReturnType<typeof trpc.storage.volumes.expansions.query>>[number]
+const pending = ref<Pending | null>(null)
+async function loadPending() {
+  try {
+    const list = await trpc.storage.volumes.expansions.query()
+    pending.value = list.find(e => e.uuid === props.id && e.phase !== 'done') ?? null
+  } catch { pending.value = null }
+}
+const retrying = ref(false)
+async function retryExpansion() {
+  retrying.value = true
+  try { await trpc.storage.volumes.retryExpansion.mutate({ id: props.id }); await loadPending() } finally { retrying.value = false }
+}
+
 // Remove volume (#40): one plan for its shares, its stack and its Places.
 const removeError = ref('')
 async function removeVolume() {
@@ -52,6 +70,7 @@ async function removeVolume() {
 
 async function load() {
   error.value = ''
+  void loadPending()
   try {
     const o = await trpc.storage.volumes.overview.query()
     // A volume keeps its page when its id changes (formatted again, or a
@@ -165,10 +184,16 @@ async function afterChange() { await refreshDevices(); await load() }
     <template v-if="volume" #actions>
       <button v-if="volume.state === 'not-mounted'" class="btn btn-primary btn-sm" @click="mount">Mount</button>
       <button v-else-if="volume.state === 'mounted'" class="btn btn-outline btn-sm" @click="unmount">Unmount</button>
+      <button v-if="isAdmin && volume.state !== 'missing' && !pending" class="btn btn-outline btn-sm" @click="expandDlg?.open(volume)">Expand…</button>
     </template>
 
     <template v-if="volume" #overview>
       <div class="space-y-4">
+        <div v-if="pending" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm"
+          :class="pending.phase === 'failed' ? 'border-danger/30 bg-danger/5' : 'border-info/30 bg-info/5'">
+          <span class="text-[var(--c-text-1)]">{{ expansionLine(pending, null) }}</span>
+          <button v-if="pending.phase === 'failed' && isAdmin" class="btn btn-outline btn-sm" :disabled="retrying" @click="retryExpansion">Retry</button>
+        </div>
         <div v-if="volume.state === 'missing'" class="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-[var(--c-text-1)]">
           HSI mounts this volume at <span class="font-mono">{{ volume.mountPoint }}</span>, but its disk was not found at boot. Apps and shares using it are stopped so nothing writes to the system disk in its place.
           <button class="ml-1 underline underline-offset-2" @click="emit('navigate', 'mounts')">Open Mounts</button>
@@ -235,4 +260,5 @@ async function afterChange() { await refreshDevices(); await load() }
 
   <DeviceMountDialog ref="mountDlg" @done="afterChange" />
   <DeviceUnmountDialog ref="umountDlg" @done="afterChange" />
+  <ExpandVolumeDialog ref="expandDlg" @done="() => { void loadPending(); void afterChange() }" />
 </template>
