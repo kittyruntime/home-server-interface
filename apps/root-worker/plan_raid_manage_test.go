@@ -180,3 +180,25 @@ func TestPlanImportUnknownArray(t *testing.T) {
 		t.Fatalf("an array not on the disks: %+v", fe)
 	}
 }
+
+// A cloned disk carries the same member as the original: more disks than the
+// array has (spares aside). Assembling would let mdadm pick one at random.
+func TestImportRefusesExtraMembers(t *testing.T) {
+	found := unassembledArrays(parseExamineScan("ARRAY /dev/md/storage level=raid1 metadata=1.2 num-devices=2 UUID=aa:bb:cc:dd name=x:storage\n   devices=/dev/sdf,/dev/sdd,/dev/sdc\n"), map[string]bool{})
+	if found[0].Extra != 1 || found[0].Missing != 0 {
+		t.Fatalf("one disk too many: %+v", found[0])
+	}
+	spare := unassembledArrays(parseExamineScan("ARRAY /dev/md/s level=raid1 metadata=1.2 num-devices=2 UUID=aa:bb:cc:ee spares=1 name=x:s\n   devices=/dev/sdf,/dev/sdd,/dev/sdc\n"), map[string]bool{})
+	if spare[0].Extra != 0 {
+		t.Fatalf("a spare is not extra: %+v", spare[0])
+	}
+
+	stubRaidManageHost(t)
+	stubConfigFiles(t, "", "")
+	hostExamineScan = func() string {
+		return "ARRAY /dev/md/storage level=raid1 metadata=1.2 num-devices=2 UUID=aa:bb:cc:dd name=x:storage\n   devices=/dev/sdf,/dev/sdd,/dev/sdc\n"
+	}
+	if _, fe := build(t, planImportAssemble, `{"uuid":"aa:bb:cc:dd"}`); fe == nil || !strings.Contains(fe.Message, "/dev/sdd") {
+		t.Fatalf("refused, naming the disks: %+v", fe)
+	}
+}

@@ -23,6 +23,10 @@ type foundArray struct {
 	Expected int      `json:"expected"` // num-devices
 	Members  []string `json:"members"`  // devices found here
 	Missing  int      `json:"missing"`  // Expected - len(Members)
+	Spares   int      `json:"spares"`
+	// Extra: more disks carry the array than it has members and spares, e.g.
+	// a cloned disk next to its original. It is not assembled.
+	Extra int `json:"extra"`
 }
 
 // foundVG is a volume group whose logical volumes are all inactive.
@@ -52,6 +56,8 @@ func parseExamineScan(out string) []foundArray {
 					a.Name = m[2]
 				case "num-devices":
 					a.Expected, _ = strconv.Atoi(m[2])
+				case "spares":
+					a.Spares, _ = strconv.Atoi(m[2])
 				}
 			}
 			arrays = append(arrays, a)
@@ -72,6 +78,9 @@ func unassembledArrays(found []foundArray, active map[string]bool) []foundArray 
 		}
 		if a.Expected > len(a.Members) {
 			a.Missing = a.Expected - len(a.Members)
+		}
+		if n := len(a.Members) - a.Expected - a.Spares; a.Expected > 0 && n > 0 {
+			a.Extra = n
 		}
 		out = append(out, a)
 	}
