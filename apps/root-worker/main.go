@@ -1052,6 +1052,9 @@ func main() {
 		"root.sys.maintenance.get":       handleMaintenanceGet,
 		"root.sys.maintenance.set":       handleMaintenanceSet,
 		"root.sys.maintenance.runNow":    handleMaintenanceRunNow,
+		"root.sys.expansions":            handleExpansions,
+		"root.sys.expansions.retry":      handleExpansionRetry,
+		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
 		"root.sys.import.assemble":       handleImportAssemble,
 		"root.sys.import.activateVg":     handleImportActivateVG,
@@ -1099,6 +1102,15 @@ func main() {
 		defer t.Stop()
 		for range t.C {
 			sweepShareTemps(2 * time.Hour)
+		}
+	}()
+
+	// Expansions waiting for a reshape to end (#7).
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for now := range t.C {
+			finishExpansions(now)
 		}
 	}()
 

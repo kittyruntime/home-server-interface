@@ -332,6 +332,8 @@ func runMaintenance(now time.Time, only string) error {
 // runMaintenanceCLI is `hsi-worker maintenance`, run hourly by
 // hsi-maintenance.timer.
 func runMaintenanceCLI() int {
+	// The fallback for expansions when the worker daemon is down (#7).
+	finishExpansions(time.Now())
 	if err := runMaintenance(time.Now(), ""); err != nil {
 		logger.Warn("maintenance run skipped", "error", err.Error())
 		if errors.Is(err, errMaintenanceBusy) {
