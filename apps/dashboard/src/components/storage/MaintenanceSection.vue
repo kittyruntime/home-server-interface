@@ -81,9 +81,12 @@ function fmtWhen(v: string | null): string {
 }
 
 const statusClass: Record<string, string> = {
-  started: 'bg-success/10 text-success',
+  started: 'bg-info/10 text-info',
+  running: 'bg-info/10 text-info',
+  passed:  'bg-success/10 text-success',
   skipped: 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]',
   error:   'bg-danger/10 text-danger',
+  failed:  'bg-danger/10 text-danger',
 }
 </script>
 
@@ -166,7 +169,7 @@ const statusClass: Record<string, string> = {
             </div>
           </div>
           <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-[var(--c-text-3)]">
-            "Started" means the disk accepted the test; the result appears in each disk's SMART panel when it finishes.
+            Each disk runs its test on its own: Running shows how much is left, then Passed or Failed. A failed test also raises an alert in Monitor.
           </p>
         </div>
       </div>

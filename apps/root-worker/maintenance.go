@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,8 +33,84 @@ var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck"}
 type taskResult struct {
 	Device  string `json:"device"`
 	Serial  string `json:"serial,omitempty"`
-	Status  string `json:"status"` // started | skipped | error
+	Status  string `json:"status"` // started | skipped | error; read back as running | passed | failed
 	Message string `json:"message,omitempty"`
+	// LogCount: entries in the disk's self-test log when HSI started the test,
+	// so its outcome is the entry that comes after.
+	LogCount *int `json:"logCount,omitempty"`
+}
+
+// smartSelfTestJSON is the part of `smartctl -j -c -l selftest` HSI reads.
+type smartSelfTestJSON struct {
+	Data *struct {
+		SelfTest struct {
+			Status struct {
+				Value     int `json:"value"`
+				Remaining int `json:"remaining_percent"`
+			} `json:"status"`
+		} `json:"self_test"`
+	} `json:"ata_smart_data"`
+	Log *struct {
+		Standard struct {
+			Count int `json:"count"`
+			Table []struct {
+				Status struct {
+					String string `json:"string"`
+					Passed bool   `json:"passed"`
+				} `json:"status"`
+			} `json:"table"`
+		} `json:"standard"`
+	} `json:"ata_smart_self_test_log"`
+}
+
+// hostSelfTestJSON reads a disk's self-test state without waking it up.
+var hostSelfTestJSON = func(dev string) []byte {
+	out, _ := command("smartctl", "-n", "standby", "-j", "-c", "-l", "selftest", dev).Output()
+	return out
+}
+
+// refreshSelfTests reads the outcome of the self-tests HSI started.
+func refreshSelfTests(results []taskResult) []taskResult {
+	out := make([]taskResult, len(results))
+	for i, r := range results {
+		out[i] = r
+		if r.Status == "started" && r.LogCount != nil && r.Device != "" {
+			out[i].Status, out[i].Message = selfTestOutcome(hostSelfTestJSON("/dev/"+r.Device), *r.LogCount)
+		}
+	}
+	return out
+}
+
+// selfTestLogCount is the number of entries in a disk's self-test log, or nil.
+func selfTestLogCount(dev string) *int {
+	var d smartSelfTestJSON
+	if json.Unmarshal(hostSelfTestJSON(dev), &d) != nil || d.Log == nil {
+		return nil
+	}
+	n := d.Log.Standard.Count
+	return &n
+}
+
+// selfTestOutcome reads the outcome of a test started when the self-test log
+// had startCount entries: running, then passed or failed once its entry is
+// logged. Anything it cannot tell stays "started".
+func selfTestOutcome(js []byte, startCount int) (status, message string) {
+	var d smartSelfTestJSON
+	if json.Unmarshal(js, &d) != nil || d.Data == nil || d.Log == nil {
+		return "started", ""
+	}
+	// ATA execution status 0xF_: a self-test is in progress.
+	if v := d.Data.SelfTest.Status.Value; v >= 240 && v <= 255 {
+		return "running", fmt.Sprintf("%d%% remaining", d.Data.SelfTest.Status.Remaining)
+	}
+	if d.Log.Standard.Count > startCount && len(d.Log.Standard.Table) > 0 {
+		top := d.Log.Standard.Table[0]
+		if top.Status.Passed {
+			return "passed", ""
+		}
+		return "failed", top.Status.String
+	}
+	return "started", ""
 }
 
 type taskState struct {
@@ -139,9 +216,14 @@ func runSmartTests(kind string) []taskResult {
 			continue
 		}
 		dev := "/dev/" + fields["NAME"]
+		count := selfTestLogCount(dev)
 		sout, serr := command("smartctl", "-n", "standby", "-t", kind, dev).CombinedOutput()
 		status, msg := classifySelfTestStart(string(sout), serr)
-		results = append(results, taskResult{Device: fields["NAME"], Serial: fields["SERIAL"], Status: status, Message: msg})
+		r := taskResult{Device: fields["NAME"], Serial: fields["SERIAL"], Status: status, Message: msg}
+		if status == "started" {
+			r.LogCount = count
+		}
+		results = append(results, r)
 	}
 	return results
 }
@@ -272,7 +354,7 @@ func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 			"schedule":  cfg.schedule(t),
 			"lastRun":   state[t].LastRun,
 			"postponed": state[t].Postponed,
-			"results":   state[t].Results,
+			"results":   refreshSelfTests(state[t].Results),
 			"nextRun":   cfg.schedule(t).nextRun(now),
 		}
 	}

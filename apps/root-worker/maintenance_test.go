@@ -67,3 +67,52 @@ func TestMaintenancePostponedRunIsRetried(t *testing.T) {
 		t.Fatalf("the postponement is shown: %+v", st.Postponed)
 	}
 }
+
+const selfTestRunning = `{"ata_smart_data":{"self_test":{"status":{"value":249,"string":"in progress, 90% remaining","remaining_percent":90}}},
+ "ata_smart_self_test_log":{"standard":{"count":7,"table":[{"type":{"string":"Short offline"},"status":{"value":0,"string":"Completed without error","passed":true}}]}}}`
+const selfTestPassed = `{"ata_smart_data":{"self_test":{"status":{"value":0,"string":"completed without error","passed":true}}},
+ "ata_smart_self_test_log":{"standard":{"count":8,"table":[{"type":{"string":"Short offline"},"status":{"value":0,"string":"Completed without error","passed":true}}]}}}`
+const selfTestFailed = `{"ata_smart_data":{"self_test":{"status":{"value":121,"string":"completed: read failure","passed":false}}},
+ "ata_smart_self_test_log":{"standard":{"count":8,"table":[{"type":{"string":"Short offline"},"status":{"value":7,"string":"Completed: read failure","passed":false}}]}}}`
+
+// The outcome of a self-test HSI started, read from the disk's log: the log
+// had 7 entries when the test started.
+func TestSelfTestOutcome(t *testing.T) {
+	cases := []struct{ name, js, status, msg string }{
+		{"running", selfTestRunning, "running", "90% remaining"},
+		{"passed", selfTestPassed, "passed", ""},
+		{"failed", selfTestFailed, "failed", "Completed: read failure"},
+		{"no new entry yet", strings.Replace(selfTestPassed, `"count":8`, `"count":7`, 1), "started", ""},
+		{"not ATA (no log)", `{"nvme_smart_health_information_log":{}}`, "started", ""},
+	}
+	for _, c := range cases {
+		status, msg := selfTestOutcome([]byte(c.js), 7)
+		if status != c.status || msg != c.msg {
+			t.Errorf("%s: got %q %q, want %q %q", c.name, status, msg, c.status, c.msg)
+		}
+	}
+}
+
+func TestRefreshSelfTests(t *testing.T) {
+	ps := hostSelfTestJSON
+	t.Cleanup(func() { hostSelfTestJSON = ps })
+	hostSelfTestJSON = func(dev string) []byte {
+		if dev == "/dev/sdc" {
+			return []byte(selfTestFailed)
+		}
+		return []byte(selfTestRunning)
+	}
+	seven := 7
+	got := refreshSelfTests([]taskResult{
+		{Device: "sdc", Status: "started", LogCount: &seven},
+		{Device: "sdd", Status: "started", LogCount: &seven},
+		{Device: "vda", Status: "skipped", Message: "no SMART"},
+		{Device: "sde", Status: "started"}, // started by an older HSI: no count
+	})
+	want := []string{"failed", "running", "skipped", "started"}
+	for i, r := range got {
+		if r.Status != want[i] {
+			t.Fatalf("%s: %q, want %q", r.Device, r.Status, want[i])
+		}
+	}
+}
