@@ -75,8 +75,12 @@ defineExpose({ load })
         </div>
         <div class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ a.members.join(' + ') }}</div>
         <div v-if="a.missing > 0" class="text-2xs text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
+        <div v-if="a.extra > 0" class="text-2xs text-danger">
+          {{ a.members.length }} disks carry this array, which has {{ a.expected + a.spares }}: one is probably a copy of another, such as a cloned disk.
+          Disconnect the disk that should not be there, then scan again.
+        </div>
       </div>
-      <button type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="assemble(a)">
+      <button v-if="!(a.extra > 0)" type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="assemble(a)">
         {{ busy === a.uuid ? 'Assembling…' : a.missing > 0 ? 'Start degraded…' : 'Assemble' }}
       </button>
     </div>

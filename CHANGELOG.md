@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Volumes page says so and links to the import.
 
 ### Fixed
+- **Import existing arrays**: when more disks carry an array than it has
+  (a cloned disk next to its original), it is not offered for assembly; the
+  page names the disks and asks to disconnect the copy.
 - **Scheduled disk checks**: a check whose time slot was missed (server off,
   asleep) runs at the next hourly tick instead of a week or a month later; a
   check that could not start because an array was rebuilding is retried every

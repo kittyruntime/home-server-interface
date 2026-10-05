@@ -445,7 +445,7 @@ export const storageRouter = router({
   // Import existing storage without formatting: arrays found in superblocks
   // that are not running, and volume groups with no active logical volume.
   importScan: storageProcedure.query(async () => requestSync<{
-    arrays: Array<{ device: string; level: string; uuid: string; name: string; expected: number; members: string[]; missing: number }>
+    arrays: Array<{ device: string; level: string; uuid: string; name: string; expected: number; members: string[]; missing: number; spares: number; extra: number }>
     vgs: Array<{ name: string; lvs: string[] }>
   }>("root.sys.import.scan", {}, 30_000)),
 

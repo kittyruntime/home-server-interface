@@ -201,6 +201,9 @@ func planImportAssemble(raw json.RawMessage) (*opPlan, *fsError) {
 	if found == nil || len(found.Members) == 0 {
 		return nil, &fsError{Code: "ENOENT", Message: "no disk here carries the array " + req.UUID + "; scan again"}
 	}
+	if found.Expected > 0 && len(found.Members) > found.Expected+found.Spares {
+		return nil, &fsError{Code: "EDUP", Message: fmt.Sprintf("%d disks carry this array, which has %d (%s): one is probably a copy of another, such as a cloned disk. Disconnect the disk that should not be there and scan again", len(found.Members), found.Expected+found.Spares, strings.Join(found.Members, ", "))}
+	}
 	members := append([]string(nil), found.Members...)
 	sort.Strings(members)
 	raidDev := "/dev/" + req.Name
