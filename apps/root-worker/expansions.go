@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -30,43 +31,70 @@ func flockExclusive(f *os.File) error {
 }
 
 func finishExpansions(now time.Time) {
+	// One finisher at a time (the daemon tick, the hourly run, a retry); the
+	// file itself is only written through updateExpansions.
 	lock, err := os.OpenFile(expansionsLockPath(), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return
 	}
 	defer lock.Close()
 	if flockExclusive(lock) != nil {
-		return // another finisher is at work
+		return
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
 
-	list := loadExpansions()
-	changed := false
-	for i := range list {
-		e := &list[i]
-		if e.Phase != "reshape" || e.Array == "" || hostSyncAction(e.Array) != "idle" {
+	for _, e := range loadExpansions() {
+		if e.Phase != "reshape" {
 			continue
 		}
-		if err := finishOne(*e); err != nil {
-			e.Phase, e.Error = "failed", err.Error()
-			logger.Warn("expansion failed", "volume", e.LV, "error", e.Error)
+		array := e.Array
+		if e.ArrayUUID != "" {
+			if name := hostArrayByUUID(e.ArrayUUID); name != "" {
+				array = name
+			}
+		}
+		// Ready: idle, and larger than before (an array that came back after
+		// a reboot reads idle until its reshape resumes).
+		if array == "" || hostSyncAction(array) != "idle" || (e.OldSize > 0 && hostArraySize(array) <= e.OldSize) {
+			continue
+		}
+		e.Array = array
+		ferr := finishOne(e)
+		_ = updateExpansions(func(list []pendingExpansion) []pendingExpansion {
+			for i := range list {
+				if list[i].UUID != e.UUID || list[i].Phase != "reshape" {
+					continue
+				}
+				list[i].Array = array
+				if ferr != nil {
+					list[i].Phase, list[i].Error = "failed", ferr.Error()
+				} else {
+					list[i].Phase, list[i].Error, list[i].NewSize, list[i].FinishedAt = "done", "", hostLVSize(e.LV), now
+				}
+			}
+			return list
+		})
+		if ferr != nil {
+			logger.Warn("expansion failed", "volume", e.LV, "error", ferr.Error())
 		} else {
-			e.Phase, e.Error, e.NewSize = "done", "", hostLVSize(e.LV)
-			logger.Info("expansion done", "volume", e.LV, "size", e.NewSize)
-		}
-		changed = true
-	}
-	if changed {
-		if err := saveExpansions(list); err != nil {
-			logger.Error("expansions: could not save", "error", err.Error())
+			logger.Info("expansion done", "volume", e.LV)
 		}
 	}
+	// Announced expansions are kept a day, so their alert clears, then dropped.
+	_ = updateExpansions(func(list []pendingExpansion) []pendingExpansion {
+		out := list[:0]
+		for _, e := range list {
+			if !(e.Phase == "done" && e.Announced && now.Sub(e.FinishedAt) > 24*time.Hour) {
+				out = append(out, e)
+			}
+		}
+		return out
+	})
 }
 
 // finishOne runs the end of one expansion. Each step is idempotent: a retry
 // after a failure runs them all again.
 func finishOne(e pendingExpansion) error {
-	steps := []planStep{cmdStep("/dev/"+e.Array, "Let LVM use the new size of /dev/"+e.Array, []string{"pvresize", "/dev/" + e.Array})}
 	run := func(ss []planStep) error {
 		for _, s := range ss {
 			if _, err := s.run(); err != nil {
@@ -75,7 +103,7 @@ func finishOne(e pendingExpansion) error {
 		}
 		return nil
 	}
-	if err := run(steps); err != nil {
+	if err := run([]planStep{cmdStep("/dev/"+e.Array, "Let LVM use the new size of /dev/"+e.Array, []string{"pvresize", "/dev/" + e.Array})}); err != nil {
 		return err
 	}
 	// lvextend refuses to grow by nothing: skip it when a retry already did.
@@ -84,10 +112,8 @@ func finishOne(e pendingExpansion) error {
 			return err
 		}
 	}
-	mp := mountPointOf(hostProcMounts(), e.LV)
-	if mp == "" && e.MountPoint != "" && strings.Contains(hostProcMounts(), " "+e.MountPoint+" ") {
-		mp = e.MountPoint
-	}
+	// Mounted now? /proc/mounts names the LV by its device-mapper node.
+	mp := mountPointOf(hostProcMounts(), e.LV, lvDmPath(e.VG, filepath.Base(e.LV)))
 	grow, fe := growFsSteps(e.FSType, e.LV, mp, mp != "")
 	if fe != nil {
 		return fmt.Errorf("%s", fe.Message)
@@ -96,26 +122,32 @@ func finishOne(e pendingExpansion) error {
 }
 
 func retryExpansion(uuid string) error {
-	list := loadExpansions()
-	for i := range list {
-		if list[i].UUID == uuid && list[i].Phase == "failed" {
-			list[i].Phase, list[i].Error = "reshape", ""
-			return saveExpansions(list)
+	found := false
+	err := updateExpansions(func(list []pendingExpansion) []pendingExpansion {
+		for i := range list {
+			if list[i].UUID == uuid && list[i].Phase == "failed" {
+				list[i].Phase, list[i].Error = "reshape", ""
+				found = true
+			}
 		}
+		return list
+	})
+	if err == nil && !found {
+		return fmt.Errorf("no failed expansion for this volume")
 	}
-	return fmt.Errorf("no failed expansion for this volume")
+	return err
 }
 
-// ackExpansion forgets a finished expansion once the backend announced it.
+// ackExpansion marks a finished expansion as announced by the backend.
 func ackExpansion(uuid string) error {
-	list := loadExpansions()
-	out := list[:0]
-	for _, e := range list {
-		if !(e.UUID == uuid && e.Phase == "done") {
-			out = append(out, e)
+	return updateExpansions(func(list []pendingExpansion) []pendingExpansion {
+		for i := range list {
+			if list[i].UUID == uuid && list[i].Phase == "done" {
+				list[i].Announced = true
+			}
 		}
-	}
-	return saveExpansions(out)
+		return list
+	})
 }
 
 func handleExpansions(nc *nats.Conn, msg *nats.Msg) {
