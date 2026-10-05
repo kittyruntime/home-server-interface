@@ -785,7 +785,7 @@ await testVolumeGuard()
 const sp = await import("../services/storage-plan")
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.length === 18)
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.length === 19)
   const meta = sp.planAuditMeta("format",
     [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
@@ -1625,6 +1625,75 @@ await testSharePlans()
   assert.equal(vr.removeTargetOf(vol({})).uuid, "fs-1")
   assert.throws(() => vr.removeTargetOf(vol({ id: "dev:sdf" })), (e: any) => e.code === "PRECONDITION_FAILED" && /no filesystem UUID/.test(e.message))
   assert.throws(() => vr.removeTargetOf(vol({ state: "missing" })), (e: any) => e.code === "PRECONDITION_FAILED")
+}
+
+// Expand a volume (#7): what each stack allows.
+{
+  const { expandOptions } = await import("../services/expand-options")
+  const vol = (o: any = {}) => ({ id: "fs-1", name: "data", state: "mounted", fstype: "ext4", mountPoint: "/srv/data",
+    stack: [{ kind: "filesystem", name: "data" }, { kind: "lv", name: "data/data" }, { kind: "vg", name: "data" }, { kind: "array", name: "md3" }], ...o })
+  const dev = (name: string, size: number, children: any[] = []) => ({ name, size, type: "disk", children })
+  const base = (o: any = {}) => ({
+    lvm: { pvs: [{ name: "/dev/md3", vgName: "data", size: 64e9 }], vgs: [{ name: "data", free: 0 }], lvs: [{ name: "data", vgName: "data", path: "/dev/data/data" }] },
+    raids: [{ name: "md3", level: "raid5", state: "active", active: 3, total: 3, members: [{ name: "sdc", role: "active" }, { name: "sdd", role: "active" }, { name: "sde", role: "active" }] }],
+    devices: [dev("sdc", 32e9, [{ name: "md3", size: 64e9, type: "raid5" }]), dev("sdd", 32e9), dev("sde", 32e9), dev("sdf", 32e9), dev("sdg", 16e9)],
+    freeDisks: [{ name: "sdf", size: 32e9 }, { name: "sdg", size: 16e9 }],
+    expansions: [],
+    ...o,
+  })
+  const modes = (r: any) => r.options.map((o: any) => o.mode)
+
+  // RAID 5: a free disk as large as the members; the small one is left out.
+  const r5 = expandOptions(vol() as any, base() as any)
+  assert.deepEqual(modes(r5), ["raidAddDisk"])
+  assert.deepEqual(r5.options[0]!.disks!.map((d: any) => d.name), ["sdf"])
+  assert.equal(r5.options[0].gain, 32e9)
+
+  // Free space in the VG comes first.
+  const free = expandOptions(vol() as any, base({ lvm: { ...base().lvm, vgs: [{ name: "data", free: 10e9 }] } }) as any)
+  assert.deepEqual(modes(free), ["vgFree", "raidAddDisk"])
+  assert.equal(free.options[0].gain, 10e9)
+
+  // A degraded array: nothing, with the reason.
+  const degraded = expandOptions(vol() as any, base({ raids: [{ ...base().raids[0], active: 2 }] }) as any)
+  assert.equal(degraded.options.length, 0)
+  assert.match(degraded.reason!, /degraded/)
+
+  // A mirror whose members grew.
+  const mirror = expandOptions(vol({ stack: [{ kind: "filesystem", name: "data" }, { kind: "lv", name: "data/data" }, { kind: "vg", name: "data" }, { kind: "array", name: "md1" }] }) as any, base({
+    lvm: { pvs: [{ name: "/dev/md1", vgName: "data", size: 30e9 }], vgs: [{ name: "data", free: 0 }], lvs: [{ name: "data", vgName: "data", path: "/dev/data/data" }] },
+    raids: [{ name: "md1", level: "raid1", state: "active", active: 2, total: 2, members: [{ name: "sda", role: "active" }, { name: "sdb", role: "active" }] }],
+    devices: [dev("sda", 40e9, [{ name: "md1", size: 30e9, type: "raid1" }]), dev("sdb", 40e9)],
+    freeDisks: [],
+  }) as any)
+  assert.deepEqual(modes(mirror), ["mirrorGrow"])
+  assert.equal(mirror.options[0].gain, 10e9)
+
+  // Plain disks: add a disk.
+  const plain = expandOptions(vol({ stack: [{ kind: "filesystem", name: "data" }, { kind: "lv", name: "data/data" }, { kind: "vg", name: "data" }, { kind: "disk", name: "sde" }] }) as any, base({
+    lvm: { pvs: [{ name: "/dev/sde", vgName: "data", size: 32e9 }], vgs: [{ name: "data", free: 0 }], lvs: [{ name: "data", vgName: "data", path: "/dev/data/data" }] },
+    raids: [],
+  }) as any)
+  assert.deepEqual(modes(plain), ["addDisk"])
+  assert.deepEqual(plain.options[0]!.disks!.map((d: any) => d.name), ["sdf", "sdg"])
+
+  // Not on LVM, unsupported filesystem, already expanding.
+  assert.match(expandOptions(vol({ stack: [{ kind: "filesystem", name: "x" }, { kind: "disk", name: "sdf" }] }) as any, base() as any).reason!, /LVM/)
+  assert.match(expandOptions(vol({ fstype: "vfat" }) as any, base() as any).reason!, /not supported/)
+  assert.match(expandOptions(vol() as any, base({ expansions: [{ uuid: "fs-1", phase: "reshape" }] }) as any).reason!, /under way/)
+}
+
+// Expansion alerts: done announces the new size once, failed warns.
+{
+  const { expansionFindings } = await import("../services/expand-options")
+  const out = expansionFindings([
+    { uuid: "fs-1", lv: "/dev/data/data", mountpoint: "/srv/data", phase: "done", newSize: 96e9 },
+    { uuid: "fs-2", lv: "/dev/b/b", mountpoint: "/srv/b", phase: "failed", error: "resize2fs: busy" },
+    { uuid: "fs-3", lv: "/dev/c/c", mountpoint: "/srv/c", phase: "reshape" },
+  ] as any)
+  assert.deepEqual(out.found.map(f => [f.target, f.severity]), [["/srv/data", "info"], ["/srv/b", "warning"]])
+  assert.match(out.found[0]!.message, /now has 96\.0 GB/)
+  assert.deepEqual(out.ack, ["fs-1"])
 }
 
 console.log("Backend security tests passed")
