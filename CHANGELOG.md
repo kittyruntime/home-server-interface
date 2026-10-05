@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **SMART self-test results on Maintenance**: each disk's scheduled or manual
+  self-test shows as Running (with what is left), then Passed or Failed, on
+  the Maintenance page instead of only "Started".
 - **Found storage on Volumes**: when the disks carry arrays or volume groups
   that are not running (moved from another machine, or after a reinstall),
   the Volumes page says so and links to the import.
