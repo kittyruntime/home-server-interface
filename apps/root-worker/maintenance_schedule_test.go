@@ -25,7 +25,7 @@ func TestIsDue(t *testing.T) {
 	if weekly.isDue(at("2026-09-28 02:00"), nil) {
 		t.Error("not due on another weekday")
 	}
-	recent := sunday2.Add(-time.Hour)
+	recent := at("2026-09-27 02:05")
 	if weekly.isDue(sunday2, &recent) {
 		t.Error("not due again right after a run")
 	}
@@ -63,5 +63,26 @@ func TestScheduleValidation(t *testing.T) {
 		if s.valid() {
 			t.Errorf("%+v must be invalid", s)
 		}
+	}
+}
+
+// A slot missed while the server was off, or a run postponed because an array
+// was rebuilding, is caught up at the next hourly tick, not a period later.
+func TestIsDueCatchesUp(t *testing.T) {
+	weekly := taskSchedule{Every: "weekly", Weekday: 0, Hour: 2, Day: 1} // Sunday 02:00
+	lastWeek := at("2026-09-20 02:01")
+	if !weekly.isDue(at("2026-09-27 09:00"), &lastWeek) {
+		t.Error("the Sunday slot missed at 02:00 is run later that day")
+	}
+	if !weekly.isDue(at("2026-09-29 15:00"), &lastWeek) {
+		t.Error("still caught up two days later")
+	}
+	thisWeek := at("2026-09-27 02:01")
+	if weekly.isDue(at("2026-09-29 15:00"), &thisWeek) {
+		t.Error("not due again before the next slot")
+	}
+	// A fresh install waits for its first slot instead of starting at once.
+	if weekly.isDue(at("2026-09-29 15:00"), nil) {
+		t.Error("first run waits for the slot")
 	}
 }

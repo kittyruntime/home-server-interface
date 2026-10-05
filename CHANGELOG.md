@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Volumes page says so and links to the import.
 
 ### Fixed
+- **Scheduled disk checks**: a check whose time slot was missed (server off,
+  asleep) runs at the next hourly tick instead of a week or a month later; a
+  check that could not start because an array was rebuilding is retried every
+  hour, and the page shows why it did not run while keeping the last results;
+  disks that cannot run SMART self-tests are listed as skipped, not as errors.
 - **Import existing arrays**: assembling an array found on the disks failed
   ("not identified in config file"); its members are now named explicitly,
   and HSI picks a name no other array uses, including names kept in

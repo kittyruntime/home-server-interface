@@ -429,6 +429,8 @@ export const storageRouter = router({
       schedule: MaintenanceSchedule
       lastRun: string | null
       nextRun: string | null
+      /** The latest attempt could start nothing; the timer tries again hourly. */
+      postponed?: { at: string; reason: string } | null
       results: Array<{ device: string; serial?: string; status: "started" | "skipped" | "error"; message?: string }> | null
     }>
   }>("root.sys.maintenance.get", {}, 10_000)),

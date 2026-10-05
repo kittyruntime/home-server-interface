@@ -39,6 +39,14 @@ type taskResult struct {
 type taskState struct {
 	LastRun *time.Time   `json:"lastRun,omitempty"`
 	Results []taskResult `json:"results"`
+	// Postponed: the latest attempt could start nothing (an array syncing,
+	// every disk asleep). It is not a run: the hourly timer tries again.
+	Postponed *postponed `json:"postponed,omitempty"`
+}
+
+type postponed struct {
+	At     time.Time `json:"at"`
+	Reason string    `json:"reason"`
 }
 
 type maintenanceState map[string]taskState
@@ -92,10 +100,25 @@ func classifySelfTestStart(out string, err error) (status, message string) {
 		return "skipped", "a self-test is already running"
 	case strings.Contains(out, "Unable to detect device type") || strings.Contains(out, "SMART support is: Unavailable") || strings.Contains(out, "does not support"):
 		return "skipped", "no SMART self-test support (virtual disk or USB bridge)"
+	case strings.Contains(out, "unsupported scsi opcode") || strings.Contains(out, "not supported"):
+		return "skipped", "this disk does not run SMART self-tests"
 	case err == nil:
 		return "started", ""
 	}
-	return "error", cmdErrMessage([]byte(out), err)
+	return "error", cmdErrMessage([]byte(withoutSmartctlBanner(out)), err)
+}
+
+// withoutSmartctlBanner drops the version and copyright lines smartctl prints
+// before every answer.
+func withoutSmartctlBanner(out string) string {
+	var keep []string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "smartctl ") || strings.HasPrefix(l, "Copyright (C)") {
+			continue
+		}
+		keep = append(keep, l)
+	}
+	return strings.TrimSpace(strings.Join(keep, "\n"))
 }
 
 func runSmartTests(kind string) []taskResult {
@@ -132,7 +155,7 @@ func runRaidChecks() []taskResult {
 	arrays := parseMdstat(string(mdData))
 	for _, a := range arrays {
 		if a.ResyncPercent != nil {
-			return append(results, taskResult{Device: a.Name, Status: "skipped", Message: "an array is syncing (" + a.SyncAction + "); checks resume at the next scheduled run"})
+			return append(results, taskResult{Device: a.Name, Status: "skipped", Message: "an array is syncing (" + a.SyncAction + ")"})
 		}
 	}
 	for _, a := range arrays {
@@ -154,7 +177,7 @@ func runRaidChecks() []taskResult {
 	return results
 }
 
-func runMaintenanceTask(task string) []taskResult {
+var runMaintenanceTask = func(task string) []taskResult {
 	switch task {
 	case "smartShort":
 		return runSmartTests("short")
@@ -166,6 +189,19 @@ func runMaintenanceTask(task string) []taskResult {
 }
 
 var errMaintenanceBusy = errors.New("maintenance is already running")
+
+// allSkipped reports whether nothing started in a run, with the first reason.
+func allSkipped(results []taskResult) (string, bool) {
+	if len(results) == 0 {
+		return "", false
+	}
+	for _, r := range results {
+		if r.Status != "skipped" {
+			return "", false
+		}
+	}
+	return results[0].Message, true
+}
 
 // runMaintenance runs every due task (or only `only` when set, regardless of
 // its schedule). A lock file keeps the timer and a manual run from overlapping.
@@ -192,7 +228,11 @@ func runMaintenance(now time.Time, only string) error {
 		}
 		results := runMaintenanceTask(task)
 		started := now
-		state[task] = taskState{LastRun: &started, Results: results}
+		if reason, all := allSkipped(results); all {
+			state[task] = taskState{LastRun: prev.LastRun, Results: prev.Results, Postponed: &postponed{At: now, Reason: reason}}
+		} else {
+			state[task] = taskState{LastRun: &started, Results: results}
+		}
 		for _, r := range results {
 			level := logger.Info
 			if r.Status == "error" {
@@ -229,10 +269,11 @@ func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 	tasks := map[string]any{}
 	for _, t := range maintenanceTasks {
 		tasks[t] = map[string]any{
-			"schedule": cfg.schedule(t),
-			"lastRun":  state[t].LastRun,
-			"results":  state[t].Results,
-			"nextRun":  cfg.schedule(t).nextRun(now),
+			"schedule":  cfg.schedule(t),
+			"lastRun":   state[t].LastRun,
+			"postponed": state[t].Postponed,
+			"results":   state[t].Results,
+			"nextRun":   cfg.schedule(t).nextRun(now),
 		}
 	}
 	_, timerErr := os.Stat(maintenanceTimerPath)
