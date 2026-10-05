@@ -152,6 +152,10 @@ const statusClass: Record<string, string> = {
             <div>Last run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
             <div>Next run: <span class="text-[var(--c-text-2)]">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
+          <p v-if="data.tasks[t.id].postponed" class="mt-2 status-text text-warning">
+            <span class="status-tag">[WARN]</span> Not run at {{ fmtWhen(data.tasks[t.id].postponed!.at) }}: {{ data.tasks[t.id].postponed!.reason }}.
+            {{ data.tasks[t.id].schedule.every === 'off' ? 'Run it again once that is over.' : 'HSI tries again every hour.' }}
+          </p>
 
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
             <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">

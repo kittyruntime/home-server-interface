@@ -60,11 +60,30 @@ func (s taskSchedule) slotMatches(t time.Time) bool {
 // isDue reports whether the task should run at now: it is in its scheduled
 // hour and has not already run in the last 23 hours (the timer fires hourly,
 // and a manual run just before the slot counts).
+// isDue: the latest slot started after the last run. A slot missed while the
+// server was off, or a run postponed (an array rebuilding), is caught up at the
+// next hourly tick. A task that never ran waits for its first slot.
 func (s taskSchedule) isDue(now time.Time, lastRun *time.Time) bool {
-	if s.Every == "off" || !s.slotMatches(now) {
+	if s.Every == "off" {
 		return false
 	}
-	return lastRun == nil || now.Sub(*lastRun) >= 23*time.Hour
+	if lastRun == nil {
+		return s.slotMatches(now)
+	}
+	slot := s.lastSlot(now)
+	return slot != nil && lastRun.Before(*slot)
+}
+
+// lastSlot returns the start of the latest scheduled slot at or before now.
+func (s taskSchedule) lastSlot(now time.Time) *time.Time {
+	t := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+	for i := 0; i < 24*62; i++ { // at most two months of hourly slots
+		if s.slotMatches(t) {
+			return &t
+		}
+		t = t.Add(-time.Hour)
+	}
+	return nil
 }
 
 // nextRun returns the next start of a scheduled slot after from, or nil when off.
