@@ -46,6 +46,16 @@ async function checkRaidConsistency(): Promise<CheckOutcome> {
   return { found, checked: withResult.map(r => r.name) }
 }
 
+// Expansions (#7): a finished one is announced once, then forgotten by the
+// worker; a failed one stays until it is retried.
+async function checkExpansions(): Promise<CheckOutcome> {
+  const { expansionFindings } = await import("./expand-options")
+  const { expansions } = await requestSync<{ expansions: Parameters<typeof expansionFindings>[0] }>("root.sys.expansions", {}, 10_000)
+  const out = expansionFindings(expansions)
+  for (const uuid of out.ack) await requestSync("root.sys.expansions.ack", { uuid }, 10_000).catch(() => {})
+  return { found: out.found, checked: out.checked }
+}
+
 type BlockDevLite = { name: string; type: string }
 
 type SmartAttr = { isCritical: boolean; raw: number }
@@ -144,6 +154,7 @@ const checkers: Checker[] = [
   { source: "storage.smart", check: checkSmart },
   { source: "storage.raid-check", check: checkRaidConsistency },
   { source: "storage.disk-usage", check: checkDiskUsage },
+  { source: "storage.expand", check: checkExpansions },
 ]
 
 // Pure diff between the previous alert set (source-scoped) and this tick's

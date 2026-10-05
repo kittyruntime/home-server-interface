@@ -6,6 +6,7 @@ import { normalizeDiskLabel } from "../../services/disk-labels"
 import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
 import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
+import { expandOptions, type ExpandInput, type PendingExpansion } from "../../services/expand-options"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
 import { desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
@@ -82,11 +83,20 @@ const PLAN_INPUTS = {
     allowDegraded: z.boolean().default(false),
   }),
   "import.activate": z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }),
+  // Expand a volume (#7): the filesystem UUID, the way, and the disk to add.
+  "volume.expand": z.object({
+    uuid: z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/),
+    mode: z.enum(["vgFree", "addDisk", "raidAddDisk", "mirrorGrow"]),
+    disk: z.string().regex(/^[a-z][a-z0-9]+$/).optional(),
+  }),
 } satisfies Record<PlanOp, z.ZodTypeAny>
 
 // The worker input for an operation: validated, and for a mount the owner is
 // resolved to an HSI user's Linux name (never an arbitrary system account).
 async function workerInput(ctx: Context & { user: { userId: string } }, op: PlanOp, raw: unknown): Promise<Record<string, unknown>> {
+  // Expanding rewrites whole arrays and erases the disk it adds: admins only.
+  if (op === "volume.expand" && !ctx.user?.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can expand a volume" })
   const parsed = PLAN_INPUTS[op].safeParse(raw)
   if (!parsed.success) throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error.issues[0]?.message ?? "Invalid input" })
   if (op !== "mount") return parsed.data as Record<string, unknown>
@@ -312,6 +322,30 @@ export const storageRouter = router({
     // The Volumes landing page (#40): every data filesystem with its stack,
     // redundancy, space, issues and what uses it.
     overview: storageProcedure.query(({ ctx }) => loadVolumes(ctx)),
+
+    // Expand (#7): the ways this volume can grow, or why none applies.
+    expandOptions: adminProcedure
+      .input(z.object({ id: z.string().min(1).max(128) }))
+      .query(async ({ ctx, input }) => {
+        const [overview, lvm, block, pending] = await Promise.all([
+          loadVolumes(ctx),
+          requestSync<ExpandInput["lvm"]>("root.sys.lvm.info", {}, 10_000),
+          requestSync<{ devices: VDev[]; raids: ExpandInput["raids"] }>("root.sys.blockdevices", {}, 15_000),
+          requestSync<{ expansions: PendingExpansion[] }>("root.sys.expansions", {}, 10_000),
+        ])
+        const v = overview.volumes.find(x => x.id === input.id)
+        if (!v) throw new TRPCError({ code: "NOT_FOUND", message: "This volume is no longer on the server" })
+        return expandOptions(v, { lvm, raids: block.raids ?? [], devices: (block.devices ?? []) as never, freeDisks: overview.freeDisks, expansions: pending.expansions })
+      }),
+    // Expansions waiting for a reshape, or finished, or failed.
+    expansions: storageProcedure.query(async () =>
+      (await requestSync<{ expansions: PendingExpansion[] }>("root.sys.expansions", {}, 10_000)).expansions),
+    retryExpansion: adminProcedure
+      .input(z.object({ id: z.string().min(1).max(128) }))
+      .mutation(async ({ ctx, input }) => {
+        ctx.audit.target = input.id
+        return requestSync("root.sys.expansions.retry", { uuid: input.id }, 10_000)
+      }),
 
     list: storageProcedure.query(async () => {
       const [volumes, holds] = await Promise.all([fetchVolumes().catch(() => []), prisma.volumeHold.findMany()])
