@@ -1694,6 +1694,11 @@ await testSharePlans()
   assert.deepEqual(out.found.map(f => [f.target, f.severity]), [["/srv/data", "info"], ["/srv/b", "warning"]])
   assert.match(out.found[0]!.message, /now has 96\.0 GB/)
   assert.deepEqual(out.ack, ["fs-1"])
+  // Once announced, the volume is still checked with nothing found: the alert clears.
+  const later = expansionFindings([{ uuid: "fs-1", lv: "/dev/data/data", mountpoint: "/srv/data", phase: "done", newSize: 96e9, announced: true }] as any)
+  assert.equal(later.found.length, 0)
+  assert.deepEqual(later.checked, ["/srv/data"])
+  assert.deepEqual(later.ack, [])
 }
 
 console.log("Backend security tests passed")

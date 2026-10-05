@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -30,6 +31,22 @@ var (
 		n, _ := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
 		return n * 1024
 	}
+	// The array's size in bytes (/sys counts 512-byte sectors).
+	hostArraySize = func(md string) int64 {
+		b, _ := os.ReadFile(filepath.Join("/sys/block", md, "size"))
+		n, _ := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
+		return n * 512
+	}
+	// The md name of an array by its UUID ("" if not running).
+	hostArrayByUUID = func(uuid string) string {
+		out, _ := hostOutput("mdadm", "--detail", "--scan")
+		for _, l := range strings.Split(string(out), "\n") {
+			if dev, u := arrayLineFields(strings.TrimSpace(l)); u == uuid && dev != "" {
+				return filepath.Base(hostRealPath(dev))
+			}
+		}
+		return ""
+	}
 	hostVgFree = func(vg string) int64 {
 		out, _ := hostOutput("vgs", "--noheadings", "--nosuffix", "--units", "b", "-o", "vg_free", vg)
 		n, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
@@ -49,6 +66,13 @@ type pendingExpansion struct {
 	Phase      string    `json:"phase"` // reshape | done | failed
 	Error      string    `json:"error,omitempty"`
 	NewSize    int64     `json:"newSize,omitempty"`
+	// The array's identity and size before the grow: its end is told by a
+	// larger size (an idle array after a reboot may not have resumed yet),
+	// and its name can change at boot.
+	ArrayUUID  string    `json:"arrayUuid,omitempty"`
+	OldSize    int64     `json:"oldSize,omitempty"`
+	Announced  bool      `json:"announced,omitempty"`
+	FinishedAt time.Time `json:"finishedAt,omitempty"`
 }
 
 func expansionsPath() string { return envOr("HSI_EXPANSIONS", "/var/lib/hsi/expansions.json") }
@@ -66,15 +90,46 @@ func loadExpansions() []pendingExpansion {
 
 func saveExpansions(list []pendingExpansion) error { return saveJSON(expansionsPath(), list) }
 
-func addPendingExpansion(p pendingExpansion) error {
-	list := loadExpansions()
-	for i := range list {
-		if list[i].UUID == p.UUID {
-			list[i] = p
-			return saveExpansions(list)
-		}
+// updateExpansions is the only read-modify-write of the file: writers wait
+// for each other, so none loses another's entry.
+func updateExpansions(edit func([]pendingExpansion) []pendingExpansion) error {
+	lock, err := os.OpenFile(expansionsPath()+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return err
 	}
-	return saveExpansions(append(list, p))
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	return saveExpansions(edit(loadExpansions()))
+}
+
+func addPendingExpansion(p pendingExpansion) error {
+	return updateExpansions(func(list []pendingExpansion) []pendingExpansion {
+		for i := range list {
+			if list[i].UUID == p.UUID {
+				list[i] = p
+				return list
+			}
+		}
+		return append(list, p)
+	})
+}
+
+// e2fsckStep checks an ext4 filesystem before an offline resize. Exit 1
+// means it corrected errors: the filesystem is clean now.
+func e2fsckStep(lvPath string) planStep {
+	argv := []string{"e2fsck", "-f", "-p", lvPath}
+	s := cmdStep(lvPath, "Check the filesystem before growing it", argv)
+	s.run = func() (string, error) {
+		out, err := runArgv(argv)
+		if err != nil && !strings.HasSuffix(err.Error(), "exit status 1") {
+			return "", cmdError{cmdErrMessage(out, err)}
+		}
+		return "", nil
+	}
+	return s
 }
 
 // growFsSteps grows a filesystem to its device: online for ext4, XFS and
@@ -86,7 +141,7 @@ func growFsSteps(fstype, lvPath, mp string, mounted bool) ([]planStep, *fsError)
 			return []planStep{cmdStep(lvPath, "Grow the ext4 filesystem to the new size", []string{"resize2fs", lvPath})}, nil
 		}
 		return []planStep{
-			cmdStep(lvPath, "Check the filesystem before growing it", []string{"e2fsck", "-f", "-p", lvPath}),
+			e2fsckStep(lvPath),
 			cmdStep(lvPath, "Grow the ext4 filesystem to the new size", []string{"resize2fs", lvPath}),
 		}, nil
 	case "xfs", "btrfs":
@@ -119,7 +174,7 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, &fsError{Code: "ERR", Message: "invalid volume id"}
 	}
 	for _, p := range loadExpansions() {
-		if p.UUID == req.UUID && p.Phase != "done" {
+		if p.UUID == req.UUID && p.Phase == "reshape" {
 			return nil, &fsError{Code: "EEXIST", Message: "an expansion of this volume is already under way"}
 		}
 	}
@@ -166,22 +221,52 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 	obs := map[string]string{"device": dev, "fstype": fstype, "mounted": fmt.Sprint(mounted), "pvs": strings.Join(pvs, " "), "lvs": strings.Join(others, ",")}
 
 	// The array under the VG, when its only PV is one.
-	var array string
-	var members []string
+	var array, arrayUUID string
+	var members []string // active members only
+	level, state := "", ""
+	raidDevices := 0
+	spares := 0
 	if len(pvs) == 1 && reMdDev.MatchString(filepath.Base(hostRealPath(pvs[0]))) {
 		array = filepath.Base(hostRealPath(pvs[0]))
 		detail, _ := hostMdDetail("/dev/" + array)
-		members, _ = parseMdDetail(detail)
+		_, arrayUUID = parseMdDetail(detail)
+		inTable := false
+		for _, l := range strings.Split(detail, "\n") {
+			t := strings.TrimSpace(l)
+			if k, v, ok := strings.Cut(t, ":"); ok && !inTable {
+				switch strings.TrimSpace(k) {
+				case "Raid Level":
+					level = strings.TrimSpace(v)
+				case "State":
+					state = strings.TrimSpace(v)
+				case "Raid Devices":
+					raidDevices, _ = strconv.Atoi(strings.TrimSpace(v))
+				}
+				continue
+			}
+			if strings.HasPrefix(t, "Number") && strings.Contains(t, "RaidDevice") {
+				inTable = true
+				continue
+			}
+			f := strings.Fields(t)
+			if !inTable || len(f) == 0 || !strings.HasPrefix(f[len(f)-1], "/dev/") {
+				continue
+			}
+			switch {
+			case strings.Contains(t, "spare"):
+				spares++
+			case strings.Contains(t, "active sync"):
+				members = append(members, f[len(f)-1])
+			}
+		}
+		if raidDevices == 0 {
+			raidDevices = len(members)
+		}
 		obs["members"] = strings.Join(members, " ")
 		obs["sync"] = hostSyncAction(array)
-	}
-	level := ""
-	if array != "" {
-		detail, _ := hostMdDetail("/dev/" + array)
-		for _, l := range strings.Split(detail, "\n") {
-			if k, v, ok := strings.Cut(strings.TrimSpace(l), ":"); ok && strings.TrimSpace(k) == "Raid Level" {
-				level = strings.TrimSpace(v)
-			}
+		obs["state"] = state
+		if strings.Contains(state, "degraded") {
+			return nil, &fsError{Code: "EBUSY", Message: "/dev/" + array + " is degraded: replace its failed disk before expanding it"}
 		}
 		if s := obs["sync"]; s != "" && s != "idle" {
 			return nil, &fsError{Code: "EBUSY", Message: "/dev/" + array + " is busy (" + s + "); expand it once that is over"}
@@ -233,6 +318,9 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		if level != "raid5" && level != "raid6" {
 			return nil, &fsError{Code: "ERR", Message: "a disk adds capacity only to a RAID 5 or RAID 6 array"}
 		}
+		if spares > 0 {
+			return nil, &fsError{Code: "ERR", Message: "/dev/" + array + " has a spare disk: the reshape would take it too. Remove the spare first"}
+		}
 		d, fe := checkDisk()
 		if fe != nil {
 			return nil, fe
@@ -240,19 +328,23 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		size, _ := hostDeviceSize(d)
 		smallest := int64(0)
 		for _, m := range members {
-			if s, err := hostDeviceSize(m); err == nil && (smallest == 0 || s < smallest) {
+			s, err := hostDeviceSize(m)
+			if err != nil {
+				return nil, &fsError{Code: "ERR", Message: "could not read the size of " + m}
+			}
+			if smallest == 0 || s < smallest {
 				smallest = s
 			}
 		}
-		if size < smallest {
+		if smallest == 0 || size < smallest {
 			return nil, &fsError{Code: "ERR", Message: d + " is too small: the members of /dev/" + array + " are larger"}
 		}
 		raidDev := "/dev/" + array
 		steps = append(steps,
 			destructive(cmdStep(d, "Erase "+d+" to add it to "+raidDev, []string{"wipefs", "-a", d}), d),
 			cmdStep(raidDev, "Add "+d+" to "+raidDev, []string{"mdadm", "--add", raidDev, d}),
-			cmdStep(raidDev, fmt.Sprintf("Spread %s over %d disks (a reshape: hours, the volume stays usable)", raidDev, len(members)+1),
-				[]string{"mdadm", "--grow", raidDev, fmt.Sprintf("--raid-devices=%d", len(members)+1)}))
+			cmdStep(raidDev, fmt.Sprintf("Spread %s over %d disks (a reshape: hours, the volume stays usable)", raidDev, raidDevices+1),
+				[]string{"mdadm", "--grow", raidDev, fmt.Sprintf("--raid-devices=%d", raidDevices+1)}))
 		pending = true
 	case "mirrorGrow":
 		if level != "raid1" && level != "raid10" {
@@ -276,7 +368,9 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	if pending {
-		entry := pendingExpansion{UUID: req.UUID, Array: array, VG: lv.VGName, LV: lv.Path, FSType: fstype, MountPoint: mp, Phase: "reshape"}
+		oldSize := hostArraySize(array)
+		obs["arraySize"] = fmt.Sprint(oldSize)
+		entry := pendingExpansion{UUID: req.UUID, Array: array, ArrayUUID: arrayUUID, OldSize: oldSize, VG: lv.VGName, LV: lv.Path, FSType: fstype, MountPoint: mp, Phase: "reshape"}
 		steps = append(steps, planStep{Kind: "update", Target: lv.Path, Deferred: true,
 			Summary: "Grow LVM and the filesystem when the array is ready (HSI does it on its own)",
 			run: func() (string, error) {

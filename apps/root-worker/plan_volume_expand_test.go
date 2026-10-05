@@ -235,3 +235,56 @@ func TestPlanVolumeExpandStale(t *testing.T) {
 		t.Fatal("a new LV in the VG makes the plan stale")
 	}
 }
+
+const raid5Degraded = `/dev/md3:
+           Raid Level : raid5
+         Raid Devices : 3
+                State : clean, degraded
+                 UUID : 11:22:33:44
+    Number   Major   Minor   RaidDevice State
+       0       8       32        0      active sync   /dev/sdc
+       1       8       48        1      active sync   /dev/sdd
+       -       0        0        2      removed
+`
+
+const raid5WithSpare = `/dev/md3:
+           Raid Level : raid5
+         Raid Devices : 3
+                State : clean
+                 UUID : 11:22:33:44
+    Number   Major   Minor   RaidDevice State
+       0       8       32        0      active sync   /dev/sdc
+       1       8       48        1      active sync   /dev/sdd
+       2       8       64        2      active sync   /dev/sde
+       3       8       80        -      spare   /dev/sdg
+`
+
+func TestPlanVolumeExpandRaidState(t *testing.T) {
+	stubExpandHost(t)
+	hostMdDetail = func(string) (string, error) { return raid5Degraded, nil }
+	if _, fe := expand(t, "raidAddDisk", "sdf"); fe == nil || !strings.Contains(fe.Message, "degraded") {
+		t.Fatalf("a degraded array is not reshaped: %+v", fe)
+	}
+	hostMdDetail = func(string) (string, error) { return raid5WithSpare, nil }
+	if _, fe := expand(t, "raidAddDisk", "sdf"); fe == nil || !strings.Contains(fe.Message, "spare") {
+		t.Fatalf("a spare would be consumed by the reshape: %+v", fe)
+	}
+}
+
+// The entry records the array's identity and size before the grow, so its
+// end is told by the size, not by an idle sync_action.
+func TestPlanVolumeExpandRecordsArraySize(t *testing.T) {
+	stubExpandHost(t)
+	pa := hostArraySize
+	t.Cleanup(func() { hostArraySize = pa })
+	hostArraySize = func(string) int64 { return 64e9 }
+	p, fe := expand(t, "raidAddDisk", "sdf")
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	assertParity(t, p)
+	e := loadExpansions()[0]
+	if e.ArrayUUID != "11:22:33:44" || e.OldSize != 64e9 {
+		t.Fatalf("identity and size recorded: %+v", e)
+	}
+}

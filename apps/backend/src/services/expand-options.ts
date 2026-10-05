@@ -9,7 +9,7 @@ export type ExpandOption = { mode: ExpandMode; gain: number; disks?: Array<{ nam
 
 type Dev = { name: string; size: number; children?: Dev[] }
 type ExpandVolume = { id: string; state: string; fstype?: string; stack: Array<{ kind: string; name: string }> }
-export type PendingExpansion = { uuid: string; lv?: string; mountpoint?: string; phase: string; error?: string; newSize?: number }
+export type PendingExpansion = { uuid: string; lv?: string; mountpoint?: string; phase: string; error?: string; newSize?: number; announced?: boolean }
 export type ExpandInput = {
   lvm: {
     pvs: Array<{ name: string; vgName: string; size?: number }>
@@ -92,7 +92,7 @@ export function expansionFindings(list: PendingExpansion[]): CheckOutcome & { ac
   const ack: string[] = []
   for (const e of list) {
     const target = e.mountpoint || e.lv || e.uuid
-    if (e.phase === "done") {
+    if (e.phase === "done" && !e.announced) {
       found.push({ target, message: `The volume at ${target} now has ${fmtSize(e.newSize ?? 0)}`, severity: "info" })
       ack.push(e.uuid)
     } else if (e.phase === "failed") {
