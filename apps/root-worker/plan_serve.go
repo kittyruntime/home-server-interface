@@ -34,6 +34,7 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"group.leave":     planGroupLeave,
 	"volume.create":   planVolumeCreate,
 	"volume.remove":   planVolumeRemove,
+	"volume.expand":   planVolumeExpand,
 }
 
 type planPreview struct {
