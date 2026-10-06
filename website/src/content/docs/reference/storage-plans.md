@@ -58,7 +58,7 @@ and the Samba account stay on the server; see
 
 ## Missing volumes
 
-Volumes that HSI mounts (Storage > Mounts, "Mount" with "Keep after reboot")
+Volumes that HSI mounts (Storage > Mounts, "Mount" with "Persist across reboots")
 are protected when their disk is absent:
 
 - The `/etc/fstab` entry carries `nofail,x-systemd.device-timeout=10s`: the

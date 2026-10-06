@@ -36,7 +36,7 @@ recorded on it.
   Remove stays disabled until the volume name is typed; a volume an app stores
   data on cannot be removed.
 - **Mount**: an unmounted volume can be mounted from the Volumes page, with its
-  owner, an optional Place, and "Keep after reboot" (an `/etc/fstab` entry).
+  owner, an optional Place, and "Persist across reboots" (an `/etc/fstab` entry).
 
 ## Disks
 
