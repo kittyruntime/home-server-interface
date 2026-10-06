@@ -785,7 +785,7 @@ await testVolumeGuard()
 const sp = await import("../services/storage-plan")
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.length === 19)
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.length === 21)
   const meta = sp.planAuditMeta("format",
     [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
@@ -1699,6 +1699,21 @@ await testSharePlans()
   assert.equal(later.found.length, 0)
   assert.deepEqual(later.checked, ["/srv/data"])
   assert.deepEqual(later.ack, [])
+}
+
+// Storage descriptions (#37): one warning per volume that differs.
+{
+  const { descriptionFindings } = await import("../services/storage-descriptions")
+  const item = (text: string) => ({ kind: "x", text })
+  const out = descriptionFindings([
+    { mountPoint: "/srv/a", file: "a.yaml", items: [], description: {} },
+    { mountPoint: "/srv/b", file: "b.yaml", items: [item("The fstab entry for /srv/b is missing")], description: {} },
+    { mountPoint: "/srv/c", file: "c.yaml", items: [item("/srv/c is not mounted"), item("x"), item("y")], description: {} },
+  ])
+  assert.deepEqual(out.checked, ["/srv/a", "/srv/b", "/srv/c"])
+  assert.deepEqual(out.found.map(f => [f.target, f.severity]), [["/srv/b", "warning"], ["/srv/c", "warning"]])
+  assert.equal(out.found[0]!.message, "/srv/b differs from its description: The fstab entry for /srv/b is missing")
+  assert.equal(out.found[1]!.message, "/srv/c differs from its description: /srv/c is not mounted (and 2 more)")
 }
 
 console.log("Backend security tests passed")

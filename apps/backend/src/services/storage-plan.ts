@@ -6,7 +6,7 @@ export const PLAN_OPS = [
   "pv.create", "vg.create", "lv.create", "lv.remove", "vg.remove",
   "mount", "umount", "raid.create", "raid.stop",
   "raid.fail", "raid.remove", "raid.add", "import.assemble", "import.activate",
-  "volume.expand",
+  "volume.expand", "storage.reapply", "storage.accept",
 ] as const
 
 export type PlanOp = typeof PLAN_OPS[number]
