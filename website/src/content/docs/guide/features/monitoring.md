@@ -23,8 +23,9 @@ filters by source and minimum severity. A default rule sends all alerts to the
 bell menu.
 
 - **In-app**: the bell menu, with an unread badge.
-- **Webhooks**: editable JSON payload templates with presets for Discord, Slack
-  and ntfy, a live preview and a test send.
+- **Webhooks**: editable JSON payload templates with presets for Discord, Slack,
+  ntfy and [SmallTV](https://github.com/giovi321/smalltv-mod) desk screens, a live
+  preview and a test send.
 - **Email**: SMTP with STARTTLS, TLS or none, presets for Gmail and Fastmail.
 
 Webhook and email messages go through a queue stored in the database: they

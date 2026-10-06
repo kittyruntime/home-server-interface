@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **SmallTV notifications** (#75): a "SmallTV (smalltv-mod)" webhook preset
+  shows alerts on a GeekMagic SmallTV desk screen running smalltv-mod. Only the
+  screen's address is needed; critical alerts show as alert, cleared ones as
+  done. A new `{{event.smalltvType}}` template variable carries that type.
+
 ## [1.64.2] - 2026-10-06
 
 ### Changed

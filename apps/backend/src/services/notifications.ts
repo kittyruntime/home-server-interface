@@ -71,6 +71,13 @@ export function selectConnectorIds(
   return [...ids]
 }
 
+// SmallTV (smalltv-mod, #75) types: the device rejects any other value with a
+// 400, so critical becomes alert, and a cleared alert is shown as done.
+function smalltvType(event: NotificationEvent): string {
+  if (event.type === "alert.cleared") return "done"
+  return event.severity === "critical" ? "alert" : event.severity
+}
+
 export function eventVars(event: NotificationEvent): Record<string, string> {
   return {
     "event.type": event.type,
@@ -79,6 +86,7 @@ export function eventVars(event: NotificationEvent): Record<string, string> {
     "event.target": event.target,
     "event.message": event.message,
     "event.time": event.time,
+    "event.smalltvType": smalltvType(event),
   }
 }
 
@@ -135,6 +143,8 @@ export interface WebhookPreset {
   url: string
   headers: string
   bodyTemplate: string
+  /** Shown under the format: what the target needs. */
+  hint?: string
 }
 
 // Presets prefill the connector dialog; everything stays editable after.
@@ -177,6 +187,15 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
     url: "https://ntfy.sh",
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{"topic":"YOUR_TOPIC","title":"HSI {{event.severity}}: {{event.source}}","message":"{{event.message}}"}`,
+  },
+  {
+    id: "smalltv",
+    label: "SmallTV (smalltv-mod)",
+    method: "POST",
+    url: "http://smalltv.local/api/notify",
+    headers: '{"Content-Type":"application/json"}',
+    bodyTemplate: `{"type":"{{event.smalltvType}}","title":"{{event.source}}","label":"{{event.target}}: {{event.message}}"}`,
+    hint: "Use the screen's IP address if smalltv.local does not resolve from the server. The screen's web password must be off: HSI cannot sign in to it. Long messages are cut by the screen (48 characters on ESP8266 models).",
   },
 ]
 

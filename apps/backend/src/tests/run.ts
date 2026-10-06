@@ -1731,4 +1731,25 @@ await testSharePlans()
   assert.deepEqual(checkedTargets({ found: [], checked: ["/a"] }, [{ target: "/srv/gone" }]), ["/a"])
 }
 
+// SmallTV (smalltv-mod) preset (#75): the device only knows info, warning,
+// alert and done, and rejects anything else with a 400.
+{
+  const { eventVars, renderWebhookRequest, WEBHOOK_PRESETS } = await import("../services/notifications")
+  const ev = (type: string, severity: string) => ({ type, severity, source: "storage.raid", target: "md0", message: "Array md0 is degraded", time: "2026-10-06T12:00:00Z" }) as any
+  assert.equal(eventVars(ev("alert.raised", "critical"))["event.smalltvType"], "alert")
+  assert.equal(eventVars(ev("alert.raised", "warning"))["event.smalltvType"], "warning")
+  assert.equal(eventVars(ev("alert.raised", "info"))["event.smalltvType"], "info")
+  assert.equal(eventVars(ev("job.failed", "critical"))["event.smalltvType"], "alert")
+  assert.equal(eventVars(ev("alert.cleared", "critical"))["event.smalltvType"], "done")
+  const preset = WEBHOOK_PRESETS.find(p => p.id === "smalltv")!
+  assert.equal(preset.label, "SmallTV (smalltv-mod)")
+  assert.equal(preset.url, "http://smalltv.local/api/notify")
+  assert.match(preset.hint ?? "", /IP address/)
+  assert.match(preset.hint ?? "", /password/)
+  const req = renderWebhookRequest(preset, ev("alert.raised", "critical"))
+  assert.deepEqual(JSON.parse(req.body), { type: "alert", title: "storage.raid", label: "md0: Array md0 is degraded" })
+  assert.equal(req.method, "POST")
+  assert.equal(req.headers["Content-Type"], "application/json")
+}
+
 console.log("Backend security tests passed")

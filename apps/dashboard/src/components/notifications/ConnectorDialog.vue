@@ -62,6 +62,8 @@ const headersJson = computed(() =>
 )
 
 const formatOptions = computed(() => type.value === 'smtp' ? presets.value?.smtp ?? [] : presets.value?.webhook ?? [])
+// What the chosen target needs (an address, a setting), from the preset.
+const formatHint = computed(() => type.value === 'smtp' ? '' : presets.value?.webhook.find(p => p.id === format.value)?.hint ?? '')
 
 watch(format, id => {
   if (type.value === 'smtp') {
@@ -224,6 +226,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
         </div>
       </div>
       <p class="text-xs text-[var(--c-text-3)] -mt-2">The format prefills the fields below; everything stays editable.</p>
+      <p v-if="formatHint" class="text-xs text-[var(--c-text-2)] -mt-2">{{ formatHint }}</p>
 
       <div class="space-y-1.5">
         <label class="block text-xs text-[var(--c-text-3)]">Name</label>
