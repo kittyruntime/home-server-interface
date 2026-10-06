@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
@@ -14,6 +14,7 @@ import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
 import { syncPreferences } from '../lib/preferences'
+import { appFromQuery, appQuery } from '../lib/app-route'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -34,6 +35,7 @@ import DesktopShell from '../components/desktop/DesktopShell.vue'
 import ToggleSwitch from '../components/ui/ToggleSwitch.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { currentUsername, isAdmin, hasCapability, mustChangePassword, logout } = useAuth()
 const { alerts, hasAlerts } = useAlerts()
 const { desktopMode, setDesktopMode, openApp } = useDesktop()
@@ -115,6 +117,18 @@ function selectApp(id: string) {
 
 // Data-driven, user-orderable sidebar / mobile nav (order persisted per-browser).
 const { items: navItems } = useSidebarNav(() => isAdmin.value, cap => hasCapability(cap).value)
+
+// The open app is in the URL (?app=storage, #90): a reload or a link opens it
+// again, and the browser's back button returns to the previous app.
+const allowedApps = () => navItems.value.map(item => item.id)
+activeApp.value = appFromQuery(route.query.app, allowedApps())
+watch(activeApp, id => {
+  if ((route.query.app ?? 'dashboard') !== id) void router.push({ query: appQuery(route.query, id) as Record<string, string> })
+})
+watch(() => route.query.app, app => {
+  const id = appFromQuery(app, allowedApps())
+  if (id !== activeApp.value) activeApp.value = id
+})
 const mobilePrimaryItems = computed(() => {
   const primary = navItems.value.slice(0, 4)
   const active = navItems.value.find(item => item.id === activeApp.value)
