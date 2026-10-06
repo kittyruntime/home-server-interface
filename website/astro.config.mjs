@@ -14,7 +14,14 @@ export default defineConfig({
       // The dev setup page links the local dev server on purpose.
       plugins: [starlightLinksValidator({ errorOnLocalLinks: false })],
       sidebar: [
-        { label: "Guide", items: ["guide/manage-without-hsi"] },
+        {
+          label: "Guide",
+          items: [
+            "guide/install",
+            { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
+            "guide/manage-without-hsi",
+          ],
+        },
         { label: "Reference", items: ["reference/configuration", "reference/storage-plans"] },
         { label: "Development", items: ["development/architecture", "development/setup", "development/design-system"] },
       ],
