@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,19 +15,8 @@ import (
 var (
 	// hostDiskIdentity returns a whole disk's serial, WWN and size.
 	hostDiskIdentity = func(name string) (serial, wwn string, size int64) {
-		out, _ := hostOutput("lsblk", "-dnbo", "SERIAL,WWN,SIZE", "/dev/"+name)
-		f := strings.Fields(string(out))
-		switch len(f) {
-		case 3:
-			serial, wwn = f[0], f[1]
-			size, _ = strconv.ParseInt(f[2], 10, 64)
-		case 2:
-			serial = f[0]
-			size, _ = strconv.ParseInt(f[1], 10, 64)
-		case 1:
-			size, _ = strconv.ParseInt(f[0], 10, 64)
-		}
-		return serial, wwn, size
+		out, _ := hostOutput("lsblk", "-J", "-d", "-b", "-o", "SERIAL,WWN,SIZE", "/dev/"+name)
+		return parseDiskIdentity(out)
 	}
 	// hostParentDisk returns the disk a partition is on and its number; a
 	// whole disk is its own parent, number 0.
@@ -36,13 +26,50 @@ var (
 			return name, 0
 		}
 		n, _ := strconv.Atoi(strings.TrimSpace(string(raw)))
-		out, _ := hostOutput("lsblk", "-no", "PKNAME", "/dev/"+name)
+		// -d: the device alone, not its holders (an md or LVM on it).
+		out, _ := hostOutput("lsblk", "-dno", "PKNAME", "/dev/"+name)
 		if p := strings.TrimSpace(string(out)); p != "" {
 			return p, n
 		}
 		return name, n
 	}
 )
+
+// parseDiskIdentity reads "lsblk -J -d -b -o SERIAL,WWN,SIZE": a missing
+// serial or WWN is null, and a serial may contain spaces.
+func parseDiskIdentity(raw []byte) (serial, wwn string, size int64) {
+	var out struct {
+		Blockdevices []struct {
+			Serial *string         `json:"serial"`
+			WWN    *string         `json:"wwn"`
+			Size   json.RawMessage `json:"size"`
+		} `json:"blockdevices"`
+	}
+	if json.Unmarshal(raw, &out) != nil || len(out.Blockdevices) == 0 {
+		return "", "", 0
+	}
+	b := out.Blockdevices[0]
+	if b.Serial != nil {
+		serial = strings.TrimSpace(*b.Serial)
+	}
+	if b.WWN != nil {
+		wwn = strings.TrimSpace(*b.WWN)
+	}
+	size, _ = strconv.ParseInt(strings.Trim(string(b.Size), `"`), 10, 64)
+	return serial, wwn, size
+}
+
+// diskKey identifies a described disk: its serial, else its WWN, else its
+// by-id path (virtual disks often have neither).
+func diskKey(d descDisk) string {
+	switch {
+	case d.Serial != "":
+		return d.Serial
+	case d.WWN != "":
+		return d.WWN
+	}
+	return d.ByID
+}
 
 type mdMember struct{ Dev, Role string }
 

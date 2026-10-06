@@ -4,7 +4,15 @@ import { dispatchEvent, type NotificationEvent, type Severity } from "./notifica
 import { log } from "../utils/log"
 
 type CheckResult = { target: string; message: string; severity: Severity }
-export type CheckOutcome = { found: CheckResult[]; checked: string[] }
+// authoritative: the check covers every target it can raise, so a target it
+// no longer lists (a volume removed since) clears instead of staying open.
+export type CheckOutcome = { found: CheckResult[]; checked: string[]; authoritative?: boolean }
+
+/** The targets a check covered: for an authoritative check, also every target alerted before. */
+export function checkedTargets(outcome: CheckOutcome, prev: Array<{ target: string }>): string[] {
+  if (!outcome.authoritative) return outcome.checked
+  return [...new Set([...outcome.checked, ...prev.map(p => p.target)])]
+}
 type Checker = { source: string; check: () => Promise<CheckOutcome> }
 
 type RaidArray = {
@@ -193,12 +201,13 @@ export function diffAlerts(
 // Persists one source's findings as alerts and dispatches raise/clear events.
 // Also used by the volume guard (volume-guard.ts), which runs on its own loop.
 export async function reconcileSource(source: string, outcome: CheckOutcome): Promise<void> {
-  const { found, checked } = outcome
+  const { found } = outcome
   try {
     const prev = await prisma.alert.findMany({
       where: { source },
       select: { target: true, severity: true, message: true },
     })
+    const checked = checkedTargets(outcome, prev)
     const now = new Date().toISOString()
     const { raised, cleared } = diffAlerts(source, prev, checked, found, now)
     // Reconcile: persist found (message+severity), delete cleared.
