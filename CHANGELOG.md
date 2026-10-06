@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.64.0] - 2026-10-06
+
 ### Added
 - **Storage descriptions**: each volume HSI manages is described in
   `/etc/hsi/storage/<volume>.yaml` (disks by serial and by-id path, array, LVM,
@@ -1299,7 +1301,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.63.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.0...HEAD
+[1.64.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.63.0...v1.64.0
 [1.63.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.1...v1.63.0
 [1.62.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.0...v1.62.1
 [1.62.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.61.0...v1.62.0
