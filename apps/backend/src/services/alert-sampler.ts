@@ -48,6 +48,12 @@ async function checkRaidConsistency(): Promise<CheckOutcome> {
 
 // Expansions (#7): a finished one is announced once, then forgotten by the
 // worker; a failed one stays until it is retried.
+async function checkDescriptions(): Promise<CheckOutcome> {
+  const { descriptionFindings } = await import("./storage-descriptions")
+  const { descriptions } = await requestSync<{ descriptions: Parameters<typeof descriptionFindings>[0] }>("root.storage.descriptions", {}, 10_000)
+  return descriptionFindings(descriptions)
+}
+
 async function checkExpansions(): Promise<CheckOutcome> {
   const { expansionFindings } = await import("./expand-options")
   const { expansions } = await requestSync<{ expansions: Parameters<typeof expansionFindings>[0] }>("root.sys.expansions", {}, 10_000)
@@ -155,6 +161,7 @@ const checkers: Checker[] = [
   { source: "storage.raid-check", check: checkRaidConsistency },
   { source: "storage.disk-usage", check: checkDiskUsage },
   { source: "storage.expand", check: checkExpansions },
+  { source: "storage.description", check: checkDescriptions },
 ]
 
 // Pure diff between the previous alert set (source-scoped) and this tick's

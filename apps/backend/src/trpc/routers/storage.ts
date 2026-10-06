@@ -7,6 +7,7 @@ import { activityEntries, activityWhere } from "../../services/storage-activity"
 import { applyVolume, previewVolume, type VolumePlanDeps } from "../../services/volume-plan"
 import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarget, type VolumeRemoveDeps } from "../../services/volume-remove-plan"
 import { expandOptions, type ExpandInput, type PendingExpansion } from "../../services/expand-options"
+import type { DescriptionStatus } from "../../services/storage-descriptions"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
 import { desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
@@ -88,6 +89,14 @@ const PLAN_INPUTS = {
     uuid: z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/),
     mode: z.enum(["vgFree", "addDisk", "raidAddDisk", "mirrorGrow"]),
     disk: z.string().regex(/^[a-z][a-z0-9]+$/).optional(),
+  }),
+  // Storage descriptions (#37): put the server back in line, or describe it as it is.
+  "storage.reapply": z.object({
+    mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
+    degraded:   z.boolean().default(false),
+  }),
+  "storage.accept": z.object({
+    mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
   }),
 } satisfies Record<PlanOp, z.ZodTypeAny>
 
@@ -338,6 +347,8 @@ export const storageRouter = router({
         return expandOptions(v, { lvm, raids: block.raids ?? [], devices: (block.devices ?? []) as never, freeDisks: overview.freeDisks, expansions: pending.expansions })
       }),
     // Expansions waiting for a reshape, or finished, or failed.
+    descriptions: storageProcedure.query(async () =>
+      (await requestSync<{ descriptions: DescriptionStatus[] }>("root.storage.descriptions", {}, 10_000)).descriptions),
     expansions: storageProcedure.query(async () =>
       (await requestSync<{ expansions: PendingExpansion[] }>("root.sys.expansions", {}, 10_000)).expansions),
     retryExpansion: adminProcedure
