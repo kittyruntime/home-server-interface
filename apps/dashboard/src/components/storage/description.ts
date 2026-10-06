@@ -22,3 +22,12 @@ export function reapplyRequest(mountPoint: string, items: DriftItem[]): { input:
     acknowledge: `Start the array without ${missing.join(', ')}: it has no redundancy until a disk is added`,
   }
 }
+
+/**
+ * Described volumes that differ and are not on the Volumes page (array
+ * stopped and fstab entry gone, for example): their drift card is shown there,
+ * since they have no volume page to open.
+ */
+export function unlistedDrift<T extends { mountPoint: string; items: DriftItem[] }>(statuses: T[], listed: string[]): T[] {
+  return statuses.filter(s => s.items.length > 0 && !listed.includes(s.mountPoint))
+}

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { driftTitle, reapplyRequest } from '../src/components/storage/description.ts'
+import { driftTitle, reapplyRequest, unlistedDrift } from '../src/components/storage/description.ts'
 
 const item = (kind: string, text: string) => ({ kind, text })
 
@@ -18,4 +18,12 @@ test('reapplyRequest asks to start a stopped array without its missing disks', (
   )
   // A missing disk of a running array is not something Reapply starts without.
   assert.deepEqual(reapplyRequest('/srv/data', [item('disk-missing', 'Disk WD-1 is not connected')]), { input: { mountPoint: '/srv/data' } })
+})
+
+test('unlistedDrift keeps described volumes the Volumes page cannot show', () => {
+  const s = (mountPoint: string, n: number) => ({ mountPoint, items: Array.from({ length: n }, () => item('x', 'y')) })
+  assert.deepEqual(
+    unlistedDrift([s('/srv/data', 2), s('/srv/grow', 1), s('/srv/ok', 0)], ['/srv/grow']).map(x => x.mountPoint),
+    ['/srv/data'],
+  )
 })

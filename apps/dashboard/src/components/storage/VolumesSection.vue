@@ -3,6 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
+import DescriptionCard from './DescriptionCard.vue'
+import { unlistedDrift } from './description'
 import { useStorageData, fmtBytes } from './store'
 import { smartStatus, sharedSmart, readSmartList } from './smart'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
@@ -33,9 +35,18 @@ async function loadFound() {
   } catch { found.value = { arrays: 0, vgs: 0 } }
 }
 
+// Described volumes that differ and are not listed below (#37): their array
+// is stopped or their fstab entry is gone, so Reapply is offered here.
+type DescStatus = Awaited<ReturnType<typeof trpc.storage.volumes.descriptions.query>>[number]
+const descriptions = ref<DescStatus[]>([])
+async function loadDescriptions() {
+  try { descriptions.value = await trpc.storage.volumes.descriptions.query() } catch { descriptions.value = [] }
+}
+
 async function load() {
   error.value = ''
   void loadFound()
+  void loadDescriptions()
   try {
     overview.value = await trpc.storage.volumes.overview.query()
     void loadSmart()
@@ -101,6 +112,8 @@ const usedPct = (v: Volume) => v.space ? Math.round((v.space.used / v.space.tota
 type SortKey = 'name' | 'space' | 'health'
 const sortKey = ref<SortKey>('health')
 const HEALTH_RANK: Record<Health, number> = { danger: 0, warning: 1, idle: 2, ok: 3 }
+const unlisted = computed(() => unlistedDrift(descriptions.value, (overview.value?.volumes ?? []).map(v => v.mountPoint ?? '')))
+
 const volumes = computed(() => {
   const vs = [...(overview.value?.volumes ?? [])]
   if (sortKey.value === 'name')   vs.sort((a, b) => a.name.localeCompare(b.name))
@@ -162,6 +175,10 @@ async function mount(v: Volume) {
         Importing keeps its data.
       </p>
       <button class="btn btn-outline btn-sm shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</button>
+    </div>
+
+    <div v-for="d in unlisted" :key="d.mountPoint" class="mb-4">
+      <DescriptionCard :mount-point="d.mountPoint" titled @changed="load" />
     </div>
 
     <LoadingState v-if="loading" />
