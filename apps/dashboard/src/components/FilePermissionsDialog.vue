@@ -135,16 +135,14 @@ async function save() {
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">Owner</label>
                 <input
                   v-model="owner"
-                  class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-3)]
-                         font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+                  class="ui-input w-full px-3 py-1.5 text-sm font-mono"
                 />
               </div>
               <div>
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">Group</label>
                 <input
                   v-model="group"
-                  class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-3)]
-                         font-mono focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+                  class="ui-input w-full px-3 py-1.5 text-sm font-mono"
                 />
               </div>
             </div>

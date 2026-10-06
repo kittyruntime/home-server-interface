@@ -667,7 +667,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 v-model="raidWiz.name"
                 type="text"
                 placeholder="md0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+                class="ui-input w-full px-3 py-2 text-sm font-mono"
               />
               <p class="text-2xs text-[var(--c-text-3)] mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
             </div>
@@ -714,7 +714,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 v-model="raidWiz.confirm"
                 type="text"
                 placeholder="CREATE RAID"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
+                class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"
               />
             </div>
 

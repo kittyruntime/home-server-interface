@@ -78,7 +78,7 @@ onMounted(load)
             <input
               v-model.number="form.diskUsageWarningPercent"
               type="number" min="1" max="99"
-              class="w-16 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] px-2 py-1.5 text-sm text-[var(--c-text-1)] tabular-nums"
+              class="ui-input w-16 px-2 py-1.5 text-sm tabular-nums"
             >
             <span class="text-sm text-[var(--c-text-3)]">%</span>
           </div>
@@ -89,7 +89,7 @@ onMounted(load)
             <input
               v-model.number="form.diskUsageCriticalPercent"
               type="number" min="1" max="99"
-              class="w-16 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] px-2 py-1.5 text-sm text-[var(--c-text-1)] tabular-nums"
+              class="ui-input w-16 px-2 py-1.5 text-sm tabular-nums"
             >
             <span class="text-sm text-[var(--c-text-3)]">%</span>
           </div>

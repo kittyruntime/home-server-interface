@@ -115,7 +115,7 @@ function removeExtraHost(h: string) {
         @input="yamlDirty = true; yamlSavedAt = false; yamlError = ''"
         spellcheck="false"
         rows="16"
-        class="w-full bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--c-text-2)] focus:outline-none focus:border-[var(--c-accent)] font-mono resize-y"
+        class="ui-input w-full px-3 py-2 text-xs font-mono font-mono resize-y"
       />
       <div class="flex items-center gap-3">
         <p v-if="yamlError" class="text-xs text-[var(--c-accent)] flex-1">{{ yamlError }}</p>
@@ -157,7 +157,7 @@ function removeExtraHost(h: string) {
       <div class="flex gap-2">
         <input
           v-model="capAddInput" placeholder="NET_ADMIN" @keydown.enter.prevent="addCap('capAdd', capAddInput as any)"
-          class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addCap('capAdd', capAddInput as any)"
@@ -181,7 +181,7 @@ function removeExtraHost(h: string) {
       <div class="flex gap-2">
         <input
           v-model="capDropInput" placeholder="ALL" @keydown.enter.prevent="addCap('capDrop', capDropInput as any)"
-          class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addCap('capDrop', capDropInput as any)"
@@ -206,7 +206,7 @@ function removeExtraHost(h: string) {
         <input
           v-model="extraHostInput" placeholder="myhost:192.168.1.10"
           @keydown.enter.prevent="addExtraHost"
-          class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addExtraHost"
@@ -223,7 +223,7 @@ function removeExtraHost(h: string) {
       <select
         :value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
-        class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-full px-2 py-1.5 text-sm"
       >
         <option value="no">No</option>
         <option value="always">Always</option>
@@ -239,7 +239,7 @@ function removeExtraHost(h: string) {
         <input
           :value="modelValue.hostname ?? ''" placeholder="my-container"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
-          class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input w-full px-2 py-1.5 text-sm"
         />
       </div>
       <div class="space-y-1.5">
@@ -247,7 +247,7 @@ function removeExtraHost(h: string) {
         <input
           :value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
-          class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input w-full px-2 py-1.5 text-sm"
         />
       </div>
     </div>
@@ -256,7 +256,7 @@ function removeExtraHost(h: string) {
       <input
         :value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
-        class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-full px-2 py-1.5 text-sm font-mono"
       />
     </div>
 
@@ -268,7 +268,7 @@ function removeExtraHost(h: string) {
           type="number" min="0" max="64" step="0.1"
           :value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
           @input="update('cpuLimit', ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : null)"
-          class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input w-full px-2 py-1.5 text-sm"
         />
       </div>
       <div class="space-y-1.5">
@@ -276,7 +276,7 @@ function removeExtraHost(h: string) {
         <input
           :value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"
-          class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input w-full px-2 py-1.5 text-sm"
         />
       </div>
     </div>

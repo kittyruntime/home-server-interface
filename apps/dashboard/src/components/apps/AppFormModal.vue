@@ -372,14 +372,14 @@ async function applyNow() {
         v-model="composeRaw"
         placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
         rows="8"
-        class="w-full bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--c-text-2)] focus:outline-none focus:border-[var(--c-accent)] resize-none"
+        class="ui-input w-full px-3 py-2 text-xs font-mono resize-none"
       />
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
           <label class="text-xs text-[var(--c-text-3)] whitespace-nowrap">Service:</label>
           <select
             v-model="composeSelectedService"
-            class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+            class="ui-input flex-1 px-3 py-1.5 text-sm"
           >
             <option v-for="s in composeServices" :key="s" :value="s">{{ s }}</option>
           </select>
@@ -443,21 +443,21 @@ async function applyNow() {
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Container name *</label>
           <input
             v-model="form.name" placeholder="my-app" :disabled="editing"
-            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] disabled:opacity-50"
+            class="ui-input w-full px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Image *</label>
           <input
             v-model="form.image" placeholder="nginx:alpine"
-            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+            class="ui-input w-full px-3 py-2 text-sm font-mono"
           />
         </div>
         <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">URL sidebar (optional)</label>
           <input
             v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
-            class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+            class="ui-input w-full px-3 py-2 text-sm font-mono"
           />
           <p class="text-xs text-[var(--c-text-3)]">Pins the app in the sidebar if set.</p>
         </div>
@@ -485,7 +485,7 @@ async function applyNow() {
           <input
             v-model="networkInput" placeholder="network-name"
             @keydown.enter.prevent="addNetwork"
-            class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+            class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
           />
           <button
             @click="addNetwork"

@@ -421,20 +421,20 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Volume Group name</label>
               <input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
               <p class="text-2xs text-[var(--c-text-3)] mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">First Logical Volume name</label>
               <input v-model="lvmWiz.lvName" type="text" placeholder="lv0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
                 Size (GB) <span class="text-[var(--c-text-3)] font-normal">(leave 0 to use all available space</span>
               </label>
               <input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div class="flex gap-2 pt-1">
               <button @click="lvmWiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
@@ -487,14 +487,14 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Logical Volume name</label>
               <input v-model="addLvDlg.lvName" type="text" placeholder="lv0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
               <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
                 Size (GB) <span class="text-[var(--c-text-3)] font-normal">(0 = all remaining free space</span>
               </label>
               <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
-                class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-purple-400 transition-colors"/>
+                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div v-if="addLvDlg.err" class="text-xs text-danger">{{ addLvDlg.err }}</div>
             <div class="flex gap-2 pt-1">
