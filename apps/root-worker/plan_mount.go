@@ -153,7 +153,11 @@ func planMount(raw json.RawMessage) (*opPlan, *fsError) {
 				return "", nil
 			}})
 	}
-	return &opPlan{Op: "mount", Steps: steps, Observed: obs}, nil
+	p := &opPlan{Op: "mount", Steps: steps, Observed: obs}
+	if req.Persist {
+		p.Describe = []string{mp}
+	}
+	return p, nil
 }
 
 func planUmount(raw json.RawMessage) (*opPlan, *fsError) {
@@ -194,5 +198,9 @@ func planUmount(raw json.RawMessage) (*opPlan, *fsError) {
 		unprotect.OnFailure = "warn"
 		steps = append(steps, s, unprotect)
 	}
-	return &opPlan{Op: "umount", Steps: steps, Observed: obs}, nil
+	p := &opPlan{Op: "umount", Steps: steps, Observed: obs}
+	if req.RemoveFromFstab {
+		p.Forget = []string{mp}
+	}
+	return p, nil
 }

@@ -155,7 +155,7 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 		step = destructive(cmdStep(raidDev, "Add "+target+" to "+raidDev+", erasing its contents; a degraded array rebuilds onto it, otherwise it becomes a spare",
 			[]string{"mdadm", "--manage", raidDev, "--add", target}), target)
 	}
-	return &opPlan{Op: "raid." + strings.TrimPrefix(op, "--"), Steps: []planStep{step}, Observed: obs}, nil
+	return &opPlan{Op: "raid." + strings.TrimPrefix(op, "--"), Steps: []planStep{step}, Observed: obs, DescribeArrayUUID: uuid}, nil
 }
 
 func planRaidFail(raw json.RawMessage) (*opPlan, *fsError)   { return planRaidMember(raw, "--fail") }

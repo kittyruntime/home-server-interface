@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -84,6 +85,9 @@ func applyPlan(op string, input json.RawMessage, fingerprint string) (*planApply
 		return nil, &fsError{Code: "ESTALE", Message: "The server changed since this preview; review the plan again"}
 	}
 	results, ok, warnings := p.execute()
+	if ok {
+		warnings = append(warnings, refreshDescriptions(p, time.Now())...)
+	}
 	out := &planApply{OK: ok, Steps: p.Steps, Results: results, Warnings: warnings, Reply: p.Reply}
 	for i, r := range results {
 		if r.Status == "failed" {
