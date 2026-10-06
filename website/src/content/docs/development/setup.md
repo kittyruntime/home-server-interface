@@ -1,4 +1,7 @@
-# Development
+---
+title: Development
+description: Local setup, dev servers, build and verify, monorepo layout and the release process.
+---
 
 ## Prerequisites
 
@@ -49,7 +52,7 @@ END
 echo "HSI_SECRETS_KEY=$(openssl rand -hex 32)" >> apps/backend/.env
 ```
 
-`apps/backend/.env` is git-ignored. See [configuration.md](configuration.md) for
+`apps/backend/.env` is git-ignored. See [Configuration](/home-server-interface/reference/configuration/) for
 every environment variable.
 
 ### 3. NATS (terminal 1)
