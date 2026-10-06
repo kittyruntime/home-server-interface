@@ -1,4 +1,7 @@
-# Design system
+---
+title: Design system
+description: Design tokens, shared UI components and frontend conventions.
+---
 
 The dashboard's look is driven by a small set of **design tokens** and shared
 utility classes defined in `apps/dashboard/src/style.css`. Components reference

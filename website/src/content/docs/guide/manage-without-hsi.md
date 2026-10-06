@@ -1,4 +1,7 @@
-# Manage without HSI
+---
+title: Manage without HSI
+description: The files and commands behind Docker, Samba, users, RAID, mounts and systemd, if HSI is down or gone.
+---
 
 HSI is a control panel over standard Linux tools, not a replacement for them. For
 every area below, the underlying files and commands are the same ones you'd use if
@@ -146,7 +149,7 @@ umount /mnt/data && chattr -i /mnt/data
 ## systemd services
 
 HSI itself is three ordinary systemd units grouped under `hsi.target`; see
-[Services](../README.md#services) in the README for the full list and log
+[systemd services](/home-server-interface/reference/configuration/#systemd-services) for the full list and log
 commands.
 
 ```bash

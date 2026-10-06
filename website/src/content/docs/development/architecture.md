@@ -1,4 +1,7 @@
-# Architecture
+---
+title: Architecture
+description: Runtime processes, privilege isolation, request and data flow, and the tech stack.
+---
 
 Home Server Interface is a pnpm monorepo split into a few small, single-purpose
 pieces. The guiding principle is **privilege isolation**: the process exposed to
@@ -68,7 +71,7 @@ and replies. Heavy work (large copies/moves, upload assembly) is run as a
 
 **Dashboard** (`apps/dashboard`)
 - [Vue 3.5](https://vuejs.org) (`<script setup>` SFCs) + [vue-router](https://router.vuejs.org)
-- [Tailwind CSS v4](https://tailwindcss.com) with a token-based design system (see [design-system.md](design-system.md))
+- [Tailwind CSS v4](https://tailwindcss.com) with a token-based design system (see [Design system](/home-server-interface/development/design-system/))
 - tRPC client for typed calls to the backend
 - Chart.js (metrics), CodeMirror (file preview/edit), lazy-loaded per app
 
