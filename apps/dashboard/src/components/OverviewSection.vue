@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useStorageData, fmtBytes, isRaidHealthy } from './storage/store'
@@ -76,98 +77,11 @@ const containerStopped = computed(() => containers.value.filter(c => c.status !=
 
 const isLoadingAll = computed(() => loading.value || storageLoading.value)
 
-// ── Audit helpers (inline copy from AuditLogSection) ─────────────────────────
+// ── Audit helpers ─────────────────────────────────────────────────────────────
 
-function actionLabel(action: string): string {
-  const map: Record<string, string> = {
-    'auth.login':                'Login',
-    'auth.logout':               'Logout',
-    'fs.delete':                 'Delete file',
-    'fs.mkdir':                  'Create folder',
-    'fs.touch':                  'Create file',
-    'fs.rename':                 'Rename',
-    'fs.move':                   'Move',
-    'fs.copy':                   'Copy',
-    // Legacy `system.*` keys: storage mutations were logged under those paths before
-    // the router split, and historical audit rows keep their original action string.
-    'system.formatDisk':         'Format disk',
-    'system.mountDevice':        'Mount device',
-    'system.umountDevice':       'Unmount device',
-    'system.initPartitionTable': 'Init partition table',
-    'system.createPartition':    'Create partition',
-    'system.deletePartition':    'Delete partition',
-    'system.createRaid':         'Create RAID',
-    'system.stopRaid':           'Stop RAID',
-    'system.createPv':           'Create PV',
-    'system.createVg':           'Create VG',
-    'system.createLv':           'Create LV',
-    'system.removeLv':           'Remove LV',
-    'system.removeVg':           'Remove VG',
-    'storage.formatDisk':         'Format disk',
-    'storage.mountDevice':        'Mount device',
-    'storage.umountDevice':       'Unmount device',
-    'storage.initPartitionTable': 'Init partition table',
-    'storage.createPartition':    'Create partition',
-    'storage.deletePartition':    'Delete partition',
-    'alert.clear':                'Clear alert',
-    'alert.clearAll':             'Clear all alerts',
-    'storage.createRaid':         'Create RAID',
-    'storage.stopRaid':           'Stop RAID',
-    'storage.createPv':           'Create PV',
-    'storage.createVg':           'Create VG',
-    'storage.createLv':           'Create LV',
-    'storage.removeLv':           'Remove LV',
-    'storage.removeVg':           'Remove VG',
-    'user.create':               'Create user',
-    'user.update':               'Update user',
-    'user.delete':               'Delete user',
-    'user.changePassword':       'Change password',
-    'container.create':          'Create container',
-    'container.delete':          'Delete container',
-    'container.start':           'Start container',
-    'container.stop':            'Stop container',
-    'container.restart':         'Restart container',
-    'container.app.create':      'Create container app',
-    'container.app.update':      'Update container app',
-    'container.app.apply':       'Apply container stack',
-    'container.app.saveRaw':     'Edit container compose file',
-    'container.app.remove':      'Remove container app',
-    'catalog.install':           'Install app from catalog',
-    'place.create':              'Create place',
-    'place.delete':              'Delete place',
-    'role.create':               'Create role',
-    'role.delete':               'Delete role',
-    'update.trigger':            'Trigger update',
-    'update.restart':            'Restart HSI',
-    'update.rebootHost':         'Reboot server',
-    'system.configBackup':       'Export configuration backup',
-    'backup.create':             'Create data backup plan',
-    'backup.update':             'Update data backup plan',
-    'backup.delete':             'Delete data backup plan',
-    'backup.run':                'Run data backup',
-  }
-  return map[action] ?? action
-}
 
-type Category = 'auth' | 'fs' | 'system' | 'admin' | 'other'
 
-function actionCategory(action: string): Category {
-  if (action.startsWith('auth.'))   return 'auth'
-  if (action.startsWith('fs.'))     return 'fs'
-  if (action.startsWith('system.') || action.startsWith('storage.')) return 'system'
-  if (action.startsWith('user.')  || action.startsWith('role.')  ||
-      action.startsWith('place.') || action.startsWith('container.') ||
-      action.startsWith('catalog.') || action.startsWith('update.')) return 'admin'
-  return 'other'
-}
 
-const categoryClass: Record<Category, string> = {
-  auth:   'bg-info/10 text-info border-info/20',
-  fs:     'bg-violet/10 text-violet border-violet/20',
-  system: 'bg-warning/10 text-warning border-warning/20',
-  admin:  'bg-accent/10 text-accent border-accent/20',
-  other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
-}
 
 function relTime(d: string | Date): string {
   const diff = Date.now() - new Date(d).getTime()

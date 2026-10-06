@@ -2,7 +2,7 @@
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { ref, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
-import { actionLabel } from '../lib/audit-labels'
+import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
@@ -53,25 +53,8 @@ function fmtDate(d: string | Date) {
 }
 
 
-type Category = 'auth' | 'fs' | 'system' | 'admin' | 'other'
 
-function actionCategory(action: string): Category {
-  if (action.startsWith('auth.'))     return 'auth'
-  if (action.startsWith('fs.'))       return 'fs'
-  if (action.startsWith('system.') || action.startsWith('storage.'))   return 'system'
-  if (action.startsWith('user.') || action.startsWith('role.') ||
-      action.startsWith('place.') || action.startsWith('container.') ||
-      action.startsWith('catalog.') || action.startsWith('update.'))   return 'admin'
-  return 'other'
-}
 
-const categoryClass: Record<Category, string> = {
-  auth:   'bg-info/10 text-info border-info/20',
-  fs:     'bg-violet/10 text-violet border-violet/20',
-  system: 'bg-warning/10 text-warning border-warning/20',
-  admin:  'bg-accent/10 text-accent border-accent/20',
-  other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
-}
 
 function parseMeta(raw: string | null | undefined): Record<string, unknown> | null {
   if (!raw) return null
