@@ -89,6 +89,10 @@ mdadm --detail /dev/md0           # full detail on one array
 cat /etc/mdadm/mdadm.conf         # HSI adds one marked ARRAY line per array it creates
 ```
 
+Each volume HSI manages is also described in `/etc/hsi/storage/`, with its disks by
+serial number: see [Storage descriptions](/home-server-interface/guide/storage-descriptions/)
+to reassemble and mount it from that file.
+
 ### Importing existing arrays and volume groups
 
 After a reinstall, or with disks moved from another machine, Storage > RAID lists
@@ -133,6 +137,9 @@ findmnt                    # current mounts
 cat /etc/fstab              # persisted entries
 mount -a                    # (re)apply fstab by hand
 ```
+
+The fstab line of each volume HSI manages is also in its
+[storage description](/home-server-interface/guide/storage-descriptions/).
 
 Before changing storage, HSI shows the exact commands and file diffs it will
 apply; the same plan is kept in the audit log, so every change can be redone or

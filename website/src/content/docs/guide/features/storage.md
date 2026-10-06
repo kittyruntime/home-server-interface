@@ -59,6 +59,15 @@ carries and its operations.
   not running (disks moved from another machine, or after a reinstall) are
   listed and can be assembled or activated without formatting.
 
+## Descriptions and drift
+
+Each volume is described in `/etc/hsi/storage/`, readable without HSI: its disks by
+serial number, its array, LVM, filesystem and mount. When the server no longer
+matches it (a disk swapped by hand, an fstab line removed, an array stopped), the
+volume's page says what differs, with **Reapply** to put the server back in line
+and **Accept current state** to keep the change. See
+[Storage descriptions](/home-server-interface/guide/storage-descriptions/).
+
 ## Every change is a plan
 
 Formatting, partitions, arrays, LVM and mounts are shown as a plan before

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Storage descriptions**: each volume HSI manages is described in
+  `/etc/hsi/storage/<volume>.yaml` (disks by serial and by-id path, array, LVM,
+  filesystem, mount), readable without HSI. The volume page shows when the
+  server no longer matches it, with Reapply (reassemble, activate, restore fstab
+  and mdadm.conf, mount; never formats) and Accept current state, and a warning
+  alert is raised. `hsi-worker storage diff` prints the differences.
 - **Documentation site**: the documentation is published at
   https://kittyruntime.github.io/home-server-interface/ (Astro Starlight), with
   an install guide, a page per feature area, Manage without HSI, the

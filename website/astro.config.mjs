@@ -20,6 +20,7 @@ export default defineConfig({
             "guide/install",
             { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
             "guide/manage-without-hsi",
+            "guide/storage-descriptions",
           ],
         },
         { label: "Reference", items: ["reference/configuration", "reference/storage-plans"] },
