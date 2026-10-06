@@ -59,7 +59,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Audit Log</h2>
+    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Audit log</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">All actions performed by authenticated users.</p>
 
     <!-- Filter -->

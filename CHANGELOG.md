@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Clearer navigation**: Settings > Alerts is now Alert thresholds (the active
+  alerts are in Monitor > Alerts), and Monitor's Overview is now Summary, so it
+  is no longer confused with the dashboard's Overview.
 - **Dashboard consistency** (#90): every form field has the same look (the
   backup passwords had no border); errors read the same way everywhere and
   are no longer shown in the accent colour; confirmations use the in-app

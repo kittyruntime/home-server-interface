@@ -57,7 +57,7 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Alerts</h2>
+    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Alert thresholds</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">
       Background health checks, sampled every 5 minutes. Active alerts are listed in Monitor &gt; Alerts.
     </p>

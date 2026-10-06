@@ -43,7 +43,7 @@ function fmtUptime(sec: number): string {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">System Info</h2>
+    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">System info</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">
       Hardware and OS facts for this host; these rarely change. For live usage and
       history, see Monitoring.
