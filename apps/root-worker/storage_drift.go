@@ -27,36 +27,78 @@ type liveVolume struct {
 	FstabUUID         string
 	FstabOptions      string
 	ArrayDev          string            // the running array with the described UUID (md127), "" if stopped
+	ArrayInactive     string            // an inactive array holding the described UUID's members (md127)
 	ArrayLevel        string            // its level
-	ArrayMembers      map[string]string // its members: serial -> active/spare
+	ArrayMembers      map[string]string // its members: disk key (diskKey) -> active/spare
 	MdadmConfHasArray bool              // an ARRAY line for the described UUID
 	VGActive          bool
-	Connected         map[string]bool // described disks by serial: connected or not
+	Connected         map[string]bool // described disks by key (diskKey): connected or not
 }
 
 var (
-	// hostLVActive tells whether an LV is active.
+	// hostLVActive tells whether an LV is active. Only plans use it: the
+	// periodic drift check reads device-mapper instead, as an LVM scan reads
+	// every disk and would wake sleeping ones.
 	hostLVActive = func(vg, lv string) bool {
 		out, _ := hostOutput("lvs", "--noheadings", "-o", "lv_active", vg+"/"+lv)
 		return strings.TrimSpace(string(out)) == "active"
 	}
+	// hostUUIDDevices lists "<path> <uuid>" lines from the udev database
+	// (lsblk), without probing the disks the way blkid does.
+	hostUUIDDevices = func() string {
+		out, _ := hostOutput("lsblk", "-rno", "PATH,UUID")
+		return string(out)
+	}
+	hostInactiveArrayByUUID = func(uuid string) string {
+		out, _ := hostOutput("mdadm", "--detail", "--scan")
+		if md, active := scanArrayByUUID(string(out), uuid, hostRealPath); !active {
+			return md
+		}
+		return ""
+	}
 	collectLiveFn = collectLive
 )
+
+// scanArrayByUUID finds the array with uuid in "mdadm --detail --scan",
+// which names an inactive (partly assembled) array INACTIVE-ARRAY.
+func scanArrayByUUID(out, uuid string, realPath func(string) string) (md string, active bool) {
+	for _, l := range strings.Split(out, "\n") {
+		l = strings.TrimSpace(l)
+		inactive := strings.HasPrefix(l, "INACTIVE-ARRAY ")
+		if dev, u := arrayLineFields(strings.TrimPrefix(l, "INACTIVE-")); u == uuid && dev != "" {
+			return filepath.Base(realPath(dev)), !inactive
+		}
+	}
+	return "", false
+}
 
 func collectLive(d storageDescription) liveVolume {
 	l := liveVolume{Connected: map[string]bool{}}
 	mounts := hostProcMounts()
-	l.FSDevices = hostDevsByUUID(d.Filesystem.UUID)
+	uuidOf := map[string]string{}
+	for _, line := range strings.Split(hostUUIDDevices(), "\n") {
+		f := strings.Fields(line)
+		if len(f) != 2 {
+			continue
+		}
+		if _, seen := uuidOf[f[0]]; !seen && f[1] == d.Filesystem.UUID {
+			l.FSDevices = append(l.FSDevices, f[0])
+		}
+		uuidOf[f[0]] = f[1]
+	}
 	aliases := append([]string{}, l.FSDevices...)
 	if d.LVM != nil {
 		aliases = append(aliases, "/dev/"+d.LVM.VG+"/"+d.LVM.LV, lvDmPath(d.LVM.VG, d.LVM.LV))
-		l.VGActive = hostLVActive(d.LVM.VG, d.LVM.LV)
+		l.VGActive = hostExists(lvDmPath(d.LVM.VG, d.LVM.LV))
 	}
 	l.MountedOn = mountPointOf(mounts, aliases...)
 	if l.MountedOn == "" {
 		for _, line := range strings.Split(mounts, "\n") {
 			if f := strings.Fields(line); len(f) >= 2 && f[1] == d.Mount.Point {
-				l.MountPointUUID = hostBlkid(f[0], "UUID")
+				l.MountPointUUID = uuidOf[f[0]]
+				if l.MountPointUUID == "" {
+					l.MountPointUUID = f[0] // a filesystem without a UUID (tmpfs): name its source
+				}
 			}
 		}
 	}
@@ -66,24 +108,26 @@ func collectLive(d storageDescription) liveVolume {
 		}
 	}
 	for _, k := range d.Disks {
-		l.Connected[k.Serial] = hostExists(k.ByID)
+		l.Connected[diskKey(k)] = hostExists(k.ByID)
 	}
+	byID := preferredByID(hostByIDLinks())
 	if d.Array != nil {
 		for _, line := range splitConf(readMdadmConf()) {
 			if _, u := arrayLineFields(strings.TrimSpace(line)); u == d.Array.UUID {
 				l.MdadmConfHasArray = true
 			}
 		}
-		if md := hostArrayByUUID(d.Array.UUID); md != "" {
+		if md := hostArrayByUUID(d.Array.UUID); md == "" {
+			l.ArrayInactive = hostInactiveArrayByUUID(d.Array.UUID)
+		} else {
 			l.ArrayDev = md
 			detail, _ := hostMdDetail("/dev/" + md)
 			l.ArrayLevel = mdDetailField(detail, "Raid Level")
 			l.ArrayMembers = map[string]string{}
 			for _, m := range mdMembers(detail) {
-				disk, _ := hostParentDisk(m.Dev)
-				serial, _, _ := hostDiskIdentity(disk)
-				l.ArrayMembers[serial] = m.Role
-				l.Connected[serial] = true
+				k := diskKey(describeDisk(m.Dev, m.Role, byID))
+				l.ArrayMembers[k] = m.Role
+				l.Connected[k] = true
 			}
 		}
 	}
@@ -130,12 +174,13 @@ func diffDescription(d storageDescription, l liveVolume) []driftItem {
 		}
 		described := map[string]bool{}
 		for _, k := range d.Disks {
-			described[k.Serial] = true
+			key := diskKey(k)
+			described[key] = true
 			switch {
-			case !l.Connected[k.Serial]:
-				add("disk-missing", "Disk %s is not connected", k.Serial)
-			case running && l.ArrayMembers[k.Serial] == "":
-				add("disk-not-member", "Disk %s is no longer in %s", k.Serial, name)
+			case !l.Connected[key]:
+				add("disk-missing", "Disk %s is not connected", key)
+			case running && l.ArrayMembers[key] == "":
+				add("disk-not-member", "Disk %s is no longer in %s", key, name)
 			}
 		}
 		var extra []string
@@ -150,8 +195,8 @@ func diffDescription(d storageDescription, l liveVolume) []driftItem {
 		}
 	} else {
 		for _, k := range d.Disks {
-			if !l.Connected[k.Serial] {
-				add("disk-missing", "Disk %s is not connected", k.Serial)
+			if !l.Connected[diskKey(k)] {
+				add("disk-missing", "Disk %s is not connected", diskKey(k))
 			}
 		}
 	}

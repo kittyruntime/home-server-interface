@@ -1716,4 +1716,15 @@ await testSharePlans()
   assert.equal(out.found[1]!.message, "/srv/c differs from its description: /srv/c is not mounted (and 2 more)")
 }
 
+// The worker lists every description: an alert whose description is gone
+// (volume removed) clears instead of staying open.
+{
+  const { descriptionFindings } = await import("../services/storage-descriptions")
+  const { checkedTargets } = await import("../services/alert-sampler")
+  const out = descriptionFindings([])
+  assert.equal(out.authoritative, true)
+  assert.deepEqual(checkedTargets(out, [{ target: "/srv/gone" }]), ["/srv/gone"])
+  assert.deepEqual(checkedTargets({ found: [], checked: ["/a"] }, [{ target: "/srv/gone" }]), ["/a"])
+}
+
 console.log("Backend security tests passed")

@@ -101,6 +101,11 @@ func planStorageReapply(raw json.RawMessage) (*opPlan, *fsError) {
 	var steps []planStep
 	if a := d.Array; a != nil {
 		name := l.ArrayDev
+		if name == "" && l.ArrayInactive != "" {
+			// Partly assembled at boot: it holds the members, so it is
+			// stopped first and assembled again under its name.
+			name = l.ArrayInactive
+		}
 		if name == "" {
 			name = arrayNameFor(a, mdConf)
 		}
@@ -111,20 +116,24 @@ func planStorageReapply(raw json.RawMessage) (*opPlan, *fsError) {
 				if k.Role != "active" && k.Role != "spare" {
 					continue
 				}
-				if l.Connected[k.Serial] {
+				if l.Connected[diskKey(k)] {
 					present = append(present, k.ByID)
 				} else if k.Role == "active" {
-					missing = append(missing, k.Serial)
+					missing = append(missing, diskKey(k))
 				}
 			}
 			activePresent := 0
 			for _, k := range d.Disks {
-				if k.Role == "active" && l.Connected[k.Serial] {
+				if k.Role == "active" && l.Connected[diskKey(k)] {
 					activePresent++
 				}
 			}
 			if need := minMembers(a.Level, a.Devices); activePresent < need {
 				return nil, &fsError{Code: "EMISSING", Message: fmt.Sprintf("%s needs at least %d of its %d disks to start; connect %s", name, need, a.Devices, strings.Join(missing, ", "))}
+			}
+			if l.ArrayInactive != "" {
+				steps = append(steps, cmdStep(raidDev, "Stop "+raidDev+", left inactive at boot with only some of its disks, so it can be assembled again; its data is not changed",
+					[]string{"mdadm", "--stop", raidDev}))
 			}
 			args := []string{"mdadm", "--assemble", raidDev, "--uuid=" + a.UUID}
 			summary := "Assemble the array " + a.UUID + " as " + raidDev + " from its described disks, without changing its data"
@@ -234,10 +243,16 @@ func planStorageAccept(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, &fsError{Code: "ENOOP", Message: "The description of " + mp + " already matches the server"}
 	}
 	current, _ := os.ReadFile(file)
-	after, _ := marshalDescription(next)
+	// The preview keeps the old date: a new one would differ on every build
+	// of the plan, so applying would always find it changed. The date is set
+	// when the file is written.
+	shown := next
+	shown.Updated = old.Updated
+	after, _ := marshalDescription(shown)
 	step := planStep{Kind: "update", Target: file, Summary: "Describe " + mp + " as it is now on the server",
 		Diff: unifiedDiff(file, string(current), string(after)),
 		run: func() (string, error) {
+			next.Updated = time.Now().UTC()
 			_, err := saveDescription(next)
 			return "", err
 		}}

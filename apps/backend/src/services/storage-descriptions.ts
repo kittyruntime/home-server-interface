@@ -15,5 +15,6 @@ export function descriptionFindings(list: DescriptionStatus[]): CheckOutcome {
     const more = rest.length ? ` (and ${rest.length} more)` : ""
     found.push({ target: s.mountPoint, severity: "warning", message: `${s.mountPoint} differs from its description: ${first.text}${more}` })
   }
-  return { found, checked: list.map(s => s.mountPoint) }
+  // The worker lists every description: one that is gone clears its alert.
+  return { found, checked: list.map(s => s.mountPoint), authoritative: true }
 }

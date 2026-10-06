@@ -140,11 +140,10 @@ func TestDescriptionStatusesNATS(t *testing.T) {
 func TestCollectLive(t *testing.T) {
 	stubDescribeHost(t, describeFstab, "/dev/mapper/data-data /srv/data ext4 rw 0 0\n", nil, nil, describeRaid5Detail)
 	stubConfigFiles(t, describeFstab, "# HSI-managed array: md0\nARRAY /dev/md0 metadata=1.2 UUID=a1b2c3d4:11111111:22222222:33333333\n")
-	pd, pa, pv, pe := hostDevsByUUID, hostArrayByUUID, hostLVActive, hostExists
-	t.Cleanup(func() { hostDevsByUUID, hostArrayByUUID, hostLVActive, hostExists = pd, pa, pv, pe })
-	hostDevsByUUID = func(string) []string { return []string{"/dev/mapper/data-data"} }
+	pu, pa, pe := hostUUIDDevices, hostArrayByUUID, hostExists
+	t.Cleanup(func() { hostUUIDDevices, hostArrayByUUID, hostExists = pu, pa, pe })
+	hostUUIDDevices = func() string { return "/dev/mapper/data-data fs-1\n" }
 	hostArrayByUUID = func(string) string { return "md127" }
-	hostLVActive = func(string, string) bool { return true }
 	hostExists = func(p string) bool { return !strings.HasSuffix(p, "ata-X_sdz") }
 	d := storageDescription{
 		Mount:      descMount{Point: "/srv/data", Options: "defaults,nofail"},
