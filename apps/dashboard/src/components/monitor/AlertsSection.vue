@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime } from '../../lib/format-date'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useDesktop } from '../../lib/desktop'
@@ -77,9 +78,6 @@ async function load() {
   }
 }
 
-function fmtDate(v: string | Date): string {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(v))
-}
 
 onMounted(load)
 </script>
@@ -129,7 +127,7 @@ onMounted(load)
             <div class="text-xs text-[var(--c-text-3)] mt-0.5">{{ a.message }}</div>
           </div>
           <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
-          <div class="text-2xs text-[var(--c-text-3)] shrink-0 tabular-nums">{{ fmtDate(a.lastSeenAt) }}</div>
+          <div class="text-2xs text-[var(--c-text-3)] shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
           <button type="button" class="btn btn-ghost btn-xs shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</button>
         </div>
       </div>

@@ -120,7 +120,7 @@ onMounted(async () => {
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Places</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Places</h2>
         <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-md leading-relaxed">
           Folders on your NAS that you share with people. Each place maps a friendly name to a path on
           the server, then grants read, write or delete access per user or group.

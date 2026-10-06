@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -159,11 +160,6 @@ function startReloadCountdown() {
   }, 1000)
 }
 
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium', timeStyle: 'short',
-  }).format(new Date(iso))
-}
 
 function stepLabel(key: RestartStep) {
   if (key === 'scheduled') return restartKind.value === 'update' ? 'Update scheduled' : restartKind.value === 'host' ? 'Server reboot requested' : 'Restart requested'
@@ -197,7 +193,7 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Updates</h2>
+    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Updates</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">Manage software updates for this server.</p>
 
     <!-- ── Restart timeline ─────────────────────────────────────────────── -->
@@ -332,7 +328,7 @@ onUnmounted(() => clearInterval(timer))
       <div class="flex items-center justify-between pt-1 border-t border-[var(--c-border)]">
         <div>
           <p class="text-xs text-[var(--c-text-3)]">
-            <template v-if="status.checkedAt">Last checked {{ formatDate(status.checkedAt) }}</template>
+            <template v-if="status.checkedAt">Last checked {{ formatDateTime(status.checkedAt) }}</template>
             <template v-else>Never checked (runs daily via systemd timer)</template>
           </p>
           <a

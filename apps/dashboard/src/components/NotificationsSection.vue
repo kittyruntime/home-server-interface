@@ -171,7 +171,7 @@ function formatTime(at: string | Date): string {
 
 <template>
   <div>
-    <h2 class="text-base font-semibold text-[var(--c-text-1)] mb-1">Notifications</h2>
+    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Notifications</h2>
     <p class="text-sm text-[var(--c-text-3)] mb-6">
       Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.
     </p>

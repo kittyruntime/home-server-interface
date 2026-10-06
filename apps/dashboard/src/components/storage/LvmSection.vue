@@ -202,9 +202,9 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       <div class="flex items-center gap-2">
         <button @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
           :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined"
-          class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
+          class="btn btn-outline btn-sm">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-          Create VG
+          Create volume group…
         </button>
         <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
           <LoadingSpinner v-if="loading" class="text-base" />
@@ -468,7 +468,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <button @click="doCreateLvm" :disabled="lvmWiz.busy"
                 class="btn btn-primary flex-1 justify-center">
                 <span v-if="lvmWiz.busy">Creating…</span>
-                <span v-else>Create LVM</span>
+                <span v-else>Create volume group</span>
               </button>
             </div>
           </div>
@@ -480,7 +480,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-[var(--c-border)]">
-            <h3 class="font-semibold text-[var(--c-text-1)]">Add Logical Volume</h3>
+            <h3 class="font-semibold text-[var(--c-text-1)]">Add logical volume</h3>
             <p class="text-xs text-[var(--c-text-3)] mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
           </div>
           <div class="p-5 space-y-4">
@@ -502,7 +502,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
                 class="btn btn-primary flex-1 justify-center">
                 <span v-if="addLvDlg.busy">Creating…</span>
-                <span v-else>Create LV</span>
+                <span v-else>Create logical volume</span>
               </button>
             </div>
           </div>

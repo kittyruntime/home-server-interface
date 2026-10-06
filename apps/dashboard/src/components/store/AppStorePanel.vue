@@ -84,7 +84,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
     <template v-else>
       <!-- Header -->
       <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">App Store</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">App Store</h2>
         <input v-model="search" placeholder="Search apps…" class="ui-input max-w-xs" />
       </div>
       <!-- Counts and categories only once the catalog is read: "0 apps" would be wrong. -->

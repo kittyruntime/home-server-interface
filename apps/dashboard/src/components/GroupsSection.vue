@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDay } from '../lib/format-date'
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import GroupEditor from './GroupEditor.vue'
@@ -65,9 +66,6 @@ const { page, pageCount, paged, pageSize } = usePagination(filteredGroups, 10)
 
 watch(search, () => { page.value = 1 })
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
 
 async function load() {
   const [g, u] = await Promise.all([trpc.group.list.query(), trpc.user.list.query()])
@@ -120,7 +118,7 @@ onMounted(load)
 
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Groups</h2>
+          <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Groups</h2>
           <p class="text-xs text-[var(--c-text-3)] mt-0.5">
             {{ filteredGroups.length }} of {{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}
           </p>
@@ -199,7 +197,7 @@ onMounted(load)
 
               <!-- Created -->
               <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                {{ formatDate(group.createdAt) }}
+                {{ formatDay(group.createdAt) }}
               </td>
 
               <!-- Actions -->

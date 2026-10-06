@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDay } from '../../lib/format-date'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -42,9 +43,6 @@ function formatSize(bytes: number | null): string {
   return (bytes / 1024 ** 3).toFixed(2) + ' GB'
 }
 
-function formatDate(mtime: string): string {
-  return new Date(mtime).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
 
 function fileExt(name: string): string {
   return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
@@ -126,7 +124,7 @@ function fileExt(name: string): string {
       <div v-else class="min-w-0 flex-1">
         <div class="truncate text-sm select-none" :class="entry.type === 'dir' ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-2)]'">{{ entry.name }}</div>
         <div v-if="entry.type === 'file'" class="text-2xs text-[var(--c-text-3)] font-mono tabular-nums">
-          {{ formatSize(entry.size) }} · {{ formatDate(entry.mtime) }}
+          {{ formatSize(entry.size) }} · {{ formatDay(entry.mtime) }}
         </div>
       </div>
       <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm shrink-0 text-[var(--c-text-3)]" />
@@ -311,7 +309,7 @@ function fileExt(name: string): string {
           <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm ml-auto text-[var(--c-text-3)]" />
           <template v-else>{{ formatSize(entry.size) }}</template>
         </td>
-        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] text-xs tabular-nums">{{ formatDate(entry.mtime) }}</td>
+        <td class="px-3 py-2.5 text-right text-[var(--c-text-3)] text-xs tabular-nums">{{ formatDay(entry.mtime) }}</td>
       </tr>
     </tbody>
   </table>

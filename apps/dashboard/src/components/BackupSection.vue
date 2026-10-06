@@ -128,7 +128,7 @@ function pollRestoreRestart() {
 
 <template>
   <div>
-    <h2 class="mb-1 text-base font-semibold text-[var(--c-text-1)]">Backup & restore</h2>
+    <h2 class="mb-1 text-lg font-semibold text-[var(--c-text-1)]">Backup & restore</h2>
     <p class="mb-6 text-sm text-[var(--c-text-3)]">Export or restore an encrypted copy of the HSI configuration.</p>
 
     <div class="panel-card overflow-hidden">

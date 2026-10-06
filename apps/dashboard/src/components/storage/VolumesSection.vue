@@ -165,7 +165,7 @@ async function mount(v: Volume) {
         </p>
       </div>
       <button class="btn btn-primary btn-sm shrink-0" :disabled="!overview?.freeDisks.length"
-        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume</button>
+        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume…</button>
     </div>
 
     <div v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3">

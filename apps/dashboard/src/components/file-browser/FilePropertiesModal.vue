@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -90,12 +91,6 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
 
-function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  }).format(new Date(iso))
-}
 
 // ── load ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -188,11 +183,11 @@ onMounted(async () => {
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
             <dt class="text-[var(--c-text-3)] shrink-0">Modified</dt>
-            <dd class="text-[var(--c-text-1)] text-right">{{ fmtDate(stat.mtime) }}</dd>
+            <dd class="text-[var(--c-text-1)] text-right">{{ formatDateTime(stat.mtime) }}</dd>
           </div>
           <div v-if="stat.ctime" class="flex justify-between gap-4">
             <dt class="text-[var(--c-text-3)] shrink-0">Changed</dt>
-            <dd class="text-[var(--c-text-1)] text-right">{{ fmtDate(stat.ctime) }}</dd>
+            <dd class="text-[var(--c-text-1)] text-right">{{ formatDateTime(stat.ctime) }}</dd>
           </div>
         </dl>
       </div>
