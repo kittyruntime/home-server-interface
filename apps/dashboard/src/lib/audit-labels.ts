@@ -67,6 +67,58 @@ export function actionLabel(action: string): string {
     'backup.update':                'Update data backup plan',
     'backup.delete':                'Delete data backup plan',
     'backup.run':                   'Run data backup',
+    'apps.plan':                    'Preview app change',
+    'apps.apply':                   'Apply app change',
+    'files.upload':                 'Upload file',
+    'fs.chmod':                     'Change permissions',
+    'fs.chown':                     'Change owner',
+    'notifications.connectors.create': 'Create notification connector',
+    'notifications.markAllRead':    'Mark notifications read',
+    'notifications.renderPreview':  'Preview notification',
+    'notifications.rules.update':   'Update notification rule',
+    'notifications.testConnector':  'Test notification connector',
+    'storage.plan':                 'Preview storage change',
+    'storage.apply':                'Apply storage change',
+    'storage.failRaidMember':       'Mark RAID disk as failed',
+    'storage.runMaintenanceNow':    'Run disk checks now',
+    'storage.volumePlan':           'Preview new volume',
+    'storage.volumeApply':          'Create volume',
+    'storage.volumeRemovePlan':     'Preview volume removal',
+    'storage.volumeRemoveApply':    'Remove volume',
+    'update.apply':                 'Install update',
+    'update.check':                 'Check for updates',
+    'user.updatePreferences':       'Update preferences',
   }
-  return map[action] ?? action
+  return map[action] ?? humanize(action)
+}
+
+// An action without a label yet, in words: "widgets.resetLayout" reads
+// "Widgets: reset layout".
+function humanize(action: string): string {
+  const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
+  const parts = action.split('.')
+  const last = words(parts.pop() ?? '')
+  const head = parts.length ? words(parts.join(' ')) : ''
+  const text = head ? `${head}: ${last}` : last
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+export type AuditCategory = 'auth' | 'fs' | 'system' | 'admin' | 'other'
+
+export function actionCategory(action: string): AuditCategory {
+  if (action.startsWith('auth.'))     return 'auth'
+  if (action.startsWith('fs.') || action.startsWith('files.')) return 'fs'
+  if (action.startsWith('system.') || action.startsWith('storage.'))   return 'system'
+  if (action.startsWith('user.') || action.startsWith('role.') ||
+      action.startsWith('place.') || action.startsWith('container.') || action.startsWith('apps.') ||
+      action.startsWith('catalog.') || action.startsWith('update.'))   return 'admin'
+  return 'other'
+}
+
+export const categoryClass: Record<AuditCategory, string> = {
+  auth:   'bg-info/10 text-info border-info/20',
+  fs:     'bg-violet/10 text-violet border-violet/20',
+  system: 'bg-warning/10 text-warning border-warning/20',
+  admin:  'bg-accent/10 text-accent border-accent/20',
+  other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
 }

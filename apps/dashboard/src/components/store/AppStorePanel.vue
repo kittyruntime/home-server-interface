@@ -87,12 +87,13 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         <h2 class="text-base font-semibold text-[var(--c-text-1)]">App Store</h2>
         <input v-model="search" placeholder="Search apps…" class="ui-input max-w-xs" />
       </div>
-      <p class="text-xs text-[var(--c-text-3)] mb-4">
+      <!-- Counts and categories only once the catalog is read: "0 apps" would be wrong. -->
+      <p v-if="!loading" class="text-xs text-[var(--c-text-3)] mb-4">
         {{ apps.length }} apps · {{ installedCount }} installed
       </p>
 
       <!-- Category filter -->
-      <div class="flex gap-2 mb-4 flex-wrap">
+      <div v-if="!loading" class="flex gap-2 mb-4 flex-wrap">
         <button v-for="c in categories" :key="c" @click="category = c"
           :class="['btn btn-xs', category === c ? 'btn-primary' : 'btn-outline']">{{ c }}</button>
       </div>
