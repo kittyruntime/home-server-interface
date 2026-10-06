@@ -166,7 +166,7 @@ function diffLineClass(line: string): string {
 }
 
 const kindLabel: Record<string, string> = {
-  create: 'Create', update: 'Edit file', delete: 'Delete file', remove: 'Remove', info: 'Note', run: 'Run', start: 'Start', stop: 'Stop', permissions: 'Permissions',
+  create: 'Create', update: 'Edit file', delete: 'Delete file', remove: 'Remove', info: 'Note', later: 'Later', run: 'Run', start: 'Start', stop: 'Stop', permissions: 'Permissions',
 }
 
 const done = computed(() => applied.value !== null)
@@ -239,7 +239,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                   <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-2xs leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
 </span></pre>
                 </details>
-                <p v-else-if="s.deferred" class="mt-1 text-2xs text-[var(--c-text-3)]">The exact change is computed when the step runs and shown here afterwards.</p>
+                <p v-else-if="s.deferred && s.kind !== 'later'" class="mt-1 text-2xs text-[var(--c-text-3)]">The exact change is computed when the step runs and shown here afterwards.</p>
 
                 <p v-if="resultOf(i)?.error" class="status-text mt-2" :class="resultOf(i)?.status === 'failed' ? 'text-danger' : 'text-warning'">
                   <span class="status-tag">{{ resultOf(i)?.status === 'failed' ? '[ERR]' : '[WARN]' }}</span> {{ resultOf(i)?.error }}
