@@ -34,7 +34,7 @@ function dirWritable(s: ShareDiag): boolean {
   <div class="space-y-5">
     <div class="flex items-start justify-between gap-3">
       <div>
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Share diagnostics</h2>
+        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Share diagnostics</h2>
         <p class="text-sm text-[var(--c-text-3)] mt-0.5">
           Who can actually read/write, who is blocked and why, and the state of the directories.
         </p>

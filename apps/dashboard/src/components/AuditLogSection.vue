@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime } from '../lib/format-date'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { ref, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -45,12 +46,6 @@ onMounted(load)
 watch([page], load)
 watch([filterAction], () => { page.value = 0; load() })
 
-function fmtDate(d: string | Date) {
-  return new Date(d).toLocaleString(undefined, {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  })
-}
 
 
 
@@ -107,7 +102,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       <div class="space-y-2 sm:hidden">
         <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
           <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-[var(--c-text-2)]" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-danger'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-[var(--c-text-3)]"><span>{{ fmtDate(entry.createdAt) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-[var(--c-text-3)]"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
           <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-[var(--c-border)] pt-3"><p class="break-all font-mono text-2xs text-[var(--c-text-3)]">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--c-surface-deep)] p-2 text-2xs text-[var(--c-text-2)]">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
@@ -131,7 +126,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   !entry.success ? 'bg-danger/4' : '']">
 
                 <td class="px-4 py-2.5 text-xs text-[var(--c-text-3)] font-mono whitespace-nowrap">
-                  {{ fmtDate(entry.createdAt) }}
+                  {{ formatDateTime(entry.createdAt, { seconds: true }) }}
                 </td>
                 <td class="px-4 py-2.5">
                   <span v-if="entry.user" class="text-[var(--c-text-1)] font-medium text-xs">

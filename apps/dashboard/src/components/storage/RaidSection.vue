@@ -320,9 +320,9 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       <div class="flex items-center gap-2">
         <button @click="openRaidWizard()" :disabled="isMissing('mdadm')"
           :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined"
-          class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--c-border)] disabled:hover:text-[var(--c-text-2)]">
+          class="btn btn-outline btn-sm">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-          Create RAID
+          Create RAID…
         </button>
         <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
           <LoadingSpinner v-if="loading" class="text-base" />

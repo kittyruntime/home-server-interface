@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDay } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -96,9 +97,6 @@ async function load() {
   }
 }
 
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
 
 const palette = [
   'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
@@ -166,7 +164,7 @@ onMounted(load)
       <!-- Header -->
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-base font-semibold text-[var(--c-text-1)]">Users</h2>
+          <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Users</h2>
           <p v-if="!loading && !loadError" class="text-xs text-[var(--c-text-3)] mt-0.5">
             {{ filteredUsers.length }} of {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
           </p>
@@ -294,7 +292,7 @@ onMounted(load)
 
                 <!-- Created -->
                 <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
-                  {{ formatDate(user.createdAt) }}
+                  {{ formatDay(user.createdAt) }}
                 </td>
 
                 <!-- Actions -->

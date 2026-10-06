@@ -28,7 +28,7 @@ onMounted(load)
 <template>
   <div class="space-y-4">
     <div>
-      <h2 class="text-base font-semibold text-[var(--c-text-1)]">Shared links</h2>
+      <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Shared links</h2>
       <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-md leading-relaxed">
         Public links you have created for files and folders. Anyone with a link can access it
         until it expires, hits its download limit, or you revoke it.
