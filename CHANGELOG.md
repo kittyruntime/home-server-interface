@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.64.2] - 2026-10-06
+
 ### Changed
 - **Clearer navigation**: Settings > Alerts is now Alert thresholds (the active
   alerts are in Monitor > Alerts), and Monitor's Overview is now Summary, so it
@@ -1330,7 +1332,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.2...HEAD
+[1.64.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.1...v1.64.2
 [1.64.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.0...v1.64.1
 [1.64.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.63.0...v1.64.0
 [1.63.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.62.1...v1.63.0
