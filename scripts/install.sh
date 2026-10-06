@@ -612,7 +612,7 @@ fi
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
 
   step "Installing pnpm dependencies"
-  run_as "$APP_USER" "cd '$APP_DIR' && pnpm install --frozen-lockfile"
+  run_as "$APP_USER" "cd '$APP_DIR' && pnpm install --frozen-lockfile --filter '!@app/website'"
   success "Dependencies installed"
 
   step "Building worker"
