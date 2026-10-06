@@ -974,6 +974,10 @@ func main() {
 	// `hsi-worker plan preview <op> <input-json>` and
 	// `hsi-worker plan apply <op> <input-json> <fingerprint>`: the same plans
 	// as root.plan.*, from a shell (debugging, tests).
+	// `hsi-worker storage diff`: how each volume differs from its description.
+	if len(os.Args) > 1 && os.Args[1] == "storage" {
+		os.Exit(runStorageCLI(os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "plan" {
 		os.Exit(runPlanCLI(os.Args[2:]))
 	}
@@ -1054,6 +1058,7 @@ func main() {
 		"root.sys.maintenance.set":       handleMaintenanceSet,
 		"root.sys.maintenance.runNow":    handleMaintenanceRunNow,
 		"root.sys.expansions":            handleExpansions,
+		"root.storage.descriptions":      handleStorageDescriptions,
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
