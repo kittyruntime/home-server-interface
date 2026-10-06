@@ -371,7 +371,7 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		oldSize := hostArraySize(array)
 		obs["arraySize"] = fmt.Sprint(oldSize)
 		entry := pendingExpansion{UUID: req.UUID, Array: array, ArrayUUID: arrayUUID, OldSize: oldSize, VG: lv.VGName, LV: lv.Path, FSType: fstype, MountPoint: mp, Phase: "reshape"}
-		steps = append(steps, planStep{Kind: "update", Target: lv.Path, Deferred: true,
+		steps = append(steps, planStep{Kind: "later", Target: lv.Path, Deferred: true,
 			Summary: "Grow LVM and the filesystem when the array is ready (HSI does it on its own)",
 			run: func() (string, error) {
 				entry.StartedAt = time.Now()
