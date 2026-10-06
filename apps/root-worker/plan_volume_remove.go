@@ -334,6 +334,10 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 		steps = append(steps, unprotect)
 	}
 	freed := append([]string{}, base...)
-	return &opPlan{Op: "volume.remove", Steps: steps, Observed: obs,
-		Reply: map[string]any{"freed": freed, "mountpoint": mp}}, nil
+	p := &opPlan{Op: "volume.remove", Steps: steps, Observed: obs,
+		Reply: map[string]any{"freed": freed, "mountpoint": mp}}
+	if mp != "" {
+		p.Forget = []string{mp}
+	}
+	return p, nil
 }

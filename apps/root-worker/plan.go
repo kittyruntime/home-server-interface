@@ -47,6 +47,12 @@ type opPlan struct {
 	// FingerprintInput replaces the input in the fingerprint when set (an
 	// input carrying a secret, such as a password).
 	FingerprintInput json.RawMessage
+	// Storage descriptions (#37) refreshed once the plan succeeded: the
+	// volumes it touched (by mount point), the ones it removed, and every
+	// volume on an array whose members it changed.
+	Describe          []string
+	Forget            []string
+	DescribeArrayUUID string
 }
 
 type stepResult struct {

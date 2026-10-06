@@ -1013,6 +1013,7 @@ func main() {
 
 	// Missing volume guard (#3): boot options and immutable mount points.
 	prepareVolumes()
+	backfillDescriptions(time.Now())
 
 	js, err := nc.JetStream()
 	if err != nil {

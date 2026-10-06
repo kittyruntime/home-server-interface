@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -166,4 +167,70 @@ func removeDescription(mountPoint string) error {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// describeVolumeFn is describeVolume; tests replace it.
+var describeVolumeFn = describeVolume
+
+func describeAndSave(mp string, now time.Time) error {
+	d, fe := describeVolumeFn(mp, now)
+	if fe != nil {
+		return errors.New(fe.Message)
+	}
+	_, err := saveDescription(d)
+	return err
+}
+
+// refreshDescriptions applies a successful plan's description changes and
+// returns warnings: a description that cannot be written never fails the plan.
+func refreshDescriptions(p *opPlan, now time.Time) []string {
+	var warnings []string
+	warn := func(mp string, err error) {
+		warnings = append(warnings, "Could not update the storage description of "+mp+": "+err.Error())
+	}
+	targets := append([]string{}, p.Describe...)
+	if p.DescribeArrayUUID != "" {
+		all, _ := loadDescriptions()
+		for mp, d := range all {
+			if d.Array != nil && d.Array.UUID == p.DescribeArrayUUID && !containsString(targets, mp) {
+				targets = append(targets, mp)
+			}
+		}
+		sort.Strings(targets)
+	}
+	for _, mp := range targets {
+		if err := describeAndSave(mp, now); err != nil {
+			warn(mp, err)
+		}
+	}
+	for _, mp := range p.Forget {
+		if err := removeDescription(mp); err != nil {
+			warn(mp, err)
+		}
+	}
+	return warnings
+}
+
+// backfillDescriptions describes the mounted HSI-managed volumes that have no
+// description yet (volumes created before descriptions existed).
+func backfillDescriptions(now time.Time) {
+	have, _ := loadDescriptions()
+	mounts := hostProcMounts()
+	for _, v := range hsiVolumes(readFstab()) {
+		if _, ok := have[v.MountPoint]; ok {
+			continue
+		}
+		mounted := false
+		for _, l := range strings.Split(mounts, "\n") {
+			if f := strings.Fields(l); len(f) >= 2 && f[1] == v.MountPoint {
+				mounted = true
+			}
+		}
+		if !mounted {
+			continue
+		}
+		if err := describeAndSave(v.MountPoint, now); err != nil {
+			logger.Warn("storage description", "mountpoint", v.MountPoint, "error", err.Error())
+		}
+	}
 }

@@ -269,6 +269,6 @@ func planVolumeCreate(raw json.RawMessage) (*opPlan, *fsError) {
 				return "", nil
 			}})
 	}
-	return &opPlan{Op: "volume.create", Steps: steps, Observed: obs,
+	return &opPlan{Op: "volume.create", Steps: steps, Observed: obs, Describe: []string{mp},
 		Reply: map[string]any{"device": lvDev, "mountpoint": mp}}, nil
 }

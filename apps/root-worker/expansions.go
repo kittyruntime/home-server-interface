@@ -78,6 +78,11 @@ func finishExpansions(now time.Time) {
 			logger.Warn("expansion failed", "volume", e.LV, "error", ferr.Error())
 		} else {
 			logger.Info("expansion done", "volume", e.LV)
+			if mp := mountPointOf(hostProcMounts(), e.LV, lvDmPath(e.VG, filepath.Base(e.LV))); mp != "" {
+				for _, w := range refreshDescriptions(&opPlan{Describe: []string{mp}}, now) {
+					logger.Warn("storage description", "warning", w)
+				}
+			}
 		}
 	}
 	// Announced expansions are kept a day, so their alert clears, then dropped.

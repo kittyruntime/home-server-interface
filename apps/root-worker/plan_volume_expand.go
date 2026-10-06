@@ -378,5 +378,11 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 				return "", addPendingExpansion(entry)
 			}})
 	}
-	return &opPlan{Op: "volume.expand", Steps: steps, Observed: obs, Reply: map[string]any{"pending": pending}}, nil
+	p := &opPlan{Op: "volume.expand", Steps: steps, Observed: obs, Reply: map[string]any{"pending": pending}}
+	// Described now with its new disk; the finisher describes it again once
+	// the reshape grew it.
+	if mounted {
+		p.Describe = []string{mp}
+	}
+	return p, nil
 }
