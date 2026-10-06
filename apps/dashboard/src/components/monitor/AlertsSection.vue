@@ -114,7 +114,7 @@ onMounted(load)
           </button>
         </div>
       </div>
-      <p v-if="clearError" class="px-4 py-2 text-xs text-danger border-b border-[var(--c-border)]">{{ clearError }}</p>
+      <p v-if="clearError" role="alert" class="px-4 py-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ clearError }}</p>
       <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-[var(--c-text-3)] text-center">
         No active alerts.
       </div>

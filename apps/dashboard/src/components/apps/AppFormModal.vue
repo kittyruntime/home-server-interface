@@ -388,7 +388,7 @@ async function applyNow() {
           Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
-        <p v-if="composeError" class="text-xs text-[var(--c-accent)] mr-2">{{ composeError }}</p>
+        <p v-if="composeError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
         <button
           @click="importCompose"
           :disabled="!composeRaw.trim()"
@@ -524,7 +524,7 @@ async function applyNow() {
 
     <!-- Footer -->
     <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
-      <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
       <button
         @click="emit('close')"
@@ -538,7 +538,7 @@ async function applyNow() {
       </button>
     </div>
     <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
-      <p v-if="error" class="text-sm text-[var(--c-accent)] flex-1">{{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
       <button @click="emit('close')" class="btn btn-ghost">Close</button>
     </div>

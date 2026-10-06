@@ -101,7 +101,7 @@ const statusClass: Record<string, string> = {
     </div>
 
     <LoadingState v-if="loading && !data" variant="block" />
-    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else-if="data && draft">
       <div v-if="!data.timerInstalled" class="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-[var(--c-text-1)]">

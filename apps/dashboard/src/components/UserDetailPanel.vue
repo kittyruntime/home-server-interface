@@ -225,7 +225,7 @@ async function deleteUser() {
         </div>
       </div>
 
-      <p v-if="saveError" class="text-[var(--c-danger)] text-xs">{{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
 
       <div class="flex items-center gap-3">
         <button
@@ -294,8 +294,8 @@ async function deleteUser() {
 
       <p class="text-xs text-[var(--c-text-3)] px-0.5">Access changes apply immediately, but menus update after the account's next sign-in.</p>
       <p v-if="isSelf" class="text-xs text-[var(--c-text-3)] px-0.5">You can't change your own access.</p>
-      <p v-if="accountError" class="text-[var(--c-danger)] text-xs px-0.5">{{ accountError }}</p>
-      <p v-if="capabilityError" class="text-[var(--c-danger)] text-xs px-0.5">{{ capabilityError }}</p>
+      <p v-if="accountError" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ accountError }}</p>
+      <p v-if="capabilityError" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ capabilityError }}</p>
     </div>
 
     <!-- ── Identity (Linux + Samba, as the OS actually sees it) ─────────────── -->
@@ -303,7 +303,7 @@ async function deleteUser() {
       <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Identity</h4>
 
       <LoadingState v-if="identityLoading" variant="inline" class="text-xs" />
-      <p v-else-if="identityError" class="text-[var(--c-danger)] text-xs">{{ identityError }}</p>
+      <p v-else-if="identityError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
 
       <div v-else-if="identity" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
         <!-- HSI identity -->
@@ -356,7 +356,7 @@ async function deleteUser() {
 
       <div class="flex flex-wrap gap-1.5">
         <span v-for="g in memberGroups" :key="g.id" class="badge badge-violet">{{ g.name }}</span>
-        <span v-if="memberGroups.length === 0" class="text-[var(--c-text-3)] text-xs italic">No groups.</span>
+        <span v-if="memberGroups.length === 0" class="text-[var(--c-text-3)] text-xs">No groups.</span>
       </div>
       <p class="text-xs text-[var(--c-text-3)]">Group membership is managed from the Groups tab.</p>
     </div>
@@ -378,7 +378,7 @@ async function deleteUser() {
             class="btn btn-sm shrink-0 text-[var(--c-danger)] border border-[var(--c-danger)]/30 hover:bg-[var(--c-danger-subtle)] transition-colors"
           >Delete</button>
         </div>
-        <p v-if="deleteError" class="mt-2 text-[var(--c-danger)] text-xs">{{ deleteError }}</p>
+        <p v-if="deleteError" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
       </div>
     </div>
 

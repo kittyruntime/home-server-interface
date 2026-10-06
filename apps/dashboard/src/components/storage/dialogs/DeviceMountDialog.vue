@@ -162,7 +162,7 @@ defineExpose({ open })
         <input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" placeholder="Place name"
           class="ui-input w-full px-3 py-2 text-sm"/>
       </div>
-      <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
+      <p v-if="dlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
         <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
         <button @click="doMount" :disabled="!dlg.mp || dlg.busy || (dlg.access === 'user' && !dlg.ownerUserId)"

@@ -149,7 +149,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
         </div>
 
         <!-- Unavailable -->
-        <div v-else-if="sc && !sc.available" class="px-4 py-3 text-sm text-[var(--c-text-3)] italic">
+        <div v-else-if="sc && !sc.available" class="px-4 py-3 text-sm text-[var(--c-text-3)]">
           S.M.A.R.T. not supported by this device, or smartctl is not installed. Virtual disks and many USB enclosures do not expose it.
         </div>
 
@@ -284,7 +284,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <span class="font-mono text-xs text-[var(--c-text-2)]">/dev/{{ part.name }}</span>
               <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(part.size) }}</span>
               <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase border border-[var(--c-border)]">{{ part.fstype }}</span>
-              <span v-else-if="!roleOf(part)" class="text-2xs italic text-[var(--c-text-3)]/60">unformatted</span>
+              <span v-else-if="!roleOf(part)" class="text-2xs text-[var(--c-text-3)]/60">unformatted</span>
               <!-- Role: RAID member -->
               <button v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
                 class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">

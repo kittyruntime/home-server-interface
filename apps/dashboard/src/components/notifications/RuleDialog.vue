@@ -104,7 +104,7 @@ async function save() {
         Enabled
       </label>
 
-      <p v-if="saveError" class="text-xs text-[var(--c-danger)]">{{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
     </div>
 
     <template #footer>

@@ -137,7 +137,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   <span v-if="entry.user" class="text-[var(--c-text-1)] font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
                   </span>
-                  <span v-else class="text-[var(--c-text-3)] text-xs italic">-</span>
+                  <span v-else class="text-[var(--c-text-3)] text-xs">-</span>
                 </td>
                 <td class="px-4 py-2.5">
                   <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">

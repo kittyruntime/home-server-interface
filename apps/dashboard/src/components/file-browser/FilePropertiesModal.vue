@@ -141,7 +141,7 @@ onMounted(async () => {
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Error -->
-    <div v-else-if="error" class="p-6 text-sm text-[var(--c-danger)]">{{ error }}</div>
+    <p v-else-if="error" role="alert" class="p-6 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- Content -->
     <div v-else class="divide-y divide-[var(--c-border)]">

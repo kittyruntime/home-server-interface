@@ -313,7 +313,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </div>
 
     <LoadingState v-if="loading && !devices.length" variant="block" />
-    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-if="!loading || devices.length">
       <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No physical drives detected.</div>
@@ -548,7 +548,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
               <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
             </div>
-            <div v-if="partCreateDlg.err" class="text-xs text-danger">{{ partCreateDlg.err }}</div>
+            <p v-if="partCreateDlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ partCreateDlg.err }}</p>
             <div class="flex gap-2 pt-1">
               <button @click="partCreateDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
               <button @click="doPartCreate" :disabled="partCreateDlg.busy"

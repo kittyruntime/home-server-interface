@@ -4,6 +4,7 @@ import { useDesktop, APP_LABEL, type DesktopWindow } from '../../lib/desktop'
 import { modalHostKey } from '../../lib/modal-host'
 import AppIcon from './AppIcon.vue'
 import { useAuth } from '../../lib/auth'
+import { useConfirm } from '../../lib/confirm'
 import { downloadUrl } from '../../lib/file-url'
 import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
 import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
@@ -55,14 +56,19 @@ watch(() => props.win.focusNonce, () => {
   if (props.win.focusSection) settingsPanelRef.value?.focusOn(props.win.focusSection)
 })
 
-function onCloseClick() {
-  if (props.win.dirty && !confirm('Discard unsaved changes?')) return
-  closeWindow(props.win.id)
+const { confirm } = useConfirm()
+
+// A minimized window is unmounted too: both lose unsaved changes.
+async function discardChanges(): Promise<boolean> {
+  return !props.win.dirty || await confirm('Discard unsaved changes?', { danger: true, confirmLabel: 'Discard' })
 }
 
-function onMinimizeClick() {
-  if (props.win.dirty && !confirm('Discard unsaved changes?')) return
-  toggleMinimize(props.win.id)
+async function onCloseClick() {
+  if (await discardChanges()) closeWindow(props.win.id)
+}
+
+async function onMinimizeClick() {
+  if (await discardChanges()) toggleMinimize(props.win.id)
 }
 
 type DragState = { px: number; py: number; wx: number; wy: number }

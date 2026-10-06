@@ -502,7 +502,7 @@ async function unpin(app: App) {
         autofocus
         class="ui-input w-full px-3 py-2 text-sm font-mono"
       />
-      <p v-if="pinDialogErr" class="text-xs text-[var(--c-accent)]">{{ pinDialogErr }}</p>
+      <p v-if="pinDialogErr" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ pinDialogErr }}</p>
     </div>
 
     <template #footer>

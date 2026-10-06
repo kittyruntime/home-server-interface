@@ -213,7 +213,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </div>
 
     <LoadingState v-if="loading && !mounted.length && !unmounted.length" variant="block" />
-    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else>
       <VolumeHealthPanel ref="volumePanel" />
@@ -258,7 +258,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   </div>
                   <div class="text-2xs text-[var(--c-text-3)] mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
                 </div>
-                <span v-else class="text-2xs text-[var(--c-text-3)] italic">-</span>
+                <span v-else class="text-2xs text-[var(--c-text-3)]">-</span>
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"

@@ -95,7 +95,7 @@ onMounted(load)
           </div>
         </label>
       </div>
-      <p v-if="saveError" class="text-xs text-[var(--c-danger)] mt-4">{{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="mt-4 status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
       <p v-else-if="saved && !dirty" class="text-xs text-[var(--c-success)] mt-4">Saved.</p>
       <div class="mt-4">
         <button

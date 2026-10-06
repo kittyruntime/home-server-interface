@@ -5,6 +5,11 @@ import { useAuth } from '../../lib/auth'
 const props = defineProps<{ name: string }>()
 const emit  = defineEmits<{ close: [] }>()
 
+// Escape closes the logs, like every other dialog.
+function onKeydown(e: KeyboardEvent) { if (e.key === 'Escape') emit('close') }
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
 const { token } = useAuth()
 
 interface LogLine { ts: string; text: string; stream?: 'stdout' | 'stderr' }
@@ -138,7 +143,7 @@ onUnmounted(() => controller?.abort())
 
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" @click.self="emit('close')">
+    <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Container logs" @click.self="emit('close')">
       <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-xl overflow-hidden shadow-[var(--shadow-md)]">
 
         <!-- Header -->
@@ -196,7 +201,7 @@ onUnmounted(() => controller?.abort())
           style="color: #e6edf3"
         >
           <!-- Error -->
-          <div v-if="error" class="text-danger mb-2">{{ error }}</div>
+          <p v-if="error" role="alert" class="mb-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
           <!-- Empty -->
           <div v-if="lines.length === 0 && !error && connected"

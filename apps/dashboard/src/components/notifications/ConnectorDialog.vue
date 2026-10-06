@@ -338,7 +338,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
 
       <div class="space-y-1.5">
         <label class="block text-xs text-[var(--c-text-3)]">Preview</label>
-        <p v-if="previewError" class="text-xs text-[var(--c-danger)]">{{ previewError }}</p>
+        <p v-if="previewError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ previewError }}</p>
         <div v-else-if="preview?.type === 'webhook'" class="rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] p-3 font-mono text-xs text-[var(--c-text-2)] space-y-2">
           <p class="break-all"><span class="font-bold text-[var(--c-text-1)]">{{ preview.request.method }}</span> {{ preview.request.url }}</p>
           <div v-if="Object.keys(preview.request.headers).length > 0" class="space-y-0.5">
@@ -364,7 +364,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
         Enabled
       </label>
 
-      <p v-if="saveError" class="text-xs text-[var(--c-danger)]">{{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
     </div>
 
     <template #footer>

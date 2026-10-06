@@ -245,7 +245,7 @@ onUnmounted(() => clearInterval(timer))
     <LoadingState v-else-if="loading" variant="compact" />
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->
-    <p v-else-if="error" class="text-sm text-[var(--c-accent)]">{{ error }}</p>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <!-- ── Main content ─────────────────────────────────────────────────── -->
     <div v-else-if="status" class="space-y-5">

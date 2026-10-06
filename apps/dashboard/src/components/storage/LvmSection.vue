@@ -220,7 +220,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
-    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
@@ -304,7 +304,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <!-- LVs -->
           <div class="divide-y divide-[var(--c-border)]">
             <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
-              class="px-4 py-3 text-2xs italic text-[var(--c-text-3)]">
+              class="px-4 py-3 text-2xs text-[var(--c-text-3)]">
               No logical volumes. Click "+ Add LV" to create one.
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
@@ -316,7 +316,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                   <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
                   <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
                   <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
-                  <span v-else class="text-2xs italic text-[var(--c-text-3)]">unformatted</span>
+                  <span v-else class="text-2xs text-[var(--c-text-3)]">unformatted</span>
                 </div>
                 <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
@@ -462,7 +462,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
             </div>
-            <div v-if="lvmWiz.err" class="text-xs text-danger px-1">{{ lvmWiz.err }}</div>
+            <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
             <div class="flex gap-2">
               <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
               <button @click="doCreateLvm" :disabled="lvmWiz.busy"
@@ -496,7 +496,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
                 class="ui-input w-full px-3 py-2 text-sm font-mono"/>
             </div>
-            <div v-if="addLvDlg.err" class="text-xs text-danger">{{ addLvDlg.err }}</div>
+            <p v-if="addLvDlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
             <div class="flex gap-2 pt-1">
               <button @click="addLvDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
               <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"

@@ -157,7 +157,7 @@ onMounted(async () => {
             <p class="text-2xs text-[var(--c-text-3)] mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
           </div>
         </div>
-        <div v-if="addError" class="text-[var(--c-accent)] text-xs">{{ addError }}</div>
+        <p v-if="addError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ addError }}</p>
         <div v-if="pathMissing" class="rounded-lg bg-[var(--c-surface-alt)] border border-[var(--c-border)] px-3 py-2">
           <p class="text-xs text-[var(--c-text-2)]">This folder doesn't exist yet.</p>
           <button @click="createDir" :disabled="addLoading"
@@ -283,7 +283,7 @@ onMounted(async () => {
                 </tr>
 
                 <tr v-if="groups.length === 0 && users.length === 0">
-                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)] italic">No groups or users to assign.</td>
+                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)]">No groups or users to assign.</td>
                 </tr>
               </tbody>
             </table>
