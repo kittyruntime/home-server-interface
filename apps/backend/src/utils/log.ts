@@ -2,7 +2,7 @@ import os from "node:os"
 import type { FastifyBaseLogger, FastifyServerOptions } from "fastify"
 
 // One JSON log format for the backend and the root worker (see
-// docs/configuration.md#logs): ISO `time`, lowercase `level` name, `msg`, and
+// website/src/content/docs/reference/configuration.md, Logs): ISO `time`, lowercase `level` name, `msg`, and
 // `component`. Fastify's pino logger is configured with these options; code
 // outside request handlers (services, samplers) logs through `log` below, which
 // forwards to the same logger once the app is built.

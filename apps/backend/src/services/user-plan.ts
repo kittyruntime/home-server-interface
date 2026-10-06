@@ -34,7 +34,7 @@ function createStep(username: string): PlanStep {
 function deleteStep(username: string): PlanStep {
   return {
     kind: "delete", target: username, destructive: true,
-    summary: `Delete the HSI user ${username}; the Linux account and its Samba account stay on the server (see docs/manage-without-hsi.md)`,
+    summary: `Delete the HSI user ${username}; the Linux account and its Samba account stay on the server (see https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/)`,
   }
 }
 
