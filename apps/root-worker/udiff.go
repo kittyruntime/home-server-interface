@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// maxDiffLines bounds the files shown as a diff (config files are far smaller).
+const maxDiffLines = 5000
+
 // unifiedDiff renders the change from before to after as a unified diff with
 // two lines of context. Config files are small, so a plain LCS is enough.
 func unifiedDiff(path, before, after string) string {
@@ -12,6 +15,10 @@ func unifiedDiff(path, before, after string) string {
 		return ""
 	}
 	a, b := splitLines(before), splitLines(after)
+	// The LCS table is quadratic: past this size, say what changed instead.
+	if len(a) > maxDiffLines || len(b) > maxDiffLines {
+		return fmt.Sprintf("--- a%s\n+++ b%s\n(%d lines before, %d after: too large to show as a diff)\n", path, path, len(a), len(b))
+	}
 	// LCS table.
 	lcs := make([][]int, len(a)+1)
 	for i := range lcs {

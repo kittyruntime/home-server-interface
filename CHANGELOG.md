@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependencies**: fastify 5.12.5 (HTTP/2 trailer denial of service), Vue 3.5.43
+  (server-renderer XSS), and the transitive fast-uri 3.1.8, brace-expansion
+  5.0.12, source-map-js 1.2.2 and postcss-selector-parser 7.1.6 (CPU and
+  event-loop denial of service).
+- **Root worker**: zip entries are checked with `filepath.IsLocal` before
+  extraction, file diffs shown in plans are capped in size, and user and group
+  IDs are bounded before they are used to switch identity.
+
 ## [1.64.0] - 2026-10-06
 
 ### Added
