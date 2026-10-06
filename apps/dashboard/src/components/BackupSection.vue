@@ -149,7 +149,7 @@ function pollRestoreRestart() {
           <input v-model="confirmation" type="password" autocomplete="new-password" minlength="16" maxlength="1024" class="ui-input" placeholder="Repeat the password" required>
         </label>
         <p v-if="confirmation && password !== confirmation" class="text-xs text-[var(--c-danger)]">Passwords do not match.</p>
-        <p v-if="error" class="text-xs text-[var(--c-danger)]">{{ error }}</p>
+        <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
         <p v-if="complete" class="text-xs text-[var(--c-success)]">Encrypted configuration backup downloaded.</p>
         <div class="flex justify-end">
           <button class="btn btn-primary btn-sm" :disabled="!valid || exporting">
@@ -180,7 +180,7 @@ function pollRestoreRestart() {
           <LoadingSpinner />
           <span>{{ restoreStep === 'uploading' ? 'Validating and restoring backup…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
         </div>
-        <p v-if="restoreError" class="text-xs text-[var(--c-danger)]">{{ restoreError }}</p>
+        <p v-if="restoreError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
         <div class="flex justify-end">
           <button class="btn btn-danger btn-sm" :disabled="!restoreFile || restorePassword.length < 16 || restoring || !!restoreError">
             <BusyLabel :busy="restoring" busy-label="Restoring">Restore configuration</BusyLabel>

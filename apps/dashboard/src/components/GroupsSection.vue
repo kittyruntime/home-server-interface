@@ -150,7 +150,7 @@ onMounted(load)
             class="ui-input"
           />
         </div>
-        <p v-if="createError" class="text-[var(--c-accent)] text-xs">{{ createError }}</p>
+        <p v-if="createError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ createError }}</p>
         <div class="flex items-center gap-2 pt-1">
           <button
             @click="createGroup"
@@ -219,8 +219,8 @@ onMounted(load)
             <!-- Empty state -->
             <tr v-if="filteredGroups.length === 0">
               <td colspan="4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)]">
-                <span class="italic">{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
-                <button v-if="groups.length && search" class="btn btn-outline btn-xs ml-2 not-italic" @click="search = ''">Clear search</button>
+                <span>{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
+                <button v-if="groups.length && search" class="btn btn-outline btn-xs ml-2" @click="search = ''">Clear search</button>
               </td>
             </tr>
           </tbody>

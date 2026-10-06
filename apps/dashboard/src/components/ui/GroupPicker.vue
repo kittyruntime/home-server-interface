@@ -108,7 +108,7 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-    <p v-else class="text-xs text-[var(--c-text-3)] italic px-3">None assigned.</p>
+    <p v-else class="text-xs text-[var(--c-text-3)] px-3">None assigned.</p>
 
     <button
       v-if="available.length > 0"
@@ -147,7 +147,7 @@ onUnmounted(() => {
           <span class="text-sm text-[var(--c-text-2)] truncate flex-1">{{ item.label }}</span>
           <span v-if="item.sublabel" class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </button>
-        <p v-if="filteredAvailable.length === 0" class="px-3 py-2 text-xs text-[var(--c-text-3)] italic">No matches</p>
+        <p v-if="filteredAvailable.length === 0" class="px-3 py-2 text-xs text-[var(--c-text-3)]">No matches</p>
       </div>
     </div>
   </div>

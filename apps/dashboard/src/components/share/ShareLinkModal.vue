@@ -68,7 +68,7 @@ async function copy() {
         </label>
         <input v-if="useLimit" v-model.number="maxDownloads" type="number" min="1" class="ui-input" />
 
-        <p v-if="error" class="text-[var(--c-danger)] text-xs">{{ error }}</p>
+        <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
         <div class="flex gap-2 pt-1">
           <button @click="create" :disabled="busy" class="btn btn-primary btn-sm">
             {{ busy ? 'Creating…' : 'Create link' }}

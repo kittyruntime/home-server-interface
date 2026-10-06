@@ -336,7 +336,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <ImportFound v-if="!only" kind="raid" @imported="refresh" />
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
-    <div v-else-if="error" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
@@ -520,7 +520,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-[var(--c-text-3)]">
                   Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
                 </div>
-                <div v-else class="text-2xs text-[var(--c-text-3)] italic">No filesystem: format before mounting</div>
+                <div v-else class="text-2xs text-[var(--c-text-3)]">No filesystem: format before mounting</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
                 <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
@@ -718,7 +718,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               />
             </div>
 
-            <div v-if="raidWiz.err" class="text-xs text-danger px-1">{{ raidWiz.err }}</div>
+            <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
 
             <div class="flex gap-2">
               <button @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>

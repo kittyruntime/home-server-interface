@@ -149,7 +149,7 @@ async function toggleMember(userId: string) {
       </template>
     </div>
 
-    <p v-if="error" class="text-[var(--c-accent)] text-xs px-0.5">{{ error }}</p>
+    <p v-if="error" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
@@ -158,7 +158,7 @@ async function toggleMember(userId: string) {
         <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <p v-if="users.length === 0" class="text-xs text-[var(--c-text-3)] italic px-0.5">No users</p>
+      <p v-if="users.length === 0" class="text-xs text-[var(--c-text-3)] px-0.5">No users</p>
 
       <GroupPicker
         v-else

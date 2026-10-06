@@ -47,7 +47,7 @@ const canConfirm = computed(() =>
         <input v-model="typed" type="text" :placeholder="confirmWord"
           class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"/>
       </div>
-      <div v-if="error" class="text-xs text-danger">{{ error }}</div>
+      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div class="flex gap-2">
         <button @click="emit('close')" class="btn btn-outline flex-1 justify-center">Cancel</button>
         <button @click="emit('confirm')" :disabled="!canConfirm"

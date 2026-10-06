@@ -118,7 +118,7 @@ function removeExtraHost(h: string) {
         class="ui-input w-full px-3 py-2 text-xs font-mono font-mono resize-y"
       />
       <div class="flex items-center gap-3">
-        <p v-if="yamlError" class="text-xs text-[var(--c-accent)] flex-1">{{ yamlError }}</p>
+        <p v-if="yamlError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ yamlError }}</p>
         <div v-else class="flex-1" />
         <button
           @click="saveRawYaml"
@@ -213,7 +213,7 @@ function removeExtraHost(h: string) {
           class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
         >Add</button>
       </div>
-      <p v-if="extraHostError" class="text-xs text-[var(--c-accent)]">{{ extraHostError }}</p>
+      <p v-if="extraHostError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
       <p class="text-xs text-[var(--c-text-3)]">Adds <span class="font-mono">--add-host</span> entries (maps to <span class="font-mono">/etc/hosts</span> inside the container).</p>
     </div>
 

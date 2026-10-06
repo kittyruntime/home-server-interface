@@ -171,7 +171,7 @@ defineExpose({ open })
         />
       </div>
 
-      <div v-if="wiz.err" class="text-xs text-danger px-1">{{ wiz.err }}</div>
+      <p v-if="wiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
 
       <div class="flex gap-2">
         <button @click="wiz.step = 2" :disabled="wiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>

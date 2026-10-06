@@ -164,7 +164,7 @@ function relTime(d: string | Date): string {
                 </span>
               </div>
             </template>
-            <div v-else class="text-xs text-[var(--c-text-3)] italic">No RAID arrays</div>
+            <div v-else class="text-xs text-[var(--c-text-3)]">No RAID arrays</div>
           </div>
         </div>
 
@@ -205,7 +205,7 @@ function relTime(d: string | Date): string {
         <!-- Recent Activity card (full width) -->
         <div class="panel-card p-5 bg-[var(--c-surface)] lg:col-span-2">
           <div class="eyebrow mb-3">Recent Activity</div>
-          <div v-if="!recentAudit.length" class="text-xs text-[var(--c-text-3)] italic">No recent activity.</div>
+          <div v-if="!recentAudit.length" class="text-xs text-[var(--c-text-3)]">No recent activity.</div>
           <div v-else class="divide-y divide-[var(--c-border)]">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
               <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-success' : 'bg-danger']" />

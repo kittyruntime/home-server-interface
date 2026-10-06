@@ -160,7 +160,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="!editingName" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between">
-          <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-[var(--c-text-3)] text-sm italic'">
+          <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-[var(--c-text-3)] text-sm'">
             {{ me.displayName || 'Not set' }}
           </span>
           <span v-if="nameSuccess" class="text-xs text-[var(--c-success)]">Saved</span>
@@ -175,7 +175,7 @@ onMounted(async () => {
             @keydown.escape="editingName = false"
             class="ui-input w-full px-3 py-1.5 text-sm"
           />
-          <p v-if="nameError" class="text-[var(--c-accent)] text-xs">{{ nameError }}</p>
+          <p v-if="nameError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ nameError }}</p>
           <div class="flex gap-2">
             <button @click="saveName" :disabled="nameLoading"
               class="btn btn-primary btn-sm">
@@ -230,7 +230,7 @@ onMounted(async () => {
                   class="ui-input w-full px-3 py-1.5 text-sm"/>
               </div>
             </div>
-            <p v-if="pwError" class="text-[var(--c-accent)] text-xs">{{ pwError }}</p>
+            <p v-if="pwError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ pwError }}</p>
             <div class="flex gap-2">
               <button @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next"
                 class="btn btn-primary btn-sm">

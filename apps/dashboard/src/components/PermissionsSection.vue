@@ -152,7 +152,7 @@ onMounted(load)
               </tr>
 
               <tr v-if="groups.length === 0 && users.length === 0">
-                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)] italic">No groups or users to assign.</td>
+                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)]">No groups or users to assign.</td>
               </tr>
             </tbody>
           </table>

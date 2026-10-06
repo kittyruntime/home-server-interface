@@ -50,7 +50,7 @@ function fmtUptime(sec: number): string {
     </p>
 
     <LoadingState v-if="loading" variant="block" />
-    <div v-else-if="error" class="text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
 
     <template v-else-if="sysinfo">
       <div class="space-y-4">

@@ -59,7 +59,7 @@ defineExpose({ open })
           <div class="text-2xs text-[var(--c-text-3)]">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>
         </div>
       </label>
-      <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
+      <p v-if="dlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
         <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
         <button @click="doUmount" :disabled="dlg.busy"

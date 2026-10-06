@@ -314,7 +314,7 @@ async function install() {
 
       <!-- Footer -->
       <div class="flex items-center gap-3 pt-2 border-t border-[var(--c-border)]">
-        <p v-if="installError" class="text-sm text-[var(--c-danger)] flex-1">{{ installError }}</p>
+        <p v-if="installError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ installError }}</p>
         <div v-else class="flex-1" />
         <button class="btn btn-outline btn-sm" @click="emit('close')">Cancel</button>
         <button class="btn btn-primary btn-sm" :disabled="!canInstall" @click="install">

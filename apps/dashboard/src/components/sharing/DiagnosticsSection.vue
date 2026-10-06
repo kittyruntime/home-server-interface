@@ -43,7 +43,7 @@ function dirWritable(s: ShareDiag): boolean {
     </div>
 
     <LoadingState v-if="loading" variant="compact" :label="LOADING.analyzing" />
-    <div v-else-if="error" class="text-sm text-[var(--c-danger)]">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
     <div v-else-if="shares.length === 0" class="text-sm text-[var(--c-text-3)]">No active shares.</div>
 
     <div v-else class="space-y-3">
