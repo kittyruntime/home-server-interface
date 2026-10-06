@@ -1116,7 +1116,7 @@ func main() {
 		t := time.NewTicker(time.Minute)
 		defer t.Stop()
 		for now := range t.C {
-			finishExpansions(now)
+			storageTick(now)
 		}
 	}()
 

@@ -346,9 +346,10 @@ export const storageRouter = router({
         if (!v) throw new TRPCError({ code: "NOT_FOUND", message: "This volume is no longer on the server" })
         return expandOptions(v, { lvm, raids: block.raids ?? [], devices: (block.devices ?? []) as never, freeDisks: overview.freeDisks, expansions: pending.expansions })
       }),
-    // Expansions waiting for a reshape, or finished, or failed.
+    // Storage descriptions (#37), each with how the server differs from it.
     descriptions: storageProcedure.query(async () =>
       (await requestSync<{ descriptions: DescriptionStatus[] }>("root.storage.descriptions", {}, 10_000)).descriptions),
+    // Expansions waiting for a reshape, or finished, or failed.
     expansions: storageProcedure.query(async () =>
       (await requestSync<{ expansions: PendingExpansion[] }>("root.sys.expansions", {}, 10_000)).expansions),
     retryExpansion: adminProcedure

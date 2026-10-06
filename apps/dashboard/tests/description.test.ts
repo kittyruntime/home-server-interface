@@ -16,6 +16,11 @@ test('reapplyRequest asks to start a stopped array without its missing disks', (
     reapplyRequest('/srv/data', [item('array-stopped', 'Array U (md0) is not running'), item('disk-missing', 'Disk WD-1 is not connected')]),
     { input: { mountPoint: '/srv/data', degraded: true }, acknowledge: 'Start the array without WD-1: it has no redundancy until a disk is added' },
   )
+  // A missing spare does not stop the array from starting with redundancy.
+  assert.deepEqual(
+    reapplyRequest('/srv/data', [item('array-stopped', 'x'), { kind: 'disk-missing', text: 'Disk S is not connected', role: 'spare' }]),
+    { input: { mountPoint: '/srv/data' } },
+  )
   // A missing disk of a running array is not something Reapply starts without.
   assert.deepEqual(reapplyRequest('/srv/data', [item('disk-missing', 'Disk WD-1 is not connected')]), { input: { mountPoint: '/srv/data' } })
 })

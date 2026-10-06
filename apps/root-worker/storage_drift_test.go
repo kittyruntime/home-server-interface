@@ -66,7 +66,7 @@ func TestDiffClean(t *testing.T) { checkDrift(t, func(*liveVolume) {}, "", "") }
 func TestDiffMatchesArrayByUUID(t *testing.T) { checkDrift(t, func(*liveVolume) {}, "", "") }
 
 func TestDiffNotMounted(t *testing.T) {
-	checkDrift(t, func(l *liveVolume) { l.MountedOn = "" }, "not-mounted", "/srv/data is not mounted")
+	checkDrift(t, func(l *liveVolume) { l.MountedOn, l.FstabPresent = "", false }, "not-mounted,fstab-missing", "/srv/data is not mounted")
 }
 
 func TestDiffMountedElsewhere(t *testing.T) {

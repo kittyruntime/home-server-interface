@@ -1,7 +1,7 @@
 // Storage descriptions (#37): wording of the drift card and the Reapply
 // request. No Vue imports, so it is tested directly.
 
-export type DriftItem = { kind: string; text: string }
+export type DriftItem = { kind: string; text: string; role?: string }
 
 export function driftTitle(items: DriftItem[]): string {
   if (items.length === 0) return ''
@@ -15,7 +15,8 @@ export function driftTitle(items: DriftItem[]): string {
  */
 export function reapplyRequest(mountPoint: string, items: DriftItem[]): { input: Record<string, unknown>; acknowledge?: string } {
   const stopped = items.some(i => i.kind === 'array-stopped')
-  const missing = items.filter(i => i.kind === 'disk-missing').map(i => i.text.replace(/^Disk (.*) is not connected$/, '$1'))
+  // A missing spare does not keep the array from starting with redundancy.
+  const missing = items.filter(i => i.kind === 'disk-missing' && i.role !== 'spare').map(i => i.text.replace(/^Disk (.*) is not connected$/, '$1'))
   if (!stopped || missing.length === 0) return { input: { mountPoint } }
   return {
     input: { mountPoint, degraded: true },

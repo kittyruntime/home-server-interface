@@ -92,7 +92,7 @@ func TestReapplyActivatesVGAndMounts(t *testing.T) {
 	for _, a := range argvs(p) {
 		cmds = append(cmds, strings.Join(a, " "))
 	}
-	if strings.Join(cmds, " | ") != "vgchange -ay data | mount -o defaults,nofail UUID=fs-1 /srv/data" {
+	if strings.Join(cmds, " | ") != "vgchange -ay data | udevadm settle | mount -o defaults,nofail UUID=fs-1 /srv/data" {
 		t.Fatalf("commands: %v", cmds)
 	}
 }

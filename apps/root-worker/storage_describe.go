@@ -71,6 +71,29 @@ func diskKey(d descDisk) string {
 	return d.ByID
 }
 
+// hostByPathLinks maps each /dev/disk/by-path link to the kernel name it
+// points to.
+var hostByPathLinks = func() map[string]string {
+	out := map[string]string{}
+	entries, _ := os.ReadDir("/dev/disk/by-path")
+	for _, e := range entries {
+		if target, err := os.Readlink(filepath.Join("/dev/disk/by-path", e.Name())); err == nil {
+			out[e.Name()] = filepath.Base(target)
+		}
+	}
+	return out
+}
+
+func byPathFor(name string) string {
+	best := ""
+	for link, dev := range hostByPathLinks() {
+		if dev == name && (best == "" || len(link) < len(best) || (len(link) == len(best) && link < best)) {
+			best = link
+		}
+	}
+	return best
+}
+
 type mdMember struct{ Dev, Role string }
 
 // mdMembers reads the member table of "mdadm --detail": active and
@@ -115,9 +138,14 @@ func describeDisk(name, role string, byID map[string]string) descDisk {
 	disk, part := hostParentDisk(name)
 	serial, wwn, size := hostDiskIdentity(disk)
 	d := descDisk{Serial: serial, WWN: wwn, Size: size, Role: role, Partition: part}
-	if link := byID[name]; link != "" {
-		d.ByID = "/dev/disk/by-id/" + link
-	} else {
+	switch {
+	case byID[name] != "":
+		d.ByID = "/dev/disk/by-id/" + byID[name]
+	case byPathFor(name) != "":
+		// No by-id link (some virtual disks): the bus path does not move to
+		// another disk at reboot the way a kernel name can.
+		d.ByID = "/dev/disk/by-path/" + byPathFor(name)
+	default:
 		d.ByID = "/dev/" + name
 	}
 	return d
