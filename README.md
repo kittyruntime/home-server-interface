@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="HSI dashboard" width="880">
+  <img src="website/src/assets/dashboard.png" alt="HSI dashboard" width="880">
 </p>
 
 <h1 align="center">Home Server Interface</h1>
@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/
 
 That's it: the installer sets up the app user, Node.js, the message broker, the
 privileged worker, and the database, then starts HSI's systemd services. Full
-details, updates and version pinning are in [Install](#install--update).
+details, updates and version pinning are in [Install](https://kittyruntime.github.io/home-server-interface/guide/install/).
 
 ---
 
@@ -92,17 +92,17 @@ Full feature details, including the desktop/windowed mode, live in the
 
 | Desktop mode | App Store |
 |---|---|
-| ![Desktop mode](docs/screenshots/desktop.png) | ![App Store](docs/screenshots/app-store.png) |
+| ![Desktop mode](website/src/assets/desktop.png) | ![App Store](website/src/assets/app-store.png) |
 
-| Docker | Storage |
+| Storage | File manager |
 |---|---|
-| ![Docker containers](docs/screenshots/docker.png) | ![Storage, RAID and LVM](docs/screenshots/storage.png) |
+| ![Storage, RAID and LVM](website/src/assets/storage.png) | ![File manager](website/src/assets/files.png) |
 
-| File manager | Monitoring |
+| Monitoring | |
 |---|---|
-| ![File manager](docs/screenshots/files.png) | ![Monitoring](docs/screenshots/monitoring.png) |
+| ![Monitoring](website/src/assets/monitoring.png) | |
 
-See it in motion: [demo.gif](docs/demo.gif)
+See it in motion: [demo.gif](website/src/assets/demo.gif)
 
 ---
 
@@ -156,7 +156,7 @@ GitHub helps more people find the project, and it takes one click.
 - `curl` and root access to run the install command (`sudo`, or `curl … | bash` from a root shell)
 - The installer checks the other host packages it needs (storage tools such as `mdadm`,
   `smartmontools`, `lvm2`, `parted`, plus `openssl`, `rsync`, an OpenSSH client) and installs
-  missing ones with `apt-get`; see [Configuration](docs/configuration.md#host-packages)
+  missing ones with `apt-get`; see [Host packages](https://kittyruntime.github.io/home-server-interface/reference/configuration/#host-packages)
 - Optional: Docker for containers and the App Store; Samba for SMB shares
 - Ports 80 (nginx, optional) and 9001 (backend) reachable from clients
 
@@ -164,71 +164,25 @@ GitHub helps more people find the project, and it takes one click.
 
 ## Documentation
 
-Developer and operator documentation lives in [`docs/`](docs/):
+The documentation site is at **[kittyruntime.github.io/home-server-interface](https://kittyruntime.github.io/home-server-interface/)**:
 
-- [Architecture](docs/architecture.md): processes, privilege isolation, data flow, tech stack
-- [Manage without HSI](docs/manage-without-hsi.md): the files and commands behind Docker, Samba, RAID, mounts and systemd, if HSI is down or gone
-- [Development](docs/development.md): local setup, build, project layout, release process
-- [Configuration](docs/configuration.md): environment variables, services, install/update options
-- [Design system](docs/design-system.md): tokens, shared components and frontend conventions
+- [Install](https://kittyruntime.github.io/home-server-interface/guide/install/): requirements, install and update, first login, services
+- [Features](https://kittyruntime.github.io/home-server-interface/guide/features/storage/): storage, files, apps, users and shares, monitoring, maintenance
+- [Manage without HSI](https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/): the files and commands behind Docker, Samba, RAID, mounts and systemd, if HSI is down or gone
+- [Configuration](https://kittyruntime.github.io/home-server-interface/reference/configuration/): environment variables, services, install/update options, logs
+- [Architecture](https://kittyruntime.github.io/home-server-interface/development/architecture/) and [Development](https://kittyruntime.github.io/home-server-interface/development/setup/): processes, privilege isolation, local setup, release process
+
+Its sources are in [`website/src/content/docs`](website/src/content/docs).
 
 ---
 
 ## Install / update
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash
-```
+Re-running the [install command](#quick-install) updates an existing installation
+and keeps its database and secrets. Version pinning, the systemd services and their
+logs are covered in [Install](https://kittyruntime.github.io/home-server-interface/guide/install/).
 
-The script:
-1. Creates a system user
-2. Installs Node.js 22 via nvm (in the app user's home)
-3. Downloads and installs the [NATS](https://nats.io) message broker
-4. Installs the privileged worker (`hsi-worker`)
-5. Applies the database schema
-6. Seeds an `admin / admin` account
-7. Registers three systemd services (`hsi-nats`, `hsi-worker`, `hsi-server`) grouped under `hsi.target`, and starts them
-8. Configures nginx if present
-
-> **Change the admin password immediately after first login.**
-
-### Update
-
-Re-run the same command. The script detects an existing installation, preserves
-the database and all secrets, and restarts the services. Installs from before
-`hsi.target` are migrated automatically (`hsi` becomes `hsi-server`,
-`hsi-root-worker` becomes `hsi-worker`); if the update fails, the previous
-services are restored.
-
-### Pin a version
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.54.0 bash
-```
-
----
-
-## Services
-
-HSI runs as three systemd services grouped under `hsi.target`:
-
-| Unit | Role |
-|---|---|
-| `hsi.target` | The whole stack: start, stop or restart everything at once. Enabled at boot. |
-| `hsi-server` | Backend API + static file server (unprivileged user) |
-| `hsi-worker` | Privileged filesystem and disk worker (runs as root) |
-| `hsi-nats` | NATS JetStream message broker |
-
-```bash
-sudo systemctl restart hsi.target      # whole stack
-sudo systemctl restart hsi-worker      # one component
-systemctl status hsi-server hsi-worker hsi-nats
-tail -f /var/log/hsi/app.log /var/log/hsi/root-worker.log
-journalctl -u hsi-nats -f
-```
-
-An active `hsi.target` does not mean every component is healthy: check the
-three services individually.
+> **Change the `admin / admin` password immediately after first login.**
 
 ---
 
@@ -242,7 +196,7 @@ cd home-server-interface
 sudo bash scripts/install.sh --from-source
 ```
 
-For a local development environment (dev servers, hot reload, project layout, release process) see [docs/development.md](docs/development.md).
+For a local development environment (dev servers, hot reload, project layout, release process) see [Development](https://kittyruntime.github.io/home-server-interface/development/setup/).
 
 ---
 
@@ -254,7 +208,7 @@ genuinely useful at this stage.
 - **Found a bug?** Open an [issue](https://github.com/kittyruntime/home-server-interface/issues).
 - **Missing a feature?** Open an issue describing the use case.
 - **Want to contribute code?** Pull requests are welcome; see
-  [docs/development.md](docs/development.md) for local setup.
+  [Development](https://kittyruntime.github.io/home-server-interface/development/setup/) for local setup.
 - **General feedback** on the interface or the direction of the project is welcome
   via issues too.
 

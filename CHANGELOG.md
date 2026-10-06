@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Documentation site**: the documentation is published at
+  https://kittyruntime.github.io/home-server-interface/ (Astro Starlight), with
+  an install guide, a page per feature area, Manage without HSI, the
+  configuration reference and the developer pages.
 - **Expand a volume**: from a volume's page (Expand...), grow it in place
   without reformatting: into the free space of its volume group, with a disk
   added to its RAID 5/6 array or to a volume without redundancy, or into the

@@ -3,7 +3,7 @@ import { join } from "node:path"
 
 // Reads the log lines of one async job from the backend and worker log files,
 // so an admin can see why an operation failed without a shell. Both files use
-// the shared JSON format (docs/configuration.md#logs) and carry the `jobId`.
+// the shared JSON format (website/src/content/docs/reference/configuration.md, Logs) and carry the `jobId`.
 
 export const LOG_DIR = process.env.HSI_LOG_DIR ?? "/var/log/hsi"
 

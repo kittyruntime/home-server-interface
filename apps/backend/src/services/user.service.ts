@@ -160,7 +160,7 @@ function describeIssue(u: {
 }): string | null {
   if (!u.linuxExists) return "No Linux account: password sync has never succeeded for this user."
   if (u.sambaEnabled && !u.sambaExists) return "Samba enabled, but no Samba account exists yet; it will sync on next login or password change."
-  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists; see docs/manage-without-hsi.md to remove it."
+  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists; see https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/ to remove it."
   return null
 }
 
