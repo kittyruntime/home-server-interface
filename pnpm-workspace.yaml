@@ -2,5 +2,6 @@ packages:
   - apps/*
   - services/*
   - packages/*
+  - website
 
 onlyBuiltDependencies: '@prisma/client @prisma/engines prisma esbuild'

@@ -1,0 +1,16 @@
+{
+  "name": "@app/website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.42.5",
+    "astro": "^7.3.5",
+    "sharp": "^0.35.5",
+    "starlight-links-validator": "^0.26.0"
+  }
+}
