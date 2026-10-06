@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard consistency** (#90): every form field has the same look (the
+  backup passwords had no border); errors read the same way everywhere and
+  are no longer shown in the accent colour; confirmations use the in-app
+  dialog; dates use one format; button labels and page titles follow the same
+  rules; the container logs close with Escape.
+- **App in the URL**: the open app is in the address (`?app=storage`), so a
+  reload or a link opens it again and the browser's back button returns to
+  the previous app.
+
+### Fixed
+- **App Store**: no "0 apps" while the catalog loads.
+- **Recent activity**: every action has a readable label (some showed their
+  internal name, such as "update apply").
+
 ## [1.64.1] - 2026-10-06
 
 ### Security
