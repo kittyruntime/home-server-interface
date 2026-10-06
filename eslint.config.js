@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/*.d.ts",
       "**/.claude/**",
       "packages/database/generated/**",
+      "website/.astro/**",
       "apps/root-worker/**",
     ],
   },
