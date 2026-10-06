@@ -54,14 +54,15 @@ async function checkRaidConsistency(): Promise<CheckOutcome> {
   return { found, checked: withResult.map(r => r.name) }
 }
 
-// Expansions (#7): a finished one is announced once, then forgotten by the
-// worker; a failed one stays until it is retried.
+// Storage descriptions (#37): a volume that differs from its description.
 async function checkDescriptions(): Promise<CheckOutcome> {
   const { descriptionFindings } = await import("./storage-descriptions")
   const { descriptions } = await requestSync<{ descriptions: Parameters<typeof descriptionFindings>[0] }>("root.storage.descriptions", {}, 10_000)
   return descriptionFindings(descriptions)
 }
 
+// Expansions (#7): a finished one is announced once, then forgotten by the
+// worker; a failed one stays until it is retried.
 async function checkExpansions(): Promise<CheckOutcome> {
   const { expansionFindings } = await import("./expand-options")
   const { expansions } = await requestSync<{ expansions: Parameters<typeof expansionFindings>[0] }>("root.sys.expansions", {}, 10_000)

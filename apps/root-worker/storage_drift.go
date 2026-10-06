@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -16,6 +17,7 @@ import (
 type driftItem struct {
 	Kind string `json:"kind"`
 	Text string `json:"text"`
+	Role string `json:"role,omitempty"` // a missing disk's role: active or spare
 }
 
 // liveVolume is what the server shows for one description.
@@ -56,8 +58,36 @@ var (
 		}
 		return ""
 	}
+	// hostDiskKeys lists the identity keys (serial, WWN) of the disks on the
+	// server, from the udev database.
+	hostDiskKeys = func() map[string]bool {
+		out, _ := hostOutput("lsblk", "-J", "-d", "-o", "SERIAL,WWN")
+		return parseDiskKeys(out)
+	}
 	collectLiveFn = collectLive
 )
+
+func parseDiskKeys(raw []byte) map[string]bool {
+	var out struct {
+		Blockdevices []struct {
+			Serial *string `json:"serial"`
+			WWN    *string `json:"wwn"`
+		} `json:"blockdevices"`
+	}
+	keys := map[string]bool{}
+	if json.Unmarshal(raw, &out) != nil {
+		return keys
+	}
+	for _, b := range out.Blockdevices {
+		if b.Serial != nil && strings.TrimSpace(*b.Serial) != "" {
+			keys[strings.TrimSpace(*b.Serial)] = true
+		}
+		if b.WWN != nil && strings.TrimSpace(*b.WWN) != "" {
+			keys[strings.TrimSpace(*b.WWN)] = true
+		}
+	}
+	return keys
+}
 
 // scanArrayByUUID finds the array with uuid in "mdadm --detail --scan",
 // which names an inactive (partly assembled) array INACTIVE-ARRAY.
@@ -107,8 +137,16 @@ func collectLive(d storageDescription) liveVolume {
 			l.FstabPresent, l.FstabUUID, l.FstabOptions = true, v.UUID, v.Options
 		}
 	}
+	// A disk with a serial or WWN is connected wherever it shows up; one
+	// without either is known only by its link.
+	present := hostDiskKeys()
 	for _, k := range d.Disks {
-		l.Connected[diskKey(k)] = hostExists(k.ByID)
+		key := diskKey(k)
+		if key == k.ByID {
+			l.Connected[key] = hostExists(k.ByID)
+		} else {
+			l.Connected[key] = present[key]
+		}
 	}
 	byID := preferredByID(hostByIDLinks())
 	if d.Array != nil {
@@ -179,6 +217,7 @@ func diffDescription(d storageDescription, l liveVolume) []driftItem {
 			switch {
 			case !l.Connected[key]:
 				add("disk-missing", "Disk %s is not connected", key)
+				items[len(items)-1].Role = k.Role
 			case running && l.ArrayMembers[key] == "":
 				add("disk-not-member", "Disk %s is no longer in %s", key, name)
 			}
@@ -197,12 +236,18 @@ func diffDescription(d storageDescription, l liveVolume) []driftItem {
 		for _, k := range d.Disks {
 			if !l.Connected[diskKey(k)] {
 				add("disk-missing", "Disk %s is not connected", diskKey(k))
+				items[len(items)-1].Role = k.Role
 			}
 		}
 	}
 	// A stopped array leaves its volume group inactive: that says nothing more.
 	if d.LVM != nil && running && !l.VGActive {
 		add("vg-inactive", "Volume group %s is not active", d.LVM.VG)
+	}
+	// Unmounted and nothing else: a volume unmounted on purpose, which the
+	// Volumes page offers to mount. Not a difference from the description.
+	if len(items) == 1 && items[0].Kind == "not-mounted" {
+		return nil
 	}
 	return items
 }
@@ -229,6 +274,23 @@ func descriptionStatuses() []descriptionStatus {
 			items = []driftItem{}
 		}
 		out = append(out, descriptionStatus{MountPoint: mp, File: files[mp], Items: items, Description: d})
+	}
+	// Files a hand edit broke: reported on the volume named after them.
+	var brokenFiles []string
+	broken := brokenDescriptions()
+	for f := range broken {
+		brokenFiles = append(brokenFiles, f)
+	}
+	sort.Strings(brokenFiles)
+	for _, f := range brokenFiles {
+		mp := ""
+		for _, v := range hsiVolumes(readFstab()) {
+			if filepath.Join(storageDescriptionsDir(), descriptionName(v.MountPoint)+".yaml") == f {
+				mp = v.MountPoint
+			}
+		}
+		out = append(out, descriptionStatus{MountPoint: mp, File: f,
+			Items: []driftItem{{Kind: "unreadable", Text: "The description file " + f + " cannot be read (" + broken[f].Error() + "): Accept the current state to write it again"}}})
 	}
 	return out
 }

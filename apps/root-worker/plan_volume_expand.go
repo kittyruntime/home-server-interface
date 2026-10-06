@@ -382,7 +382,7 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 	// Described now with its new disk; the finisher describes it again once
 	// the reshape grew it.
 	if mounted {
-		p.Describe = []string{mp}
+		p.Redescribe = []string{mp}
 	}
 	return p, nil
 }

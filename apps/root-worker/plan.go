@@ -51,6 +51,7 @@ type opPlan struct {
 	// volumes it touched (by mount point), the ones it removed, and every
 	// volume on an array whose members it changed.
 	Describe          []string
+	Redescribe        []string // described again, keeping the described mount options
 	Forget            []string
 	DescribeArrayUUID string
 }

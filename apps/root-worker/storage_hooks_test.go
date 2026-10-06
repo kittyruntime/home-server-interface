@@ -170,7 +170,7 @@ func TestPlansSetHooks(t *testing.T) {
 		stubExpandHost(t)
 		hostVgFree = func(string) int64 { return 32e9 }
 		p, fe := expand(t, "vgFree", "")
-		if fe != nil || strings.Join(p.Describe, ",") != "/srv/data" {
+		if fe != nil || strings.Join(p.Redescribe, ",") != "/srv/data" {
 			t.Fatalf("%+v %+v", p, fe)
 		}
 	})

@@ -1723,6 +1723,10 @@ await testSharePlans()
   const { checkedTargets } = await import("../services/alert-sampler")
   const out = descriptionFindings([])
   assert.equal(out.authoritative, true)
+  // A file that cannot be read and matches no volume is named by its path.
+  const broken = descriptionFindings([{ mountPoint: "", file: "/etc/hsi/storage/x.yaml", items: [{ kind: "unreadable", text: "cannot be read" }], description: {} }])
+  assert.deepEqual(broken.found.map(f => f.target), ["/etc/hsi/storage/x.yaml"])
+  assert.match(broken.found[0]!.message, /^\/etc\/hsi\/storage\/x\.yaml differs/)
   assert.deepEqual(checkedTargets(out, [{ target: "/srv/gone" }]), ["/srv/gone"])
   assert.deepEqual(checkedTargets({ found: [], checked: ["/a"] }, [{ target: "/srv/gone" }]), ["/a"])
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
 import { driftTitle, reapplyRequest } from './description'
@@ -12,6 +12,8 @@ const emit = defineEmits<{ changed: [] }>()
 type Status = Awaited<ReturnType<typeof trpc.storage.volumes.descriptions.query>>[number]
 const status = ref<Status | null>(null)
 const busy = ref(false)
+// A file broken by a hand edit cannot be reapplied, only written again.
+const unreadable = computed(() => status.value?.items.some(i => i.kind === 'unreadable') ?? false)
 const err = ref('')
 
 async function load() {
@@ -59,8 +61,8 @@ defineExpose({ load })
     </ul>
     <p class="text-xs text-[var(--c-text-3)]">Described in <span class="font-mono">{{ status.file }}</span>. HSI does not change anything on its own.</p>
     <p v-if="err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ err }}</p>
-    <div class="flex flex-wrap gap-2 pt-1">
-      <button class="btn btn-outline btn-sm" :disabled="busy" @click="run('reapply')">Reapply…</button>
+    <div v-if="status.mountPoint" class="flex flex-wrap gap-2 pt-1">
+      <button v-if="!unreadable" class="btn btn-outline btn-sm" :disabled="busy" @click="run('reapply')">Reapply…</button>
       <button class="btn btn-outline btn-sm" :disabled="busy" @click="run('accept')">Accept current state…</button>
     </div>
   </div>

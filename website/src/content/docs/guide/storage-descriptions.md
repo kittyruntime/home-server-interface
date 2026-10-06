@@ -18,7 +18,7 @@ The file is named after the mount point: `/srv/data` is described in
 # Reassemble and mount it by hand:
 # https://kittyruntime.github.io/home-server-interface/guide/storage-descriptions/
 version: 1
-updated: 2026-10-06T14:00:00Z
+updated: 2026-10-06T14:00:00.123456789Z
 mount:
   point: /srv/data
   options: defaults,nofail,x-systemd.device-timeout=10s
@@ -56,7 +56,7 @@ disks:
 | `filesystem` | Type, UUID and label of the filesystem. The UUID is what fstab and `mount` use. |
 | `lvm` | The volume group and logical volume, when the filesystem is on LVM. A volume group over several disks lists them under `pvs`. |
 | `array` | The `mdadm` array, when there is one: its name when it was described, level, metadata version, UUID and number of members. Arrays are recognized by UUID: their name can change at boot. |
-| `disks` | Each disk by its stable `/dev/disk/by-id` path and serial number (printed on the disk's label), with its size and its role: `active` or `spare` in an array, `data` otherwise. `partition` is set when a partition is used rather than the whole disk. |
+| `disks` | Each disk by its stable `/dev/disk/by-id` path (`/dev/disk/by-path` for a disk without one, such as some virtual disks) and serial number (printed on the disk's label), with its size and its role: `active` or `spare` in an array, `data` otherwise. `partition` is set when a partition is used rather than the whole disk. |
 
 ## When HSI writes it
 
@@ -64,11 +64,16 @@ HSI rewrites a volume's description after each storage change it applies to that
 volume: creating, mounting with "Persist across reboots", expanding (again when a
 reshape ends), and adding, failing or removing an array member. Removing the
 volume, or unmounting it and removing it from fstab, deletes the file. A volume
-that had no description yet gets one when HSI starts, if it is mounted.
+that has no description yet gets one within a minute of being mounted.
 
 The file therefore records the last state you approved in HSI. Nothing else
 rewrites it: a change made by hand shows as a difference instead of being
-recorded silently.
+recorded silently. The mount options are only taken from fstab when HSI mounts
+the volume: an array or expand operation keeps the described ones, so an fstab
+edit stays a difference until you accept it.
+
+A description edited by hand into a file HSI cannot read is reported as such on
+the volume; Accept current state writes it again.
 
 ## Differences
 
@@ -76,7 +81,8 @@ HSI compares each description with the server. When they differ, the volume's
 page shows "Differs from its description" with what changed, and a warning alert
 is raised. For example:
 
-- `/srv/data is not mounted`
+- `/srv/data is not mounted` (a volume that is simply unmounted, with nothing else
+  different, is not reported: the Volumes page offers to mount it)
 - `The fstab entry for /srv/data is missing`
 - `Array a1b2c3d4:... (md0) is not running`
 - `mdadm.conf has no ARRAY line for md0`
@@ -121,8 +127,10 @@ mount -o defaults,nofail UUID=5f1c2d3e-0000-4000-8000-000000000001 /srv/data
 To keep it at boot:
 
 ```bash
-# fstab line
-echo 'UUID=5f1c2d3e-0000-4000-8000-000000000001 /srv/data ext4 defaults,nofail,x-systemd.device-timeout=10s 0 2' >> /etc/fstab
+# fstab line, with the marker HSI looks for (check that /etc/fstab does not
+# already have an entry for /srv/data before adding it)
+printf '%s\n' '# HSI-managed mount: /srv/data' \
+  'UUID=5f1c2d3e-0000-4000-8000-000000000001 /srv/data ext4 defaults,nofail,x-systemd.device-timeout=10s 0 2' >> /etc/fstab
 
 # keep the array name at boot
 mdadm --detail --brief /dev/md0 >> /etc/mdadm/mdadm.conf

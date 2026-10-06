@@ -23,6 +23,9 @@ func descriptionFor(mountPoint string) (storageDescription, string, *fsError) {
 	all, files := loadDescriptions()
 	d, ok := all[mp]
 	if !ok {
+		if f := brokenFileFor(mp); f != "" {
+			return storageDescription{Mount: descMount{Point: mp}}, f, &fsError{Code: "EBROKEN", Message: "The description file " + f + " cannot be read: Accept the current state to write it again"}
+		}
 		return storageDescription{}, "", &fsError{Code: "ENOENT", Message: "no storage description for " + mp}
 	}
 	return d, files[mp], nil
@@ -196,9 +199,30 @@ func planStorageReapply(raw json.RawMessage) (*opPlan, *fsError) {
 		if !hostExists(mp) {
 			steps = append(steps, planStep{Kind: "create", Target: mp, Summary: "Create the mount point directory " + mp,
 				run: func() (string, error) { return "", os.MkdirAll(mp, 0o755) }})
+			// Immutable while empty, as the mount plan does (#3): nothing can
+			// write to the system disk in the volume's place.
+			protect := cmdStep(mp, "Protect "+mp+" so nothing is written to the system disk when the volume is missing", []string{"chattr", "+i", mp})
+			protect.OnFailure = "warn"
+			steps = append(steps, protect)
 		}
-		steps = append(steps, cmdStep(mp, "Mount the filesystem "+d.Filesystem.UUID+" on "+mp,
-			[]string{"mount", "-o", d.Mount.Options, "UUID=" + d.Filesystem.UUID, mp}))
+		if len(steps) > 0 && (d.Array != nil && l.ArrayDev == "" || d.LVM != nil && !l.VGActive) {
+			// The devices assembled or activated above appear through udev.
+			settle := cmdStep("udev", "Wait for the new devices to appear", []string{"udevadm", "settle"})
+			settle.OnFailure = "warn"
+			steps = append(steps, settle)
+		}
+		uuid := d.Filesystem.UUID
+		mount := cmdStep(mp, "Mount the filesystem "+uuid+" on "+mp, []string{"mount", "-o", d.Mount.Options, "UUID=" + uuid, mp})
+		base := mount.run
+		mount.run = func() (string, error) {
+			// Checked again here: an array assembled by this plan can bring
+			// a clone of the filesystem along.
+			if devs := hostDevsByUUID(uuid); len(devs) > 1 && hostBlkid(devs[0], "TYPE") != "btrfs" {
+				return "", fmt.Errorf("several devices carry the filesystem %s (%s), a clone or a snapshot: disconnect the copy, then mount it", uuid, strings.Join(devs, ", "))
+			}
+			return base()
+		}
+		steps = append(steps, mount)
 	}
 	if len(steps) == 0 {
 		items := diffDescription(d, l)
@@ -222,7 +246,7 @@ func planStorageAccept(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, badRequest(err)
 	}
 	old, file, fe := descriptionFor(req.MountPoint)
-	if fe != nil {
+	if fe != nil && fe.Code != "EBROKEN" {
 		return nil, fe
 	}
 	mp := old.Mount.Point
