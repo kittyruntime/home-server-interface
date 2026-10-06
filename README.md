@@ -18,6 +18,7 @@
 <p align="center">
   <a href="https://github.com/kittyruntime/home-server-interface/releases/latest"><img src="https://img.shields.io/github/v/release/kittyruntime/home-server-interface" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License: MPL-2.0"></a>
+  <a href="https://kittyruntime.github.io/home-server-interface/"><img src="https://img.shields.io/badge/docs-kittyruntime.github.io-2563eb?logo=readthedocs&logoColor=white" alt="Documentation"></a>
   <a href="#requirements"><img src="https://img.shields.io/badge/platform-Linux%20x86--64-fcc624?logo=linux&logoColor=black" alt="Platform"></a>
 </p>
 
@@ -26,7 +27,7 @@
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
   <a href="#why-hsi">Why HSI?</a> ·
-  <a href="#documentation">Documentation</a> ·
+  <a href="https://kittyruntime.github.io/home-server-interface/">Documentation</a> ·
   <a href="https://github.com/kittyruntime/home-server-interface/releases">Releases</a>
 </p>
 
