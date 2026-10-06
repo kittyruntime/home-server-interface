@@ -12,6 +12,7 @@ import { volumeTargets } from './object-targets'
 import { applyPlanned } from '../../lib/plan'
 import { removeNotice } from '../../lib/confirm-text'
 import ExpandVolumeDialog from './dialogs/ExpandVolumeDialog.vue'
+import DescriptionCard from './DescriptionCard.vue'
 import { expansionLine } from './expand'
 import { useAuth } from '../../lib/auth'
 
@@ -203,6 +204,7 @@ async function afterChange() { await refreshDevices(); await load() }
             <span class="status-tag">{{ i.kind === 'degraded' || i.kind === 'blocked' ? '[ERR]' : '[WARN]' }}</span> {{ i.text }}
           </li>
         </ul>
+        <DescriptionCard v-if="volume.mountPoint" :mount-point="volume.mountPoint" @changed="afterChange" />
 
         <div>
           <h3 class="eyebrow mb-2">Used by</h3>
