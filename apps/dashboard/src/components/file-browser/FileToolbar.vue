@@ -255,7 +255,7 @@ const newMenuOpen = ref(false)
             @keydown.escape="clearSearch"
             type="text"
             placeholder="Search…"
-            class="pl-6 pr-6 py-1 text-xs rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]/50 w-28 sm:w-36 transition-colors"
+            class="ui-input pl-6 pr-6 py-1 text-xs w-28 sm:w-36"
           />
           <button @click="clearSearch" title="Close search" aria-label="Close search"
             class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">

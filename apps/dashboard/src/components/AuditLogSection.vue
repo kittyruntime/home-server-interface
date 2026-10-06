@@ -91,7 +91,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
         <input v-model="filterAction" placeholder="Filter by action…"
-          class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]/50" />
+          class="ui-input w-full pl-8 pr-3 py-2 text-sm" />
       </div>
       <button @click="load" :disabled="loading"
         class="px-3 py-2 rounded-lg border border-[var(--c-border)] text-sm text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">

@@ -93,7 +93,7 @@ defineExpose({ open })
         <input
           v-model="dlg.mp"
           type="text"
-          class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+          class="ui-input w-full px-3 py-2 text-sm font-mono"
         />
         <p class="text-2xs text-[var(--c-text-3)] mt-1">Directory will be created if it doesn't exist.</p>
       </div>
@@ -103,7 +103,7 @@ defineExpose({ open })
           v-model="dlg.options"
           type="text"
           placeholder="defaults"
-          class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+          class="ui-input w-full px-3 py-2 text-sm font-mono"
         />
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
@@ -128,7 +128,7 @@ defineExpose({ open })
             <div class="text-xs font-medium text-[var(--c-text-2)]">Owned by another user</div>
             <div class="text-2xs text-[var(--c-text-3)]">Same as above, owned by the account you pick. To give a group access, create a Place and grant it there.</div>
             <select v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
-              class="mt-1.5 w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors">
+              class="ui-input mt-1.5 w-full px-3 py-2 text-sm">
               <option value="" disabled>Choose a user</option>
               <option v-for="u in users" :key="u.id" :value="u.id">
                 {{ u.displayName ? `${u.displayName} (${u.username})` : u.username }}
@@ -160,7 +160,7 @@ defineExpose({ open })
           </div>
         </label>
         <input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" placeholder="Place name"
-          class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"/>
+          class="ui-input w-full px-3 py-2 text-sm"/>
       </div>
       <div v-if="dlg.err" class="text-xs text-danger">{{ dlg.err }}</div>
       <div class="flex gap-2 pt-1">

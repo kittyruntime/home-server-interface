@@ -142,11 +142,11 @@ function pollRestoreRestart() {
         </div>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-[var(--c-text-2)]">Encryption password</span>
-          <input v-model="password" type="password" autocomplete="new-password" minlength="16" maxlength="1024" class="input w-full" placeholder="At least 16 characters" required>
+          <input v-model="password" type="password" autocomplete="new-password" minlength="16" maxlength="1024" class="ui-input" placeholder="At least 16 characters" required>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-[var(--c-text-2)]">Confirm password</span>
-          <input v-model="confirmation" type="password" autocomplete="new-password" minlength="16" maxlength="1024" class="input w-full" placeholder="Repeat the password" required>
+          <input v-model="confirmation" type="password" autocomplete="new-password" minlength="16" maxlength="1024" class="ui-input" placeholder="Repeat the password" required>
         </label>
         <p v-if="confirmation && password !== confirmation" class="text-xs text-[var(--c-danger)]">Passwords do not match.</p>
         <p v-if="error" class="text-xs text-[var(--c-danger)]">{{ error }}</p>
@@ -174,7 +174,7 @@ function pollRestoreRestart() {
         </label>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-[var(--c-text-2)]">Backup password</span>
-          <input v-model="restorePassword" type="password" autocomplete="current-password" minlength="16" maxlength="1024" class="input w-full" placeholder="Password used during export" required>
+          <input v-model="restorePassword" type="password" autocomplete="current-password" minlength="16" maxlength="1024" class="ui-input" placeholder="Password used during export" required>
         </label>
         <div v-if="restoreStep" class="flex items-center gap-2 text-xs text-[var(--c-accent)]">
           <LoadingSpinner />

@@ -173,7 +173,7 @@ onMounted(async () => {
             autofocus
             @keydown.enter="saveName"
             @keydown.escape="editingName = false"
-            class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"
+            class="ui-input w-full px-3 py-1.5 text-sm"
           />
           <p v-if="nameError" class="text-[var(--c-accent)] text-xs">{{ nameError }}</p>
           <div class="flex gap-2">
@@ -215,19 +215,19 @@ onMounted(async () => {
             <div>
               <label class="block text-xs text-[var(--c-text-3)] mb-1">Current password</label>
               <input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
-                class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
+                class="ui-input w-full px-3 py-1.5 text-sm"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">New password</label>
                 <input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"
-                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
+                  class="ui-input w-full px-3 py-1.5 text-sm"/>
               </div>
               <div>
                 <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm</label>
                 <input v-model="pwForm.confirm" type="password" placeholder="Repeat"
                   @keydown.enter="submitPassword"
-                  class="w-full bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)]"/>
+                  class="ui-input w-full px-3 py-1.5 text-sm"/>
               </div>
             </div>
             <p v-if="pwError" class="text-[var(--c-accent)] text-xs">{{ pwError }}</p>

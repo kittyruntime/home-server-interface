@@ -500,7 +500,7 @@ async function unpin(app: App) {
         @keydown.enter.prevent="savePin"
         @keydown.escape="pinDialog = null"
         autofocus
-        class="w-full bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-3 py-2 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-full px-3 py-2 text-sm font-mono"
       />
       <p v-if="pinDialogErr" class="text-xs text-[var(--c-accent)]">{{ pinDialogErr }}</p>
     </div>

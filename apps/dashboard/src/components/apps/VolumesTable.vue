@@ -29,7 +29,7 @@ function placePath(id: string): string | null {
       <select
         :value="item.type"
         @change="update({ type: ($event.target as HTMLSelectElement).value as VolumeMount['type'], source: '' })"
-        class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-auto px-2 py-1.5 text-sm"
       >
         <option value="bind">Bind</option>
         <option value="named">Named</option>
@@ -42,21 +42,21 @@ function placePath(id: string): string | null {
         v-if="item.type === 'bind'"
         :value="item.source" placeholder="/host/path"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
-        class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
       />
       <!-- named: container volume name -->
       <input
         v-else-if="item.type === 'named'"
         :value="item.source" placeholder="my-volume"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
-        class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
       />
       <!-- place: select parmi les Places -->
       <select
         v-else
         :value="item.source"
         @change="update({ source: ($event.target as HTMLSelectElement).value })"
-        class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input flex-1 px-2 py-1.5 text-sm"
       >
         <option value="">Select a place</option>
         <option v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
@@ -68,7 +68,7 @@ function placePath(id: string): string | null {
       <input
         :value="item.target" placeholder="/container/path"
         @input="update({ target: ($event.target as HTMLInputElement).value })"
-        class="flex-1 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm font-mono text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
       />
     </template>
 

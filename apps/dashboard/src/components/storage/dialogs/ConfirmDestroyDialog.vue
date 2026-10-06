@@ -45,7 +45,7 @@ const canConfirm = computed(() =>
           Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ confirmWord }}</span> to confirm
         </label>
         <input v-model="typed" type="text" :placeholder="confirmWord"
-          class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"/>
+          class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"/>
       </div>
       <div v-if="error" class="text-xs text-danger">{{ error }}</div>
       <div class="flex gap-2">

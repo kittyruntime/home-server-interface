@@ -349,19 +349,19 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <input v-model="search" type="search" placeholder="Search device, model, serial…" aria-label="Search disks"
-            class="flex-1 min-w-[12rem] px-3 py-1.5 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"/>
+            class="ui-input flex-1 min-w-[12rem] px-3 py-1.5 text-sm placeholder-[var(--c-text-3)]"/>
           <select v-model="prefs.role" aria-label="Filter by role"
-            class="px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none">
+            class="ui-input w-auto px-2 py-1.5 text-xs">
             <option value="all">All roles</option>
             <option v-for="(label, role) in ROLE_LABELS" :key="role" :value="role">{{ label }}</option>
           </select>
           <select v-model="prefs.health" aria-label="Filter by health"
-            class="px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none">
+            class="ui-input w-auto px-2 py-1.5 text-xs">
             <option value="all">Any health</option>
             <option v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</option>
           </select>
           <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
-            :class="['px-2 py-1.5 text-xs rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] focus:outline-none', view === 'table' && '@4xl/content:hidden']">
+            :class="['ui-input w-auto px-2 py-1.5 text-xs', view === 'table' && '@4xl/content:hidden']">
             <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
           </select>
           <label class="flex items-center gap-1.5 text-xs text-[var(--c-text-2)] cursor-pointer">

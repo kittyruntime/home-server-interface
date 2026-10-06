@@ -140,7 +140,7 @@ defineExpose({ open })
           type="text"
           placeholder="e.g. Data, Backup, Media"
           maxlength="64"
-          class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-[var(--c-accent)] transition-colors"
+          class="ui-input w-full px-3 py-2 text-sm placeholder-[var(--c-text-3)]"
         />
       </div>
 
@@ -167,7 +167,7 @@ defineExpose({ open })
           v-model="wiz.confirm"
           type="text"
           :placeholder="wiz.dev.name"
-          class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-1)] placeholder-[var(--c-text-3)] focus:outline-none focus:border-danger transition-colors"
+          class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"
         />
       </div>
 

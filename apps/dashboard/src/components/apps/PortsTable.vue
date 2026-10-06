@@ -55,19 +55,19 @@ async function runChecks() {
         type="number" placeholder="Host" min="1" max="65535"
         :value="item.hostPort"
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
-        class="w-24 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-24 px-2 py-1.5 text-sm"
       />
       <span class="text-[var(--c-text-3)] text-sm">:</span>
       <input
         type="number" placeholder="Container" min="1" max="65535"
         :value="item.containerPort"
         @input="update({ containerPort: +($event.target as HTMLInputElement).value })"
-        class="w-24 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-24 px-2 py-1.5 text-sm"
       />
       <select
         :value="item.protocol"
         @change="update({ protocol: ($event.target as HTMLSelectElement).value as 'tcp' | 'udp' })"
-        class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1.5 text-sm text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+        class="ui-input w-auto px-2 py-1.5 text-sm"
       >
         <option value="tcp">TCP</option>
         <option value="udp">UDP</option>
@@ -85,7 +85,7 @@ async function runChecks() {
           type="text" placeholder="domain (optional) e.g. app.example.com"
           :value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
-          class="flex-1 min-w-[12rem] bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1 text-xs text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input flex-1 min-w-[12rem] px-2 py-1 text-xs"
         />
         <label class="inline-flex items-center gap-1 text-xs text-[var(--c-text-2)] cursor-pointer select-none">
           <input
@@ -99,7 +99,7 @@ async function runChecks() {
           type="number" placeholder="443" min="1" max="65535"
           :value="item.publicPort ?? ''"
           @input="update({ publicPort: ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : undefined })"
-          class="w-20 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-lg px-2 py-1 text-xs text-[var(--c-text-1)] focus:outline-none focus:border-[var(--c-accent)]"
+          class="ui-input w-20 px-2 py-1 text-xs"
         />
       </div>
     </template>
