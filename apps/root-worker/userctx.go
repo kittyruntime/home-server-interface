@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os/user"
 	"runtime"
 	"strconv"
@@ -9,8 +10,8 @@ import (
 )
 
 type userCtx struct {
-	uid  uint32
-	gid  uint32
+	uid  int
+	gid  int
 	gids []int
 }
 
@@ -20,8 +21,8 @@ func resolveUser(username string) (userCtx, error) {
 	if err != nil {
 		return userCtx{}, fmt.Errorf("user %q: %w", username, err)
 	}
-	// ParseUint with bitSize 32 bounds the result to uint32, so the casts below
-	// cannot overflow (uid/gid are always small positive system IDs anyway).
+	// IDs above MaxInt32 are refused so they fit an int on every platform
+	// (uid/gid are always small positive system IDs anyway).
 	uid, err := strconv.ParseUint(u.Uid, 10, 32)
 	if err != nil {
 		return userCtx{}, fmt.Errorf("uid parse: %w", err)
@@ -29,6 +30,9 @@ func resolveUser(username string) (userCtx, error) {
 	gid, err := strconv.ParseUint(u.Gid, 10, 32)
 	if err != nil {
 		return userCtx{}, fmt.Errorf("gid parse: %w", err)
+	}
+	if uid > math.MaxInt32 || gid > math.MaxInt32 {
+		return userCtx{}, fmt.Errorf("user %q: uid or gid out of range", username)
 	}
 	groupIDs, err := u.GroupIds()
 	if err != nil {
@@ -41,7 +45,7 @@ func resolveUser(username string) (userCtx, error) {
 			gids = append(gids, n)
 		}
 	}
-	return userCtx{uid: uint32(uid), gid: uint32(gid), gids: gids}, nil
+	return userCtx{uid: int(uid), gid: int(gid), gids: gids}, nil
 }
 
 // runAsUser executes fn with the effective uid/gid of the given user context.
@@ -64,12 +68,12 @@ func runAsUser(ctx userCtx, fn func() error) error {
 			return
 		}
 		// 2. Primary gid (keep saved gid = 0 to allow restore).
-		if err := syscall.Setresgid(int(ctx.gid), int(ctx.gid), 0); err != nil {
+		if err := syscall.Setresgid(ctx.gid, ctx.gid, 0); err != nil {
 			ch <- fmt.Errorf("setresgid: %w", err)
 			return
 		}
 		// 3. Effective uid: drop root (keep real uid = 0, saved uid = 0).
-		if err := syscall.Setresuid(0, int(ctx.uid), 0); err != nil {
+		if err := syscall.Setresuid(0, ctx.uid, 0); err != nil {
 			ch <- fmt.Errorf("setresuid: %w", err)
 			return
 		}

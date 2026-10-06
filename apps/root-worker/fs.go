@@ -1109,7 +1109,7 @@ func doUnzip(archivePath, destDir string) *fsError {
 			return &fsError{Code: "ERR", Message: "zip entry contains a null byte"}
 		}
 		entryPath := filepath.Clean(filepath.FromSlash(f.Name))
-		if filepath.IsAbs(entryPath) || entryPath == ".." || strings.HasPrefix(entryPath, ".."+string(filepath.Separator)) {
+		if !filepath.IsLocal(entryPath) || filepath.IsAbs(entryPath) || entryPath == ".." || strings.HasPrefix(entryPath, ".."+string(filepath.Separator)) {
 			return &fsError{Code: "ERR", Message: "zip entry escapes destination: " + f.Name}
 		}
 		if f.Mode()&os.ModeSymlink != 0 {
