@@ -108,9 +108,10 @@ const PLAN_INPUTS = {
 // The worker input for an operation: validated, and for a mount the owner is
 // resolved to an HSI user's Linux name (never an arbitrary system account).
 async function workerInput(ctx: Context & { user: { userId: string } }, op: PlanOp, raw: unknown): Promise<Record<string, unknown>> {
-  // Expanding rewrites whole arrays and erases the disk it adds: admins only.
+  // The server's hostname and time zone (#12): admins only.
   if (op === "system.identity" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change the server identity" })
+  // Expanding rewrites whole arrays and erases the disk it adds: admins only.
   if (op === "volume.expand" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can expand a volume" })
   const parsed = PLAN_INPUTS[op].safeParse(raw)

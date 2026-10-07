@@ -39,15 +39,17 @@ A new installation has no account. At the end, the installer prints a one-time
 link:
 
 ```
-Finish the setup:  http://192.168.1.20:9001/setup?token=…
+Finish the setup:  http://192.168.1.20:9001/setup#token=…
 ```
 
 Open it to create the administrator. The setup assistant then lets you name the
 server and set its time zone, and points to the next steps: a first volume,
 shares, alerts. A reload or a reboot resumes where you stopped.
 
-The link works once: it is deleted when the administrator is created. If you lost
-it before that, run this on the server for a new one:
+The link works once: it is deleted when the administrator is created. The token
+travels after the `#`, which browsers never send to the server, so it does not
+end up in any request log. If you lost the link before that, run this on the
+server for a new one (it replaces the previous link):
 
 ```bash
 sudo hsi-worker setup-token

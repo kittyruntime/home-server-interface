@@ -64,10 +64,10 @@ func TestConsumeSetupToken(t *testing.T) {
 }
 
 func TestSetupLink(t *testing.T) {
-	if got := setupLink("192.168.1.48", 9001, "abc"); got != "http://192.168.1.48:9001/setup?token=abc" {
+	if got := setupLink("192.168.1.48", 9001, "abc"); got != "http://192.168.1.48:9001/setup#token=abc" {
 		t.Fatal(got)
 	}
-	if got := setupLink("10.0.0.2", 80, "abc"); got != "http://10.0.0.2/setup?token=abc" {
+	if got := setupLink("10.0.0.2", 80, "abc"); got != "http://10.0.0.2/setup#token=abc" {
 		t.Fatal(got)
 	}
 }

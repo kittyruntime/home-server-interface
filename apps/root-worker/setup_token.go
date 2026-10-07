@@ -66,24 +66,32 @@ func setupLink(ip string, port int, token string) string {
 	if port != 80 {
 		host += ":" + strconv.Itoa(port)
 	}
-	return "http://" + host + "/setup?token=" + token
+	// In the fragment: browsers never send it, so no request log holds it.
+	return "http://" + host + "/setup#token=" + token
 }
 
-// firstIPv4 is the address printed in the link: the first non-loopback IPv4.
+// firstIPv4 is the address printed in the link when the installer does not
+// pass one: the first IPv4 that is neither loopback nor link-local.
 func firstIPv4() string {
 	addrs, _ := net.InterfaceAddrs()
 	for _, a := range addrs {
-		if n, ok := a.(*net.IPNet); ok && !n.IP.IsLoopback() && n.IP.To4() != nil {
+		if n, ok := a.(*net.IPNet); ok && n.IP.To4() != nil && !n.IP.IsLoopback() && !n.IP.IsLinkLocalUnicast() {
 			return n.IP.String()
 		}
 	}
 	return "<server>"
 }
 
-// runSetupTokenCLI is `hsi-worker setup-token [--port N]`.
+// runSetupTokenCLI is `hsi-worker setup-token [--host ADDR] [--port N]`.
 func runSetupTokenCLI(args []string) int {
 	port := 9001
+	host := ""
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--host" && i+1 < len(args) {
+			host = args[i+1]
+			i++
+			continue
+		}
 		if args[i] == "--port" && i+1 < len(args) {
 			p, err := strconv.Atoi(args[i+1])
 			if err != nil || p < 1 || p > 65535 {
@@ -99,7 +107,10 @@ func runSetupTokenCLI(args []string) int {
 		fmt.Fprintln(os.Stderr, "could not write the setup token:", err)
 		return 1
 	}
-	fmt.Println(setupLink(firstIPv4(), port, tok))
+	if host == "" {
+		host = firstIPv4()
+	}
+	fmt.Println(setupLink(host, port, tok))
 	return 0
 }
 

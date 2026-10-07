@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server"
-import { signSetupSession } from "../trpc/auth"
+import { signSetupSession, verifySetupSession } from "../trpc/auth"
 import { assertNotThrottled, clearLoginFailures, recordLoginFailure } from "./login-throttle"
 
 // First-run setup (#12). Setup is required while no administrator exists; the
@@ -16,9 +16,11 @@ export interface SetupDeps {
   setState(step: SetupStep, skipped: string[]): Promise<void>
 }
 
-export async function setupStatus(d: SetupDeps): Promise<{ required: boolean; step: SetupStep | null }> {
+/** `viewer` is the signed-in account, if any: only an admin resumes the assistant. */
+export async function setupStatus(d: SetupDeps, viewer?: { isAdmin: boolean } | null): Promise<{ required: boolean; step: SetupStep | null }> {
   const required = await d.adminCount() === 0
   if (required) return { required, step: "admin" }
+  if (!viewer?.isAdmin) return { required, step: null }
   const state = await d.getState()
   const step = state && (SETUP_STEPS as readonly string[]).includes(state.step) && state.step !== "done" ? state.step as SetupStep : null
   return { required, step }
@@ -41,4 +43,32 @@ export async function recordProgress(d: SetupDeps, step: SetupStep, skip?: strin
   if (!(SETUP_STEPS as readonly string[]).includes(step)) throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown setup step ${step}` })
   const skipped = (await d.getState())?.skipped ?? []
   await d.setState(step, skip && !skipped.includes(skip) ? [...skipped, skip] : skipped)
+}
+
+// One administrator creation at a time in this process: the check and the
+// creation (useradd, smbpasswd, bcrypt) take seconds, and two setup sessions
+// open at once must not both pass the check.
+let creating: Promise<unknown> = Promise.resolve()
+
+/**
+ * Creates the first administrator with a setup session. `create` makes the
+ * account (Linux, Samba, HSI user) already flagged admin.
+ */
+export async function createFirstAdmin<U extends { id: string; username: string }>(
+  d: SetupDeps,
+  create: (input: { username: string; password: string }) => Promise<U>,
+  setupToken: string,
+  input: { username: string; password: string },
+): Promise<U> {
+  try { verifySetupSession(setupToken) } catch {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "The setup session expired: open the setup link again" })
+  }
+  const run = creating.then(async () => {
+    if (await d.adminCount() > 0) throw new TRPCError({ code: "FORBIDDEN", message: "Setup is already done: sign in instead" })
+    const user = await create(input)
+    await d.setState("identity", [])
+    return user
+  })
+  creating = run.catch(() => {})
+  return run
 }

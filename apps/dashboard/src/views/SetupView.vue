@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { TRPCClientError } from '@trpc/client'
 import { useRoute, useRouter } from 'vue-router'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
@@ -13,12 +14,16 @@ import LoadingState from '../components/ui/LoadingState.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { isAuthenticated, setToken } = useAuth()
+const { isAuthenticated, setToken, logout } = useAuth()
 
 const status = ref<SetupStatus | null>(null)
 const loadError = ref('')
-const setupSession = ref('')
-const tokenInput = ref(typeof route.query.token === 'string' ? route.query.token : '')
+// The link carries the token in its fragment (#token=...): browsers never send
+// it to the server, so it stays out of the server's request logs.
+const SESSION_KEY = 'hsi-setup-session'
+const setupSession = ref(sessionStorage.getItem(SESSION_KEY) ?? '')
+watch(setupSession, v => { if (v) sessionStorage.setItem(SESSION_KEY, v); else sessionStorage.removeItem(SESSION_KEY) })
+const tokenInput = ref(new URLSearchParams(route.hash.replace(/^#/, '')).get('token') ?? '')
 const busy = ref(false)
 const error = ref('')
 
@@ -53,7 +58,7 @@ async function checkToken() {
   try {
     setupSession.value = (await trpc.setup.verifyToken.mutate({ token: tokenInput.value.trim() })).setupToken
     // The token is single use: keep it out of the address bar and history.
-    void router.replace({ path: '/setup' })
+    void router.replace({ path: '/setup', hash: '' })
   } catch (e) {
     error.value = message(e, 'This setup link is not valid')
   } finally {
@@ -81,6 +86,8 @@ async function createAdmin() {
     setupSession.value = ''
     await loadStatus()
   } catch (e) {
+    // An expired setup session: back to the token, for a new link.
+    if (e instanceof TRPCClientError && e.data?.code === 'UNAUTHORIZED') setupSession.value = ''
     error.value = message(e, 'Could not create the administrator')
   } finally {
     busy.value = false
@@ -100,6 +107,8 @@ async function loadIdentity() {
     timezone.value = id.timezone
     timezones.value = id.timezones
   } catch (e) {
+    // A session from another install or an expired one: sign in again.
+    if (e instanceof TRPCClientError && e.data?.code === 'UNAUTHORIZED') { logout(); void router.replace('/login'); return }
     error.value = message(e, 'Could not read the server identity')
   }
 }
@@ -113,7 +122,7 @@ const hostnameError = computed(() => hostname.value && !validHostname(hostname.v
   ? 'Use letters, digits and hyphens (up to 63), not starting or ending with a hyphen' : '')
 const identityChanged = computed(() => !!current.value && (hostname.value !== current.value.hostname || timezone.value !== current.value.timezone))
 
-async function goTo(step: 'next' | 'done', skip?: string) {
+async function goTo(step: 'next' | 'done', skip?: 'identity') {
   await trpc.setup.progress.mutate({ step, ...(skip ? { skip } : {}) })
   if (step === 'done') { await router.replace('/'); return }
   await loadStatus()
@@ -139,7 +148,7 @@ onMounted(async () => {
   if (screen.value === 'done') await router.replace(isAuthenticated.value ? '/' : '/login')
   else if (screen.value === 'login') await router.replace('/login')
   // A link carries its token: check it straight away.
-  else if (screen.value === 'token' && tokenInput.value) await checkToken()
+  else if ((screen.value === 'token' || screen.value === 'admin') && tokenInput.value) await checkToken()
 })
 
 const NEXT = [

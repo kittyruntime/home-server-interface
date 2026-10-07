@@ -86,3 +86,15 @@ func TestSystemIdentityStatus(t *testing.T) {
 		t.Fatal(string(raw))
 	}
 }
+
+// The domain and other aliases on the 127.0.1.1 line are kept (review M7).
+func TestIdentityHostsKeepsDomain(t *testing.T) {
+	got := hostsWithName("127.0.0.1\tlocalhost\n127.0.1.1\tHSI.example.lan HSI extra\n", "HSI", "nas")
+	if got != "127.0.0.1\tlocalhost\n127.0.1.1\tnas.example.lan nas extra\n" {
+		t.Fatalf("%q", got)
+	}
+	// The line names another host (edited by hand): it is replaced.
+	if got := hostsWithName("127.0.1.1\tother\n", "HSI", "nas"); got != "127.0.1.1\tnas\n" {
+		t.Fatalf("%q", got)
+	}
+}
