@@ -38,6 +38,7 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"volume.expand":   planVolumeExpand,
 	"storage.reapply": planStorageReapply,
 	"storage.accept":  planStorageAccept,
+	"system.identity": planSystemIdentity,
 }
 
 type planPreview struct {

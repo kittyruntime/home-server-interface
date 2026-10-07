@@ -1065,6 +1065,7 @@ func main() {
 		"root.storage.descriptions":      handleStorageDescriptions,
 		"root.setup.verify":              handleSetupVerify,
 		"root.setup.consume":             handleSetupConsume,
+		"root.system.identity":           handleSystemIdentity,
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
