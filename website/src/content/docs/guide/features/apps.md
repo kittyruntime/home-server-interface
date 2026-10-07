@@ -12,7 +12,8 @@ admin-only.
 ![The App Store](../../../../assets/app-store.png)
 
 - **App Store**: a curated catalog with guided installs and pinned image versions.
-  After an install, HSI opens the new app with its logs.
+  Secret settings can be generated, and a port already in use comes with a free
+  one to switch to. After an install, HSI opens the new app with its logs.
 - **Containers**: create, edit, start, stop and delete containers, read their
   logs, and manage networks, volumes and mounts. An existing Compose file can be
   imported to prefill a container.

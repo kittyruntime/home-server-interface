@@ -6,6 +6,7 @@ import { focusNewApp } from '../../lib/app-focus'
 import type { Place } from '../apps/VolumesTable.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
+import { generateSecret, portCandidates } from './install-helpers'
 
 type Manifest     = Awaited<ReturnType<typeof trpc.catalog.get.query>>
 type InstallInput = Parameters<typeof trpc.catalog.install.mutate>[0]
@@ -26,6 +27,7 @@ interface EnvRow {
   secret:   boolean
   required: boolean
   value:    string
+  shown:    boolean // a secret shown in clear, e.g. to note a generated token
 }
 interface VolumeRow {
   target:       string
@@ -90,6 +92,7 @@ async function load() {
       secret:   e.secret,
       required: e.required,
       value:    e.default ?? '',
+      shown:    false,
     }))
 
   volumeRows.value = m.volumes.map((v) => {
@@ -128,9 +131,11 @@ const portsValid = computed(() =>
   ports.value.every((p) => Number.isInteger(p.host) && p.host >= 1 && p.host <= 65535)
 )
 
-// Non-blocking "host port already in use" warnings, keyed by `${container}-${protocol}`.
-// A conflict never disables Install (Docker remains the authoritative failure).
+// Non-blocking "host port already in use" warnings, keyed by `${container}-${protocol}`,
+// with a free port to switch to. A conflict never disables Install (Docker
+// remains the authoritative failure).
 const portWarnings = ref<Record<string, string>>({})
+const portSuggestions = ref<Record<string, number>>({})
 let portTimer: ReturnType<typeof setTimeout> | undefined
 watch(
   () => ports.value.map((p) => `${p.container}/${p.protocol}=${p.host}`).join(','),
@@ -141,14 +146,34 @@ watch(
 )
 async function checkPorts() {
   const next: Record<string, string> = {}
+  const suggest: Record<string, number> = {}
   await Promise.all(ports.value.map(async (p) => {
     if (!Number.isInteger(p.host) || p.host < 1 || p.host > 65535) return
+    const key = `${p.container}-${p.protocol}`
     try {
       const r = await trpc.container.app.checkPort.query({ port: p.host, protocol: p.protocol })
-      if (r.inUse) next[`${p.container}-${p.protocol}`] = `Port ${p.host} is already used by ${r.by}.`
+      if (!r.inUse) return
+      next[key] = `Port ${p.host} is already used by ${r.by}.`
+      // The next free port up, never one another row of this form uses.
+      const taken = new Set(ports.value.filter(o => o !== p).map(o => o.host))
+      for (const candidate of portCandidates(p.host, taken, 20)) {
+        const c = await trpc.container.app.checkPort.query({ port: candidate, protocol: p.protocol })
+        if (!c.inUse) { suggest[key] = candidate; break }
+      }
     } catch { /* best-effort, ignore */ }
   }))
   portWarnings.value = next
+  portSuggestions.value = suggest
+}
+
+function useSuggestedPort(p: PortRow) {
+  const port = portSuggestions.value[`${p.container}-${p.protocol}`]
+  if (port) p.host = port
+}
+
+function generate(e: EnvRow) {
+  e.value = generateSecret()
+  e.shown = true // so it can be noted: an admin token is needed to sign in
 }
 
 const volumesValid = computed(() =>
@@ -225,8 +250,8 @@ async function install() {
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">App name</label>
         <input v-model="name" maxlength="64" placeholder="app-name" class="ui-input" />
-        <p v-if="!nameValid" class="text-xs text-[var(--c-danger)]">
-          Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
+        <p v-if="!nameValid" role="alert" class="status-text text-danger">
+          <span class="status-tag">[ERR]</span> Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
         </p>
       </div>
 
@@ -243,8 +268,11 @@ async function install() {
               class="ui-input w-28 shrink-0"
             />
           </div>
-          <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="text-xs text-[var(--c-warning)]">
-            {{ portWarnings[`${p.container}-${p.protocol}`] }}
+          <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="status-text text-warning">
+            <span class="status-tag">[WARN]</span> {{ portWarnings[`${p.container}-${p.protocol}`] }}
+            <button v-if="portSuggestions[`${p.container}-${p.protocol}`]" type="button" class="btn btn-outline btn-xs ml-1" @click="useSuggestedPort(p)">
+              Use port {{ portSuggestions[`${p.container}-${p.protocol}`] }}
+            </button>
           </p>
         </div>
       </div>
@@ -256,12 +284,25 @@ async function install() {
           <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">
             {{ e.label }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span>
           </label>
+          <div v-if="e.secret" class="flex gap-2">
+            <input
+              :type="e.shown ? 'text' : 'password'"
+              v-model="e.value"
+              :placeholder="e.key"
+              autocomplete="off"
+              class="ui-input flex-1 min-w-0 font-mono"
+            />
+            <button type="button" class="btn btn-outline btn-sm shrink-0" @click="e.shown = !e.shown">{{ e.shown ? 'Hide' : 'Show' }}</button>
+            <button type="button" class="btn btn-outline btn-sm shrink-0" @click="generate(e)">Generate</button>
+          </div>
           <input
-            :type="e.secret ? 'password' : 'text'"
+            v-else
+            type="text"
             v-model="e.value"
             :placeholder="e.key"
             class="ui-input"
           />
+          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-[var(--c-text-3)]">Note it somewhere safe before installing: the app asks for it.</p>
         </div>
       </div>
 
