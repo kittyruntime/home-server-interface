@@ -26,21 +26,34 @@ The script:
 3. Downloads and installs the [NATS](https://nats.io) message broker
 4. Installs the privileged worker (`hsi-worker`)
 5. Applies the database schema
-6. Seeds an `admin / admin` account
+6. Creates a one-time setup link (on a new installation)
 7. Registers three systemd services (`hsi-nats`, `hsi-worker`, `hsi-server`) grouped under `hsi.target`, and starts them
 8. Configures nginx if present
 
 Other options (install directory, port, skipping the seed account) are listed in
 [Install / update options](/home-server-interface/reference/configuration/#install--update-options).
 
-## First login
+## First setup
 
-Open `http://<server>:9001` (or `http://<server>` behind nginx) and sign in as
-`admin` with the password `admin`.
+A new installation has no account. At the end, the installer prints a one-time
+link:
 
-:::caution
-Change the admin password immediately after the first login.
-:::
+```
+Finish the setup:  http://192.168.1.20:9001/setup?token=…
+```
+
+Open it to create the administrator. The setup assistant then lets you name the
+server and set its time zone, and points to the next steps: a first volume,
+shares, alerts. A reload or a reboot resumes where you stopped.
+
+The link works once: it is deleted when the administrator is created. If you lost
+it before that, run this on the server for a new one:
+
+```bash
+sudo hsi-worker setup-token
+```
+
+Installations that already have an administrator never see the assistant.
 
 ## Update
 

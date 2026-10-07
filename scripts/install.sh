@@ -812,16 +812,25 @@ else
   success "Schema created"
 fi
 
+SETUP_LINK=""
 if [[ "${SKIP_SEED}" != "1" ]]; then
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec tsx prisma/seed.ts"
+    SEED_OUTPUT=$(run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec tsx prisma/seed.ts")
   else
-    app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' prisma/seed.ts"
+    SEED_OUTPUT=$(app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$INSTALL_DIR/node_modules' '$TSX_BIN' prisma/seed.ts")
   fi
   if [[ "$IS_UPDATE" -eq 1 ]]; then
     success "Seed applied (new permissions/roles merged, existing data untouched)"
   else
-    success "Database seeded (admin / admin)"
+    success "Database seeded"
+  fi
+  # No administrator yet (#12): a one-time link to the setup assistant, which
+  # creates it. Installs that already have one get nothing.
+  if grep -q '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT"; then
+    SETUP_PORT="$BACKEND_PORT"
+    if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then SETUP_PORT=80; fi
+    SETUP_LINK=$("/usr/local/bin/${APP_NAME}-worker" setup-token --port "$SETUP_PORT")
+    success "Setup link created"
   fi
 fi
 
@@ -1366,9 +1375,9 @@ else
 fi
 
 echo ""
-if [[ "$IS_UPDATE" -eq 0 ]]; then
-  echo -e "  ${BOLD}Default login:${NC}  admin / admin"
-  echo -e "  ${YELLOW}!! You'll be required to change this password on first login !!${NC}"
+if [[ -n "$SETUP_LINK" ]]; then
+  echo -e "  ${BOLD}Finish the setup:${NC}  $SETUP_LINK"
+  echo -e "  ${YELLOW}This one-time link creates the administrator. Lost it? sudo ${APP_NAME}-worker setup-token${NC}"
   echo ""
 fi
 
