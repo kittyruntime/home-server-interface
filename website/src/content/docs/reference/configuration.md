@@ -41,7 +41,7 @@ environment variables:
 | `BACKEND_PORT` | `9001` | API port. |
 | `NATS_SERVER_VERSION` | `v2.10.24` | NATS binary version to download. |
 | `SKIP_NGINX` | `0` | Skip nginx configuration. |
-| `SKIP_SEED` | `0` | Skip seeding the initial `admin / admin` account. |
+| `SKIP_SEED` | `0` | Skip the database seed and the setup link. |
 | `HSI_LOG_LEVEL` | `info` | Root worker log level (`debug`, `info`, `warn`, `error`), kept in `/etc/hsi/worker.env` across updates. |
 | `SKIP_DEPS_INSTALL` | `0` | Only check host packages; fail instead of installing missing ones with `apt-get`. |
 
@@ -173,7 +173,11 @@ an uptime service polling `http://<server>:9001/health`) to detect that.
 - **80**: nginx reverse proxy, if present (optional)
 - NATS listens locally for the backend ↔ root-worker channel
 
-## First login
+## First setup
 
-The installer seeds an `admin / admin` account (unless `SKIP_SEED=1`).
-**Change the admin password immediately after first login.**
+A new installation has no account: the installer prints a one-time link to the
+setup assistant, which creates the administrator (see
+[Install](/home-server-interface/guide/install/#first-setup)). `sudo hsi-worker setup-token`
+prints a new link while no administrator exists. Older installations keep their
+accounts; an `admin / admin` account from before must still change its password
+at the next login.

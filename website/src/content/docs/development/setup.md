@@ -36,7 +36,7 @@ dashboard.
 
 ```bash
 pnpm --filter @app/database db:push
-pnpm --filter @app/database db:seed   # creates the admin / admin account
+pnpm --filter @app/database db:seed   # no account: the setup assistant creates it
 ```
 
 ### 2. Backend environment
@@ -88,7 +88,14 @@ pnpm --filter @app/backend dev      # vite-node, serves the API on :9001
 pnpm --filter @app/dashboard dev    # Vite dev server with hot reload on :5173
 ```
 
-Open http://localhost:5173 and log in with `admin / admin`. `pnpm dev` runs the
+Open http://localhost:5173: a fresh database opens the setup assistant. Its
+link comes from the worker (as root, like the worker itself):
+
+```bash
+cd apps/root-worker && sudo ./root-worker setup-token --port 5173
+```
+
+`pnpm dev` runs the
 backend and dashboard dev scripts in parallel if you prefer one terminal for
 both.
 

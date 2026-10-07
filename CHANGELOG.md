@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **No default account**: new installations no longer create `admin / admin`.
+  The setup link is a one-time secret only root can read, deleted once the
+  administrator exists. Existing installations keep their accounts.
+
 ### Added
+- **First-run setup assistant** (#12): a new installation prints a one-time
+  link that opens a setup assistant: create the administrator, name the server
+  and set its time zone (previewed like other system changes), then links to a
+  first volume, shares, alerts and backup restore. A reload or a reboot resumes
+  where it stopped; `sudo hsi-worker setup-token` prints a new link.
 - **App Store installs** (#26): a secret setting (such as Vaultwarden's admin
   token) can be generated with a strong random value and shown to be noted;
   a host port already in use comes with a free port to switch to in one click.

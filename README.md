@@ -183,7 +183,8 @@ Re-running the [install command](#quick-install) updates an existing installatio
 and keeps its database and secrets. Version pinning, the systemd services and their
 logs are covered in [Install](https://kittyruntime.github.io/home-server-interface/guide/install/).
 
-> **Change the `admin / admin` password immediately after first login.**
+> A new installation has no default account: open the setup link the installer
+> prints to create the administrator.
 
 ---
 
