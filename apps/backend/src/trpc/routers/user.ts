@@ -86,6 +86,21 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
   }
 }
 
+/**
+ * Creates a user through the same plan as the Users page (Linux account,
+ * Samba password, hsi-share group), without a review dialog: used by the
+ * first-run setup (#12) for the administrator.
+ */
+export async function createUserThroughPlan(ctx: Context, input: { username: string; password: string }) {
+  const p = await prepareUserPlan(ctx, { userId: "", isAdmin: true }, "user.create", input, 180_000)
+  const preview = await p.preview()
+  const { res, reply } = await p.apply(preview.fingerprint)
+  if (!res.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: res.error ?? "Could not create the account" })
+  const user = (reply as { user?: { id: string; username: string } | null }).user
+  if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The account was created on the server but not recorded in HSI" })
+  return user
+}
+
 export const userRouter = router({
   // Operation plans (#36): preview the Linux/Samba account commands of a user
   // creation or deletion, then apply exactly that plan.
