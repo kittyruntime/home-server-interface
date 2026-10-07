@@ -88,6 +88,7 @@ export function actionLabel(action: string): string {
     'update.apply':                 'Install update',
     'update.check':                 'Check for updates',
     'user.updatePreferences':       'Update preferences',
+    'setup.createAdmin':            'Create the administrator',
   }
   return map[action] ?? humanize(action)
 }
