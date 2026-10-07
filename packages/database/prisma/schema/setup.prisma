@@ -1,0 +1,8 @@
+// First-run setup assistant (#12): where the administrator stopped, so a
+// reload or a reboot resumes there. A single row (id 1).
+model SetupState {
+  id        Int      @id @default(1)
+  step      String   @default("admin") // admin | identity | next | done
+  skipped   String   @default("")      // comma-separated step ids
+  updatedAt DateTime @updatedAt
+}

@@ -4,23 +4,21 @@ import bcrypt from "bcryptjs"
 const prisma = new PrismaClient()
 
 async function main() {
-  // Admin user: hash the password only when needed (cost 12 is slow).
-  // Re-hash if the stored value is plaintext (doesn't start with "$2").
+  // No default account (#12): a fresh install creates its administrator in the
+  // first-run setup assistant. An "admin" account from an older install still
+  // gets its plaintext password hashed (cost 12 is slow, so only when needed).
   const existing = await prisma.user.findUnique({
     where: { username: "admin" },
     select: { id: true, password: true },
   })
-  const needsHash = !existing || !existing.password.startsWith("$2")
-  const hashedPassword = needsHash ? await bcrypt.hash("admin", 12) : existing.password
-  await prisma.user.upsert({
-    where:  { username: "admin" },
-    update: needsHash ? { password: hashedPassword, isAdmin: true } : { isAdmin: true },
-    // mustChangePassword only applies here, at creation; an update to an
-    // already-existing admin account never re-imposes it.
-    create: { username: "admin", password: hashedPassword, isAdmin: true, mustChangePassword: true },
-  })
+  if (existing && !existing.password.startsWith("$2")) {
+    await prisma.user.update({ where: { id: existing.id }, data: { password: await bcrypt.hash(existing.password, 12) } })
+    console.log("Hashed the admin password")
+  }
 
-  console.log("Seeded admin user")
+  // install.sh prints the setup link when it sees this marker.
+  const admins = await prisma.user.count({ where: { isAdmin: true } })
+  if (admins === 0) console.log("HSI_SETUP_REQUIRED")
 }
 
 main()
