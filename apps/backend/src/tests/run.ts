@@ -785,7 +785,7 @@ await testVolumeGuard()
 const sp = await import("../services/storage-plan")
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.length === 21)
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.includes("system.identity") && sp.PLAN_OPS.length === 22)
   const meta = sp.planAuditMeta("format",
     [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
@@ -1750,6 +1750,44 @@ await testSharePlans()
   assert.deepEqual(JSON.parse(req.body), { type: "alert", title: "storage.raid", label: "md0: Array md0 is degraded" })
   assert.equal(req.method, "POST")
   assert.equal(req.headers["Content-Type"], "application/json")
+}
+
+// First-run setup (#12): the setup session only opens createAdmin, and setup
+// ends as soon as an administrator exists.
+{
+  const { signSetupSession, verifySetupSession, verifyToken: verifyLogin, signToken: signLogin } = await import("../trpc/auth")
+  const { setupStatus, checkSetupToken, recordProgress } = await import("../services/setup")
+  const setupJwt = signSetupSession()
+  assert.doesNotThrow(() => verifySetupSession(setupJwt))
+  assert.throws(() => verifyLogin(setupJwt), "a setup session is not a login")
+  assert.throws(() => verifySetupSession(signLogin("u1", true, false, [], false)), "a login is not a setup session")
+
+  let admins = 0
+  const tokenOk = true
+  const state: { step: string; skipped: string[] } = { step: "admin", skipped: [] }
+  const deps = {
+    adminCount: async () => admins,
+    workerVerify: async (t: string) => tokenOk && t === "good",
+    getState: async () => ({ ...state }),
+    setState: async (step: string, skipped: string[]) => { state.step = step; state.skipped = skipped },
+  }
+  assert.deepEqual(await setupStatus(deps), { required: true, step: "admin" })
+  assert.equal(typeof await checkSetupToken(deps, "good", "10.0.0.9"), "string")
+  await assert.rejects(checkSetupToken(deps, "bad", "10.0.0.9"), /not valid/)
+  // Throttled like the login: five failures from one address.
+  for (let i = 0; i < 4; i++) await assert.rejects(checkSetupToken(deps, "bad", "10.0.0.7"))
+  await assert.rejects(checkSetupToken(deps, "bad", "10.0.0.7"))
+  await assert.rejects(checkSetupToken(deps, "good", "10.0.0.7"), /Too many/i)
+
+  admins = 1 // TestCreateAdminRefusedWhenAdminExists: a token left behind opens nothing
+  await assert.rejects(checkSetupToken(deps, "good", "10.0.0.8"), /already done/)
+  state.step = "identity"
+  assert.deepEqual(await setupStatus(deps), { required: false, step: "identity" })
+  await recordProgress(deps, "next", "identity")
+  assert.deepEqual(state, { step: "next", skipped: ["identity"] })
+  await recordProgress(deps, "done")
+  assert.deepEqual(await setupStatus(deps), { required: false, step: null })
+  await assert.rejects(recordProgress(deps, "bogus" as never), /step/)
 }
 
 console.log("Backend security tests passed")

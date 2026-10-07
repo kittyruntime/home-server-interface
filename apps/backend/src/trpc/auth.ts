@@ -43,7 +43,22 @@ export function signToken(
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload
+  const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { purpose?: string }
+  // A setup session (#12) only opens setup.createAdmin, never a login.
+  if (payload.purpose) throw new Error("not a session token")
+  return payload
+}
+
+// ── First-run setup session (#12) ────────────────────────────────────────────
+// Minted once the one-time setup token checks out; short-lived, and accepted
+// only by setup.createAdmin.
+export function signSetupSession(): string {
+  return jwt.sign({ purpose: "setup", jti: crypto.randomUUID() }, JWT_SECRET, { expiresIn: "30m" })
+}
+
+export function verifySetupSession(token: string): void {
+  const payload = jwt.verify(token, JWT_SECRET) as { purpose?: string }
+  if (payload.purpose !== "setup") throw new Error("not a setup session")
 }
 
 // ── File access tokens ────────────────────────────────────────────────────────

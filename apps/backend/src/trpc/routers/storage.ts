@@ -95,6 +95,11 @@ const PLAN_INPUTS = {
     mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
     degraded:   z.boolean().default(false),
   }),
+  // Server identity (#12): hostname and time zone, admins only.
+  "system.identity": z.object({
+    hostname: z.string().max(63).regex(/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/, "A hostname uses letters, digits and hyphens, and does not start or end with a hyphen").optional(),
+    timezone: z.string().max(64).regex(/^[A-Za-z0-9_+\-/]+$/, "Invalid time zone").optional(),
+  }),
   "storage.accept": z.object({
     mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
   }),
@@ -104,6 +109,8 @@ const PLAN_INPUTS = {
 // resolved to an HSI user's Linux name (never an arbitrary system account).
 async function workerInput(ctx: Context & { user: { userId: string } }, op: PlanOp, raw: unknown): Promise<Record<string, unknown>> {
   // Expanding rewrites whole arrays and erases the disk it adds: admins only.
+  if (op === "system.identity" && !ctx.user?.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change the server identity" })
   if (op === "volume.expand" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can expand a volume" })
   const parsed = PLAN_INPUTS[op].safeParse(raw)

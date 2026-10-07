@@ -19,9 +19,11 @@ import { alertRouter } from "./alert"
 import { notificationsRouter } from "./notifications"
 import { backupRouter } from "./backup"
 import { appsRouter } from "./apps"
+import { setupRouter } from "./setup"
 
 export const appRouter = router({
   auth: authRouter,
+  setup: setupRouter,
   user: userRouter,
   place: placeRouter,
   fs: fsRouter,
