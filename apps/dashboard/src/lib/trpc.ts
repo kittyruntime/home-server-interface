@@ -9,7 +9,8 @@ function onSessionInvalid() {
   if (!localStorage.getItem('token')) return
   localStorage.removeItem('token')
   localStorage.removeItem('username')
-  if (window.location.pathname !== '/login') {
+  // The setup assistant handles its own errors and must keep its link (#12).
+  if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/setup')) {
     // Full navigation, not a router push: guarantees every in-memory store and
     // pending request tied to the dead session is discarded.
     window.location.assign('/login')

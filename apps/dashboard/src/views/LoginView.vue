@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { TRPCClientError } from '@trpc/client'
 import { useAuth } from '../lib/auth'
+import { trpc } from '../lib/trpc'
 
 const router = useRouter()
 const { login } = useAuth()
@@ -14,14 +15,25 @@ const error = ref('')
 const loading = ref(false)
 const mounted = ref(false)
 
-onMounted(() => { mounted.value = true })
+// No administrator yet, or a setup the admin has not finished (#12): the
+// assistant comes first.
+async function setupStep(): Promise<{ required: boolean; step: string | null } | null> {
+  try { return await trpc.setup.status.query() } catch { return null }
+}
+
+onMounted(async () => {
+  mounted.value = true
+  const s = await setupStep()
+  if (s?.required) void router.replace('/setup')
+})
 
 async function handleLogin() {
   error.value = ''
   loading.value = true
   try {
     await login(username.value, password.value)
-    router.push('/')
+    const s = await setupStep()
+    router.push(s?.step ? '/setup' : '/')
   } catch (err) {
     error.value = err instanceof TRPCClientError && err.data?.code === 'TOO_MANY_REQUESTS'
       ? err.message
@@ -67,7 +79,7 @@ async function handleLogin() {
             type="text"
             autocomplete="username"
             class="ui-input"
-            placeholder="admin"
+            placeholder="Your username"
           />
         </div>
 
