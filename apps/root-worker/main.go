@@ -974,6 +974,10 @@ func main() {
 	// `hsi-worker plan preview <op> <input-json>` and
 	// `hsi-worker plan apply <op> <input-json> <fingerprint>`: the same plans
 	// as root.plan.*, from a shell (debugging, tests).
+	// `hsi-worker setup-token`: a new first-run setup link (#12).
+	if len(os.Args) > 1 && os.Args[1] == "setup-token" {
+		os.Exit(runSetupTokenCLI(os.Args[2:]))
+	}
 	// `hsi-worker storage diff`: how each volume differs from its description.
 	if len(os.Args) > 1 && os.Args[1] == "storage" {
 		os.Exit(runStorageCLI(os.Args[2:]))
@@ -1059,6 +1063,8 @@ func main() {
 		"root.sys.maintenance.runNow":    handleMaintenanceRunNow,
 		"root.sys.expansions":            handleExpansions,
 		"root.storage.descriptions":      handleStorageDescriptions,
+		"root.setup.verify":              handleSetupVerify,
+		"root.setup.consume":             handleSetupConsume,
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
