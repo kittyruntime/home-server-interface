@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **App Store installs** (#26): a secret setting (such as Vaultwarden's admin
+  token) can be generated with a strong random value and shown to be noted;
+  a host port already in use comes with a free port to switch to in one click.
 - **SmallTV notifications** (#75): a "SmallTV (smalltv-mod)" webhook preset
   shows alerts on a GeekMagic SmallTV desk screen running smalltv-mod. Only the
   screen's address is needed; critical alerts show as alert, cleared ones as
