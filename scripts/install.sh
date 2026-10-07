@@ -824,13 +824,21 @@ if [[ "${SKIP_SEED}" != "1" ]]; then
   else
     success "Database seeded"
   fi
+  grep -v '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT" || true
   # No administrator yet (#12): a one-time link to the setup assistant, which
-  # creates it. Installs that already have one get nothing.
-  if grep -q '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT"; then
+  # creates it. Installs that already have one get nothing. An update keeps a
+  # link not used yet instead of replacing it.
+  if grep -q '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT" \
+     && { [[ "$IS_UPDATE" -eq 0 ]] || [[ ! -s /etc/hsi/setup-token ]]; }; then
     SETUP_PORT="$BACKEND_PORT"
     if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then SETUP_PORT=80; fi
-    SETUP_LINK=$("/usr/local/bin/${APP_NAME}-worker" setup-token --port "$SETUP_PORT")
-    success "Setup link created"
+    SETUP_HOST=$(hostname -I | awk '{print $1}')
+    if SETUP_LINK=$("/usr/local/bin/${APP_NAME}-worker" setup-token ${SETUP_HOST:+--host "$SETUP_HOST"} --port "$SETUP_PORT"); then
+      success "Setup link created"
+    else
+      SETUP_LINK=""
+      warn "Could not create the setup link: run 'sudo ${APP_NAME}-worker setup-token' once the install is done"
+    fi
   fi
 fi
 

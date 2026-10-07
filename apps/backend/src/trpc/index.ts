@@ -13,8 +13,8 @@ const isAuthed = t.middleware(({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } })
 })
 
-// A user created with mustChangePassword set (currently: only the seeded bootstrap
-// admin) can't perform any mutation except changing their own password or logging
+// A user with mustChangePassword set (currently: an admin / admin account seeded
+// by an install from before the setup assistant, #12) can't perform any mutation except changing their own password or logging
 // out, until they do. Queries stay open: the dashboard still needs to load to show
 // the change-password screen. Enforced server-side, not just by the UI redirect,
 // since the JWT carrying this flag is trusted for its full 7-day life either way.

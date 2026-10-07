@@ -1,10 +1,9 @@
 import { z } from "zod"
-import { TRPCError } from "@trpc/server"
 import { router, publicProcedure, adminProcedure } from "../index"
 import { requestSync } from "../../nats"
-import { signToken, verifySetupSession } from "../auth"
+import { signToken } from "../auth"
 import { reLinuxUsername } from "../../services/user.service"
-import { setupStatus, checkSetupToken, recordProgress, SETUP_STEPS, type SetupDeps, type SetupStep } from "../../services/setup"
+import { setupStatus, checkSetupToken, recordProgress, createFirstAdmin, SETUP_STEPS, type SetupDeps, type SetupStep } from "../../services/setup"
 import { createUserThroughPlan } from "./user"
 import type { Context } from "../context"
 
@@ -29,7 +28,7 @@ function deps(ctx: Context): SetupDeps {
 const clientIp = (ctx: Context) => ctx.req.ip ?? ctx.req.headers["x-forwarded-for"]?.toString() ?? "unknown"
 
 export const setupRouter = router({
-  status: publicProcedure.query(({ ctx }) => setupStatus(deps(ctx))),
+  status: publicProcedure.query(({ ctx }) => setupStatus(deps(ctx), ctx.user)),
 
   verifyToken: publicProcedure
     .input(z.object({ token: z.string().min(1).max(256) }))
@@ -45,15 +44,9 @@ export const setupRouter = router({
       password: z.string().min(6, "Use at least 6 characters").max(128).regex(/^[^\r\n]*$/, "A password cannot contain line breaks"),
     }))
     .mutation(async ({ ctx, input }) => {
-      try { verifySetupSession(input.setupToken) } catch {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "The setup session expired: open the setup link again" })
-      }
-      const d = deps(ctx)
-      if (await d.adminCount() > 0) throw new TRPCError({ code: "FORBIDDEN", message: "Setup is already done: sign in instead" })
-      const user = await createUserThroughPlan(ctx, { username: input.username, password: input.password })
-      await ctx.prisma.user.update({ where: { id: user.id }, data: { isAdmin: true, mustChangePassword: false } })
+      const user = await createFirstAdmin(deps(ctx), u => createUserThroughPlan(ctx, u, { isAdmin: true }), input.setupToken,
+        { username: input.username, password: input.password })
       await requestSync("root.setup.consume", {}, 10_000).catch(() => {})
-      await d.setState("identity", [])
       await ctx.prisma.auditLog.create({
         data: { userId: user.id, action: "setup.createAdmin", target: input.username, ip: clientIp(ctx), success: true },
       }).catch(() => {})
@@ -64,6 +57,6 @@ export const setupRouter = router({
     requestSync<{ hostname: string; timezone: string; timezones: string[] }>("root.system.identity", {}, 10_000)),
 
   progress: adminProcedure
-    .input(z.object({ step: z.enum(SETUP_STEPS), skip: z.string().max(32).optional() }))
+    .input(z.object({ step: z.enum(SETUP_STEPS), skip: z.enum(SETUP_STEPS).optional() }))
     .mutation(({ ctx, input }) => recordProgress(deps(ctx), input.step as SetupStep, input.skip)),
 })

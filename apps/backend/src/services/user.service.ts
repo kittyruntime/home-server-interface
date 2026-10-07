@@ -36,6 +36,7 @@ export async function assertCreatable(prisma: PrismaClient, username: string): P
 export async function createUserRecord(
   prisma: PrismaClient,
   input: { username: string; password: string; displayName?: string },
+  flags: { isAdmin?: boolean } = {},
 ) {
   const hashedPassword = await bcrypt.hash(input.password, 12)
   return prisma.user.create({
@@ -43,6 +44,7 @@ export async function createUserRecord(
       username: input.username,
       password: hashedPassword,
       displayName: input.displayName ?? null,
+      ...(flags.isAdmin ? { isAdmin: true, mustChangePassword: false } : {}),
     },
     select: userSelect,
   })

@@ -33,14 +33,31 @@ var (
 var reHostname = regexp.MustCompile(`^(?i)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
 // hostsWithName names `name` on the 127.0.1.1 line, adding one after the
-// 127.0.0.1 line when there is none. Other lines are kept as they are.
-func hostsWithName(conf, name string) string {
+// 127.0.0.1 line when there is none. The old name is renamed in place, so a
+// domain (old.example.lan) and other aliases are kept; a line naming another
+// host is replaced. Other lines are kept as they are.
+func hostsWithName(conf, old, name string) string {
 	lines := splitConf(conf)
 	for i, l := range lines {
-		if f := strings.Fields(l); len(f) >= 1 && f[0] == "127.0.1.1" {
-			lines[i] = "127.0.1.1\t" + name
-			return joinConf(lines)
+		f := strings.Fields(l)
+		if len(f) < 1 || f[0] != "127.0.1.1" {
+			continue
 		}
+		renamed := false
+		for j := 1; j < len(f); j++ {
+			switch {
+			case old != "" && f[j] == old:
+				f[j], renamed = name, true
+			case old != "" && strings.HasPrefix(f[j], old+"."):
+				f[j], renamed = name+strings.TrimPrefix(f[j], old), true
+			}
+		}
+		if renamed {
+			lines[i] = "127.0.1.1\t" + strings.Join(f[1:], " ")
+		} else {
+			lines[i] = "127.0.1.1\t" + name
+		}
+		return joinConf(lines)
 	}
 	out := make([]string, 0, len(lines)+1)
 	added := false
@@ -77,7 +94,7 @@ func planSystemIdentity(raw json.RawMessage) (*opPlan, *fsError) {
 		steps = append(steps, cmdStep(name, "Name this server "+name, []string{"hostnamectl", "set-hostname", name}))
 		before, _ := hostReadFile(hostsPath)
 		obs["hosts"] = string(before)
-		after := hostsWithName(string(before), name)
+		after := hostsWithName(string(before), curHost, name)
 		steps = append(steps, planStep{Kind: "update", Target: hostsPath, Summary: "Resolve " + name + " on this server", OnFailure: "warn",
 			Diff: unifiedDiff(hostsPath, string(before), after),
 			run: func() (string, error) {
@@ -85,7 +102,7 @@ func planSystemIdentity(raw json.RawMessage) (*opPlan, *fsError) {
 				if err != nil {
 					return "", err
 				}
-				return "", writeFileAtomic(hostsPath, []byte(hostsWithName(string(cur), name)), 0o644)
+				return "", writeFileAtomic(hostsPath, []byte(hostsWithName(string(cur), curHost, name)), 0o644)
 			}})
 	}
 	if req.Timezone != "" && req.Timezone != curZone {

@@ -57,9 +57,12 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
   })
   if (op === "user.create") {
     const input = parsed(zCreateInput, raw)
+    // The first administrator (#12) is created as such in the same write, so
+    // no non-admin account is left if a later step fails.
+    const isAdmin = (raw as { isAdmin?: unknown }).isAdmin === true && caller.userId === ""
     await assertCreatable(ctx.prisma, input.username)
     let created: unknown = null
-    const d = deps(input.username, async () => { created = await createUserRecord(ctx.prisma, input) })
+    const d = deps(input.username, async () => { created = await createUserRecord(ctx.prisma, input, { isAdmin }) })
     // New users have Samba enabled by default (sambaEnabled).
     const planInput = { username: input.username, password: input.password, samba: true }
     return {
@@ -91,8 +94,8 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
  * Samba password, hsi-share group), without a review dialog: used by the
  * first-run setup (#12) for the administrator.
  */
-export async function createUserThroughPlan(ctx: Context, input: { username: string; password: string }) {
-  const p = await prepareUserPlan(ctx, { userId: "", isAdmin: true }, "user.create", input, 180_000)
+export async function createUserThroughPlan(ctx: Context, input: { username: string; password: string }, flags: { isAdmin?: boolean } = {}) {
+  const p = await prepareUserPlan(ctx, { userId: "", isAdmin: true }, "user.create", { ...input, ...flags }, 180_000)
   const preview = await p.preview()
   const { res, reply } = await p.apply(preview.fingerprint)
   if (!res.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: res.error ?? "Could not create the account" })

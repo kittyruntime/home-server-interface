@@ -971,9 +971,6 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
 		os.Exit(runMaintenanceCLI())
 	}
-	// `hsi-worker plan preview <op> <input-json>` and
-	// `hsi-worker plan apply <op> <input-json> <fingerprint>`: the same plans
-	// as root.plan.*, from a shell (debugging, tests).
 	// `hsi-worker setup-token`: a new first-run setup link (#12).
 	if len(os.Args) > 1 && os.Args[1] == "setup-token" {
 		os.Exit(runSetupTokenCLI(os.Args[2:]))
@@ -982,6 +979,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "storage" {
 		os.Exit(runStorageCLI(os.Args[2:]))
 	}
+	// `hsi-worker plan preview <op> <input-json>` and
+	// `hsi-worker plan apply <op> <input-json> <fingerprint>`: the same plans
+	// as root.plan.*, from a shell (debugging, tests).
 	if len(os.Args) > 1 && os.Args[1] == "plan" {
 		os.Exit(runPlanCLI(os.Args[2:]))
 	}

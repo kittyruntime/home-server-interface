@@ -92,7 +92,7 @@ Open http://localhost:5173: a fresh database opens the setup assistant. Its
 link comes from the worker (as root, like the worker itself):
 
 ```bash
-cd apps/root-worker && sudo ./root-worker setup-token --port 5173
+cd apps/root-worker && sudo ./root-worker setup-token --host localhost --port 5173
 ```
 
 `pnpm dev` runs the

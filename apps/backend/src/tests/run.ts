@@ -1782,12 +1782,45 @@ await testSharePlans()
   admins = 1 // TestCreateAdminRefusedWhenAdminExists: a token left behind opens nothing
   await assert.rejects(checkSetupToken(deps, "good", "10.0.0.8"), /already done/)
   state.step = "identity"
-  assert.deepEqual(await setupStatus(deps), { required: false, step: "identity" })
+  assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: "identity" })
   await recordProgress(deps, "next", "identity")
   assert.deepEqual(state, { step: "next", skipped: ["identity"] })
   await recordProgress(deps, "done")
-  assert.deepEqual(await setupStatus(deps), { required: false, step: null })
+  assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: null })
   await assert.rejects(recordProgress(deps, "bogus" as never), /step/)
+}
+
+// createAdmin (#12 review): a setup session only, one administrator only,
+// even with two calls at once; non-admins never see the setup step.
+{
+  const { signSetupSession, signToken: signLogin } = await import("../trpc/auth")
+  const { createFirstAdmin, setupStatus } = await import("../services/setup")
+  let admins = 0
+  const created: string[] = []
+  const deps = {
+    adminCount: async () => admins,
+    workerVerify: async () => true,
+    getState: async () => ({ step: "identity", skipped: [] as string[] }),
+    setState: async () => {},
+  }
+  const create = async (u: { username: string }) => {
+    await new Promise(r => setTimeout(r, 20)) // useradd and bcrypt take time
+    created.push(u.username); admins++
+    return { id: u.username, username: u.username }
+  }
+  await assert.rejects(createFirstAdmin(deps, create, signLogin("u", true, false, [], false), { username: "a", password: "secret1" }), /expired/)
+  await assert.rejects(createFirstAdmin(deps, create, "garbage", { username: "a", password: "secret1" }), /expired/)
+  const s = signSetupSession()
+  const results = await Promise.allSettled([
+    createFirstAdmin(deps, create, s, { username: "alice", password: "secret1" }),
+    createFirstAdmin(deps, create, s, { username: "bob", password: "secret1" }),
+  ])
+  assert.deepEqual(created, ["alice"], "one administrator, even with two calls at once")
+  assert.equal(results.filter(r => r.status === "rejected").length, 1)
+  await assert.rejects(createFirstAdmin(deps, create, signSetupSession(), { username: "carol", password: "secret1" }), /already done/)
+  // Only an admin resumes the assistant; other accounts go to the dashboard.
+  assert.deepEqual(await setupStatus(deps, { isAdmin: false }), { required: false, step: null })
+  assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: "identity" })
 }
 
 console.log("Backend security tests passed")

@@ -178,6 +178,6 @@ an uptime service polling `http://<server>:9001/health`) to detect that.
 A new installation has no account: the installer prints a one-time link to the
 setup assistant, which creates the administrator (see
 [Install](/home-server-interface/guide/install/#first-setup)). `sudo hsi-worker setup-token`
-prints a new link while no administrator exists. Older installations keep their
+prints a new link; it only opens the assistant while no administrator exists. Older installations keep their
 accounts; an `admin / admin` account from before must still change its password
 at the next login.
