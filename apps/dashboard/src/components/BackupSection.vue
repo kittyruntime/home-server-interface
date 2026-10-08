@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import { useAuth } from '../lib/auth'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { useConfirm } from '../lib/confirm'
+import { backupLine, contentsLine, FOLLOW_UPS, type BackupContents, type BackupInfo } from './backup/restore-preview'
 
 const { token } = useAuth()
 const password = ref('')
@@ -16,7 +17,18 @@ const restoreFile = ref<File | null>(null)
 const restorePassword = ref('')
 const restoring = ref(false)
 const restoreError = ref<string | null>(null)
-const restoreStep = ref<'uploading' | 'restarting' | 'reconnecting' | null>(null)
+const restoreStep = ref<'checking' | 'uploading' | 'restarting' | 'reconnecting' | null>(null)
+type Preview = { token: string; format: 1 | 2; backup: BackupInfo; contents: BackupContents
+  conflicts: Array<{ kind: string; name: string; detail: string; command: string }>; warnings: string[] }
+const preview = ref<Preview | null>(null)
+
+// What a restore leaves to do, shown after the restart until dismissed.
+const FOLLOW_UPS_KEY = 'hsi-restore-follow-ups'
+const followUps = ref((() => { try { return localStorage.getItem(FOLLOW_UPS_KEY) === '1' } catch { return false } })())
+function dismissFollowUps() {
+  followUps.value = false
+  try { localStorage.removeItem(FOLLOW_UPS_KEY) } catch { /* private mode */ }
+}
 const { confirm } = useConfirm()
 
 const valid = computed(() => password.value.length >= 16 && password.value === confirmation.value)
@@ -68,24 +80,18 @@ function encodePassword(value: string) {
   return btoa(binary)
 }
 
-async function restoreBackup() {
-  if (!restoreFile.value || restorePassword.value.length < 16 || !token.value || restoreFile.value.size > 256 * 1024 * 1024) return
-  const accepted = await confirm(
-    'Restore this configuration backup? Accounts, permissions, shares, applications, settings, metrics, and audit history will be replaced. Files stored in Places and Docker volumes will not be changed.',
-    { title: 'Restore configuration', confirmLabel: 'Continue', danger: true },
-  )
-  if (!accepted) return
-  const confirmed = await confirm(
-    'Final confirmation: replace the current HSI configuration and restart the application?',
-    { title: 'Confirm restoration', confirmLabel: 'Restore and restart', danger: true },
-  )
-  if (!confirmed) return
+function resetPreview() {
+  preview.value = null
+}
 
+async function checkBackup() {
+  if (!restoreFile.value || restorePassword.value.length < 16 || !token.value || restoreFile.value.size > 256 * 1024 * 1024) return
   restoring.value = true
   restoreError.value = null
-  restoreStep.value = 'uploading'
+  preview.value = null
+  restoreStep.value = 'checking'
   try {
-    const response = await fetch('/system/config-restore', {
+    const response = await fetch('/system/config-restore/preview', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token.value}`,
@@ -94,15 +100,46 @@ async function restoreBackup() {
       },
       body: restoreFile.value,
     })
+    const body = await response.json().catch(() => null) as (Preview & { error?: string }) | null
+    if (!response.ok || !body) throw new Error(body?.error ?? `Check failed (${response.status})`)
+    preview.value = body
+  } catch (cause: unknown) {
+    restoreError.value = (cause as { message?: string })?.message ?? 'The backup could not be read'
+  } finally {
+    restoreStep.value = null
+    restoring.value = false
+  }
+}
+
+async function restoreBackup() {
+  const p = preview.value
+  if (!p || p.conflicts.length || !token.value) return
+  const confirmed = await confirm(
+    'Replace the current HSI configuration with this backup and restart HSI? Volumes stay as they are, and apps come back stopped.',
+    { title: 'Restore configuration', confirmLabel: 'Restore and restart', danger: true },
+  )
+  if (!confirmed) return
+
+  restoring.value = true
+  restoreError.value = null
+  restoreStep.value = 'uploading'
+  try {
+    const response = await fetch('/system/config-restore/apply', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: p.token }),
+    })
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string } | null
       throw new Error(body?.error ?? `Restore failed (${response.status})`)
     }
     restorePassword.value = ''
+    if (p.format === 2) { try { localStorage.setItem(FOLLOW_UPS_KEY, '1') } catch { /* private mode */ } }
     restoreStep.value = 'restarting'
     pollRestoreRestart()
   } catch (cause: unknown) {
     restoreError.value = (cause as { message?: string })?.message ?? 'Configuration restore failed'
+    preview.value = null
     restoreStep.value = null
     restoring.value = false
   }
@@ -164,27 +201,51 @@ function pollRestoreRestart() {
         <p class="text-sm font-medium text-[var(--c-text-1)]">Restore configuration</p>
         <p class="mt-1 text-xs leading-5 text-[var(--c-text-3)]">Validate and restore an HSI configuration backup. The active database is retained on the server as a pre-restore rollback copy.</p>
       </div>
-      <form class="space-y-4 p-5" @submit.prevent="restoreBackup">
+      <div v-if="followUps" class="border-b border-[var(--c-border)] bg-[var(--c-accent)]/5 p-5 space-y-2">
+        <p class="text-sm font-medium text-[var(--c-text-1)]">The configuration was restored. Left to do:</p>
+        <ul class="space-y-1.5">
+          <li v-for="f in FOLLOW_UPS" :key="f.href" class="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--c-text-2)]">
+            <span>{{ f.text }}</span><a :href="f.href" class="btn btn-outline btn-xs shrink-0">{{ f.label }}</a>
+          </li>
+        </ul>
+        <div class="flex justify-end"><button type="button" class="btn btn-ghost btn-xs" @click="dismissFollowUps">Done</button></div>
+      </div>
+      <form class="space-y-4 p-5" @submit.prevent="preview ? restoreBackup() : checkBackup()">
         <div class="rounded-lg border border-[var(--c-danger)]/25 bg-[var(--c-danger)]/5 p-3 text-xs leading-5 text-[var(--c-text-2)]">
-          Restoring replaces accounts, permissions, shares, application definitions, settings, metrics, and audit history. HSI restarts automatically. User files and Docker volume contents are not modified.
+          Restoring replaces accounts, permissions, shares, application definitions, settings, metrics, and audit history, and restores the Linux accounts with their ids, the apps (stopped) and the volume descriptions. HSI restarts automatically. Disks, volumes, user files and Docker volume contents are not modified, and Samba passwords must be set again.
         </div>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-[var(--c-text-2)]">Backup file</span>
-          <input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="block w-full text-xs text-[var(--c-text-3)] file:mr-3 file:rounded-lg file:border file:border-[var(--c-border)] file:bg-[var(--c-surface-deep)] file:px-3 file:py-2 file:text-xs file:text-[var(--c-text-2)]" required @change="selectRestoreFile">
+          <input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="block w-full text-xs text-[var(--c-text-3)] file:mr-3 file:rounded-lg file:border file:border-[var(--c-border)] file:bg-[var(--c-surface-deep)] file:px-3 file:py-2 file:text-xs file:text-[var(--c-text-2)]" required @change="selectRestoreFile($event); resetPreview()">
         </label>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-[var(--c-text-2)]">Backup password</span>
-          <input v-model="restorePassword" type="password" autocomplete="current-password" minlength="16" maxlength="1024" class="ui-input" placeholder="Password used during export" required>
+          <input v-model="restorePassword" type="password" @input="resetPreview" autocomplete="current-password" minlength="16" maxlength="1024" class="ui-input" placeholder="Password used during export" required>
         </label>
         <div v-if="restoreStep" class="flex items-center gap-2 text-xs text-[var(--c-accent)]">
           <LoadingSpinner />
-          <span>{{ restoreStep === 'uploading' ? 'Validating and restoring backup…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
+          <span>{{ restoreStep === 'checking' ? 'Checking the backup…' : restoreStep === 'uploading' ? 'Restoring…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
+        </div>
+        <div v-if="preview" class="space-y-2 rounded-lg border border-[var(--c-border)] p-3 text-xs">
+          <p class="font-medium text-[var(--c-text-1)]">{{ backupLine(preview.backup, preview.format) }}</p>
+          <p class="text-[var(--c-text-2)]">{{ contentsLine(preview.contents) }}</p>
+          <p v-for="c in preview.conflicts" :key="c.kind + c.name" role="alert" class="status-text text-danger">
+            <span class="status-tag">[ERR]</span> {{ c.detail }}. On the server: <code class="font-mono">{{ c.command }}</code>
+          </p>
+          <p v-for="(w, i) in preview.warnings" :key="i" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
+          <p v-if="preview.conflicts.length" class="text-[var(--c-text-3)]">Resolve the conflicts, then check the backup again.</p>
         </div>
         <p v-if="restoreError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
         <div class="flex justify-end">
-          <button class="btn btn-danger btn-sm" :disabled="!restoreFile || restorePassword.length < 16 || restoring || !!restoreError">
-            <BusyLabel :busy="restoring" busy-label="Restoring">Restore configuration</BusyLabel>
+          <button v-if="!preview" class="btn btn-outline btn-sm" :disabled="!restoreFile || restorePassword.length < 16 || restoring">
+            <BusyLabel :busy="restoring" busy-label="Checking">Check the backup</BusyLabel>
           </button>
+          <template v-else>
+            <button type="button" class="btn btn-ghost btn-sm" :disabled="restoring" @click="resetPreview">Cancel</button>
+            <button class="btn btn-danger btn-sm ml-2" :disabled="restoring || preview.conflicts.length > 0">
+              <BusyLabel :busy="restoring" busy-label="Restoring">Restore…</BusyLabel>
+            </button>
+          </template>
         </div>
       </form>
     </div>
