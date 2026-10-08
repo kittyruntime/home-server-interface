@@ -1,16 +1,34 @@
 import type { FastifyInstance } from "fastify"
 import { createReadStream, createWriteStream } from "node:fs"
-import { mkdtemp, rm } from "node:fs/promises"
+import { access, mkdtemp, rm } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import type { Readable } from "node:stream"
 import { Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { prisma } from "@app/database"
-import { createEncryptedConfigBackup, restoreEncryptedConfigBackup } from "../services/config-backup"
+import {
+  countRestoredDatabase, createEncryptedConfigBackup, restoreBusy, setRestoreBusy, stagingRoot, swapDatabase, validateRestoredDatabase,
+} from "../services/config-backup"
+import { applyConfigRestore, previewConfigRestore, type RestoreDeps } from "../services/config-restore"
+import { requestSync } from "../nats"
+import { readCurrentVersion } from "../trpc/routers/update"
 import { authenticateRequest } from "../utils/request-auth"
 
 const MAX_BACKUP_SIZE = 256 * 1024 * 1024
+
+const restoreDeps: RestoreDeps = {
+  stagingRoot,
+  worker: (subject, payload) => requestSync(subject, payload, 300_000),
+  validateDb: validateRestoredDatabase,
+  countRestored: countRestoredDatabase,
+  pathExists: p => access(p).then(() => true, () => false),
+  currentVersion: readCurrentVersion,
+  currentSecretsKey: () => process.env.HSI_SECRETS_KEY?.trim(),
+  envPath: () => path.join(process.env.INSTALL_DIR ?? process.cwd(), ".env"),
+  swapDatabase,
+  now: () => Date.now(),
+}
 
 async function authenticatedAdmin(request: { headers: { authorization?: string } }) {
   const user = await authenticateRequest(request)
@@ -33,7 +51,7 @@ export async function backupRoutes(app: FastifyInstance) {
 
     let success = false
     try {
-      const backup = await createEncryptedConfigBackup(password)
+      const backup = await createEncryptedConfigBackup(password, readCurrentVersion())
       const stream = createReadStream(backup.path)
       stream.once("close", () => { void backup.cleanup() })
       stream.once("error", () => { void backup.cleanup() })
@@ -48,12 +66,14 @@ export async function backupRoutes(app: FastifyInstance) {
     }
   })
 
-  app.post("/system/config-restore", {
+  // Restore, step 1 (#1): upload the backup and its password, get a preview.
+  app.post("/system/config-restore/preview", {
     bodyLimit: MAX_BACKUP_SIZE,
-    config: { rateLimit: { max: 3, timeWindow: "1 hour" } },
+    config: { rateLimit: { max: 10, timeWindow: "1 hour" } },
   }, async (request, reply) => {
     const userId = await authenticatedAdmin(request)
     if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    if (restoreBusy()) return reply.status(409).send({ error: "A configuration restore is in progress" })
     if (request.headers["content-type"]?.split(";", 1)[0] !== "application/vnd.hsi.config-backup") {
       return reply.status(415).send({ error: "Unsupported backup content type" })
     }
@@ -76,7 +96,29 @@ export async function backupRoutes(app: FastifyInstance) {
     try {
       await pipeline(request.body as Readable, limiter, createWriteStream(uploaded, { flags: "wx", mode: 0o600 }))
       if (bytes === 0) return reply.status(400).send({ error: "Backup file is empty" })
-      await restoreEncryptedConfigBackup(uploaded, password, userId, request.ip)
+      reply.header("Cache-Control", "no-store")
+      return await previewConfigRestore(uploaded, password, restoreDeps)
+    } catch (error) {
+      request.log.warn({ err: error }, "configuration backup rejected")
+      return reply.status(400).send({ error: (error as Error).message })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  // Restore, step 2: apply a preview, then restart.
+  app.post("/system/config-restore/apply", {
+    bodyLimit: 4 * 1024,
+    config: { rateLimit: { max: 3, timeWindow: "1 hour" } },
+  }, async (request, reply) => {
+    const userId = await authenticatedAdmin(request)
+    if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    const token = (request.body as { token?: unknown } | null)?.token
+    if (typeof token !== "string" || token.length > 64) return reply.status(400).send({ error: "Missing restore token" })
+    if (restoreBusy()) return reply.status(409).send({ error: "A configuration restore is in progress" })
+    setRestoreBusy(true)
+    try {
+      await applyConfigRestore(token, userId, request.ip, restoreDeps)
       reply.header("Cache-Control", "no-store")
       // Stop accepting requests before exit so Prisma cannot reconnect to the
       // freshly swapped database during the short response/restart window.
@@ -88,10 +130,9 @@ export async function backupRoutes(app: FastifyInstance) {
       timer.unref()
       return { ok: true }
     } catch (error) {
+      setRestoreBusy(false)
       request.log.warn({ err: error }, "configuration restore rejected")
       return reply.status(400).send({ error: (error as Error).message })
-    } finally {
-      await rm(dir, { recursive: true, force: true })
     }
   })
 }

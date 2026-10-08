@@ -1823,4 +1823,88 @@ await testSharePlans()
   assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: "identity" })
 }
 
+// Configuration backup v2 (#1): envelope, preview, conflicts, apply, v1.
+{
+  const { encryptToFile, decryptToFile, MAGIC_V1, MAGIC_V2 } = await import("../services/config-backup")
+  const { previewConfigRestore, applyConfigRestore, compareVersions, sweepRestores } = await import("../services/config-restore")
+  const { writeFile, readFile, mkdtemp: mkd, mkdir } = await import("node:fs/promises")
+  const work = await mkd(join(tmpdir(), "hsi-backup-test-"))
+  const password = "a-long-test-password-123"
+
+  assert.ok(compareVersions("1.65.0", "v1.64.2") > 0 && compareVersions("v1.64.2", "1.64.2") === 0 && compareVersions("1.9.0", "1.10.0") < 0)
+
+  // Envelope: the magic tells the format.
+  const plain = join(work, "plain.tar")
+  await writeFile(plain, Buffer.alloc(300, 7))
+  await encryptToFile(plain, join(work, "v2.hsibak"), password, MAGIC_V2)
+  await encryptToFile(plain, join(work, "v1.hsibak"), password, MAGIC_V1)
+  assert.equal(await decryptToFile(join(work, "v2.hsibak"), password, join(work, "out2")), 2)
+  assert.equal(await decryptToFile(join(work, "v1.hsibak"), password, join(work, "out1")), 1)
+  assert.deepEqual(await readFile(join(work, "out2")), await readFile(plain))
+  await assert.rejects(decryptToFile(join(work, "v2.hsibak"), "wrong-password-xxxxxx", join(work, "out3")), /password/)
+
+  // A fake worker: unpack writes the database and secrets, check answers what the test sets.
+  let check = { conflicts: [] as unknown[], apps: [{ name: "kuma", state: "new" }], volumes: [{ mountPoint: "/srv/data", disksPresent: 0, disksMissing: 2 }] }
+  let manifestVersion = "1.64.0"
+  const calls: string[] = []
+  let now = 1_000_000
+  const swapped: string[] = []
+  const deps = {
+    stagingRoot: async () => { const d = join(work, "staging"); await mkdir(d, { recursive: true }); return d },
+    worker: async (subject: string, payload: Record<string, unknown>) => {
+      calls.push(subject)
+      if (subject === "root.config.unpack") {
+        const dest = String(payload.dest)
+        await mkdir(dest, { recursive: true })
+        await writeFile(join(dest, "database.db"), "db")
+        await writeFile(join(dest, "secrets.json"), JSON.stringify({ HSI_SECRETS_KEY: "k2" }))
+        return { format: 2, hsiVersion: manifestVersion, createdAt: "2026-10-06T10:00:00Z", hostname: "HSI", items: [] }
+      }
+      if (subject === "root.config.check") return check
+      return {}
+    },
+    validateDb: async () => {},
+    countRestored: async () => ({ users: 2, groups: 1, places: 3, shares: 1, connectors: 1, placePaths: ["/srv/data/photos"] }),
+    pathExists: async () => false,
+    currentVersion: () => "1.65.0",
+    currentSecretsKey: () => "k1",
+    envPath: () => "/opt/hsi/.env",
+    swapDatabase: async (file: string) => { swapped.push(file) },
+    now: () => now,
+  }
+  const p = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  assert.equal(p.format, 2)
+  assert.deepEqual(p.backup, { hsiVersion: "1.64.0", createdAt: "2026-10-06T10:00:00Z", hostname: "HSI" })
+  assert.deepEqual(p.contents, { users: 2, groups: 1, places: 3, shares: 1, connectors: 1, apps: ["kuma"], volumes: 1 })
+  assert.ok(p.warnings.some(w => /\/srv\/data.*not connected/.test(w)) && p.warnings.some(w => /photos/.test(w)))
+  await applyConfigRestore(p.token, "u1", "1.2.3.4", deps)
+  assert.deepEqual(calls.slice(-2), ["root.config.apply", "root.config.secretsKey"])
+  assert.equal(swapped.length, 1)
+  await assert.rejects(applyConfigRestore(p.token, "u1", "1.2.3.4", deps), /expired|unknown/i, "a token is used once")
+
+  // Conflicts block the apply; a newer backup is refused at the preview.
+  check = { ...check, conflicts: [{ kind: "uid-taken", name: "alice", detail: "", command: "" }] }
+  const blocked = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  assert.equal(blocked.conflicts.length, 1)
+  await assert.rejects(applyConfigRestore(blocked.token, "u1", "ip", deps), /conflict/i)
+  manifestVersion = "1.99.0"
+  await assert.rejects(previewConfigRestore(join(work, "v2.hsibak"), password, deps), /newer/)
+  manifestVersion = "1.64.0"
+
+  // Previews expire after 15 minutes.
+  check = { ...check, conflicts: [] }
+  const late = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  now += 16 * 60_000
+  await sweepRestores(deps)
+  await assert.rejects(applyConfigRestore(late.token, "u1", "ip", deps), /expired|unknown/i)
+
+  // A v1 file: database only, no worker apply.
+  calls.length = 0
+  const v1 = await previewConfigRestore(join(work, "v1.hsibak"), password, deps)
+  assert.equal(v1.format, 1)
+  await applyConfigRestore(v1.token, "u1", "ip", deps)
+  assert.ok(!calls.includes("root.config.apply"))
+  await rm(work, { recursive: true, force: true })
+}
+
 console.log("Backend security tests passed")
