@@ -21,11 +21,11 @@ consistency checks. A systemd timer runs them even when the dashboard is down.
 
 ## Configuration backup
 
-Settings > Backup & restore exports the complete HSI configuration, encrypted
-with AES-256-GCM and a password-derived key. A restore checks the encryption, the
-database integrity and its compatibility, keeps the previous database as a
-rollback copy, then restarts HSI. Files in Places and Docker volume contents are
-not part of it.
+Settings > Backup & restore exports the HSI configuration, encrypted with
+AES-256-GCM and a password-derived key: the database, the account ids, the app
+definitions and the volume descriptions. A restore shows a preview first and
+stops on account id conflicts. Files in Places and Docker volume contents are not
+part of it. See [Backup and restore the configuration](/home-server-interface/guide/backup-restore/).
 
 ## Data backups
 
