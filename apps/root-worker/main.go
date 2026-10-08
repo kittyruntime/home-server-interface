@@ -1066,6 +1066,8 @@ func main() {
 		"root.setup.verify":              handleSetupVerify,
 		"root.setup.consume":             handleSetupConsume,
 		"root.system.identity":           handleSystemIdentity,
+		"root.config.staging":            handleConfigStaging,
+		"root.config.export":             handleConfigExport,
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
