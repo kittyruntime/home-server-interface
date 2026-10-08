@@ -21,6 +21,7 @@ export default defineConfig({
             { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
             "guide/manage-without-hsi",
             "guide/storage-descriptions",
+            "guide/backup-restore",
           ],
         },
         { label: "Reference", items: ["reference/configuration", "reference/storage-plans"] },

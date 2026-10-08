@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   administrator exists. Existing installations keep their accounts.
 
 ### Added
+- **Full configuration backup** (#1): a configuration backup now also holds the
+  Linux account and group ids, each app's definition, the volume descriptions,
+  the disk check schedule and the key of the notification secrets. Restoring
+  shows a preview first (contents, warnings) and is blocked while an account id
+  conflicts with the server, with the command to solve it. Accounts come back
+  with their ids, apps stopped, volumes as descriptions to Reapply; Samba
+  passwords must be set again. Older backups (database only) still restore.
 - **First-run setup assistant** (#12): a new installation prints a one-time
   link that opens a setup assistant: create the administrator, name the server
   and set its time zone (previewed like other system changes), then links to a
