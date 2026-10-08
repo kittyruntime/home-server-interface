@@ -24,6 +24,11 @@ const SESSION_KEY = 'hsi-setup-session'
 const setupSession = ref(sessionStorage.getItem(SESSION_KEY) ?? '')
 watch(setupSession, v => { if (v) sessionStorage.setItem(SESSION_KEY, v); else sessionStorage.removeItem(SESSION_KEY) })
 const tokenInput = ref(new URLSearchParams(route.hash.replace(/^#/, '')).get('token') ?? '')
+// A new link pasted in the same tab only changes the fragment: check it too.
+watch(() => route.hash, h => {
+  const t = new URLSearchParams(h.replace(/^#/, '')).get('token')
+  if (t && (screen.value === 'token' || screen.value === 'admin')) { tokenInput.value = t; void checkToken() }
+})
 const busy = ref(false)
 const error = ref('')
 
