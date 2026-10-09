@@ -15,7 +15,9 @@ function deps(ctx: Context): SetupDeps {
     adminCount: () => ctx.prisma.user.count({ where: { isAdmin: true } }),
     workerVerify: async token => (await requestSync<{ ok: boolean }>("root.setup.verify", { token }, 10_000)).ok,
     getState: async () => {
-      const s = await ctx.prisma.setupState.findUnique({ where: { id: 1 } })
+      // A database restored from a backup older than the setup assistant has
+      // no SetupState table until the next update: setup is then finished.
+      const s = await ctx.prisma.setupState.findUnique({ where: { id: 1 } }).catch(() => null)
       return s ? { step: s.step, skipped: s.skipped ? s.skipped.split(",") : [] } : null
     },
     setState: async (step, skipped) => {

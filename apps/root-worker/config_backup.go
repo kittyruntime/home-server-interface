@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
@@ -29,8 +30,8 @@ import (
 
 const (
 	backupMaxAppFile = 10 << 20
-	backupMaxDepth   = 4 // directories under an app directory
 	backupMaxTotal   = 256 << 20
+	backupMaxEntries = 20000
 )
 
 var (
@@ -88,24 +89,77 @@ type accountsFile struct {
 	Groups []groupRec   `json:"groups"`
 }
 
-// inStaging tells whether dir is a subdirectory of the staging root.
-func inStaging(dir string) bool {
+// inStaging tells whether p is under the staging root without going through
+// a symlink: the backend owns the staging directory and could plant one
+// pointing anywhere, and the worker reads and writes there as root.
+func inStaging(p string) bool {
 	root := filepath.Clean(backupStagingDir())
-	d := filepath.Clean(dir)
-	return strings.HasPrefix(d, root+string(filepath.Separator))
+	d := filepath.Clean(p)
+	if !strings.HasPrefix(d, root+string(filepath.Separator)) {
+		return false
+	}
+	if st, err := os.Lstat(root); err != nil || !st.IsDir() {
+		return false
+	}
+	cur := root
+	for _, part := range strings.Split(strings.TrimPrefix(d, root+string(filepath.Separator)), string(filepath.Separator)) {
+		cur = filepath.Join(cur, part)
+		st, err := os.Lstat(cur)
+		if err != nil {
+			return errors.Is(err, os.ErrNotExist) // the rest is created by the worker
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// stagingOwner is the backend user: the owner of the staging root. Files the
+// worker leaves there are given to it, never to a uid a request names.
+func stagingOwner() int {
+	if st, err := os.Lstat(backupStagingDir()); err == nil {
+		if o, ok := statOwner(st); ok {
+			return o[0]
+		}
+	}
+	return 0
 }
 
 // prepareStaging creates the staging root, readable by root and the backend
-// user only.
+// user only. Its owner is set when it is created.
 func prepareStaging(ownerUID int) error {
 	root := backupStagingDir()
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return err
+	if _, err := os.Lstat(root); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			return err
+		}
+		if ownerUID > 0 {
+			_ = os.Chown(root, ownerUID, -1)
+		}
 	}
-	if ownerUID > 0 {
-		_ = os.Chown(root, ownerUID, -1)
+	st, err := os.Lstat(root)
+	if err != nil || !st.IsDir() {
+		return errors.New("the backup staging directory is not a directory")
 	}
 	return os.Chmod(root, 0o700)
+}
+
+// readRegular reads a regular file, refusing symlinks and anything else.
+func readRegular(p string) ([]byte, error) {
+	st, err := os.Lstat(p)
+	if err != nil {
+		return nil, err
+	}
+	if !st.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", p)
+	}
+	f, err := os.OpenFile(p, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return readCapped(f, backupMaxTotal)
 }
 
 // backupFile is one entry of the archive: its archive path and its content
@@ -116,8 +170,9 @@ type backupFile struct {
 	data []byte
 }
 
-// appFiles lists the regular files of each app directory: no symlinks, no
-// large files (data, not configuration), not too deep.
+// appFiles lists the files at the top of each app directory (compose.yaml,
+// .env, configuration files). Subdirectories usually hold the app's data and
+// are not configuration: they are left out, as are symlinks and large files.
 func appFiles() []backupFile {
 	var out []backupFile
 	entries, _ := os.ReadDir(containersDir)
@@ -129,28 +184,17 @@ func appFiles() []backupFile {
 		if !fileExists(filepath.Join(appDir, "compose.yaml")) {
 			continue
 		}
-		_ = filepath.WalkDir(appDir, func(p string, d os.DirEntry, err error) error {
-			if err != nil {
-				return nil
+		files, _ := os.ReadDir(appDir)
+		for _, f := range files {
+			if !f.Type().IsRegular() {
+				continue
 			}
-			rel, _ := filepath.Rel(appDir, p)
-			depth := strings.Count(rel, string(filepath.Separator))
-			if d.IsDir() {
-				if rel != "." && depth >= backupMaxDepth {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if d.Type()&os.ModeSymlink != 0 || !d.Type().IsRegular() {
-				return nil
-			}
-			info, err := d.Info()
+			info, err := f.Info()
 			if err != nil || info.Size() > backupMaxAppFile {
-				return nil
+				continue
 			}
-			out = append(out, backupFile{path: "system/containers/" + e.Name() + "/" + filepath.ToSlash(rel), src: p})
-			return nil
-		})
+			out = append(out, backupFile{path: "system/containers/" + e.Name() + "/" + f.Name(), src: filepath.Join(appDir, f.Name())})
+		}
 	}
 	return out
 }
@@ -167,7 +211,19 @@ func backupAccounts(usernames []string) accountsFile {
 	}
 	sort.Slice(acc.Users, func(i, j int) bool { return acc.Users[i].Name < acc.Users[j].Name })
 	if gid, ok := hostLookupGroup("hsi-share"); ok {
-		acc.Groups = append(acc.Groups, groupRec{Name: "hsi-share", GID: gid, Members: hostGroupMembers("hsi-share")})
+		// Only the archived accounts: another member (an admin's own login)
+		// may not exist where the backup is restored.
+		archived := map[string]bool{}
+		for _, u := range acc.Users {
+			archived[u.Name] = true
+		}
+		var members []string
+		for _, m := range hostGroupMembers("hsi-share") {
+			if archived[m] {
+				members = append(members, m)
+			}
+		}
+		acc.Groups = append(acc.Groups, groupRec{Name: "hsi-share", GID: gid, Members: members})
 	}
 	return acc
 }
@@ -203,7 +259,7 @@ func buildBackupTar(dir string, usernames []string, hsiVersion string, now time.
 		b := f.data
 		if f.src != "" {
 			var err error
-			if b, err = os.ReadFile(f.src); err != nil {
+			if b, err = readRegular(f.src); err != nil {
 				return fmt.Errorf("read %s: %w", f.src, err)
 			}
 		}
@@ -218,7 +274,8 @@ func buildBackupTar(dir string, usernames []string, hsiVersion string, now time.
 	manifest, _ := json.MarshalIndent(m, "", "  ")
 
 	out := filepath.Join(dir, "backup.tar")
-	f, err := os.OpenFile(out, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	_ = os.Remove(out)
+	f, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return err
 	}
@@ -246,9 +303,10 @@ func buildBackupTar(dir string, usernames []string, hsiVersion string, now time.
 	return err
 }
 
-// chownTree gives dir and its content to the backend user.
+// chownTree gives dir (under the staging root) and its content to the
+// backend user. WalkDir does not follow the symlinks it meets.
 func chownTree(dir string, uid int) {
-	if uid <= 0 {
+	if uid <= 0 || !inStaging(dir) {
 		return
 	}
 	_ = filepath.WalkDir(dir, func(p string, _ os.DirEntry, err error) error {
@@ -274,7 +332,7 @@ func handleConfigExport(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-	chownTree(req.Dir, req.OwnerUID)
+	chownTree(req.Dir, stagingOwner())
 	replyOk(nc, msg.Reply, map[string]any{"path": filepath.Join(req.Dir, "backup.tar")})
 }
 

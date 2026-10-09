@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,18 +50,24 @@ var (
 // unpackBackupTar extracts an archive into dest (under the staging root) and
 // checks it against its manifest: regular files only, no path leaving dest,
 // every file listed with its size and sum, nothing missing or extra.
-func unpackBackupTar(tarPath, dest string) (backupManifest, error) {
-	var m backupManifest
-	if !inStaging(dest) {
-		return m, errors.New("the restore directory must be under the backup staging directory")
+func unpackBackupTar(tarPath, dest string) (m backupManifest, err error) {
+	if !inStaging(dest) || !inStaging(tarPath) {
+		return m, errors.New("the archive and the restore directory must be under the backup staging directory")
 	}
-	f, err := os.Open(tarPath)
+	// Nothing of a refused archive stays behind: its files are plaintext.
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(dest)
+		}
+	}()
+	f, err := os.OpenFile(tarPath, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return m, err
 	}
 	defer f.Close()
 	sums := map[string]backupItem{}
 	var total int64
+	entries := 0
 	tr := tar.NewReader(f)
 	for {
 		h, err := tr.Next()
@@ -69,6 +76,9 @@ func unpackBackupTar(tarPath, dest string) (backupManifest, error) {
 		}
 		if err != nil {
 			return m, fmt.Errorf("the archive is damaged: %w", err)
+		}
+		if entries++; entries > backupMaxEntries {
+			return m, fmt.Errorf("the archive has more than %d entries", backupMaxEntries)
 		}
 		if h.Typeflag != tar.TypeReg {
 			return m, fmt.Errorf("the archive holds something other than files: %s", h.Name)
@@ -95,8 +105,20 @@ func unpackBackupTar(tarPath, dest string) (backupManifest, error) {
 		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 			return m, err
 		}
-		if err := os.WriteFile(target, b, 0o600); err != nil {
-			return m, err
+		if !inStaging(target) {
+			return m, fmt.Errorf("the archive holds a path outside it: %s", h.Name)
+		}
+		// O_EXCL: a name seen twice, or a file already there, is refused.
+		out, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
+		if err != nil {
+			return m, fmt.Errorf("the archive holds %s twice or in a wrong place: %w", h.Name, err)
+		}
+		_, werr := out.Write(b)
+		if cerr := out.Close(); werr == nil {
+			werr = cerr
+		}
+		if werr != nil {
+			return m, werr
 		}
 		sum := sha256.Sum256(b)
 		sums[filepath.ToSlash(name)] = backupItem{Path: filepath.ToSlash(name), Size: int64(len(b)), SHA256: hex.EncodeToString(sum[:])}
@@ -245,7 +267,12 @@ func sameTree(a, b string) bool {
 
 func checkBackup(dir string) configCheck {
 	c := configCheck{Conflicts: []configConflict{}, Apps: []configApp{}, Volumes: []configVolume{}}
-	if acc, err := readAccounts(dir); err == nil {
+	if acc, err := readAccounts(dir); err != nil {
+		c.Conflicts = append(c.Conflicts, configConflict{Kind: "invalid", Detail: "The accounts of this backup cannot be read: " + err.Error()})
+	} else if err := validAccounts(acc); err != nil {
+		// What the restore would refuse is said now, not halfway through it.
+		c.Conflicts = append(c.Conflicts, configConflict{Kind: "invalid", Detail: err.Error(), Command: "This backup cannot be restored by HSI"})
+	} else {
 		c.Conflicts = append(c.Conflicts, accountConflicts(acc)...)
 	}
 	for _, app := range backupApps(dir) {
@@ -393,8 +420,17 @@ func applyBackup(dir string, now time.Time) error {
 			return err
 		}
 	}
+	restored := map[string]bool{}
+	for _, u := range acc.Users {
+		restored[u.Name] = true
+	}
 	for _, g := range acc.Groups {
 		for _, m := range g.Members {
+			// A member that is not a restored account and does not exist here
+			// is skipped: the group is still restored for the others.
+			if _, _, ok := hostLookupUser(m); !ok && !restored[m] {
+				continue
+			}
 			if err := runChecked("usermod", "-aG", g.Name, m); err != nil {
 				return err
 			}
@@ -415,11 +451,20 @@ func applyBackup(dir string, now time.Time) error {
 	for _, app := range backupApps(dir) {
 		src := filepath.Join(dir, "system", "containers", app)
 		dst := filepath.Join(containersDir, app)
-		if fileExists(dst) {
+		if _, err := os.Lstat(dst); err == nil {
 			if sameTree(dst, src) {
 				continue
 			}
-			if err := keepAside(dst, ".before-restore-"+stamp); err != nil {
+			// The running app is stopped, then kept outside the apps folder
+			// (a dot directory), so it is not listed nor started as an app.
+			if compose := filepath.Join(dst, "compose.yaml"); fileExists(compose) {
+				_, _ = runArgv([]string{"docker", "compose", "-f", compose, "stop"})
+			}
+			aside := filepath.Join(containersDir, ".before-restore")
+			if err := os.MkdirAll(aside, 0o700); err != nil {
+				return err
+			}
+			if err := os.Rename(dst, filepath.Join(aside, app+"-"+stamp)); err != nil {
 				return err
 			}
 		}
@@ -441,7 +486,7 @@ func applyBackup(dir string, now time.Time) error {
 			if bytes.Equal(cur, b) {
 				continue
 			}
-			if err := keepAside(dst, ".before-restore"); err != nil {
+			if err := keepAside(dst, ".before-restore-"+stamp); err != nil {
 				return err
 			}
 		}
@@ -451,7 +496,7 @@ func applyBackup(dir string, now time.Time) error {
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "system", "maintenance.json")); err == nil {
 		if cur, err := os.ReadFile(maintenanceConfigPath); err != nil || !bytes.Equal(cur, b) {
-			_ = keepAside(maintenanceConfigPath, ".before-restore")
+			_ = keepAside(maintenanceConfigPath, ".before-restore-"+stamp)
 			if err := os.WriteFile(maintenanceConfigPath, b, 0o644); err != nil {
 				return err
 			}
@@ -460,18 +505,34 @@ func applyBackup(dir string, now time.Time) error {
 	return nil
 }
 
-// replaceSecretsKey sets HSI_SECRETS_KEY in the backend .env, keeping the
-// previous file as .env.before-restore.
-func replaceSecretsKey(envPath, key string) error {
-	if key == "" || strings.ContainsAny(key, "\r\n= ") {
-		return errors.New("invalid secrets key")
+// backendEnvPath is the backend's .env, the only file the secrets key is
+// written to (never a path a request names).
+func backendEnvPath() string { return envOr("HSI_BACKEND_ENV", "/opt/hsi/.env") }
+
+var reSecretsKey = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
+// setSecretsKey sets HSI_SECRETS_KEY in the backend .env and returns the path
+// of the previous file, kept with a timestamp so a second restore cannot
+// overwrite it. The owner and mode of the file are kept.
+func setSecretsKey(key string, now time.Time) (string, error) {
+	if !reSecretsKey.MatchString(key) {
+		return "", errors.New("the secrets key must be 64 hexadecimal characters")
 	}
-	cur, err := os.ReadFile(envPath)
+	p := backendEnvPath()
+	st, err := os.Lstat(p)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if err := os.WriteFile(envPath+".before-restore", cur, 0o600); err != nil {
-		return err
+	if !st.Mode().IsRegular() {
+		return "", errors.New("the backend .env is not a regular file")
+	}
+	cur, err := readRegular(p)
+	if err != nil {
+		return "", err
+	}
+	backup := p + ".before-restore-" + now.UTC().Format("20060102-150405")
+	if err := os.WriteFile(backup, cur, 0o600); err != nil {
+		return "", err
 	}
 	lines := splitConf(string(cur))
 	found := false
@@ -484,7 +545,37 @@ func replaceSecretsKey(envPath, key string) error {
 	if !found {
 		lines = append(lines, "HSI_SECRETS_KEY="+key)
 	}
-	return writeFileAtomic(envPath, []byte(joinConf(lines)), 0o600)
+	if err := writeFileAtomic(p, []byte(joinConf(lines)), st.Mode().Perm()); err != nil {
+		return "", err
+	}
+	if o, ok := statOwner(st); ok {
+		_ = os.Chown(p, o[0], o[1])
+	}
+	return backup, nil
+}
+
+// restoreSecretsEnv puts back a .env kept by setSecretsKey (the database swap
+// failed after the key was written).
+func restoreSecretsEnv(backup string) error {
+	p := backendEnvPath()
+	if filepath.Dir(backup) != filepath.Dir(p) || !strings.HasPrefix(filepath.Base(backup), filepath.Base(p)+".before-restore-") {
+		return errors.New("not a kept copy of the backend .env")
+	}
+	st, err := os.Lstat(p)
+	if err != nil {
+		return err
+	}
+	b, err := readRegular(backup)
+	if err != nil {
+		return err
+	}
+	if err := writeFileAtomic(p, b, st.Mode().Perm()); err != nil {
+		return err
+	}
+	if o, ok := statOwner(st); ok {
+		_ = os.Chown(p, o[0], o[1])
+	}
+	return nil
 }
 
 func handleConfigUnpack(nc *nats.Conn, msg *nats.Msg) {
@@ -506,7 +597,7 @@ func handleConfigUnpack(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "EBADBACKUP", Message: err.Error()})
 		return
 	}
-	chownTree(req.Dest, req.OwnerUID)
+	chownTree(req.Dest, stagingOwner())
 	replyOk(nc, msg.Reply, m)
 }
 
@@ -536,15 +627,23 @@ func handleConfigApply(nc *nats.Conn, msg *nats.Msg) {
 
 func handleConfigSecretsKey(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
-		Key     string `json:"key"`
-		EnvPath string `json:"envPath"`
+		Key string `json:"key"`
 	}
 	_ = json.Unmarshal(msg.Data, &req)
-	if filepath.Base(req.EnvPath) != ".env" || !filepath.IsAbs(req.EnvPath) {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid .env path"})
+	backup, err := setSecretsKey(req.Key, time.Now())
+	if err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}
-	if err := replaceSecretsKey(req.EnvPath, req.Key); err != nil {
+	replyOk(nc, msg.Reply, map[string]any{"backup": backup})
+}
+
+func handleConfigSecretsRestore(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Backup string `json:"backup"`
+	}
+	_ = json.Unmarshal(msg.Data, &req)
+	if err := restoreSecretsEnv(req.Backup); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
 		return
 	}

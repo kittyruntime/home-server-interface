@@ -1072,6 +1072,7 @@ func main() {
 		"root.config.check":              handleConfigCheck,
 		"root.config.apply":              handleConfigApply,
 		"root.config.secretsKey":         handleConfigSecretsKey,
+		"root.config.secretsRestore":     handleConfigSecretsRestore,
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,

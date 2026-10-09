@@ -140,8 +140,8 @@ func TestBuildBackupSkipsUnsafeAppFiles(t *testing.T) {
 			t.Fatalf("unsafe entry %s", n)
 		}
 	}
-	if _, ok := files["system/containers/kuma/a/ok.txt"]; !ok {
-		t.Fatal("nested config file kept")
+	if _, ok := files["system/containers/kuma/a/ok.txt"]; ok {
+		t.Fatal("subfolders (app data) are left out")
 	}
 }
 

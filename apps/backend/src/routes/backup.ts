@@ -10,7 +10,7 @@ import { prisma } from "@app/database"
 import {
   countRestoredDatabase, createEncryptedConfigBackup, restoreBusy, setRestoreBusy, stagingRoot, swapDatabase, validateRestoredDatabase,
 } from "../services/config-backup"
-import { applyConfigRestore, previewConfigRestore, type RestoreDeps } from "../services/config-restore"
+import { applyConfigRestore, cancelConfigRestore, previewConfigRestore, purgeStaging, sweepRestores, type RestoreDeps } from "../services/config-restore"
 import { requestSync } from "../nats"
 import { readCurrentVersion } from "../trpc/routers/update"
 import { authenticateRequest } from "../utils/request-auth"
@@ -36,6 +36,11 @@ async function authenticatedAdmin(request: { headers: { authorization?: string }
 }
 
 export async function backupRoutes(app: FastifyInstance) {
+  // Decrypted previews never outlive 15 minutes, and none survives a restart.
+  const sweep = setInterval(() => { void sweepRestores(restoreDeps) }, 60_000)
+  sweep.unref()
+  setTimeout(() => { void stagingRoot().then(purgeStaging).catch(() => {}) }, 5_000).unref()
+
   app.addContentTypeParser("application/vnd.hsi.config-backup", (_request, payload, done) => done(null, payload))
 
   app.post("/system/config-backup", {
@@ -104,6 +109,15 @@ export async function backupRoutes(app: FastifyInstance) {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
+  })
+
+  // Restore: forget a preview (Cancel), with its decrypted files.
+  app.post("/system/config-restore/cancel", { bodyLimit: 4 * 1024 }, async (request, reply) => {
+    const userId = await authenticatedAdmin(request)
+    if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    const token = (request.body as { token?: unknown } | null)?.token
+    if (typeof token === "string" && token.length <= 64) await cancelConfigRestore(token)
+    return { ok: true }
   })
 
   // Restore, step 2: apply a preview, then restart.
