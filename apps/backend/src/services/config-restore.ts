@@ -12,7 +12,7 @@ export interface RestoreDeps {
   stagingRoot(): Promise<string>
   worker(subject: string, payload: Record<string, unknown>): Promise<unknown>
   validateDb(file: string): Promise<void>
-  countRestored(file: string): Promise<{ users: number; groups: number; places: number; shares: number; connectors: number; placePaths: string[] }>
+  countRestored(file: string): Promise<{ users: number; admins?: number; groups: number; places: number; shares: number; connectors: number; placePaths: string[] }>
   pathExists(p: string): Promise<boolean>
   currentVersion(): string
   currentSecretsKey(): string | undefined
@@ -36,6 +36,16 @@ type Check = { conflicts: Conflict[]; apps: Array<{ name: string; state: string 
 
 const PREVIEW_TTL_MS = 15 * 60_000
 const pending = new Map<string, { dir: string; format: 1 | 2; database: string; expiresAt: number; blocked: boolean }>()
+
+/**
+ * Who may restore: an admin, or the first-run assistant (#12) with its setup
+ * session while no administrator exists yet. Null when neither.
+ */
+export function restoreCaller(c: { adminUserId: string | null; setupSession: boolean; adminCount: number }): { userId: string; setup: boolean } | null {
+  if (c.adminUserId) return { userId: c.adminUserId, setup: false }
+  if (c.setupSession && c.adminCount === 0) return { userId: "", setup: true }
+  return null
+}
 
 /** Compares two versions (major.minor.patch, leading v optional). */
 export function compareVersions(a: string, b: string): number {
@@ -101,6 +111,8 @@ export async function previewConfigRestore(encrypted: string, password: string, 
     }
     await d.validateDb(database)
     const counts = await d.countRestored(database)
+    // Restoring it would leave no way to sign in.
+    if (counts.admins === 0) throw new Error("This backup has no administrator account: it cannot be restored")
 
     const warnings: string[] = []
     for (const a of check.apps) {

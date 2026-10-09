@@ -168,11 +168,11 @@ export async function validateRestoredDatabase(filename: string) {
 export async function countRestoredDatabase(filename: string) {
   const restored = new PrismaClient({ datasources: { db: { url: `file:${filename}` } } })
   try {
-    const [users, groups, places, shares, connectors, placeRows] = await Promise.all([
-      restored.user.count(), restored.group.count(), restored.place.count(), restored.share.count(),
-      restored.notificationConnector.count(), restored.place.findMany({ select: { path: true } }),
+    const [users, admins, groups, places, shares, connectors, placeRows] = await Promise.all([
+      restored.user.count(), restored.user.count({ where: { isAdmin: true } }), restored.group.count(), restored.place.count(),
+      restored.share.count(), restored.notificationConnector.count(), restored.place.findMany({ select: { path: true } }),
     ])
-    return { users, groups, places, shares, connectors, placePaths: placeRows.map(p => p.path) }
+    return { users, admins, groups, places, shares, connectors, placePaths: placeRows.map(p => p.path) }
   } finally {
     await restored.$disconnect()
   }

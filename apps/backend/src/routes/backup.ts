@@ -10,7 +10,8 @@ import { prisma } from "@app/database"
 import {
   countRestoredDatabase, createEncryptedConfigBackup, restoreBusy, setRestoreBusy, stagingRoot, swapDatabase, validateRestoredDatabase,
 } from "../services/config-backup"
-import { applyConfigRestore, cancelConfigRestore, previewConfigRestore, purgeStaging, sweepRestores, type RestoreDeps } from "../services/config-restore"
+import { applyConfigRestore, cancelConfigRestore, previewConfigRestore, purgeStaging, restoreCaller, sweepRestores, type RestoreDeps } from "../services/config-restore"
+import { verifySetupSession } from "../trpc/auth"
 import { requestSync } from "../nats"
 import { readCurrentVersion } from "../trpc/routers/update"
 import { authenticateRequest } from "../utils/request-auth"
@@ -33,6 +34,19 @@ const restoreDeps: RestoreDeps = {
 async function authenticatedAdmin(request: { headers: { authorization?: string } }) {
   const user = await authenticateRequest(request)
   return user?.isAdmin ? user.userId : null
+}
+
+// Restoring is open to an admin, or to the first-run assistant (#12) with its
+// setup session while no administrator exists (checked on every call).
+async function restoreAuth(request: { headers: { authorization?: string } }) {
+  const user = await authenticateRequest(request)
+  let setupSession = false
+  const auth = request.headers.authorization
+  if (!user && auth?.startsWith("Bearer ")) {
+    try { verifySetupSession(auth.slice(7)); setupSession = true } catch { /* not a setup session */ }
+  }
+  const adminCount = setupSession ? await prisma.user.count({ where: { isAdmin: true } }) : 1
+  return restoreCaller({ adminUserId: user?.isAdmin ? user.userId : null, setupSession, adminCount })
 }
 
 export async function backupRoutes(app: FastifyInstance) {
@@ -76,8 +90,7 @@ export async function backupRoutes(app: FastifyInstance) {
     bodyLimit: MAX_BACKUP_SIZE,
     config: { rateLimit: { max: 10, timeWindow: "1 hour" } },
   }, async (request, reply) => {
-    const userId = await authenticatedAdmin(request)
-    if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    if (!await restoreAuth(request)) return reply.status(403).send({ error: "Forbidden" })
     if (restoreBusy()) return reply.status(409).send({ error: "A configuration restore is in progress" })
     if (request.headers["content-type"]?.split(";", 1)[0] !== "application/vnd.hsi.config-backup") {
       return reply.status(415).send({ error: "Unsupported backup content type" })
@@ -113,8 +126,7 @@ export async function backupRoutes(app: FastifyInstance) {
 
   // Restore: forget a preview (Cancel), with its decrypted files.
   app.post("/system/config-restore/cancel", { bodyLimit: 4 * 1024 }, async (request, reply) => {
-    const userId = await authenticatedAdmin(request)
-    if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    if (!await restoreAuth(request)) return reply.status(403).send({ error: "Forbidden" })
     const token = (request.body as { token?: unknown } | null)?.token
     if (typeof token === "string" && token.length <= 64) await cancelConfigRestore(token)
     return { ok: true }
@@ -125,14 +137,17 @@ export async function backupRoutes(app: FastifyInstance) {
     bodyLimit: 4 * 1024,
     config: { rateLimit: { max: 3, timeWindow: "1 hour" } },
   }, async (request, reply) => {
-    const userId = await authenticatedAdmin(request)
-    if (!userId) return reply.status(403).send({ error: "Forbidden" })
+    const caller = await restoreAuth(request)
+    if (!caller) return reply.status(403).send({ error: "Forbidden" })
     const token = (request.body as { token?: unknown } | null)?.token
     if (typeof token !== "string" || token.length > 64) return reply.status(400).send({ error: "Missing restore token" })
     if (restoreBusy()) return reply.status(409).send({ error: "A configuration restore is in progress" })
     setRestoreBusy(true)
     try {
-      await applyConfigRestore(token, userId, request.ip, restoreDeps)
+      await applyConfigRestore(token, caller.userId, request.ip, restoreDeps)
+      // Restored from the first-run assistant: its accounts are back, so the
+      // one-time setup link must not open anything any more.
+      if (caller.setup) await requestSync("root.setup.consume", {}, 10_000).catch(() => {})
       reply.header("Cache-Control", "no-store")
       // Stop accepting requests before exit so Prisma cannot reconnect to the
       // freshly swapped database during the short response/restart window.

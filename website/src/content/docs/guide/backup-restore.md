@@ -26,10 +26,12 @@ Backups made before HSI 1.65 hold the database only; they still restore.
 
 ## Restore on a fresh installation
 
-1. Install HSI and create the administrator with the setup link.
-2. Connect the data disks.
-3. In Settings > Backup & restore, choose the backup file, type its password,
-   then **Check the backup**. HSI decrypts it and shows:
+1. Install HSI and connect the data disks.
+2. Open the setup link the installer printed, choose **Restore a backup**
+   instead of creating a new administrator. (On a server already set up, use
+   Settings > Backup & restore.)
+3. Choose the backup file, type its password, then **Check the backup**. HSI
+   decrypts it and shows:
    - where and when it was made, and what it holds;
    - **conflicts**, which block the restore: a Linux account id from the backup
      is already used by another account on this server (or an account exists
@@ -42,7 +44,10 @@ Backups made before HSI 1.65 hold the database only; they still restore.
 4. **Restore…** recreates the Linux accounts with their ids, the apps (stopped)
    and the volume descriptions, replaces the database, then restarts HSI.
 
-A backup made by a newer HSI than the one installed is refused: update HSI first.
+A backup made by a newer HSI than the one installed is refused: update HSI
+first. A backup without any administrator account is refused too, since nobody
+could sign in afterwards. Restored from the setup assistant, you then sign in
+with one of the backup's accounts.
 
 ## After the restore
 

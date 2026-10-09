@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conflicts with the server, with the command to solve it. Accounts come back
   with their ids, apps stopped, volumes as descriptions to Reapply; Samba
   passwords must be set again. Older backups (database only) still restore.
+- **Restore from the setup assistant** (#1, #12): on a new installation, the
+  setup link offers "Restore a backup" next to creating the administrator, to
+  rebuild a server from its configuration backup and sign in with its accounts.
+  A backup without an administrator is refused.
 - **First-run setup assistant** (#12): a new installation prints a one-time
   link that opens a setup assistant: create the administrator, name the server
   and set its time zone (previewed like other system changes), then links to a

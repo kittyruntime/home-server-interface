@@ -44,7 +44,9 @@ Finish the setup:  http://192.168.1.20:9001/setup#token=…
 
 Open it to create the administrator. The setup assistant then lets you name the
 server and set its time zone, and points to the next steps: a first volume,
-shares, alerts. A reload or a reboot resumes where you stopped.
+shares, alerts. A reload or a reboot resumes where you stopped. To rebuild a
+server instead, choose **Restore a backup** and restore its
+[configuration backup](/home-server-interface/guide/backup-restore/).
 
 The link works once: it is deleted when the administrator is created. The token
 travels after the `#`, which browsers never send to the server, so it does not
