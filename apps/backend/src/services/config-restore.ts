@@ -48,6 +48,28 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
+/** Removes a preview and its decrypted files at once (Cancel). */
+export async function cancelConfigRestore(token: string) {
+  const p = pending.get(token)
+  if (!p) return
+  pending.delete(token)
+  await rm(p.dir, { recursive: true, force: true })
+}
+
+/**
+ * Removes the staged previews and exports left by an earlier run of the
+ * backend: the in-memory list of previews does not survive a restart.
+ */
+export async function purgeStaging(root: string) {
+  const { readdir } = await import("node:fs/promises")
+  const known = new Set([...pending.values()].map(p => path.basename(p.dir)))
+  for (const name of await readdir(root).catch(() => [] as string[])) {
+    if ((name.startsWith("restore-") || name.startsWith("export-")) && !known.has(name)) {
+      await rm(path.join(root, name), { recursive: true, force: true })
+    }
+  }
+}
+
 /** Drops previews older than 15 minutes, with their decrypted files. */
 export async function sweepRestores(d: Pick<RestoreDeps, "now">) {
   for (const [token, p] of pending) {
@@ -117,16 +139,32 @@ export async function applyConfigRestore(token: string, userId: string, ip: stri
   pending.delete(token)
   try {
     if (p.blocked) throw new Error("This backup has account conflicts: resolve them on the server, then check it again")
+    let keptEnv: string | null = null
     if (p.format === 2) {
       const dest = path.dirname(p.database)
+      // Read before anything is applied: an unreadable secrets file stops here.
+      let key: string | undefined
+      try {
+        const raw = await readFile(path.join(dest, "secrets.json"), "utf8").catch(() => "{}")
+        key = (JSON.parse(raw) as { HSI_SECRETS_KEY?: string }).HSI_SECRETS_KEY?.trim()
+      } catch {
+        throw new Error("The secrets file of this backup cannot be read")
+      }
+      if (key && !/^[0-9a-fA-F]{64}$/.test(key)) throw new Error("The secrets key of this backup is not valid")
       // The worker checks the conflicts again: an account created since the
       // preview blocks the restore too.
       await d.worker("root.config.apply", { dir: dest })
-      const secrets = JSON.parse(await readFile(path.join(dest, "secrets.json"), "utf8").catch(() => "{}")) as { HSI_SECRETS_KEY?: string }
-      const key = secrets.HSI_SECRETS_KEY?.trim()
-      if (key && key !== d.currentSecretsKey()) await d.worker("root.config.secretsKey", { key, envPath: d.envPath() })
+      if (key && key !== d.currentSecretsKey()) {
+        keptEnv = (await d.worker("root.config.secretsKey", { key }) as { backup?: string }).backup ?? null
+      }
     }
-    await d.swapDatabase(p.database, userId, ip)
+    try {
+      await d.swapDatabase(p.database, userId, ip)
+    } catch (error) {
+      // The old database stays: put its key back too.
+      if (keptEnv) await d.worker("root.config.secretsRestore", { backup: keptEnv }).catch(() => {})
+      throw error
+    }
   } finally {
     await rm(p.dir, { recursive: true, force: true })
   }

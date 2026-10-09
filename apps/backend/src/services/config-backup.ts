@@ -142,8 +142,9 @@ export async function validateRestoredDatabase(filename: string) {
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
     )
     for (const { name } of activeTables) {
-      // Tables added since the backup (SetupState...) are created empty by the
-      // schema push at the next start; the others must be there.
+      // SetupState is newer than older backups: without it, the setup
+      // assistant reads as finished (the router tolerates the missing table)
+      // until the next update creates it. The other tables must be there.
       if (!tables.has(name)) {
         if (name === "SetupState") continue
         throw new Error(`Backup is missing required table ${name}`)

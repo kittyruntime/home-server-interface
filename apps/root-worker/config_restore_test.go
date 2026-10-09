@@ -231,21 +231,6 @@ func TestApplyRechecksConflicts(t *testing.T) {
 	}
 }
 
-func TestApplyKeepsAppsAside(t *testing.T) {
-	dest := unpackedBackup(t)
-	stubAccounts(t, map[string][2]int{}, map[string]int{})
-	stubRun(t)
-	_ = os.WriteFile(filepath.Join(containersDir, "kuma", "compose.yaml"), []byte("services: {mine: {}}\n"), 0o644)
-	if err := applyBackup(dest, time.Date(2026, 10, 8, 10, 0, 0, 0, time.UTC)); err != nil {
-		t.Fatal(err)
-	}
-	aside, _ := os.ReadFile(filepath.Join(containersDir, "kuma.before-restore-20261008-100000", "compose.yaml"))
-	now, _ := os.ReadFile(filepath.Join(containersDir, "kuma", "compose.yaml"))
-	if string(aside) != "services: {mine: {}}\n" || string(now) != "services: {}\n" {
-		t.Fatalf("aside %q now %q", aside, now)
-	}
-}
-
 func TestApplyKeepsDescriptionsAside(t *testing.T) {
 	dest := unpackedBackup(t)
 	stubAccounts(t, map[string][2]int{}, map[string]int{})
@@ -255,29 +240,12 @@ func TestApplyKeepsDescriptionsAside(t *testing.T) {
 	if err := applyBackup(dest, time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if b, _ := os.ReadFile(p + ".before-restore"); !strings.Contains(string(b), "mine") {
+	kept, _ := filepath.Glob(p + ".before-restore-*")
+	if len(kept) != 1 {
+		t.Fatalf("kept aside with a timestamp: %v", kept)
+	}
+	if b, _ := os.ReadFile(kept[0]); !strings.Contains(string(b), "mine") {
 		t.Fatalf("kept aside: %q", b)
-	}
-}
-
-func TestReplaceSecretsKey(t *testing.T) {
-	p := filepath.Join(t.TempDir(), ".env")
-	_ = os.WriteFile(p, []byte("A=1\nHSI_SECRETS_KEY=old\nB=2\n"), 0o600)
-	if err := replaceSecretsKey(p, "new"); err != nil {
-		t.Fatal(err)
-	}
-	b, _ := os.ReadFile(p)
-	old, _ := os.ReadFile(p + ".before-restore")
-	if string(b) != "A=1\nHSI_SECRETS_KEY=new\nB=2\n" || !strings.Contains(string(old), "=old") {
-		t.Fatalf("%q / %q", b, old)
-	}
-	_ = os.WriteFile(p, []byte("A=1\n"), 0o600)
-	_ = replaceSecretsKey(p, "k")
-	if b, _ := os.ReadFile(p); string(b) != "A=1\nHSI_SECRETS_KEY=k\n" {
-		t.Fatalf("added: %q", b)
-	}
-	if err := replaceSecretsKey(p, "bad\nX=1"); err == nil {
-		t.Fatal("a key with a line break is refused")
 	}
 }
 

@@ -948,6 +948,11 @@ chmod 640 "$NATS_CONF"
 chown root:nats "$NATS_CONF"
 success "NATS config → $NATS_CONF"
 
+# Configuration backups (#1) are staged in a directory only the backend user
+# and root can read; it must exist before the backend unit names it.
+BACKUP_STAGING_DIR="/var/lib/${APP_NAME}/backup-staging"
+install -d -m 0700 -o "$APP_USER" "$BACKUP_STAGING_DIR"
+
 # Keep a log level the admin set in worker.env across updates.
 WORKER_LOG_LEVEL="${HSI_LOG_LEVEL:-$(grep -s '^HSI_LOG_LEVEL=' "$WORKER_ENV" | cut -d= -f2 || true)}"
 [[ "${WORKER_LOG_LEVEL:-info}" =~ ^(debug|info|warn|error)$ ]] || WORKER_LOG_LEVEL=info
@@ -959,6 +964,8 @@ HSI_LOG_LEVEL=${WORKER_LOG_LEVEL:-info}
 HSI_MAINTENANCE_CONFIG=$APP_CONF_DIR/maintenance.json
 HSI_MAINTENANCE_STATE=/var/lib/${APP_NAME}/maintenance-state.json
 HSI_MAINTENANCE_TIMER=/etc/systemd/system/${APP_NAME}-maintenance.timer
+HSI_BACKEND_ENV=$ENV_FILE
+HSI_BACKUP_STAGING=$BACKUP_STAGING_DIR
 EOF
 chmod 600 "$WORKER_ENV"
 success "Worker env → $WORKER_ENV"
@@ -1120,7 +1127,8 @@ ProtectSystem=strict
 ProtectHome=read-only
 # CONTAINERS_DIR: the backend writes compose.yaml files itself (containerStacks.ts);
 # without it ProtectSystem=strict makes /opt read-only and App Store installs fail.
-ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR
+# BACKUP_STAGING_DIR: configuration backups and restores are staged there (#1).
+ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR $BACKUP_STAGING_DIR
 
 [Install]
 WantedBy=${APP_NAME}.target

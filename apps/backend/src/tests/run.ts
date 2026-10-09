@@ -1857,7 +1857,7 @@ await testSharePlans()
         const dest = String(payload.dest)
         await mkdir(dest, { recursive: true })
         await writeFile(join(dest, "database.db"), "db")
-        await writeFile(join(dest, "secrets.json"), JSON.stringify({ HSI_SECRETS_KEY: "k2" }))
+        await writeFile(join(dest, "secrets.json"), JSON.stringify({ HSI_SECRETS_KEY: "c".repeat(64) }))
         return { format: 2, hsiVersion: manifestVersion, createdAt: "2026-10-06T10:00:00Z", hostname: "HSI", items: [] }
       }
       if (subject === "root.config.check") return check
@@ -1867,7 +1867,7 @@ await testSharePlans()
     countRestored: async () => ({ users: 2, groups: 1, places: 3, shares: 1, connectors: 1, placePaths: ["/srv/data/photos"] }),
     pathExists: async () => false,
     currentVersion: () => "1.65.0",
-    currentSecretsKey: () => "k1",
+    currentSecretsKey: () => "d".repeat(64),
     envPath: () => "/opt/hsi/.env",
     swapDatabase: async (file: string) => { swapped.push(file) },
     now: () => now,
@@ -1904,6 +1904,62 @@ await testSharePlans()
   assert.equal(v1.format, 1)
   await applyConfigRestore(v1.token, "u1", "ip", deps)
   assert.ok(!calls.includes("root.config.apply"))
+  await rm(work, { recursive: true, force: true })
+}
+
+// Restore review follow-ups (#1): the secrets key is rolled back when the
+// database swap fails, a bad secrets file stops before anything is applied,
+// a cancelled preview is removed at once.
+{
+  const { encryptToFile, MAGIC_V2 } = await import("../services/config-backup")
+  const { previewConfigRestore, applyConfigRestore, cancelConfigRestore } = await import("../services/config-restore")
+  const { writeFile, mkdtemp: mkd, mkdir, readdir } = await import("node:fs/promises")
+  const work = await mkd(join(tmpdir(), "hsi-backup-test2-"))
+  const password = "a-long-test-password-123"
+  await writeFile(join(work, "plain"), Buffer.alloc(300, 1))
+  await encryptToFile(join(work, "plain"), join(work, "v2.hsibak"), password, MAGIC_V2)
+  let secrets = JSON.stringify({ HSI_SECRETS_KEY: "b".repeat(64) })
+  const calls: string[] = []
+  const swapFails = true
+  const deps = {
+    stagingRoot: async () => { const d = join(work, "staging"); await mkdir(d, { recursive: true }); return d },
+    worker: async (subject: string, payload: Record<string, unknown>) => {
+      calls.push(subject)
+      if (subject === "root.config.unpack") {
+        const dest = String(payload.dest)
+        await mkdir(dest, { recursive: true })
+        await writeFile(join(dest, "database.db"), "db")
+        await writeFile(join(dest, "secrets.json"), secrets)
+        return { format: 2, hsiVersion: "1.65.0" }
+      }
+      if (subject === "root.config.check") return { conflicts: [], apps: [], volumes: [] }
+      if (subject === "root.config.secretsKey") return { backup: "/opt/hsi/.env.before-restore-x" }
+      return {}
+    },
+    validateDb: async () => {},
+    countRestored: async () => ({ users: 0, groups: 0, places: 0, shares: 0, connectors: 0, placePaths: [] }),
+    pathExists: async () => true,
+    currentVersion: () => "1.65.0",
+    currentSecretsKey: () => "a".repeat(64),
+    envPath: () => "",
+    swapDatabase: async () => { if (swapFails) throw new Error("disk full") },
+    now: () => Date.now(),
+  }
+  const p = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  await assert.rejects(applyConfigRestore(p.token, "u", "ip", deps), /disk full/)
+  assert.deepEqual(calls.slice(-3), ["root.config.apply", "root.config.secretsKey", "root.config.secretsRestore"])
+
+  secrets = "{not json"
+  calls.length = 0
+  const bad = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  await assert.rejects(applyConfigRestore(bad.token, "u", "ip", deps), /secrets/i)
+  assert.ok(!calls.includes("root.config.apply"), "nothing applied with an unreadable secrets file")
+
+  secrets = JSON.stringify({ HSI_SECRETS_KEY: "b".repeat(64) })
+  const c = await previewConfigRestore(join(work, "v2.hsibak"), password, deps)
+  await cancelConfigRestore(c.token)
+  assert.deepEqual(await readdir(join(work, "staging")), [], "a cancelled preview leaves nothing")
+  await assert.rejects(applyConfigRestore(c.token, "u", "ip", deps), /expired|unknown/i)
   await rm(work, { recursive: true, force: true })
 }
 

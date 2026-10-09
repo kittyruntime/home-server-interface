@@ -16,9 +16,9 @@ HSI cannot recover it without that password.
 | Included | Not included |
 |---|---|
 | Accounts, groups, permissions, Places, shares, settings, notification connectors, metrics and audit history (the database) | Files on the volumes and in Places |
-| The key that encrypts the connectors' secrets | Docker volumes and app data |
+| The key that encrypts the connectors' secrets | Disks, arrays and volumes themselves |
 | The Linux account and group ids of each HSI account | Samba passwords |
-| Each app's definition (`compose.yaml` and its configuration files) | Disks, arrays and volumes themselves |
+| Each app's definition: the files at the top of its folder in `/opt/containers` (`compose.yaml`, `.env`, configuration files) | Subfolders of an app's folder, which usually hold its data, and Docker volumes |
 | The [storage descriptions](/home-server-interface/guide/storage-descriptions/) of the volumes | The server's own secrets (sessions, message bus) |
 | The schedule of disk checks | |
 
@@ -36,9 +36,9 @@ Backups made before HSI 1.65 hold the database only; they still restore.
      with other ids). Each conflict comes with the command to solve it on the
      server, for example `sudo usermod -u 1050 bob`. Solve them, then check the
      backup again;
-   - **warnings**: an app that exists here with other files (it is kept aside as
-     `<app>.before-restore-<date>`), a volume whose disks are not connected, a
-     Place folder that does not exist yet.
+   - **warnings**: an app that exists here with other files (it is stopped and
+     kept aside in `/opt/containers/.before-restore/<app>-<date>`), a volume whose
+     disks are not connected, a Place folder that does not exist yet.
 4. **Restore…** recreates the Linux accounts with their ids, the apps (stopped)
    and the volume descriptions, replaces the database, then restarts HSI.
 

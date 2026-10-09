@@ -81,7 +81,16 @@ function encodePassword(value: string) {
 }
 
 function resetPreview() {
+  const t = preview.value?.token
   preview.value = null
+  // The server drops the decrypted backup at once.
+  if (t && token.value) {
+    void fetch('/system/config-restore/cancel', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: t }),
+    }).catch(() => {})
+  }
 }
 
 async function checkBackup() {
