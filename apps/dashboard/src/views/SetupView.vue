@@ -7,7 +7,9 @@ import { useAuth } from '../lib/auth'
 import { applyPlanned } from '../lib/plan'
 import { setupScreen, validHostname, type SetupStatus } from '../lib/setup'
 import PlanDialog from '../components/ui/PlanDialog.vue'
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import LoadingState from '../components/ui/LoadingState.vue'
+import RestoreForm from '../components/backup/RestoreForm.vue'
 
 /* First-run setup assistant (#12): the one-time link from the installer
    creates the administrator, then the server's identity, then next steps. */
@@ -69,6 +71,14 @@ async function checkToken() {
   } finally {
     busy.value = false
   }
+}
+
+// ── Administrator, or a configuration backup instead (#1) ────────────────────
+const startMode = ref<'admin' | 'restore'>('admin')
+function afterRestore() {
+  // The restored accounts sign in: the setup session is over.
+  setupSession.value = ''
+  window.location.assign('/login')
 }
 
 // ── Administrator ────────────────────────────────────────────────────────────
@@ -201,8 +211,17 @@ const NEXT = [
           <div class="flex justify-end"><button class="btn btn-primary btn-sm" :disabled="busy || !tokenInput.trim()">Continue</button></div>
         </form>
 
-        <!-- Administrator -->
-        <form v-else-if="screen === 'admin'" class="space-y-4" @submit.prevent="createAdmin">
+        <!-- Start: a new server, or restore a configuration backup -->
+        <div v-else-if="screen === 'admin'" class="space-y-4">
+          <div class="flex gap-2" role="tablist" aria-label="How to start">
+            <button type="button" role="tab" :aria-selected="startMode === 'admin'" :class="['btn btn-sm flex-1 justify-center', startMode === 'admin' ? 'btn-primary' : 'btn-outline']" @click="startMode = 'admin'">New server</button>
+            <button type="button" role="tab" :aria-selected="startMode === 'restore'" :class="['btn btn-sm flex-1 justify-center', startMode === 'restore' ? 'btn-primary' : 'btn-outline']" @click="startMode = 'restore'">Restore a backup</button>
+          </div>
+          <div v-if="startMode === 'restore'" class="space-y-2">
+            <p class="text-sm text-[var(--c-text-2)]">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>
+            <RestoreForm :auth-token="setupSession" :after-restart="afterRestore" :show-follow-ups="false" />
+          </div>
+        <form v-else class="space-y-4" @submit.prevent="createAdmin">
           <div>
             <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Create the administrator</h2>
             <p class="mt-1 text-sm text-[var(--c-text-2)]">This account manages the server. It is also a Linux and SMB account, so it can open the shares.</p>
@@ -225,6 +244,7 @@ const NEXT = [
             </button>
           </div>
         </form>
+        </div>
 
         <!-- Server identity -->
         <form v-else-if="screen === 'identity'" class="space-y-4" @submit.prevent="applyIdentity">
@@ -270,4 +290,5 @@ const NEXT = [
     </div>
   </div>
   <PlanDialog />
+  <ConfirmDialog />
 </template>

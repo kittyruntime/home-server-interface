@@ -1963,4 +1963,34 @@ await testSharePlans()
   await rm(work, { recursive: true, force: true })
 }
 
+// Restore from the first-run assistant (#1, #12): a setup session opens the
+// restore only while no administrator exists; a backup without one is refused.
+{
+  const { restoreCaller } = await import("../services/config-restore")
+  assert.deepEqual(restoreCaller({ adminUserId: "u1", setupSession: false, adminCount: 3 }), { userId: "u1", setup: false })
+  assert.deepEqual(restoreCaller({ adminUserId: null, setupSession: true, adminCount: 0 }), { userId: "", setup: true })
+  assert.equal(restoreCaller({ adminUserId: null, setupSession: true, adminCount: 1 }), null, "setup is over: a setup session opens nothing")
+  assert.equal(restoreCaller({ adminUserId: null, setupSession: false, adminCount: 0 }), null)
+
+  const { encryptToFile, MAGIC_V2 } = await import("../services/config-backup")
+  const { previewConfigRestore } = await import("../services/config-restore")
+  const { writeFile, mkdtemp: mkd, mkdir } = await import("node:fs/promises")
+  const work = await mkd(join(tmpdir(), "hsi-backup-test3-"))
+  await writeFile(join(work, "plain"), Buffer.alloc(300, 2))
+  await encryptToFile(join(work, "plain"), join(work, "v2.hsibak"), "a-long-test-password-123", MAGIC_V2)
+  const deps = {
+    stagingRoot: async () => { const d = join(work, "staging"); await mkdir(d, { recursive: true }); return d },
+    worker: async (subject: string, payload: Record<string, unknown>) => {
+      if (subject === "root.config.unpack") { await mkdir(String(payload.dest), { recursive: true }); await writeFile(join(String(payload.dest), "database.db"), "db"); return { format: 2, hsiVersion: "1.65.0" } }
+      return { conflicts: [], apps: [], volumes: [] }
+    },
+    validateDb: async () => {},
+    countRestored: async () => ({ users: 1, admins: 0, groups: 0, places: 0, shares: 0, connectors: 0, placePaths: [] }),
+    pathExists: async () => true, currentVersion: () => "1.65.0", currentSecretsKey: () => undefined, envPath: () => "",
+    swapDatabase: async () => {}, now: () => Date.now(),
+  }
+  await assert.rejects(previewConfigRestore(join(work, "v2.hsibak"), "a-long-test-password-123", deps), /administrator/)
+  await rm(work, { recursive: true, force: true })
+}
+
 console.log("Backend security tests passed")
