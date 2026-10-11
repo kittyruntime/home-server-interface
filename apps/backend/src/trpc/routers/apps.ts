@@ -7,7 +7,9 @@ import { CATALOG } from "@app/app-catalog"
 import { router, adminProcedure } from "../index"
 import type { Context } from "../context"
 import { publishJob, requestSync } from "../../nats"
-import { removeStackDir, stackFilePath, writeStack } from "../../services/containerStacks"
+import {
+  getStack, readPreviousStack, removePreviousStack, removeStackDir, stackFilePath, writePreviousStack, writeStack,
+} from "../../services/containerStacks"
 import { assertDockerReady } from "../../services/docker-status"
 import { assertVolumeAvailable } from "../../services/volume-guard"
 import { planAuditMeta } from "../../services/storage-plan"
@@ -22,6 +24,8 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
     readStack: async name => {
       try { return await readFile(stackFilePath(name), "utf8") } catch { return null }
     },
+    readPrevious: readPreviousStack,
+    appStatus:    async name => { try { return (await getStack(name)).status } catch { return "unknown" } },
     findPlace:   id => ctx.prisma.place.findUnique({ where: { id }, select: { id: true, name: true, path: true } }),
     placeAtPath: async path => (await ctx.prisma.place.findFirst({ where: { path } })) !== null,
     catalog:     id => CATALOG.find(m => m.id === id),
@@ -35,6 +39,8 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
       createPlace:    async (name, path) => (await ctx.prisma.place.create({ data: { name, path } })).id,
       validate:       async name => { await requestSync("root.container.composeValidate", { name }, 30_000) },
       publishJob:     (action, payload) => publishJob(action, payload, userId),
+      writePrevious:  writePreviousStack,
+      removePrevious: removePreviousStack,
     },
   }
 }
@@ -44,6 +50,10 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
 async function preconditions(plan: AppPlan): Promise<void> {
   await assertDockerReady()
   if (plan.op === "app.apply" || plan.op === "app.start") {
+    await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
+  }
+  // An update or rollback recreates a running app.
+  if ((plan.op === "app.update" || plan.op === "app.rollback") && plan.observed.status === "running") {
     await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
   }
 }

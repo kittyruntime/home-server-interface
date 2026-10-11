@@ -14,6 +14,13 @@ admin-only.
 - **App Store**: a curated catalog with guided installs and pinned image versions.
   Secret settings can be generated, and a port already in use comes with a free
   one to switch to. After an install, HSI opens the new app with its logs.
+- **App updates**: when a new HSI version ships a newer image for an installed
+  App Store app, its card says so with a link to the release notes, and the
+  Apps page marks it. **Update…** previews the one changed line of
+  `compose.yaml`, keeps the current file as `compose.yaml.previous`, and
+  recreates the app if it runs (a stopped app gets the new image when it
+  starts). **Roll back…** puts the previous file back. An image changed by hand
+  to another repository or to a newer tag is left alone.
 - **Containers**: create, edit, start, stop and delete containers, read their
   logs, and manage networks, volumes and mounts. An existing Compose file can be
   imported to prefill a container.

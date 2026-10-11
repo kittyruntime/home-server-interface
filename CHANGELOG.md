@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   administrator exists. Existing installations keep their accounts.
 
 ### Added
+- **App updates** (#26): an App Store app whose catalog image is newer than the
+  one it runs shows "Update available" with a link to the release notes (and an
+  "Update" badge on the Apps page). The update is previewed like other app
+  changes: only the image line changes, the previous `compose.yaml` is kept,
+  and "Roll back" restores it. Uptime Kuma moves to 1.23.16.
 - **Full configuration backup** (#1): a configuration backup now also holds the
   Linux account and group ids, each app's definition, the volume descriptions,
   the disk check schedule and the key of the notification secrets. Restoring

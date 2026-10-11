@@ -5,6 +5,8 @@ import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
 import DockerUnavailable from '../apps/DockerUnavailable.vue'
 import { useDockerStatus } from '../../lib/docker'
+import { applyPlanned } from '../../lib/plan'
+import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -46,6 +48,26 @@ const STATE_META: Record<CardState, { label: string; dot: string; text: string }
 }
 
 function openWizard(a: Entry) { selected.value = a }
+
+// Updates (#26): previewed as a plan, then the list is read again.
+const busy = ref<string | null>(null)
+const actionError = ref<{ id: string; message: string } | null>(null)
+async function runPlan(a: Entry, op: 'app.update' | 'app.rollback') {
+  const inst = a.installedApp
+  if (!inst) return
+  const opts = op === 'app.update' && inst.update ? updatePlan(inst.name, inst.update) : rollbackPlan(inst.name, inst.rollbackTo ?? '')
+  busy.value = a.id
+  actionError.value = null
+  try {
+    await applyPlanned(op, { name: inst.name }, { ...opts, domain: 'apps' })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    if (message) actionError.value = { id: a.id, message }
+  } finally {
+    busy.value = null
+    await refresh()
+  }
+}
 function openApp(a: Entry) {
   // Prefer the port's configured domain/HTTPS binding; else the mapped host port.
   const url = a.installedApp?.webUrl
@@ -127,6 +149,13 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
             </div>
           </div>
 
+          <!-- Update available (#26) -->
+          <div v-if="a.installedApp?.update" class="flex items-center gap-2 flex-wrap text-xs text-[var(--c-warning)]">
+            <span>{{ updateText(a.installedApp.update) }}</span>
+            <a v-if="a.changelog" :href="a.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-[var(--c-text-1)]" @click.stop>What's new ↗</a>
+          </div>
+          <p v-if="actionError?.id === a.id" class="text-xs text-[var(--c-accent)] break-words">[ERR] {{ actionError.message }}</p>
+
           <!-- State + action -->
           <div class="flex items-center justify-between gap-2 mt-auto pt-1">
             <span class="inline-flex items-center gap-1.5 text-xs" :class="STATE_META[cardState(a)].text">
@@ -134,17 +163,31 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               {{ STATE_META[cardState(a)].label }}
             </span>
 
-            <button
-              v-if="cardState(a) === 'none'"
-              class="btn btn-primary btn-xs"
-              @click.stop="openWizard(a)"
-            >Install</button>
-            <button
-              v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null"
-              class="btn btn-outline btn-xs"
-              @click.stop="openApp(a)"
-            >Open ↗</button>
-            <span v-else class="badge badge-muted">Installed</span>
+            <div class="flex items-center gap-1.5 flex-wrap justify-end">
+              <button
+                v-if="a.installedApp?.rollbackTo && !a.installedApp.update"
+                class="btn btn-ghost btn-xs"
+                :disabled="busy === a.id"
+                @click.stop="runPlan(a, 'app.rollback')"
+              >Roll back to {{ a.installedApp.rollbackTo }}…</button>
+              <button
+                v-if="a.installedApp?.update"
+                class="btn btn-primary btn-xs"
+                :disabled="busy === a.id"
+                @click.stop="runPlan(a, 'app.update')"
+              >Update…</button>
+              <button
+                v-if="cardState(a) === 'none'"
+                class="btn btn-primary btn-xs"
+                @click.stop="openWizard(a)"
+              >Install</button>
+              <button
+                v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null"
+                class="btn btn-outline btn-xs"
+                @click.stop="openApp(a)"
+              >Open ↗</button>
+              <span v-else-if="!a.installedApp?.update" class="badge badge-muted">Installed</span>
+            </div>
           </div>
         </div>
       </div>

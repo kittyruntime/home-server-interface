@@ -5,7 +5,9 @@ import { router, protectedProcedure, adminProcedure } from "../index"
 import { CATALOG } from "@app/app-catalog"
 import { portDomainUrl, generateComposeYaml, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
-import { listStacks, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
+import { listStacks, readPreviousStack, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
+import { availableUpdate, splitImage } from "../../services/app-update"
+import { parseComposeYaml } from "@app/compose"
 import { resolvePlaceMounts } from "./container"
 import { assertDockerReady } from "../../services/docker-status"
 
@@ -26,6 +28,14 @@ export const catalogRouter = router({
     // and the web-UI host port so the store card can show a real state + an
     // Open action, not just an installed/not-installed boolean.
     const stacks = await listStacks()
+    // The rollback offered after an update (#26): the image the kept file names.
+    const previousImage = new Map<string, string>()
+    await Promise.all(stacks.map(async (s) => {
+      const prev = s.app ? await readPreviousStack(s.name) : null
+      let image: string | undefined
+      try { image = prev ? parseComposeYaml(prev).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
+      if (image && image !== s.app?.image) previousImage.set(s.name, image)
+    }))
     return CATALOG.map((m) => {
       const stack = stacks.find((s) =>
         s.app?.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
@@ -42,6 +52,11 @@ export const catalogRouter = router({
             status:  stack.status,
             webPort: webRow?.hostPort ?? null,
             webUrl:  webRow ? portDomainUrl(webRow) : null,
+            image:   stack.app.image,
+            update:  availableUpdate(stack.app.image, m.image),
+            rollbackTo: previousImage.has(stack.name)
+              ? splitImage(previousImage.get(stack.name)!).tag ?? previousImage.get(stack.name)!
+              : null,
           }
         : null
       return { ...m, installed: !!stack, installedApp }

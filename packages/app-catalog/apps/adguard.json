@@ -6,6 +6,7 @@
   "description": "AdGuard Home is a network-wide software for blocking ads and trackers, acting as a DNS server that re-routes tracking domains to a black hole for every device on your network.",
   "website": "https://adguard.com/en/adguard-home/overview.html",
   "image": "adguard/adguardhome:v0.107.52",
+  "changelog": "https://github.com/AdguardTeam/AdGuardHome/releases",
   "webUiPort": 3000,
   "ports": [
     { "container": 3000, "protocol": "tcp", "label": "Setup / Web UI" },

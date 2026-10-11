@@ -6,6 +6,7 @@
   "description": "IT Tools bundles dozens of everyday developer utilities (encoders, converters, generators, and more) in one self-hosted web app.",
   "website": "https://it-tools.tech",
   "image": "corentinth/it-tools:2024.10.22-7ca5933",
+  "changelog": "https://github.com/CorentinTh/it-tools/releases",
   "webUiPort": 80,
   "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI" }]
 }
