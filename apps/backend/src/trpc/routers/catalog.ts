@@ -22,7 +22,7 @@ const zInstallVolume = z.object({
 })
 
 export const catalogRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     // Enrich every manifest with its installed instance (if any): a declarative
     // stack carrying the `hsi.catalog.id` label. We surface the live `status`
     // and the web-UI host port so the store card can show a real state + an
@@ -30,8 +30,9 @@ export const catalogRouter = router({
     const stacks = await listStacks()
     // The rollback offered after an update (#26): the image the kept file names.
     const previousImage = new Map<string, string>()
-    await Promise.all(stacks.map(async (s) => {
-      const prev = s.app ? await readPreviousStack(s.name) : null
+    const fromCatalog = stacks.filter((s) => s.app?.labels.some((l) => l.key === "hsi.catalog.id"))
+    if (ctx.user.isAdmin) await Promise.all(fromCatalog.map(async (s) => {
+      const prev = await readPreviousStack(s.name)
       let image: string | undefined
       try { image = prev ? parseComposeYaml(prev).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
       if (image && image !== s.app?.image) previousImage.set(s.name, image)
@@ -52,8 +53,9 @@ export const catalogRouter = router({
             status:  stack.status,
             webPort: webRow?.hostPort ?? null,
             webUrl:  webRow ? portDomainUrl(webRow) : null,
-            image:   stack.app.image,
-            update:  availableUpdate(stack.app.image, m.image),
+            // Versions and images are for the admins who manage apps.
+            image:   ctx.user.isAdmin ? stack.app.image : null,
+            update:  ctx.user.isAdmin ? availableUpdate(stack.app.image, m.image) : null,
             rollbackTo: previousImage.has(stack.name)
               ? splitImage(previousImage.get(stack.name)!).tag ?? previousImage.get(stack.name)!
               : null,

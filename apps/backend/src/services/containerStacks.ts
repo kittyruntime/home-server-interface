@@ -110,6 +110,16 @@ export async function listStacks() {
   })
 }
 
+/**
+ * The state of one app read from Docker now, for a plan: unlike the lists,
+ * an unreachable worker or Docker is an error, never "no container".
+ */
+export async function stackStatusNow(name: string): Promise<string> {
+  const content = await readFile(stackFilePath(name), "utf8")
+  const all = await requestSync<ObservedContainer[]>("root.container.listAll", {}, 10_000)
+  return stackStatus(observedForStack(all, name, parseComposeYaml(content).services))
+}
+
 export async function getStack(name: string) {
   const stacks = await listStacks()
   const found = stacks.find(s => s.name === name)
@@ -144,8 +154,14 @@ export async function readPreviousStack(name: string): Promise<string | null> {
 
 export async function writePreviousStack(name: string, content: string): Promise<void> {
   const tmp = path.join(path.dirname(stackFilePath(name)), `.previous-${process.pid}-${Date.now()}.tmp`)
-  await writeFile(tmp, content, "utf8")
-  await rename(tmp, previousFilePath(name))
+  try {
+    await writeFile(tmp, content, "utf8")
+    await rename(tmp, previousFilePath(name))
+  } catch (e) {
+    // A leftover would also end up in configuration backups.
+    await rm(tmp, { force: true })
+    throw e
+  }
 }
 
 export async function removePreviousStack(name: string): Promise<void> {

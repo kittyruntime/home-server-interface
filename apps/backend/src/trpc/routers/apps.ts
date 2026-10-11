@@ -8,7 +8,7 @@ import { router, adminProcedure } from "../index"
 import type { Context } from "../context"
 import { publishJob, requestSync } from "../../nats"
 import {
-  getStack, readPreviousStack, removePreviousStack, removeStackDir, stackFilePath, writePreviousStack, writeStack,
+  readPreviousStack, removePreviousStack, removeStackDir, stackFilePath, stackStatusNow, writePreviousStack, writeStack,
 } from "../../services/containerStacks"
 import { assertDockerReady } from "../../services/docker-status"
 import { assertVolumeAvailable } from "../../services/volume-guard"
@@ -25,7 +25,7 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
       try { return await readFile(stackFilePath(name), "utf8") } catch { return null }
     },
     readPrevious: readPreviousStack,
-    appStatus:    async name => { try { return (await getStack(name)).status } catch { return "unknown" } },
+    appStatus:    stackStatusNow,
     findPlace:   id => ctx.prisma.place.findUnique({ where: { id }, select: { id: true, name: true, path: true } }),
     placeAtPath: async path => (await ctx.prisma.place.findFirst({ where: { path } })) !== null,
     catalog:     id => CATALOG.find(m => m.id === id),
