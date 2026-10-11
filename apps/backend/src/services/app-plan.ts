@@ -3,14 +3,15 @@ import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { composeImages, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
 import type { AppManifest } from "@app/app-catalog"
+import { availableUpdate, replaceImage } from "./app-update"
 
 // Operation plans for container apps (#36): what saving, applying, installing
 // or removing an app will do (compose.yaml content or diff, Places, compose
 // commands), shown before it runs and applied exactly as shown. Same step shape
 // as the storage plans built by the worker.
 
-export type AppOp = "app.save" | "app.apply" | "app.start" | "app.install" | "app.remove"
-export const APP_OPS: AppOp[] = ["app.save", "app.apply", "app.start", "app.install", "app.remove"]
+export type AppOp = "app.save" | "app.apply" | "app.start" | "app.install" | "app.remove" | "app.update" | "app.rollback"
+export const APP_OPS: AppOp[] = ["app.save", "app.apply", "app.start", "app.install", "app.remove", "app.update", "app.rollback"]
 
 export interface AppStep {
   kind: string
@@ -179,6 +180,10 @@ export async function executeAppPlan(plan: AppPlan): Promise<{ ok: boolean; erro
 export interface AppPlanDeps {
   stackPath(name: string): string
   readStack(name: string): Promise<string | null>
+  /** The compose file kept by the last update (compose.yaml.previous), if any. */
+  readPrevious(name: string): Promise<string | null>
+  /** "running", "stopped" or "unknown". */
+  appStatus(name: string): Promise<string>
   findPlace(id: string): Promise<{ id: string; name: string; path: string } | null>
   placeAtPath(path: string): Promise<boolean>
   catalog(id: string): AppManifest | undefined
@@ -190,6 +195,8 @@ export interface AppPlanDeps {
     createPlace(name: string, path: string): Promise<string>
     validate(name: string): Promise<void>
     publishJob(action: string, payload: Record<string, unknown>): Promise<string>
+    writePrevious(name: string, yaml: string): Promise<void>
+    removePrevious(name: string): Promise<void>
   }
 }
 
@@ -211,6 +218,8 @@ export const APP_INPUTS = {
   "app.apply":  z.object({ name: zName }),
   "app.start":  z.object({ name: zName }),
   "app.remove": z.object({ name: zName }),
+  "app.update": z.object({ name: zName }),
+  "app.rollback": z.object({ name: zName }),
   "app.install": z.object({
     id:      z.string(),
     name:    zName.max(64),
@@ -339,7 +348,88 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
     }
     case "app.install":
       return buildInstallPlan(parse("app.install", input), deps)
+    case "app.update":
+      return buildUpdatePlan(parse("app.update", input).name, deps)
+    case "app.rollback":
+      return buildRollbackPlan(parse("app.rollback", input).name, deps)
   }
+}
+
+function imageOf(content: string): string | null {
+  try { return parseComposeYaml(content).app?.image ?? null } catch { return null }
+}
+
+// Updating an App Store app (#26): its image line moves to the catalog's tag,
+// the file it replaces is kept as compose.yaml.previous for a rollback, and a
+// running app is recreated (compose pulls the new image). A stopped app stays
+// stopped: the image is pulled when it starts.
+async function buildUpdatePlan(name: string, deps: AppPlanDeps): Promise<AppPlan> {
+  const content = await existingStack(deps, name)
+  let app: ReturnType<typeof parseComposeYaml>["app"] = null
+  try { app = parseComposeYaml(content).app } catch { bad("The compose file is not valid YAML; fix it in the compose editor") }
+  const id = app?.labels.find(l => l.key === "hsi.catalog.id")?.value
+  const m = id ? deps.catalog(id) : undefined
+  if (!app || !m) bad(`${name} was not installed from the App Store`)
+  const u = availableUpdate(app.image, m.image)
+  if (!u) bad(`${name} is up to date with the App Store (${app.image})`)
+  let yaml: string
+  try { yaml = replaceImage(content, app.image, m.image) } catch (e) { bad(e instanceof Error ? e.message : String(e)) }
+  const [status, previous] = await Promise.all([deps.appStatus(name), deps.readPrevious(name)])
+  const running = status === "running"
+  const target = deps.stackPath(name)
+  const steps: AppStep[] = [{
+    kind: "update",
+    target,
+    summary: `Update ${name} from ${u.from} to ${u.to}; the current file is kept as compose.yaml.previous to roll back`
+      + (running ? "" : `. ${name} is not running: the new image is pulled when it starts`),
+    diff: maskedDiff(target, content, yaml, manifestSecretKeys(m)),
+    run: async () => {
+      await deps.effects.writePrevious(name, content)
+      await deps.effects.writeStack(name, yaml)
+      try {
+        await deps.effects.validate(name)
+      } catch (e) {
+        await deps.effects.writeStack(name, content).catch(() => {})
+        await deps.effects.removePrevious(name).catch(() => {})
+        throw e
+      }
+      return {}
+    },
+  }]
+  if (running) steps.push(upStep(deps, name, yaml, false))
+  return { op: "app.update", steps, observed: { content, status, previous: previous ?? "" } }
+}
+
+async function buildRollbackPlan(name: string, deps: AppPlanDeps): Promise<AppPlan> {
+  const content = await existingStack(deps, name)
+  const previous = await deps.readPrevious(name)
+  if (previous === null) throw new TRPCError({ code: "NOT_FOUND", message: `${name} has no previous version to roll back to` })
+  const status = await deps.appStatus(name)
+  const running = status === "running"
+  const target = deps.stackPath(name)
+  const id = (() => { try { return parseComposeYaml(content).app?.labels.find(l => l.key === "hsi.catalog.id")?.value } catch { return undefined } })()
+  const m = id ? deps.catalog(id) : undefined
+  const was = imageOf(previous)
+  const steps: AppStep[] = [{
+    kind: "update",
+    target,
+    summary: `Put back the compose file ${name} had before its update${was ? ` (${was})` : ""}, then delete compose.yaml.previous`
+      + (running ? "" : `. ${name} is not running: the image is used when it starts`),
+    diff: maskedDiff(target, content, previous, m ? manifestSecretKeys(m) : []),
+    run: async () => {
+      await deps.effects.writeStack(name, previous)
+      try {
+        await deps.effects.validate(name)
+      } catch (e) {
+        await deps.effects.writeStack(name, content).catch(() => {})
+        throw e
+      }
+      await deps.effects.removePrevious(name)
+      return {}
+    },
+  }]
+  if (running) steps.push(upStep(deps, name, previous, false))
+  return { op: "app.rollback", steps, observed: { content, status, previous } }
 }
 
 async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>, deps: AppPlanDeps): Promise<AppPlan> {

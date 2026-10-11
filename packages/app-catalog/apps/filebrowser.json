@@ -6,6 +6,7 @@
   "description": "File Browser provides a simple, self-hosted web interface for browsing, uploading, and sharing files stored on your NAS.",
   "website": "https://filebrowser.org",
   "image": "filebrowser/filebrowser:v2.31.2",
+  "changelog": "https://github.com/filebrowser/filebrowser/releases",
   "webUiPort": 80,
   "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [

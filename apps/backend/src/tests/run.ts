@@ -881,6 +881,8 @@ async function testAppPlanBuilders() {
   const deps: import("../services/app-plan").AppPlanDeps = {
     stackPath: (n) => `/opt/containers/${n}/compose.yaml`,
     readStack: async (n) => stacks[n] ?? null,
+    readPrevious: async () => null,
+    appStatus: async () => "running",
     findPlace: async (id) => id === "p1" ? { id: "p1", name: "Media", path: "/mnt/media" } : null,
     placeAtPath: async (path) => path === "/mnt/taken",
     catalog: (id) => (id === "demo" ? manifest as any : undefined),
@@ -888,6 +890,7 @@ async function testAppPlanBuilders() {
     effects: {
       writeStack: effect("writeStack") as any, removeStackDir: effect("removeStackDir") as any, mkdirp: effect("mkdirp") as any,
       createPlace: effect("createPlace") as any, validate: effect("validate") as any, publishJob: effect("publishJob") as any,
+      writePrevious: effect("writePrevious") as any, removePrevious: effect("removePrevious") as any,
     },
   }
 
@@ -1991,6 +1994,100 @@ await testSharePlans()
   }
   await assert.rejects(previewConfigRestore(join(work, "v2.hsibak"), "a-long-test-password-123", deps), /administrator/)
   await rm(work, { recursive: true, force: true })
+}
+
+// App updates (#26): an installed App Store app whose catalog image moved on.
+{
+  const au = await import("../services/app-update")
+  assert.deepEqual(au.availableUpdate("louislam/uptime-kuma:1.23.15", "louislam/uptime-kuma:1.23.16"), { from: "1.23.15", to: "1.23.16", image: "louislam/uptime-kuma:1.23.16" })
+  assert.equal(au.availableUpdate("louislam/uptime-kuma:1.23.16", "louislam/uptime-kuma:1.23.16"), null)
+  assert.equal(au.availableUpdate("louislam/uptime-kuma:2.0.0", "louislam/uptime-kuma:1.23.16"), null, "a newer tag set by hand is not downgraded")
+  assert.equal(au.availableUpdate("someone/kuma-fork:1.0", "louislam/uptime-kuma:1.23.16"), null, "another image is the admin's choice")
+  assert.deepEqual(au.availableUpdate("adguard/adguardhome:v0.107.52", "adguard/adguardhome:v0.107.55")?.to, "v0.107.55")
+  assert.ok(au.availableUpdate("corentinth/it-tools:2024.10.22-7ca5933", "corentinth/it-tools:2025.1.6-aaaaaaa"))
+  assert.ok(au.availableUpdate("syncthing/syncthing:1.27", "syncthing/syncthing:1.27.1"))
+  assert.ok(au.availableUpdate("localhost:5000/app:1.0", "localhost:5000/app:1.1"), "a registry port is not a tag")
+  assert.equal(au.availableUpdate("x/app:1.0-rc", "x/app:1.0-beta"), null, "same version, other suffix: not comparable")
+  assert.equal(au.availableUpdate("x/app:edge", "x/app:1.0"), null, "a tag that is not a version is left alone")
+  assert.equal(au.availableUpdate(`x/app@sha256:${"a".repeat(64)}`, "x/app:1.0"), null)
+
+  const yaml = "services:\n  kuma:\n    image: louislam/uptime-kuma:1.23.15\n    labels:\n      hsi.catalog.id: uptime-kuma\n"
+  assert.equal(au.replaceImage(yaml, "louislam/uptime-kuma:1.23.15", "louislam/uptime-kuma:1.23.16"),
+    "services:\n  kuma:\n    image: louislam/uptime-kuma:1.23.16\n    labels:\n      hsi.catalog.id: uptime-kuma\n")
+  assert.equal(au.replaceImage('    image: "a/b:1"\n', "a/b:1", "a/b:2"), '    image: "a/b:2"\n', "quotes are kept")
+  assert.throws(() => au.replaceImage("services:\n  a:\n    image: a/b:1\n  c:\n    image: a/b:1\n", "a/b:1", "a/b:2"), /once/)
+  assert.throws(() => au.replaceImage(yaml, "a/b:1", "a/b:2"), /once/)
+
+  const ap = await import("../services/app-plan")
+  const { generateComposeYaml } = await import("@app/compose")
+  const kuma = (image: string) => generateComposeYaml({
+    name: "kuma", image, ports: [], envs: [{ key: "ADMIN_PASSWORD", value: "hunter2" }], volumes: [], networkNames: [],
+    labels: [{ key: "hsi.catalog.id", value: "uptime-kuma" }], capAdd: [], capDrop: [], extraHosts: [],
+    restartPolicy: "unless-stopped", hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null,
+  } as any)
+  const stacks: Record<string, string> = { kuma: kuma("louislam/uptime-kuma:1.23.15"), web: "services:\n  web:\n    image: nginx:1.27\n" }
+  const previous: Record<string, string> = {}
+  const status: Record<string, string> = { kuma: "running", web: "running" }
+  const calls: string[] = []
+  const effect = (n: string) => async (...args: unknown[]) => { calls.push(`${n}:${String(args[0])}`); return n === "publishJob" ? "job-9" : undefined }
+  const deps: import("../services/app-plan").AppPlanDeps = {
+    stackPath: (n) => `/opt/containers/${n}/compose.yaml`,
+    readStack: async (n) => stacks[n] ?? null,
+    readPrevious: async (n) => previous[n] ?? null,
+    appStatus: async (n) => status[n] ?? "unknown",
+    findPlace: async () => null, placeAtPath: async () => false,
+    catalog: (id) => (id === "uptime-kuma" ? { id, name: "Uptime Kuma", image: "louislam/uptime-kuma:1.23.16", env: [{ key: "ADMIN_PASSWORD", secret: true }] } as any : undefined),
+    secret: () => "x",
+    effects: {
+      writeStack: effect("writeStack") as any, removeStackDir: effect("removeStackDir") as any, mkdirp: effect("mkdirp") as any,
+      createPlace: effect("createPlace") as any, validate: effect("validate") as any, publishJob: effect("publishJob") as any,
+      writePrevious: effect("writePrevious") as any, removePrevious: effect("removePrevious") as any,
+    },
+  }
+
+  // Running: the image line changes, the old file is kept, the app is recreated.
+  const up = await ap.buildAppPlan("app.update", { name: "kuma" }, deps)
+  assert.deepEqual(up.steps.map(s => s.kind), ["update", "run"])
+  assert.match(up.steps[0]!.diff!, /^- {4}image: louislam\/uptime-kuma:1\.23\.15$/m)
+  assert.match(up.steps[0]!.diff!, /^\+ {4}image: louislam\/uptime-kuma:1\.23\.16$/m)
+  assert.match(up.steps[0]!.summary, /compose\.yaml\.previous/)
+  assert.ok(!JSON.stringify(ap.publicSteps(up)).includes("hunter2"))
+  assert.match(up.steps[1]!.summary, /1\.23\.16/)
+  assert.equal(up.observed.status, "running")
+  const res = await ap.executeAppPlan(up)
+  assert.equal(res.ok, true)
+  assert.deepEqual(calls, ["writePrevious:kuma", "writeStack:kuma", "validate:kuma", "publishJob:container.composeUp"])
+
+  // Stopped: only the file changes; the image comes with the next start.
+  status.kuma = "stopped"
+  const stopped = await ap.buildAppPlan("app.update", { name: "kuma" }, deps)
+  assert.deepEqual(stopped.steps.map(s => s.kind), ["update"])
+  assert.match(stopped.steps[0]!.summary, /when it starts/)
+  assert.notEqual(ap.appFingerprint(stopped, { name: "kuma" }), ap.appFingerprint(up, { name: "kuma" }), "the app's state is part of the plan")
+
+  // A failed validation puts the file back and drops the kept copy.
+  calls.length = 0
+  const failing = { ...deps, effects: { ...deps.effects, validate: async () => { throw new Error("invalid compose") } } }
+  const bad = await ap.executeAppPlan(await ap.buildAppPlan("app.update", { name: "kuma" }, failing))
+  assert.equal(bad.ok, false)
+  assert.deepEqual(calls, ["writePrevious:kuma", "writeStack:kuma", "writeStack:kuma", "removePrevious:kuma"])
+
+  // Nothing to update, or not an App Store app.
+  stacks.kuma = kuma("louislam/uptime-kuma:1.23.16")
+  await assert.rejects(ap.buildAppPlan("app.update", { name: "kuma" }, deps), (e: any) => e.code === "BAD_REQUEST" && /up to date/.test(e.message))
+  await assert.rejects(ap.buildAppPlan("app.update", { name: "web" }, deps), /App Store/)
+  await assert.rejects(ap.buildAppPlan("app.update", { name: "nope" }, deps), /not found/i)
+
+  // Rollback: the kept file comes back, then it is removed.
+  await assert.rejects(ap.buildAppPlan("app.rollback", { name: "kuma" }, deps), (e: any) => e.code === "NOT_FOUND")
+  previous.kuma = kuma("louislam/uptime-kuma:1.23.15")
+  status.kuma = "running"
+  const back = await ap.buildAppPlan("app.rollback", { name: "kuma" }, deps)
+  assert.deepEqual(back.steps.map(s => s.kind), ["update", "run"])
+  assert.match(back.steps[0]!.diff!, /^\+ {4}image: louislam\/uptime-kuma:1\.23\.15$/m)
+  calls.length = 0
+  assert.equal((await ap.executeAppPlan(back)).ok, true)
+  assert.deepEqual(calls, ["writeStack:kuma", "validate:kuma", "removePrevious:kuma", "publishJob:container.composeUp"])
 }
 
 console.log("Backend security tests passed")

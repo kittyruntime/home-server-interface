@@ -133,6 +133,25 @@ export async function writeStack(name: string, content: string): Promise<string>
   return hash
 }
 
+// The compose file an app update replaced (#26), kept next to it for a rollback.
+export function previousFilePath(name: string): string {
+  return stackFilePath(name) + ".previous"
+}
+
+export async function readPreviousStack(name: string): Promise<string | null> {
+  try { return await readFile(previousFilePath(name), "utf8") } catch { return null }
+}
+
+export async function writePreviousStack(name: string, content: string): Promise<void> {
+  const tmp = path.join(path.dirname(stackFilePath(name)), `.previous-${process.pid}-${Date.now()}.tmp`)
+  await writeFile(tmp, content, "utf8")
+  await rename(tmp, previousFilePath(name))
+}
+
+export async function removePreviousStack(name: string): Promise<void> {
+  await rm(previousFilePath(name), { force: true })
+}
+
 export async function removeStackDir(name: string): Promise<void> {
   assertValidStackName(name)
   await rm(path.join(STACKS_DIR, name), { recursive: true, force: true })

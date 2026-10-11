@@ -6,6 +6,7 @@
   "description": "Syncthing synchronizes files directly between your devices, without a central server, keeping folders in sync while your data stays private.",
   "website": "https://syncthing.net",
   "image": "syncthing/syncthing:1.27",
+  "changelog": "https://github.com/syncthing/syncthing/releases",
   "webUiPort": 8384,
   "ports": [{ "container": 8384, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [{ "target": "/var/syncthing", "label": "Data", "suggest": "place" }]

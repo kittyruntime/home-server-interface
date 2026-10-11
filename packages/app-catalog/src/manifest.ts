@@ -32,6 +32,8 @@ export const zAppManifest = z.object({
   tagline:       z.string().max(120),
   description:   z.string(),
   website:       z.string().url().optional(),
+  // Release notes, linked when an update is offered (#26).
+  changelog:     z.string().url().optional(),
   image:         zPinnedImage,
   webUiPort:     z.number().int().min(1).max(65535).optional(),
   ports:         z.array(zCatalogPort).default([]),

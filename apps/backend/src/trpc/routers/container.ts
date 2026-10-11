@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { composeBindSources } from "@app/compose"
 import { assertVolumeAvailable } from "../../services/volume-guard"
+import { catalogUpdateFor } from "../../services/app-update"
 import { TRPCError } from "@trpc/server"
 import { router, adminProcedure, protectedProcedure } from "../index"
 import { publishJob, requestSync } from "../../nats"
@@ -52,7 +53,7 @@ async function dockerBoundPorts(): Promise<Map<string, string>> {
 // ── App sub-router ────────────────────────────────────────────────────────────
 
 const appRouter = router({
-  list: adminProcedure.query(async () => (await listStacks()).map(s => ({ ...s, id: s.name }))),
+  list: adminProcedure.query(async () => (await listStacks()).map(s => ({ ...s, id: s.name, catalogUpdate: catalogUpdateFor(s.app) }))),
 
   get: adminProcedure.input(z.object({ name: z.string() }))
     .query(async ({ input }) => ({ ...(await getStack(input.name)), id: input.name })),
