@@ -400,24 +400,28 @@ async function buildUpdatePlan(name: string, deps: AppPlanDeps): Promise<AppPlan
   return { op: "app.update", steps, observed: { content, status, previous: previous ?? "" } }
 }
 
+// Rolling back puts the image of the kept file back on the current file (an
+// edit made since the update stays) and starts the app whatever its state: a
+// version that crash-loops reads as stopped, and that is what a rollback is for.
 async function buildRollbackPlan(name: string, deps: AppPlanDeps): Promise<AppPlan> {
   const content = await existingStack(deps, name)
   const previous = await deps.readPrevious(name)
   if (previous === null) throw new TRPCError({ code: "NOT_FOUND", message: `${name} has no previous version to roll back to` })
-  const status = await deps.appStatus(name)
-  const running = status === "running"
+  const now = imageOf(content), was = imageOf(previous)
+  if (!now || !was) bad("The compose file or its previous version cannot be read")
+  if (now === was) bad(`${name} already runs the same image as its previous version (${was})`)
+  let yaml: string
+  try { yaml = replaceImage(content, now, was) } catch (e) { bad(e instanceof Error ? e.message : String(e)) }
   const target = deps.stackPath(name)
   const id = (() => { try { return parseComposeYaml(content).app?.labels.find(l => l.key === "hsi.catalog.id")?.value } catch { return undefined } })()
   const m = id ? deps.catalog(id) : undefined
-  const was = imageOf(previous)
   const steps: AppStep[] = [{
     kind: "update",
     target,
-    summary: `Put back the compose file ${name} had before its update${was ? ` (${was})` : ""}, then delete compose.yaml.previous`
-      + (running ? "" : `. ${name} is not running: the image is used when it starts`),
-    diff: maskedDiff(target, content, previous, m ? manifestSecretKeys(m) : []),
+    summary: `Change the image of ${name} back from ${now} to ${was}, then delete compose.yaml.previous`,
+    diff: maskedDiff(target, content, yaml, m ? manifestSecretKeys(m) : []),
     run: async () => {
-      await deps.effects.writeStack(name, previous)
+      await deps.effects.writeStack(name, yaml)
       try {
         await deps.effects.validate(name)
       } catch (e) {
@@ -427,9 +431,8 @@ async function buildRollbackPlan(name: string, deps: AppPlanDeps): Promise<AppPl
       await deps.effects.removePrevious(name)
       return {}
     },
-  }]
-  if (running) steps.push(upStep(deps, name, previous, false))
-  return { op: "app.rollback", steps, observed: { content, status, previous } }
+  }, upStep(deps, name, yaml, false)]
+  return { op: "app.rollback", steps, observed: { content, previous } }
 }
 
 async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>, deps: AppPlanDeps): Promise<AppPlan> {

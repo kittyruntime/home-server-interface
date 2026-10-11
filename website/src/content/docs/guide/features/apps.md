@@ -19,7 +19,8 @@ admin-only.
   Apps page marks it. **Update…** previews the one changed line of
   `compose.yaml`, keeps the current file as `compose.yaml.previous`, and
   recreates the app if it runs (a stopped app gets the new image when it
-  starts). **Roll back…** puts the previous file back. An image changed by hand
+  starts). **Roll back…** puts the previous image back (later edits to the file
+  are kept) and starts the app. An image changed by hand
   to another repository or to a newer tag is left alone.
 - **Containers**: create, edit, start, stop and delete containers, read their
   logs, and manage networks, volumes and mounts. An existing Compose file can be

@@ -6,6 +6,7 @@ import AppInstallWizard from './AppInstallWizard.vue'
 import DockerUnavailable from '../apps/DockerUnavailable.vue'
 import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
+import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
@@ -59,7 +60,16 @@ async function runPlan(a: Entry, op: 'app.update' | 'app.rollback') {
   busy.value = a.id
   actionError.value = null
   try {
-    await applyPlanned(op, { name: inst.name }, { ...opts, domain: 'apps' })
+    const reply = await applyPlanned(op, { name: inst.name }, { ...opts, domain: 'apps' })
+    // The new image is pulled and the app recreated by a job: a pull that
+    // fails leaves the old container running, which must not go unnoticed.
+    if (typeof reply.jobId === 'string') {
+      await refresh()
+      const result = await pollJobResult(reply.jobId, 10 * 60_000) // a pull can be long
+      if (result.status !== 'completed') {
+        actionError.value = { id: a.id, message: `${opts.actionLabel} of ${inst.name} failed: ${result.error ?? 'the app could not be recreated'}` }
+      }
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     if (message) actionError.value = { id: a.id, message }
@@ -154,7 +164,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
             <span>{{ updateText(a.installedApp.update) }}</span>
             <a v-if="a.changelog" :href="a.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-[var(--c-text-1)]" @click.stop>What's new ↗</a>
           </div>
-          <p v-if="actionError?.id === a.id" class="text-xs text-[var(--c-accent)] break-words">[ERR] {{ actionError.message }}</p>
+          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
 
           <!-- State + action -->
           <div class="flex items-center justify-between gap-2 mt-auto pt-1">
