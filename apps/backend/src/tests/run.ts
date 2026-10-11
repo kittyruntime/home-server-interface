@@ -2015,8 +2015,8 @@ await testSharePlans()
   assert.equal(au.replaceImage(yaml, "louislam/uptime-kuma:1.23.15", "louislam/uptime-kuma:1.23.16"),
     "services:\n  kuma:\n    image: louislam/uptime-kuma:1.23.16\n    labels:\n      hsi.catalog.id: uptime-kuma\n")
   assert.equal(au.replaceImage('    image: "a/b:1"\n', "a/b:1", "a/b:2"), '    image: "a/b:2"\n', "quotes are kept")
-  assert.throws(() => au.replaceImage("services:\n  a:\n    image: a/b:1\n  c:\n    image: a/b:1\n", "a/b:1", "a/b:2"), /once/)
-  assert.throws(() => au.replaceImage(yaml, "a/b:1", "a/b:2"), /once/)
+  assert.throws(() => au.replaceImage("services:\n  a:\n    image: a/b:1\n  c:\n    image: a/b:1\n", "a/b:1", "a/b:2"), /used by 2 services/)
+  assert.throws(() => au.replaceImage(yaml, "a/b:1", "a/b:2"), /not found/)
 
   const ap = await import("../services/app-plan")
   const { generateComposeYaml } = await import("@app/compose")
@@ -2100,6 +2100,51 @@ await testSharePlans()
   calls.length = 0
   assert.equal((await ap.executeAppPlan(back)).ok, true)
   assert.deepEqual(calls, ["writeStack:kuma", "validate:kuma", "removePrevious:kuma", "publishJob:container.composeUp"])
+}
+
+// App updates (#26), review minors.
+{
+  const au = await import("../services/app-update")
+  assert.equal(au.availableUpdate("x/app:1.2.3-alpine", "x/app:1.3.0"), null, "a variant set by hand is not dropped")
+  assert.ok(au.availableUpdate("x/app:1.2.3-alpine", "x/app:1.3.0-alpine"))
+  assert.deepEqual(au.availableUpdate("linuxserver/qbittorrent:5.0.2-ls10", "linuxserver/qbittorrent:5.0.2-ls11")?.to, "5.0.2-ls11", "a revision bump")
+  assert.equal(au.availableUpdate("linuxserver/qbittorrent:5.0.2-ls11", "linuxserver/qbittorrent:5.0.2-ls10"), null)
+  assert.ok(au.availableUpdate("corentinth/it-tools:2024.10.22-7ca5933", "corentinth/it-tools:2025.1.6-aaaaaaa"), "a commit hash is not a variant")
+  assert.ok(au.availableUpdate("docker.io/louislam/uptime-kuma:1.23.15", "louislam/uptime-kuma:1.23.16"), "docker.io prefix")
+  assert.ok(au.availableUpdate("docker.io/library/nginx:1.27", "nginx:1.28"), "library prefix")
+  assert.equal(au.replaceImage("    image: a/b:1 # pinned\n", "a/b:1", "a/b:2"), "    image: a/b:2 # pinned\n", "a trailing comment is kept")
+  assert.equal(au.replaceImage("x:\n\n    image: a/b:1\n", "a/b:1", "a/b:2"), "x:\n\n    image: a/b:2\n")
+
+  const { zAppManifest } = await import("@app/app-catalog")
+  const base = { id: "x", name: "X", category: "Utilities", tagline: "t", description: "d", image: "x/x:1" }
+  assert.equal(zAppManifest.safeParse({ ...base, changelog: "javascript:alert(1)" }).success, false)
+  assert.equal(zAppManifest.safeParse({ ...base, changelog: "http://example.com" }).success, false)
+  assert.equal(zAppManifest.safeParse({ ...base, changelog: "https://example.com/releases" }).success, true)
+
+  // A failed update puts back the earlier rollback point, whatever step failed.
+  const ap = await import("../services/app-plan")
+  const yaml = "services:\n  kuma:\n    image: louislam/uptime-kuma:1.23.15\n    labels:\n      hsi.catalog.id: uptime-kuma\n"
+  for (const failAt of ["writeStack", "validate"]) {
+    const files = { stack: yaml, previous: "OLDER" as string | null }
+    let writes = 0
+    const deps: any = {
+      stackPath: (n: string) => `/opt/containers/${n}/compose.yaml`,
+      readStack: async () => files.stack, readPrevious: async () => files.previous, appStatus: async () => "stopped",
+      findPlace: async () => null, placeAtPath: async () => false, secret: () => "x",
+      catalog: (id: string) => (id === "uptime-kuma" ? { id, image: "louislam/uptime-kuma:1.23.16", env: [] } : undefined),
+      effects: {
+        writeStack: async (_n: string, y: string) => { if (failAt === "writeStack" && writes++ === 0) throw new Error("disk full"); files.stack = y },
+        validate: async () => { if (failAt === "validate") throw new Error("invalid") },
+        writePrevious: async (_n: string, y: string) => { files.previous = y },
+        removePrevious: async () => { files.previous = null },
+        removeStackDir: async () => {}, mkdirp: async () => {}, createPlace: async () => "", publishJob: async () => "j",
+      },
+    }
+    const r = await ap.executeAppPlan(await ap.buildAppPlan("app.update", { name: "kuma" }, deps))
+    assert.equal(r.ok, false)
+    assert.equal(files.stack, yaml, `${failAt}: the file is put back`)
+    assert.equal(files.previous, "OLDER", `${failAt}: the earlier rollback point is put back`)
+  }
 }
 
 console.log("Backend security tests passed")

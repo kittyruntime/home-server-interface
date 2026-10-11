@@ -175,7 +175,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
             <div class="flex items-center gap-1.5 flex-wrap justify-end">
               <button
-                v-if="a.installedApp?.rollbackTo && !a.installedApp.update"
+                v-if="a.installedApp?.rollbackTo"
                 class="btn btn-ghost btn-xs"
                 :disabled="busy === a.id"
                 @click.stop="runPlan(a, 'app.rollback')"

@@ -385,12 +385,13 @@ async function buildUpdatePlan(name: string, deps: AppPlanDeps): Promise<AppPlan
     diff: maskedDiff(target, content, yaml, manifestSecretKeys(m)),
     run: async () => {
       await deps.effects.writePrevious(name, content)
-      await deps.effects.writeStack(name, yaml)
       try {
+        await deps.effects.writeStack(name, yaml)
         await deps.effects.validate(name)
       } catch (e) {
+        // Back to how it was, the earlier rollback point included.
         await deps.effects.writeStack(name, content).catch(() => {})
-        await deps.effects.removePrevious(name).catch(() => {})
+        await (previous === null ? deps.effects.removePrevious(name) : deps.effects.writePrevious(name, previous)).catch(() => {})
         throw e
       }
       return {}

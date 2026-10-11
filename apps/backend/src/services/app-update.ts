@@ -16,33 +16,62 @@ export function splitImage(ref: string): { repo: string; tag: string | null } {
   return { repo: ref, tag: null }
 }
 
-/** Compares two version tags; null when either is not a version or they differ only by a suffix. */
-export function compareTags(a: string, b: string): number | null {
-  const core = (t: string) => t.replace(/^v/i, "").match(/^(\d+(?:\.\d+)*)/)?.[1]
-  const x = core(a), y = core(b)
-  if (!x || !y) return null
-  const xs = x.split(".").map(Number), ys = y.split(".").map(Number)
-  for (let i = 0; i < Math.max(xs.length, ys.length); i++) {
-    const d = (xs[i] ?? 0) - (ys[i] ?? 0)
+/** Docker Hub names: `docker.io/library/nginx` and `nginx` are the same image. */
+function normalRepo(repo: string): string {
+  return repo.replace(/^(?:index\.)?docker\.io\//, "").replace(/^library\//, "")
+}
+
+function numbers(s: string): number[] {
+  return (s.match(/\d+/g) ?? []).map(Number)
+}
+
+function compareNumbers(x: number[], y: number[]): number {
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0)
     if (d !== 0) return d
   }
-  return a === b ? 0 : null
+  return 0
+}
+
+/**
+ * Compares two version tags; null when either is not a version or they are
+ * not the same variant. A tag is a version (`v1.2.3`, `2024.10.22`) and an
+ * optional suffix: its variant (`-alpine`) must match, a commit hash is
+ * ignored, and a revision number (`-ls11`) decides between equal versions.
+ */
+export function compareTags(a: string, b: string): number | null {
+  const parse = (t: string) => {
+    const m = t.replace(/^v/i, "").match(/^(\d+(?:\.\d+)*)(.*)$/)
+    if (!m) return null
+    const suffix = m[2]!.replace(/[0-9a-f]{7,40}/g, "")
+    return { core: m[1]!.split(".").map(Number), variant: suffix.replace(/\d+/g, "#"), revision: numbers(suffix) }
+  }
+  const x = parse(a), y = parse(b)
+  if (!x || !y || x.variant !== y.variant) return null
+  const d = compareNumbers(x.core, y.core)
+  if (d !== 0) return d
+  const r = compareNumbers(x.revision, y.revision)
+  return r !== 0 ? r : a === b ? 0 : null
 }
 
 /** The update from the installed image to the catalog's, if the catalog's is a newer tag of the same image. */
 export function availableUpdate(installed: string, catalog: string): ImageUpdate | null {
   const i = splitImage(installed), c = splitImage(catalog)
-  if (i.repo !== c.repo || !i.tag || !c.tag) return null
+  if (normalRepo(i.repo) !== normalRepo(c.repo) || !i.tag || !c.tag) return null
   const cmp = compareTags(i.tag, c.tag)
   return cmp !== null && cmp < 0 ? { from: i.tag, to: c.tag, image: catalog } : null
 }
 
-/** Replaces the one `image:` line naming `from`; anything else in the file is kept as it is. */
+/** Replaces the one `image:` line naming `from`; anything else in the file (quotes, a comment) is kept as it is. */
 export function replaceImage(yaml: string, from: string, to: string): string {
   const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const line = new RegExp(`^(\\s*image:\\s*["']?)${escaped}(["']?\\s*)$`, "gm")
+  const line = new RegExp(`^([ \\t]*image:[ \\t]*["']?)${escaped}(["']?(?:[ \\t]+#.*)?[ \\t]*)$`, "gm")
   const found = yaml.match(line)?.length ?? 0
-  if (found !== 1) throw new Error(`The image ${from} must appear once in the compose file (found ${found})`)
+  if (found !== 1) {
+    throw new Error(found === 0
+      ? `The line "image: ${from}" was not found in the compose file; it may have been edited by hand`
+      : `The image ${from} is used by ${found} services; update them in the compose editor`)
+  }
   return yaml.replace(line, (_m, head: string, tail: string) => `${head}${to}${tail}`)
 }
 
