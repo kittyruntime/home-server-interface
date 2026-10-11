@@ -52,8 +52,8 @@ async function preconditions(plan: AppPlan): Promise<void> {
   if (plan.op === "app.apply" || plan.op === "app.start") {
     await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
   }
-  // An update or rollback recreates a running app.
-  if ((plan.op === "app.update" || plan.op === "app.rollback") && plan.observed.status === "running") {
+  // An update recreates a running app; a rollback always starts it.
+  if ((plan.op === "app.update" && plan.observed.status === "running") || plan.op === "app.rollback") {
     await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
   }
 }

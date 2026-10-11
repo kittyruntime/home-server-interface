@@ -2085,6 +2085,18 @@ await testSharePlans()
   const back = await ap.buildAppPlan("app.rollback", { name: "kuma" }, deps)
   assert.deepEqual(back.steps.map(s => s.kind), ["update", "run"])
   assert.match(back.steps[0]!.diff!, /^\+ {4}image: louislam\/uptime-kuma:1\.23\.15$/m)
+  // Only the image goes back: an edit made after the update is kept.
+  stacks.kuma = stacks.kuma!.replace("restart: unless-stopped", "restart: always")
+  const kept = await ap.buildAppPlan("app.rollback", { name: "kuma" }, deps)
+  assert.equal(kept.steps[0]!.diff!.split("\n").filter(l => /^[-+] /.test(l)).length, 2, kept.steps[0]!.diff ?? "")
+  // A rollback starts the app whatever its state: a crash-looping update reads as stopped.
+  status.kuma = "stopped"
+  const fromStopped = await ap.buildAppPlan("app.rollback", { name: "kuma" }, deps)
+  assert.deepEqual(fromStopped.steps.map(s => s.kind), ["update", "run"])
+  assert.equal(ap.appFingerprint(fromStopped, { name: "kuma" }), ap.appFingerprint(kept, { name: "kuma" }), "a flapping status does not make the rollback stale")
+  previous.kuma = stacks.kuma!
+  await assert.rejects(ap.buildAppPlan("app.rollback", { name: "kuma" }, deps), /same image/)
+  previous.kuma = kuma("louislam/uptime-kuma:1.23.15")
   calls.length = 0
   assert.equal((await ap.executeAppPlan(back)).ok, true)
   assert.deepEqual(calls, ["writeStack:kuma", "validate:kuma", "removePrevious:kuma", "publishJob:container.composeUp"])
