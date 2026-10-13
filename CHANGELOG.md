@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   administrator exists. Existing installations keep their accounts.
 
 ### Added
+- **App Store details**: each app opens a page with its full description,
+  website, release notes, version and what the install asks for (ports,
+  folders, settings); an installed app shows its version there with Open,
+  Update and Roll back. Filters for installed apps and updates join the
+  categories, each with its count; installed apps come first and the search
+  also looks at descriptions. Cards keep a single action.
 - **App updates** (#26): an App Store app whose catalog image is newer than the
   one it runs shows "Update available" with a link to the release notes (and an
   "Update" badge on the Apps page). The update is previewed like other app
