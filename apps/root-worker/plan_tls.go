@@ -91,6 +91,7 @@ func planTLSEnable(raw json.RawMessage) (*opPlan, *fsError) {
 	names := currentTLSNames()
 	next := c
 	next.Mode = "local"
+	next.StandardPorts = false // turned on again through tls.standardPorts, which checks the ports
 	next.IssuedFor = names.list()
 	return &opPlan{Op: "tls.enable", Observed: tlsObserved(), Steps: []planStep{
 		localCertStep(names),
@@ -149,19 +150,6 @@ func planTLSImport(raw json.RawMessage) (*opPlan, *fsError) {
 	next.Mode = "imported"
 	next.IssuedFor = nil
 
-	steps := []planStep{
-		{Kind: "update", Target: filepath.Join(tlsDir(), "server.key"), Summary: "Install the private key",
-			run: func() (string, error) { return "", writeTLSFile("server.key", key, 0o640, true) }},
-		{Kind: "update", Target: filepath.Join(tlsDir(), "server.crt"),
-			Summary: fmt.Sprintf("Serve the certificate for %s (issued by %s, expires %s)",
-				strings.Join(info.Names, ", "), info.Issuer, info.NotAfter.Format("2006-01-02")),
-			run: func() (string, error) { return "", writeTLSFile("server.crt", chain, 0o644, false) }},
-		tlsConfigStep("Serve HSI over HTTPS with the imported certificate", next),
-	}
-	if c.Mode == "off" || c.Mode == "proxy" || c.Mode == "" {
-		steps = append(steps, tlsRestartStep())
-	}
-
 	host := hostHostname()
 	covered := certCovers(info.Names, host) || certCovers(info.Names, host+".local")
 	for _, ip := range hostAddrs() {
@@ -170,11 +158,30 @@ func planTLSImport(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 	}
 	reply := map[string]any{}
+	warning := ""
 	if !covered {
-		reply["warnings"] = []string{fmt.Sprintf(
+		warning = fmt.Sprintf(
 			"The certificate does not cover %q or this server's addresses: browsers will warn unless HSI is reached by one of its names (%s)",
-			host, strings.Join(info.Names, ", "))}
+			host, strings.Join(info.Names, ", "))
+		reply["warnings"] = []string{warning}
 	}
+	crtSummary := fmt.Sprintf("Serve the certificate for %s (issued by %s, expires %s)",
+		strings.Join(info.Names, ", "), info.Issuer, info.NotAfter.Format("2006-01-02"))
+	if warning != "" {
+		crtSummary += ". Warning: " + warning
+	}
+	steps := []planStep{
+		{Kind: "update", Target: filepath.Join(tlsDir(), "server.key"), Summary: "Install the private key",
+			run: func() (string, error) { return "", writeTLSFile("server.key", key, 0o640, true) }},
+		{Kind: "update", Target: filepath.Join(tlsDir(), "server.crt"),
+			Summary: crtSummary,
+			run:     func() (string, error) { return "", writeTLSFile("server.crt", chain, 0o644, false) }},
+		tlsConfigStep("Serve HSI over HTTPS with the imported certificate", next),
+	}
+	if c.Mode == "off" || c.Mode == "proxy" || c.Mode == "" {
+		steps = append(steps, tlsRestartStep())
+	}
+
 	sum := sha256.Sum256([]byte(req.Cert + req.Key))
 	return &opPlan{Op: "tls.import", Observed: tlsObserved(), Steps: steps, Reply: reply,
 		FingerprintInput: json.RawMessage(fmt.Sprintf("%q", hex.EncodeToString(sum[:])))}, nil
@@ -197,6 +204,7 @@ func planTLSProxy(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	next := loadTLSConfig()
 	next.Mode = "proxy"
+	next.StandardPorts = false
 	next.IssuedFor = nil
 	next.TrustedProxies = req.TrustedProxies
 	trusting := "this server only"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -63,6 +64,15 @@ func TestTLSImportPlan(t *testing.T) {
 	if w, _ := p.Reply["warnings"].([]string); len(w) != 1 || !strings.Contains(w[0], "nas") {
 		t.Fatalf("nas.example.com does not cover nas: %v", p.Reply)
 	}
+	warned := false
+	for _, s := range p.Steps {
+		if s.Target == filepath.Join(tlsDir(), "server.crt") && strings.Contains(s.Summary, "Warning:") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Fatal("the preview shows the warning in the certificate step")
+	}
 	if _, ok, _ := p.execute(); !ok || loadTLSConfig().Mode != "imported" {
 		t.Fatal("imported")
 	}
@@ -113,5 +123,23 @@ func TestSSProcessName(t *testing.T) {
 func TestCertCoversHost(t *testing.T) {
 	if !certCovers([]string{"*.example.com"}, "nas.example.com") || certCovers([]string{"*.example.com"}, "a.b.example.com") || certCovers([]string{"x.com"}, "nas") {
 		t.Fatal("wildcard matching")
+	}
+}
+
+func TestTLSPlansClearStandardPorts(t *testing.T) {
+	stubTLS(t)
+	old := runArgv
+	runArgv = func(argv []string) ([]byte, error) { return nil, nil }
+	t.Cleanup(func() { runArgv = old })
+
+	_ = saveTLSConfig(tlsConfig{Mode: "local", Port: 9001, StandardPorts: true})
+	p := planFor(t, "tls.proxy", map[string]any{"trustedProxies": []string{"10.0.0.5"}})
+	if _, ok, _ := p.execute(); !ok || loadTLSConfig().StandardPorts {
+		t.Fatalf("proxy keeps 443/80: %+v", loadTLSConfig())
+	}
+	_ = saveTLSConfig(tlsConfig{Mode: "off", Port: 9001, StandardPorts: true})
+	p = planFor(t, "tls.enable", map[string]any{})
+	if _, ok, _ := p.execute(); !ok || loadTLSConfig().StandardPorts {
+		t.Fatalf("enable keeps 443/80: %+v", loadTLSConfig())
 	}
 }
