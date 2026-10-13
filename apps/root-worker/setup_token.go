@@ -61,13 +61,13 @@ func consumeSetupToken() error {
 	return nil
 }
 
-func setupLink(ip string, port int, token string) string {
+func setupLink(scheme, ip string, port int, token string) string {
 	host := ip
-	if port != 80 {
+	if !(scheme == "http" && port == 80) && !(scheme == "https" && port == 443) {
 		host += ":" + strconv.Itoa(port)
 	}
 	// In the fragment: browsers never send it, so no request log holds it.
-	return "http://" + host + "/setup#token=" + token
+	return scheme + "://" + host + "/setup#token=" + token
 }
 
 // firstIPv4 is the address printed in the link when the installer does not
@@ -84,7 +84,12 @@ func firstIPv4() string {
 
 // runSetupTokenCLI is `hsi-worker setup-token [--host ADDR] [--port N]`.
 func runSetupTokenCLI(args []string) int {
-	port := 9001
+	cfg := loadTLSConfig()
+	port := cfg.Port
+	scheme := "http"
+	if cfg.Mode == "local" || cfg.Mode == "imported" {
+		scheme = "https"
+	}
 	host := ""
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--host" && i+1 < len(args) {
@@ -110,7 +115,7 @@ func runSetupTokenCLI(args []string) int {
 	if host == "" {
 		host = firstIPv4()
 	}
-	fmt.Println(setupLink(host, port, tok))
+	fmt.Println(setupLink(scheme, host, port, tok))
 	return 0
 }
 
