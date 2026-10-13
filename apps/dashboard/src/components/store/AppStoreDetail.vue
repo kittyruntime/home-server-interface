@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
-import { catalogVersion } from '../../lib/store'
+import { versionLabel } from '../../lib/store'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -15,15 +15,18 @@ const props = defineProps<{
 const emit = defineEmits<{ back: []; install: []; open: []; update: []; rollback: [] }>()
 
 const inst = computed(() => props.app.installedApp)
-const version = computed(() => catalogVersion(props.app.image))
-const installedVersion = computed(() => inst.value?.image ? catalogVersion(inst.value.image) : null)
+const version = computed(() => versionLabel(props.app))
 const canOpen = computed(() => !!inst.value && (inst.value.webUrl != null || inst.value.webPort != null))
 const settings = computed(() => props.app.env.filter(e => e.prompt || e.required))
+
+// The grid card that opened this page is gone: keyboard focus starts here.
+const backButton = ref<HTMLButtonElement | null>(null)
+onMounted(() => backButton.value?.focus())
 </script>
 
 <template>
   <div class="max-w-3xl space-y-4">
-    <button class="btn btn-ghost btn-sm" @click="emit('back')">← Back</button>
+    <button ref="backButton" class="btn btn-ghost btn-sm" @click="emit('back')" @keydown.esc="emit('back')">← Back</button>
 
     <div class="panel-card p-5 space-y-5">
       <!-- Identity + main action -->
@@ -41,8 +44,7 @@ const settings = computed(() => props.app.env.filter(e => e.prompt || e.required
               <span v-if="state.dot" class="w-1.5 h-1.5 rounded-full" :class="state.dot" />
               {{ state.label }}
             </span>
-            <span v-if="installedVersion" class="text-[var(--c-text-3)] font-mono">installed {{ installedVersion }}</span>
-            <span v-else-if="version" class="text-[var(--c-text-3)] font-mono">{{ version }}</span>
+            <span v-if="version" class="text-[var(--c-text-3)] font-mono">{{ version }}</span>
           </p>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap shrink-0">
@@ -78,18 +80,18 @@ const settings = computed(() => props.app.env.filter(e => e.prompt || e.required
       <!-- What the install asks for -->
       <div v-if="!inst && (app.ports.length || app.volumes.length || settings.length)" class="space-y-2">
         <h4 class="eyebrow">What it needs</h4>
-        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
           <template v-for="p in app.ports" :key="`p-${p.container}-${p.protocol}`">
             <dt class="text-[var(--c-text-3)]">Port</dt>
-            <dd class="text-[var(--c-text-2)]">{{ p.label }} <span class="font-mono text-[var(--c-text-3)]">{{ p.container }}/{{ p.protocol }}</span></dd>
+            <dd class="text-[var(--c-text-2)] break-words">{{ p.label }} <span class="font-mono text-[var(--c-text-3)]">{{ p.container }}/{{ p.protocol }}</span></dd>
           </template>
           <template v-for="v in app.volumes" :key="`v-${v.target}`">
             <dt class="text-[var(--c-text-3)]">Folder</dt>
-            <dd class="text-[var(--c-text-2)]">{{ v.label }} <span class="font-mono text-[var(--c-text-3)]">{{ v.target }}</span></dd>
+            <dd class="text-[var(--c-text-2)] break-words">{{ v.label }} <span class="font-mono text-[var(--c-text-3)]">{{ v.target }}</span></dd>
           </template>
           <template v-for="e in settings" :key="`e-${e.key}`">
             <dt class="text-[var(--c-text-3)]">Setting</dt>
-            <dd class="text-[var(--c-text-2)]">{{ e.prompt ?? e.key }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span></dd>
+            <dd class="text-[var(--c-text-2)] break-words">{{ e.prompt ?? e.key }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span></dd>
           </template>
         </dl>
       </div>
