@@ -249,6 +249,16 @@ func buildBackupTar(dir string, usernames []string, hsiVersion string, now time.
 	if fileExists(maintenanceConfigPath) {
 		files = append(files, backupFile{path: "system/maintenance.json", src: maintenanceConfigPath})
 	}
+	// TLS: the mode always; the certificate and key only when imported. The
+	// local authority never leaves this server.
+	if fileExists(tlsConfigPath()) {
+		files = append(files, backupFile{path: "system/tls/tls.json", src: tlsConfigPath()})
+		if loadTLSConfig().Mode == "imported" {
+			files = append(files,
+				backupFile{path: "system/tls/server.crt", src: filepath.Join(tlsDir(), "server.crt")},
+				backupFile{path: "system/tls/server.key", src: filepath.Join(tlsDir(), "server.key")})
+		}
+	}
 
 	// Read every entry once: the manifest needs the sums before the files.
 	contents := make([][]byte, len(files))

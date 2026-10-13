@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -264,4 +265,77 @@ func argvLines(ran [][]string) string {
 		out = append(out, strings.Join(a, " "))
 	}
 	return strings.Join(out, "\n")
+}
+
+func TestApplyRestoresTLS(t *testing.T) {
+	tarPath := exportedBackup(t)
+	tlsDirPath := stubTLS(t)
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	if _, err := issueServerCert(currentTLSNames(), now); err != nil {
+		t.Fatal(err)
+	}
+	if err := saveTLSConfig(tlsConfig{Mode: "imported", Port: 9443}); err != nil {
+		t.Fatal(err)
+	}
+	// Rebuild the archive now that TLS is imported.
+	dir := filepath.Dir(tarPath)
+	_ = os.Remove(tarPath)
+	if err := buildBackupTar(dir, nil, "1.65.0", now); err != nil {
+		t.Fatal(err)
+	}
+	importedCrt, _ := os.ReadFile(filepath.Join(tlsDirPath, "server.crt"))
+	importedKey, _ := os.ReadFile(filepath.Join(tlsDirPath, "server.key"))
+	unpack := func() string {
+		dest := unpackDest(t)
+		_ = os.RemoveAll(dest)
+		_ = os.MkdirAll(dest, 0o700)
+		if _, err := unpackBackupTar(tarPath, dest); err != nil {
+			t.Fatal(err)
+		}
+		return dest
+	}
+	stubAccounts(t, map[string][2]int{}, map[string]int{})
+	stubRun(t)
+
+	// Imported: the files are written, the key is 0640, the current ones are kept aside.
+	_ = os.WriteFile(filepath.Join(tlsDirPath, "server.crt"), []byte("old"), 0o644)
+	_ = os.WriteFile(filepath.Join(tlsDirPath, "server.key"), []byte("old"), 0o640)
+	_ = saveTLSConfig(tlsConfig{Mode: "off", Port: 9001, IssuedFor: []string{"here"}})
+	if err := applyBackup(unpack(), now); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(tlsDirPath, "server.crt")); string(b) != string(importedCrt) {
+		t.Fatal("certificate not restored")
+	}
+	if b, _ := os.ReadFile(filepath.Join(tlsDirPath, "server.key")); string(b) != string(importedKey) {
+		t.Fatal("key not restored")
+	}
+	if st, err := os.Stat(filepath.Join(tlsDirPath, "server.key")); err != nil || st.Mode().Perm() != 0o640 {
+		t.Fatalf("key mode: %v %v", st, err)
+	}
+	if kept, _ := filepath.Glob(filepath.Join(tlsDirPath, "server.key.before-restore-*")); len(kept) != 1 {
+		t.Fatalf("key kept aside: %v", kept)
+	}
+	if c := loadTLSConfig(); c.Mode != "imported" || c.Port != 9443 || strings.Join(c.IssuedFor, ",") != "here" {
+		t.Fatalf("config: %+v", c)
+	}
+
+	// Local: the certificate is reissued for this server.
+	local := tlsConfig{Mode: "local", Port: 9443}
+	b, _ := json.Marshal(local)
+	dest := unpack()
+	_ = os.WriteFile(filepath.Join(dest, "system", "tls", "tls.json"), b, 0o644)
+	_ = os.Remove(filepath.Join(dest, "system", "tls", "server.crt"))
+	_ = os.Remove(filepath.Join(dest, "system", "tls", "server.key"))
+	if err := applyBackup(dest, now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	crt, _ := os.ReadFile(filepath.Join(tlsDirPath, "server.crt"))
+	info, err := readCertInfo(crt)
+	if err != nil || !info.FromAuthority {
+		t.Fatalf("local certificate: %v %v", info, err)
+	}
+	if c := loadTLSConfig(); c.Mode != "local" || strings.Join(c.IssuedFor, ",") != strings.Join(currentTLSNames().list(), ",") {
+		t.Fatalf("config: %+v", c)
+	}
 }
