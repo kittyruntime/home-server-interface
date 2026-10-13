@@ -502,6 +502,49 @@ func applyBackup(dir string, now time.Time) error {
 			}
 		}
 	}
+	return restoreTLS(dir, stamp, now)
+}
+
+// restoreTLS applies the TLS part of an archive. This server keeps its own
+// issuedFor; an imported certificate and key are written (key 0640 group hsi);
+// in local mode this server's authority issues for this server's names.
+func restoreTLS(dir, stamp string, now time.Time) error {
+	b, err := os.ReadFile(filepath.Join(dir, "system", "tls", "tls.json"))
+	if err != nil {
+		return nil
+	}
+	var c tlsConfig
+	if json.Unmarshal(b, &c) != nil {
+		return errors.New("system/tls/tls.json is not valid")
+	}
+	c.IssuedFor = loadTLSConfig().IssuedFor
+	if c.Mode == "imported" {
+		crt, cerr := os.ReadFile(filepath.Join(dir, "system", "tls", "server.crt"))
+		key, kerr := os.ReadFile(filepath.Join(dir, "system", "tls", "server.key"))
+		if cerr != nil || kerr != nil {
+			return errors.New("the archive has no imported certificate and key")
+		}
+		for _, n := range []string{"server.crt", "server.key"} {
+			_ = keepAside(filepath.Join(tlsDir(), n), ".before-restore-"+stamp)
+		}
+		if err := writeTLSFile("server.crt", crt, 0o644, false); err != nil {
+			return err
+		}
+		if err := writeTLSFile("server.key", key, 0o640, true); err != nil {
+			return err
+		}
+	}
+	if fileExists(tlsConfigPath()) {
+		_ = keepAside(tlsConfigPath(), ".before-restore-"+stamp)
+	}
+	if err := saveTLSConfig(c); err != nil {
+		return err
+	}
+	if c.Mode == "local" {
+		if _, _, err := renewLocalIfNeeded(now); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

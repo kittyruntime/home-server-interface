@@ -151,3 +151,43 @@ func TestBuildBackupDirMustBeStaging(t *testing.T) {
 		t.Fatal("a directory outside the staging root is refused")
 	}
 }
+
+func TestBackupHoldsTLSButNeverTheAuthority(t *testing.T) {
+	dir := stubBackupHost(t)
+	stubTLS(t)
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	if _, err := issueServerCert(currentTLSNames(), now); err != nil {
+		t.Fatal(err)
+	}
+	build := func() map[string][]byte {
+		_ = os.Remove(filepath.Join(dir, "backup.tar"))
+		if err := buildBackupTar(dir, nil, "1.65.0", now); err != nil {
+			t.Fatal(err)
+		}
+		return readTar(t, filepath.Join(dir, "backup.tar"))
+	}
+	if err := saveTLSConfig(tlsConfig{Mode: "local", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	files := build()
+	if _, ok := files["system/tls/tls.json"]; !ok {
+		t.Fatal("tls.json missing")
+	}
+	if _, ok := files["system/tls/server.key"]; ok {
+		t.Fatal("local mode: configuration only")
+	}
+	if err := saveTLSConfig(tlsConfig{Mode: "imported", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	files = build()
+	for _, n := range []string{"system/tls/server.crt", "system/tls/server.key"} {
+		if _, ok := files[n]; !ok {
+			t.Fatalf("imported: %s missing", n)
+		}
+	}
+	for n := range files {
+		if strings.Contains(n, "/ca.") {
+			t.Fatalf("the authority is never exported: %s", n)
+		}
+	}
+}
