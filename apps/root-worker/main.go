@@ -975,6 +975,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "setup-token" {
 		os.Exit(runSetupTokenCLI(os.Args[2:]))
 	}
+	// `hsi-worker tls ...`: managed HTTPS (#12), used by the installer and for recovery.
+	if len(os.Args) > 1 && os.Args[1] == "tls" {
+		os.Exit(runTLSCLI(os.Args[2:]))
+	}
 	// `hsi-worker storage diff`: how each volume differs from its description.
 	if len(os.Args) > 1 && os.Args[1] == "storage" {
 		os.Exit(runStorageCLI(os.Args[2:]))
@@ -1036,6 +1040,8 @@ func main() {
 
 	// ── Request-reply subscriptions (sync ops) ─────────────────────────────
 	for subj, handler := range map[string]func(*nats.Conn, *nats.Msg){
+		"root.tls.status":                handleTLSStatus,
+		"root.tls.issue":                 handleTLSIssue,
 		"root.fs.list":                   handleList,
 		"root.fs.stat":                   handleStat,
 		"root.fs.diskusage":              handleDiskUsage,
