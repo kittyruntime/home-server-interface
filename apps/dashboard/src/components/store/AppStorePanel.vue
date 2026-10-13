@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import LoadingState from '../ui/LoadingState.vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
 import AppStoreDetail from './AppStoreDetail.vue'
@@ -9,7 +9,7 @@ import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
-import { catalogVersion, filterChips, visibleApps } from '../../lib/store'
+import { catalogVersion, filterChips, keptFilter, visibleApps } from '../../lib/store'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -26,9 +26,10 @@ const detail = computed(() => apps.value.find(a => a.id === detailId.value) ?? n
 const { check: checkDocker, ready: dockerReady } = useDockerStatus()
 
 const chips = computed(() => filterChips(apps.value))
-// A filter that no longer has apps (the last update applied) falls back to All.
-const filter = computed(() => chips.value.some(c => c.key === category.value) ? category.value : 'All')
-const filtered = computed(() => visibleApps(apps.value, filter.value, search.value))
+// A filter that no longer has apps (the last update applied) falls back to All
+// for good: it must not come back by itself with the next update.
+watch(chips, c => { category.value = keptFilter(c, category.value) })
+const filtered = computed(() => visibleApps(apps.value, category.value, search.value))
 
 const installedCount = computed(() => apps.value.filter(a => a.installed).length)
 
@@ -54,7 +55,20 @@ const STATE_META: Record<CardState, { label: string; dot: string; text: string }
 }
 
 function openWizard(a: Entry) { selected.value = a }
-function openDetail(a: Entry) { detailId.value = a.id; actionError.value = null }
+// Back from an app's page returns to the same place in the grid, focus included.
+const scroller = ref<HTMLElement | null>(null)
+let gridScroll = 0
+function openDetail(a: Entry) {
+  gridScroll = scroller.value?.scrollTop ?? 0
+  detailId.value = a.id
+}
+async function closeDetail() {
+  const id = detailId.value
+  detailId.value = null
+  await nextTick()
+  if (scroller.value) scroller.value.scrollTop = gridScroll
+  scroller.value?.querySelector<HTMLElement>(`[data-card="${id}"]`)?.focus({ preventScroll: true })
+}
 
 // Updates (#26): previewed as a plan, then the list is read again.
 const busy = ref<string | null>(null)
@@ -113,7 +127,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
 <template>
   <DockerUnavailable v-if="!dockerReady()" />
-  <div v-else class="h-full overflow-y-auto p-4 sm:p-6">
+  <div v-else ref="scroller" class="h-full overflow-y-auto p-4 sm:p-6">
     <div v-if="selected">
       <button class="btn btn-ghost btn-sm mb-3" @click="selected = null">← Back</button>
       <AppInstallWizard :app-id="selected.id" @installed="selected = null; load()" @close="selected = null" />
@@ -125,7 +139,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       :state="STATE_META[cardState(detail)]"
       :busy="busy === detail.id"
       :error="actionError?.id === detail.id ? actionError.message : null"
-      @back="detailId = null"
+      @back="closeDetail"
       @install="openWizard(detail)"
       @open="openApp(detail)"
       @update="runPlan(detail, 'app.update')"
@@ -146,8 +160,8 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       <!-- Filters -->
       <div v-if="!loading" class="flex gap-2 mb-4 flex-wrap">
         <button v-for="c in chips" :key="c.key" @click="category = c.key"
-          :aria-pressed="filter === c.key"
-          :class="['btn btn-xs', filter === c.key ? 'btn-primary' : 'btn-outline', c.key === 'Updates' && filter !== c.key ? 'text-[var(--c-warning)]' : '']">
+          :aria-pressed="category === c.key"
+          :class="['btn btn-xs', category === c.key ? 'btn-primary' : 'btn-outline', c.key === 'Updates' && category !== c.key ? 'text-[var(--c-warning)]' : '']">
           {{ c.label }} <span class="opacity-60 tabular-nums">{{ c.count }}</span>
         </button>
       </div>
@@ -162,14 +176,11 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
       <!-- Grid -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- The whole card opens the app's page through its name button, stretched
+             over the card; the action button sits above it. -->
         <div
           v-for="a in filtered" :key="a.id"
-          role="button" tabindex="0"
-          :aria-label="`${a.name}: details`"
-          class="panel-card p-4 flex flex-col gap-3 transition-colors cursor-pointer hover:border-[var(--c-border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--c-accent)]"
-          @click="openDetail(a)"
-          @keydown.enter.self="openDetail(a)"
-          @keydown.space.self.prevent="openDetail(a)"
+          class="panel-card relative p-4 flex flex-col gap-3 transition-colors hover:border-[var(--c-border-strong)] has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-[var(--c-accent)]"
         >
           <!-- Identity -->
           <div class="flex gap-3 items-start min-w-0">
@@ -177,7 +188,11 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
             <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="a.icon" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ a.name }}</span>
+                <button
+                  type="button" :data-card="a.id"
+                  class="text-sm font-medium text-[var(--c-text-1)] truncate text-left cursor-pointer focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
+                  @click="openDetail(a)"
+                >{{ a.name }}</button>
                 <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0">{{ a.category }}</span>
               </div>
               <p class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
@@ -196,9 +211,9 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-[var(--c-text-3)] font-mono truncate">· {{ catalogVersion(a.image) }}</span>
             </span>
 
-            <button v-if="cardState(a) === 'none'" class="btn btn-primary btn-xs" @click.stop="openWizard(a)">Install</button>
-            <button v-else-if="a.installedApp?.update" class="btn btn-primary btn-xs" :disabled="busy === a.id" @click.stop="runPlan(a, 'app.update')">Update…</button>
-            <button v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="btn btn-outline btn-xs" @click.stop="openApp(a)">Open ↗</button>
+            <button v-if="cardState(a) === 'none'" class="btn btn-primary btn-xs relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">Install</button>
+            <button v-else-if="a.installedApp?.update" class="btn btn-primary btn-xs relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">Update…</button>
+            <button v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="btn btn-outline btn-xs relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">Open ↗</button>
           </div>
         </div>
       </div>
