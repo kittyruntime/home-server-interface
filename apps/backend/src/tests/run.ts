@@ -2147,4 +2147,107 @@ await testSharePlans()
   }
 }
 
+// Managed HTTPS (#12).
+// Test-only key pair, never used outside these tests.
+const TEST_CERT = `-----BEGIN CERTIFICATE-----
+MIIBmDCCAT+gAwIBAgIUYOYhYMFkeUQ4Q0RAOxzcirSBGd4wCgYIKoZIzj0EAwIw
+FDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MTAxNDEzMDM1OFoXDTM2MTAxMTEz
+MDM1OFowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAEO61g4E1kPxzkYles/Js58BNL6D++FdxzN32eC1CeLwE4SZ6dSZOQBfng
+2Q4ulWnJxZH65n4SjI7KsG6NTa0Cj6NvMG0wHQYDVR0OBBYEFF2Up4Mneb62+Pmf
+npDkGffZTDoxMB8GA1UdIwQYMBaAFF2Up4Mneb62+PmfnpDkGffZTDoxMA8GA1Ud
+EwEB/wQFMAMBAf8wGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAoGCCqGSM49
+BAMCA0cAMEQCIHC2KUdsFgH6A8onVhA2bifp3IDGx5pvgBOtCK3fg7+nAiBpcyVU
+IlIl41q/2OQeuSAbRKDFcYoIFNetFDA1jctRyw==
+-----END CERTIFICATE-----
+`
+const TEST_KEY = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQggi4rInQMsiWd8By9
+FJ/Nak9dGdfXr0TXFwA1rVZNH5GhRANCAAQ7rWDgTWQ/HORiV6z8mznwE0voP74V
+3HM3fZ4LUJ4vAThJnp1Jk5AF+eDZDi6VacnFkfrmfhKMjsqwbo1NrQKP
+-----END PRIVATE KEY-----
+`
+const OTHER_KEY = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIHDWM87Uu2frcOKM/mMp+AVB7PYi1b1sR20w1VpJEaYSoAoGCCqGSM49
+AwEHoUQDQgAEwZRhsEXXLd5KSUBLLexn+5yiixhu8Lisn1PftvzixBfJW6vjeUjl
+piEfWidfWTtJSQtgpTmXhjxqbn4ztXeXqg==
+-----END EC PRIVATE KEY-----
+`
+
+async function testManagedHttps() {
+  const tc = await import("../services/tls-config")
+  const ts = await import("../services/tls-server")
+  const { mkdtemp, writeFile } = await import("node:fs/promises")
+  const { join } = await import("node:path")
+  const { tmpdir } = await import("node:os")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-tls-"))
+
+  // Missing file: plain HTTP as before.
+  assert.deepEqual(tc.readTlsConfig(dir, 9001), { mode: "off", port: 9001, standardPorts: false, trustedProxies: [] })
+  await writeFile(join(dir, "tls.json"), JSON.stringify({ mode: "proxy", port: 9001, standardPorts: false, trustedProxies: ["172.17.0.0/16", "10.0.0.5"] }))
+  const trust = tc.trustProxyFn(tc.readTlsConfig(dir))
+  assert.equal(trust("127.0.0.1"), true)
+  assert.equal(trust("172.17.3.4"), true)
+  assert.equal(trust("10.0.0.5"), true)
+  assert.equal(trust("10.0.0.6"), false)
+  await writeFile(join(dir, "tls.json"), "{not json")
+  assert.equal(tc.readTlsConfig(dir).mode, "off", "a broken file never locks the admin out")
+
+  // Redirects keep the host, the port and the path.
+  assert.equal(ts.redirectLocation("192.168.1.48:9001", "/files?x=1", 9001, 9001), "https://192.168.1.48:9001/files?x=1")
+  assert.equal(ts.redirectLocation("nas", "/", 80, 443), "https://nas/")
+  assert.equal(ts.redirectLocation("nas:80", "/s/abc", 80, 443), "https://nas/s/abc")
+  assert.equal(ts.redirectLocation("[::1]:9001", "/", 9001, 9001), "https://[::1]:9001/")
+  assert.equal(ts.redirectLocation(undefined, "/", 9001, 9001), null)
+
+  // A missing or mismatched certificate is not loaded.
+  assert.equal(ts.loadContext(dir), null)
+  await writeFile(join(dir, "server.crt"), TEST_CERT)
+  await writeFile(join(dir, "server.key"), OTHER_KEY)
+  assert.equal(ts.loadContext(dir), null, "a key that does not match is refused")
+  await writeFile(join(dir, "server.key"), TEST_KEY)
+  assert.ok(ts.loadContext(dir))
+
+  // End to end: one port, TLS served, plain HTTP redirected.
+  const { buildApp } = await import("../app")
+  const ctx = ts.loadContext(dir)!
+  const app = buildApp({ https: ctx })
+  await app.ready()
+  const servers = await ts.startHttps(app, app.server as any, { mode: "local", port: 0, standardPorts: false, trustedProxies: [] }, dir, app.log)
+  const port = (servers[0]!.address() as any).port
+  const plain = await fetch(`http://127.0.0.1:${port}/health`, { redirect: "manual" })
+  assert.equal(plain.status, 308)
+  assert.equal(plain.headers.get("location"), `https://127.0.0.1:${port}/health`)
+  // Over TLS, the public authority download (/health would answer 503 here:
+  // no NATS in tests).
+  const https = await import("node:https")
+  const get = (path: string) => new Promise<{ status: number; type: string; disposition: string; body: string }>((resolve, reject) => {
+    https.get({ host: "127.0.0.1", port, path, ca: TEST_CERT }, r => {
+      let body = ""
+      r.setEncoding("utf8").on("data", c => { body += c }).on("end", () => resolve({
+        status: r.statusCode ?? 0, type: String(r.headers["content-type"] ?? ""), disposition: String(r.headers["content-disposition"] ?? ""), body,
+      }))
+    }).on("error", reject)
+  })
+  const previousTlsDir = process.env.HSI_TLS_DIR
+  process.env.HSI_TLS_DIR = dir
+  try {
+    assert.equal((await get("/ca.crt")).status, 404, "no authority yet")
+    await writeFile(join(dir, "ca.crt"), TEST_CERT)
+    const ca = await get("/ca.crt")
+    assert.equal(ca.status, 200)
+    assert.equal(ca.type, "application/x-x509-ca-cert")
+    assert.equal(ca.disposition, 'attachment; filename="hsi-authority.crt"')
+    assert.equal(ca.body, TEST_CERT)
+  } finally {
+    if (previousTlsDir === undefined) delete process.env.HSI_TLS_DIR
+    else process.env.HSI_TLS_DIR = previousTlsDir
+  }
+  assert.equal((app.server as any).requestTimeout, 0, "uploads and log streams are not cut by the HTTPS server")
+  for (const s of servers) s.close()
+  await app.close()
+}
+
+await testManagedHttps()
+
 console.log("Backend security tests passed")
