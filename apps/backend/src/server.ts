@@ -4,6 +4,7 @@ import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeGuard } from "./services/volume-guard"
 import { startTelemetry } from "./services/telemetry"
 import { startBackupScheduler } from "./services/backup-scheduler"
+import { startTlsWatch } from "./services/tls-watch"
 import { dispatchEvent, ensureDefaultRule } from "./services/notifications"
 import { migrateNotificationStorage } from "./services/notification-connectors"
 import { startDeliveryQueue } from "./services/notification-queue"
@@ -94,6 +95,7 @@ const start = async () => {
     startUpdateWatch({ dir: updateStateDir, currentVersion: readCurrentVersion })
     startTelemetry(app.log)
     startBackupScheduler()
+    startTlsWatch()
     void startEventSubscriber(app.log).catch(err => {
       app.log.error(err, "nats: event subscriber fatal error")
       process.exit(1)
