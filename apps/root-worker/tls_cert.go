@@ -59,8 +59,17 @@ var hostAddrs = func() []net.IP {
 	return ips
 }
 
-var tlsAppGroup = func() (int, error) {
-	g, err := user.LookupGroup(envOr("HSI_APP_GROUP", "hsi"))
+var tlsAppGroup = defaultTLSAppGroup
+
+// defaultTLSAppGroup resolves the group allowed to read server.key: the one
+// stored in tls.json (the installer records the application user's primary
+// group), else HSI_APP_GROUP, else "hsi".
+func defaultTLSAppGroup() (int, error) {
+	name := loadTLSConfig().Group
+	if name == "" {
+		name = envOr("HSI_APP_GROUP", "hsi")
+	}
+	g, err := user.LookupGroup(name)
 	if err != nil {
 		return 0, err
 	}
@@ -147,7 +156,7 @@ func writeTLSFile(name string, data []byte, perm os.FileMode, group bool) error 
 	if group {
 		gid, err := tlsAppGroup()
 		if err != nil {
-			return fmt.Errorf("the hsi group: %w", err)
+			return fmt.Errorf("the application group: %w", err)
 		}
 		return os.Chown(p, -1, gid)
 	}

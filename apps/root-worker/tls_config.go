@@ -25,6 +25,7 @@ type tlsConfig struct {
 	StandardPorts  bool     `json:"standardPorts"`
 	TrustedProxies []string `json:"trustedProxies"`
 	IssuedFor      []string `json:"issuedFor"`
+	Group          string   `json:"group,omitempty"`
 }
 
 func tlsConfigPath() string { return filepath.Join(tlsDir(), "tls.json") }
@@ -82,7 +83,7 @@ func renewLocalIfNeeded(now time.Time) (bool, string, error) {
 	b, err := os.ReadFile(filepath.Join(tlsDir(), "server.crt"))
 	info, perr := readCertInfo(b)
 	switch {
-	case err != nil || perr != nil || !info.FromAuthority:
+	case err != nil || perr != nil || !info.FromAuthority || !localPairLoads():
 		reason = "missing"
 	case info.NotAfter.Sub(now) < 30*24*time.Hour:
 		reason = "expiring"
@@ -91,21 +92,51 @@ func renewLocalIfNeeded(now time.Time) (bool, string, error) {
 	default:
 		return false, "", nil
 	}
-	if _, err := issueServerCert(currentTLSNames(), now); err != nil {
+	if err := issueLocal(&c, now); err != nil {
 		return false, reason, err
 	}
-	c.IssuedFor = names
-	return true, reason, saveTLSConfig(c)
+	return true, reason, nil
+}
+
+// localPairLoads tells whether server.crt and server.key form a pair the
+// backend can serve (both readable, the key matching the leaf).
+func localPairLoads() bool {
+	crt, err1 := os.ReadFile(filepath.Join(tlsDir(), "server.crt"))
+	key, err2 := os.ReadFile(filepath.Join(tlsDir(), "server.key"))
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	_, err := tlsKeyPair(crt, key)
+	return err == nil
+}
+
+// issueLocal issues a certificate for this server's current names and records
+// them in c, then saves c.
+func issueLocal(c *tlsConfig, now time.Time) error {
+	names := currentTLSNames()
+	if _, err := issueServerCert(names, now); err != nil {
+		return err
+	}
+	c.IssuedFor = names.list()
+	return saveTLSConfig(*c)
 }
 
 func handleTLSStatus(nc *nats.Conn, msg *nats.Msg) { replyOk(nc, msg.Reply, tlsStatus(time.Now())) }
 
-// tlsIssue renews the local certificate when needed. With force and the mode
-// "imported" (the backend cannot load the imported certificate), it falls back
-// to the local authority: the mode becomes local and a certificate is issued.
+// tlsIssue renews the local certificate when needed. With force (the backend
+// cannot load the served certificate): in "imported" mode it falls back to the
+// local authority (the mode becomes local and a certificate is issued); in
+// "local" mode a pair that does not load is reissued.
 func tlsIssue(now time.Time, force bool) (bool, string, error) {
 	if force {
-		if c := loadTLSConfig(); c.Mode == "imported" {
+		c := loadTLSConfig()
+		if c.Mode == "local" && !localPairLoads() {
+			if err := issueLocal(&c, now); err != nil {
+				return false, "fallback", err
+			}
+			return true, "fallback", nil
+		}
+		if c.Mode == "imported" {
 			c.Mode, c.IssuedFor = "local", nil
 			if err := saveTLSConfig(c); err != nil {
 				return false, "", err
@@ -141,51 +172,88 @@ func restartServerArgv() []string {
 		"systemctl", "restart", "hsi-server.service"}
 }
 
-func flagPort(args []string, def int) (int, error) {
+// tlsFlags reads --port N and --group NAME; port is 0 and group empty when
+// they are not given.
+func tlsFlags(args []string) (port int, group string, err error) {
 	for i := 0; i+1 < len(args); i++ {
-		if args[i] == "--port" {
-			p, err := strconv.Atoi(args[i+1])
-			if err != nil || p < 1 || p > 65535 {
-				return 0, fmt.Errorf("invalid port")
+		switch args[i] {
+		case "--port":
+			p, perr := strconv.Atoi(args[i+1])
+			if perr != nil || p < 1 || p > 65535 {
+				return 0, "", fmt.Errorf("invalid port")
 			}
-			return p, nil
+			port = p
+		case "--group":
+			group = strings.TrimSpace(args[i+1])
+			if group == "" {
+				return 0, "", fmt.Errorf("invalid group")
+			}
 		}
 	}
-	return def, nil
+	return port, group, nil
+}
+
+// updateTLSConfig applies the installer's port and group to an existing tls.json.
+func updateTLSConfig(port int, group string) error {
+	c := loadTLSConfig()
+	if port > 0 {
+		c.Port = port
+	}
+	if group != "" {
+		c.Group = group
+	}
+	return saveTLSConfig(c)
 }
 
 // runTLSCLI is `hsi-worker tls init|migrate|reset|fingerprint`.
 func runTLSCLI(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: hsi-worker tls init|migrate|reset|fingerprint [--port N]")
+		fmt.Fprintln(os.Stderr, "usage: hsi-worker tls init|migrate|reset|fingerprint [--port N] [--group NAME]")
 		return 2
 	}
 	now := time.Now()
-	port, err := flagPort(args[1:], loadTLSConfig().Port)
+	port, group, err := tlsFlags(args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
+	newPort := port
+	if newPort == 0 {
+		newPort = 9001
+	}
+	_, statErr := os.Stat(tlsConfigPath())
+	exists := statErr == nil
 	switch args[0] {
 	case "init":
-		if _, err := os.Stat(tlsConfigPath()); err == nil {
+		if exists {
+			if err := updateTLSConfig(port, group); err != nil {
+				return exitOn(err)
+			}
 			_, _, err := renewLocalIfNeeded(now)
 			return exitOn(err)
 		}
-		if err := saveTLSConfig(tlsConfig{Mode: "local", Port: port}); err != nil {
+		// The group is recorded first so the key can be handed to it; local
+		// mode is saved only once the certificate exists. On failure no
+		// tls.json is left: the backend keeps serving plain HTTP.
+		c := tlsConfig{Mode: "off", Port: newPort, Group: group}
+		if err := saveTLSConfig(c); err != nil {
 			return exitOn(err)
 		}
-		_, _, err := renewLocalIfNeeded(now)
-		return exitOn(err)
+		c.Mode = "local"
+		if err := issueLocal(&c, now); err != nil {
+			_ = os.Remove(tlsConfigPath())
+			return exitOn(err)
+		}
+		return 0
 	case "migrate":
-		if _, err := os.Stat(tlsConfigPath()); err == nil {
-			return 0
+		if exists {
+			return exitOn(updateTLSConfig(port, group))
 		}
 		mode := "off"
 		if fileExists(nginxSitePath) {
 			mode = "proxy"
 		}
-		return exitOn(saveTLSConfig(tlsConfig{Mode: mode, Port: port}))
+		return exitOn(saveTLSConfig(tlsConfig{Mode: mode, Port: newPort, Group: group}))
 	case "reset":
 		c := loadTLSConfig()
 		c.Mode, c.StandardPorts, c.IssuedFor = "local", false, nil

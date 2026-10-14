@@ -1,9 +1,14 @@
 package main
 
 import (
+	"errors"
 	"net"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -114,5 +119,121 @@ func TestSetupLinkScheme(t *testing.T) {
 	}
 	if got := setupLink("https", "10.0.0.2", 443, "tok"); got != "https://10.0.0.2/setup#token=tok" {
 		t.Fatal(got)
+	}
+}
+
+func currentGroupName(t *testing.T) string {
+	t.Helper()
+	g, err := user.LookupGroupId(strconv.Itoa(os.Getgid()))
+	if err != nil {
+		t.Skip("no name for the current group")
+	}
+	return g.Name
+}
+
+func TestTLSInitGroupIsStoredAndUsed(t *testing.T) {
+	dir := stubTLS(t)
+	tlsAppGroup = defaultTLSAppGroup // the real lookup, driven by tls.json
+	t.Setenv("HSI_APP_GROUP", "no-such-group-hsi-test")
+	group := currentGroupName(t)
+	if code := runTLSCLI([]string{"init", "--port", "9001", "--group", group}); code != 0 {
+		t.Fatal(code)
+	}
+	c := loadTLSConfig()
+	if c.Mode != "local" || c.Group != group {
+		t.Fatalf("%+v", c)
+	}
+	st, err := os.Stat(filepath.Join(dir, "server.key"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gid := st.Sys().(*syscall.Stat_t).Gid; int(gid) != os.Getgid() {
+		t.Fatalf("server.key group %d", gid)
+	}
+}
+
+func TestTLSInitFailureLeavesNoLocalConfig(t *testing.T) {
+	dir := stubTLS(t)
+	tlsAppGroup = func() (int, error) { return 0, errors.New("unknown group") }
+	if code := runTLSCLI([]string{"init", "--port", "9001", "--group", "nope"}); code == 0 {
+		t.Fatal("init must fail when the certificate cannot be issued")
+	}
+	if c := loadTLSConfig(); c.Mode == "local" {
+		t.Fatalf("local mode without a certificate: %+v", c)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "server.crt")); err == nil {
+		t.Fatal("no certificate expected")
+	}
+}
+
+func TestTLSMigrateUpdatesPortAndGroup(t *testing.T) {
+	stubTLS(t)
+	if err := saveTLSConfig(tlsConfig{Mode: "local", Port: 9001, StandardPorts: true,
+		TrustedProxies: []string{"10.0.0.1"}, IssuedFor: []string{"nas"}}); err != nil {
+		t.Fatal(err)
+	}
+	if code := runTLSCLI([]string{"migrate", "--port", "9100", "--group", "staff"}); code != 0 {
+		t.Fatal(code)
+	}
+	c := loadTLSConfig()
+	if c.Mode != "local" || c.Port != 9100 || c.Group != "staff" || !c.StandardPorts ||
+		strings.Join(c.TrustedProxies, ",") != "10.0.0.1" || strings.Join(c.IssuedFor, ",") != "nas" {
+		t.Fatalf("only the port and group change: %+v", c)
+	}
+	// Without --port, the stored port is kept.
+	if code := runTLSCLI([]string{"migrate"}); code != 0 || loadTLSConfig().Port != 9100 {
+		t.Fatal("port kept")
+	}
+}
+
+func TestTLSInitUpdatesPortOnExistingConfig(t *testing.T) {
+	stubTLS(t)
+	if err := saveTLSConfig(tlsConfig{Mode: "off", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	if code := runTLSCLI([]string{"init", "--port", "9200"}); code != 0 {
+		t.Fatal(code)
+	}
+	if c := loadTLSConfig(); c.Mode != "off" || c.Port != 9200 {
+		t.Fatalf("%+v", c)
+	}
+}
+
+func TestTLSIssueForceRepairsLocalKey(t *testing.T) {
+	dir := stubTLS(t)
+	now := time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC)
+	if err := saveTLSConfig(tlsConfig{Mode: "local", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := tlsIssue(now, false); err != nil {
+		t.Fatal(err)
+	}
+	_, otherKey := selfSigned(t, now.Add(90*24*time.Hour))
+	if err := os.WriteFile(filepath.Join(dir, "server.key"), otherKey, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	r, why, err := tlsIssue(now.Add(time.Hour), true)
+	if err != nil || !r || why != "fallback" {
+		t.Fatalf("%v %q %v", r, why, err)
+	}
+	crt, _ := os.ReadFile(filepath.Join(dir, "server.crt"))
+	key, _ := os.ReadFile(filepath.Join(dir, "server.key"))
+	if _, err := tlsKeyPair(crt, key); err != nil {
+		t.Fatalf("the pair must load: %v", err)
+	}
+}
+
+func TestRenewLocalTreatsUnloadablePairAsMissing(t *testing.T) {
+	dir := stubTLS(t)
+	now := time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC)
+	if err := saveTLSConfig(tlsConfig{Mode: "local", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := renewLocalIfNeeded(now); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Remove(filepath.Join(dir, "server.key"))
+	if r, why, err := renewLocalIfNeeded(now.Add(time.Hour)); err != nil || !r || why != "missing" {
+		t.Fatalf("%v %q %v", r, why, err)
 	}
 }
