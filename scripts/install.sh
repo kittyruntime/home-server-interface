@@ -81,7 +81,6 @@ REQUIRED_DEPS=(
 OPTIONAL_DEPS=(
   "docker:docker.io:Apps and App Store"
   "smbd:samba:SMB sharing"
-  "nginx:nginx:reverse proxy on port 80"
 )
 
 ensure_dependencies() {
@@ -628,13 +627,8 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   success "Backend bundled → apps/backend/dist/server.js"
 
   step "Building dashboard"
-  if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
-    VITE_API_URL="/trpc"
-  else
-    SERVER_IP=$(hostname -I | awk '{print $1}')
-    VITE_API_URL="http://${SERVER_IP}:${BACKEND_PORT}/trpc"
-    warn "nginx not found, dashboard will connect directly to :${BACKEND_PORT}"
-  fi
+  # The backend serves the dashboard itself, so the API is always same-origin.
+  VITE_API_URL="/trpc"
   printf 'VITE_API_URL=%s\n' "$VITE_API_URL" > "$APP_DIR/apps/dashboard/.env.production"
   run_as "$APP_USER" "cd '$APP_DIR/apps/dashboard' && pnpm build"
   success "Dashboard built → apps/dashboard/dist/"
@@ -825,15 +819,21 @@ if [[ "${SKIP_SEED}" != "1" ]]; then
     success "Database seeded"
   fi
   grep -v '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT" || true
+  # Managed HTTPS (#12): a new install serves HTTPS with its own local
+  # authority; an update keeps how the server was reached (proxy when the
+  # nginx site of older versions exists, plain HTTP otherwise).
+  if [[ "$IS_UPDATE" -eq 1 ]]; then
+    "/usr/local/bin/${APP_NAME}-worker" tls migrate --port "$BACKEND_PORT" || warn "Could not write the TLS settings"
+  else
+    "/usr/local/bin/${APP_NAME}-worker" tls init --port "$BACKEND_PORT" || warn "Could not create the HTTPS certificate: run 'sudo ${APP_NAME}-worker tls reset'"
+  fi
   # No administrator yet (#12): a one-time link to the setup assistant, which
   # creates it. Installs that already have one get nothing. An update keeps a
   # link not used yet instead of replacing it.
   if grep -q '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT" \
      && { [[ "$IS_UPDATE" -eq 0 ]] || [[ ! -s /etc/hsi/setup-token ]]; }; then
-    SETUP_PORT="$BACKEND_PORT"
-    if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then SETUP_PORT=80; fi
     SETUP_HOST=$(hostname -I | awk '{print $1}')
-    if SETUP_LINK=$("/usr/local/bin/${APP_NAME}-worker" setup-token ${SETUP_HOST:+--host "$SETUP_HOST"} --port "$SETUP_PORT"); then
+    if SETUP_LINK=$("/usr/local/bin/${APP_NAME}-worker" setup-token ${SETUP_HOST:+--host "$SETUP_HOST"}); then
       success "Setup link created"
     else
       SETUP_LINK=""
@@ -1123,8 +1123,13 @@ StandardError=append:$LOG_DIR/app.log
 SyslogIdentifier=${APP_NAME}-server
 
 NoNewPrivileges=true
+# Ports below 1024 (HTTPS on 443) without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 ProtectSystem=strict
 ProtectHome=read-only
+# The certificate and key are written by the root worker; the backend only reads them.
+ReadOnlyPaths=/var/lib/hsi/tls
 # CONTAINERS_DIR: the backend writes compose.yaml files itself (containerStacks.ts);
 # without it ProtectSystem=strict makes /opt read-only and App Store installs fail.
 # BACKUP_STAGING_DIR: configuration backups and restores are staged there (#1).
@@ -1267,9 +1272,11 @@ fi
 cleanup_legacy_app_units
 
 # =============================================================================
-# COMMON: nginx reverse proxy (optional)
+# COMMON: nginx reverse proxy (only kept up to date where an older version
+# already set it up; new installs are served directly over HTTPS)
 # =============================================================================
-if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
+if [[ "$IS_UPDATE" -eq 1 && -f "/etc/nginx/sites-available/${APP_NAME}" ]] \
+   && [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"
 
   NGINX_CONF="/etc/nginx/sites-available/${APP_NAME}"
@@ -1346,6 +1353,14 @@ server {
         proxy_set_header        X-Forwarded-Proto \$scheme;
     }
 
+    location = /ca.crt {
+        proxy_pass              http://127.0.0.1:$BACKEND_PORT;
+        proxy_set_header        Host              \$host;
+        proxy_set_header        X-Real-IP         \$remote_addr;
+        proxy_set_header        X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto \$scheme;
+    }
+
     location / {
         root $DASHBOARD_DIST;
         try_files \$uri \$uri/ /index.html;
@@ -1384,10 +1399,17 @@ fi
 echo ""
 
 SERVER_IP=$(hostname -I | awk '{print $1}')
-if [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
+tls_mode=$(sed -n 's/.*"mode": *"\([a-z]*\)".*/\1/p' /var/lib/hsi/tls/tls.json 2>/dev/null || true)
+if [[ "$tls_mode" == "local" || "$tls_mode" == "imported" ]]; then
+  echo -e "  ${BOLD}Access:${NC}  https://$SERVER_IP:$BACKEND_PORT"
+elif [[ -f "/etc/nginx/sites-available/${APP_NAME}" ]]; then
   echo -e "  ${BOLD}Access:${NC}  http://$SERVER_IP"
 else
   echo -e "  ${BOLD}Access:${NC}  http://$SERVER_IP:$BACKEND_PORT"
+fi
+if [[ "$tls_mode" == "local" ]]; then
+  echo -e "  ${BOLD}Certificate authority (SHA-256):${NC} $("/usr/local/bin/${APP_NAME}-worker" tls fingerprint 2>/dev/null || true)"
+  echo -e "  ${YELLOW}Your browser warns on the first visit: check this fingerprint, then trust the authority (Settings > Secure access).${NC}"
 fi
 
 echo ""
