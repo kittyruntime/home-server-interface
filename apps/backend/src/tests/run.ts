@@ -2305,6 +2305,20 @@ async function testTlsWatchAndOps() {
   // The private key of an imported certificate never reaches the audit log.
   const audited = JSON.stringify(trpcIndex.redactForAudit({ op: "tls.import", input: { cert: "CERT", key: "PRIVATE" }, fingerprint: "x" }))
   assert.ok(!audited.includes("PRIVATE"))
+  const combined = "-----BEGIN CERTIFICATE-----\nCERTBODY\n-----END CERTIFICATE-----\n-----BEGIN ENCRYPTED PRIVATE KEY-----\nKEYBASE64LINE\n-----END ENCRYPTED PRIVATE KEY-----\n"
+  const red = JSON.stringify(trpcIndex.redactForAudit({ op: "tls.import", input: { cert: combined, key: "" } }))
+  assert.ok(!red.includes("PRIVATE KEY-----") && !red.includes("KEYBASE64LINE"))
+  assert.ok(red.includes("[REDACTED PRIVATE KEY]") && red.includes("CERTBODY"))
+  const plain = "-----BEGIN CERTIFICATE-----\nCERTBODY\n-----END CERTIFICATE-----\n"
+  assert.equal((trpcIndex.redactForAudit({ cert: plain }) as { cert: string }).cert, plain)
+
+  // The expiry dedup restarts when the certificate is replaced.
+  const s1 = tw.nextNotice({ fingerprint: null, last: null }, { fingerprint: "A", notAfter: new Date(now.getTime() + 20 * day) }, now)
+  assert.equal(s1.notice?.threshold, 30)
+  const s2 = tw.nextNotice(s1.state, { fingerprint: "A", notAfter: new Date(now.getTime() + 20 * day) }, now)
+  assert.equal(s2.notice, null)
+  const s3 = tw.nextNotice(s2.state, { fingerprint: "B", notAfter: new Date(now.getTime() + 20 * day) }, now)
+  assert.equal(s3.notice?.threshold, 30)
 }
 
 await testTlsWatchAndOps()
