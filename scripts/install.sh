@@ -809,10 +809,13 @@ fi
 # Managed HTTPS (#12): a new install serves HTTPS with its own local
 # authority; an update keeps how the server was reached (proxy when the
 # nginx site of older versions exists, plain HTTP otherwise).
+# server.key is handed to the application user's primary group (no "hsi"
+# group exists for a source install or a custom APP_USER).
+APP_GROUP_NAME="$(id -gn "$APP_USER" 2>/dev/null || echo hsi)"
 if [[ "$IS_UPDATE" -eq 1 ]]; then
-  "/usr/local/bin/${APP_NAME}-worker" tls migrate --port "$BACKEND_PORT" || warn "Could not write the TLS settings"
+  "/usr/local/bin/${APP_NAME}-worker" tls migrate --port "$BACKEND_PORT" --group "$APP_GROUP_NAME" || warn "Could not write the TLS settings"
 else
-  "/usr/local/bin/${APP_NAME}-worker" tls init --port "$BACKEND_PORT" || warn "Could not create the HTTPS certificate: run 'sudo ${APP_NAME}-worker tls reset'"
+  "/usr/local/bin/${APP_NAME}-worker" tls init --port "$BACKEND_PORT" --group "$APP_GROUP_NAME" || warn "Could not create the HTTPS certificate: run 'sudo ${APP_NAME}-worker tls reset'"
 fi
 
 SETUP_LINK=""
@@ -1274,9 +1277,13 @@ cleanup_legacy_app_units
 
 # =============================================================================
 # COMMON: nginx reverse proxy (only kept up to date where an older version
-# already set it up; new installs are served directly over HTTPS)
+# already set it up and the server is still reached through it: proxy mode
+# with the site enabled; new installs are served directly over HTTPS, and a
+# site the admin disabled or removed is never brought back)
 # =============================================================================
-if [[ "$IS_UPDATE" -eq 1 && -f "/etc/nginx/sites-available/${APP_NAME}" ]] \
+TLS_MODE_NOW=$(sed -n 's/.*"mode": *"\([a-z]*\)".*/\1/p' /var/lib/hsi/tls/tls.json 2>/dev/null || true)
+NGINX_ENABLED_LINK="/etc/nginx/sites-enabled/${APP_NAME}"
+if [[ "$IS_UPDATE" -eq 1 && "$TLS_MODE_NOW" == "proxy" && -e "$NGINX_ENABLED_LINK" ]] \
    && [[ "$SKIP_NGINX" != "1" ]] && command -v nginx &>/dev/null; then
   step "Configuring nginx"
 
@@ -1369,12 +1376,9 @@ server {
 }
 EOF
 
+  # The sites-enabled link already exists (checked above): it is never
+  # created or replaced here.
   SITES_ENABLED="/etc/nginx/sites-enabled"
-  if [[ -d "$SITES_ENABLED" ]]; then
-    rm -f "$SITES_ENABLED/${APP_NAME}"
-    ln -s "$NGINX_CONF" "$SITES_ENABLED/${APP_NAME}"
-  fi
-
   if [[ -f "$SITES_ENABLED/default" ]]; then
     warn "Disabling nginx default site (conflicts on port 80)"
     rm -f "$SITES_ENABLED/default"
@@ -1403,7 +1407,7 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 tls_mode=$(sed -n 's/.*"mode": *"\([a-z]*\)".*/\1/p' /var/lib/hsi/tls/tls.json 2>/dev/null || true)
 if [[ "$tls_mode" == "local" || "$tls_mode" == "imported" ]]; then
   echo -e "  ${BOLD}Access:${NC}  https://$SERVER_IP:$BACKEND_PORT"
-elif [[ -f "/etc/nginx/sites-available/${APP_NAME}" ]]; then
+elif [[ "$tls_mode" == "proxy" && -e "/etc/nginx/sites-enabled/${APP_NAME}" ]]; then
   echo -e "  ${BOLD}Access:${NC}  http://$SERVER_IP"
 else
   echo -e "  ${BOLD}Access:${NC}  http://$SERVER_IP:$BACKEND_PORT"
