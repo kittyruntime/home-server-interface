@@ -100,6 +100,13 @@ const PLAN_INPUTS = {
     hostname: z.string().max(63).regex(/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/, "A hostname uses letters, digits and hyphens, and does not start or end with a hyphen").optional(),
     timezone: z.string().max(64).regex(/^[A-Za-z0-9_+\-/]+$/, "Invalid time zone").optional(),
   }),
+  // Managed HTTPS (#12): admins only. The key of an imported certificate is
+  // redacted from the audit log by name (see redactForAudit).
+  "tls.enable": z.object({}),
+  "tls.useLocal": z.object({}),
+  "tls.import": z.object({ cert: z.string().min(1).max(256_000), key: z.string().max(64_000).default("") }),
+  "tls.proxy": z.object({ trustedProxies: z.array(z.string().min(1).max(64)).max(32) }),
+  "tls.standardPorts": z.object({ enabled: z.boolean() }),
   "storage.accept": z.object({
     mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
   }),
@@ -111,6 +118,8 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
   // The server's hostname and time zone (#12): admins only.
   if (op === "system.identity" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change the server identity" })
+  if (op.startsWith("tls.") && !ctx.user?.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change secure access" })
   // Expanding rewrites whole arrays and erases the disk it adds: admins only.
   if (op === "volume.expand" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can expand a volume" })

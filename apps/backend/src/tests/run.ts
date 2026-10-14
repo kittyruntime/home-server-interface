@@ -785,7 +785,7 @@ await testVolumeGuard()
 const sp = await import("../services/storage-plan")
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.includes("system.identity") && sp.PLAN_OPS.length === 22)
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.includes("system.identity") && sp.PLAN_OPS.length === 27)
   const meta = sp.planAuditMeta("format",
     [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
@@ -2283,5 +2283,30 @@ async function testManagedHttps() {
 }
 
 await testManagedHttps()
+
+async function testTlsWatchAndOps() {
+  const tw = await import("../services/tls-watch")
+  const now = new Date("2026-10-13T00:00:00Z")
+  const day = 24 * 3600_000
+  assert.equal(tw.expiryNotice(new Date(now.getTime() + 60 * day), now, null), null)
+  const n30 = tw.expiryNotice(new Date(now.getTime() + 20 * day), now, null)
+  assert.equal(n30?.threshold, 30)
+  assert.equal(n30?.event.severity, "warning")
+  assert.match(n30!.event.message, /expires in 20 days/)
+  assert.equal(tw.expiryNotice(new Date(now.getTime() + 20 * day), now, 30), null, "notified once per threshold")
+  assert.equal(tw.expiryNotice(new Date(now.getTime() + 5 * day), now, 30)?.threshold, 7)
+  const gone = tw.expiryNotice(new Date(now.getTime() - day), now, 7)
+  assert.equal(gone?.threshold, 0)
+  assert.equal(gone?.event.severity, "critical")
+
+  const sp = await import("../services/storage-plan")
+  for (const op of ["tls.enable", "tls.useLocal", "tls.import", "tls.proxy", "tls.standardPorts"]) assert.ok((sp.PLAN_OPS as readonly string[]).includes(op), op)
+
+  // The private key of an imported certificate never reaches the audit log.
+  const audited = JSON.stringify(trpcIndex.redactForAudit({ op: "tls.import", input: { cert: "CERT", key: "PRIVATE" }, fingerprint: "x" }))
+  assert.ok(!audited.includes("PRIVATE"))
+}
+
+await testTlsWatchAndOps()
 
 console.log("Backend security tests passed")
