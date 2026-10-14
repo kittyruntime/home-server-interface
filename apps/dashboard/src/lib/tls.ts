@@ -67,6 +67,22 @@ export async function waitForServer(origin: string, timeoutMs = 60_000, opts: Wa
   }
 }
 
+export interface OpenAfterRestartDeps {
+  wait?: (origin: string) => Promise<void>
+  assign?: (url: string) => void
+}
+
+/** Waits for HSI to come back at its new address after a plan, then loads it. */
+export async function openAfterRestart(
+  loc: { protocol: string; hostname: string; port: string; pathname: string },
+  next: { https: boolean; port: number; standardPorts: boolean },
+  deps: OpenAfterRestartDeps = {},
+): Promise<void> {
+  const url = addressAfter(loc, next)
+  await (deps.wait ?? (o => waitForServer(o)))(new URL(url).origin)
+  ;(deps.assign ?? (u => location.assign(u)))(url)
+}
+
 export const TRUST_STEPS: Array<{ os: string; steps: string }> = [
   { os: 'Windows', steps: 'Open the downloaded file, choose Install Certificate, pick Local Machine, then place it in Trusted Root Certification Authorities.' },
   { os: 'macOS', steps: 'Open the file to add it to Keychain Access, then double-click it and set Trust to Always Trust.' },

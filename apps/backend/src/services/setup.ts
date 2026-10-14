@@ -6,7 +6,7 @@ import { assertNotThrottled, clearLoginFailures, recordLoginFailure } from "./lo
 // one-time token printed by the installer opens a short setup session that can
 // create one. Progress is kept so a reload or a reboot resumes there.
 
-export const SETUP_STEPS = ["admin", "identity", "next", "done"] as const
+export const SETUP_STEPS = ["admin", "identity", "secure", "next", "done"] as const
 export type SetupStep = typeof SETUP_STEPS[number]
 
 export interface SetupDeps {

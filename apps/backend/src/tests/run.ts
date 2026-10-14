@@ -1784,8 +1784,13 @@ await testSharePlans()
 
   admins = 1 // TestCreateAdminRefusedWhenAdminExists: a token left behind opens nothing
   await assert.rejects(checkSetupToken(deps, "good", "10.0.0.8"), /already done/)
+  const { SETUP_STEPS } = await import("../services/setup")
+  assert.deepEqual([...SETUP_STEPS], ["admin", "identity", "secure", "next", "done"])
   state.step = "identity"
   assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: "identity" })
+  state.step = "secure"
+  assert.deepEqual(await setupStatus(deps, { isAdmin: true }), { required: false, step: "secure" })
+  state.step = "identity"
   await recordProgress(deps, "next", "identity")
   assert.deepEqual(state, { step: "next", skipped: ["identity"] })
   await recordProgress(deps, "done")
