@@ -32,26 +32,29 @@ export function loadContext(dir: string): { cert: Buffer; key: Buffer } | null {
 }
 
 // The port a connection arrived on is read from its socket, so a listener
-// bound to port 0 (tests) redirects to the port it actually got. Without an
-// explicit HTTPS port, HTTPS is served on that same port.
+// bound to port 0 (tests) redirects to the port it actually got. With an
+// explicit HTTPS port (the plain standard port), every redirect goes there.
 function redirectServer(httpsPort?: number): HttpServer {
   return createHttpServer((req, res) => {
-    const listenPort = req.socket.localPort ?? 0
-    const to = redirectLocation(req.headers.host, req.url ?? "/", listenPort, httpsPort ?? listenPort)
+    const port = httpsPort ?? req.socket.localPort ?? 0
+    const to = redirectLocation(req.headers.host, req.url ?? "/", port, port)
     if (!to) { res.writeHead(400).end("Missing Host header"); return }
     res.writeHead(308, { Location: to }).end()
   })
 }
 
 // Reads the first byte, puts it back, and hands the socket to the server that
-// speaks its protocol. A peer that closes before sending anything is dropped.
-function sniffer(https: HttpsServer, plain: HttpServer): NetServer {
+// speaks its protocol. A peer that closes before sending anything, or sends
+// nothing for idleTimeoutMs, is dropped.
+function sniffer(https: HttpsServer, plain: HttpServer, idleTimeoutMs: number): NetServer {
   return createNetServer({ pauseOnConnect: true }, (socket: Socket) => {
     socket.on("error", () => socket.destroy())
+    socket.setTimeout(idleTimeoutMs, () => socket.destroy())
     socket.once("readable", () => {
       const first = socket.read(1) as Buffer | null
       if (!first) { socket.destroy(); return }
       socket.unshift(first)
+      socket.setTimeout(0) // the receiving server applies its own timeouts
       ;(first[0] === 0x16 ? https : plain).emit("connection", socket)
     })
   })
@@ -63,22 +66,44 @@ const listen = (s: NetServer, port: number) =>
     s.listen(port, "0.0.0.0", () => { s.off("error", reject); resolve(s) })
   })
 
-export async function startHttps(_app: FastifyInstance, https: HttpsServer, cfg: TlsConfig, _dir: string, _log: FastifyBaseLogger): Promise<NetServer[]> {
+export interface StartHttpsOptions {
+  // Ports used for "standard ports" (tests bind free ports instead).
+  standardPortNumbers?: { https: number; http: number }
+  idleTimeoutMs?: number
+}
+
+export async function startHttps(
+  _app: FastifyInstance, https: HttpsServer, cfg: TlsConfig, _dir: string, log: FastifyBaseLogger, opts: StartHttpsOptions = {},
+): Promise<NetServer[]> {
+  const std = opts.standardPortNumbers ?? { https: 443, http: 80 }
+  const idle = opts.idleTimeoutMs ?? 30_000
   // Fastify's own server never listens: connections are handed to it.
   https.requestTimeout = 0
   https.headersTimeout = 60_000
-  const servers = [await listen(sniffer(https, redirectServer()), cfg.port)]
+  // The HSI port is required: failing to bind it fails the start.
+  const servers = [await listen(sniffer(https, redirectServer(), idle), cfg.port)]
   if (cfg.standardPorts) {
-    servers.push(await listen(sniffer(https, redirectServer()), 443))
-    const plain80 = redirectServer(443)
-    servers.push(await listen(createNetServer(s => plain80.emit("connection", s)), 80))
+    // The standard ports are a convenience: a port taken later (by a container,
+    // say) is logged and HSI keeps serving on its own port.
+    const plain = redirectServer(std.https)
+    const optional: [number, () => NetServer][] = [
+      [std.https, () => sniffer(https, redirectServer(), idle)],
+      [std.http, () => createNetServer(s => plain.emit("connection", s))],
+    ]
+    for (const [port, make] of optional) {
+      try {
+        servers.push(await listen(make(), port))
+      } catch (err) {
+        log.error({ err, port }, "tls: a standard port cannot be bound, HSI keeps serving on its own port")
+      }
+    }
   }
   return servers
 }
 
 export function watchCertificate(server: HttpsServer, dir: string, log: FastifyBaseLogger): FSWatcher {
   let timer: NodeJS.Timeout | null = null
-  return watch(dir, (_event, file) => {
+  const watcher = watch(dir, (_event, file) => {
     if (file !== "server.crt" && file !== "server.key") return
     if (timer) clearTimeout(timer)
     // Both files change in one plan: reload once, after the last write.
@@ -88,5 +113,8 @@ export function watchCertificate(server: HttpsServer, dir: string, log: FastifyB
       server.setSecureContext(ctx)
       log.info("tls: certificate reloaded")
     }, 500)
+    timer.unref()
   })
+  watcher.on("error", (err) => log.error({ err }, "tls: certificate watch failed"))
+  return watcher
 }

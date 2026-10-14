@@ -2245,7 +2245,41 @@ async function testManagedHttps() {
   }
   assert.equal((app.server as any).requestTimeout, 0, "uploads and log streams are not cut by the HTTPS server")
   for (const s of servers) s.close()
+
+  // A taken standard port is logged, never fatal: the HSI port keeps serving.
+  const net = await import("node:net")
+  const held = net.createServer()
+  await new Promise<void>(r => held.listen(0, "0.0.0.0", () => r()))
+  const heldPort = (held.address() as any).port
+  const errors: string[] = []
+  const fakeLog: any = { ...app.log, error: (...a: unknown[]) => { errors.push(a.map(String).join(" ")) }, info: () => {}, warn: () => {} }
+  const partial = await ts.startHttps(app, app.server as any, { mode: "local", port: 0, standardPorts: true, trustedProxies: [] }, dir, fakeLog,
+    { standardPortNumbers: { https: heldPort, http: 0 } })
+  assert.equal(partial.length, 2, "the main listener and the free standard port")
+  assert.equal(errors.length, 1, "the taken port is logged")
+  const mainPort = (partial[0]!.address() as any).port
+  assert.equal((await fetch(`http://127.0.0.1:${mainPort}/x`, { redirect: "manual" })).status, 308)
+  const httpPort = (partial[1]!.address() as any).port
+  const toStd = await fetch(`http://127.0.0.1:${httpPort}/x`, { redirect: "manual" })
+  assert.equal(toStd.headers.get("location"), `https://127.0.0.1:${heldPort}/x`, "the plain standard port redirects to the HTTPS one")
+  for (const s of partial) s.close()
+  held.close()
+
+  // A peer that connects and sends nothing is dropped after the idle timeout.
+  const idle = await ts.startHttps(app, app.server as any, { mode: "local", port: 0, standardPorts: false, trustedProxies: [] }, dir, app.log, { idleTimeoutMs: 100 })
+  const idlePort = (idle[0]!.address() as any).port
+  const closedInTime = await new Promise<boolean>(resolve => {
+    const c = net.connect(idlePort, "127.0.0.1")
+    const t = setTimeout(() => { c.destroy(); resolve(false) }, 3000)
+    c.on("close", () => { clearTimeout(t); resolve(true) })
+    c.on("error", () => {})
+  })
+  assert.equal(closedInTime, true, "an idle connection is closed")
+  for (const s of idle) s.close()
+
   await app.close()
+  const { rm } = await import("node:fs/promises")
+  await rm(dir, { recursive: true, force: true })
 }
 
 await testManagedHttps()
