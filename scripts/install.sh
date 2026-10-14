@@ -806,6 +806,15 @@ else
   success "Schema created"
 fi
 
+# Managed HTTPS (#12): a new install serves HTTPS with its own local
+# authority; an update keeps how the server was reached (proxy when the
+# nginx site of older versions exists, plain HTTP otherwise).
+if [[ "$IS_UPDATE" -eq 1 ]]; then
+  "/usr/local/bin/${APP_NAME}-worker" tls migrate --port "$BACKEND_PORT" || warn "Could not write the TLS settings"
+else
+  "/usr/local/bin/${APP_NAME}-worker" tls init --port "$BACKEND_PORT" || warn "Could not create the HTTPS certificate: run 'sudo ${APP_NAME}-worker tls reset'"
+fi
+
 SETUP_LINK=""
 if [[ "${SKIP_SEED}" != "1" ]]; then
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
@@ -819,14 +828,6 @@ if [[ "${SKIP_SEED}" != "1" ]]; then
     success "Database seeded"
   fi
   grep -v '^HSI_SETUP_REQUIRED$' <<<"$SEED_OUTPUT" || true
-  # Managed HTTPS (#12): a new install serves HTTPS with its own local
-  # authority; an update keeps how the server was reached (proxy when the
-  # nginx site of older versions exists, plain HTTP otherwise).
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
-    "/usr/local/bin/${APP_NAME}-worker" tls migrate --port "$BACKEND_PORT" || warn "Could not write the TLS settings"
-  else
-    "/usr/local/bin/${APP_NAME}-worker" tls init --port "$BACKEND_PORT" || warn "Could not create the HTTPS certificate: run 'sudo ${APP_NAME}-worker tls reset'"
-  fi
   # No administrator yet (#12): a one-time link to the setup assistant, which
   # creates it. Installs that already have one get nothing. An update keeps a
   # link not used yet instead of replacing it.
@@ -1129,7 +1130,7 @@ CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 ProtectSystem=strict
 ProtectHome=read-only
 # The certificate and key are written by the root worker; the backend only reads them.
-ReadOnlyPaths=/var/lib/hsi/tls
+ReadOnlyPaths=-/var/lib/hsi/tls
 # CONTAINERS_DIR: the backend writes compose.yaml files itself (containerStacks.ts);
 # without it ProtectSystem=strict makes /opt read-only and App Store installs fail.
 # BACKUP_STAGING_DIR: configuration backups and restores are staged there (#1).
