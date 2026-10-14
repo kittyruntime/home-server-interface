@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
-import { addressAfter, expiryState, modeLabel, waitForServer, TRUST_STEPS } from '../lib/tls'
+import { expiryState, modeLabel, openAfterRestart, TRUST_STEPS } from '../lib/tls'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import ToggleSwitch from './ui/ToggleSwitch.vue'
@@ -48,9 +48,7 @@ function ymd(iso: string): string {
 async function afterPlan(next: { https: boolean; port: number; standardPorts: boolean }) {
   restarting.value = true
   try {
-    const url = addressAfter(location, next)
-    await waitForServer(new URL(url).origin)
-    location.assign(url)
+    await openAfterRestart(location, next)
   } finally {
     restarting.value = false
   }

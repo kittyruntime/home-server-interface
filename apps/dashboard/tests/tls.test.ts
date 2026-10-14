@@ -60,3 +60,14 @@ test('waitForServer gives up on an https origin after 8 s', async () => {
   await waitForServer('https://nas', 60_000, { now: c.now, sleep: c.sleep, fetch: fetchFn })
   assert.ok(c.at() >= 8000 && c.at() < 10_000)
 })
+
+test('openAfterRestart waits for the new origin then navigates to the new address', async () => {
+  const { openAfterRestart } = await import('../src/lib/tls.ts')
+  const calls: string[] = []
+  await openAfterRestart(
+    { protocol: 'http:', hostname: 'nas', port: '3000', pathname: '/setup' },
+    { https: true, port: 8443, standardPorts: false },
+    { wait: async o => { calls.push(`wait ${o}`) }, assign: u => { calls.push(`go ${u}`) } },
+  )
+  assert.deepEqual(calls, ['wait https://nas:8443', 'go https://nas:8443/setup'])
+})

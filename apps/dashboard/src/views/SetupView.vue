@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { applyPlanned } from '../lib/plan'
+import { modeLabel, openAfterRestart, TRUST_STEPS } from '../lib/tls'
 import { setupScreen, validHostname, type SetupStatus } from '../lib/setup'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
@@ -38,11 +39,12 @@ const screen = computed(() => status.value ? setupScreen(status.value, isAuthent
 const STEPS = [
   { id: 'admin', label: 'Administrator' },
   { id: 'identity', label: 'Server' },
+  { id: 'secure', label: 'Secure access' },
   { id: 'next', label: 'Next steps' },
 ]
 const stepIndex = computed(() => {
   const s = screen.value
-  return s === 'token' || s === 'admin' ? 0 : s === 'identity' || s === 'login' ? 1 : 2
+  return s === 'token' || s === 'admin' ? 0 : s === 'identity' || s === 'login' ? 1 : s === 'secure' ? 2 : 3
 })
 
 function message(e: unknown, fallback: string) {
@@ -129,6 +131,7 @@ async function loadIdentity() {
 }
 watch(screen, s => {
   if (s === 'identity' && !current.value) void loadIdentity()
+  if (s === 'secure' && !tls.value) void loadTls()
   // A rejected session (another install's token) needs a new login first.
   if (s === 'login') void router.replace('/login')
 }, { immediate: true })
@@ -137,7 +140,7 @@ const hostnameError = computed(() => hostname.value && !validHostname(hostname.v
   ? 'Use letters, digits and hyphens (up to 63), not starting or ending with a hyphen' : '')
 const identityChanged = computed(() => !!current.value && (hostname.value !== current.value.hostname || timezone.value !== current.value.timezone))
 
-async function goTo(step: 'next' | 'done', skip?: 'identity') {
+async function goTo(step: 'secure' | 'next' | 'done', skip?: 'identity' | 'secure') {
   await trpc.setup.progress.mutate({ step, ...(skip ? { skip } : {}) })
   if (step === 'done') { await router.replace('/'); return }
   await loadStatus()
@@ -146,13 +149,13 @@ async function goTo(step: 'next' | 'done', skip?: 'identity') {
 async function applyIdentity() {
   if (hostnameError.value) return
   error.value = ''
-  if (!identityChanged.value) { await goTo('next'); return }
+  if (!identityChanged.value) { await goTo('secure'); return }
   try {
     await applyPlanned('system.identity', {
       ...(hostname.value !== current.value?.hostname ? { hostname: hostname.value } : {}),
       ...(timezone.value !== current.value?.timezone ? { timezone: timezone.value } : {}),
     }, { title: 'Set the server identity', actionLabel: 'Apply' })
-    await goTo('next')
+    await goTo('secure')
   } catch (e) {
     if (e instanceof Error && e.message) error.value = e.message
   }
@@ -165,6 +168,33 @@ onMounted(async () => {
   // A link carries its token: check it straight away.
   else if ((screen.value === 'token' || screen.value === 'admin') && tokenInput.value) await checkToken()
 })
+
+// ── Secure access ────────────────────────────────────────────────────────────
+const tls = ref<Awaited<ReturnType<typeof trpc.tls.status.query>> | null>(null)
+const tlsError = ref('')
+const restarting = ref(false)
+async function loadTls() {
+  tlsError.value = ''
+  try {
+    tls.value = await trpc.tls.status.query()
+  } catch (e) {
+    if (e instanceof TRPCClientError && e.data?.code === 'UNAUTHORIZED') { logout(); void router.replace('/login'); return }
+    tlsError.value = message(e, 'Could not read the secure access status')
+  }
+}
+async function turnOnHttps() {
+  if (!tls.value) return
+  error.value = ''
+  try {
+    await applyPlanned('tls.enable', {}, { title: 'Serve HSI over HTTPS', actionLabel: 'Turn on' })
+    restarting.value = true
+    await openAfterRestart(location, { https: true, port: tls.value.port, standardPorts: tls.value.standardPorts })
+  } catch (e) {
+    if (e instanceof Error && e.message) error.value = e.message
+  } finally {
+    restarting.value = false
+  }
+}
 
 const NEXT = [
   { title: 'Create or import a volume', text: 'Turn free disks into a volume, or bring back the arrays already on them.', href: '/?app=storage' },
@@ -265,10 +295,50 @@ const NEXT = [
           </template>
           <p v-if="hostnameError || error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
           <div class="flex justify-between">
-            <button type="button" class="btn btn-ghost btn-sm" @click="goTo('next', 'identity')">Skip</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="goTo('secure', 'identity')">Skip</button>
             <button class="btn btn-primary btn-sm" :disabled="!current || !!hostnameError">{{ identityChanged ? 'Apply…' : 'Continue' }}</button>
           </div>
         </form>
+
+        <!-- Secure access -->
+        <div v-else-if="screen === 'secure'" class="space-y-4">
+          <div>
+            <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Secure access</h2>
+            <p class="mt-1 text-sm text-[var(--c-text-2)]">HTTPS encrypts passwords and files on your network.</p>
+          </div>
+          <p v-if="restarting" role="status" class="status-text text-[var(--c-text-2)]">Restarting HSI…</p>
+          <LoadingState v-else-if="!tls && !tlsError" variant="compact" />
+          <template v-else-if="tls">
+            <p class="text-sm text-[var(--c-text-1)]">{{ modeLabel(tls.mode) }}</p>
+            <template v-if="tls.mode === 'local'">
+              <div v-if="tls.authorityFingerprint">
+                <span class="text-xs text-[var(--c-text-3)]">Authority fingerprint</span>
+                <p class="font-mono break-all text-xs text-[var(--c-text-2)] mt-1">{{ tls.authorityFingerprint }}</p>
+              </div>
+              <p class="text-sm text-[var(--c-text-2)]">Install the authority certificate on your devices so browsers trust this server.</p>
+              <a href="/ca.crt" download class="btn btn-outline btn-sm">Download the authority certificate</a>
+              <details class="text-sm text-[var(--c-text-2)]">
+                <summary class="cursor-pointer text-xs text-[var(--c-text-3)]">How to trust it on your devices</summary>
+                <dl class="mt-2 space-y-2">
+                  <div v-for="t in TRUST_STEPS" :key="t.os">
+                    <dt class="text-xs font-medium text-[var(--c-text-1)]">{{ t.os }}</dt>
+                    <dd class="text-xs">{{ t.steps }}</dd>
+                  </div>
+                </dl>
+              </details>
+            </template>
+            <div v-else-if="tls.mode === 'off'" class="space-y-2">
+              <p class="text-sm text-[var(--c-text-2)]">HSI is served over plain HTTP. Turn HTTPS on with a local certificate authority.</p>
+              <button type="button" class="btn btn-primary btn-sm" @click="turnOnHttps">Turn HTTPS on</button>
+            </div>
+            <p class="text-xs text-[var(--c-text-3)]">Import a certificate or use a reverse proxy later in Settings &gt; Secure access.</p>
+          </template>
+          <p v-if="tlsError || error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
+          <div class="flex justify-between">
+            <button type="button" class="btn btn-ghost btn-sm" :disabled="restarting" @click="goTo('next', 'secure')">Skip</button>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="restarting" @click="goTo('next')">Continue</button>
+          </div>
+        </div>
 
         <!-- Next steps -->
         <div v-else-if="screen === 'next'" class="space-y-4">

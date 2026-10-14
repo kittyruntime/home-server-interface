@@ -12,6 +12,8 @@ test('setupScreen: before the administrator exists, the token then the account',
 test('setupScreen: after, the recorded step behind the normal login', () => {
   assert.equal(setupScreen({ required: false, step: 'identity' }, false, false), 'login')
   assert.equal(setupScreen({ required: false, step: 'identity' }, true, false), 'identity')
+  assert.equal(setupScreen({ required: false, step: 'secure' }, true, false), 'secure')
+  assert.equal(setupScreen({ required: false, step: 'secure' }, false, false), 'login')
   assert.equal(setupScreen({ required: false, step: 'next' }, true, false), 'next')
   assert.equal(setupScreen({ required: false, step: null }, true, false), 'done')
   assert.equal(setupScreen({ required: false, step: null }, false, true), 'done')
