@@ -178,7 +178,8 @@ again.
 
 HSI can only notify while it is running. A server that is powered off, frozen or
 unreachable cannot report its own outage: use an external monitor (for example
-an uptime service polling `http://<server>:9001/health`) to detect that.
+an uptime service polling `https://<server>:9001/health`) to detect that.
+On an HTTPS install, plain `http://` answers a 308 redirect: trust the authority in the monitor, or skip certificate checks there. Plain `http://` works directly only in Off or Proxy mode.
 
 ## Ports
 
