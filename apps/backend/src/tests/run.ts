@@ -2309,6 +2309,9 @@ async function testTlsWatchAndOps() {
   const red = JSON.stringify(trpcIndex.redactForAudit({ op: "tls.import", input: { cert: combined, key: "" } }))
   assert.ok(!red.includes("PRIVATE KEY-----") && !red.includes("KEYBASE64LINE"))
   assert.ok(red.includes("[REDACTED PRIVATE KEY]") && red.includes("CERTBODY"))
+  const truncated = "-----BEGIN CERTIFICATE-----\nCERTBODY\n-----END CERTIFICATE-----\n-----BEGIN PRIVATE KEY-----\nTRUNCKEYLINE1\nTRUNCKEYLINE2\n"
+  const redT = JSON.stringify(trpcIndex.redactForAudit({ cert: truncated }))
+  assert.ok(!redT.includes("TRUNCKEYLINE") && redT.includes("[REDACTED PRIVATE KEY]") && redT.includes("CERTBODY"))
   const plain = "-----BEGIN CERTIFICATE-----\nCERTBODY\n-----END CERTIFICATE-----\n"
   assert.equal((trpcIndex.redactForAudit({ cert: plain }) as { cert: string }).cert, plain)
 
