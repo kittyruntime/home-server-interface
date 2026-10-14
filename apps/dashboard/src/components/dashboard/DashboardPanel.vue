@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import SegmentedBar from '../ui/SegmentedBar.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
+import HttpsBanner from './HttpsBanner.vue'
 import {
   useDashboardWidgets, catalogFor, spark, fmtBytes, fmtMem, memColor, fmtGB, diskColor,
 } from '../../lib/dashboard-widgets'
@@ -16,7 +17,7 @@ const {
   toggleCols, removeWidget, addWidget,
 } = useDashboardWidgets()
 
-const emit = defineEmits<{ navigate: [target: 'places' | 'store' | 'backups'] }>()
+const emit = defineEmits<{ navigate: [target: 'places' | 'store' | 'backups' | 'secure'] }>()
 
 const { isAdmin, hasCapability } = useAuth()
 const catalog = computed(() => catalogFor(isAdmin.value, cap => hasCapability(cap).value))
@@ -82,6 +83,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       </div>
     </div>
 
+    <HttpsBanner v-if="isAdmin" @navigate="emit('navigate', $event)" />
     <GettingStartedCard v-if="isAdmin" @navigate="emit('navigate', $event)" />
 
     <!-- Widget grid -->

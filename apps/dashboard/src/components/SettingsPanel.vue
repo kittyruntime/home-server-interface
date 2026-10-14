@@ -12,10 +12,11 @@ import BackupSection from './BackupSection.vue'
 import DataBackupSection from './DataBackupSection.vue'
 import AlertingSection from './AlertingSection.vue'
 import NotificationsSection from './NotificationsSection.vue'
+import SecureAccessSection from './SecureAccessSection.vue'
 
 const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'backups' | 'data-backups' | 'shares'
+type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'backups' | 'data-backups' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -47,6 +48,7 @@ const nav: NavItem[] = [
   { id: 'groups',      label: 'Groups',      show: () => isAdmin.value, group: 'access' },
   { id: 'alerting',    label: 'Alert thresholds', show: () => isAdmin.value, group: 'system' },
   { id: 'notifications', label: 'Notifications', show: () => isAdmin.value, group: 'system' },
+  { id: 'secure',      label: 'Secure access', show: () => isAdmin.value, group: 'system' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'system' },
   { id: 'backups',     label: 'Backup & restore', show: () => isAdmin.value, group: 'backup' },
   { id: 'data-backups', label: 'Data backups', show: () => isAdmin.value, group: 'backup' },
@@ -128,6 +130,10 @@ defineExpose({ focusOn })
             <svg v-else-if="item.id === 'groups'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             </svg>
+            <!-- Secure access icon -->
+            <svg v-else-if="item.id === 'secure'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
             <!-- Updates icon -->
             <svg v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -162,6 +168,7 @@ defineExpose({ focusOn })
         <PlacesSection      v-else-if="active === 'places'" />
         <PermissionsSection v-else-if="active === 'permissions'" />
         <GroupsSection      v-else-if="active === 'groups'" />
+        <SecureAccessSection v-else-if="active === 'secure'" />
         <UpdateSection      v-else-if="active === 'updates'" />
         <AlertingSection    v-else-if="active === 'alerting'" />
         <NotificationsSection v-else-if="active === 'notifications'" />
