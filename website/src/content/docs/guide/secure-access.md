@@ -73,7 +73,9 @@ In Proxy mode HSI listens in plain HTTP and your reverse proxy provides HTTPS. L
 the proxies it should trust (IP addresses or CIDR ranges); loopback is always
 trusted. Only requests from trusted proxies are allowed to set the forwarded headers
 (`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`) that HSI uses to know
-the client address and the original scheme and host.
+the client address and the original scheme and host. The proxy must reach HSI from an
+address in that list: its own IP (for example 192.168.1.20 when it runs on another
+host), or the Docker network CIDR when it runs as a container.
 
 Caddy:
 
@@ -107,7 +109,8 @@ Both forward the headers and WebSocket upgrades by default.
 Settings > Secure access can also serve HTTPS on port 443, with port 80 redirecting
 to it, so that `https://<server>/` works without a port. HSI refuses to turn this on
 when 443 or 80 is already in use, and names what holds the port (a container, for
-example).
+example). If a port is taken later, after the option was turned on, HSI only logs it
+at start and keeps serving on its own port.
 
 ## Existing installations
 
