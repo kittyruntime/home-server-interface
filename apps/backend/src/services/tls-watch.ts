@@ -19,19 +19,30 @@ export function expiryNotice(notAfter: Date, now: Date, last: number | null): { 
   return { threshold, event: { type: "alert.raised", severity: threshold === 0 ? "critical" : "warning", source: "system.tls", target: "certificate", message, time: now.toISOString() } }
 }
 
-let lastThreshold: number | null = null
+export interface NoticeState { fingerprint: string | null; last: number | null }
+
+// The dedup is keyed on the certificate: a renewed one starts afresh.
+export function nextNotice(state: NoticeState, cert: { fingerprint: string; notAfter: Date }, now: Date): { state: NoticeState; notice: ReturnType<typeof expiryNotice> } {
+  const last = state.fingerprint === cert.fingerprint ? state.last : null
+  const notice = expiryNotice(cert.notAfter, now, last)
+  return { state: { fingerprint: cert.fingerprint, last: notice ? notice.threshold : last }, notice }
+}
+
+let noticeState: NoticeState = { fingerprint: null, last: null }
 
 async function check() {
-  const cfg = readTlsConfig()
   try {
+    const cfg = readTlsConfig()
+    if (cfg.mode !== "imported") noticeState = { fingerprint: null, last: null }
     if (cfg.mode === "local") {
       const r = await requestSync<{ renewed: boolean; reason: string }>("root.tls.issue", {}, 30_000)
       if (r.renewed) log.info({ reason: r.reason }, "tls: certificate renewed")
     } else if (cfg.mode === "imported") {
-      const st = await requestSync<{ certificate: { notAfter: string } | null }>("root.tls.status", {}, 10_000)
+      const st = await requestSync<{ certificate: { notAfter: string; fingerprint: string } | null }>("root.tls.status", {}, 10_000)
       if (!st.certificate) return
-      const n = expiryNotice(new Date(st.certificate.notAfter), new Date(), lastThreshold)
-      if (n) { lastThreshold = n.threshold; void dispatchEvent(n.event) }
+      const r = nextNotice(noticeState, { fingerprint: st.certificate.fingerprint, notAfter: new Date(st.certificate.notAfter) }, new Date())
+      noticeState = r.state
+      if (r.notice) void dispatchEvent(r.notice.event)
     }
   } catch (err) {
     log.error({ err }, "tls: daily check failed")

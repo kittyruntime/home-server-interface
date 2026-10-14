@@ -72,7 +72,11 @@ export function auditTarget(rawInput: unknown, audit?: { target?: string }): str
 
 const SENSITIVE_KEY = /pass(word|wd)?|secret|token|key|auth|credential/i
 
+// A PEM private key block, of any type (RSA, EC, ENCRYPTED...), BEGIN to END.
+const PRIVATE_KEY_BLOCK = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g
+
 function redact(v: unknown): unknown {
+  if (typeof v === "string") return v.includes("PRIVATE KEY-----") ? v.replace(PRIVATE_KEY_BLOCK, "[REDACTED PRIVATE KEY]") : v
   if (Array.isArray(v)) return v.map(redact)
   if (v && typeof v === "object") {
     const rec = v as Record<string, unknown>
