@@ -20,19 +20,28 @@ function bracket(host: string): string {
   return host.includes(':') && !host.includes('[') ? `[${host}]` : host
 }
 
+export interface NextAddress {
+  /** The mode before the plan: tells who served the current page. */
+  from: TlsMode
+  https: boolean
+  port: number
+  standardPorts: boolean
+}
+
+type PageLocation = { protocol: string; hostname: string; port: string; pathname: string }
+
 /** The URL to load once a plan changed the scheme or the ports. */
-export function addressAfter(
-  loc: { protocol: string; hostname: string; port: string; pathname: string },
-  next: { https: boolean; port: number; standardPorts: boolean },
-): string {
+export function addressAfter(loc: PageLocation, next: NextAddress): string {
   const host = bracket(loc.hostname)
   if (next.https) {
     return next.standardPorts ? `https://${host}${loc.pathname}` : `https://${host}:${next.port}${loc.pathname}`
   }
+  const port = loc.port ? `:${loc.port}` : ''
+  // Still behind the admin's proxy: the page's origin (its scheme too) stays the way in.
+  if (next.from === 'proxy') return `${loc.protocol}//${host}${port}${loc.pathname}`
   // Leaving HTTPS served by HSI itself: HSI now answers plain HTTP on its own port.
   if (loc.protocol === 'https:') return `http://${host}:${next.port}${loc.pathname}`
-  // Already plain HTTP (for example a proxy on 80): stay where the page is.
-  const port = loc.port ? `:${loc.port}` : ''
+  // Already plain HTTP: stay where the page is.
   return `http://${host}${port}${loc.pathname}`
 }
 
@@ -40,30 +49,54 @@ export interface WaitOptions {
   now?: () => number
   sleep?: (ms: number) => Promise<void>
   fetch?: (url: string, init: RequestInit) => Promise<unknown>
+  /** The protocol of the page that waits (defaults to the current page's). */
+  pageProtocol?: string
 }
 
+const RESTART_DELAY_MS = 3_000
+/** From an https page to an http target: the restart delay plus a grace. */
+const BLIND_WAIT_MS = 10_000
+
 /**
- * Waits for the server to answer `${origin}/health` after a restart. The old
- * process is still up for about 2 s, so the first poll waits 3 s. An http
- * origin is polled until timeoutMs. A certificate the browser does not trust
- * yet makes every fetch to an https origin fail, so there it also resolves
- * after 8 seconds without an answer: the navigation that follows then shows
- * the browser's own certificate warning. Never rejects.
+ * Waits for the server to answer after a restart. The old process is still up
+ * for about 2 s, so the first poll waits 3 s. Never rejects; gives up at
+ * timeoutMs and lets the navigation that follows show what the browser shows.
+ *
+ * - An https target from an http page: its certificate may not be trusted yet,
+ *   so the plain http origin on the same port is probed instead. Once the new
+ *   HTTPS server is up it answers there with a 308, seen as an
+ *   "opaqueredirect" response; the old plain HTTP server answers normally and
+ *   a server that is down makes the fetch reject.
+ * - An http target from an https page: the browser blocks the fetch (mixed
+ *   content), so it waits a fixed delay.
+ * - Otherwise the target's `/health` is polled until it answers.
  */
 export async function waitForServer(origin: string, timeoutMs = 60_000, opts: WaitOptions = {}): Promise<void> {
   const now = opts.now ?? Date.now
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>(r => setTimeout(r, ms)))
   const doFetch = opts.fetch ?? ((url: string, init: RequestInit) => fetch(url, init))
-  const limit = origin.startsWith('https:') ? Math.min(timeoutMs, 8_000) : timeoutMs
+  const page = opts.pageProtocol ?? (typeof location !== 'undefined' ? location.protocol : 'http:')
+  const target = new URL(origin)
   const start = now()
-  await sleep(3_000)
-  while (now() - start < limit) {
+  if (page === 'https:' && target.protocol === 'http:') {
+    await sleep(Math.min(BLIND_WAIT_MS, timeoutMs))
+    return
+  }
+  const probeRedirect = target.protocol === 'https:' && page !== 'https:'
+  const url = probeRedirect
+    ? `http://${target.hostname}:${target.port || '443'}/health`
+    : `${target.origin}/health`
+  await sleep(RESTART_DELAY_MS)
+  while (now() - start < timeoutMs) {
     try {
-      await doFetch(`${origin}/health`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
-      return
+      const init: RequestInit = { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) }
+      if (probeRedirect) init.redirect = 'manual'
+      const res = await doFetch(url, init)
+      if (!probeRedirect || (res as { type?: string } | null)?.type === 'opaqueredirect') return
     } catch {
-      await sleep(1_000)
+      // down: try again
     }
+    await sleep(1_000)
   }
 }
 
@@ -73,13 +106,9 @@ export interface OpenAfterRestartDeps {
 }
 
 /** Waits for HSI to come back at its new address after a plan, then loads it. */
-export async function openAfterRestart(
-  loc: { protocol: string; hostname: string; port: string; pathname: string },
-  next: { https: boolean; port: number; standardPorts: boolean },
-  deps: OpenAfterRestartDeps = {},
-): Promise<void> {
+export async function openAfterRestart(loc: PageLocation, next: NextAddress, deps: OpenAfterRestartDeps = {}): Promise<void> {
   const url = addressAfter(loc, next)
-  await (deps.wait ?? (o => waitForServer(o)))(new URL(url).origin)
+  await (deps.wait ?? (o => waitForServer(o, 60_000, { pageProtocol: loc.protocol })))(new URL(url).origin)
   ;(deps.assign ?? (u => location.assign(u)))(url)
 }
 
