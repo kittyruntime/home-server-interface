@@ -1,6 +1,8 @@
 import path from "node:path"
+import type http from "node:http"
+import https from "node:https"
 import { fileURLToPath } from "node:url"
-import Fastify from "fastify"
+import Fastify, { type FastifyServerFactory } from "fastify"
 import cors from "@fastify/cors"
 import rateLimit from "@fastify/rate-limit"
 import fastifyStatic from "@fastify/static"
@@ -11,6 +13,7 @@ import { fileRoutes } from "./routes/files"
 import { shareRoutes } from "./routes/share"
 import { containerRoutes } from "./routes/containers"
 import { backupRoutes } from "./routes/backup"
+import { tlsRoutes } from "./routes/tls"
 import { appRouter } from "./trpc/routers/index"
 import { createContext } from "./trpc/context"
 import { loggerOptions, setLogger } from "./utils/log"
@@ -22,15 +25,31 @@ const DASHBOARD_DIR = process.env.DASHBOARD_PATH
     ? path.resolve(process.env.DASHBOARD_PATH)
     : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "public")
 
-export function buildApp() {
+const loopbackOnly = (address: string) =>
+    address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1"
+
+export interface BuildAppOptions {
+    // Managed HTTPS (#12): serve TLS with this certificate. The server is not
+    // listened on directly: startHttps hands it the TLS connections.
+    https?: { cert: Buffer; key: Buffer }
+    trustProxy?: (address: string) => boolean
+}
+
+export function buildApp(opts: BuildAppOptions = {}) {
+    const tls = opts.https
+    // The HTTPS server handles requests exactly like the default HTTP one;
+    // the cast keeps the app typed as an HTTP/1 Fastify instance.
+    const serverFactory: FastifyServerFactory | undefined = tls
+        ? (handler) => https.createServer({ cert: tls.cert, key: tls.key }, handler) as unknown as http.Server
+        : undefined
     const app = Fastify({
         logger: loggerOptions,
         bodyLimit: 50 * 1024 * 1024, // 50 MB, covers 2 MB chunks with headroom
-        // Production nginx connects over IPv4 loopback. Trust forwarded client
-        // addresses only from loopback peers, so direct clients cannot spoof
-        // req.ip (used by rate limiting and audit logs).
-        trustProxy: (address) =>
-            address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1",
+        ...(serverFactory ? { serverFactory } : {}),
+        // Trust forwarded client addresses only from loopback peers by default,
+        // and in proxy mode also from the proxies listed in tls.json, so direct
+        // clients cannot spoof req.ip (used by rate limiting and audit logs).
+        trustProxy: opts.trustProxy ?? loopbackOnly,
     })
     setLogger(app.log)
 
@@ -70,6 +89,7 @@ export function buildApp() {
     app.register(shareRoutes)
     app.register(containerRoutes)
     app.register(backupRoutes)
+    app.register(tlsRoutes)
 
     app.register(fastifyTRPCPlugin, {
         prefix: "/trpc",

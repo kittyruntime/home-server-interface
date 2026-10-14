@@ -9,6 +9,7 @@ export default defineConfig({
     proxy: {
       '/trpc': 'http://localhost:9001',
       '/health': 'http://localhost:9001',
+      '/ca.crt': 'http://localhost:9001',
       '/files': 'http://localhost:9001',
       // Trailing slash matters: Vite's proxy matches by plain string prefix
       // (url.startsWith(key)), so a bare '/s' would also swallow '/src/*'

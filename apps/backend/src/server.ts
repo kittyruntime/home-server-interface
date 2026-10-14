@@ -4,12 +4,16 @@ import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeGuard } from "./services/volume-guard"
 import { startTelemetry } from "./services/telemetry"
 import { startBackupScheduler } from "./services/backup-scheduler"
-import { ensureDefaultRule } from "./services/notifications"
+import { dispatchEvent, ensureDefaultRule } from "./services/notifications"
 import { migrateNotificationStorage } from "./services/notification-connectors"
 import { startDeliveryQueue } from "./services/notification-queue"
 import { startUpdateWatch } from "./services/update-watch"
 import { updateStateDir, readCurrentVersion } from "./trpc/routers/update"
 import { log } from "./utils/log"
+import type { Server as HttpsServer } from "node:https"
+import { requestSync } from "./nats"
+import { readTlsConfig, servesHttps, trustProxyFn, tlsDir, type TlsConfig } from "./services/tls-config"
+import { loadContext, startHttps, watchCertificate } from "./services/tls-server"
 
 // Crashes go through the logger too, so the log file stays one JSON line per event.
 process.on("uncaughtException", (err) => {
@@ -20,8 +24,6 @@ process.on("unhandledRejection", (reason) => {
   log.error({ err: reason }, "unhandled promise rejection")
 })
 
-const app = buildApp()
-
 function backendPort(): number {
   const raw = process.env.BACKEND_PORT ?? "9001"
   const port = Number(raw)
@@ -31,22 +33,62 @@ function backendPort(): number {
   return port
 }
 
+// Managed HTTPS (#12): the certificate tls.json asks for. When it cannot be
+// loaded, the worker is asked to issue one from the local authority (for an
+// imported certificate, it switches tls.json back to local); when that fails
+// too, HSI serves plain HTTP so the admin is never locked out.
+type Certificate = { cert: Buffer; key: Buffer }
+
+async function loadCertificate(cfg: TlsConfig): Promise<{ cfg: TlsConfig; ctx: Certificate | null; importedLost: boolean }> {
+  const ctx = loadContext(tlsDir())
+  if (ctx) return { cfg, ctx, importedLost: false }
+  log.error("tls: the certificate cannot be loaded, asking the worker for the local authority's")
+  await requestSync("root.tls.issue", { force: true }, 30_000).catch((err) => {
+    log.error({ err }, "tls: the worker could not issue a certificate")
+  })
+  const after = readTlsConfig(tlsDir(), backendPort())
+  const fallback = servesHttps(after) ? loadContext(tlsDir()) : null
+  if (!fallback) log.error({ port: after.port }, "tls: no usable certificate, serving plain HTTP")
+  return { cfg: after, ctx: fallback, importedLost: cfg.mode === "imported" && fallback !== null }
+}
+
 const start = async () => {
-  try {
-    if (process.env.HSI_SMOKE_TEST === "1") {
+  if (process.env.HSI_SMOKE_TEST === "1") {
+    const app = buildApp()
+    try {
       await app.ready()
       await app.close()
-      return
+    } catch (err) {
+      app.log.error(err)
+      process.exit(1)
     }
+    return
+  }
 
-    const port = backendPort()
+  try {
+    let tlsCfg = readTlsConfig(tlsDir(), backendPort())
     await connectNats()
+    let ctx: Certificate | null = null
+    let importedLost = false
+    if (servesHttps(tlsCfg)) ({ cfg: tlsCfg, ctx, importedLost } = await loadCertificate(tlsCfg))
+    const app = buildApp({ https: ctx ?? undefined, trustProxy: trustProxyFn(tlsCfg) })
+
     startMetricsSampler()
     startAlertSampler()
     startVolumeGuard()
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()
+    if (importedLost) {
+      void dispatchEvent({
+        type: "alert.raised",
+        severity: "critical",
+        source: "system.tls",
+        target: "certificate",
+        message: "The imported certificate cannot be loaded: HSI switched to the local authority's certificate until it is replaced",
+        time: new Date().toISOString(),
+      })
+    }
     startUpdateWatch({ dir: updateStateDir, currentVersion: readCurrentVersion })
     startTelemetry(app.log)
     startBackupScheduler()
@@ -55,9 +97,17 @@ const start = async () => {
       process.exit(1)
     })
 
-    await app.listen({ port, host: "0.0.0.0" })
+    if (ctx) {
+      await app.ready()
+      const server = app.server as unknown as HttpsServer
+      await startHttps(app, server, tlsCfg, tlsDir(), app.log)
+      watchCertificate(server, tlsDir(), app.log)
+      app.log.info({ port: tlsCfg.port, standardPorts: tlsCfg.standardPorts }, "tls: serving HTTPS")
+    } else {
+      await app.listen({ port: tlsCfg.port, host: "0.0.0.0" })
+    }
   } catch (err) {
-    app.log.error(err)
+    log.error({ err }, "backend failed to start")
     process.exit(1)
   }
 }
