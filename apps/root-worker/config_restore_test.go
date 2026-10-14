@@ -274,7 +274,7 @@ func TestApplyRestoresTLS(t *testing.T) {
 	if _, err := issueServerCert(currentTLSNames(), now); err != nil {
 		t.Fatal(err)
 	}
-	if err := saveTLSConfig(tlsConfig{Mode: "imported", Port: 9443}); err != nil {
+	if err := saveTLSConfig(tlsConfig{Mode: "imported", Port: 9443, StandardPorts: true}); err != nil {
 		t.Fatal(err)
 	}
 	// Rebuild the archive now that TLS is imported.
@@ -316,11 +316,14 @@ func TestApplyRestoresTLS(t *testing.T) {
 	if kept, _ := filepath.Glob(filepath.Join(tlsDirPath, "server.key.before-restore-*")); len(kept) != 1 {
 		t.Fatalf("key kept aside: %v", kept)
 	}
-	if c := loadTLSConfig(); c.Mode != "imported" || c.Port != 9443 || strings.Join(c.IssuedFor, ",") != "here" {
+	// Imported mode with this server's port, 443/80 off.
+	if c := loadTLSConfig(); c.Mode != "imported" || c.Port != 9001 || c.StandardPorts || strings.Join(c.IssuedFor, ",") != "here" {
 		t.Fatalf("config: %+v", c)
 	}
 
-	// Local: the certificate is reissued for this server.
+	// Local server, local archive: this server's authority reissues for this server.
+	_ = saveTLSConfig(tlsConfig{Mode: "local", Port: 9001})
+	_ = os.WriteFile(filepath.Join(tlsDirPath, "server.crt"), []byte("broken"), 0o644)
 	local := tlsConfig{Mode: "local", Port: 9443}
 	b, _ := json.Marshal(local)
 	dest := unpack()
@@ -335,7 +338,83 @@ func TestApplyRestoresTLS(t *testing.T) {
 	if err != nil || !info.FromAuthority {
 		t.Fatalf("local certificate: %v %v", info, err)
 	}
-	if c := loadTLSConfig(); c.Mode != "local" || strings.Join(c.IssuedFor, ",") != strings.Join(currentTLSNames().list(), ",") {
+	if c := loadTLSConfig(); c.Mode != "local" || c.Port != 9001 || strings.Join(c.IssuedFor, ",") != strings.Join(currentTLSNames().list(), ",") {
 		t.Fatalf("config: %+v", c)
+	}
+}
+
+// tlsArchive writes an unpacked archive holding only system/tls/tls.json.
+func tlsArchive(t *testing.T, c any) string {
+	t.Helper()
+	dir := t.TempDir()
+	_ = os.MkdirAll(filepath.Join(dir, "system", "tls"), 0o755)
+	b, _ := json.Marshal(c)
+	if err := os.WriteFile(filepath.Join(dir, "system", "tls", "tls.json"), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestRestoreTLSKeepsThisServerScheme(t *testing.T) {
+	stubTLS(t)
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	if err := saveTLSConfig(tlsConfig{Mode: "local", Port: 9001}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := renewLocalIfNeeded(now); err != nil {
+		t.Fatal(err)
+	}
+	// A local server restoring an archive made in plain HTTP stays in HTTPS.
+	arch := tlsArchive(t, tlsConfig{Mode: "off", Port: 8080, StandardPorts: true, TrustedProxies: []string{"10.0.0.9"}})
+	if err := restoreTLS(arch, "s1", now); err != nil {
+		t.Fatal(err)
+	}
+	if c := loadTLSConfig(); c.Mode != "local" || c.Port != 9001 || c.StandardPorts || len(c.TrustedProxies) != 0 {
+		t.Fatalf("local server: %+v", c)
+	}
+	// A proxy archive onto a local server: its trusted proxies are not taken.
+	if err := restoreTLS(tlsArchive(t, tlsConfig{Mode: "proxy", Port: 9001, TrustedProxies: []string{"10.0.0.9"}}), "s2", now); err != nil {
+		t.Fatal(err)
+	}
+	if c := loadTLSConfig(); c.Mode != "local" || len(c.TrustedProxies) != 0 {
+		t.Fatalf("local server, proxy archive: %+v", c)
+	}
+	// A proxy server takes the archive's trusted proxies.
+	_ = saveTLSConfig(tlsConfig{Mode: "proxy", Port: 9001, TrustedProxies: []string{"127.0.0.2"}})
+	if err := restoreTLS(tlsArchive(t, tlsConfig{Mode: "proxy", Port: 7000, TrustedProxies: []string{"10.0.0.9", "10.1.0.0/16"}}), "s3", now); err != nil {
+		t.Fatal(err)
+	}
+	if c := loadTLSConfig(); c.Mode != "proxy" || c.Port != 9001 || strings.Join(c.TrustedProxies, ",") != "10.0.0.9,10.1.0.0/16" {
+		t.Fatalf("proxy server: %+v", c)
+	}
+	// An unknown mode: the archive's tls.json is ignored.
+	if err := restoreTLS(tlsArchive(t, map[string]any{"mode": "bogus", "port": 7000, "trustedProxies": []string{"1.2.3.4"}}), "s4", now); err != nil {
+		t.Fatal(err)
+	}
+	if c := loadTLSConfig(); c.Mode != "proxy" || strings.Join(c.TrustedProxies, ",") != "10.0.0.9,10.1.0.0/16" {
+		t.Fatalf("unknown mode: %+v", c)
+	}
+}
+
+func TestRestoreTLSImportedArchiveSwitches(t *testing.T) {
+	dir := stubTLS(t)
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	_ = saveTLSConfig(tlsConfig{Mode: "proxy", Port: 9005, TrustedProxies: []string{"10.0.0.1"}})
+	arch := tlsArchive(t, tlsConfig{Mode: "imported", Port: 9443, StandardPorts: true, TrustedProxies: []string{"10.0.0.9"}})
+	crt, key := selfSigned(t, now.Add(90*24*time.Hour))
+	_ = os.WriteFile(filepath.Join(arch, "system", "tls", "server.crt"), crt, 0o644)
+	_ = os.WriteFile(filepath.Join(arch, "system", "tls", "server.key"), key, 0o640)
+	if err := restoreTLS(arch, "s1", now); err != nil {
+		t.Fatal(err)
+	}
+	c := loadTLSConfig()
+	if c.Mode != "imported" || c.Port != 9005 || c.StandardPorts || strings.Join(c.TrustedProxies, ",") != "10.0.0.1" {
+		t.Fatalf("%+v", c)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "server.crt")); string(b) != string(crt) {
+		t.Fatal("archived certificate not written")
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "server.key")); string(b) != string(key) {
+		t.Fatal("archived key not written")
 	}
 }
