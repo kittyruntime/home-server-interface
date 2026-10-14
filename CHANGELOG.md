@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   administrator exists. Existing installations keep their accounts.
 
 ### Added
+- **Secure access (HTTPS)** (#12): new installations serve HSI over HTTPS on
+  their port with a local certificate authority created by HSI (its
+  fingerprint is printed by the installer; download it from Settings > Secure
+  access to trust it), renewed automatically. Settings > Secure access also
+  imports a certificate (with expiry reminders), sets a reverse proxy mode
+  with trusted proxies, and serves ports 443 and 80. Plain HTTP on the HSI
+  port redirects to HTTPS. Existing installations keep how they are reached
+  until HTTPS is turned on; nginx is no longer installed or configured for new
+  installations. `sudo hsi-worker tls reset` restores access.
 - **App Store details**: each app opens a page with its full description,
   website, release notes, version and what the install asks for (ports,
   folders, settings); an installed app shows its version there with Open,

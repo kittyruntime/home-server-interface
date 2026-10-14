@@ -18,6 +18,7 @@ export default defineConfig({
           label: "Guide",
           items: [
             "guide/install",
+            "guide/secure-access",
             { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
             "guide/manage-without-hsi",
             "guide/storage-descriptions",
