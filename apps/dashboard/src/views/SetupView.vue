@@ -188,7 +188,7 @@ async function turnOnHttps() {
   try {
     await applyPlanned('tls.enable', {}, { title: 'Serve HSI over HTTPS', actionLabel: 'Turn on' })
     restarting.value = true
-    await openAfterRestart(location, { https: true, port: tls.value.port, standardPorts: tls.value.standardPorts })
+    await openAfterRestart(location, { from: tls.value.mode, https: true, port: tls.value.port, standardPorts: tls.value.standardPorts })
   } catch (e) {
     if (e instanceof Error && e.message) error.value = e.message
   } finally {

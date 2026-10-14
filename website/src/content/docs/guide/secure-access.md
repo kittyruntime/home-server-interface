@@ -118,10 +118,11 @@ An update never switches an existing installation:
 
 - With the nginx site of older versions, it is in Proxy mode and the site is kept.
   To move to direct HTTPS, turn HTTPS on in Settings > Secure access, then remove
-  the site and reload nginx:
+  both files of the site and reload nginx (an update regenerates the site only
+  while it is enabled and HSI is in Proxy mode):
 
   ```bash
-  sudo rm /etc/nginx/sites-enabled/hsi
+  sudo rm /etc/nginx/sites-enabled/hsi /etc/nginx/sites-available/hsi
   sudo systemctl reload nginx
   ```
 

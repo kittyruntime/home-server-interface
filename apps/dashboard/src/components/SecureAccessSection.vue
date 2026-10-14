@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
-import { expiryState, modeLabel, openAfterRestart, TRUST_STEPS } from '../lib/tls'
+import { expiryState, modeLabel, openAfterRestart, TRUST_STEPS, type NextAddress } from '../lib/tls'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import ToggleSwitch from './ui/ToggleSwitch.vue'
@@ -45,10 +45,10 @@ function ymd(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-async function afterPlan(next: { https: boolean; port: number; standardPorts: boolean }) {
+async function afterPlan(next: Omit<NextAddress, 'from'>) {
   restarting.value = true
   try {
-    await openAfterRestart(location, next)
+    await openAfterRestart(location, { ...next, from: status.value!.mode })
   } finally {
     restarting.value = false
   }
@@ -166,7 +166,7 @@ function setStandardPorts(enabled: boolean) {
         <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> The certificate expires in {{ expiry.days }} days.</p>
         <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-danger"><span class="status-tag">[ERR]</span> The certificate has expired.</p>
         <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-[var(--c-text-3)]">
-          This server still has the nginx site created by older versions. To let HSI serve HTTPS itself, turn HTTPS on here, then remove /etc/nginx/sites-enabled/hsi and reload nginx.
+          This server still has the nginx site created by older versions. To let HSI serve HTTPS itself, turn HTTPS on here, then remove both /etc/nginx/sites-enabled/hsi and /etc/nginx/sites-available/hsi and reload nginx.
         </p>
       </div>
 
