@@ -39,9 +39,9 @@ function backendPort(): number {
 // too, HSI serves plain HTTP so the admin is never locked out.
 type Certificate = { cert: Buffer; key: Buffer }
 
-async function loadCertificate(cfg: TlsConfig): Promise<{ cfg: TlsConfig; ctx: Certificate | null; importedLost: boolean }> {
+async function loadCertificate(cfg: TlsConfig): Promise<{ cfg: TlsConfig; ctx: Certificate | null; lost: "imported" | "all" | null }> {
   const ctx = loadContext(tlsDir())
-  if (ctx) return { cfg, ctx, importedLost: false }
+  if (ctx) return { cfg, ctx, lost: null }
   log.error("tls: the certificate cannot be loaded, asking the worker for the local authority's")
   await requestSync("root.tls.issue", { force: true }, 30_000).catch((err) => {
     log.error({ err }, "tls: the worker could not issue a certificate")
@@ -49,7 +49,7 @@ async function loadCertificate(cfg: TlsConfig): Promise<{ cfg: TlsConfig; ctx: C
   const after = readTlsConfig(tlsDir(), backendPort())
   const fallback = servesHttps(after) ? loadContext(tlsDir()) : null
   if (!fallback) log.error({ port: after.port }, "tls: no usable certificate, serving plain HTTP")
-  return { cfg: after, ctx: fallback, importedLost: cfg.mode === "imported" && fallback !== null }
+  return { cfg: after, ctx: fallback, lost: !fallback ? "all" : cfg.mode === "imported" ? "imported" : null }
 }
 
 const start = async () => {
@@ -69,8 +69,8 @@ const start = async () => {
     let tlsCfg = readTlsConfig(tlsDir(), backendPort())
     await connectNats()
     let ctx: Certificate | null = null
-    let importedLost = false
-    if (servesHttps(tlsCfg)) ({ cfg: tlsCfg, ctx, importedLost } = await loadCertificate(tlsCfg))
+    let lost: "imported" | "all" | null = null
+    if (servesHttps(tlsCfg)) ({ cfg: tlsCfg, ctx, lost } = await loadCertificate(tlsCfg))
     const app = buildApp({ https: ctx ?? undefined, trustProxy: trustProxyFn(tlsCfg) })
 
     startMetricsSampler()
@@ -79,13 +79,15 @@ const start = async () => {
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()
-    if (importedLost) {
+    if (lost) {
       void dispatchEvent({
         type: "alert.raised",
         severity: "critical",
         source: "system.tls",
         target: "certificate",
-        message: "The imported certificate cannot be loaded: HSI switched to the local authority's certificate until it is replaced",
+        message: lost === "imported"
+          ? "The imported certificate cannot be loaded: HSI switched to the local authority's certificate until it is replaced"
+          : "The HTTPS certificate cannot be loaded and no replacement could be issued: HSI serves plain HTTP. Run sudo hsi-worker tls reset.",
         time: new Date().toISOString(),
       })
     }
