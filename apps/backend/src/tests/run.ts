@@ -2289,6 +2289,85 @@ async function testManagedHttps() {
 
 await testManagedHttps()
 
+async function testCertificateFallbackAndHotReload() {
+  const ts = await import("../services/tls-server")
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises")
+  const { join } = await import("node:path")
+  const { tmpdir } = await import("node:os")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-tls-fallback-"))
+  const quiet: any = { error: () => {}, info: () => {}, warn: () => {} }
+
+  // Start-up: a broken local pair makes the backend ask the worker (force) and
+  // use the certificate it issued.
+  await writeFile(join(dir, "tls.json"), JSON.stringify({ mode: "local", port: 9001, standardPorts: false, trustedProxies: [] }))
+  await writeFile(join(dir, "server.crt"), TEST_CERT)
+  await writeFile(join(dir, "server.key"), OTHER_KEY)
+  const asked: unknown[][] = []
+  const fixed = await ts.resolveCertificate({ mode: "local", port: 9001, standardPorts: false, trustedProxies: [] }, {
+    dir, port: 9001, log: quiet,
+    request: async (...a: unknown[]) => { asked.push(a); await writeFile(join(dir, "server.key"), TEST_KEY); return { renewed: true } },
+  })
+  assert.deepEqual(asked.map(a => [a[0], a[1]]), [["root.tls.issue", { force: true }]], "the worker is asked with force")
+  assert.ok(fixed.ctx, "the reissued certificate is used")
+  assert.equal(fixed.ctx!.key.toString(), TEST_KEY)
+  assert.equal(fixed.lost, null)
+  assert.equal(ts.certificateLostEvent(fixed.lost, new Date()), null, "nothing to report")
+
+  // An imported certificate that cannot be loaded: the worker switches to local.
+  await writeFile(join(dir, "tls.json"), JSON.stringify({ mode: "imported", port: 9001, standardPorts: false, trustedProxies: [] }))
+  await writeFile(join(dir, "server.key"), OTHER_KEY)
+  const switched = await ts.resolveCertificate({ mode: "imported", port: 9001, standardPorts: false, trustedProxies: [] }, {
+    dir, port: 9001, log: quiet,
+    request: async () => {
+      await writeFile(join(dir, "tls.json"), JSON.stringify({ mode: "local", port: 9001, standardPorts: false, trustedProxies: [] }))
+      await writeFile(join(dir, "server.key"), TEST_KEY)
+      return { renewed: true }
+    },
+  })
+  assert.equal(switched.cfg.mode, "local")
+  assert.ok(switched.ctx)
+  assert.equal(switched.lost, "imported")
+  assert.match(ts.certificateLostEvent("imported", new Date())!.message, /local authority/)
+
+  // Still broken after the worker's answer (or no answer): plain HTTP and an alert.
+  await writeFile(join(dir, "server.key"), OTHER_KEY)
+  const broken = await ts.resolveCertificate({ mode: "local", port: 9001, standardPorts: false, trustedProxies: [] }, {
+    dir, port: 9001, log: quiet, request: async () => { throw new Error("no worker") },
+  })
+  assert.equal(broken.ctx, null, "plain HTTP")
+  assert.equal(broken.lost, "all")
+  const alert = ts.certificateLostEvent("all", new Date("2026-10-14T00:00:00Z"))!
+  assert.equal(alert.type, "alert.raised")
+  assert.equal(alert.severity, "critical")
+  assert.equal(alert.source, "system.tls")
+  assert.match(alert.message, /plain HTTP/)
+  assert.equal(alert.time, "2026-10-14T00:00:00.000Z")
+
+  // Hot reload: a mismatched pair keeps the current context and logs an
+  // error; a valid pair is loaded.
+  const contexts: unknown[] = []
+  const errors: string[] = []
+  const log: any = { error: (...a: unknown[]) => { errors.push(a.map(String).join(" ")) }, info: () => {}, warn: () => {} }
+  const server: any = { setSecureContext: (c: unknown) => { contexts.push(c) } }
+  await writeFile(join(dir, "server.key"), TEST_KEY)
+  const watcher = ts.watchCertificate(server, dir, log, 50)
+  const settle = () => new Promise(r => setTimeout(r, 300))
+  try {
+    await writeFile(join(dir, "server.key"), OTHER_KEY)
+    await settle()
+    assert.equal(contexts.length, 0, "a mismatched pair is not loaded")
+    assert.ok(errors.some(e => /cannot be loaded/.test(e)), "the refusal is logged")
+    await writeFile(join(dir, "server.key"), TEST_KEY)
+    await settle()
+    assert.equal(contexts.length, 1, "a valid pair is loaded")
+  } finally {
+    watcher.close()
+  }
+  await rm(dir, { recursive: true, force: true })
+}
+
+await testCertificateFallbackAndHotReload()
+
 async function testTlsWatchAndOps() {
   const tw = await import("../services/tls-watch")
   const now = new Date("2026-10-13T00:00:00Z")

@@ -13,8 +13,8 @@ import { updateStateDir, readCurrentVersion } from "./trpc/routers/update"
 import { log } from "./utils/log"
 import type { Server as HttpsServer } from "node:https"
 import { requestSync } from "./nats"
-import { readTlsConfig, servesHttps, trustProxyFn, tlsDir, type TlsConfig } from "./services/tls-config"
-import { loadContext, startHttps, watchCertificate } from "./services/tls-server"
+import { readTlsConfig, servesHttps, trustProxyFn, tlsDir } from "./services/tls-config"
+import { certificateLostEvent, resolveCertificate, startHttps, watchCertificate, type Certificate, type CertificateLoss } from "./services/tls-server"
 
 // Crashes go through the logger too, so the log file stays one JSON line per event.
 process.on("uncaughtException", (err) => {
@@ -34,25 +34,6 @@ function backendPort(): number {
   return port
 }
 
-// Managed HTTPS (#12): the certificate tls.json asks for. When it cannot be
-// loaded, the worker is asked to issue one from the local authority (for an
-// imported certificate, it switches tls.json back to local); when that fails
-// too, HSI serves plain HTTP so the admin is never locked out.
-type Certificate = { cert: Buffer; key: Buffer }
-
-async function loadCertificate(cfg: TlsConfig): Promise<{ cfg: TlsConfig; ctx: Certificate | null; lost: "imported" | "all" | null }> {
-  const ctx = loadContext(tlsDir())
-  if (ctx) return { cfg, ctx, lost: null }
-  log.error("tls: the certificate cannot be loaded, asking the worker for the local authority's")
-  await requestSync("root.tls.issue", { force: true }, 30_000).catch((err) => {
-    log.error({ err }, "tls: the worker could not issue a certificate")
-  })
-  const after = readTlsConfig(tlsDir(), backendPort())
-  const fallback = servesHttps(after) ? loadContext(tlsDir()) : null
-  if (!fallback) log.error({ port: after.port }, "tls: no usable certificate, serving plain HTTP")
-  return { cfg: after, ctx: fallback, lost: !fallback ? "all" : cfg.mode === "imported" ? "imported" : null }
-}
-
 const start = async () => {
   if (process.env.HSI_SMOKE_TEST === "1") {
     const app = buildApp()
@@ -70,8 +51,10 @@ const start = async () => {
     let tlsCfg = readTlsConfig(tlsDir(), backendPort())
     await connectNats()
     let ctx: Certificate | null = null
-    let lost: "imported" | "all" | null = null
-    if (servesHttps(tlsCfg)) ({ cfg: tlsCfg, ctx, lost } = await loadCertificate(tlsCfg))
+    let lost: CertificateLoss = null
+    if (servesHttps(tlsCfg)) {
+      ;({ cfg: tlsCfg, ctx, lost } = await resolveCertificate(tlsCfg, { dir: tlsDir(), port: backendPort(), request: requestSync, log }))
+    }
     const app = buildApp({ https: ctx ?? undefined, trustProxy: trustProxyFn(tlsCfg) })
 
     startMetricsSampler()
@@ -80,18 +63,8 @@ const start = async () => {
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()
-    if (lost) {
-      void dispatchEvent({
-        type: "alert.raised",
-        severity: "critical",
-        source: "system.tls",
-        target: "certificate",
-        message: lost === "imported"
-          ? "The imported certificate cannot be loaded: HSI switched to the local authority's certificate until it is replaced"
-          : "The HTTPS certificate cannot be loaded and no replacement could be issued: HSI serves plain HTTP. Run sudo hsi-worker tls reset.",
-        time: new Date().toISOString(),
-      })
-    }
+    const lostEvent = certificateLostEvent(lost, new Date())
+    if (lostEvent) void dispatchEvent(lostEvent)
     startUpdateWatch({ dir: updateStateDir, currentVersion: readCurrentVersion })
     startTelemetry(app.log)
     startBackupScheduler()

@@ -5,7 +5,8 @@ import { readFileSync, watch, type FSWatcher } from "node:fs"
 import { createSecureContext } from "node:tls"
 import { join } from "node:path"
 import type { FastifyInstance, FastifyBaseLogger } from "fastify"
-import type { TlsConfig } from "./tls-config"
+import { readTlsConfig, servesHttps, type TlsConfig } from "./tls-config"
+import type { NotificationEvent } from "./notifications"
 
 // Managed HTTPS (#12): HTTPS and a redirect share the HSI port. The first byte
 // of a connection tells them apart: 0x16 opens a TLS handshake; anything else
@@ -101,7 +102,50 @@ export async function startHttps(
   return servers
 }
 
-export function watchCertificate(server: HttpsServer, dir: string, log: FastifyBaseLogger): FSWatcher {
+export type Certificate = { cert: Buffer; key: Buffer }
+export type CertificateLoss = "imported" | "all" | null
+
+export interface ResolveCertificateDeps {
+  dir: string
+  // The port used when tls.json, read again after the worker's answer, has none.
+  port: number
+  request: (subject: string, data: Record<string, unknown>, timeoutMs: number) => Promise<unknown>
+  log: Pick<FastifyBaseLogger, "error">
+}
+
+// The certificate tls.json asks for. When it cannot be loaded, the worker is
+// asked to issue one from the local authority (for an imported certificate, it
+// switches tls.json back to local); when that fails too, the caller serves
+// plain HTTP (ctx null) so the admin is never locked out.
+export async function resolveCertificate(cfg: TlsConfig, deps: ResolveCertificateDeps): Promise<{ cfg: TlsConfig; ctx: Certificate | null; lost: CertificateLoss }> {
+  const ctx = loadContext(deps.dir)
+  if (ctx) return { cfg, ctx, lost: null }
+  deps.log.error("tls: the certificate cannot be loaded, asking the worker for the local authority's")
+  await deps.request("root.tls.issue", { force: true }, 30_000).catch((err) => {
+    deps.log.error({ err }, "tls: the worker could not issue a certificate")
+  })
+  const after = readTlsConfig(deps.dir, deps.port)
+  const fallback = servesHttps(after) ? loadContext(deps.dir) : null
+  if (!fallback) deps.log.error({ port: after.port }, "tls: no usable certificate, serving plain HTTP")
+  return { cfg: after, ctx: fallback, lost: !fallback ? "all" : cfg.mode === "imported" ? "imported" : null }
+}
+
+// The alert raised when the start-up had to give up the configured certificate.
+export function certificateLostEvent(lost: CertificateLoss, now: Date): NotificationEvent | null {
+  if (!lost) return null
+  return {
+    type: "alert.raised",
+    severity: "critical",
+    source: "system.tls",
+    target: "certificate",
+    message: lost === "imported"
+      ? "The imported certificate cannot be loaded: HSI switched to the local authority's certificate until it is replaced"
+      : "The HTTPS certificate cannot be loaded and no replacement could be issued: HSI serves plain HTTP. Run sudo hsi-worker tls reset.",
+    time: now.toISOString(),
+  }
+}
+
+export function watchCertificate(server: Pick<HttpsServer, "setSecureContext">, dir: string, log: Pick<FastifyBaseLogger, "error" | "info">, debounceMs = 500): FSWatcher {
   let timer: NodeJS.Timeout | null = null
   const watcher = watch(dir, (_event, file) => {
     if (file !== "server.crt" && file !== "server.key") return
@@ -112,7 +156,7 @@ export function watchCertificate(server: HttpsServer, dir: string, log: FastifyB
       if (!ctx) { log.error("tls: the new certificate cannot be loaded, the current one stays"); return }
       server.setSecureContext(ctx)
       log.info("tls: certificate reloaded")
-    }, 500)
+    }, debounceMs)
     timer.unref()
   })
   watcher.on("error", (err) => log.error({ err }, "tls: certificate watch failed"))
