@@ -29,27 +29,40 @@ export function addressAfter(
   if (next.https) {
     return next.standardPorts ? `https://${host}${loc.pathname}` : `https://${host}:${next.port}${loc.pathname}`
   }
-  // Plain HTTP: keep the port the page was served on, unless it was the HSI port itself.
+  // Leaving HTTPS served by HSI itself: HSI now answers plain HTTP on its own port.
+  if (loc.protocol === 'https:') return `http://${host}:${next.port}${loc.pathname}`
+  // Already plain HTTP (for example a proxy on 80): stay where the page is.
   const port = loc.port ? `:${loc.port}` : ''
   return `http://${host}${port}${loc.pathname}`
 }
 
+export interface WaitOptions {
+  now?: () => number
+  sleep?: (ms: number) => Promise<void>
+  fetch?: (url: string, init: RequestInit) => Promise<unknown>
+}
+
 /**
- * Polls `${origin}/health` until something answers. A certificate the browser
- * does not trust yet makes every fetch fail, so it also resolves after 8
- * seconds without an answer: the navigation that follows then shows the
- * browser's own certificate warning, which is the expected first step.
- * Never rejects.
+ * Waits for the server to answer `${origin}/health` after a restart. The old
+ * process is still up for about 2 s, so the first poll waits 3 s. An http
+ * origin is polled until timeoutMs. A certificate the browser does not trust
+ * yet makes every fetch to an https origin fail, so there it also resolves
+ * after 8 seconds without an answer: the navigation that follows then shows
+ * the browser's own certificate warning. Never rejects.
  */
-export async function waitForServer(origin: string, timeoutMs = 60_000): Promise<void> {
-  const start = Date.now()
-  const untrustedAfter = 8_000
-  while (Date.now() - start < Math.min(timeoutMs, untrustedAfter)) {
+export async function waitForServer(origin: string, timeoutMs = 60_000, opts: WaitOptions = {}): Promise<void> {
+  const now = opts.now ?? Date.now
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>(r => setTimeout(r, ms)))
+  const doFetch = opts.fetch ?? ((url: string, init: RequestInit) => fetch(url, init))
+  const limit = origin.startsWith('https:') ? Math.min(timeoutMs, 8_000) : timeoutMs
+  const start = now()
+  await sleep(3_000)
+  while (now() - start < limit) {
     try {
-      await fetch(`${origin}/health`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
+      await doFetch(`${origin}/health`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(1500) })
       return
     } catch {
-      await new Promise(r => setTimeout(r, 1000))
+      await sleep(1_000)
     }
   }
 }

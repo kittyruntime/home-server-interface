@@ -47,9 +47,13 @@ function ymd(iso: string): string {
 
 async function afterPlan(next: { https: boolean; port: number; standardPorts: boolean }) {
   restarting.value = true
-  const url = addressAfter(location, next)
-  await waitForServer(new URL(url).origin)
-  location.assign(url)
+  try {
+    const url = addressAfter(location, next)
+    await waitForServer(new URL(url).origin)
+    location.assign(url)
+  } finally {
+    restarting.value = false
+  }
 }
 
 async function run(fn: () => Promise<void>) {
