@@ -11,7 +11,7 @@ description: Requirements, the install command, updates, version pinning and the
   `smartmontools`, `lvm2`, `parted`, plus `openssl`, `rsync`, an OpenSSH client) and installs
   missing ones with `apt-get`; see [Host packages](/home-server-interface/reference/configuration/#host-packages)
 - Optional: Docker for containers and the App Store; Samba for SMB shares
-- Ports 80 (nginx, optional) and 9001 (backend) reachable from clients
+- Port 9001 (HSI, served over HTTPS) reachable from clients; ports 443 and 80 only if you turn on the standard ports
 
 ## Install
 
@@ -28,7 +28,7 @@ The script:
 5. Applies the database schema
 6. Creates a one-time setup link (on a new installation)
 7. Registers three systemd services (`hsi-nats`, `hsi-worker`, `hsi-server`) grouped under `hsi.target`, and starts them
-8. Configures nginx if present
+8. Creates the local certificate authority and the server certificate (new installations), so HSI is served over HTTPS
 
 Other options (install directory, port, skipping the seed account) are listed in
 [Install / update options](/home-server-interface/reference/configuration/#install--update-options).
@@ -39,8 +39,15 @@ A new installation has no account. At the end, the installer prints a one-time
 link:
 
 ```
-Finish the setup:  http://192.168.1.20:9001/setup#token=…
+Finish the setup:  https://192.168.1.20:9001/setup#token=…
 ```
+
+The installer also prints the SHA-256 fingerprint of the certificate authority. Your
+browser warns about the certificate until you trust the authority: compare the
+fingerprint it shows with the printed one, then follow
+[Secure access](/home-server-interface/guide/secure-access/). nginx is no longer
+installed or configured. Updating an existing installation never changes how it is
+reached.
 
 Open it to create the administrator. The setup assistant then lets you name the
 server and set its time zone, and points to the next steps: a first volume,
