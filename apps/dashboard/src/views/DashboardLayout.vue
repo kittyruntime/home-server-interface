@@ -63,7 +63,7 @@ const activeApp        = ref<string>('dashboard')
 const notifMenuOpen    = ref(false)
 const userMenuOpen     = ref(false)
 const moreMenuOpen     = ref(false)
-const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | 'data-backups' | null>(null)
+const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | 'data-backups' | 'secure' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 // Unread system notifications plus operations that are running or failed.
@@ -221,13 +221,13 @@ function toggleUserMenu() {
   moreMenuOpen.value = false
 }
 
-function onDashboardNavigate(target: 'places' | 'store' | 'backups') {
+function onDashboardNavigate(target: 'places' | 'store' | 'backups' | 'secure') {
   if (target === 'store') {
     activeApp.value = 'store'
     return
   }
   activeApp.value = 'settings'
-  settingsSection.value = target === 'places' ? 'places' : 'data-backups'
+  settingsSection.value = target === 'places' ? 'places' : target === 'secure' ? 'secure' : 'data-backups'
 }
 
 function goToProfile() {
