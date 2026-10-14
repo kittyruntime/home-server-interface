@@ -505,20 +505,33 @@ func applyBackup(dir string, now time.Time) error {
 	return restoreTLS(dir, stamp, now)
 }
 
-// restoreTLS applies the TLS part of an archive. This server keeps its own
-// issuedFor; an imported certificate and key are written (key 0640 group hsi);
-// in local mode this server's authority issues for this server's names.
+// restoreTLS applies the TLS part of an archive without changing how this
+// server is reached: its mode, port and 443/80 option are kept, unless the
+// archive holds an imported certificate (then imported mode with the archived
+// certificate and key, this server's port and 443/80 off). The archive's
+// trusted proxies are taken only when this server is behind a proxy. An
+// archived mode HSI does not know is ignored. In local mode this server's
+// authority issues for this server's names.
 func restoreTLS(dir, stamp string, now time.Time) error {
 	b, err := os.ReadFile(filepath.Join(dir, "system", "tls", "tls.json"))
 	if err != nil {
 		return nil
 	}
-	var c tlsConfig
-	if json.Unmarshal(b, &c) != nil {
+	var a tlsConfig
+	if json.Unmarshal(b, &a) != nil {
 		return errors.New("system/tls/tls.json is not valid")
 	}
-	c.IssuedFor = loadTLSConfig().IssuedFor
-	if c.Mode == "imported" {
+	switch a.Mode {
+	case "local", "imported", "proxy", "off":
+	default:
+		return nil
+	}
+	c := loadTLSConfig()
+	if c.Mode == "proxy" && a.Mode == "proxy" && len(a.TrustedProxies) > 0 {
+		c.TrustedProxies = a.TrustedProxies
+	}
+	if a.Mode == "imported" {
+		c.Mode, c.StandardPorts = "imported", false
 		crt, cerr := os.ReadFile(filepath.Join(dir, "system", "tls", "server.crt"))
 		key, kerr := os.ReadFile(filepath.Join(dir, "system", "tls", "server.key"))
 		if cerr != nil || kerr != nil {
