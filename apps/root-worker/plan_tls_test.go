@@ -143,3 +143,40 @@ func TestTLSPlansClearStandardPorts(t *testing.T) {
 		t.Fatalf("enable keeps 443/80: %+v", loadTLSConfig())
 	}
 }
+
+func TestTLSPlansHaveStableFingerprints(t *testing.T) {
+	stubTLS(t)
+	oldHolder := portHolder
+	portHolder = func(int) string { return "" }
+	t.Cleanup(func() { portHolder = oldHolder })
+
+	cases := []struct {
+		op   string
+		mode string
+		in   string
+	}{
+		{"tls.enable", "off", `{}`},
+		{"tls.proxy", "local", `{"trustedProxies":["10.0.0.5"]}`},
+		{"tls.standardPorts", "local", `{"enabled":true}`},
+	}
+	for _, c := range cases {
+		_ = saveTLSConfig(tlsConfig{Mode: c.mode, Port: 9001})
+		raw := []byte(c.in)
+		p1, ferr := buildPlan(c.op, raw)
+		if ferr != nil {
+			t.Fatalf("%s: %s", c.op, ferr.Message)
+		}
+		time.Sleep(2 * time.Millisecond)
+		p2, ferr := buildPlan(c.op, raw)
+		if ferr != nil {
+			t.Fatalf("%s: %s", c.op, ferr.Message)
+		}
+		if p1.fingerprint(raw) != p2.fingerprint(raw) {
+			t.Fatalf("%s: the fingerprint changes between two previews, so apply always refuses", c.op)
+		}
+		last := p1.Steps[len(p1.Steps)-1]
+		if strings.Join(last.Command, " ") != "systemd-run --on-active=2 --collect --unit=hsi-server-restart systemctl restart hsi-server.service" {
+			t.Fatalf("%s: restart command %v", c.op, last.Command)
+		}
+	}
+}

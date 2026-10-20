@@ -165,10 +165,13 @@ func handleTLSIssue(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"renewed": renewed, "reason": reason})
 }
 
-// restartServerLater restarts hsi-server in two seconds, from a transient unit:
-// the reply of the plan that asked for it reaches the backend first.
+// restartServerArgv restarts hsi-server in two seconds, from a transient unit:
+// the reply of the plan that asked for it reaches the backend first. The argv
+// is part of the plan fingerprint, so it must be identical on every preview:
+// the unit name is fixed, and --collect removes the unit once it ran, even if
+// it failed, so the name is free for the next restart.
 func restartServerArgv() []string {
-	return []string{"systemd-run", "--on-active=2", "--unit=hsi-server-restart-" + strconv.FormatInt(time.Now().UnixNano(), 36),
+	return []string{"systemd-run", "--on-active=2", "--collect", "--unit=hsi-server-restart",
 		"systemctl", "restart", "hsi-server.service"}
 }
 
