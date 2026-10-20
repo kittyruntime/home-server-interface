@@ -418,3 +418,47 @@ func TestRestoreTLSImportedArchiveSwitches(t *testing.T) {
 		t.Fatal("archived key not written")
 	}
 }
+
+func TestApplyRestoresBackupConfig(t *testing.T) {
+	calls := useUnits(t)
+	dir := stubBackupHost(t)
+	_ = saveBackupConfig(sampleConfig())
+	_ = writeRepoSecrets(repoA, repoSecrets{Password: "pw"})
+	if err := buildBackupTar(dir, nil, "1.65.0", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	dest := unpackDest(t)
+	if _, err := unpackBackupTar(filepath.Join(dir, "backup.tar"), dest); err != nil {
+		t.Fatal(err)
+	}
+	// A different current configuration is kept aside, then replaced.
+	_ = saveBackupConfig(backupConfig{})
+	_ = removeRepoSecrets(repoA)
+	stubAccounts(t, map[string][2]int{}, map[string]int{})
+	*calls = nil
+	if err := applyBackup(dest, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	c, _, _ := loadBackupConfig()
+	if len(c.Plans) != 1 || len(c.Repositories) != 1 {
+		t.Fatalf("%+v", c)
+	}
+	sec, err := readRepoSecrets(repoA)
+	if err != nil || sec.Password != "pw" {
+		t.Fatalf("%+v %v", sec, err)
+	}
+	p, _ := repoSecretsPath(repoA)
+	if st, _ := os.Stat(p); st.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v", st.Mode())
+	}
+	if kept, _ := filepath.Glob(backupConfigPath() + ".before-restore-*"); len(kept) != 1 {
+		t.Fatalf("kept aside: %v", kept)
+	}
+	if !fileExists(filepath.Join(systemdDir(), planTimerName(planA))) {
+		t.Fatal("plan timer not written")
+	}
+	all := strings.Join(*calls, "\n")
+	if !strings.Contains(all, "daemon-reload") || !strings.Contains(all, "enable --now "+planTimerName(planA)) {
+		t.Fatalf("%s", all)
+	}
+}

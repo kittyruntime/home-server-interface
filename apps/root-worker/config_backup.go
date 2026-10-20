@@ -249,6 +249,17 @@ func buildBackupTar(dir string, usernames []string, hsiVersion string, now time.
 	if fileExists(maintenanceConfigPath) {
 		files = append(files, backupFile{path: "system/maintenance.json", src: maintenanceConfigPath})
 	}
+	// Backup plans and repositories, with the repository secrets (0600 in the archive).
+	if fileExists(backupConfigPath()) {
+		files = append(files, backupFile{path: "system/backup/backup.json", src: backupConfigPath()})
+		secrets, _ := filepath.Glob(filepath.Join(backupSecretsDir(), "*.json"))
+		sort.Strings(secrets)
+		for _, p := range secrets {
+			if backupIDPattern.MatchString(strings.TrimSuffix(filepath.Base(p), ".json")) {
+				files = append(files, backupFile{path: "system/backup/secrets/" + filepath.Base(p), src: p})
+			}
+		}
+	}
 	// TLS: the mode always; the certificate and key only when imported. The
 	// local authority never leaves this server.
 	if fileExists(tlsConfigPath()) {
