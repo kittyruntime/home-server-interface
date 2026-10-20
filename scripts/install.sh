@@ -60,6 +60,41 @@ warn()    { echo -e "  ${YELLOW}!${NC}   $*"; }
 die()     { echo -e "\n  ${RED}✗ error:${NC} $*\n" >&2; exit 1; }
 step()    { echo -e "\n${BOLD}${CYAN}▶ $*${NC}"; }
 
+# install_restic: the backup engine (#15), from the official restic release at
+# a pinned version, checked against a pinned SHA-256. A failure is reported and
+# leaves versioned backups unavailable; the rest of HSI installs normally.
+RESTIC_VERSION="0.19.1"
+RESTIC_SHA256_amd64="f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c"
+RESTIC_SHA256_arm64="a5f64aaab53d51e311fa3829124c5b703f2d14cf187d8640b6be3b2b49376465"
+RESTIC_DEST="${RESTIC_DEST:-/usr/local/lib/hsi/restic}"
+RESTIC_URL_BASE="${RESTIC_URL_BASE:-https://github.com/restic/restic/releases/download}"
+
+install_restic() {
+  local arch sum tmp
+  case "$(uname -m)" in
+    x86_64) arch=amd64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) warn "No restic build for $(uname -m): versioned backups are unavailable"; return 1 ;;
+  esac
+  if [[ -x "$RESTIC_DEST" ]] && "$RESTIC_DEST" version 2>/dev/null | grep -q "restic ${RESTIC_VERSION} "; then
+    return 0
+  fi
+  sum="RESTIC_SHA256_${arch}"; sum="${!sum}"
+  tmp="$(mktemp -d)"
+  if ! curl -fsSL --retry 3 -o "$tmp/restic.bz2" "${RESTIC_URL_BASE}/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_${arch}.bz2"; then
+    rm -rf "$tmp"; warn "Could not download restic ${RESTIC_VERSION}: versioned backups are unavailable until the installer runs again"; return 1
+  fi
+  if [[ "$(sha256sum "$tmp/restic.bz2" | cut -d' ' -f1)" != "$sum" ]]; then
+    rm -rf "$tmp"; warn "restic ${RESTIC_VERSION} download does not match its checksum: not installed"; return 1
+  fi
+  # Root-owned so the worker never runs a binary another user could replace.
+  local owner=(); (( EUID == 0 )) && owner=(-o root -g root)
+  bunzip2 -c "$tmp/restic.bz2" > "$tmp/restic" && install -D -m 0755 "${owner[@]}" "$tmp/restic" "$RESTIC_DEST"
+  local rc=$?
+  rm -rf "$tmp"
+  return $rc
+}
+
 # Run a shell snippet as another user with that user's HOME. runuser ships with
 # util-linux, so the installer does not depend on sudo being installed.
 run_as() {
@@ -73,7 +108,7 @@ run_as() {
 # command:package. Required ones are installed with apt-get when missing (unless
 # SKIP_DEPS_INSTALL=1); optional ones only enable a feature and are reported.
 REQUIRED_DEPS=(
-  curl:curl openssl:openssl rsync:rsync ssh:openssh-client
+  curl:curl bunzip2:bzip2 openssl:openssl rsync:rsync ssh:openssh-client
   runuser:util-linux lsblk:util-linux blkid:util-linux
   mdadm:mdadm smartctl:smartmontools pvcreate:lvm2
   parted:parted partprobe:parted mkfs.ext4:e2fsprogs udevadm:udev
@@ -621,6 +656,7 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
   )
   install -m 755 "$APP_DIR/apps/root-worker/${APP_NAME}-worker" "/usr/local/bin/${APP_NAME}-worker"
   success "Installed: /usr/local/bin/${APP_NAME}-worker"
+  install_restic || true
 
   step "Building backend"
   run_as "$APP_USER" "cd '$APP_DIR' && pnpm --filter @app/backend build"
@@ -712,6 +748,7 @@ else
   chmod +x "$INSTALL_DIR/bin/$RELEASE_WORKER_BIN"
   install -m 755 "$INSTALL_DIR/bin/$RELEASE_WORKER_BIN" "/usr/local/bin/${APP_NAME}-worker"
   success "Installed: /usr/local/bin/${APP_NAME}-worker"
+  install_restic || true
 
   step "Checking bundled runtime dependencies"
   PRISMA_BIN="$INSTALL_DIR/node_modules/.bin/prisma"
@@ -970,6 +1007,7 @@ HSI_MAINTENANCE_STATE=/var/lib/${APP_NAME}/maintenance-state.json
 HSI_MAINTENANCE_TIMER=/etc/systemd/system/${APP_NAME}-maintenance.timer
 HSI_BACKEND_ENV=$ENV_FILE
 HSI_BACKUP_STAGING=$BACKUP_STAGING_DIR
+HSI_UNIT_PREFIX=${APP_NAME}
 EOF
 chmod 600 "$WORKER_ENV"
 success "Worker env → $WORKER_ENV"
@@ -1083,6 +1121,42 @@ IOSchedulingClass=idle
 StandardOutput=append:$LOG_DIR/root-worker.log
 StandardError=append:$LOG_DIR/root-worker.log
 SyslogIdentifier=${APP_NAME}-maintenance
+EOF
+
+# Versioned backups (#15): one timer per plan or repository, created by the
+# worker, instantiates these templates.
+cat > /etc/systemd/system/${APP_backup}-backup@.service <<EOF
+[Unit]
+Description=${APP_backup} backup plan %i
+After=network-online.target ${APP_backup}-worker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/${APP_backup}-worker backup run %i
+EnvironmentFile=$WORKER_ENV
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=append:$LOG_DIR/backup.log
+StandardError=append:$LOG_DIR/backup.log
+SyslogIdentifier=${APP_backup}-backup
+EOF
+
+cat > /etc/systemd/system/${APP_backup-check}-backup-check@.service <<EOF
+[Unit]
+Description=${APP_backup-check} repository check %i
+After=network-online.target ${APP_backup-check}-worker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/${APP_backup-check}-worker backup check %i
+EnvironmentFile=$WORKER_ENV
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=append:$LOG_DIR/backup.log
+StandardError=append:$LOG_DIR/backup.log
+SyslogIdentifier=${APP_backup-check}-backup-check
 EOF
 
 cat > /etc/systemd/system/${APP_NAME}-maintenance.timer <<EOF
