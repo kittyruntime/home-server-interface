@@ -172,7 +172,6 @@ var taskSubjects = []string{
 	"root.container.composeStop",
 	"root.container.composeRestart",
 	"root.container.composeDown",
-	"root.backup.rsync",
 }
 
 func ensureStream(js nats.JetStreamContext) error {
@@ -917,9 +916,6 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 			}
 			result = map[string]bool{"ok": true}
 		}
-
-	case "root.backup.rsync":
-		result, fsErr = doRsyncBackup(task)
 
 	default:
 		log.Printf("unknown subject: %s", subject)

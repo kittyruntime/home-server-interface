@@ -8,6 +8,7 @@ export const PLAN_OPS = [
   "raid.fail", "raid.remove", "raid.add", "import.assemble", "import.activate",
   "volume.expand", "storage.reapply", "storage.accept", "system.identity",
   "tls.enable", "tls.useLocal", "tls.import", "tls.proxy", "tls.standardPorts",
+  "backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore",
 ] as const
 
 export type PlanOp = typeof PLAN_OPS[number]

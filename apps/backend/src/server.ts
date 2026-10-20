@@ -3,7 +3,7 @@ import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeGuard } from "./services/volume-guard"
 import { startTelemetry } from "./services/telemetry"
-import { startBackupScheduler } from "./services/backup-scheduler"
+import { migrateRsyncPlans } from "./services/backup-status"
 import { startTlsWatch } from "./services/tls-watch"
 import { dispatchEvent, ensureDefaultRule } from "./services/notifications"
 import { migrateNotificationStorage } from "./services/notification-connectors"
@@ -67,7 +67,7 @@ const start = async () => {
     if (lostEvent) void dispatchEvent(lostEvent)
     startUpdateWatch({ dir: updateStateDir, currentVersion: readCurrentVersion })
     startTelemetry(app.log)
-    startBackupScheduler()
+    void migrateRsyncPlans()
     startTlsWatch()
     void startEventSubscriber(app.log).catch(err => {
       app.log.error(err, "nats: event subscriber fatal error")

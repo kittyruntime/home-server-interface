@@ -24,15 +24,6 @@ func cleanBackupPath(p string) (string, error) {
 	return clean, nil
 }
 
-// doRsyncBackup is the root.backup.rsync job, kept until its last caller is gone.
-func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
-	summary, err := runRsync(task)
-	if err != nil {
-		return nil, toFsErr(err)
-	}
-	return map[string]interface{}{"ok": true, "summary": summary}, nil
-}
-
 // rsyncShell is the ssh command of --rsh, which rsync splits on spaces. It is ""
 // when the key path could add an option.
 func rsyncShell(key string, port int) string {

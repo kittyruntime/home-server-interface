@@ -37,7 +37,8 @@ export function sensitiveCalls(path: string): { login: number; unlock: number } 
     let list = path
     try { list = decodeURIComponent(path) } catch { /* keep the raw path */ }
     for (const name of list.split(",")) {
-        if (name === "auth.login") out.login++
+        // backup.password reveals a repository password after a re-authentication.
+        if (name === "auth.login" || name === "backup.password") out.login++
         else if (name === "shareLink.unlock") out.unlock++
     }
     return out

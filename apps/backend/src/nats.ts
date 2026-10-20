@@ -29,7 +29,6 @@ const TASK_STREAM = {
     "root.container.composeStop",
     "root.container.composeRestart",
     "root.container.composeDown",
-    "root.backup.rsync",
   ],
 }
 

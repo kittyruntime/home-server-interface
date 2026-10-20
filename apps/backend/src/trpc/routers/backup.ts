@@ -1,43 +1,49 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { adminProcedure, router } from "../index"
-import { nextBackupRun, runBackupPlan } from "../../services/backup-scheduler"
+import { requestSync } from "../../nats"
+import { verifyPassword } from "../../services/user.service"
+import type { BackupStatus, RunRecord } from "../../services/backup-status"
 
-const absolutePath = z.string().trim().min(1).max(4096).refine(v => v.startsWith("/"), "An absolute path is required")
-const planShape = z.object({
-  name: z.string().trim().min(1).max(80), direction: z.enum(["push", "pull"]),
-  source: absolutePath, destination: absolutePath,
-  remoteHost: z.string().trim().max(253).regex(/^[a-zA-Z0-9][a-zA-Z0-9.-]*$/).nullable(),
-  remoteUser: z.string().trim().max(32).regex(/^[a-z_][a-z0-9_-]*$/).nullable(),
-  remotePort: z.number().int().min(1).max(65535), sshKeyPath: absolutePath.nullable(),
-  schedule: z.enum(["manual", "hourly", "daily", "weekly"]),
-  scheduleHour: z.number().int().min(0).max(23), scheduleMinute: z.number().int().min(0).max(59),
-  scheduleWeekday: z.number().int().min(0).max(6), deleteExtra: z.boolean(), compress: z.boolean(),
-  bandwidthLimit: z.number().int().min(64).max(1048576).nullable(),
-  excludes: z.array(z.string().trim().min(1).max(255).regex(/^[^\0\r\n]+$/)).max(50), enabled: z.boolean(),
-})
-const validatePlan = (v: z.infer<typeof planShape>, ctx: z.RefinementCtx) => {
-  const remote = Boolean(v.remoteHost)
-  if (remote !== Boolean(v.remoteUser) || remote !== Boolean(v.sshKeyPath)) ctx.addIssue({ code: "custom", message: "Remote host, user and SSH key are required together" })
-  if (remote && v.source === v.destination) ctx.addIssue({ code: "custom", message: "Source and destination must differ" })
-  if (!remote && (v.source === v.destination || v.destination.startsWith(`${v.source}/`) || v.source.startsWith(`${v.destination}/`))) ctx.addIssue({ code: "custom", message: "Local source and destination must not overlap" })
-}
-const planInput = planShape.superRefine(validatePlan)
-
-const data = (v: z.infer<typeof planInput>) => ({ ...v, excludes: JSON.stringify(v.excludes), nextRunAt: v.enabled ? nextBackupRun(v.schedule, v.scheduleHour, v.scheduleMinute, v.scheduleWeekday) : null })
-const output = (p: any) => ({ ...p, excludes: JSON.parse(p.excludes) })
+// Reads and actions of the versioned backups (#15). Changes (plans, repositories,
+// restores) go through the storage plan procedures; the worker holds the state.
+const id = z.string().regex(/^[0-9a-f-]{36}$/)
+const snapshot = z.string().regex(/^[0-9a-f]{8,64}$/)
 
 export const backupRouter = router({
-  list: adminProcedure.query(async ({ ctx }) => (await ctx.prisma.backupPlan.findMany({ orderBy: { createdAt: "desc" } })).map(output)),
-  create: adminProcedure.input(planInput).mutation(async ({ ctx, input }) => output(await ctx.prisma.backupPlan.create({ data: data(input) }))),
-  update: adminProcedure.input(planShape.extend({ id: z.string().uuid() }).superRefine(validatePlan)).mutation(async ({ ctx, input }) => {
-    const { id, ...values } = input
-    return output(await ctx.prisma.backupPlan.update({ where: { id }, data: data(values) }))
-  }),
-  delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) => {
-    const plan = await ctx.prisma.backupPlan.findUnique({ where: { id: input.id } })
-    if (plan?.lastStatus === "pending" || plan?.lastStatus === "running") throw new TRPCError({ code: "CONFLICT", message: "A running backup cannot be deleted" })
-    await ctx.prisma.backupPlan.delete({ where: { id: input.id } }); return { ok: true }
-  }),
-  run: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(({ ctx, input }) => runBackupPlan(input.id, ctx.user!.userId)),
+  status: adminProcedure.query(() => requestSync<BackupStatus>("root.backup.status", {}, 15_000)),
+
+  runs: adminProcedure
+    .input(z.object({ kind: z.enum(["runs", "checks", "restores"]), id, limit: z.number().int().min(1).max(200).default(50) }))
+    .query(({ input }) => requestSync<RunRecord[]>("root.backup.runs", input, 15_000)),
+
+  runNow: adminProcedure
+    .input(z.object({ id }))
+    .mutation(({ input }) => requestSync<{ ok: true }>("root.backup.runNow", input, 15_000)),
+
+  checkNow: adminProcedure
+    .input(z.object({ id, full: z.boolean().default(false) }))
+    .mutation(({ input }) => requestSync<{ ok: true }>("root.backup.checkNow", input, 15_000)),
+
+  snapshots: adminProcedure
+    .input(z.object({ repository: id }))
+    .query(({ input }) => requestSync<unknown[]>("root.backup.snapshots", input, 120_000)),
+
+  ls: adminProcedure
+    .input(z.object({ repository: id, snapshot, path: z.string().min(1).max(4096).startsWith("/") }))
+    .query(({ input }) => requestSync<unknown[]>("root.backup.ls", input, 120_000)),
+
+  // Reveals the repository password after a re-authentication; counted by the
+  // login rate limiter (see sensitiveCalls).
+  password: adminProcedure
+    .input(z.object({ repository: id, currentPassword: z.string().min(1).max(1024) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!(await verifyPassword(ctx.prisma, ctx.user.userId, input.currentPassword)))
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Wrong password" })
+      return requestSync<{ password: string }>("root.backup.password", { repository: input.repository }, 15_000)
+    }),
+
+  restoreStatus: adminProcedure
+    .input(z.object({ runId: id }))
+    .query(({ input }) => requestSync<{ progress: { percentDone: number } | null; result: RunRecord | null }>("root.backup.restoreStatus", input, 15_000)),
 })

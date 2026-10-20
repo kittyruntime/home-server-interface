@@ -53,12 +53,6 @@ export function appsUnder(apps: Array<{ name: string; sources: string[]; running
   return apps.filter(a => a.running && a.sources.some(s => pathUnder(s, mountPoint))).map(a => a.name)
 }
 
-// Only local paths count: the remote side of a backup lives on another host.
-export function backupLocalPaths(plan: { direction: string; source: string; destination: string; remoteHost: string | null }): string[] {
-  if (!plan.remoteHost) return [plan.source, plan.destination]
-  return plan.direction === "pull" ? [plan.destination] : [plan.source]
-}
-
 const ALERT_MESSAGES: Record<string, string> = {
   missing: "Volume is not mounted",
   wrong: "Another filesystem is mounted in place of the volume",
