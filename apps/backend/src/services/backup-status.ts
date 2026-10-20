@@ -88,18 +88,50 @@ export function backupTargets(s: BackupStatus): string[] {
   return ["engine", ...s.plans.map(p => `plan:${p.id}`), ...s.repositories.map(r => `repository:${r.id}`)]
 }
 
-/** Turns the rsync plans of the former table into sync plans, once, at start. */
-export async function migrateRsyncPlans(): Promise<void> {
-  try {
-    const status = await requestSync<BackupStatus>("root.backup.status", {}, 15_000)
-    if (status.configExists) return
-    const rows = await prisma.backupPlan.findMany()
-    if (rows.length === 0) return
-    const res = await requestSync<{ migrated: number; skipped: Array<{ name: string; error: string }> }>(
-      "root.backup.migrate", { plans: rows }, 60_000)
-    log.info({ migrated: res.migrated }, "backup: migrated the former rsync plans")
-    for (const s of res.skipped) log.warn({ plan: s.name, error: s.error }, "backup: a former rsync plan was not migrated")
-  } catch (e) {
-    log.error({ err: e }, "backup: migration of the former rsync plans failed")
+/** Dotted like every other alert source: the Alerts filter and notification rules match on "backup.". */
+export const BACKUP_ALERT_SOURCE = "backup.status"
+
+const MIGRATION_DELAYS_MS = [1000, 2000, 4000, 8000, 16000]
+const MIGRATION_RETRY_MS = 30_000
+const MIGRATION_GIVE_UP_MS = 10 * 60_000
+
+interface MigrationDeps {
+  request: (subject: string, body: Record<string, unknown>, timeoutMs: number) => Promise<any>
+  rows: () => Promise<unknown[]>
+  sleep: (ms: number) => Promise<void>
+}
+
+const defaultMigrationDeps: MigrationDeps = {
+  request: requestSync,
+  rows: () => prisma.backupPlan.findMany(),
+  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+}
+
+/**
+ * Turns the rsync plans of the former table into sync plans, once, at start. The
+ * worker may not be ready yet: the status request is retried with a backoff for
+ * about ten minutes, because the old plans have no scheduler until they migrate.
+ */
+export async function migrateRsyncPlans(deps: MigrationDeps = defaultMigrationDeps): Promise<void> {
+  let waited = 0
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const status = await deps.request("root.backup.status", {}, 15_000) as BackupStatus
+      if (status.configExists) return
+      const rows = await deps.rows()
+      if (rows.length === 0) return
+      const res = await deps.request("root.backup.migrate", { plans: rows }, 60_000) as { migrated: number; skipped: Array<{ name: string; error: string }> }
+      log.info({ migrated: res.migrated }, "backup: migrated the former rsync plans")
+      for (const s of res.skipped) log.warn({ plan: s.name, error: s.error }, "backup: a former rsync plan was not migrated")
+      return
+    } catch (e) {
+      const delay = MIGRATION_DELAYS_MS[attempt] ?? MIGRATION_RETRY_MS
+      if (waited + delay > MIGRATION_GIVE_UP_MS) {
+        log.error({ err: e }, "backup: migration of the former rsync plans failed, giving up")
+        return
+      }
+      await deps.sleep(delay)
+      waited += delay
+    }
   }
 }
