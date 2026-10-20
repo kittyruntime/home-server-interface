@@ -88,7 +88,7 @@ func runPlan(id string, now func() time.Time) error {
 	case "versions":
 		repo, ok := cfg.repository(plan.Versions.Repository)
 		if !ok {
-			return fmt.Errorf("unknown repository")
+			return finishRun("runs", id, rec, now, fmt.Errorf("unknown repository"))
 		}
 		runErr := withLock(repo.ID, lockWait, func() error {
 			return runVersions(plan, repo, &rec)
@@ -118,7 +118,7 @@ func syncTask(o syncOptions) taskMsg {
 
 // runVersions takes the snapshot with the plan's apps stopped, and always starts
 // them again. It fills rec; the caller stamps the end and writes it.
-func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) (err error) {
+func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 	_ = writeProgress(plan.ID, backupProgress{})
 	o := plan.Versions
 	for _, src := range o.Sources {
@@ -137,17 +137,22 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) (err er
 		if !composeRunning(app) {
 			continue
 		}
+		// A failed stop can leave a multi-container app half stopped, so it is
+		// started again too (starting running containers is harmless).
+		stopped = append(stopped, app)
 		if err := composeAction(app, "stop"); err != nil {
 			consistent = false
 			rec.Warnings = append(rec.Warnings, fmt.Sprintf("%s could not be stopped: %v", app, err))
-			continue
 		}
-		stopped = append(stopped, app)
 	}
 	rec.Consistent = boolPtr(consistent)
 
-	// Apps come back up whatever happened to the snapshot.
-	defer func() {
+	restarted := false
+	restart := func() error {
+		if restarted {
+			return nil
+		}
+		restarted = true
 		var failed []string
 		for _, app := range stopped {
 			if serr := composeAction(app, "start"); serr != nil {
@@ -155,34 +160,40 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) (err er
 			}
 		}
 		if len(failed) > 0 {
-			restart := errors.New(strings.Join(failed, "; "))
-			if err != nil {
-				restart = fmt.Errorf("%w; %v", err, restart)
-			}
-			err = restart
+			return errors.New(strings.Join(failed, "; "))
 		}
-	}()
+		return nil
+	}
+	// Safety net for a panic; the normal path restarts right after the snapshot.
+	defer restart()
 
 	tag := "consistent"
 	if !consistent {
 		tag = "inconsistent"
 	}
-	sum, err := resticBackup(repo, sec, o.Sources, o.Excludes, []string{"hsi", "plan:" + plan.ID, tag}, func(p backupProgress) {
+	sum, berr := resticBackup(repo, sec, o.Sources, o.Excludes, []string{"hsi", "plan:" + plan.ID, tag}, func(p backupProgress) {
 		_ = writeProgress(plan.ID, p)
 	})
-	if err != nil {
-		return err
+	// The apps are back before the (possibly long) prune, whatever the snapshot did.
+	rerr := restart()
+	if berr == nil {
+		rec.SnapshotID = sum.SnapshotID
+		rec.Added = sum.DataAdded
+		rec.Files = sum.FilesNew + sum.FilesChanged
+		if sum.Partial && sum.Warning != "" {
+			rec.Warnings = append(rec.Warnings, sum.Warning)
+		}
+		if ferr := resticForget(repo, sec, plan.ID, o.Retention); ferr != nil {
+			rec.Warnings = append(rec.Warnings, "old snapshots were not pruned: "+ferr.Error())
+		}
 	}
-	rec.SnapshotID = sum.SnapshotID
-	rec.Added = sum.DataAdded
-	rec.Files = sum.FilesNew + sum.FilesChanged
-	if sum.Partial && sum.Warning != "" {
-		rec.Warnings = append(rec.Warnings, sum.Warning)
+	switch {
+	case berr != nil && rerr != nil:
+		return fmt.Errorf("%w; %v", berr, rerr)
+	case berr != nil:
+		return berr
 	}
-	if ferr := resticForget(repo, sec, plan.ID, o.Retention); ferr != nil {
-		rec.Warnings = append(rec.Warnings, "old snapshots were not pruned: "+ferr.Error())
-	}
-	return nil
+	return rerr
 }
 
 func runCheck(repoID string, full bool, now func() time.Time) error {
