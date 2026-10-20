@@ -2,6 +2,7 @@ import { prisma } from "@app/database"
 import { requestSync } from "../nats"
 import { dispatchEvent, type NotificationEvent, type Severity } from "./notifications"
 import { log } from "../utils/log"
+import { backupFindings, backupTargets, type BackupStatus } from "./backup-status"
 
 type CheckResult = { target: string; message: string; severity: Severity }
 // authoritative: the check covers every target it can raise, so a target it
@@ -164,6 +165,11 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
   return { found, checked }
 }
 
+async function checkBackups(): Promise<CheckOutcome> {
+  const status = await requestSync<BackupStatus>("root.backup.status", {}, 15_000)
+  return { found: backupFindings(status), checked: backupTargets(status), authoritative: true }
+}
+
 const checkers: Checker[] = [
   { source: "storage.raid", check: checkRaid },
   { source: "storage.smart", check: checkSmart },
@@ -171,6 +177,7 @@ const checkers: Checker[] = [
   { source: "storage.disk-usage", check: checkDiskUsage },
   { source: "storage.expand", check: checkExpansions },
   { source: "storage.description", check: checkDescriptions },
+  { source: "backup", check: checkBackups },
 ]
 
 // Pure diff between the previous alert set (source-scoped) and this tick's

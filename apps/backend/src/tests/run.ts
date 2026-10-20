@@ -768,10 +768,6 @@ async function testVolumeGuard() {
   // Only apps that are running are recorded: Resume must not start an app the admin had stopped.
   assert.deepEqual(vg.appsUnder([{ name: "on", sources: ["/mnt/data/a"], running: true }, { name: "off", sources: ["/mnt/data/b"], running: false }], "/mnt/data"), ["on"])
 
-  assert.deepEqual(vg.backupLocalPaths({ direction: "push", source: "/mnt/data", destination: "/remote", remoteHost: "nas2" }), ["/mnt/data"])
-  assert.deepEqual(vg.backupLocalPaths({ direction: "pull", source: "/remote", destination: "/mnt/b", remoteHost: "nas2" }), ["/mnt/b"])
-  assert.deepEqual(vg.backupLocalPaths({ direction: "push", source: "/mnt/a", destination: "/mnt/b", remoteHost: null }), ["/mnt/a", "/mnt/b"])
-
   const f = vg.volumeFindings([{ mountPoint: "/a", state: "missing" }, { mountPoint: "/b", state: "readonly" }, { mountPoint: "/c", state: "ok" }, { mountPoint: "/d", state: "wrong" }])
   assert.deepEqual(f.checked, ["/a", "/b", "/c", "/d"])
   assert.deepEqual(f.found.map(x => [x.target, x.severity]), [["/a", "critical"], ["/b", "warning"], ["/d", "critical"]])
@@ -785,7 +781,7 @@ await testVolumeGuard()
 const sp = await import("../services/storage-plan")
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.includes("system.identity") && sp.PLAN_OPS.length === 27)
+  assert.ok(sp.PLAN_OPS.includes("format") && sp.PLAN_OPS.includes("raid.stop") && sp.PLAN_OPS.includes("storage.reapply") && sp.PLAN_OPS.includes("storage.accept") && sp.PLAN_OPS.includes("system.identity") && sp.PLAN_OPS.length === 32)
   const meta = sp.planAuditMeta("format",
     [{ kind: "run", target: "/dev/sdb1", summary: "Create ext4", command: ["mkfs.ext4", "-F", "/dev/sdb1"], destructive: true },
      { kind: "update", target: "/etc/mdadm/mdadm.conf", summary: "Add ARRAY", diff: "+ARRAY" }],
@@ -2439,6 +2435,9 @@ async function testSensitiveCallsAreCountedInBatches() {
   assert.deepEqual(sensitiveCalls("auth.login,auth.login,shareLink.unlock,auth.login"), { login: 3, unlock: 1 })
   assert.deepEqual(sensitiveCalls("system.metrics,tls.status"), { login: 0, unlock: 0 })
   assert.deepEqual(sensitiveCalls("auth.loginHistory"), { login: 0, unlock: 0 })
+  // Revealing a repository password is a credential check too.
+  assert.deepEqual(sensitiveCalls("backup.password"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("backup.passwordX"), { login: 0, unlock: 0 })
   assert.deepEqual(sensitiveCalls("xauth.login,shareLink.unlockAll"), { login: 0, unlock: 0 })
 
   const attempt = async (url: string, ip: string) => {
@@ -2477,5 +2476,31 @@ async function testSensitiveCallsAreCountedInBatches() {
 }
 
 await testSensitiveCallsAreCountedInBatches()
+
+async function testBackupFindings() {
+  const { backupFindings } = await import("../services/backup-status")
+  const base = { configExists: true, engine: { installed: true, version: "0.19.1" }, repositories: [], plans: [] }
+  const plan = (id: string, status: "success" | "failed", error?: string) => ({ id, name: id, type: "versions" as const, enabled: true, schedule: { every: "daily", minute: 0, hour: 2, weekday: 0 }, nextRun: null, progress: null, last: { start: "2026-10-20T02:00:00Z", status, error } })
+  assert.deepEqual(backupFindings({ ...base, plans: [plan("a", "success")] } as any), [])
+  const f = backupFindings({ ...base, plans: [plan("a", "failed", "disk full"), plan("b", "failed", "vaultwarden did not start again: port in use")] } as any)
+  assert.deepEqual(f.map(x => [x.target, x.severity]), [["plan:a", "warning"], ["plan:b", "critical"]])
+  const noEngine = backupFindings({ ...base, engine: { installed: false, version: "" }, plans: [plan("a", "success")] } as any)
+  assert.deepEqual(noEngine.map(x => x.target), ["engine"])
+  const repoFail = backupFindings({ ...base, repositories: [{ id: "r", name: "USB", type: "local", check: { every: "weekly", hour: 4, weekday: 0, day: 1, subset: "5%" }, hasPassword: true, nextCheck: null, lastCheck: { start: "x", status: "failed", error: "pack abc damaged" } }] } as any)
+  assert.deepEqual(repoFail.map(x => [x.target, x.severity]), [["repository:r", "critical"]])
+}
+
+async function testBackupPlanOpsAreAdminOnlyAndRedacted() {
+  const sp = await import("../services/storage-plan")
+  for (const op of ["backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore"]) {
+    assert.ok((sp.PLAN_OPS as readonly string[]).includes(op), op)
+  }
+  const { redactForAudit } = await import("../trpc/index")
+  const red = JSON.stringify(redactForAudit({ op: "backup.repository.save", input: { secrets: { password: "PW1", accessKeyId: "AK1", secretAccessKey: "SK1", restPassword: "RP1", sshKeyPath: "/root/KEY1" } } }))
+  for (const s of ["PW1", "AK1", "SK1", "RP1", "KEY1"]) assert.ok(!red.includes(s), s)
+}
+
+await testBackupFindings()
+await testBackupPlanOpsAreAdminOnlyAndRedacted()
 
 console.log("Backend security tests passed")

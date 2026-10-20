@@ -25,12 +25,8 @@ func TestRsyncBackupLocalCopyAndMirror(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, fsErr := doRsyncBackup(taskMsg{Direction: "push", Source: source, Destination: destination, DeleteExtra: true})
-	if fsErr != nil {
-		t.Fatalf("backup failed: %s", fsErr.Message)
-	}
-	if result == nil {
-		t.Fatal("expected an rsync result")
+	if _, err := runRsync(taskMsg{Direction: "push", Source: source, Destination: destination, DeleteExtra: true}); err != nil {
+		t.Fatalf("backup failed: %s", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(destination, "kept.txt")); err != nil || string(got) != "backup data" {
 		t.Fatalf("copied file mismatch: %q, %v", got, err)
@@ -41,8 +37,7 @@ func TestRsyncBackupLocalCopyAndMirror(t *testing.T) {
 }
 
 func TestRsyncBackupRejectsFilesystemRoot(t *testing.T) {
-	_, fsErr := doRsyncBackup(taskMsg{Direction: "push", Source: "/", Destination: t.TempDir()})
-	if fsErr == nil {
+	if _, err := runRsync(taskMsg{Direction: "push", Source: "/", Destination: t.TempDir()}); err == nil {
 		t.Fatal("expected filesystem root to be rejected")
 	}
 }

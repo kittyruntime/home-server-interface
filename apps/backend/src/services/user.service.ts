@@ -67,17 +67,19 @@ export async function createUser(
   return user
 }
 
+/** Whether password is the user's current one (bcrypt). */
+export async function verifyPassword(prisma: PrismaClient, userId: string, password: string): Promise<boolean> {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { password: true } })
+  return bcrypt.compare(password, user.password)
+}
+
 export async function changePassword(
   prisma: PrismaClient,
   userId: string,
   currentPassword: string,
   newPassword: string,
 ) {
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: userId },
-    select: { password: true },
-  })
-  if (!(await bcrypt.compare(currentPassword, user.password)))
+  if (!(await verifyPassword(prisma, userId, currentPassword)))
     throw new TRPCError({ code: "FORBIDDEN", message: "Current password is incorrect" })
   const newHashed = await bcrypt.hash(newPassword, 12)
   const result = await prisma.user.update({

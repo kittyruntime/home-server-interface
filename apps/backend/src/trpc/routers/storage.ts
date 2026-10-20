@@ -32,6 +32,64 @@ type MaintenanceSchedule = z.infer<typeof zMaintenanceSchedule>
 const reDev = /^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/
 const reDisk = /^[a-z][a-z0-9]+$/
 const reLvm = /^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/
+// Versioned backups (#15). The worker stays the authority; this refuses the obvious.
+const zBackupId = z.string().regex(/^[0-9a-f-]{36}$/)
+const zBackupPath = z.string().trim().min(1).max(4096).startsWith("/")
+const zSshKeyPath = z.string().max(4096).regex(/^\/[A-Za-z0-9._/-]+$/, "Invalid SSH key path")
+  .refine(p => p.split("/").every(part => part !== ".." && !part.startsWith("-")), "Invalid SSH key path")
+const zBackupName = z.string().trim().min(1).max(80)
+const zBackupExcludes = z.array(z.string().min(1).max(255).regex(/^[^\0\r\n]+$/)).max(50)
+const zRetention = z.number().int().min(0).max(1000)
+const zBackupPlan = z.object({
+  id: zBackupId,
+  name: zBackupName,
+  type: z.enum(["sync", "versions"]),
+  enabled: z.boolean(),
+  schedule: z.object({
+    every: z.enum(["manual", "hourly", "daily", "weekly"]),
+    minute: z.number().int().min(0).max(59), hour: z.number().int().min(0).max(23), weekday: z.number().int().min(0).max(6),
+  }),
+  sync: z.object({
+    direction: z.enum(["push", "pull"]),
+    source: zBackupPath, destination: zBackupPath,
+    remoteHost: z.string().max(253).regex(/^([a-zA-Z0-9][a-zA-Z0-9.-]*)?$/),
+    remoteUser: z.string().max(32).regex(/^([a-z_][a-z0-9_-]*)?$/),
+    remotePort: z.number().int().min(1).max(65535),
+    sshKeyPath: z.union([z.literal(""), zSshKeyPath]),
+    deleteExtra: z.boolean(), compress: z.boolean(),
+    bandwidthLimit: z.number().int().min(0).max(1_048_576),
+    excludes: zBackupExcludes,
+  }).optional(),
+  versions: z.object({
+    sources: z.array(zBackupPath).min(1).max(20),
+    repository: zBackupId,
+    excludes: zBackupExcludes,
+    stopApps: z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)).max(20),
+    retention: z.object({ keepLast: zRetention, keepDaily: zRetention, keepWeekly: zRetention, keepMonthly: zRetention }),
+  }).optional(),
+})
+const zBackupRepository = z.object({
+  id: zBackupId,
+  name: zBackupName,
+  type: z.enum(["local", "sftp", "s3", "rest"]),
+  path: z.string().max(4096), host: z.string().max(253), user: z.string().max(32),
+  port: z.number().int().min(0).max(65535),
+  endpoint: z.string().max(260), bucket: z.string().max(63), url: z.string().max(2048),
+  check: z.object({
+    every: z.enum(["off", "daily", "weekly", "monthly"]),
+    hour: z.number().int().min(0).max(23), weekday: z.number().int().min(0).max(6), day: z.number().int().min(0).max(28),
+    subset: z.string().max(4),
+  }),
+})
+// A blank secret keeps the stored value.
+const zBackupSecrets = z.object({
+  password: z.string().max(1024).default(""),
+  sshKeyPath: z.union([z.literal(""), zSshKeyPath]).default(""),
+  accessKeyId: z.string().max(256).default(""),
+  secretAccessKey: z.string().max(1024).default(""),
+  restUser: z.string().max(256).default(""),
+  restPassword: z.string().max(1024).default(""),
+})
 const PLAN_INPUTS = {
   "format": z.object({
     // Bare name (sda1, md0) or relative LVM path (ubuntu-vg/ubuntu-lv)
@@ -107,6 +165,17 @@ const PLAN_INPUTS = {
   "tls.import": z.object({ cert: z.string().min(1).max(256_000), key: z.string().max(64_000).default("") }),
   "tls.proxy": z.object({ trustedProxies: z.array(z.string().min(1).max(64)).max(32) }),
   "tls.standardPorts": z.object({ enabled: z.boolean() }),
+  "backup.plan.save": z.object({ plan: zBackupPlan }),
+  "backup.plan.remove": z.object({ id: zBackupId }),
+  "backup.repository.save": z.object({ repository: zBackupRepository, secrets: zBackupSecrets }),
+  "backup.repository.remove": z.object({ id: zBackupId }),
+  "backup.restore": z.object({
+    repository: zBackupId,
+    snapshot: z.string().regex(/^[0-9a-f]{8,64}$/),
+    path: zBackupPath,
+    target: z.enum(["new", "original"]),
+    confirmOverwrite: z.boolean().optional(),
+  }),
   "storage.accept": z.object({
     mountPoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
   }),
@@ -123,6 +192,8 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
   // Expanding rewrites whole arrays and erases the disk it adds: admins only.
   if (op === "volume.expand" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can expand a volume" })
+  if (op.startsWith("backup.") && !ctx.user?.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change backups" })
   const parsed = PLAN_INPUTS[op].safeParse(raw)
   if (!parsed.success) throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error.issues[0]?.message ?? "Invalid input" })
   if (op !== "mount") return parsed.data as Record<string, unknown>
