@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.65.0] - 2026-10-20
+
 ### Security
 - **No default account**: new installations no longer create `admin / admin`.
   The setup link is a one-time secret only root can read, deleted once the
@@ -1383,7 +1385,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...HEAD
+[1.65.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.2...v1.65.0
 [1.64.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.1...v1.64.2
 [1.64.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.0...v1.64.1
 [1.64.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.63.0...v1.64.0
