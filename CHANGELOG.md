@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Versioned backups** (#15): backup plans can now keep history with restic
+  (downloaded by the installer from the official release at a pinned,
+  checksum-verified version) in a local folder, over SFTP, on S3-compatible
+  storage or on a restic REST server. Each plan has its retention, can stop
+  chosen apps during the snapshot, and runs from its own systemd timer, so
+  backups run even when the HSI server is down. Repositories are encrypted
+  with a generated password shown once, and checked for corruption on a
+  schedule. A file or folder can be restored from any snapshot, to a new
+  folder by default. Existing rsync plans move to the same page and timers.
+
 ## [1.65.0] - 2026-10-20
 
 ### Security

@@ -164,15 +164,46 @@ systemctl status hsi-server hsi-worker hsi-nats
 systemctl stop hsi.target      # stop HSI entirely, e.g. before manual work
 ```
 
+## Backup plans
+
+Each plan is a systemd timer, `hsi-backup@<id>.timer`, and each versioned repository
+has a check timer, `hsi-backup-check@<id>.timer`. They run without the HSI server.
+
+```bash
+systemctl list-timers 'hsi-backup*'
+sudo hsi-worker backup run <id>
+sudo hsi-worker backup check <id> [--full]
+```
+
+The configuration is in `/etc/hsi/backup.json`, the secrets of each repository in
+`/etc/hsi/backup/<id>.json` (readable by root only) and the run logs in
+`/var/lib/hsi/backup/`.
+
+For a versioned plan you can also use restic directly, with the binary HSI installed.
+Pass the repository and its secrets as environment variables, never on the command
+line, where other users could read them:
+
+```bash
+sudo -i
+export RESTIC_REPOSITORY=/mnt/backups/repo        # from the repository settings
+export RESTIC_PASSWORD='...'                      # "password" in /etc/hsi/backup/<id>.json
+/usr/local/lib/hsi/restic snapshots
+/usr/local/lib/hsi/restic restore latest --target /mnt/restored
+```
+
+S3 repositories also need `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, REST
+repositories `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD`. The repository
+address is `s3:https://<endpoint>/<bucket>/<path>`, `rest:<url>` or
+`sftp://<user>@<host>:<port>/<path>`. For SFTP, add
+`-o sftp.args='-i <key> -o IdentitiesOnly=yes'` to the restic command.
+The old rsync plans, now sync plans, run the same `rsync` command you could type by
+hand from the plan's source, destination and options.
+
 ## What this doesn't cover yet
 
 Users/groups and LVM are also implemented as standard Linux mechanisms (Linux
 accounts, `lvm2`) rather than HSI-private state, but don't have a documented
-manual-recovery workflow yet. Scheduled rsync backups are the one exception worth
-flagging explicitly: the schedule itself (`apps/backend/src/services/
-backup-scheduler.ts`) is HSI-internal, not `cron`: a plan won't run on its own if
-`hsi` is stopped. The `rsync` command a plan builds, though, is a normal one you can
-always run by hand from the plan's source/destination and options.
+manual-recovery workflow yet.
 
 If you need a manual-recovery workflow that isn't written here yet, the relevant
 root-worker source (`apps/root-worker/`) is the authoritative reference for exactly
