@@ -140,3 +140,61 @@ func TestRunCheckRecordsResult(t *testing.T) {
 		t.Fatalf("%+v", runs[0])
 	}
 }
+
+func TestRunVersionsStartsAppsBeforeForget(t *testing.T) {
+	setupVersionsPlan(t, "vaultwarden")
+	var seq []string
+	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}})
+	composeAction = func(a string, args ...string) error {
+		seq = append(seq, a+" "+args[0])
+		return nil
+	}
+	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
+	inner := runRestic
+	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+		if strings.Contains(strings.Join(args, " "), "forget") {
+			seq = append(seq, "forget")
+		}
+		return inner(env, args, onLine)
+	}
+	if err := runPlan(planA, time.Now); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(seq, ",") != "vaultwarden stop,vaultwarden start,forget" {
+		t.Fatalf("order %v", seq)
+	}
+}
+
+func TestRunVersionsStartsAppsWhoseStopFailed(t *testing.T) {
+	setupVersionsPlan(t, "vaultwarden")
+	var calls []string
+	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}})
+	composeAction = func(a string, args ...string) error {
+		calls = append(calls, a+" "+args[0])
+		if args[0] == "stop" {
+			return errors.New("timeout")
+		}
+		return nil
+	}
+	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
+	_ = runPlan(planA, time.Now)
+	if strings.Join(calls, ",") != "vaultwarden stop,vaultwarden start" {
+		t.Fatalf("calls %v", calls)
+	}
+}
+
+func TestRunVersionsRecordsUnknownRepository(t *testing.T) {
+	setupVersionsPlan(t)
+	c := sampleConfig()
+	c.Plans[0].Versions.Repository = planA
+	if err := saveBackupConfig(c); err != nil {
+		t.Fatal(err)
+	}
+	if err := runPlan(planA, time.Now); err == nil {
+		t.Fatal("expected failure")
+	}
+	runs, _ := lastRuns("runs", planA, 1)
+	if len(runs) != 1 || runs[0].Status != "failed" || !strings.Contains(runs[0].Error, "repository") {
+		t.Fatalf("%+v", runs)
+	}
+}
