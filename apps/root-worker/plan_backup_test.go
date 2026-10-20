@@ -232,7 +232,9 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 		"snapshots": {`[{"id":"abcdef1234567890","short_id":"abcdef12","time":"2026-03-04T05:06:07Z","paths":["/srv/data/photos"],"tags":[]}]`},
 		"restore":   {`{"message_type":"summary","files_restored":3,"total_files":4}`},
 	}, nil)
-	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/srv/data/photos", "target": "new"}
+	data := filepath.Join(t.TempDir(), "data")
+	_ = os.MkdirAll(data, 0o755)
+	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": filepath.Join(data, "photos"), "target": "new"}
 	p := planFor(t, "backup.restore", in)
 	if p.Steps[0].Destructive || !strings.Contains(p.Steps[0].Summary, "(3 files)") {
 		t.Fatalf("%+v", p.Steps[0])
@@ -251,6 +253,9 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	if !strings.Contains(strings.Join(*calls, "\n"), "systemd-run --unit hsi-restore-"+id+" --collect") {
 		t.Fatalf("calls %v", *calls)
 	}
+	if !strings.Contains(strings.Join(*calls, "\n"), "--setenv=HSI_BACKUP_STATE="+os.Getenv("HSI_BACKUP_STATE")) {
+		t.Fatalf("the unit must see the worker's HSI_* environment: %v", *calls)
+	}
 	if err := runRestoreRequest(file); err != nil {
 		t.Fatal(err)
 	}
@@ -260,5 +265,164 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	}
 	if _, ok := readProgress(id); ok {
 		t.Fatal("progress kept")
+	}
+}
+
+// restoreCalls returns the --target of each restic restore call.
+func restoreTargets(calls *[]resticCall) []string {
+	var out []string
+	for _, c := range *calls {
+		isRestore := false
+		for _, a := range c.args {
+			if a == "restore" {
+				isRestore = true
+			}
+		}
+		for i, a := range c.args {
+			if isRestore && a == "--target" && i+1 < len(c.args) {
+				out = append(out, c.args[i+1])
+			}
+		}
+	}
+	return out
+}
+
+func restoreFixture(t *testing.T, rr restoreRequest) (string, *[]resticCall) {
+	t.Helper()
+	useUnits(t)
+	_ = saveBackupConfig(sampleConfig())
+	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
+	calls := fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","files_restored":1,"total_files":1}`}}, nil)
+	rr.RunID, rr.Repository, rr.Snapshot = newRunID(), repoA, "abcdef12"
+	file, err := writeRestoreRequest(rr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return file, calls
+}
+
+func TestRestoreRefusesSymlinkedRestoredDir(t *testing.T) {
+	base, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(base, "Restored")); err != nil {
+		t.Fatal(err)
+	}
+	file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "photos")})
+	if err := runRestoreRequest(file); err == nil {
+		t.Fatal("restore through a symlink accepted")
+	}
+	if len(restoreTargets(calls)) != 0 {
+		t.Fatal("restic ran")
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("written through the link: %v", ents)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatal("request file kept")
+	}
+}
+
+func TestRestoreNeverReusesFinalDir(t *testing.T) {
+	base, outside := t.TempDir(), t.TempDir()
+	if err := os.Mkdir(filepath.Join(base, "Restored"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(base, "Restored", "x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(base, "Restored", "x-2"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "photos")})
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	got := restoreTargets(calls)
+	if len(got) != 1 || got[0] != filepath.Join(base, "Restored", "x-3") {
+		t.Fatalf("targets %v", got)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("written through the link: %v", ents)
+	}
+}
+
+func TestRestoreOriginalRefusesSymlinkedParent(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "real")
+	_ = os.MkdirAll(filepath.Join(real, "data"), 0o755)
+	if err := os.Symlink(real, filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+	file, calls := restoreFixture(t, restoreRequest{Mode: "original", Path: filepath.Join(root, "link", "data")})
+	if err := runRestoreRequest(file); err == nil {
+		t.Fatal("symlinked component accepted")
+	}
+	if len(restoreTargets(calls)) != 0 {
+		t.Fatal("restic ran")
+	}
+	file, calls = restoreFixture(t, restoreRequest{Mode: "original", Path: filepath.Join(real, "data")})
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if got := restoreTargets(calls); len(got) != 1 || got[0] != "/" {
+		t.Fatalf("targets %v", got)
+	}
+}
+
+func TestRestoreRequestForUnknownRepositoryIsRecorded(t *testing.T) {
+	base := t.TempDir()
+	file, _ := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "p")})
+	other := "33333333-3333-4333-8333-333333333333"
+	raw, _ := os.ReadFile(file)
+	var rr restoreRequest
+	_ = json.Unmarshal(raw, &rr)
+	rr.Repository = other
+	file, _ = writeRestoreRequest(rr)
+	if err := runRestoreRequest(file); err == nil {
+		t.Fatal("unknown repository accepted")
+	}
+	runs, _ := lastRuns("restores", other, 5)
+	if len(runs) != 1 || runs[0].Status != "failed" {
+		t.Fatalf("%+v", runs)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatal("request file kept")
+	}
+}
+
+func TestRepositoryInitStoresPasswordEvenIfConfigWriteFails(t *testing.T) {
+	useUnits(t)
+	fakeRestic(t, nil, map[string]int{"cat": 10})
+	p := planFor(t, "backup.repository.save", map[string]any{"repository": sampleConfig().Repositories[0], "secrets": map[string]string{}})
+	for i := range p.Steps {
+		if p.Steps[i].Target == backupConfigPath() {
+			p.Steps[i].run = func() (string, error) { return "", os.ErrPermission }
+		}
+		if strings.HasPrefix(p.Steps[i].Summary, "Store the repository secrets") {
+			p.Steps[i].run = func() (string, error) { return "", os.ErrPermission }
+		}
+	}
+	if _, ok, _ := p.execute(); ok {
+		t.Fatal("expected failure")
+	}
+	pw, _ := p.Reply["password"].(string)
+	s, err := readRepoSecrets(repoA)
+	if err != nil || pw == "" || s.Password != pw {
+		t.Fatalf("password lost: %v %q %+v", err, pw, s)
+	}
+}
+
+func TestRepositoryLocationChangeIsProbed(t *testing.T) {
+	useUnits(t)
+	_ = saveBackupConfig(sampleConfig())
+	_ = writeRepoSecrets(repoA, repoSecrets{Password: "keep"})
+	calls := fakeRestic(t, nil, map[string]int{"cat": 1})
+	r := sampleConfig().Repositories[0]
+	r.Path = "/srv/other/restic"
+	_, ferr := buildPlan("backup.repository.save", mustJSON(map[string]any{"repository": r, "secrets": map[string]string{}}))
+	if ferr == nil || ferr.Code != "EUNREACHABLE" {
+		t.Fatalf("%+v", ferr)
+	}
+	if len(*calls) != 1 || envValue((*calls)[0].env, "RESTIC_PASSWORD") != "keep" {
+		t.Fatalf("probe with the stored password expected: %v", *calls)
 	}
 }

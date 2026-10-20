@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -257,7 +259,8 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 
 	p := &opPlan{Op: "backup.repository.save", Reply: map[string]any{}}
 	generate := false
-	if !exists {
+	old, _ := cfg.repository(repo.ID)
+	if !exists || resticRepository(old) != location {
 		// restic refuses an empty password: without one, a throwaway password
 		// tells an empty location (exit 10) from an existing repository (exit 12).
 		probeSec := sec
@@ -284,6 +287,10 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 						sec.Password = randomPassword()
 					}
 					if err := resticInit(repo, sec); err != nil {
+						return "", err
+					}
+					// Stored at once: a later failure must not lose a password that only exists now.
+					if err := writeRepoSecrets(repo.ID, sec); err != nil {
 						return "", err
 					}
 					if generate {
@@ -368,7 +375,9 @@ type restoreRequest struct {
 	Repository string `json:"repository"`
 	Snapshot   string `json:"snapshot"`
 	Path       string `json:"path"`
-	Target     string `json:"target"` // directory the files are restored under
+	Mode       string `json:"mode"` // new | original
+	Base       string `json:"base"` // new: the volume mount point (or the parent of path) holding Restored/
+	Name       string `json:"name"` // new: name of the directory created under Restored/
 }
 
 func (r restoreRequest) validate() error {
@@ -378,10 +387,116 @@ func (r restoreRequest) validate() error {
 	if !backupSnapshotPattern.MatchString(r.Snapshot) {
 		return fmt.Errorf("invalid snapshot")
 	}
-	if !filepath.IsAbs(r.Path) || strings.ContainsAny(r.Path, "\x00\r\n") || !filepath.IsAbs(r.Target) || strings.ContainsAny(r.Target, "\x00\r\n") {
+	if !filepath.IsAbs(r.Path) || strings.ContainsAny(r.Path, "\x00\r\n") {
 		return fmt.Errorf("invalid restore path")
 	}
+	switch r.Mode {
+	case "original":
+	case "new":
+		if !filepath.IsAbs(r.Base) || strings.ContainsAny(r.Base, "\x00\r\n") || r.Name == "" || r.Name != filepath.Base(r.Name) || r.Name == "." || r.Name == ".." {
+			return fmt.Errorf("invalid restore target")
+		}
+	default:
+		return fmt.Errorf("invalid restore target")
+	}
 	return nil
+}
+
+// restoreOwnerUID is the owner expected on the Restored directory: whoever runs the restore.
+var restoreOwnerUID = os.Geteuid
+
+// realDir fails unless path is an existing real directory (not a symlink).
+func realDir(path string) error {
+	st, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return fmt.Errorf("%s is not a directory", path)
+	}
+	return nil
+}
+
+// checkNoSymlinks refuses when an existing component of dir, from start down, is a symlink.
+func checkNoSymlinks(start, dir string) error {
+	rel, err := filepath.Rel(start, dir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
+		return fmt.Errorf("invalid restore path")
+	}
+	cur := start
+	parts := []string{""}
+	if rel != "." {
+		parts = strings.Split(rel, string(filepath.Separator))
+	}
+	for _, part := range parts {
+		cur = filepath.Join(cur, part)
+		st, err := os.Lstat(cur)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s is a symbolic link, refusing to restore through it", cur)
+		}
+	}
+	return nil
+}
+
+// prepareRestoreTarget runs as root against a tree HSI users can write to, so it
+// checks the target now rather than trusting the preview: no symlink on the way,
+// Restored/ owned by us, and a directory that did not exist before.
+func prepareRestoreTarget(rr restoreRequest) (string, error) {
+	if rr.Mode == "original" {
+		start := volumeMountFor(rr.Path)
+		if start == "" {
+			start = "/"
+		}
+		if err := checkNoSymlinks(start, filepath.Dir(rr.Path)); err != nil {
+			return "", err
+		}
+		return "/", nil
+	}
+	if err := checkNoSymlinks(rr.Base, rr.Base); err != nil {
+		return "", err
+	}
+	if err := realDir(rr.Base); err != nil {
+		return "", err
+	}
+	restored := filepath.Join(rr.Base, "Restored")
+	st, err := os.Lstat(restored)
+	switch {
+	case os.IsNotExist(err):
+		if err := os.Mkdir(restored, 0o755); err != nil {
+			return "", err
+		}
+		if err := os.Chmod(restored, 0o755); err != nil {
+			return "", err
+		}
+	case err != nil:
+		return "", err
+	default:
+		owner, ok := st.Sys().(*syscall.Stat_t)
+		if !st.IsDir() || !ok || int(owner.Uid) != restoreOwnerUID() {
+			return "", fmt.Errorf("%s is not a directory owned by root, refusing to restore into it", restored)
+		}
+	}
+	for i := 1; i <= 1000; i++ {
+		name := rr.Name
+		if i > 1 {
+			name = fmt.Sprintf("%s-%d", rr.Name, i)
+		}
+		dir := filepath.Join(restored, name)
+		err := os.Mkdir(dir, 0o755)
+		if err == nil {
+			return dir, nil
+		}
+		if !os.IsExist(err) {
+			return "", err
+		}
+	}
+	return "", fmt.Errorf("no free directory name under %s", restored)
 }
 
 func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
@@ -434,7 +549,7 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 	}
 
-	target, date := "/", req.Snapshot
+	target, date, base, name := "/", req.Snapshot, "", ""
 	if snapTime != nil {
 		date = snapTime.Format("2006-01-02 15:04")
 	}
@@ -442,11 +557,11 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		if snapTime == nil {
 			return nil, &fsError{Code: "ENOENT", Message: "This snapshot does not exist"}
 		}
-		base := volumeMountFor(path)
+		base = volumeMountFor(path)
 		if base == "" {
 			base = filepath.Dir(path)
 		}
-		name := unsafeNameChars.ReplaceAllString(repo.Name, "-") + "-" + snapTime.Format("2006-01-02-1504")
+		name = unsafeNameChars.ReplaceAllString(repo.Name, "-") + "-" + snapTime.Format("2006-01-02-1504")
 		target = filepath.Join(base, "Restored", name)
 	}
 
@@ -459,7 +574,7 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 
 	p := &opPlan{Op: "backup.restore", Reply: map[string]any{}}
-	rr := restoreRequest{Repository: repo.ID, Snapshot: req.Snapshot, Path: path, Target: target}
+	rr := restoreRequest{Repository: repo.ID, Snapshot: req.Snapshot, Path: path, Mode: req.Target, Base: base, Name: name}
 	p.Steps = []planStep{{Kind: "run", Target: target,
 		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, sum.FilesRestored),
 		Destructive: req.Target == "original",
@@ -475,7 +590,9 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 			if err != nil {
 				return "", err
 			}
-			argv := []string{"systemd-run", "--unit", unitPrefix() + "-restore-" + rr.RunID, "--collect", exe, "backup", "restore", file}
+			argv := []string{"systemd-run", "--unit", unitPrefix() + "-restore-" + rr.RunID, "--collect"}
+			argv = append(argv, hsiEnvArgs(os.Environ())...)
+			argv = append(argv, exe, "backup", "restore", file)
 			if out, err := runArgv(argv); err != nil {
 				clearProgress(rr.RunID)
 				os.Remove(file)
@@ -485,6 +602,26 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 			return "", nil
 		}}}
 	return p, nil
+}
+
+// hsiEnvArgs forwards the worker's HSI_* paths to the restore unit, so it reads the
+// same configuration the plan was built from. Variables that look like credentials stay out
+// of the unit's command line.
+func hsiEnvArgs(environ []string) []string {
+	var out []string
+	for _, kv := range environ {
+		k, _, _ := strings.Cut(kv, "=")
+		up := strings.ToUpper(k)
+		if !strings.HasPrefix(k, "HSI_") || strings.ContainsAny(kv, "\x00\r\n") {
+			continue
+		}
+		if strings.Contains(up, "TOKEN") || strings.Contains(up, "SECRET") || strings.Contains(up, "PASSWORD") || strings.Contains(up, "KEY") {
+			continue
+		}
+		out = append(out, "--setenv="+kv)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func writeRestoreRequest(r restoreRequest) (string, error) {
@@ -502,52 +639,61 @@ func writeRestoreRequest(r restoreRequest) (string, error) {
 
 // runRestoreRequest is `hsi-worker backup restore <file>`, started by the restore plan
 // as a transient unit. Progress is kept under the run id, the result is logged under
-// the repository id.
+// the repository id (a failed one too, as soon as that id is known).
 func runRestoreRequest(file string) error {
+	defer os.Remove(file)
 	raw, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
 	var rr restoreRequest
-	if err := json.Unmarshal(raw, &rr); err != nil {
-		return fmt.Errorf("invalid restore request: %w", err)
-	}
-	if err := rr.validate(); err != nil {
+	rec := runRecord{Start: time.Now()}
+	finish := func(err error) error {
+		if !backupIDPattern.MatchString(rr.Repository) {
+			return err
+		}
+		end := time.Now()
+		rec.End = &end
+		rec.Status = "success"
+		if err != nil {
+			rec.Status, rec.Error = "failed", err.Error()
+		}
+		if lerr := appendRun("restores", rr.Repository, rec); lerr != nil {
+			logger.Warn("restore run log not written", "id", rr.Repository, "error", lerr.Error())
+		}
 		return err
 	}
-	defer os.Remove(file)
+	if err := json.Unmarshal(raw, &rr); err != nil {
+		return finish(fmt.Errorf("invalid restore request: %w", err))
+	}
+	if err := rr.validate(); err != nil {
+		return finish(err)
+	}
 	defer clearProgress(rr.RunID)
 
 	cfg, _, err := loadBackupConfig()
 	if err != nil {
-		return err
+		return finish(err)
 	}
 	repo, ok := cfg.repository(rr.Repository)
 	if !ok {
-		return fmt.Errorf("unknown repository")
+		return finish(fmt.Errorf("unknown repository"))
 	}
-	rec := runRecord{Start: time.Now()}
 	_ = writeProgress(rr.RunID, backupProgress{})
-	runErr := withLock(repo.ID, lockWait, func() error {
+	return finish(withLock(repo.ID, lockWait, func() error {
 		sec, err := readRepoSecrets(repo.ID)
 		if err != nil {
 			return err
 		}
-		sum, err := resticRestore(repo, sec, rr.Snapshot, rr.Path, rr.Target, false, func(p backupProgress) {
+		target, err := prepareRestoreTarget(rr)
+		if err != nil {
+			return err
+		}
+		sum, err := resticRestore(repo, sec, rr.Snapshot, rr.Path, target, false, func(p backupProgress) {
 			_ = writeProgress(rr.RunID, p)
 		})
 		rec.Files = sum.FilesRestored
 		rec.Warnings = sum.Warnings
 		return err
-	})
-	end := time.Now()
-	rec.End = &end
-	rec.Status = "success"
-	if runErr != nil {
-		rec.Status, rec.Error = "failed", runErr.Error()
-	}
-	if err := appendRun("restores", repo.ID, rec); err != nil {
-		logger.Warn("restore run log not written", "id", repo.ID, "error", err.Error())
-	}
-	return runErr
+	}))
 }
