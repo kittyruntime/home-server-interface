@@ -175,7 +175,7 @@ func TestTLSPlansHaveStableFingerprints(t *testing.T) {
 			t.Fatalf("%s: the fingerprint changes between two previews, so apply always refuses", c.op)
 		}
 		last := p1.Steps[len(p1.Steps)-1]
-		if strings.Join(last.Command, " ") != "systemd-run --on-active=2 --collect --unit=hsi-server-restart systemctl restart hsi-server.service" {
+		if strings.Join(last.Command, " ") != "systemd-run --on-active=2 --timer-property=AccuracySec=100ms --collect --unit=hsi-server-restart systemctl restart hsi-server.service" {
 			t.Fatalf("%s: restart command %v", c.op, last.Command)
 		}
 	}
