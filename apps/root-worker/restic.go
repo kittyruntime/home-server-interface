@@ -117,11 +117,15 @@ func resticEnv(r repositoryCfg, s repoSecrets) []string {
 	return env
 }
 
-func resticGlobalArgs(r repositoryCfg, s repoSecrets) []string {
+func resticGlobalArgs(r repositoryCfg, s repoSecrets) ([]string, error) {
 	if r.Type != "sftp" {
-		return nil
+		return nil, nil
 	}
-	return []string{"-o", "sftp.args=-i " + s.SSHKeyPath + " -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes"}
+	// sftp.args is split on spaces by restic, the path must not add options.
+	if err := validSSHKeyPath(s.SSHKeyPath); err != nil {
+		return nil, err
+	}
+	return []string{"-o", "sftp.args=-i " + s.SSHKeyPath + " -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes"}, nil
 }
 
 // resticCmd runs restic with the leading words first (subcommand and its positional
@@ -133,7 +137,11 @@ func resticCmd(r repositoryCfg, s repoSecrets, lead []string, own []string, onLi
 func resticCmdFiles(r repositoryCfg, s repoSecrets, lead []string, own []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 	args := append([]string{}, lead...)
 	args = append(args, "--cache-dir", filepath.Join(backupStateDir(), "cache"))
-	args = append(args, resticGlobalArgs(r, s)...)
+	global, err := resticGlobalArgs(r, s)
+	if err != nil {
+		return 0, "", err
+	}
+	args = append(args, global...)
 	args = append(args, own...)
 	if len(extra) > 0 {
 		return runResticFiles(resticEnv(r, s), args, extra, onLine)

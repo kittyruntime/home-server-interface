@@ -519,6 +519,23 @@ func restoreBackupConfig(dir, stamp string) error {
 	if json.Unmarshal(b, &cfg) != nil || cfg.validate() != nil {
 		return errors.New("system/backup/backup.json is not valid")
 	}
+	// Only the secrets of a restored repository are read, each one checked like a
+	// saved one. Nothing is written before all of them pass.
+	secrets := map[string]repoSecrets{}
+	for _, r := range cfg.Repositories {
+		raw, err := os.ReadFile(filepath.Join(dir, "system", "backup", "secrets", r.ID+".json"))
+		if err != nil {
+			continue
+		}
+		var sec repoSecrets
+		if json.Unmarshal(raw, &sec) != nil {
+			return fmt.Errorf("the secrets of the repository %s are not valid", r.Name)
+		}
+		if err := validateRepoSecrets(r, sec); err != nil {
+			return fmt.Errorf("the secrets of the repository %s are not valid: %w", r.Name, err)
+		}
+		secrets[r.ID] = sec
+	}
 	if cur, err := os.ReadFile(backupConfigPath()); err != nil || !bytes.Equal(cur, b) {
 		_ = keepAside(backupConfigPath(), ".before-restore-"+stamp)
 		if err := os.MkdirAll(filepath.Dir(backupConfigPath()), 0o755); err != nil {
@@ -529,13 +546,9 @@ func restoreBackupConfig(dir, stamp string) error {
 		}
 	}
 	for _, r := range cfg.Repositories {
-		raw, err := os.ReadFile(filepath.Join(dir, "system", "backup", "secrets", r.ID+".json"))
-		if err != nil {
+		sec, ok := secrets[r.ID]
+		if !ok {
 			continue
-		}
-		var sec repoSecrets
-		if json.Unmarshal(raw, &sec) != nil {
-			return fmt.Errorf("the secrets of the repository %s are not valid", r.Name)
 		}
 		if path, err := repoSecretsPath(r.ID); err == nil {
 			_ = keepAside(path, ".before-restore-"+stamp)

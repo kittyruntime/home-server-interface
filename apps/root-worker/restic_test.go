@@ -99,7 +99,8 @@ func TestResticEnvPerType(t *testing.T) {
 	if envValue(rest, "RESTIC_REST_USERNAME") != "u" || envValue(rest, "RESTIC_REST_PASSWORD") != "rp" {
 		t.Error("rest credentials")
 	}
-	g := strings.Join(resticGlobalArgs(cases[1].r, sec), " ")
+	ga, _ := resticGlobalArgs(cases[1].r, sec)
+	g := strings.Join(ga, " ")
 	if !strings.Contains(g, "sftp.args=-i /etc/hsi/backup/k") || !strings.Contains(g, "BatchMode=yes") {
 		t.Errorf("sftp args %q", g)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -303,8 +304,25 @@ func migrateRsyncPlans(rows []map[string]any) (int, []map[string]string, error) 
 	return len(cfg.Plans), skipped, nil
 }
 
-// writeAllTimers writes the timer of every plan and repository of cfg, reloads
-// systemd once and enables each timer.
+// staleTimers lists the backup timers on the host that are not in keep.
+func staleTimers(keep map[string]string) []string {
+	var out []string
+	for _, kind := range []string{"-backup@", "-backup-check@"} {
+		found, _ := filepath.Glob(filepath.Join(systemdDir(), unitPrefix()+kind+"*.timer"))
+		for _, path := range found {
+			name := filepath.Base(path)
+			id := strings.TrimSuffix(strings.TrimPrefix(name, unitPrefix()+kind), ".timer")
+			if _, ok := keep[name]; !ok && backupIDPattern.MatchString(id) {
+				out = append(out, name)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// writeAllTimers writes the timer of every plan and repository of cfg, removes the
+// other backup timers of the host, reloads systemd once and enables each timer.
 func writeAllTimers(cfg backupConfig) error {
 	timers := map[string]string{}
 	for _, p := range cfg.Plans {
@@ -317,16 +335,24 @@ func writeAllTimers(cfg backupConfig) error {
 			timers[checkTimerName(r.ID)] = u
 		}
 	}
-	if len(timers) == 0 {
-		return nil
-	}
 	names := make([]string, 0, len(timers))
 	for name := range timers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	stale := staleTimers(timers)
+	if len(names) == 0 && len(stale) == 0 {
+		return nil
+	}
 	if err := os.MkdirAll(systemdDir(), 0o755); err != nil {
 		return err
+	}
+	// A timer of a plan or repository that is gone, disabled or manual must stop.
+	for _, name := range stale {
+		_, _ = systemctl("disable", "--now", name)
+		if err := os.Remove(filepath.Join(systemdDir(), name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 	for _, name := range names {
 		if err := writeBackupFile(filepath.Join(systemdDir(), name), []byte(timers[name]), 0o644); err != nil {
@@ -450,27 +476,40 @@ func handleBackupPassword(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"password": sec.Password})
 }
 
-// handleBackupRestoreStatus reports a restore by its run id. The run log of a restore
-// is keyed by repository, so the result needs the repository too.
+// backupRestoreStatus reports a restore by its run id: its progress while it runs,
+// then its record, looked up in the restore logs of every repository.
+func backupRestoreStatus(runID string) map[string]any {
+	out := map[string]any{"progress": nil, "result": nil}
+	if p, ok := readProgress(runID); ok {
+		out["progress"] = p
+		return out
+	}
+	logs, _ := filepath.Glob(filepath.Join(backupStateDir(), "restores", "*.jsonl"))
+	for _, path := range logs {
+		id := strings.TrimSuffix(filepath.Base(path), ".jsonl")
+		runs, _ := lastRuns("restores", id, maxRunLines)
+		for i := range runs {
+			if runs[i].RunID == runID {
+				out["result"] = &runs[i]
+				return out
+			}
+		}
+	}
+	return out
+}
+
 func handleBackupRestoreStatus(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
-		RunID      string `json:"runId"`
-		Repository string `json:"repository"`
+		RunID string `json:"runId"`
 	}
 	if !decodeBackupRequest(nc, msg, &req) {
 		return
 	}
-	if !backupIDPattern.MatchString(req.RunID) || (req.Repository != "" && !backupIDPattern.MatchString(req.Repository)) {
+	if !backupIDPattern.MatchString(req.RunID) {
 		replyErr(nc, msg.Reply, invalidInput("Invalid request"))
 		return
 	}
-	out := map[string]any{"progress": nil, "result": nil}
-	if p, ok := readProgress(req.RunID); ok {
-		out["progress"] = p
-	} else if req.Repository != "" {
-		out["result"] = firstRun("restores", req.Repository)
-	}
-	replyOk(nc, msg.Reply, out)
+	replyOk(nc, msg.Reply, backupRestoreStatus(req.RunID))
 }
 
 func handleBackupMigrate(nc *nats.Conn, msg *nats.Msg) {

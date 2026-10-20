@@ -195,6 +195,23 @@ func validName(name string) bool {
 	return true
 }
 
+var sshKeyPathPattern = regexp.MustCompile(`^/[A-Za-z0-9._/-]+$`)
+
+// validSSHKeyPath keeps a key path safe to splice into an ssh command line: plain
+// characters only, no whitespace, no parent component and no component that could
+// read as an option.
+func validSSHKeyPath(p string) error {
+	if !sshKeyPathPattern.MatchString(p) {
+		return fmt.Errorf("invalid SSH key path")
+	}
+	for _, part := range strings.Split(p, "/") {
+		if part == ".." || strings.HasPrefix(part, "-") {
+			return fmt.Errorf("invalid SSH key path")
+		}
+	}
+	return nil
+}
+
 func inRange(v, lo, hi int) bool { return v >= lo && v <= hi }
 
 func validExcludes(list []string) error {
@@ -286,8 +303,8 @@ func validateSync(o syncOptions) error {
 		if !inRange(o.RemotePort, 1, 65535) {
 			return fmt.Errorf("invalid SSH port")
 		}
-		if _, err := cleanBackupPath(o.SSHKeyPath); err != nil {
-			return fmt.Errorf("invalid SSH key path")
+		if err := validSSHKeyPath(o.SSHKeyPath); err != nil {
+			return err
 		}
 	} else {
 		if o.RemoteUser != "" || o.SSHKeyPath != "" {

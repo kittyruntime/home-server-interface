@@ -13,6 +13,7 @@ import (
 const maxRunLines = 200
 
 type runRecord struct {
+	RunID      string     `json:"runId,omitempty"` // restores only
 	Start      time.Time  `json:"start"`
 	End        *time.Time `json:"end,omitempty"`
 	Status     string     `json:"status"` // running | success | failed
