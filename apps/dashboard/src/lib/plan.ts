@@ -48,7 +48,7 @@ export interface PlanRequest {
 export type PlanOutcome =
   | { status: 'applied'; result: PlanApply }
   | { status: 'failed'; error: string }
-  | { status: 'cancelled' }
+  | { status: 'cancelled'; previewError?: string }
 
 export const planRequest = ref<PlanRequest | null>(null)
 let nextId = 0
@@ -58,7 +58,9 @@ let nextId = 0
  * reply fields (`jobId` for an app operation that started a background job)
  * and warnings when it ran; throws with the failure message when a step
  * failed; throws with an empty message when the user cancelled (callers that
- * show `e.message` then show nothing).
+ * show `e.message` then show nothing). When the preview itself was refused,
+ * the thrown error also carries that reason as `previewError`, for a form
+ * that can ask for what is missing (a repository password).
  */
 export async function applyPlanned(
   op: PlanOp,
@@ -72,7 +74,14 @@ export async function applyPlanned(
   if (outcome.status === 'applied') {
     return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [] }
   }
-  throw new Error(outcome.status === 'failed' ? outcome.error : '')
+  if (outcome.status === 'failed') throw new Error(outcome.error)
+  throw Object.assign(new Error(''), { previewError: outcome.previewError })
+}
+
+/** The refused preview's reason carried by an error from applyPlanned, or "". */
+export function previewErrorOf(e: unknown): string {
+  const v = (e as { previewError?: unknown } | null)?.previewError
+  return typeof v === 'string' ? v : ''
 }
 
 /**
