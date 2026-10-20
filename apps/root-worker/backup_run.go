@@ -254,7 +254,10 @@ func runBackupCLI(args []string) int {
 		}
 		return 0
 	case "restore":
-		return fail(fmt.Errorf("backup restore is not implemented yet"))
+		if err := runRestoreRequest(args[1]); err != nil {
+			return fail(err)
+		}
+		return 0
 	}
 	return fail(fmt.Errorf("unknown backup command %q", args[0]))
 }
