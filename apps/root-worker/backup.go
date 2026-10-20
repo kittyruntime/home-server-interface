@@ -24,38 +24,48 @@ func cleanBackupPath(p string) (string, error) {
 	return clean, nil
 }
 
+// doRsyncBackup is the root.backup.rsync job, kept until its last caller is gone.
 func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
-	source, err := cleanBackupPath(task.Source)
+	summary, err := runRsync(task)
 	if err != nil {
 		return nil, toFsErr(err)
 	}
+	return map[string]interface{}{"ok": true, "summary": summary}, nil
+}
+
+// runRsync validates the task, runs rsync and returns the tail of its output.
+func runRsync(task taskMsg) (string, error) {
+	source, err := cleanBackupPath(task.Source)
+	if err != nil {
+		return "", err
+	}
 	destination, err := cleanBackupPath(task.Destination)
 	if err != nil {
-		return nil, toFsErr(err)
+		return "", err
 	}
 	remote := task.RemoteHost != ""
 	if remote {
 		if !backupHost.MatchString(task.RemoteHost) || !backupUser.MatchString(task.RemoteUser) {
-			return nil, toFsErr(fmt.Errorf("invalid remote endpoint"))
+			return "", fmt.Errorf("invalid remote endpoint")
 		}
 		if task.RemotePort < 1 || task.RemotePort > 65535 {
-			return nil, toFsErr(fmt.Errorf("invalid SSH port"))
+			return "", fmt.Errorf("invalid SSH port")
 		}
 		key, e := cleanBackupPath(task.SSHKeyPath)
 		if e != nil {
-			return nil, toFsErr(fmt.Errorf("invalid SSH key path"))
+			return "", fmt.Errorf("invalid SSH key path")
 		}
 		info, e := os.Stat(key)
 		if e != nil || !info.Mode().IsRegular() {
-			return nil, toFsErr(fmt.Errorf("SSH key is not a regular file"))
+			return "", fmt.Errorf("SSH key is not a regular file")
 		}
 		if info.Mode().Perm()&0077 != 0 {
-			return nil, toFsErr(fmt.Errorf("SSH key permissions must be 0600 or stricter"))
+			return "", fmt.Errorf("SSH key permissions must be 0600 or stricter")
 		}
 		task.SSHKeyPath = key
 	}
 	if task.Direction != "push" && task.Direction != "pull" {
-		return nil, toFsErr(fmt.Errorf("invalid backup direction"))
+		return "", fmt.Errorf("invalid backup direction")
 	}
 	args := []string{"--archive", "--human-readable", "--stats", "--protect-args", "--partial", "--numeric-ids"}
 	if task.Compress {
@@ -69,7 +79,7 @@ func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
 	}
 	for _, exclude := range task.Excludes {
 		if exclude == "" || strings.ContainsAny(exclude, "\x00\r\n") {
-			return nil, toFsErr(fmt.Errorf("invalid exclusion pattern"))
+			return "", fmt.Errorf("invalid exclusion pattern")
 		}
 		args = append(args, "--exclude="+exclude)
 	}
@@ -95,11 +105,11 @@ func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
 		if len(message) > 12000 {
 			message = message[len(message)-12000:]
 		}
-		return nil, &fsError{Code: "ERR", Message: fmt.Sprintf("rsync failed: %s", strings.TrimSpace(message))}
+		return "", fmt.Errorf("rsync failed: %s", strings.TrimSpace(message))
 	}
 	text := output.String()
 	if len(text) > 12000 {
 		text = text[len(text)-12000:]
 	}
-	return map[string]interface{}{"ok": true, "summary": text}, nil
+	return text, nil
 }

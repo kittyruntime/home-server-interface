@@ -971,6 +971,11 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "maintenance" {
 		os.Exit(runMaintenanceCLI())
 	}
+	// `hsi-worker backup run|check|restore`: versioned backups (#15), run by
+	// the hsi-backup@ units without NATS or the backend.
+	if len(os.Args) > 1 && os.Args[1] == "backup" {
+		os.Exit(runBackupCLI(os.Args[2:]))
+	}
 	// `hsi-worker setup-token`: a new first-run setup link (#12).
 	if len(os.Args) > 1 && os.Args[1] == "setup-token" {
 		os.Exit(runSetupTokenCLI(os.Args[2:]))
