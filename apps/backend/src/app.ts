@@ -45,6 +45,9 @@ export function buildApp(opts: BuildAppOptions = {}) {
     const app = Fastify({
         logger: loggerOptions,
         bodyLimit: 50 * 1024 * 1024, // 50 MB, covers 2 MB chunks with headroom
+        // tRPC batches put every procedure name in one path parameter; the
+        // default of 100 characters would make long batches miss the route.
+        maxParamLength: 5000,
         ...(serverFactory ? { serverFactory } : {}),
         // Trust forwarded client addresses only from loopback peers by default,
         // and in proxy mode also from the proxies listed in tls.json, so direct

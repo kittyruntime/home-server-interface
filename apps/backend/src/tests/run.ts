@@ -2410,4 +2410,24 @@ async function testTlsWatchAndOps() {
 
 await testTlsWatchAndOps()
 
+async function testLongTrpcBatchPathsStillRoute() {
+  const { buildApp } = await import("../app")
+  const app = await buildApp()
+  await app.ready()
+  try {
+    const names = ["notifications.list", "tls.status", "system.metrics", "container.app.list", "alert.list", "update.status", "user.preferences"]
+    const path = `/trpc/${names.join(",")}`
+    assert.ok(path.length > 100)
+    const res = await app.inject({ method: "GET", url: `${path}?batch=1&input=%7B%7D` })
+    assert.match(String(res.headers["content-type"]), /application\/json/)
+    const body = JSON.parse(res.body)
+    assert.ok(Array.isArray(body))
+    assert.equal(body.length, names.length)
+  } finally {
+    await app.close()
+  }
+}
+
+await testLongTrpcBatchPathsStillRoute()
+
 console.log("Backend security tests passed")
