@@ -72,7 +72,7 @@ export async function applyPlanned(
     planRequest.value = { id: nextId++, op, input, ...opts, domain: opts.domain ?? 'storage', resolve }
   })
   if (outcome.status === 'applied') {
-    return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [] }
+    return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [], steps: outcome.result.steps }
   }
   if (outcome.status === 'failed') throw new Error(outcome.error)
   throw Object.assign(new Error(''), { previewError: outcome.previewError })

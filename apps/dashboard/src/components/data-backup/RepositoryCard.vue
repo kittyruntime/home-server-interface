@@ -6,10 +6,12 @@ import { locationLabel, runLabel, untilLabel, TONE_CLASS } from '../../lib/backu
 import BusyLabel from '../ui/BusyLabel.vue'
 import PasswordReveal from './PasswordReveal.vue'
 import RunHistory from './RunHistory.vue'
+import RestoreDialog from './RestoreDialog.vue'
 
-type Repository = Awaited<ReturnType<typeof trpc.backup.status.query>>['repositories'][number]
+type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
+type Repository = Status['repositories'][number]
 
-const props = defineProps<{ repository: Repository }>()
+const props = defineProps<{ repository: Repository; plans: Status['plans'] }>()
 const emit = defineEmits<{ edit: []; changed: [] }>()
 
 const TYPE_LABEL: Record<Repository['type'], string> = { local: 'Local', sftp: 'SFTP', s3: 'S3', rest: 'REST' }
@@ -18,6 +20,7 @@ const error = ref('')
 const starting = ref<'' | 'quick' | 'full'>('')
 const revealing = ref(false)
 const history = ref(false)
+const restoring = ref(false)
 
 const checking = computed(() => props.repository.lastCheck?.status === 'running')
 const last = computed(() => {
@@ -72,6 +75,7 @@ async function remove() {
         <button class="btn btn-ghost btn-xs" :disabled="checking || !!starting" title="Read every stored file back; slow on a large repository" @click="check(true)">
           <BusyLabel :busy="starting === 'full'">Full check</BusyLabel>
         </button>
+        <button class="btn btn-outline btn-xs" @click="restoring = true">Browse and restore…</button>
         <button v-if="repository.hasPassword" class="btn btn-ghost btn-xs" @click="revealing = true">Show password…</button>
         <button class="btn btn-ghost btn-xs" @click="history = true">History</button>
         <button class="btn btn-ghost btn-xs" @click="emit('edit')">Edit</button>
@@ -86,6 +90,7 @@ async function remove() {
     <p v-if="error" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <PasswordReveal v-if="revealing" mode="ask" :repository="repository" @close="revealing = false" />
+    <RestoreDialog v-if="restoring" :repository="repository" :plans="plans" @close="restoring = false" />
     <RunHistory v-if="history" kind="checks" :id="repository.id" :title="`Checks of ${repository.name}`" @close="history = false" />
   </article>
 </template>

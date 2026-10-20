@@ -80,6 +80,34 @@ export function parentPath(p: string): string {
   return i <= 0 ? '/' : p.slice(0, i)
 }
 
+/** The deepest directory holding every path of a snapshot: the path itself for one, "/" when they share nothing. */
+export function commonPrefix(paths: string[]): string {
+  if (!paths.length) return '/'
+  if (paths.length === 1) return paths[0]!
+  const split = paths.map(p => p.split('/').filter(Boolean))
+  const first = split[0]!
+  let n = 0
+  while (n < first.length && split.every(s => s[n] === first[n])) n++
+  return n ? `/${first.slice(0, n).join('/')}` : '/'
+}
+
+/** Breadcrumb entries from the browsing root down to path; a path outside the root yields the root alone. */
+export function breadcrumbs(path: string, root: string): Array<{ name: string; path: string }> {
+  const crumbs = [{ name: root, path: root }]
+  if (path === root || !(root === '/' || path.startsWith(`${root}/`))) return crumbs
+  let at = root
+  for (const seg of path.slice(root === '/' ? 1 : root.length + 1).split('/').filter(Boolean)) {
+    at = at === '/' ? `/${seg}` : `${at}/${seg}`
+    crumbs.push({ name: seg, path: at })
+  }
+  return crumbs
+}
+
+/** The input of backup.restore; the overwrite confirmation only counts for the original location. */
+export function restorePayload(repository: string, snapshot: string, path: string, target: 'new' | 'original', confirmOverwrite: boolean) {
+  return { repository, snapshot, path, target, confirmOverwrite: target === 'original' && confirmOverwrite }
+}
+
 /** When a future run or check happens, e.g. "in 3 h"; "due now" once the time has passed. */
 export function untilLabel(iso: string | null, now: Date = new Date()): string {
   if (!iso) return 'Not scheduled'
