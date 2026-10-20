@@ -2432,25 +2432,47 @@ await testLongTrpcBatchPathsStillRoute()
 
 async function testSensitiveCallsAreCountedInBatches() {
   const { sensitiveCalls, buildApp } = await import("../app")
-  assert.deepEqual(sensitiveCalls("/trpc/auth.login"), { login: 1, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/auth.login?batch=1"), { login: 1, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/shareLink.unlock"), { login: 0, unlock: 1 })
-  assert.deepEqual(sensitiveCalls("/trpc/system.metrics,auth.login?batch=1&input=%7B%7D"), { login: 1, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/system.metrics%2Cauth.login?batch=1"), { login: 1, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/auth.login,auth.login,shareLink.unlock,auth.login?batch=1"), { login: 3, unlock: 1 })
-  assert.deepEqual(sensitiveCalls("/trpc/system.metrics,tls.status?batch=1"), { login: 0, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/auth.loginHistory"), { login: 0, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/trpc/xauth.login,shareLink.unlockAll"), { login: 0, unlock: 0 })
-  assert.deepEqual(sensitiveCalls("/health"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("auth.login"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("shareLink.unlock"), { login: 0, unlock: 1 })
+  assert.deepEqual(sensitiveCalls("system.metrics,auth.login"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("system.metrics%2Cauth.login"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("auth.login,auth.login,shareLink.unlock,auth.login"), { login: 3, unlock: 1 })
+  assert.deepEqual(sensitiveCalls("system.metrics,tls.status"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("auth.loginHistory"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("xauth.login,shareLink.unlockAll"), { login: 0, unlock: 0 })
 
-  const app = await buildApp()
-  await app.ready()
-  try {
-    const batch = "/trpc/" + Array(21).fill("auth.login").join(",") + "?batch=1"
-    const res = await app.inject({ method: "POST", url: batch, payload: {}, remoteAddress: "10.9.8.7" })
-    assert.equal(res.statusCode, 429)
-  } finally {
-    await app.close()
+  const attempt = async (url: string, ip: string) => {
+    const app = await buildApp()
+    await app.ready()
+    try {
+      return (await app.inject({ method: "POST", url, payload: {}, remoteAddress: ip })).statusCode
+    } finally {
+      await app.close()
+    }
+  }
+  const twentyOne = Array(21).fill("auth.login")
+  assert.equal(await attempt("/trpc/" + twentyOne.join(",") + "?batch=1", "10.9.8.1"), 429)
+  assert.equal(await attempt("/trpc/" + twentyOne.join("%2C") + "?batch=1", "10.9.8.2"), 429)
+  assert.equal(await attempt("/trpc/" + [...twentyOne, "auth.login"].join(",") + ";x?batch=1", "10.9.8.3"), 429)
+  // A trailing slash is not routed to tRPC at all, so nothing is executed.
+  assert.equal(await attempt("/trpc/" + twentyOne.join(",") + "/?batch=1", "10.9.8.4"), 404)
+  assert.equal(await attempt("/trpc/system.metrics," + twentyOne.slice(1).join(",") + ",auth.login?batch=1", "10.9.8.5"), 429)
+
+  // A semicolon makes tRPC look up a procedure that does not exist: nothing is executed.
+  assert.equal(await attempt("/trpc/auth.login;x?batch=1", "10.9.8.6"), 404)
+  // The 21st plain login call from one IP is refused.
+  for (const [i, suffix] of [[0, ""]] as const) {
+    const app = await buildApp()
+    await app.ready()
+    try {
+      const ip = "10.9.7." + i
+      const codes: number[] = []
+      for (let n = 0; n < 21; n++) codes.push((await app.inject({ method: "POST", url: "/trpc/auth.login" + suffix, payload: {}, remoteAddress: ip })).statusCode)
+      assert.equal(codes[20], 429, "21st login with suffix '" + suffix + "'")
+      assert.notEqual(codes[19], 429)
+    } finally {
+      await app.close()
+    }
   }
 }
 
