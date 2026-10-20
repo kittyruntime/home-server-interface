@@ -268,19 +268,14 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	}
 }
 
-// restoreCalls returns the --target of each restic restore call.
+// restoreTargets returns, for each restic restore call, the directory restic was handed
+// by descriptor.
 func restoreTargets(calls *[]resticCall) []string {
 	var out []string
 	for _, c := range *calls {
-		isRestore := false
 		for _, a := range c.args {
-			if a == "restore" {
-				isRestore = true
-			}
-		}
-		for i, a := range c.args {
-			if isRestore && a == "--target" && i+1 < len(c.args) {
-				out = append(out, c.args[i+1])
+			if a == "restore" && len(c.extra) > 0 {
+				out = append(out, c.extra[0])
 			}
 		}
 	}
@@ -345,29 +340,164 @@ func TestRestoreNeverReusesFinalDir(t *testing.T) {
 	}
 }
 
-func TestRestoreOriginalRefusesSymlinkedParent(t *testing.T) {
-	root := t.TempDir()
-	real := filepath.Join(root, "real")
-	_ = os.MkdirAll(filepath.Join(real, "data"), 0o755)
-	if err := os.Symlink(real, filepath.Join(root, "link")); err != nil {
+func writeStaged(t *testing.T, dir, abs, content string) {
+	t.Helper()
+	p := filepath.Join(dir, abs)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	file, calls := restoreFixture(t, restoreRequest{Mode: "original", Path: filepath.Join(root, "link", "data")})
-	if err := runRestoreRequest(file); err == nil {
-		t.Fatal("symlinked component accepted")
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRestoreOriginalMergesWithoutFollowingSymlinks(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	data := filepath.Join(root, "data")
+	_ = os.MkdirAll(data, 0o755)
+	_ = os.WriteFile(filepath.Join(data, "a.txt"), []byte("old"), 0o644)
+	_ = os.WriteFile(filepath.Join(data, "keep.txt"), []byte("keep"), 0o644)
+	_ = os.MkdirAll(filepath.Join(data, "isdir"), 0o755)
+	if err := os.Symlink(outside, filepath.Join(data, "linkdir")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(data, "linkfile")); err != nil {
+		t.Fatal(err)
+	}
+	file, calls := restoreFixture(t, restoreRequest{Mode: "original", Base: root, Path: data})
+	fakeResticRestore = func(dir string) {
+		writeStaged(t, dir, data+"/a.txt", "new")
+		writeStaged(t, dir, data+"/sub/b.txt", "b")
+		writeStaged(t, dir, data+"/linkdir/c.txt", "c")
+		writeStaged(t, dir, data+"/isdir", "file where a directory is")
+		writeStaged(t, dir, data+"/linkfile", "replaces the link itself")
+	}
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	read := func(p string) string { b, _ := os.ReadFile(p); return string(b) }
+	if read(filepath.Join(data, "a.txt")) != "new" || read(filepath.Join(data, "sub", "b.txt")) != "b" || read(filepath.Join(data, "keep.txt")) != "keep" {
+		t.Fatal("merge result wrong")
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("written through a symlink: %v", ents)
+	}
+	if st, err := os.Lstat(filepath.Join(data, "linkfile")); err != nil || st.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("a file must replace the symlink, not be written through it")
+	}
+	if st, err := os.Lstat(filepath.Join(data, "linkdir")); err != nil || st.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("symlinked directory touched")
+	}
+	if st, err := os.Stat(filepath.Join(data, "isdir")); err != nil || !st.IsDir() {
+		t.Fatal("directory replaced by a file")
+	}
+	if ents, _ := os.ReadDir(root); len(ents) != 1 {
+		t.Fatalf("staging left behind: %v", ents)
+	}
+	runs, _ := lastRuns("restores", repoA, 1)
+	if len(runs) != 1 || runs[0].Status != "success" || runs[0].Files != 3 || len(runs[0].Warnings) != 2 {
+		t.Fatalf("%+v", runs)
+	}
+	if got := restoreTargets(calls); len(got) != 1 || !strings.Contains(got[0], ".hsi-restore-") {
+		t.Fatalf("restore goes to a staging dir: %v", got)
+	}
+}
+
+func TestRestoreOriginalSkipsSymlinkedPath(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "data")); err != nil {
+		t.Fatal(err)
+	}
+	file, _ := restoreFixture(t, restoreRequest{Mode: "original", Base: root, Path: filepath.Join(root, "data")})
+	fakeResticRestore = func(dir string) { writeStaged(t, dir, filepath.Join(root, "data", "f"), "x") }
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("written through the symlinked path: %v", ents)
+	}
+	if ents, _ := os.ReadDir(root); len(ents) != 1 {
+		t.Fatalf("staging left behind: %v", ents)
+	}
+}
+
+func TestRestoreNewRefusesSymlinkInBase(t *testing.T) {
+	real, outside := t.TempDir(), t.TempDir()
+	_ = os.MkdirAll(filepath.Join(real, "vol"), 0o755)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, base := range []string{link, filepath.Join(link, "vol")} {
+		file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: "/srv/p"})
+		if err := runRestoreRequest(file); err == nil {
+			t.Fatalf("%s accepted", base)
+		}
+		if len(restoreTargets(calls)) != 0 {
+			t.Fatal("restic ran")
+		}
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatal("outside touched")
+	}
+	if _, err := os.Stat(filepath.Join(real, "Restored")); err == nil {
+		t.Fatal("created through the link")
+	}
+}
+
+func TestRestoreRefusesWritableRestored(t *testing.T) {
+	base := t.TempDir()
+	if err := os.Mkdir(filepath.Join(base, "Restored"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(base, "Restored"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: "/srv/p"})
+	if err := runRestoreRequest(file); err == nil || !strings.Contains(err.Error(), "writable by other users") {
+		t.Fatalf("%v", err)
 	}
 	if len(restoreTargets(calls)) != 0 {
 		t.Fatal("restic ran")
 	}
-	file, calls = restoreFixture(t, restoreRequest{Mode: "original", Path: filepath.Join(real, "data")})
+}
+
+func TestRestoreSurvivesRenamedRestored(t *testing.T) {
+	base, outside := t.TempDir(), t.TempDir()
+	file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: "/srv/p"})
+	fakeResticRestore = func(dir string) {
+		// A share member swaps Restored for a symlink while restic runs.
+		if err := os.Rename(filepath.Join(base, "Restored"), filepath.Join(base, "R2")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, filepath.Join(base, "Restored")); err != nil {
+			t.Fatal(err)
+		}
+		writeStaged(t, dir, "file", "data")
+	}
 	if err := runRestoreRequest(file); err != nil {
 		t.Fatal(err)
 	}
-	if got := restoreTargets(calls); len(got) != 1 || got[0] != "/" {
-		t.Fatalf("targets %v", got)
+	if b, err := os.ReadFile(filepath.Join(base, "R2", "x", "file")); err != nil || string(b) != "data" {
+		t.Fatalf("file not in the original inode: %v", err)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("redirected: %v", ents)
+	}
+	if st, _ := os.Stat(filepath.Join(base, "R2", "x")); st.Mode().Perm() != 0o755 {
+		t.Fatalf("mode %v", st.Mode())
+	}
+	args := (*calls)[len(*calls)-1].args
+	found := false
+	for i, a := range args {
+		if a == "--target" && args[i+1] == resticFdTarget {
+			found = true
+		}
+	}
+	if resticFdTarget != "/proc/self/fd/3/." || !found {
+		t.Fatalf("target %v", args)
 	}
 }
-
 func TestRestoreRequestForUnknownRepositoryIsRecorded(t *testing.T) {
 	base := t.TempDir()
 	file, _ := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "p")})

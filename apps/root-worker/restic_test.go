@@ -3,28 +3,44 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 type resticCall struct {
-	env  []string
-	args []string
+	env   []string
+	args  []string
+	extra []string // where each descriptor handed to restic points
 }
+
+// fakeResticRestore, when set, runs for each restore with the directory restic would write to.
+var fakeResticRestore func(dir string)
 
 // fakeRestic records calls and replays stdout lines and an exit code per subcommand.
 func fakeRestic(t *testing.T, out map[string][]string, codes map[string]int) *[]resticCall {
 	t.Helper()
 	calls := &[]resticCall{}
 	prev := runRestic
-	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
-		*calls = append(*calls, resticCall{env, args})
+	fake := func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
+		call := resticCall{env: env, args: args}
+		dir := ""
+		for _, f := range extra {
+			link, _ := os.Readlink("/proc/self/fd/" + strconv.Itoa(int(f.Fd())))
+			call.extra = append(call.extra, link)
+			// The fake runs in this process: fd 3 of the child is this file.
+			dir = "/proc/self/fd/" + strconv.Itoa(int(f.Fd()))
+		}
+		*calls = append(*calls, call)
 		sub := ""
 		for _, a := range args {
 			if !strings.HasPrefix(a, "-") && !strings.Contains(a, "=") && a != "" {
 				sub = a
 				break
 			}
+		}
+		if sub == "restore" && fakeResticRestore != nil && dir != "" {
+			fakeResticRestore(dir)
 		}
 		for _, l := range out[sub] {
 			if onLine != nil {
@@ -33,6 +49,12 @@ func fakeRestic(t *testing.T, out map[string][]string, codes map[string]int) *[]
 		}
 		return codes[sub], "stderr " + sub, nil
 	}
+	prevFiles := runResticFiles
+	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+		return fake(env, args, nil, onLine)
+	}
+	runResticFiles = fake
+	t.Cleanup(func() { runResticFiles = prevFiles; fakeResticRestore = nil })
 	t.Cleanup(func() { runRestic = prev })
 	return calls
 }
