@@ -2,7 +2,7 @@ import { prisma } from "@app/database"
 import { requestSync } from "../nats"
 import { dispatchEvent, type NotificationEvent, type Severity } from "./notifications"
 import { log } from "../utils/log"
-import { backupFindings, backupTargets, type BackupStatus } from "./backup-status"
+import { BACKUP_ALERT_SOURCE, backupFindings, backupTargets, type BackupStatus } from "./backup-status"
 
 type CheckResult = { target: string; message: string; severity: Severity }
 // authoritative: the check covers every target it can raise, so a target it
@@ -177,7 +177,7 @@ const checkers: Checker[] = [
   { source: "storage.disk-usage", check: checkDiskUsage },
   { source: "storage.expand", check: checkExpansions },
   { source: "storage.description", check: checkDescriptions },
-  { source: "backup", check: checkBackups },
+  { source: BACKUP_ALERT_SOURCE, check: checkBackups },
 ]
 
 // Pure diff between the previous alert set (source-scoped) and this tick's

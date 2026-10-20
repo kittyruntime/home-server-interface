@@ -39,7 +39,7 @@ export const backupRouter = router({
     .input(z.object({ repository: id, currentPassword: z.string().min(1).max(1024) }))
     .mutation(async ({ ctx, input }) => {
       if (!(await verifyPassword(ctx.prisma, ctx.user.userId, input.currentPassword)))
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Wrong password" })
+        throw new TRPCError({ code: "FORBIDDEN", message: "Wrong password" })
       return requestSync<{ password: string }>("root.backup.password", { repository: input.repository }, 15_000)
     }),
 

@@ -2503,4 +2503,42 @@ async function testBackupPlanOpsAreAdminOnlyAndRedacted() {
 await testBackupFindings()
 await testBackupPlanOpsAreAdminOnlyAndRedacted()
 
+async function testBackupReviewFixes() {
+  const { BACKUP_ALERT_SOURCE, migrateRsyncPlans } = await import("../services/backup-status")
+  // Dotted like every other source: the Alerts filter and notification rules match on "backup.".
+  assert.ok(BACKUP_ALERT_SOURCE.startsWith("backup.") && BACKUP_ALERT_SOURCE.split(".")[0] + "." === "backup.")
+
+  // A wrong re-authentication is FORBIDDEN: the dashboard logs out on any 401.
+  const bcrypt = (await import("bcryptjs")).default
+  const { backupRouter } = await import("../trpc/routers/backup")
+  const hash = await bcrypt.hash("right", 4)
+  const caller = backupRouter.createCaller({ user: { userId: "u", isAdmin: true }, prisma: { user: { findUniqueOrThrow: async () => ({ password: hash }) }, auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  await assert.rejects(() => caller.password({ repository: "11111111-1111-1111-1111-111111111111", currentPassword: "wrong" }), (e: any) => e.code === "FORBIDDEN" && e.message === "Wrong password")
+
+  // The migration retries until the worker answers, then migrates once.
+  const calls: string[] = []
+  let failures = 2
+  const delays: number[] = []
+  await migrateRsyncPlans({
+    request: async (subject: string) => {
+      calls.push(subject)
+      if (subject === "root.backup.status") {
+        if (failures-- > 0) throw new Error("no responders")
+        return { configExists: false }
+      }
+      return { migrated: 1, skipped: [] }
+    },
+    rows: async () => [{ id: "x" }],
+    sleep: async (ms: number) => { delays.push(ms) },
+  })
+  assert.deepEqual(calls, ["root.backup.status", "root.backup.status", "root.backup.status", "root.backup.migrate"])
+  assert.deepEqual(delays, [1000, 2000])
+  // An existing configuration stops it without a migrate call.
+  const calls2: string[] = []
+  await migrateRsyncPlans({ request: async (s: string) => { calls2.push(s); return { configExists: true } }, rows: async () => [], sleep: async () => {} })
+  assert.deepEqual(calls2, ["root.backup.status"])
+}
+
+await testBackupReviewFixes()
+
 console.log("Backend security tests passed")

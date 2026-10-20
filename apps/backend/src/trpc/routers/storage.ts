@@ -72,9 +72,9 @@ const zBackupRepository = z.object({
   id: zBackupId,
   name: zBackupName,
   type: z.enum(["local", "sftp", "s3", "rest"]),
-  path: z.string().max(4096), host: z.string().max(253), user: z.string().max(32),
-  port: z.number().int().min(0).max(65535),
-  endpoint: z.string().max(260), bucket: z.string().max(63), url: z.string().max(2048),
+  path: z.string().max(4096).default(""), host: z.string().max(253).default(""), user: z.string().max(32).default(""),
+  port: z.number().int().min(0).max(65535).default(0),
+  endpoint: z.string().max(260).default(""), bucket: z.string().max(63).default(""), url: z.string().max(2048).default(""),
   check: z.object({
     every: z.enum(["off", "daily", "weekly", "monthly"]),
     hour: z.number().int().min(0).max(23), weekday: z.number().int().min(0).max(6), day: z.number().int().min(0).max(28),
