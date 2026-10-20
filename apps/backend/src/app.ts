@@ -28,14 +28,14 @@ const DASHBOARD_DIR = process.env.DASHBOARD_PATH
 const loopbackOnly = (address: string) =>
     address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1"
 
-// Counts the credential-guessing procedures a request calls. A tRPC batch packs
-// several procedures in one path (/trpc/a,b,c?batch=1), so each entry counts.
-export function sensitiveCalls(url: string): { login: number; unlock: number } {
+// Counts the credential-guessing procedures in the tRPC path parameter, as the
+// tRPC adapter reads it (decoded, split on commas). A batch packs several
+// procedures in one path, so each entry counts. It reads the route parameter,
+// not the raw URL, so it sees exactly what tRPC will execute.
+export function sensitiveCalls(path: string): { login: number; unlock: number } {
     const out = { login: 0, unlock: 0 }
-    const path = url.split("?")[0]
-    if (!path.startsWith("/trpc/")) return out
-    let list = path.slice("/trpc/".length)
-    try { list = decodeURIComponent(list) } catch { /* keep the raw path */ }
+    let list = path
+    try { list = decodeURIComponent(path) } catch { /* keep the raw path */ }
     for (const name of list.split(",")) {
         if (name === "auth.login") out.login++
         else if (name === "shareLink.unlock") out.unlock++
@@ -84,8 +84,11 @@ export function buildApp(opts: BuildAppOptions = {}) {
     const SENSITIVE_MAX  = 20
     const SENSITIVE_WINDOW_MS = 60_000
 
-    app.addHook("onRequest", async (req, reply) => {
-        const calls = sensitiveCalls(req.url)
+    app.addHook("preValidation", async (req, reply) => {
+        if (req.routeOptions.url !== "/trpc/:path") return
+        const param = (req.params as { path?: unknown }).path
+        if (typeof param !== "string") return
+        const calls = sensitiveCalls(param)
         const now = Date.now()
         let blocked = false
         for (const [scope, weight] of [["login", calls.login], ["unlock", calls.unlock]] as const) {
