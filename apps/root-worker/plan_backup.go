@@ -195,15 +195,16 @@ func mergeSecrets(stored, given repoSecrets) repoSecrets {
 	return out
 }
 
-func validSecrets(r repositoryCfg, s repoSecrets) error {
+// validateRepoSecrets is the check applied to secrets from a request and from an archive.
+func validateRepoSecrets(r repositoryCfg, s repoSecrets) error {
 	for _, v := range []string{s.Password, s.SSHKeyPath, s.AccessKeyID, s.SecretAccessKey, s.RestUser, s.RestPassword} {
 		if strings.ContainsAny(v, "\x00\r\n") {
 			return fmt.Errorf("invalid credential")
 		}
 	}
-	if r.Type == "sftp" {
-		if _, err := cleanBackupPath(s.SSHKeyPath); err != nil {
-			return fmt.Errorf("an SSH key path is required")
+	if r.Type == "sftp" || s.SSHKeyPath != "" {
+		if err := validSSHKeyPath(s.SSHKeyPath); err != nil {
+			return fmt.Errorf("a valid SSH key path is required")
 		}
 	}
 	return nil
@@ -253,7 +254,7 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 		stored, _ = readRepoSecrets(repo.ID)
 	}
 	sec := mergeSecrets(stored, req.Secrets)
-	if err := validSecrets(repo, sec); err != nil {
+	if err := validateRepoSecrets(repo, sec); err != nil {
 		return nil, invalid(err.Error())
 	}
 	location := resticRepository(repo)
@@ -569,6 +570,7 @@ func runRestoreRequest(file string) error {
 		}
 		end := time.Now()
 		rec.End = &end
+		rec.RunID = rr.RunID
 		rec.Status = "success"
 		if err != nil {
 			rec.Status, rec.Error = "failed", err.Error()

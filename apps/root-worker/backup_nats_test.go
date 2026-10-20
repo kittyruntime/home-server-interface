@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -111,11 +113,15 @@ func TestRunNowBusyAndStart(t *testing.T) {
 
 func TestCheckNowFullUsesSystemdRun(t *testing.T) {
 	calls := useUnits(t)
+	t.Setenv("HSI_TEST_MARKER", "1")
 	_ = saveBackupConfig(sampleConfig())
 	if fe := backupCheckNow(repoA, true); fe != nil {
 		t.Fatal(fe)
 	}
 	got := (*calls)[0]
+	if !strings.Contains(got, "--setenv=HSI_TEST_MARKER=1") {
+		t.Fatalf("HSI env not forwarded: %s", got)
+	}
 	if !strings.HasPrefix(got, "systemd-run --unit hsi-backup-check-full-"+repoA+" --collect") || !strings.HasSuffix(got, "backup check "+repoA+" --full") {
 		t.Fatalf("%s", got)
 	}
@@ -134,5 +140,47 @@ func TestSnapshotViewFromTags(t *testing.T) {
 	}
 	if !snapshotView(snapshot{Tags: []string{"consistent"}}).Consistent {
 		t.Fatal("consistent tag")
+	}
+}
+
+func TestRestoreStatusFindsEachRun(t *testing.T) {
+	useUnits(t)
+	runA, runB := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+	_ = appendRun("restores", repoA, runRecord{RunID: runA, Status: "failed", Error: "first"})
+	_ = appendRun("restores", repoA, runRecord{RunID: runB, Status: "success"})
+	for run, want := range map[string]string{runA: "failed", runB: "success"} {
+		out := backupRestoreStatus(run)
+		rec, _ := out["result"].(*runRecord)
+		if rec == nil || rec.Status != want {
+			t.Fatalf("%s: %+v", run, out)
+		}
+	}
+	_ = writeProgress(runA, backupProgress{FilesDone: 2})
+	if out := backupRestoreStatus(runA); out["progress"] == nil || out["result"] != nil {
+		t.Fatalf("%+v", out)
+	}
+	if out := backupRestoreStatus("cccccccc-cccc-4ccc-8ccc-cccccccccccc"); out["result"] != nil || out["progress"] != nil {
+		t.Fatalf("%+v", out)
+	}
+}
+
+func TestStaleTimersAreRemoved(t *testing.T) {
+	calls := useUnits(t)
+	stale := filepath.Join(systemdDir(), planTimerName(planA))
+	staleCheck := filepath.Join(systemdDir(), checkTimerName(repoA))
+	_ = os.WriteFile(stale, []byte("x"), 0o644)
+	_ = os.WriteFile(staleCheck, []byte("x"), 0o644)
+	if err := writeAllTimers(backupConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	if fileExists(stale) || fileExists(staleCheck) {
+		t.Fatal("stale timer file kept")
+	}
+	all := strings.Join(*calls, "\n")
+	if !strings.Contains(all, "disable --now "+planTimerName(planA)) || !strings.Contains(all, "disable --now "+checkTimerName(repoA)) {
+		t.Fatalf("%s", all)
+	}
+	if strings.Count(all, "daemon-reload") != 1 {
+		t.Fatalf("%s", all)
 	}
 }

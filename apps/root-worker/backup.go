@@ -33,6 +33,15 @@ func doRsyncBackup(task taskMsg) (interface{}, *fsError) {
 	return map[string]interface{}{"ok": true, "summary": summary}, nil
 }
 
+// rsyncShell is the ssh command of --rsh, which rsync splits on spaces. It is ""
+// when the key path could add an option.
+func rsyncShell(key string, port int) string {
+	if validSSHKeyPath(key) != nil {
+		return ""
+	}
+	return fmt.Sprintf("ssh -i %s -p %d -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes", key, port)
+}
+
 // runRsync validates the task, runs rsync and returns the tail of its output.
 func runRsync(task taskMsg) (string, error) {
 	source, err := cleanBackupPath(task.Source)
@@ -51,10 +60,10 @@ func runRsync(task taskMsg) (string, error) {
 		if task.RemotePort < 1 || task.RemotePort > 65535 {
 			return "", fmt.Errorf("invalid SSH port")
 		}
-		key, e := cleanBackupPath(task.SSHKeyPath)
-		if e != nil {
-			return "", fmt.Errorf("invalid SSH key path")
+		if e := validSSHKeyPath(task.SSHKeyPath); e != nil {
+			return "", e
 		}
+		key := task.SSHKeyPath
 		info, e := os.Stat(key)
 		if e != nil || !info.Mode().IsRegular() {
 			return "", fmt.Errorf("SSH key is not a regular file")
@@ -85,7 +94,10 @@ func runRsync(task taskMsg) (string, error) {
 	}
 	endpoint := task.RemoteUser + "@" + task.RemoteHost + ":"
 	if remote {
-		ssh := fmt.Sprintf("ssh -i %s -p %d -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes", task.SSHKeyPath, task.RemotePort)
+		ssh := rsyncShell(task.SSHKeyPath, task.RemotePort)
+		if ssh == "" {
+			return "", fmt.Errorf("invalid SSH key path")
+		}
 		args = append(args, "--rsh="+ssh)
 	}
 	src, dst := source+"/", destination+"/"
