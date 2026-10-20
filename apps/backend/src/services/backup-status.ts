@@ -14,6 +14,8 @@ export interface RunRecord {
   files?: number
   error?: string
   warnings?: string[]
+  /** Restores only: the folder written, or the restored path. */
+  target?: string
 }
 
 export interface BackupPlanStatus {

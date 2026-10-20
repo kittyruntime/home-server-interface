@@ -23,6 +23,7 @@ type runRecord struct {
 	Files      int        `json:"files,omitempty"`
 	Error      string     `json:"error,omitempty"`
 	Warnings   []string   `json:"warnings,omitempty"`
+	Target     string     `json:"target,omitempty"` // restores only: the folder written, or the restored path
 }
 
 var errBackupBusy = errors.New("the repository is busy with another backup, check or restore")

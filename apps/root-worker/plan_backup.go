@@ -620,10 +620,11 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 			return err
 		}
 		defer restored.Close()
-		final, _, err := createFreshDir(restored, rr.Name, true)
+		final, created, err := createFreshDir(restored, rr.Name, true)
 		if err != nil {
 			return err
 		}
+		rec.Target = filepath.Join(rr.Base, "Restored", created)
 		defer final.Close()
 		sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", final, false, progress)
 		rec.Files, rec.Warnings = sum.FilesRestored, sum.Warnings
@@ -633,6 +634,7 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 		return final.Chmod(0o755)
 	}
 
+	rec.Target = rr.Path
 	// Original location: restore into a staging directory first, then move the files
 	// into place. Staging lives in Restored, where only root can rename or replace
 	// entries, so creating, using and removing it cannot be redirected.
