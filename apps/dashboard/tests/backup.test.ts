@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  asksRepositoryPassword, bytesLabel, durationLabel, emptyPlanForm, emptyRepositoryForm, locationLabel, parentPath, planFormOf, planPayload,
+  asksRepositoryPassword, breadcrumbs, bytesLabel, commonPrefix, restorePayload, durationLabel, emptyPlanForm, emptyRepositoryForm, locationLabel, parentPath, planFormOf, planPayload,
   pollDelay, repositoryFormOf, repositoryPayload, retentionLabel, runLabel, scheduleLabel, untilLabel,
 } from '../src/lib/backup.ts'
 
@@ -131,4 +131,27 @@ test('asksRepositoryPassword spots the worker EPASSWORD messages', () => {
   assert.equal(asksRepositoryPassword('This location already holds a restic repository: enter its password to attach it'), true)
   assert.equal(asksRepositoryPassword('Wrong password for this repository'), true)
   assert.equal(asksRepositoryPassword('The location could not be reached'), false)
+})
+
+test('commonPrefix is the deepest directory shared by the snapshot paths', () => {
+  assert.equal(commonPrefix([]), '/')
+  assert.equal(commonPrefix(['/mnt/data/docs']), '/mnt/data/docs')
+  assert.equal(commonPrefix(['/mnt/data/docs', '/mnt/data/photos']), '/mnt/data')
+  assert.equal(commonPrefix(['/mnt/data/docs', '/mnt/data/docs2']), '/mnt/data')
+  assert.equal(commonPrefix(['/mnt/a', '/srv/b']), '/')
+})
+
+test('breadcrumbs lead from the browsing root to the current folder', () => {
+  assert.deepEqual(breadcrumbs('/mnt/data', '/mnt/data'), [{ name: '/mnt/data', path: '/mnt/data' }])
+  assert.deepEqual(breadcrumbs('/mnt/data/a/b', '/mnt/data'), [
+    { name: '/mnt/data', path: '/mnt/data' }, { name: 'a', path: '/mnt/data/a' }, { name: 'b', path: '/mnt/data/a/b' },
+  ])
+  assert.deepEqual(breadcrumbs('/a', '/'), [{ name: '/', path: '/' }, { name: 'a', path: '/a' }])
+  assert.deepEqual(breadcrumbs('/mnt/datax', '/mnt/data'), [{ name: '/mnt/data', path: '/mnt/data' }])
+})
+
+test('restorePayload only confirms an overwrite of the original location', () => {
+  assert.deepEqual(restorePayload('r', 's', '/p', 'new', true), { repository: 'r', snapshot: 's', path: '/p', target: 'new', confirmOverwrite: false })
+  assert.equal(restorePayload('r', 's', '/p', 'original', true).confirmOverwrite, true)
+  assert.equal(restorePayload('r', 's', '/p', 'original', false).confirmOverwrite, false)
 })

@@ -133,6 +133,7 @@ onUnmounted(() => { stopped = true; window.clearTimeout(timer) })
             v-for="r in status.repositories"
             :key="r.id"
             :repository="r"
+            :plans="status.plans"
             @edit="repoEdit = r"
             @changed="load"
           />
