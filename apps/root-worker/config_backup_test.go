@@ -22,6 +22,8 @@ func stubBackupHost(t *testing.T) string {
 	staging := filepath.Join(root, "staging")
 	t.Setenv("HSI_BACKUP_STAGING", staging)
 	t.Setenv("HSI_STORAGE_DESCRIPTIONS", filepath.Join(root, "storage"))
+	t.Setenv("HSI_BACKUP_CONFIG", filepath.Join(root, "backup.json"))
+	t.Setenv("HSI_BACKUP_SECRETS", filepath.Join(root, "backup-secrets"))
 	pc, pm, pu, pg := containersDir, maintenanceConfigPath, hostLookupUser, hostLookupGroup
 	t.Cleanup(func() { containersDir, maintenanceConfigPath, hostLookupUser, hostLookupGroup = pc, pm, pu, pg })
 	containersDir = filepath.Join(root, "containers")
@@ -189,5 +191,25 @@ func TestBackupHoldsTLSButNeverTheAuthority(t *testing.T) {
 		if strings.Contains(n, "/ca.") {
 			t.Fatalf("the authority is never exported: %s", n)
 		}
+	}
+}
+
+func TestBuildBackupTarIncludesBackupConfig(t *testing.T) {
+	dir := stubBackupHost(t)
+	if err := saveBackupConfig(sampleConfig()); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeRepoSecrets(repoA, repoSecrets{Password: "pw"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := buildBackupTar(dir, nil, "1.65.0", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	files := readTar(t, filepath.Join(dir, "backup.tar"))
+	if _, ok := files["system/backup/backup.json"]; !ok {
+		t.Fatalf("backup.json missing")
+	}
+	if b, ok := files["system/backup/secrets/"+repoA+".json"]; !ok || !strings.Contains(string(b), "pw") {
+		t.Fatalf("secrets missing")
 	}
 }

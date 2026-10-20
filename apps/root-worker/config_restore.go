@@ -502,7 +502,49 @@ func applyBackup(dir string, now time.Time) error {
 			}
 		}
 	}
+	if err := restoreBackupConfig(dir, stamp); err != nil {
+		return err
+	}
 	return restoreTLS(dir, stamp, now)
+}
+
+// restoreBackupConfig puts back the backup plans, the repository secrets and every
+// timer of the restored configuration. The current files are kept aside.
+func restoreBackupConfig(dir, stamp string) error {
+	b, err := os.ReadFile(filepath.Join(dir, "system", "backup", "backup.json"))
+	if err != nil {
+		return nil
+	}
+	var cfg backupConfig
+	if json.Unmarshal(b, &cfg) != nil || cfg.validate() != nil {
+		return errors.New("system/backup/backup.json is not valid")
+	}
+	if cur, err := os.ReadFile(backupConfigPath()); err != nil || !bytes.Equal(cur, b) {
+		_ = keepAside(backupConfigPath(), ".before-restore-"+stamp)
+		if err := os.MkdirAll(filepath.Dir(backupConfigPath()), 0o755); err != nil {
+			return err
+		}
+		if err := writeBackupFile(backupConfigPath(), b, 0o644); err != nil {
+			return err
+		}
+	}
+	for _, r := range cfg.Repositories {
+		raw, err := os.ReadFile(filepath.Join(dir, "system", "backup", "secrets", r.ID+".json"))
+		if err != nil {
+			continue
+		}
+		var sec repoSecrets
+		if json.Unmarshal(raw, &sec) != nil {
+			return fmt.Errorf("the secrets of the repository %s are not valid", r.Name)
+		}
+		if path, err := repoSecretsPath(r.ID); err == nil {
+			_ = keepAside(path, ".before-restore-"+stamp)
+		}
+		if err := writeRepoSecrets(r.ID, sec); err != nil {
+			return err
+		}
+	}
+	return writeAllTimers(cfg)
 }
 
 // restoreTLS applies the TLS part of an archive without changing how this
