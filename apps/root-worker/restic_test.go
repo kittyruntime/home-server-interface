@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -189,5 +191,36 @@ func TestRestoreDryRunArgs(t *testing.T) {
 	}
 	if strings.Contains(a, "--delete") {
 		t.Error("restore must never delete")
+	}
+}
+
+func TestRunResticDeliversVeryLongLines(t *testing.T) {
+	useBackupDirs(t)
+	stub := filepath.Join(t.TempDir(), "restic")
+	script := "#!/bin/sh\nhead -c 2000000 /dev/zero | tr '\\0' a\necho\necho second\n"
+	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HSI_RESTIC", stub)
+	var lines []int
+	code, _, err := runRestic(nil, []string{"snapshots"}, func(b []byte) { lines = append(lines, len(b)) })
+	if err != nil || code != 0 {
+		t.Fatalf("%d %v", code, err)
+	}
+	if len(lines) != 2 || lines[0] != 2000000 || lines[1] != len("second") {
+		t.Fatalf("lines %v", lines)
+	}
+}
+
+func TestRestoreProgressUsesRestoredCounters(t *testing.T) {
+	useBackupDirs(t)
+	fakeRestic(t, map[string][]string{"restore": {
+		`{"message_type":"status","percent_done":0.4,"total_files":10,"files_restored":4,"total_bytes":100,"bytes_restored":40}`,
+		`{"message_type":"summary","files_restored":10,"total_files":10}`,
+	}}, nil)
+	var seen []backupProgress
+	_, err := resticRestore(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s1", "/a", "/t", false, func(p backupProgress) { seen = append(seen, p) })
+	if err != nil || len(seen) != 1 || seen[0].FilesDone != 4 || seen[0].BytesDone != 40 || seen[0].TotalFiles != 10 {
+		t.Fatalf("%+v %v", seen, err)
 	}
 }

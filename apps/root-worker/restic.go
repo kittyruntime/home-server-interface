@@ -37,15 +37,17 @@ var runRestic = func(env, args []string, onLine func([]byte)) (int, string, erro
 	if err := cmd.Start(); err != nil {
 		return -1, "", err
 	}
-	sc := bufio.NewScanner(out)
-	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
-	for sc.Scan() {
-		if onLine != nil {
-			onLine(append([]byte(nil), sc.Bytes()...))
+	// No line length limit: "snapshots --json" prints its whole array on one line.
+	rd := bufio.NewReader(out)
+	for {
+		line, rerr := rd.ReadBytes('\n')
+		if len(line) > 0 && onLine != nil {
+			onLine(bytes.TrimRight(line, "\r\n"))
+		}
+		if rerr != nil {
+			break
 		}
 	}
-	// Drain whatever the scanner left so restic never blocks on a full pipe.
-	_, _ = bufio.NewReader(out).WriteTo(bytes.NewBuffer(nil))
 	code := 0
 	if err := cmd.Wait(); err != nil {
 		var ee *exec.ExitError
@@ -375,7 +377,9 @@ func resticRestore(r repositoryCfg, s repoSecrets, snapshotID, include, target s
 		switch l.MessageType {
 		case "status":
 			if onProgress != nil {
-				onProgress(l.progress())
+				p := l.progress()
+				p.FilesDone, p.BytesDone = l.FilesRestored, l.BytesRestored
+				onProgress(p)
 			}
 		case "summary":
 			sum.FilesRestored, sum.FilesSkipped, sum.TotalFiles, sum.BytesRestored = l.FilesRestored, l.FilesSkipped, l.TotalFiles, l.BytesRestored
