@@ -44,6 +44,12 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"tls.import":        planTLSImport,
 	"tls.proxy":         planTLSProxy,
 	"tls.standardPorts": planTLSStandardPorts,
+
+	"backup.repository.save":   planRepositorySave,
+	"backup.repository.remove": planRepositoryRemove,
+	"backup.plan.save":         planBackupPlanSave,
+	"backup.plan.remove":       planBackupPlanRemove,
+	"backup.restore":           planRestore,
 }
 
 type planPreview struct {
