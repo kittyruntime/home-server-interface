@@ -100,8 +100,32 @@ func openRestoredDir(base *os.File) (*os.File, error) {
 	return f, nil
 }
 
+// afterMkdirHook runs between creating a directory and reopening it; tests use it to swap
+// the entry the way an attacker would.
+var afterMkdirHook func(parent *os.File, name string)
+
+// checkFreshDir fails unless f is the directory we just made: ours, mode 0700, empty.
+func checkFreshDir(f *os.File, what string) error {
+	var st syscall.Stat_t
+	if err := syscall.Fstat(int(f.Fd()), &st); err != nil {
+		return err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFDIR || int(st.Uid) != restoreOwnerUID() || st.Mode&0o7777 != 0o700 {
+		return fmt.Errorf("%s was replaced while it was being created, refusing to use it", what)
+	}
+	entries, err := readDirFd(f)
+	if err != nil {
+		return err
+	}
+	if len(entries) != 0 {
+		return fmt.Errorf("%s was replaced while it was being created, refusing to use it", what)
+	}
+	return nil
+}
+
 // createFreshDir makes a directory that did not exist (mode 0700) and returns it held.
 // With suffix, a taken name gets -2, -3, and so on; otherwise a taken name is an error.
+// The entry is checked after it is reopened, in case it was swapped in between.
 func createFreshDir(parent *os.File, name string, suffix bool) (*os.File, string, error) {
 	for i := 1; i <= 1000; i++ {
 		n := name
@@ -115,11 +139,14 @@ func createFreshDir(parent *os.File, name string, suffix bool) (*os.File, string
 		if err != nil {
 			return nil, "", err
 		}
+		if afterMkdirHook != nil {
+			afterMkdirHook(parent, n)
+		}
 		f, err := openatDir(parent, n)
 		if err != nil {
 			return nil, "", err
 		}
-		if err := checkOwnedDir(f, n, false); err != nil {
+		if err := checkFreshDir(f, n); err != nil {
 			f.Close()
 			return nil, "", err
 		}
@@ -148,40 +175,65 @@ func readDirFd(dir *os.File) ([]os.DirEntry, error) {
 	return dup.ReadDir(-1)
 }
 
-// removeTreeAt deletes parent/name through descriptors only, never following a symlink.
-func removeTreeAt(parent *os.File, name string) error {
-	d, err := openatDir(parent, name)
-	if errors.Is(err, syscall.ENOENT) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
+// removeChildren empties the held directory d through descriptors only, never following
+// a symlink and never reopening anything by a name that someone else could change.
+func removeChildren(d *os.File) error {
 	_ = d.Chmod(0o700)
 	entries, err := readDirFd(d)
 	if err != nil {
-		d.Close()
 		return err
 	}
 	for _, e := range entries {
-		if e.IsDir() {
-			err = removeTreeAt(d, e.Name())
-		} else {
-			err = unlinkat(d, e.Name(), 0)
+		if !e.IsDir() {
+			if err := unlinkat(d, e.Name(), 0); err != nil {
+				return err
+			}
+			continue
 		}
+		child, err := openatDir(d, e.Name())
 		if err != nil {
-			d.Close()
+			return err
+		}
+		err = removeChildren(child)
+		child.Close()
+		if err != nil {
+			return err
+		}
+		if err := unlinkat(d, e.Name(), atRemoveDir); err != nil {
 			return err
 		}
 	}
-	d.Close()
-	return unlinkat(parent, name, atRemoveDir)
+	return nil
+}
+
+// descendDirs opens path's components below start, one by one, and returns the last as a
+// new descriptor (a duplicate of start when path is "/"). The caller closes it.
+func descendDirs(start *os.File, path string) (*os.File, error) {
+	cur, err := openatDir(start, ".")
+	if err != nil {
+		return nil, err
+	}
+	for _, comp := range strings.Split(path, "/") {
+		if comp == "" {
+			continue
+		}
+		next, err := openatDir(cur, comp)
+		cur.Close()
+		if err != nil {
+			return nil, err
+		}
+		cur = next
+	}
+	return cur, nil
 }
 
 type mergeResult struct {
 	moved    int
 	warnings []string
 }
+
+// beforeRenameHook runs between the destination check and the rename; tests use it to change the destination.
+var beforeRenameHook func(dst *os.File, name string)
 
 func (m *mergeResult) warn(msg string) {
 	if len(m.warnings) < maxMergeWarn {
@@ -214,6 +266,13 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 				if merr := syscall.Mkdirat(int(dst.Fd()), name, 0o700); merr == nil {
 					created = true
 					dchild, derr = openatDir(dst, name)
+					if derr == nil {
+						// Reopened by name in a tree others can write: it must be the one just made.
+						if cerr := checkFreshDir(dchild, relName); cerr != nil {
+							dchild.Close()
+							derr = cerr
+						}
+					}
 				}
 			}
 			if derr != nil {
@@ -247,7 +306,14 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 		} else if !errors.Is(derr, syscall.ENOENT) && !notRealDir(derr) {
 			return derr
 		}
+		if beforeRenameHook != nil {
+			beforeRenameHook(dst, name)
+		}
 		if err := syscall.Renameat(int(src.Fd()), name, int(dst.Fd()), name); err != nil {
+			if errors.Is(err, syscall.EISDIR) || errors.Is(err, syscall.ENOTDIR) {
+				res.warn(relName + " changed type at the destination, skipped")
+				continue
+			}
 			return fmt.Errorf("%s: %w", relName, err)
 		}
 		res.moved++
