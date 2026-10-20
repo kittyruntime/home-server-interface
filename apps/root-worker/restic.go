@@ -26,8 +26,16 @@ const resticStderrTail = 4000
 // runRestic runs restic with env and args; onLine receives each stdout line (nil to ignore).
 // It returns the exit code (0 ok), the stderr tail and an error only when restic could not start.
 var runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+	return execRestic(env, args, nil, onLine)
+}
+
+// runResticFiles is runRestic with files handed to restic as fd 3, 4, ...
+var runResticFiles = execRestic
+
+func execRestic(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 	cmd := exec.Command(resticPath(), args...)
 	cmd.Env = append(minimalEnv(), env...)
+	cmd.ExtraFiles = extra
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.StdoutPipe()
@@ -119,10 +127,17 @@ func resticGlobalArgs(r repositoryCfg, s repoSecrets) []string {
 // resticCmd runs restic with the leading words first (subcommand and its positional
 // arguments), then the global flags, then the command's own arguments.
 func resticCmd(r repositoryCfg, s repoSecrets, lead []string, own []string, onLine func([]byte)) (int, string, error) {
+	return resticCmdFiles(r, s, lead, own, nil, onLine)
+}
+
+func resticCmdFiles(r repositoryCfg, s repoSecrets, lead []string, own []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 	args := append([]string{}, lead...)
 	args = append(args, "--cache-dir", filepath.Join(backupStateDir(), "cache"))
 	args = append(args, resticGlobalArgs(r, s)...)
 	args = append(args, own...)
+	if len(extra) > 0 {
+		return runResticFiles(resticEnv(r, s), args, extra, onLine)
+	}
 	return runRestic(resticEnv(r, s), args, onLine)
 }
 
@@ -362,14 +377,30 @@ type restoreSummary struct {
 	Warnings      []string `json:"warnings"`
 }
 
+// resticFdTarget is the restore target when the directory is held by file descriptor: it
+// is handed to restic as fd 3. The trailing "/." keeps restic from lstat-ing the magic
+// link itself, which it would try to remove as a stale item.
+const resticFdTarget = "/proc/self/fd/3/."
+
 // resticRestore never passes --delete, so nothing at the target is removed.
 func resticRestore(r repositoryCfg, s repoSecrets, snapshotID, include, target string, dryRun bool, onProgress func(backupProgress)) (restoreSummary, error) {
+	return resticRestoreAt(r, s, snapshotID, include, target, nil, dryRun, onProgress)
+}
+
+// resticRestoreAt restores into targetDir when it is set (target is then ignored). Every
+// path restic builds goes through the held descriptor, whatever happens to the directory's
+// ancestors meanwhile.
+func resticRestoreAt(r repositoryCfg, s repoSecrets, snapshotID, include, target string, targetDir *os.File, dryRun bool, onProgress func(backupProgress)) (restoreSummary, error) {
+	var extra []*os.File
+	if targetDir != nil {
+		target, extra = resticFdTarget, []*os.File{targetDir}
+	}
 	own := []string{"--json", "--retry-lock", "10m", "--target", target, "--include", include}
 	if dryRun {
 		own = append(own, "--dry-run")
 	}
 	var sum restoreSummary
-	code, stderr, err := resticCmd(r, s, []string{"restore", snapshotID}, own, func(b []byte) {
+	code, stderr, err := resticCmdFiles(r, s, []string{"restore", snapshotID}, own, extra, func(b []byte) {
 		var l resticLine
 		if json.Unmarshal(b, &l) != nil {
 			return

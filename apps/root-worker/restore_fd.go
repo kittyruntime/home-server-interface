@@ -1,0 +1,256 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"unsafe"
+)
+
+// ── Restores into user-writable trees ────────────────────────────────────────
+// A restore runs as root, while the volumes it writes to can be changed by their
+// users. Checking a path and then using it leaves a gap in which a directory can
+// be swapped for a symlink, so everything here works on directories held by file
+// descriptor: a held directory stays the same inode whatever happens to its ancestors.
+
+const (
+	dirOpenFlags = syscall.O_RDONLY | syscall.O_DIRECTORY | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+	atRemoveDir  = 0x200
+	maxMergeWarn = 20
+)
+
+// restoreOwnerUID is the owner expected on the directories a restore creates: whoever runs it.
+var restoreOwnerUID = os.Geteuid
+
+func fdName(fd int) string { return "/proc/self/fd/" + strconv.Itoa(fd) }
+
+// openatDir opens the directory name of parent, failing on a symlink or a file.
+func openatDir(parent *os.File, name string) (*os.File, error) {
+	fd, err := syscall.Openat(int(parent.Fd()), name, dirOpenFlags, 0)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), fdName(fd)), nil
+}
+
+// notRealDir reports an open that failed because the entry is a symlink or a file.
+func notRealDir(err error) bool {
+	return errors.Is(err, syscall.ENOTDIR) || errors.Is(err, syscall.ELOOP)
+}
+
+// openDirNoFollow opens an absolute directory one component at a time from "/", so a
+// symlink anywhere in the chain fails.
+func openDirNoFollow(path string) (*os.File, error) {
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("%s is not an absolute path", path)
+	}
+	fd, err := syscall.Open("/", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	cur := os.NewFile(uintptr(fd), "/")
+	for _, comp := range strings.Split(filepath.Clean(path), "/") {
+		if comp == "" {
+			continue
+		}
+		next, err := openatDir(cur, comp)
+		cur.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%s is not a real directory (symbolic link or missing component): %w", path, err)
+		}
+		cur = next
+	}
+	return cur, nil
+}
+
+// checkOwnedDir fails unless f is a directory owned by the process; strict also refuses
+// group and other write bits.
+func checkOwnedDir(f *os.File, what string, strict bool) error {
+	var st syscall.Stat_t
+	if err := syscall.Fstat(int(f.Fd()), &st); err != nil {
+		return err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFDIR || int(st.Uid) != restoreOwnerUID() {
+		return fmt.Errorf("%s is not a directory owned by root, refusing to restore into it", what)
+	}
+	if strict && st.Mode&0o022 != 0 {
+		return fmt.Errorf("%s is writable by other users, refusing to restore into it", what)
+	}
+	return nil
+}
+
+// openRestoredDir opens <base>/Restored, creating it when missing. An existing one must be
+// owned by us and closed to other writers, or a user could redirect what is put inside.
+func openRestoredDir(base *os.File) (*os.File, error) {
+	if err := syscall.Mkdirat(int(base.Fd()), "Restored", 0o755); err != nil && !errors.Is(err, syscall.EEXIST) {
+		return nil, err
+	}
+	f, err := openatDir(base, "Restored")
+	if err != nil {
+		return nil, fmt.Errorf("Restored is not a real directory: %w", err)
+	}
+	if err := checkOwnedDir(f, "Restored", true); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+// createFreshDir makes a directory that did not exist (mode 0700) and returns it held.
+// With suffix, a taken name gets -2, -3, and so on; otherwise a taken name is an error.
+func createFreshDir(parent *os.File, name string, suffix bool) (*os.File, string, error) {
+	for i := 1; i <= 1000; i++ {
+		n := name
+		if i > 1 {
+			n = fmt.Sprintf("%s-%d", name, i)
+		}
+		err := syscall.Mkdirat(int(parent.Fd()), n, 0o700)
+		if errors.Is(err, syscall.EEXIST) && suffix {
+			continue
+		}
+		if err != nil {
+			return nil, "", err
+		}
+		f, err := openatDir(parent, n)
+		if err != nil {
+			return nil, "", err
+		}
+		if err := checkOwnedDir(f, n, false); err != nil {
+			f.Close()
+			return nil, "", err
+		}
+		return f, n, nil
+	}
+	return nil, "", fmt.Errorf("no free directory name for %s", name)
+}
+
+func unlinkat(parent *os.File, name string, flags uintptr) error {
+	p, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return err
+	}
+	if _, _, e := syscall.Syscall(syscall.SYS_UNLINKAT, parent.Fd(), uintptr(unsafe.Pointer(p)), flags); e != 0 {
+		return e
+	}
+	return nil
+}
+
+func readDirFd(dir *os.File) ([]os.DirEntry, error) {
+	dup, err := openatDir(dir, ".")
+	if err != nil {
+		return nil, err
+	}
+	defer dup.Close()
+	return dup.ReadDir(-1)
+}
+
+// removeTreeAt deletes parent/name through descriptors only, never following a symlink.
+func removeTreeAt(parent *os.File, name string) error {
+	d, err := openatDir(parent, name)
+	if errors.Is(err, syscall.ENOENT) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_ = d.Chmod(0o700)
+	entries, err := readDirFd(d)
+	if err != nil {
+		d.Close()
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			err = removeTreeAt(d, e.Name())
+		} else {
+			err = unlinkat(d, e.Name(), 0)
+		}
+		if err != nil {
+			d.Close()
+			return err
+		}
+	}
+	d.Close()
+	return unlinkat(parent, name, atRemoveDir)
+}
+
+type mergeResult struct {
+	moved    int
+	warnings []string
+}
+
+func (m *mergeResult) warn(msg string) {
+	if len(m.warnings) < maxMergeWarn {
+		m.warnings = append(m.warnings, msg)
+	} else if len(m.warnings) == maxMergeWarn {
+		m.warnings = append(m.warnings, "more entries were skipped")
+	}
+}
+
+// mergeInto moves the tree held by src into dst, relative to descriptors only. A file or
+// symlink replaces the entry of the same name atomically (renameat never follows the
+// final name). Directories that exist at the destination are entered, missing ones are
+// created with the owner and mode of the staged one. What the snapshot does not hold is
+// left alone, and a file/directory mismatch is skipped with a warning.
+func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
+	entries, err := readDirFd(src)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		name, relName := e.Name(), rel+"/"+e.Name()
+		if e.IsDir() {
+			child, err := openatDir(src, name)
+			if err != nil {
+				return err
+			}
+			created := false
+			dchild, derr := openatDir(dst, name)
+			if errors.Is(derr, syscall.ENOENT) {
+				if merr := syscall.Mkdirat(int(dst.Fd()), name, 0o700); merr == nil {
+					created = true
+					dchild, derr = openatDir(dst, name)
+				}
+			}
+			if derr != nil {
+				res.warn(relName + " is not a directory at the destination, skipped")
+				child.Close()
+				continue
+			}
+			err = mergeInto(child, dchild, relName, res)
+			if err == nil && created {
+				var st syscall.Stat_t
+				if err = syscall.Fstat(int(child.Fd()), &st); err == nil {
+					if cerr := syscall.Fchown(int(dchild.Fd()), int(st.Uid), int(st.Gid)); cerr != nil && !errors.Is(cerr, syscall.EPERM) {
+						err = cerr
+					}
+				}
+				if err == nil {
+					err = syscall.Fchmod(int(dchild.Fd()), st.Mode&0o7777)
+				}
+			}
+			child.Close()
+			dchild.Close()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		if d, derr := openatDir(dst, name); derr == nil {
+			d.Close()
+			res.warn(relName + " is a directory at the destination, skipped")
+			continue
+		} else if !errors.Is(derr, syscall.ENOENT) && !notRealDir(derr) {
+			return derr
+		}
+		if err := syscall.Renameat(int(src.Fd()), name, int(dst.Fd()), name); err != nil {
+			return fmt.Errorf("%s: %w", relName, err)
+		}
+		res.moved++
+	}
+	return nil
+}

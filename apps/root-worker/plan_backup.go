@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -390,113 +391,19 @@ func (r restoreRequest) validate() error {
 	if !filepath.IsAbs(r.Path) || strings.ContainsAny(r.Path, "\x00\r\n") {
 		return fmt.Errorf("invalid restore path")
 	}
+	if !filepath.IsAbs(r.Base) || strings.ContainsAny(r.Base, "\x00\r\n") {
+		return fmt.Errorf("invalid restore target")
+	}
 	switch r.Mode {
 	case "original":
 	case "new":
-		if !filepath.IsAbs(r.Base) || strings.ContainsAny(r.Base, "\x00\r\n") || r.Name == "" || r.Name != filepath.Base(r.Name) || r.Name == "." || r.Name == ".." {
+		if r.Name == "" || r.Name != filepath.Base(r.Name) || r.Name == "." || r.Name == ".." {
 			return fmt.Errorf("invalid restore target")
 		}
 	default:
 		return fmt.Errorf("invalid restore target")
 	}
 	return nil
-}
-
-// restoreOwnerUID is the owner expected on the Restored directory: whoever runs the restore.
-var restoreOwnerUID = os.Geteuid
-
-// realDir fails unless path is an existing real directory (not a symlink).
-func realDir(path string) error {
-	st, err := os.Lstat(path)
-	if err != nil {
-		return err
-	}
-	if !st.IsDir() {
-		return fmt.Errorf("%s is not a directory", path)
-	}
-	return nil
-}
-
-// checkNoSymlinks refuses when an existing component of dir, from start down, is a symlink.
-func checkNoSymlinks(start, dir string) error {
-	rel, err := filepath.Rel(start, dir)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
-		return fmt.Errorf("invalid restore path")
-	}
-	cur := start
-	parts := []string{""}
-	if rel != "." {
-		parts = strings.Split(rel, string(filepath.Separator))
-	}
-	for _, part := range parts {
-		cur = filepath.Join(cur, part)
-		st, err := os.Lstat(cur)
-		if os.IsNotExist(err) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if st.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("%s is a symbolic link, refusing to restore through it", cur)
-		}
-	}
-	return nil
-}
-
-// prepareRestoreTarget runs as root against a tree HSI users can write to, so it
-// checks the target now rather than trusting the preview: no symlink on the way,
-// Restored/ owned by us, and a directory that did not exist before.
-func prepareRestoreTarget(rr restoreRequest) (string, error) {
-	if rr.Mode == "original" {
-		start := volumeMountFor(rr.Path)
-		if start == "" {
-			start = "/"
-		}
-		if err := checkNoSymlinks(start, filepath.Dir(rr.Path)); err != nil {
-			return "", err
-		}
-		return "/", nil
-	}
-	if err := checkNoSymlinks(rr.Base, rr.Base); err != nil {
-		return "", err
-	}
-	if err := realDir(rr.Base); err != nil {
-		return "", err
-	}
-	restored := filepath.Join(rr.Base, "Restored")
-	st, err := os.Lstat(restored)
-	switch {
-	case os.IsNotExist(err):
-		if err := os.Mkdir(restored, 0o755); err != nil {
-			return "", err
-		}
-		if err := os.Chmod(restored, 0o755); err != nil {
-			return "", err
-		}
-	case err != nil:
-		return "", err
-	default:
-		owner, ok := st.Sys().(*syscall.Stat_t)
-		if !st.IsDir() || !ok || int(owner.Uid) != restoreOwnerUID() {
-			return "", fmt.Errorf("%s is not a directory owned by root, refusing to restore into it", restored)
-		}
-	}
-	for i := 1; i <= 1000; i++ {
-		name := rr.Name
-		if i > 1 {
-			name = fmt.Sprintf("%s-%d", rr.Name, i)
-		}
-		dir := filepath.Join(restored, name)
-		err := os.Mkdir(dir, 0o755)
-		if err == nil {
-			return dir, nil
-		}
-		if !os.IsExist(err) {
-			return "", err
-		}
-	}
-	return "", fmt.Errorf("no free directory name under %s", restored)
 }
 
 func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
@@ -549,17 +456,19 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 	}
 
-	target, date, base, name := "/", req.Snapshot, "", ""
+	// base holds the new directory, or the staging directory of a restore to the original
+	// location (it must be on the same filesystem as the restored path).
+	base := volumeMountFor(path)
+	if base == "" {
+		base = filepath.Dir(path)
+	}
+	target, date, name := "/", req.Snapshot, ""
 	if snapTime != nil {
 		date = snapTime.Format("2006-01-02 15:04")
 	}
 	if req.Target == "new" {
 		if snapTime == nil {
 			return nil, &fsError{Code: "ENOENT", Message: "This snapshot does not exist"}
-		}
-		base = volumeMountFor(path)
-		if base == "" {
-			base = filepath.Dir(path)
 		}
 		name = unsafeNameChars.ReplaceAllString(repo.Name, "-") + "-" + snapTime.Format("2006-01-02-1504")
 		target = filepath.Join(base, "Restored", name)
@@ -647,6 +556,12 @@ func runRestoreRequest(file string) error {
 		return err
 	}
 	var rr restoreRequest
+	// Whatever happens next, a progress entry for this run is never left "running".
+	defer func() {
+		if backupIDPattern.MatchString(rr.RunID) {
+			clearProgress(rr.RunID)
+		}
+	}()
 	rec := runRecord{Start: time.Now()}
 	finish := func(err error) error {
 		if !backupIDPattern.MatchString(rr.Repository) {
@@ -669,7 +584,6 @@ func runRestoreRequest(file string) error {
 	if err := rr.validate(); err != nil {
 		return finish(err)
 	}
-	defer clearProgress(rr.RunID)
 
 	cfg, _, err := loadBackupConfig()
 	if err != nil {
@@ -685,15 +599,79 @@ func runRestoreRequest(file string) error {
 		if err != nil {
 			return err
 		}
-		target, err := prepareRestoreTarget(rr)
+		return restoreHeld(rr, repo, sec, &rec)
+	}))
+}
+
+// restoreHeld restores into directories held by descriptor, see restore_fd.go.
+func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *runRecord) error {
+	progress := func(p backupProgress) { _ = writeProgress(rr.RunID, p) }
+	base, err := openDirNoFollow(rr.Base)
+	if err != nil {
+		return err
+	}
+	defer base.Close()
+
+	if rr.Mode == "new" {
+		restored, err := openRestoredDir(base)
 		if err != nil {
 			return err
 		}
-		sum, err := resticRestore(repo, sec, rr.Snapshot, rr.Path, target, false, func(p backupProgress) {
-			_ = writeProgress(rr.RunID, p)
-		})
-		rec.Files = sum.FilesRestored
-		rec.Warnings = sum.Warnings
+		defer restored.Close()
+		final, _, err := createFreshDir(restored, rr.Name, true)
+		if err != nil {
+			return err
+		}
+		defer final.Close()
+		sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", final, false, progress)
+		rec.Files, rec.Warnings = sum.FilesRestored, sum.Warnings
+		if err != nil {
+			return err
+		}
+		return final.Chmod(0o755)
+	}
+
+	// Original location: restore next to it first, then move the files into place.
+	stageName := ".hsi-restore-" + rr.RunID
+	stage, _, err := createFreshDir(base, stageName, false)
+	if err != nil {
 		return err
-	}))
+	}
+	defer removeTreeAt(base, stageName)
+	defer stage.Close()
+	sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", stage, false, progress)
+	rec.Warnings = sum.Warnings
+	if err != nil {
+		return err
+	}
+
+	// The staged tree holds the absolute paths, from the volume mount point (or "/").
+	root, src := "/", stage
+	if mount := volumeMountFor(rr.Path); mount != "" {
+		root = mount
+		for _, comp := range strings.Split(strings.Trim(mount, "/"), "/") {
+			next, err := openatDir(src, comp)
+			if errors.Is(err, syscall.ENOENT) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if src != stage {
+				defer src.Close()
+			}
+			src = next
+		}
+		defer src.Close()
+	}
+	dst, err := openDirNoFollow(root)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	var res mergeResult
+	err = mergeInto(src, dst, "", &res)
+	rec.Files = res.moved
+	rec.Warnings = append(rec.Warnings, res.warnings...)
+	return err
 }
