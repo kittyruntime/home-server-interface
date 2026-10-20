@@ -28,6 +28,21 @@ const DASHBOARD_DIR = process.env.DASHBOARD_PATH
 const loopbackOnly = (address: string) =>
     address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1"
 
+// Counts the credential-guessing procedures a request calls. A tRPC batch packs
+// several procedures in one path (/trpc/a,b,c?batch=1), so each entry counts.
+export function sensitiveCalls(url: string): { login: number; unlock: number } {
+    const out = { login: 0, unlock: 0 }
+    const path = url.split("?")[0]
+    if (!path.startsWith("/trpc/")) return out
+    let list = path.slice("/trpc/".length)
+    try { list = decodeURIComponent(list) } catch { /* keep the raw path */ }
+    for (const name of list.split(",")) {
+        if (name === "auth.login") out.login++
+        else if (name === "shareLink.unlock") out.unlock++
+    }
+    return out
+}
+
 export interface BuildAppOptions {
     // Managed HTTPS (#12): serve TLS with this certificate. The server is not
     // listened on directly: startHttps hands it the TLS connections.
@@ -70,21 +85,21 @@ export function buildApp(opts: BuildAppOptions = {}) {
     const SENSITIVE_WINDOW_MS = 60_000
 
     app.addHook("onRequest", async (req, reply) => {
-        let scope: string | null = null
-        if (req.url.startsWith("/trpc/auth.login")) scope = "login"
-        else if (req.url.startsWith("/trpc/shareLink.unlock")) scope = "unlock"
-        if (!scope) return
+        const calls = sensitiveCalls(req.url)
         const now = Date.now()
-        const key = scope + ":" + req.ip
-        let entry = sensitiveAttempts.get(key)
-        if (!entry || now >= entry.resetAt) {
-            entry = { count: 0, resetAt: now + SENSITIVE_WINDOW_MS }
-            sensitiveAttempts.set(key, entry)
+        let blocked = false
+        for (const [scope, weight] of [["login", calls.login], ["unlock", calls.unlock]] as const) {
+            if (weight === 0) continue
+            const key = scope + ":" + req.ip
+            let entry = sensitiveAttempts.get(key)
+            if (!entry || now >= entry.resetAt) {
+                entry = { count: 0, resetAt: now + SENSITIVE_WINDOW_MS }
+                sensitiveAttempts.set(key, entry)
+            }
+            entry.count += weight
+            if (entry.count > SENSITIVE_MAX) blocked = true
         }
-        entry.count++
-        if (entry.count > SENSITIVE_MAX) {
-            reply.status(429).send({ message: "Too many attempts. Try again later." })
-        }
+        if (blocked) reply.status(429).send({ message: "Too many attempts. Try again later." })
     })
 
     app.register(healthRoutes)

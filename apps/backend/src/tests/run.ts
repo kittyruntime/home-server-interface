@@ -2430,4 +2430,30 @@ async function testLongTrpcBatchPathsStillRoute() {
 
 await testLongTrpcBatchPathsStillRoute()
 
+async function testSensitiveCallsAreCountedInBatches() {
+  const { sensitiveCalls, buildApp } = await import("../app")
+  assert.deepEqual(sensitiveCalls("/trpc/auth.login"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/auth.login?batch=1"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/shareLink.unlock"), { login: 0, unlock: 1 })
+  assert.deepEqual(sensitiveCalls("/trpc/system.metrics,auth.login?batch=1&input=%7B%7D"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/system.metrics%2Cauth.login?batch=1"), { login: 1, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/auth.login,auth.login,shareLink.unlock,auth.login?batch=1"), { login: 3, unlock: 1 })
+  assert.deepEqual(sensitiveCalls("/trpc/system.metrics,tls.status?batch=1"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/auth.loginHistory"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/trpc/xauth.login,shareLink.unlockAll"), { login: 0, unlock: 0 })
+  assert.deepEqual(sensitiveCalls("/health"), { login: 0, unlock: 0 })
+
+  const app = await buildApp()
+  await app.ready()
+  try {
+    const batch = "/trpc/" + Array(21).fill("auth.login").join(",") + "?batch=1"
+    const res = await app.inject({ method: "POST", url: batch, payload: {}, remoteAddress: "10.9.8.7" })
+    assert.equal(res.statusCode, 429)
+  } finally {
+    await app.close()
+  }
+}
+
+await testSensitiveCallsAreCountedInBatches()
+
 console.log("Backend security tests passed")
