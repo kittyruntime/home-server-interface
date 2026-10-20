@@ -130,7 +130,7 @@ async function apply() {
 function onClose() {
   if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? 'A step failed' })
   else if (applyError.value) settle({ status: 'failed', error: applyError.value })
-  else settle({ status: 'cancelled' })
+  else settle({ status: 'cancelled', previewError: loadError.value || undefined })
   planRequest.value = null
   preview.value = null
   applied.value = null
