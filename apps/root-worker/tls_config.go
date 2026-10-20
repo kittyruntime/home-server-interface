@@ -169,9 +169,10 @@ func handleTLSIssue(nc *nats.Conn, msg *nats.Msg) {
 // the reply of the plan that asked for it reaches the backend first. The argv
 // is part of the plan fingerprint, so it must be identical on every preview:
 // the unit name is fixed, and --collect removes the unit once it ran, even if
-// it failed, so the name is free for the next restart.
+// it failed, so the name is free for the next restart. AccuracySec is lowered
+// because a transient timer defaults to one minute and would fire late.
 func restartServerArgv() []string {
-	return []string{"systemd-run", "--on-active=2", "--collect", "--unit=hsi-server-restart",
+	return []string{"systemd-run", "--on-active=2", "--timer-property=AccuracySec=100ms", "--collect", "--unit=hsi-server-restart",
 		"systemctl", "restart", "hsi-server.service"}
 }
 
