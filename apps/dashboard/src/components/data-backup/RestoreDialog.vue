@@ -40,7 +40,7 @@ const starting = ref(false)
 
 const progress = ref<number | null>(null)
 const result = ref<Restored | null>(null)
-const targetPath = ref('')
+const unknown = ref(false)
 const running = ref(false)
 
 const crumbs = computed(() => breadcrumbs(dir.value, root.value))
@@ -62,17 +62,24 @@ async function load() {
   }
 }
 
+// Counts folder loads, so a slow answer to an earlier click never replaces a later one.
+let listSeq = 0
+
 async function open(path: string) {
   if (!snapshot.value) return
+  const seq = ++listSeq
   listing.value = true
   listError.value = ''
   try {
-    entries.value = (await trpc.backup.ls.query({ repository: props.repository.id, snapshot: snapshot.value.id, path })) as Entry[]
+    const found = (await trpc.backup.ls.query({ repository: props.repository.id, snapshot: snapshot.value.id, path })) as Entry[]
+    if (seq !== listSeq) return
+    entries.value = found
     dir.value = path
   } catch (e) {
+    if (seq !== listSeq) return
     listError.value = e instanceof Error && e.message ? e.message : 'Failed to list this folder'
   } finally {
-    listing.value = false
+    if (seq === listSeq) listing.value = false
   }
 }
 
@@ -86,6 +93,7 @@ function pick(s: Snapshot) {
 
 function back() {
   if (running.value) return
+  listSeq++
   snapshot.value = null
   result.value = null
   restoreError.value = ''
@@ -100,9 +108,14 @@ function chooseTarget(t: 'new' | 'original') {
 let timer = 0
 let stopped = false
 
-async function poll(runId: string) {
+// Without a progress or a result for this long after the apply, the restore is given up on.
+const STATUS_GRACE_MS = 30_000
+
+async function poll(runId: string, since: number) {
   try {
     const s = await trpc.backup.restoreStatus.query({ runId })
+    if (stopped) return
+    if (s.progress || s.result) since = Date.now()
     progress.value = s.progress ? s.progress.percentDone : progress.value
     if (s.result && s.result.status !== 'running') {
       result.value = s.result
@@ -112,7 +125,13 @@ async function poll(runId: string) {
   } catch {
     // A missed poll is retried; the restore itself runs in its own unit.
   }
-  if (!stopped) timer = window.setTimeout(() => poll(runId), 2_000)
+  if (stopped) return
+  if (Date.now() - since > STATUS_GRACE_MS) {
+    unknown.value = true
+    running.value = false
+    return
+  }
+  timer = window.setTimeout(() => poll(runId, since), 2_000)
 }
 
 async function restore() {
@@ -127,12 +146,11 @@ async function restore() {
       actionLabel: 'Restore',
       danger: target.value === 'original',
     })
-    const steps = reply.steps as Array<{ target?: string }> | undefined
-    targetPath.value = steps?.[0]?.target ?? ''
     if (typeof reply.runId !== 'string') throw new Error('The restore did not start')
     progress.value = 0
+    unknown.value = false
     running.value = true
-    void poll(reply.runId)
+    void poll(reply.runId, Date.now())
   } catch (e) {
     const refused = previewErrorOf(e)
     if (/replaces \d+ files/i.test(refused)) confirmError.value = refused
@@ -177,7 +195,7 @@ onUnmounted(() => {
       </template>
 
       <!-- Tree and target -->
-      <template v-else-if="!running && !result">
+      <template v-else-if="!running && !result && !unknown">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-xs text-[var(--c-text-2)]">{{ formatDateTime(snapshot.time) }} · {{ planName(snapshot) }}</p>
           <button class="btn btn-ghost btn-xs" @click="back">Other snapshot</button>
@@ -241,15 +259,15 @@ onUnmounted(() => {
         <div class="h-2 overflow-hidden rounded-full bg-[var(--c-surface-deep)]" role="progressbar" :aria-valuenow="Math.round((progress ?? 0) * 100)" aria-valuemin="0" aria-valuemax="100">
           <div class="h-full bg-accent transition-all" :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"></div>
         </div>
-        <p v-if="targetPath" class="break-all font-mono text-2xs text-[var(--c-text-3)]">{{ targetPath }}</p>
       </template>
+
+      <p v-else-if="unknown" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> The status of this restore is unknown. Look for it in the History of this repository.</p>
 
       <!-- Result -->
       <template v-else-if="result">
         <p v-if="result.status === 'failed'" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
         <p v-else class="text-sm text-success">{{ result.files ?? 0 }} files restored</p>
-        <p v-if="targetPath && target === 'new'" class="break-all text-xs text-[var(--c-text-2)]">Restored to <span class="font-mono">{{ targetPath }}</span></p>
-        <p v-else-if="targetPath" class="break-all text-xs text-[var(--c-text-2)]">Restored over <span class="font-mono">{{ selected }}</span></p>
+        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-[var(--c-text-2)]">Restored to <span class="font-mono">{{ result.target }}</span></p>
         <div v-if="result.warnings?.length">
           <p class="eyebrow mb-1">Not restored as saved on this destination</p>
           <p v-for="w in result.warnings" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>

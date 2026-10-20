@@ -343,6 +343,36 @@ func TestRestoreNeverReusesFinalDir(t *testing.T) {
 	}
 }
 
+func TestRestoreRecordsTheFolderActuallyCreated(t *testing.T) {
+	base := t.TempDir()
+	req := restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "photos")}
+	file, _ := restoreFixture(t, req)
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	req.RunID, req.Repository, req.Snapshot = newRunID(), repoA, "abcdef12"
+	file, err := writeRestoreRequest(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	runs, _ := lastRuns("restores", repoA, 5)
+	if len(runs) != 2 {
+		t.Fatalf("%+v", runs)
+	}
+	got := []string{runs[0].Target, runs[1].Target}
+	if got[0] != filepath.Join(base, "Restored", "x-2") && got[1] != filepath.Join(base, "Restored", "x-2") {
+		t.Fatalf("targets %v", got)
+	}
+	for _, r := range runs {
+		if !strings.HasPrefix(r.Target, filepath.Join(base, "Restored", "x")) {
+			t.Fatalf("target %q", r.Target)
+		}
+	}
+}
+
 func writeStaged(t *testing.T, dir, abs, content string) {
 	t.Helper()
 	p := filepath.Join(dir, abs)
