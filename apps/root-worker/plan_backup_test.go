@@ -589,7 +589,10 @@ func TestCreateFreshDirRefusesSwappedEntry(t *testing.T) {
 			_ = os.Mkdir(dir, 0o700)
 			_ = os.WriteFile(filepath.Join(dir, "theirs"), []byte("x"), 0o644)
 		},
-		"other mode": func(dir string) { _ = os.Chmod(dir, 0o755) },
+		"other mode":               func(dir string) { _ = os.Chmod(dir, 0o755) },
+		"setuid bit":               func(dir string) { _ = os.Chmod(dir, 0o700|os.ModeSetuid) },
+		"sticky bit":               func(dir string) { _ = os.Chmod(dir, 0o700|os.ModeSticky) },
+		"setgid with group access": func(dir string) { _ = os.Chmod(dir, 0o770|os.ModeSetgid) },
 		"symlink": func(dir string) {
 			_ = os.Remove(dir)
 			_ = os.Symlink(t.TempDir(), dir)
@@ -693,4 +696,113 @@ func TestRestoreOriginalThroughVolumeMount(t *testing.T) {
 	}
 	d.Close()
 	f.Close()
+}
+
+// setgidDir returns a 2775 directory, the mode HSI gives share volumes. Linux then sets
+// S_ISGID on every directory created below it, even by root.
+func setgidDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o775|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	st, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Mode()&os.ModeSetgid == 0 {
+		t.Skip("filesystem drops the setgid bit on directories")
+	}
+	return dir
+}
+
+func TestCreateFreshDirUnderSetgidParent(t *testing.T) {
+	parent := setgidDir(t)
+	f, err := openDirNoFollow(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	d, _, err := createFreshDir(f, "x", true)
+	if err != nil {
+		t.Fatalf("fresh dir under a setgid parent refused: %v", err)
+	}
+	d.Close()
+}
+
+func TestRestoreNewUnderSetgidVolume(t *testing.T) {
+	base := setgidDir(t)
+	file, calls := restoreFixture(t, restoreRequest{Mode: "new", Base: base, Name: "x", Path: filepath.Join(base, "photos")})
+	fakeResticRestore = func(dir string) { writeStaged(t, dir, "photos/a.jpg", "a") }
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if got := restoreTargets(calls); len(got) != 1 || got[0] != filepath.Join(base, "Restored", "x") {
+		t.Fatalf("targets %v", got)
+	}
+	if b, _ := os.ReadFile(filepath.Join(base, "Restored", "x", "photos", "a.jpg")); string(b) != "a" {
+		t.Fatal("restored file missing")
+	}
+}
+
+func TestRestoreOriginalUnderSetgidVolume(t *testing.T) {
+	root := setgidDir(t)
+	data := filepath.Join(root, "data")
+	if err := os.Mkdir(data, 0o775); err != nil {
+		t.Fatal(err)
+	}
+	file, _ := restoreFixture(t, restoreRequest{Mode: "original", Base: root, Path: data})
+	fakeResticRestore = func(dir string) {
+		writeStaged(t, dir, data+"/a.txt", "a")
+		writeStaged(t, dir, data+"/sub/b.txt", "b")
+	}
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "sub", "b.txt")); string(b) != "b" {
+		t.Fatal("missing directory not created under the setgid volume")
+	}
+	runs, _ := lastRuns("restores", repoA, 1)
+	if len(runs) != 1 || runs[0].Status != "success" || runs[0].Files != 2 || len(runs[0].Warnings) != 0 {
+		t.Fatalf("%+v", runs)
+	}
+}
+
+func TestMergeIntoCreatesDirUnderSetgidParent(t *testing.T) {
+	dstPath, srcPath := setgidDir(t), t.TempDir()
+	writeStaged(t, srcPath, "created/g", "g")
+	dst, _ := openDirNoFollow(dstPath)
+	src, _ := openDirNoFollow(srcPath)
+	defer dst.Close()
+	defer src.Close()
+	var res mergeResult
+	if err := mergeInto(src, dst, "", &res); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dstPath, "created", "g")); string(b) != "g" || len(res.warnings) != 0 {
+		t.Fatalf("not created: %+v", res)
+	}
+}
+
+func TestMergeIntoWarnsWhenCreatedDirIsReplaced(t *testing.T) {
+	dstPath, srcPath := setgidDir(t), t.TempDir()
+	writeStaged(t, srcPath, "created/g", "g")
+	dst, _ := openDirNoFollow(dstPath)
+	src, _ := openDirNoFollow(srcPath)
+	defer dst.Close()
+	defer src.Close()
+	afterMkdirHook = func(_ *os.File, n string) {
+		_ = os.WriteFile(filepath.Join(dstPath, n, "theirs"), []byte("x"), 0o644)
+	}
+	t.Cleanup(func() { afterMkdirHook = nil })
+	var res mergeResult
+	if err := mergeInto(src, dst, "", &res); err != nil {
+		t.Fatal(err)
+	}
+	if len(res.warnings) != 1 || !strings.Contains(res.warnings[0], "was replaced") {
+		t.Fatalf("%+v", res)
+	}
+	if _, err := os.Stat(filepath.Join(dstPath, "created", "g")); !os.IsNotExist(err) {
+		t.Fatal("merged into a replaced directory")
+	}
 }

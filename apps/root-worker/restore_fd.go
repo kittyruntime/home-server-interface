@@ -105,12 +105,14 @@ func openRestoredDir(base *os.File) (*os.File, error) {
 var afterMkdirHook func(parent *os.File, name string)
 
 // checkFreshDir fails unless f is the directory we just made: ours, mode 0700, empty.
+// S_ISGID is ignored: Linux sets it on every directory created under a setgid one, and
+// share volumes are 2775. Any other extra bit means the entry is not ours.
 func checkFreshDir(f *os.File, what string) error {
 	var st syscall.Stat_t
 	if err := syscall.Fstat(int(f.Fd()), &st); err != nil {
 		return err
 	}
-	if st.Mode&syscall.S_IFMT != syscall.S_IFDIR || int(st.Uid) != restoreOwnerUID() || st.Mode&0o7777 != 0o700 {
+	if st.Mode&syscall.S_IFMT != syscall.S_IFDIR || int(st.Uid) != restoreOwnerUID() || st.Mode&0o7777&^syscall.S_ISGID != 0o700 {
 		return fmt.Errorf("%s was replaced while it was being created, refusing to use it", what)
 	}
 	entries, err := readDirFd(f)
@@ -265,6 +267,9 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 			if errors.Is(derr, syscall.ENOENT) {
 				if merr := syscall.Mkdirat(int(dst.Fd()), name, 0o700); merr == nil {
 					created = true
+					if afterMkdirHook != nil {
+						afterMkdirHook(dst, name)
+					}
 					dchild, derr = openatDir(dst, name)
 					if derr == nil {
 						// Reopened by name in a tree others can write: it must be the one just made.
@@ -274,6 +279,12 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 						}
 					}
 				}
+			}
+			if created && derr != nil {
+				// We made it, so a failure to reopen or check it means someone swapped it.
+				res.warn(relName + " was replaced by another entry while it was being created, skipped")
+				child.Close()
+				continue
 			}
 			if derr != nil {
 				res.warn(relName + " is not a directory at the destination, skipped")
