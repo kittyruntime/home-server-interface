@@ -288,7 +288,10 @@ func restoreFixture(t *testing.T, rr restoreRequest) (string, *[]resticCall) {
 	_ = saveBackupConfig(sampleConfig())
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
 	calls := fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","files_restored":1,"total_files":1}`}}, nil)
-	rr.RunID, rr.Repository, rr.Snapshot = newRunID(), repoA, "abcdef12"
+	if rr.RunID == "" {
+		rr.RunID = newRunID()
+	}
+	rr.Repository, rr.Snapshot = repoA, "abcdef12"
 	file, err := writeRestoreRequest(rr)
 	if err != nil {
 		t.Fatal(err)
@@ -391,14 +394,14 @@ func TestRestoreOriginalMergesWithoutFollowingSymlinks(t *testing.T) {
 	if st, err := os.Stat(filepath.Join(data, "isdir")); err != nil || !st.IsDir() {
 		t.Fatal("directory replaced by a file")
 	}
-	if ents, _ := os.ReadDir(root); len(ents) != 1 {
+	if ents, _ := os.ReadDir(filepath.Join(root, "Restored")); len(ents) != 0 {
 		t.Fatalf("staging left behind: %v", ents)
 	}
 	runs, _ := lastRuns("restores", repoA, 1)
 	if len(runs) != 1 || runs[0].Status != "success" || runs[0].Files != 3 || len(runs[0].Warnings) != 2 {
 		t.Fatalf("%+v", runs)
 	}
-	if got := restoreTargets(calls); len(got) != 1 || !strings.Contains(got[0], ".hsi-restore-") {
+	if got := restoreTargets(calls); len(got) != 1 || !strings.Contains(got[0], "/Restored/.staging-") {
 		t.Fatalf("restore goes to a staging dir: %v", got)
 	}
 }
@@ -416,7 +419,7 @@ func TestRestoreOriginalSkipsSymlinkedPath(t *testing.T) {
 	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
 		t.Fatalf("written through the symlinked path: %v", ents)
 	}
-	if ents, _ := os.ReadDir(root); len(ents) != 1 {
+	if ents, _ := os.ReadDir(filepath.Join(root, "Restored")); len(ents) != 0 {
 		t.Fatalf("staging left behind: %v", ents)
 	}
 }
@@ -555,4 +558,139 @@ func TestRepositoryLocationChangeIsProbed(t *testing.T) {
 	if len(*calls) != 1 || envValue((*calls)[0].env, "RESTIC_PASSWORD") != "keep" {
 		t.Fatalf("probe with the stored password expected: %v", *calls)
 	}
+}
+
+func TestRestoreOriginalNeverTouchesOldStagingName(t *testing.T) {
+	root := t.TempDir()
+	data := filepath.Join(root, "data")
+	_ = os.MkdirAll(data, 0o755)
+	runID := newRunID()
+	// Another user's tree, planted where the old staging directory would have been.
+	planted := filepath.Join(root, ".hsi-restore-"+runID)
+	_ = os.MkdirAll(planted, 0o755)
+	_ = os.WriteFile(filepath.Join(planted, "theirs"), []byte("x"), 0o644)
+	file, _ := restoreFixture(t, restoreRequest{RunID: runID, Mode: "original", Base: root, Path: data})
+	fakeResticRestore = func(dir string) { writeStaged(t, dir, data+"/f", "x") }
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(planted, "theirs")); err != nil {
+		t.Fatalf("a tree in Base was deleted: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "f")); string(b) != "x" {
+		t.Fatal("not merged")
+	}
+}
+
+func TestCreateFreshDirRefusesSwappedEntry(t *testing.T) {
+	for name, swap := range map[string]func(dir string){
+		"other dir with content": func(dir string) {
+			_ = os.Remove(dir)
+			_ = os.Mkdir(dir, 0o700)
+			_ = os.WriteFile(filepath.Join(dir, "theirs"), []byte("x"), 0o644)
+		},
+		"other mode": func(dir string) { _ = os.Chmod(dir, 0o755) },
+		"symlink": func(dir string) {
+			_ = os.Remove(dir)
+			_ = os.Symlink(t.TempDir(), dir)
+		},
+	} {
+		parent := t.TempDir()
+		f, err := openDirNoFollow(parent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		afterMkdirHook = func(_ *os.File, n string) { swap(filepath.Join(parent, n)) }
+		_, _, err = createFreshDir(f, "x", true)
+		afterMkdirHook = nil
+		f.Close()
+		if err == nil {
+			t.Errorf("%s: swapped entry accepted", name)
+		}
+	}
+}
+
+func TestMergeIntoStaysInHeldDestination(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	dstPath, srcPath := filepath.Join(root, "dst"), filepath.Join(root, "src")
+	_ = os.MkdirAll(filepath.Join(dstPath, "d"), 0o755)
+	writeStaged(t, srcPath, "d/f", "new")
+	writeStaged(t, srcPath, "created/g", "g")
+	dst, _ := openDirNoFollow(dstPath)
+	src, _ := openDirNoFollow(srcPath)
+	defer dst.Close()
+	defer src.Close()
+	// The destination is renamed after its descriptor was opened, and a symlink takes its place.
+	_ = os.Rename(dstPath, filepath.Join(root, "moved"))
+	if err := os.Symlink(outside, dstPath); err != nil {
+		t.Fatal(err)
+	}
+	var res mergeResult
+	if err := mergeInto(src, dst, "", &res); err != nil {
+		t.Fatal(err)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("written outside: %v", ents)
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "moved", "d", "f")); string(b) != "new" {
+		t.Fatal("not merged into the held directory")
+	}
+	if _, err := os.Stat(filepath.Join(root, "moved", "created", "g")); err != nil {
+		t.Fatal("missing directory not created")
+	}
+}
+
+func TestMergeIntoSkipsEntryThatChangedType(t *testing.T) {
+	root := t.TempDir()
+	srcPath, dstPath := filepath.Join(root, "src"), filepath.Join(root, "dst")
+	_ = os.MkdirAll(dstPath, 0o755)
+	writeStaged(t, srcPath, "a", "x")
+	writeStaged(t, srcPath, "b", "y")
+	dst, _ := openDirNoFollow(dstPath)
+	src, _ := openDirNoFollow(srcPath)
+	defer dst.Close()
+	defer src.Close()
+	// "a" becomes a non-empty directory after the check, before the rename.
+	beforeRenameHook = func(_ *os.File, name string) {
+		if name == "a" {
+			_ = os.MkdirAll(filepath.Join(dstPath, "a", "inner"), 0o755)
+		}
+	}
+	t.Cleanup(func() { beforeRenameHook = nil })
+	var res mergeResult
+	if err := mergeInto(src, dst, "", &res); err != nil {
+		t.Fatalf("merge aborted: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dstPath, "b")); string(b) != "y" || res.moved != 1 || len(res.warnings) != 1 {
+		t.Fatalf("%+v", res)
+	}
+}
+
+func TestRestoreOriginalThroughVolumeMount(t *testing.T) {
+	root := t.TempDir()
+	mount := filepath.Join(root, "vol")
+	data := filepath.Join(mount, "data")
+	_ = os.MkdirAll(data, 0o755)
+	prev := volumeMountFor
+	volumeMountFor = func(string) string { return mount }
+	t.Cleanup(func() { volumeMountFor = prev })
+	file, _ := restoreFixture(t, restoreRequest{Mode: "original", Base: mount, Path: data})
+	fakeResticRestore = func(dir string) { writeStaged(t, dir, data+"/f", "x") }
+	if err := runRestoreRequest(file); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "f")); string(b) != "x" {
+		t.Fatal("not merged")
+	}
+	if ents, _ := os.ReadDir(filepath.Join(mount, "Restored")); len(ents) != 0 {
+		t.Fatalf("staging left behind: %v", ents)
+	}
+	// "/" as the mount point must not leak or double close descriptors.
+	f, _ := openDirNoFollow(root)
+	d, err := descendDirs(f, "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Close()
+	f.Close()
 }

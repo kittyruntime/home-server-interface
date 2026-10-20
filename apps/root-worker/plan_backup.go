@@ -354,7 +354,7 @@ func planRepositoryRemove(raw json.RawMessage) (*opPlan, *fsError) {
 }
 
 // volumeMountFor is the mount point of the managed volume holding path, "" when none does.
-func volumeMountFor(path string) string {
+var volumeMountFor = func(path string) string {
 	vols, err := volumeStatuses()
 	if err != nil {
 		return ""
@@ -631,14 +631,29 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 		return final.Chmod(0o755)
 	}
 
-	// Original location: restore next to it first, then move the files into place.
-	stageName := ".hsi-restore-" + rr.RunID
-	stage, _, err := createFreshDir(base, stageName, false)
+	// Original location: restore into a staging directory first, then move the files
+	// into place. Staging lives in Restored, where only root can rename or replace
+	// entries, so creating, using and removing it cannot be redirected.
+	restored, err := openRestoredDir(base)
 	if err != nil {
 		return err
 	}
-	defer removeTreeAt(base, stageName)
-	defer stage.Close()
+	defer restored.Close()
+	suffix := make([]byte, 8)
+	if _, err := rand.Read(suffix); err != nil {
+		return err
+	}
+	stageName := fmt.Sprintf(".staging-%s-%x", rr.RunID, suffix)
+	stage, _, err := createFreshDir(restored, stageName, false)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := removeChildren(stage); err == nil {
+			_ = unlinkat(restored, stageName, atRemoveDir)
+		}
+		stage.Close()
+	}()
 	sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", stage, false, progress)
 	rec.Warnings = sum.Warnings
 	if err != nil {
@@ -646,24 +661,18 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 	}
 
 	// The staged tree holds the absolute paths, from the volume mount point (or "/").
-	root, src := "/", stage
+	root := "/"
 	if mount := volumeMountFor(rr.Path); mount != "" {
 		root = mount
-		for _, comp := range strings.Split(strings.Trim(mount, "/"), "/") {
-			next, err := openatDir(src, comp)
-			if errors.Is(err, syscall.ENOENT) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			if src != stage {
-				defer src.Close()
-			}
-			src = next
-		}
-		defer src.Close()
 	}
+	src, err := descendDirs(stage, root)
+	if errors.Is(err, syscall.ENOENT) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer src.Close()
 	dst, err := openDirNoFollow(root)
 	if err != nil {
 		return err
