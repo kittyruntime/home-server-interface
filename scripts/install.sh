@@ -89,10 +89,10 @@ install_restic() {
   fi
   # Root-owned so the worker never runs a binary another user could replace.
   local owner=(); (( EUID == 0 )) && owner=(-o root -g root)
-  bunzip2 -c "$tmp/restic.bz2" > "$tmp/restic" && install -D -m 0755 "${owner[@]}" "$tmp/restic" "$RESTIC_DEST"
-  local rc=$?
+  if ! { bunzip2 -c "$tmp/restic.bz2" > "$tmp/restic" && install -D -m 0755 "${owner[@]}" "$tmp/restic" "$RESTIC_DEST"; }; then
+    rm -rf "$tmp"; warn "Could not unpack or install restic ${RESTIC_VERSION}: versioned backups are unavailable"; return 1
+  fi
   rm -rf "$tmp"
-  return $rc
 }
 
 # Run a shell snippet as another user with that user's HOME. runuser ships with
@@ -1125,38 +1125,38 @@ EOF
 
 # Versioned backups (#15): one timer per plan or repository, created by the
 # worker, instantiates these templates.
-cat > /etc/systemd/system/${APP_backup}-backup@.service <<EOF
+cat > /etc/systemd/system/${APP_NAME}-backup@.service <<EOF
 [Unit]
-Description=${APP_backup} backup plan %i
-After=network-online.target ${APP_backup}-worker.service
+Description=${APP_NAME} backup plan %i
+After=network-online.target ${APP_NAME}-worker.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/${APP_backup}-worker backup run %i
+ExecStart=/usr/local/bin/${APP_NAME}-worker backup run %i
 EnvironmentFile=$WORKER_ENV
 Nice=10
 IOSchedulingClass=idle
 StandardOutput=append:$LOG_DIR/backup.log
 StandardError=append:$LOG_DIR/backup.log
-SyslogIdentifier=${APP_backup}-backup
+SyslogIdentifier=${APP_NAME}-backup
 EOF
 
-cat > /etc/systemd/system/${APP_backup-check}-backup-check@.service <<EOF
+cat > /etc/systemd/system/${APP_NAME}-backup-check@.service <<EOF
 [Unit]
-Description=${APP_backup-check} repository check %i
-After=network-online.target ${APP_backup-check}-worker.service
+Description=${APP_NAME} repository check %i
+After=network-online.target ${APP_NAME}-worker.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/${APP_backup-check}-worker backup check %i
+ExecStart=/usr/local/bin/${APP_NAME}-worker backup check %i
 EnvironmentFile=$WORKER_ENV
 Nice=10
 IOSchedulingClass=idle
 StandardOutput=append:$LOG_DIR/backup.log
 StandardError=append:$LOG_DIR/backup.log
-SyslogIdentifier=${APP_backup-check}-backup-check
+SyslogIdentifier=${APP_NAME}-backup-check
 EOF
 
 cat > /etc/systemd/system/${APP_NAME}-maintenance.timer <<EOF
