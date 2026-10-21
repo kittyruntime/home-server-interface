@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backups run even when the HSI server is down. Repositories are encrypted
   with a generated password shown once, and checked for corruption on a
   schedule. A file or folder can be restored from any snapshot, to a new
-  folder by default. Existing rsync plans move to the same page and timers.
+  folder by default. Existing rsync plans move to the same page and timers;
+  one that cannot move is listed until dismissed. A stopped run starts its
+  apps again and is recorded as interrupted, and a local repository is handed
+  to restic as a held folder that no symbolic link can redirect.
 
 ## [1.65.0] - 2026-10-20
 
