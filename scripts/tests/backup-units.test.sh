@@ -26,6 +26,8 @@ check "backup-check unit file exists" '[[ -f "$TMP/units/hsi-backup-check@.servi
 check "backup ExecStart" 'grep -qx "ExecStart=/usr/local/bin/hsi-worker backup run %i" "$TMP/units/hsi-backup@.service"'
 check "backup-check ExecStart" 'grep -qx "ExecStart=/usr/local/bin/hsi-worker backup check %i" "$TMP/units/hsi-backup-check@.service"'
 check "backup After uses the worker unit" 'grep -qx "After=network-online.target hsi-worker.service" "$TMP/units/hsi-backup@.service"'
+check "backup unit waits for the app restart" 'grep -qx "TimeoutStopSec=120s" "$TMP/units/hsi-backup@.service"'
+check "backup-check unit waits for a clean stop" 'grep -qx "TimeoutStopSec=120s" "$TMP/units/hsi-backup-check@.service"'
 check "backup-check identifier" 'grep -qx "SyslogIdentifier=hsi-backup-check" "$TMP/units/hsi-backup-check@.service"'
 
 exit $FAILED

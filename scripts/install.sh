@@ -1008,6 +1008,11 @@ HSI_MAINTENANCE_TIMER=/etc/systemd/system/${APP_NAME}-maintenance.timer
 HSI_BACKEND_ENV=$ENV_FILE
 HSI_BACKUP_STAGING=$BACKUP_STAGING_DIR
 HSI_UNIT_PREFIX=${APP_NAME}
+HSI_BACKUP_CONFIG=$APP_CONF_DIR/backup.json
+HSI_BACKUP_SECRETS=$APP_CONF_DIR/backup
+HSI_BACKUP_STATE=/var/lib/${APP_NAME}/backup
+HSI_BACKUP_LOCKS=/run/${APP_NAME}/backup
+HSI_RESTIC=$RESTIC_DEST
 EOF
 chmod 600 "$WORKER_ENV"
 success "Worker env → $WORKER_ENV"
@@ -1135,6 +1140,8 @@ Wants=network-online.target
 Type=oneshot
 ExecStart=/usr/local/bin/${APP_NAME}-worker backup run %i
 EnvironmentFile=$WORKER_ENV
+# An interrupted run starts the apps it stopped again before it exits.
+TimeoutStopSec=120s
 Nice=10
 IOSchedulingClass=idle
 StandardOutput=append:$LOG_DIR/backup.log
@@ -1152,6 +1159,8 @@ Wants=network-online.target
 Type=oneshot
 ExecStart=/usr/local/bin/${APP_NAME}-worker backup check %i
 EnvironmentFile=$WORKER_ENV
+# An interrupted run starts the apps it stopped again before it exits.
+TimeoutStopSec=120s
 Nice=10
 IOSchedulingClass=idle
 StandardOutput=append:$LOG_DIR/backup.log
