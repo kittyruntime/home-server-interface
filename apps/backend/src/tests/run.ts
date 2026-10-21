@@ -2512,7 +2512,7 @@ async function testBackupReviewFixes() {
   const bcrypt = (await import("bcryptjs")).default
   const { backupRouter } = await import("../trpc/routers/backup")
   const hash = await bcrypt.hash("right", 4)
-  const caller = backupRouter.createCaller({ user: { userId: "u", isAdmin: true }, prisma: { user: { findUniqueOrThrow: async () => ({ password: hash }) }, auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  const caller = backupRouter.createCaller({ user: { userId: "u", isAdmin: true }, prisma: { user: { findUnique: async () => ({ password: hash }) }, auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
   await assert.rejects(() => caller.password({ repository: "11111111-1111-1111-1111-111111111111", currentPassword: "wrong" }), (e: any) => e.code === "FORBIDDEN" && e.message === "Wrong password")
 
   // The migration retries until the worker answers, then migrates once.
@@ -2540,5 +2540,45 @@ async function testBackupReviewFixes() {
 }
 
 await testBackupReviewFixes()
+
+async function testBackupFinalFixes() {
+  const { backupFindings, backupTargets } = await import("../services/backup-status")
+  const base = { configExists: true, engine: { installed: true, version: "0.19.1" }, repositories: [], plans: [], migrationSkipped: [] }
+  // Former rsync plans the migration skipped stay a warning until the admin dismisses them.
+  assert.deepEqual(backupFindings(base as any), [])
+  const skipped = backupFindings({ ...base, migrationSkipped: [{ name: "Old mirror", error: "invalid absolute backup path" }] } as any)
+  assert.equal(skipped.length, 1)
+  assert.equal(skipped[0]!.target, "migration")
+  assert.equal(skipped[0]!.severity, "warning")
+  assert.ok(skipped[0]!.message.includes("Old mirror (invalid absolute backup path)"))
+  assert.ok(backupTargets(base as any).includes("migration"), "a dismissed list clears its alert")
+
+  // A user deleted while their session lives on gets a refusal, not a server error.
+  const { backupRouter } = await import("../trpc/routers/backup")
+  const gone = backupRouter.createCaller({ user: { userId: "gone", isAdmin: true }, prisma: { user: { findUnique: async () => null }, auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  await assert.rejects(() => gone.password({ repository: "11111111-1111-1111-1111-111111111111", currentPassword: "x" }), (e: any) => e.code === "FORBIDDEN")
+
+  // backup.* and tls.* plan operations are for admins only, even with the storage capability.
+  const { storageRouter } = await import("../trpc/routers/storage")
+  const member = storageRouter.createCaller({ user: { userId: "m", isAdmin: false, capabilities: ["storage"] }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  for (const op of ["backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore", "tls.enable"] as const) {
+    await assert.rejects(() => member.plan({ op, input: {} }), (e: any) => e.code === "FORBIDDEN", op)
+    // The caller proxy reads a trailing ".apply" as Function.prototype.apply: say it twice.
+    await assert.rejects(() => (member.apply as any).apply(null, [{ op, input: {}, fingerprint: "f" }]), (e: any) => e.code === "FORBIDDEN", op)
+  }
+
+  // The worker's refusal code reaches the dashboard in the error data.
+  const { workerErrorCode, router, publicProcedure } = await import("../trpc/index")
+  const { TRPCError } = await import("@trpc/server")
+  const r = router({ fail: publicProcedure.mutation(() => { throw Object.assign(new Error("This replaces 2 files"), { code: "ECONFIRM" }) }) })
+  const err = await r.createCaller({} as any).fail().then(() => null, (e: unknown) => e as InstanceType<typeof TRPCError>)
+  assert.ok(err)
+  assert.equal(workerErrorCode(err), "ECONFIRM")
+  const shape = (r as any)._def._config.errorFormatter({ shape: { message: err.message, code: -32603, data: { code: "INTERNAL_SERVER_ERROR" } }, error: err, type: "mutation", path: "fail", input: undefined, ctx: {} })
+  assert.equal(shape.data.workerCode, "ECONFIRM")
+  assert.equal(workerErrorCode(new TRPCError({ code: "BAD_REQUEST", cause: Object.assign(new Error("x"), { code: "not a code" }) })), undefined)
+}
+
+await testBackupFinalFixes()
 
 console.log("Backend security tests passed")

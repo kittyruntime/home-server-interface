@@ -59,7 +59,21 @@ export interface BackupStatus {
   engine: { installed: boolean; version: string }
   plans: BackupPlanStatus[]
   repositories: BackupRepositoryStatus[]
+  /** Former rsync plans the migration could not convert, until the admin dismisses them. */
+  migrationSkipped: Array<{ name: string; error: string }>
 }
+
+export interface SnapshotInfo {
+  id: string
+  shortId: string
+  time: string
+  paths: string[]
+  tags: string[]
+  consistent: boolean
+  plan: string
+}
+
+export interface SnapshotEntry { name: string; path: string; type: string; size: number; mtime: string }
 
 export interface BackupFinding { target: string; severity: "warning" | "critical"; message: string }
 
@@ -82,12 +96,17 @@ export function backupFindings(s: BackupStatus): BackupFinding[] {
   if (!s.engine.installed && s.plans.some(p => p.type === "versions")) {
     out.push({ target: "engine", severity: "warning", message: "The backup engine (restic) is not installed: run the installer again" })
   }
+  const skipped = s.migrationSkipped ?? []
+  if (skipped.length) {
+    const list = skipped.map(p => `${p.name || "unnamed"} (${p.error})`).join(", ")
+    out.push({ target: "migration", severity: "warning", message: `Former backup plans were not migrated, create them again on the Backups page: ${list}` })
+  }
   return out
 }
 
 /** Every target backupFindings can raise, so a cleared alert is detected. */
 export function backupTargets(s: BackupStatus): string[] {
-  return ["engine", ...s.plans.map(p => `plan:${p.id}`), ...s.repositories.map(r => `repository:${r.id}`)]
+  return ["engine", "migration", ...s.plans.map(p => `plan:${p.id}`), ...s.repositories.map(r => `repository:${r.id}`)]
 }
 
 /** Dotted like every other alert source: the Alerts filter and notification rules match on "backup.". */
