@@ -30,6 +30,14 @@ and reuse for several plans. Four types are available:
 | S3-compatible | Endpoint, bucket, access key and secret key (Amazon S3, MinIO, Backblaze B2 and similar). |
 | REST server | The URL of a [restic REST server](https://github.com/restic/rest-server), with its user and password when it has one. |
 
+A local folder is written by root: HSI refuses one reached through a symbolic link,
+creates it readable by root only when it does not exist yet, and checks before every
+run that it is still a folder owned by root that no other user can open. It must not
+be inside a folder the plan backs up, nor hold one.
+
+An S3 endpoint is reached over HTTPS. For a server on your local network without
+TLS, such as MinIO, write the scheme: `http://minio.lan:9000`.
+
 ### SFTP and the host key
 
 The backups run as root, so SFTP uses root's `known_hosts` and refuses a host it
@@ -57,12 +65,21 @@ that backup on a new server gives you access to your repositories again.
 To attach a repository that already exists (made by HSI on another server or by
 restic), choose to attach it and enter its password.
 
+## Plans
+
+A versioned plan backs up folders on the data volumes of this server. **Run now**
+starts a plan at once, even a paused one: pausing only stops its timer.
+
+If the server shuts down or the run is stopped while it runs, HSI starts the apps it
+stopped again and records the run as failed, with the reason "interrupted".
+
 ## Retention
 
 Each plan keeps the last N snapshots and, optionally, one per day, week and month.
 The rules apply after each snapshot and only to the snapshots of that plan, so two
-plans sharing a repository never prune each other's history. Anything not matched by
-a rule is removed (pruned).
+plans sharing a repository never prune each other's history. They count every
+snapshot of the plan, even after you change its folders or rename the server.
+Anything not matched by a rule is removed (pruned).
 
 ## Apps and consistent snapshots
 
@@ -85,19 +102,25 @@ reads everything and can take a long time on large repositories.
 Open a snapshot to browse it, then restore a file or a folder.
 
 - **To a new folder** (default): the files go into
-  `<volume>/Restored/<repository>-<date>/`, with a `-2` suffix if that folder
-  already exists. Nothing existing is touched.
-- **Over the original location**: only after an explicit confirmation. A restore
-  never deletes files: it writes the files of the snapshot and leaves the others in
-  place.
+  `<volume>/Restored/<repository name>-<YYYY-MM-DD-HHMM>/`, named after the
+  repository and the date and time of the snapshot (characters such as `/` in the
+  name become `-`), with a `-2` suffix if that folder already exists. Nothing
+  existing is touched.
+- **Over the original location**: only after an explicit confirmation, which says
+  how many files it replaces, and only for a path on a data volume. A restore never
+  deletes files: it writes the files of the snapshot and leaves the others in place.
+  A file on another volume mounted inside the restored folder is skipped and listed.
+
+The preview refuses a path that holds no file in the snapshot.
 
 Ownership, permissions, ACLs and extended attributes are restored with the files.
 What the destination refuses to hold (a file system without ACLs, for example) is
 listed after the restore.
 
-Before you restore over the original location, look at the destination: any member
-of a share can rename the top-level folders of a volume (volumes have no sticky
-bit), so a path that looks right may not be the folder you think it is.
+Before you restore over the original location, look at the destination: HSI creates
+share volumes with mode 2775, writable by the share group and without the sticky
+bit, so any member of the share can rename their top-level folders. A path that
+looks right may not be the folder you think it is.
 
 ## Recovering on a new server
 
@@ -115,7 +138,8 @@ Each plan has its own systemd timer, and each repository its own check timer, so
 backups run even when the HSI server is down. See [Manage without
 HSI](/home-server-interface/guide/manage-without-hsi/) for the commands. Plans made
 with an earlier version of HSI (rsync) were moved to this page and to timers when you
-updated.
+updated. A plan that could not be moved is listed on the Backups page, with the
+reason, until you dismiss the list: create it again by hand.
 
 ## About restic
 

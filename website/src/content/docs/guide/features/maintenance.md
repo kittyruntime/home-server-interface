@@ -1,6 +1,6 @@
 ---
 title: Maintenance and backups
-description: Scheduled disk checks, SMART self-test results, configuration backups and rsync jobs.
+description: Scheduled disk checks, SMART self-test results, configuration backups and data backup plans.
 sidebar:
   order: 6
   badge: Beta
@@ -29,8 +29,13 @@ part of it. See [Backup and restore the configuration](/home-server-interface/gu
 
 ## Data backups
 
-Scheduled rsync jobs back up folders to a local or SSH target, or pull a remote
-target onto the NAS, manually or hourly, daily or weekly. Jobs support
-exclusions, compression, bandwidth limits and a mirror mode. SSH transfers use a
-pre-provisioned key with strict host-key checking. A failed run sends a
-notification.
+The Backups page runs two kinds of plans, each from its own systemd timer, so they
+run even when the HSI server is down:
+
+- **Sync** plans copy a folder with rsync, locally or over SSH, as a mirror.
+- **Versions** plans take encrypted snapshots with restic into a repository (a
+  folder, an SFTP server, S3-compatible storage or a restic REST server), keep the
+  history you choose and let you restore a file or a folder from any snapshot.
+
+A failed run or a failed repository check raises an alert. See
+[Backups of your data](/home-server-interface/guide/data-backups/).

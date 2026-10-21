@@ -171,7 +171,7 @@ has a check timer, `hsi-backup-check@<id>.timer`. They run without the HSI serve
 
 ```bash
 systemctl list-timers 'hsi-backup*'
-sudo hsi-worker backup run <id>
+sudo hsi-worker backup run <id> [--manual]   # --manual runs a paused plan too
 sudo hsi-worker backup check <id> [--full]
 ```
 
@@ -193,9 +193,17 @@ export RESTIC_PASSWORD='...'                      # "password" in /etc/hsi/backu
 
 S3 repositories also need `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, REST
 repositories `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD`. The repository
-address is `s3:https://<endpoint>/<bucket>/<path>`, `rest:<url>` or
-`sftp://<user>@<host>:<port>/<path>`. For SFTP, add
-`-o sftp.args='-i <key> -o IdentitiesOnly=yes'` to the restic command.
+address is `s3:https://<endpoint>/<bucket>/<path>` (`s3:http://...` for an endpoint
+written with `http://`), `rest:<url>` or `sftp://<user>@<host>:<port>/<path>`. For
+SFTP, add the options HSI uses to the restic command:
+
+```bash
+-o sftp.args='-i <key> -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes'
+```
+
+HSI takes its snapshots with the host name `hsi`: add `--host hsi` to a manual
+`backup` so it finds the previous snapshot.
+
 The old rsync plans, now sync plans, run the same `rsync` command you could type by
 hand from the plan's source, destination and options.
 
