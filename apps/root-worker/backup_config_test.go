@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+// testRepoPath is the folder of the sample local repository: a real one once
+// useBackupDirs has run, since every run checks it.
+var testRepoPath = "/srv/usb/restic"
+
 func useBackupDirs(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -14,6 +18,20 @@ func useBackupDirs(t *testing.T) string {
 	t.Setenv("HSI_BACKUP_SECRETS", filepath.Join(root, "secrets"))
 	t.Setenv("HSI_BACKUP_STATE", filepath.Join(root, "state"))
 	t.Setenv("HSI_BACKUP_LOCKS", filepath.Join(root, "locks"))
+	prevRepo := testRepoPath
+	testRepoPath = filepath.Join(root, "repo")
+	if err := os.Mkdir(testRepoPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Sources under /srv/data are on a data volume.
+	prevMount := volumeMountFor
+	volumeMountFor = func(p string) string {
+		if p == "/srv/data" || strings.HasPrefix(p, "/srv/data/") {
+			return "/srv/data"
+		}
+		return ""
+	}
+	t.Cleanup(func() { testRepoPath, volumeMountFor = prevRepo, prevMount; interrupted.Store(false) })
 	return root
 }
 
@@ -22,7 +40,7 @@ const repoA = "22222222-2222-4222-8222-222222222222"
 
 func sampleConfig() backupConfig {
 	return backupConfig{
-		Repositories: []repositoryCfg{{ID: repoA, Name: "USB", Type: "local", Path: "/srv/usb/restic",
+		Repositories: []repositoryCfg{{ID: repoA, Name: "USB", Type: "local", Path: testRepoPath,
 			Check: checkSchedule{Every: "weekly", Hour: 4, Subset: "5%"}}},
 		Plans: []backupPlanCfg{{ID: planA, Name: "Photos", Type: "versions", Enabled: true,
 			Schedule: backupSchedule{Every: "daily", Hour: 2, Minute: 30},

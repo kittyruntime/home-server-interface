@@ -1027,6 +1027,8 @@ func main() {
 	// Missing volume guard (#3): boot options and immutable mount points.
 	prepareVolumes()
 	backfillDescriptions(time.Now())
+	// Versioned backups (#15): timers matching backup.json, whatever a failure left.
+	syncBackupTimers()
 
 	js, err := nc.JetStream()
 	if err != nil {
@@ -1052,6 +1054,7 @@ func main() {
 		"root.backup.password":           handleBackupPassword,
 		"root.backup.restoreStatus":      handleBackupRestoreStatus,
 		"root.backup.migrate":            handleBackupMigrate,
+		"root.backup.migrationDismiss":   handleBackupMigrationDismiss,
 		"root.fs.list":                   handleList,
 		"root.fs.stat":                   handleStat,
 		"root.fs.diskusage":              handleDiskUsage,

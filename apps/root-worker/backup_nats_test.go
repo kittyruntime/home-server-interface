@@ -63,7 +63,7 @@ func TestMigrateWritesTimersWithOneReload(t *testing.T) {
 	}
 	reloads := 0
 	for _, c := range *calls {
-		if c == "systemctl daemon-reload" || c == "daemon-reload" {
+		if c == "daemon-reload" {
 			reloads++
 		}
 	}
@@ -96,16 +96,29 @@ func TestReadsRejectDashValues(t *testing.T) {
 	}
 }
 
+// holdRun holds the run lock of id as a running backup command does.
+func holdRun(t *testing.T, id string) func() {
+	t.Helper()
+	release, err := holdRunLock(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(release)
+	return release
+}
+
 func TestRunNowBusyAndStart(t *testing.T) {
 	calls := useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
 	if fe := backupRunNow(planA); fe != nil {
 		t.Fatal(fe)
 	}
-	if len(*calls) != 1 || !strings.Contains((*calls)[0], "start --no-block hsi-backup@"+planA+".service") {
+	got := (*calls)[0]
+	if len(*calls) != 1 || !strings.HasPrefix(got, "systemd-run --unit hsi-backup-run-"+planA+" --collect") ||
+		!strings.Contains(got, "-p TimeoutStopSec=120s") || !strings.HasSuffix(got, "backup run "+planA+" --manual") {
 		t.Fatalf("%v", *calls)
 	}
-	_ = writeProgress(planA, backupProgress{})
+	holdRun(t, planA)
 	if fe := backupRunNow(planA); fe == nil || fe.Code != "EBUSY" {
 		t.Fatalf("%v", fe)
 	}
@@ -155,9 +168,15 @@ func TestRestoreStatusFindsEachRun(t *testing.T) {
 			t.Fatalf("%s: %+v", run, out)
 		}
 	}
+	release := holdRun(t, runA)
 	_ = writeProgress(runA, backupProgress{FilesDone: 2})
 	if out := backupRestoreStatus(runA); out["progress"] == nil || out["result"] != nil {
 		t.Fatalf("%+v", out)
+	}
+	release()
+	// The run died without clearing its progress: it is not running any more.
+	if out := backupRestoreStatus(runA); out["progress"] != nil || out["result"] == nil {
+		t.Fatalf("stale progress reported: %+v", out)
 	}
 	if out := backupRestoreStatus("cccccccc-cccc-4ccc-8ccc-cccccccccccc"); out["result"] != nil || out["progress"] != nil {
 		t.Fatalf("%+v", out)

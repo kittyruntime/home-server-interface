@@ -5,26 +5,34 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
+	"os/signal"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 )
 
 var composeAction = runCompose
 
-var composeRunning = func(app string) bool {
+// composeRunning tells whether the app has a running container. An error means the
+// state is unknown: the app is then left alone and the snapshot is not consistent.
+var composeRunning = func(app string) (bool, error) {
 	full, err := composeArgs(app, "ps", "--status", "running", "-q")
 	if err != nil {
-		return false
+		return false, err
 	}
-	out, err := exec.Command("docker", full...).Output()
-	return err == nil && strings.TrimSpace(string(out)) != ""
+	out, err := command("docker", full...).Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) != "", nil
 }
 
 // volumeAvailable is nil when the managed volume holding path is healthy, or when
-// path is on no managed volume.
+// path is on no managed volume. It never remounts anything (see volumeStatesNow).
 var volumeAvailable = func(path string) error {
-	vols, err := volumeStatuses()
+	vols, err := volumeStatesNow()
 	if err != nil {
 		return err
 	}
@@ -39,6 +47,73 @@ var volumeAvailable = func(path string) error {
 		return fmt.Errorf("%s: %s", vols[best].MountPoint, vols[best].State)
 	}
 	return nil
+}
+
+// ── Interruption ────────────────────────────────────────────────────────────
+// systemd stops a backup unit with SIGTERM (a shutdown, or the admin). The run must
+// still start the apps it stopped and record itself, so the signal only interrupts
+// the restic child and the run winds down.
+
+var errInterrupted = errors.New("interrupted")
+
+var interrupted atomic.Bool
+
+var (
+	childMu  sync.Mutex
+	children = map[*os.Process]bool{}
+)
+
+// trackChild lets an interruption reach a started child; call the result once it exited.
+func trackChild(p *os.Process) func() {
+	childMu.Lock()
+	children[p] = true
+	childMu.Unlock()
+	if interrupted.Load() {
+		_ = p.Signal(syscall.SIGTERM)
+	}
+	return func() {
+		childMu.Lock()
+		delete(children, p)
+		childMu.Unlock()
+	}
+}
+
+// interruptRun marks the run interrupted and passes sig on to every running child.
+func interruptRun(sig os.Signal) {
+	interrupted.Store(true)
+	childMu.Lock()
+	defer childMu.Unlock()
+	for p := range children {
+		_ = p.Signal(sig)
+	}
+}
+
+// catchInterrupts turns SIGTERM and SIGINT into interruptRun until stop is called.
+func catchInterrupts() (stop func()) {
+	ch := make(chan os.Signal, 2)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case sig := <-ch:
+				logger.Warn("backup command interrupted", "signal", sig.String())
+				interruptRun(sig)
+			case <-done:
+				return
+			}
+		}
+	}()
+	return func() { signal.Stop(ch); close(done) }
+}
+
+// asInterrupted reports a failed run of an interrupted command as interrupted: restic's
+// own message about the signal says less.
+func asInterrupted(err error) error {
+	if err != nil && interrupted.Load() && !errors.Is(err, errInterrupted) {
+		return errInterrupted
+	}
+	return err
 }
 
 // backupLocalPaths are the paths of a sync plan that live on this machine.
@@ -56,6 +131,7 @@ func boolPtr(b bool) *bool { return &b }
 
 // finishRun stamps the end time, appends the record and drops the progress file.
 func finishRun(kind, id string, rec runRecord, now func() time.Time, runErr error) error {
+	runErr = asInterrupted(runErr)
 	end := now()
 	rec.End = &end
 	if runErr != nil {
@@ -71,19 +147,29 @@ func finishRun(kind, id string, rec runRecord, now func() time.Time, runErr erro
 	return runErr
 }
 
-func runPlan(id string, now func() time.Time) error {
+// runPlan runs a backup plan. A paused plan only runs when started by hand (manual):
+// its timer is removed, so a timer run of one is a leftover and records nothing.
+func runPlan(id string, manual bool, now func() time.Time) error {
+	release, err := holdRunLock(id)
+	if err != nil {
+		// Another run of this plan is going on, and it writes its own record.
+		return err
+	}
+	defer release()
+	rec := runRecord{Start: now()}
 	cfg, _, err := loadBackupConfig()
 	if err != nil {
-		return err
+		return finishRun("runs", id, rec, now, err)
 	}
 	plan, ok := cfg.plan(id)
 	if !ok {
-		return fmt.Errorf("unknown backup plan")
+		return finishRun("runs", id, rec, now, fmt.Errorf("unknown backup plan"))
 	}
-	if !plan.Enabled {
-		return fmt.Errorf("backup plan is disabled")
+	if !plan.Enabled && !manual {
+		return fmt.Errorf("backup plan is paused")
 	}
-	rec := runRecord{Start: now()}
+	// Visible as running while the run waits for its repository.
+	_ = writeProgress(id, backupProgress{})
 	switch plan.Type {
 	case "versions":
 		repo, ok := cfg.repository(plan.Versions.Repository)
@@ -95,19 +181,19 @@ func runPlan(id string, now func() time.Time) error {
 		})
 		return finishRun("runs", id, rec, now, runErr)
 	case "sync":
-		runErr := withLock(id, lockWait, func() error {
-			_ = writeProgress(id, backupProgress{})
-			for _, p := range backupLocalPaths(*plan.Sync) {
-				if err := volumeAvailable(p); err != nil {
-					return err
-				}
+		// The run lock already keeps a second run of this plan out.
+		var runErr error
+		for _, p := range backupLocalPaths(*plan.Sync) {
+			if runErr = volumeAvailable(p); runErr != nil {
+				break
 			}
-			_, err := runRsync(syncTask(*plan.Sync))
-			return err
-		})
+		}
+		if runErr == nil {
+			_, runErr = runRsync(syncTask(*plan.Sync))
+		}
 		return finishRun("runs", id, rec, now, runErr)
 	}
-	return fmt.Errorf("invalid plan type")
+	return finishRun("runs", id, rec, now, fmt.Errorf("invalid plan type"))
 }
 
 func syncTask(o syncOptions) taskMsg {
@@ -119,12 +205,14 @@ func syncTask(o syncOptions) taskMsg {
 // runVersions takes the snapshot with the plan's apps stopped, and always starts
 // them again. It fills rec; the caller stamps the end and writes it.
 func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
-	_ = writeProgress(plan.ID, backupProgress{})
 	o := plan.Versions
 	for _, src := range o.Sources {
 		if err := volumeAvailable(src); err != nil {
 			return err
 		}
+	}
+	if err := repositoryReady(repo); err != nil {
+		return err
 	}
 	sec, err := readRepoSecrets(repo.ID)
 	if err != nil {
@@ -134,7 +222,13 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 	consistent := true
 	var stopped []string
 	for _, app := range o.StopApps {
-		if !composeRunning(app) {
+		running, err := composeRunning(app)
+		if err != nil {
+			consistent = false
+			rec.Warnings = append(rec.Warnings, fmt.Sprintf("could not tell whether %s is running: %v", app, err))
+			continue
+		}
+		if !running {
 			continue
 		}
 		// A failed stop can leave a multi-container app half stopped, so it is
@@ -171,9 +265,13 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 	if !consistent {
 		tag = "inconsistent"
 	}
-	sum, berr := resticBackup(repo, sec, o.Sources, o.Excludes, []string{"hsi", "plan:" + plan.ID, tag}, func(p backupProgress) {
-		_ = writeProgress(plan.ID, p)
-	})
+	var sum backupSummary
+	berr := errInterrupted
+	if !interrupted.Load() {
+		sum, berr = resticBackup(repo, sec, o.Sources, o.Excludes, []string{"hsi", "plan:" + plan.ID, tag}, func(p backupProgress) {
+			_ = writeProgress(plan.ID, p)
+		})
+	}
 	// The apps are back before the (possibly long) prune, whatever the snapshot did.
 	rerr := restart()
 	if berr == nil {
@@ -183,10 +281,13 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 		if sum.Partial && sum.Warning != "" {
 			rec.Warnings = append(rec.Warnings, sum.Warning)
 		}
-		if ferr := resticForget(repo, sec, plan.ID, o.Retention); ferr != nil {
+		if interrupted.Load() {
+			rec.Warnings = append(rec.Warnings, "old snapshots were not pruned: interrupted")
+		} else if ferr := resticForget(repo, sec, plan.ID, o.Retention); ferr != nil {
 			rec.Warnings = append(rec.Warnings, "old snapshots were not pruned: "+ferr.Error())
 		}
 	}
+	berr = asInterrupted(berr)
 	switch {
 	case berr != nil && rerr != nil:
 		return fmt.Errorf("%w; %v", berr, rerr)
@@ -207,6 +308,9 @@ func runCheck(repoID string, full bool, now func() time.Time) error {
 	}
 	rec := runRecord{Start: now()}
 	runErr := withLock(repoID, lockWait, func() error {
+		if err := repositoryReady(repo); err != nil {
+			return err
+		}
 		sec, err := readRepoSecrets(repoID)
 		if err != nil {
 			return err
@@ -220,23 +324,32 @@ func runCheck(repoID string, full bool, now func() time.Time) error {
 	return finishRun("checks", repoID, rec, now, runErr)
 }
 
+const backupUsage = "usage: backup run <planId> [--manual] | check <repoId> [--full] | restore <requestFile>"
+
 // runBackupCLI is `hsi-worker backup run|check|restore`, called by the hsi-backup@
 // units without NATS or the backend.
 func runBackupCLI(args []string) int {
+	stop := catchInterrupts()
+	defer stop()
 	fail := func(err error) int {
 		fmt.Fprintln(os.Stderr, err.Error())
 		logger.Warn("backup command failed", "error", err.Error())
 		return 1
 	}
 	if len(args) < 2 {
-		return fail(fmt.Errorf("usage: backup run <planId> | check <repoId> [--full] | restore <requestFile>"))
+		return fail(errors.New(backupUsage))
 	}
 	switch args[0] {
 	case "run":
-		if !backupIDPattern.MatchString(args[1]) {
+		fs := flag.NewFlagSet("run", flag.ContinueOnError)
+		manual := fs.Bool("manual", false, "run a paused plan too")
+		if err := fs.Parse(args[2:]); err != nil {
+			return fail(err)
+		}
+		if !backupIDPattern.MatchString(args[1]) || fs.NArg() > 0 {
 			return fail(fmt.Errorf("invalid plan id"))
 		}
-		if err := runPlan(args[1], time.Now); err != nil {
+		if err := runPlan(args[1], *manual, time.Now); err != nil {
 			return fail(err)
 		}
 		return 0
@@ -246,7 +359,7 @@ func runBackupCLI(args []string) int {
 		if err := fs.Parse(args[2:]); err != nil {
 			return fail(err)
 		}
-		if !backupIDPattern.MatchString(args[1]) {
+		if !backupIDPattern.MatchString(args[1]) || fs.NArg() > 0 {
 			return fail(fmt.Errorf("invalid repository id"))
 		}
 		if err := runCheck(args[1], *full, time.Now); err != nil {
@@ -254,6 +367,9 @@ func runBackupCLI(args []string) int {
 		}
 		return 0
 	case "restore":
+		if len(args) != 2 {
+			return fail(errors.New(backupUsage))
+		}
 		if err := runRestoreRequest(args[1]); err != nil {
 			return fail(err)
 		}

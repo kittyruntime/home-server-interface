@@ -284,6 +284,33 @@ type volumeStatus struct {
 	GuardError string `json:"guardError,omitempty"`
 }
 
+// findmntAt is findmnt's view of the mount point mp; tests swap it.
+var findmntAt = func(mp string) string {
+	o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
+	return string(o)
+}
+
+// blkidPresent tells whether a filesystem with this UUID is attached; tests swap it.
+var blkidPresent = func(uuid string) bool {
+	dev, err := command("blkid", "-U", uuid).Output()
+	return err == nil && strings.TrimSpace(string(dev)) != ""
+}
+
+// volumeStatesNow reports every HSI volume as findmnt sees it, and nothing else: it
+// never remounts a volume and writes no state, so a backup command can use it next to
+// the worker's own volume guard. A volume that is not mounted is "missing".
+func volumeStatesNow() ([]volumeStatus, error) {
+	conf, err := os.ReadFile(fstabPath)
+	if err != nil {
+		return nil, err
+	}
+	out := []volumeStatus{}
+	for _, v := range hsiVolumes(string(conf)) {
+		out = append(out, volumeStatus{MountPoint: v.MountPoint, UUID: v.UUID, State: volumeStateFor(v.UUID, v.Options, findmntAt(v.MountPoint))})
+	}
+	return out, nil
+}
+
 // volumeStatuses reports every HSI volume, remounting one whose filesystem is
 // present again (same UUID, so it is the right one) through its fstab entry.
 func volumeStatuses() ([]volumeStatus, error) {
@@ -301,14 +328,10 @@ func volumeStatuses() ([]volumeStatus, error) {
 		volumeGuardMu.Unlock()
 	}()
 	for _, v := range hsiVolumes(string(conf)) {
-		findmnt := func() string {
-			o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", v.MountPoint).Output()
-			return string(o)
-		}
+		findmnt := func() string { return findmntAt(v.MountPoint) }
 		state := volumeStateFor(v.UUID, v.Options, findmnt())
 		if state == "missing" {
-			dev, err := command("blkid", "-U", v.UUID).Output()
-			present := err == nil && strings.TrimSpace(string(dev)) != ""
+			present := blkidPresent(v.UUID)
 			next, remount, seenNext := missingVolumeAction(present, absent[v.MountPoint])
 			state = next
 			if remount {

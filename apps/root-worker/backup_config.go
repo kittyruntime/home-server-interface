@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -109,7 +110,7 @@ type repoSecrets struct {
 var (
 	backupIDPattern       = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	backupAppPattern      = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
-	backupEndpointPattern = regexp.MustCompile(`^[A-Za-z0-9.-]+(:[0-9]{1,5})?$`)
+	backupEndpointPattern = regexp.MustCompile(`^(https?://)?[A-Za-z0-9.-]+(:[0-9]{1,5})?$`)
 	backupBucketPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{2,62}$`)
 	backupSubsetPattern   = regexp.MustCompile(`^([1-9][0-9]?|100)%$`)
 )
@@ -131,13 +132,26 @@ func loadBackupConfig() (backupConfig, bool, error) {
 	return c, true, nil
 }
 
-// writeBackupFile always applies mode, unlike writeFileAtomic which keeps an existing file mode.
+// writeBackupFile always applies mode, unlike writeFileAtomic which keeps an existing file
+// mode. The data reaches the disk before the rename, so a power cut leaves the old file
+// or the new one, never an empty one.
 func writeBackupFile(path string, data []byte, mode os.FileMode) error {
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, mode); err != nil {
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
 		return err
 	}
-	if err := os.Chmod(tmp, mode); err != nil {
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Chmod(mode)
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
 		os.Remove(tmp)
 		return err
 	}
@@ -377,7 +391,7 @@ func validateRepository(r repositoryCfg) error {
 			return err
 		}
 	case "s3":
-		if !backupEndpointPattern.MatchString(r.Endpoint) || !backupBucketPattern.MatchString(r.Bucket) {
+		if !validS3Endpoint(r.Endpoint) || !backupBucketPattern.MatchString(r.Bucket) {
 			return fmt.Errorf("invalid S3 endpoint or bucket")
 		}
 		if strings.HasPrefix(r.Path, "/") || strings.ContainsAny(r.Path, "\x00\r\n") {
@@ -397,6 +411,21 @@ func validateRepository(r repositoryCfg) error {
 		return fmt.Errorf("invalid repository type")
 	}
 	return validateCheck(r.Check)
+}
+
+// validS3Endpoint is host[:port], with http:// or https:// in front or not.
+func validS3Endpoint(e string) bool {
+	if !backupEndpointPattern.MatchString(e) {
+		return false
+	}
+	if _, rest, ok := strings.Cut(e, "://"); ok {
+		e = rest
+	}
+	if _, port, ok := strings.Cut(e, ":"); ok {
+		n, err := strconv.Atoi(port)
+		return err == nil && inRange(n, 1, 65535)
+	}
+	return true
 }
 
 func validateCheck(k checkSchedule) error {
@@ -472,6 +501,10 @@ func writeRepoSecrets(id string, s repoSecrets) error {
 		return err
 	}
 	if err := os.MkdirAll(backupSecretsDir(), 0o700); err != nil {
+		return err
+	}
+	// MkdirAll leaves an existing directory as it is.
+	if err := os.Chmod(backupSecretsDir(), 0o700); err != nil {
 		return err
 	}
 	return writeBackupFile(path, raw, 0o600)

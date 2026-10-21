@@ -47,7 +47,7 @@ func backupStatus() map[string]any {
 		if planTimerUnit(p) != "" {
 			st.NextRun = nextElapse(planTimerName(p.ID))
 		}
-		if prog, ok := readProgress(p.ID); ok {
+		if prog, ok := liveProgress(p.ID); ok {
 			st.Progress = prog
 		}
 		plans = append(plans, st)
@@ -64,10 +64,11 @@ func backupStatus() map[string]any {
 		repos = append(repos, st)
 	}
 	return map[string]any{
-		"configExists": exists,
-		"engine":       map[string]any{"installed": installed, "version": version},
-		"plans":        plans,
-		"repositories": repos,
+		"configExists":     exists,
+		"engine":           map[string]any{"installed": installed, "version": version},
+		"plans":            plans,
+		"repositories":     repos,
+		"migrationSkipped": migrationSkipped(),
 	}
 }
 
@@ -118,6 +119,9 @@ func backupSnapshots(repository string) ([]snapshotInfo, *fsError) {
 	if fe != nil {
 		return nil, fe
 	}
+	if err := repositoryReady(repo); err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
+	}
 	list, err := resticSnapshots(repo, sec)
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: err.Error()}
@@ -136,6 +140,7 @@ func backupLs(repository, snapshotID, path string) ([]lsEntry, *fsError) {
 		return nil, invalidInput("Invalid snapshot")
 	}
 	clean, err := cleanBackupPath(path)
+	// The snapshot root is browsable, though it is never a backup source.
 	if path == "/" {
 		clean, err = "/", nil
 	}
@@ -145,6 +150,9 @@ func backupLs(repository, snapshotID, path string) ([]lsEntry, *fsError) {
 	repo, sec, fe := repoAndSecrets(repository)
 	if fe != nil {
 		return nil, fe
+	}
+	if err := repositoryReady(repo); err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
 	entries, err := resticLs(repo, sec, snapshotID, clean)
 	if err != nil {
@@ -171,14 +179,28 @@ func backupRunNow(id string) *fsError {
 	if _, ok := cfg.plan(id); !ok {
 		return &fsError{Code: "ENOENT", Message: "This backup plan does not exist"}
 	}
-	if _, running := readProgress(id); running {
+	if runActive(id) {
 		return &fsError{Code: "EBUSY", Message: "This backup plan is running"}
 	}
-	if out, err := systemctl("start", "--no-block", unitPrefix()+"-backup@"+id+".service"); err != nil {
+	// A transient unit rather than the plan's own: only a run started by hand may run
+	// a paused plan, and the timer's unit cannot tell the two apart.
+	exe, err := os.Executable()
+	if err != nil {
+		return &fsError{Code: "ERR", Message: err.Error()}
+	}
+	argv := []string{"systemd-run", "--unit", unitPrefix() + "-backup-run-" + id, "--collect",
+		"-p", "Nice=10", "-p", "IOSchedulingClass=idle", "-p", "TimeoutStopSec=" + backupStopTimeout}
+	argv = append(argv, hsiEnvArgs(os.Environ())...)
+	argv = append(argv, exe, "backup", "run", id, "--manual")
+	if out, err := runArgv(argv); err != nil {
 		return &fsError{Code: "ERR", Message: cmdErrMessage(out, err)}
 	}
 	return nil
 }
+
+// backupStopTimeout leaves an interrupted run the time to start its apps again, as the
+// TimeoutStopSec= of the backup units does.
+const backupStopTimeout = "120s"
 
 func backupCheckNow(id string, full bool) *fsError {
 	if !backupIDPattern.MatchString(id) {
@@ -201,7 +223,8 @@ func backupCheckNow(id string, full bool) *fsError {
 	if err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}
 	}
-	argv := []string{"systemd-run", "--unit", unitPrefix() + "-backup-check-full-" + id, "--collect"}
+	argv := []string{"systemd-run", "--unit", unitPrefix() + "-backup-check-full-" + id, "--collect",
+		"-p", "Nice=10", "-p", "IOSchedulingClass=idle", "-p", "TimeoutStopSec=" + backupStopTimeout}
 	argv = append(argv, hsiEnvArgs(os.Environ())...)
 	argv = append(argv, exe, "backup", "check", id, "--full")
 	if out, err := runArgv(argv); err != nil {
@@ -295,13 +318,69 @@ func migrateRsyncPlans(rows []map[string]any) (int, []map[string]string, error) 
 	if len(cfg.Plans) == 0 && len(skipped) == 0 {
 		return 0, skipped, nil
 	}
-	if err := saveBackupConfig(cfg); err != nil {
-		return 0, skipped, err
-	}
+	// backup.json marks the migration done, so it is written last: a failed timer
+	// leaves no configuration and the backend retries the whole migration.
 	if err := writeAllTimers(cfg); err != nil {
 		return 0, skipped, err
 	}
+	if err := saveMigrationSkipped(skipped); err != nil {
+		return 0, skipped, err
+	}
+	if err := saveBackupConfig(cfg); err != nil {
+		return 0, skipped, err
+	}
 	return len(cfg.Plans), skipped, nil
+}
+
+func migrationSkippedPath() string {
+	return filepath.Join(backupStateDir(), "migration-skipped.json")
+}
+
+// saveMigrationSkipped keeps the plans the migration could not convert, shown until
+// the admin dismisses them.
+func saveMigrationSkipped(skipped []map[string]string) error {
+	if len(skipped) == 0 {
+		return dismissMigrationSkipped()
+	}
+	raw, err := json.Marshal(skipped)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(backupStateDir(), 0o755); err != nil {
+		return err
+	}
+	return writeBackupFile(migrationSkippedPath(), raw, 0o644)
+}
+
+func migrationSkipped() []map[string]string {
+	out := []map[string]string{}
+	raw, err := os.ReadFile(migrationSkippedPath())
+	if err == nil {
+		_ = json.Unmarshal(raw, &out)
+	}
+	return out
+}
+
+func dismissMigrationSkipped() error {
+	if err := os.Remove(migrationSkippedPath()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+// syncBackupTimers runs once at worker start: the host's backup timers follow
+// backup.json, whatever an earlier failure left.
+func syncBackupTimers() {
+	cfg, exists, err := loadBackupConfig()
+	if err != nil || !exists {
+		if err != nil {
+			logger.Warn("backup timers not checked", "error", err.Error())
+		}
+		return
+	}
+	if err := writeAllTimers(cfg); err != nil {
+		logger.Warn("backup timers not written", "error", err.Error())
+	}
 }
 
 // staleTimers lists the backup timers on the host that are not in keep.
@@ -322,7 +401,8 @@ func staleTimers(keep map[string]string) []string {
 }
 
 // writeAllTimers writes the timer of every plan and repository of cfg, removes the
-// other backup timers of the host, reloads systemd once and enables each timer.
+// other backup timers of the host, reloads systemd once and enables each timer. The new
+// timers are written before any is removed, and an unchanged host only gets enabled.
 func writeAllTimers(cfg backupConfig) error {
 	timers := map[string]string{}
 	for _, p := range cfg.Plans {
@@ -347,6 +427,17 @@ func writeAllTimers(cfg backupConfig) error {
 	if err := os.MkdirAll(systemdDir(), 0o755); err != nil {
 		return err
 	}
+	changed := len(stale) > 0
+	for _, name := range names {
+		path := filepath.Join(systemdDir(), name)
+		if cur, err := os.ReadFile(path); err == nil && string(cur) == timers[name] {
+			continue
+		}
+		changed = true
+		if err := writeBackupFile(path, []byte(timers[name]), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", name, err)
+		}
+	}
 	// A timer of a plan or repository that is gone, disabled or manual must stop.
 	for _, name := range stale {
 		_, _ = systemctl("disable", "--now", name)
@@ -354,13 +445,10 @@ func writeAllTimers(cfg backupConfig) error {
 			return err
 		}
 	}
-	for _, name := range names {
-		if err := writeBackupFile(filepath.Join(systemdDir(), name), []byte(timers[name]), 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", name, err)
+	if changed {
+		if out, err := systemctl("daemon-reload"); err != nil {
+			return fmt.Errorf("systemctl daemon-reload: %s", cmdErrMessage(out, err))
 		}
-	}
-	if out, err := systemctl("daemon-reload"); err != nil {
-		return fmt.Errorf("systemctl daemon-reload: %s", cmdErrMessage(out, err))
 	}
 	for _, name := range names {
 		if out, err := systemctl("enable", "--now", name); err != nil {
@@ -476,12 +564,27 @@ func handleBackupPassword(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"password": sec.Password})
 }
 
-// backupRestoreStatus reports a restore by its run id: its progress while it runs,
-// then its record, looked up in the restore logs of every repository.
+// restoreQueuedFor is how long a restore request waits for its unit to take the run
+// lock; an older request whose run holds no lock was left by a run that died.
+const restoreQueuedFor = 2 * time.Minute
+
+// backupRestoreStatus reports a restore by its run id: its progress while it is queued
+// or runs, then its record, looked up in the restore logs of every repository. A run
+// that is none of these is unknown: both are null.
 func backupRestoreStatus(runID string) map[string]any {
 	out := map[string]any{"progress": nil, "result": nil}
-	if p, ok := readProgress(runID); ok {
+	if runActive(runID) {
+		p, ok := readProgress(runID)
+		if !ok {
+			p = &backupProgress{}
+		}
 		out["progress"] = p
+		return out
+	}
+	clearProgress(runID)
+	request := filepath.Join(backupStateDir(), "restores", runID+".json")
+	if st, err := os.Stat(request); err == nil && time.Since(st.ModTime()) < restoreQueuedFor {
+		out["progress"] = &backupProgress{}
 		return out
 	}
 	logs, _ := filepath.Glob(filepath.Join(backupStateDir(), "restores", "*.jsonl"))
@@ -525,4 +628,12 @@ func handleBackupMigrate(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	replyOk(nc, msg.Reply, map[string]any{"migrated": n, "skipped": skipped})
+}
+
+func handleBackupMigrationDismiss(nc *nats.Conn, msg *nats.Msg) {
+	if err := dismissMigrationSkipped(); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }

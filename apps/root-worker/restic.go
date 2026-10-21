@@ -23,6 +23,24 @@ func minimalEnv() []string {
 
 const resticStderrTail = 4000
 
+// resticLockWait is how long a command waits for a lock held in the repository itself
+// (by another host or a stale process), next to our own repository lock.
+const resticLockWait = "10m"
+
+// tailBuffer keeps the last max bytes written to it.
+type tailBuffer struct {
+	max int
+	buf []byte
+}
+
+func (t *tailBuffer) Write(p []byte) (int, error) {
+	t.buf = append(t.buf, p...)
+	if len(t.buf) > t.max {
+		t.buf = append(t.buf[:0], t.buf[len(t.buf)-t.max:]...)
+	}
+	return len(p), nil
+}
+
 // runRestic runs restic with env and args; onLine receives each stdout line (nil to ignore).
 // It returns the exit code (0 ok), the stderr tail and an error only when restic could not start.
 var runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
@@ -36,8 +54,8 @@ func execRestic(env, args []string, extra []*os.File, onLine func([]byte)) (int,
 	cmd := exec.Command(resticPath(), args...)
 	cmd.Env = append(minimalEnv(), env...)
 	cmd.ExtraFiles = extra
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	stderr := &tailBuffer{max: resticStderrTail}
+	cmd.Stderr = stderr
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return -1, "", err
@@ -45,6 +63,8 @@ func execRestic(env, args []string, extra []*os.File, onLine func([]byte)) (int,
 	if err := cmd.Start(); err != nil {
 		return -1, "", err
 	}
+	untrack := trackChild(cmd.Process)
+	defer untrack()
 	// No line length limit: "snapshots --json" prints its whole array on one line.
 	rd := bufio.NewReader(out)
 	for {
@@ -64,11 +84,7 @@ func execRestic(env, args []string, extra []*os.File, onLine func([]byte)) (int,
 		}
 		code = ee.ExitCode()
 	}
-	tail := stderr.Bytes()
-	if len(tail) > resticStderrTail {
-		tail = tail[len(tail)-resticStderrTail:]
-	}
-	return code, string(tail), nil
+	return code, string(stderr.buf), nil
 }
 
 func resticVersion() (string, bool) {
@@ -94,7 +110,7 @@ func resticRepository(r repositoryCfg) string {
 	case "sftp":
 		return fmt.Sprintf("sftp://%s@%s:%d/%s", r.User, r.Host, r.Port, r.Path)
 	case "s3":
-		repo := "s3:https://" + r.Endpoint + "/" + r.Bucket
+		repo := "s3:" + s3EndpointURL(r.Endpoint) + "/" + r.Bucket
 		if r.Path != "" {
 			repo += "/" + r.Path
 		}
@@ -103,6 +119,15 @@ func resticRepository(r repositoryCfg) string {
 		return "rest:" + r.URL
 	}
 	return r.Path
+}
+
+// s3EndpointURL is the endpoint with its scheme: https unless http:// is written out,
+// for a server on the local network without TLS.
+func s3EndpointURL(endpoint string) string {
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		return endpoint
+	}
+	return "https://" + endpoint
 }
 
 // resticEnv carries the repository and every secret, they never go in argv.
@@ -240,7 +265,8 @@ func (l resticLine) progress() backupProgress {
 const maxWarningItems = 5
 
 func resticBackup(r repositoryCfg, s repoSecrets, sources, excludes, tags []string, onProgress func(backupProgress)) (backupSummary, error) {
-	own := []string{"--json", "--retry-lock", "10m"}
+	// A fixed host keeps the parent snapshot after the machine is renamed.
+	own := []string{"--json", "--retry-lock", resticLockWait, "--host", resticHost}
 	for _, t := range tags {
 		own = append(own, "--tag", t)
 	}
@@ -301,8 +327,15 @@ func resticBackup(r repositoryCfg, s repoSecrets, sources, excludes, tags []stri
 	return sum, nil
 }
 
+// resticHost is the host name of every snapshot HSI takes.
+const resticHost = "hsi"
+
+// resticForget applies the retention to the snapshots of one plan, as a single group:
+// grouping by host or paths (restic's default) would keep the snapshots taken before a
+// rename or a change of sources forever, and grouping by tags would split consistent
+// and inconsistent ones.
 func resticForget(r repositoryCfg, s repoSecrets, planID string, keep retentionPolicy) error {
-	own := []string{"--prune", "--retry-lock", "10m", "--tag", "plan:" + planID}
+	own := []string{"--prune", "--retry-lock", resticLockWait, "--tag", "plan:" + planID, "--group-by", ""}
 	for _, k := range []struct {
 		flag string
 		n    int
@@ -322,19 +355,22 @@ type snapshot struct {
 	Tags    []string  `json:"tags"`
 }
 
+// resticSnapshotJSON is a snapshot as "restic snapshots --json" prints it.
+type resticSnapshotJSON struct {
+	ID      string    `json:"id"`
+	ShortID string    `json:"short_id"`
+	Time    time.Time `json:"time"`
+	Paths   []string  `json:"paths"`
+	Tags    []string  `json:"tags"`
+}
+
 func resticSnapshots(r repositoryCfg, s repoSecrets) ([]snapshot, error) {
 	var raw []byte
 	code, stderr, err := resticCmd(r, s, []string{"snapshots"}, []string{"--json"}, func(l []byte) { raw = append(raw, l...) })
 	if err := resticResult("snapshots", code, stderr, err); err != nil {
 		return nil, err
 	}
-	var list []struct {
-		ID      string    `json:"id"`
-		ShortID string    `json:"short_id"`
-		Time    time.Time `json:"time"`
-		Paths   []string  `json:"paths"`
-		Tags    []string  `json:"tags"`
-	}
+	var list []resticSnapshotJSON
 	if len(bytes.TrimSpace(raw)) > 0 {
 		if err := json.Unmarshal(raw, &list); err != nil {
 			return nil, fmt.Errorf("restic snapshots: %w", err)
@@ -357,6 +393,10 @@ type lsEntry struct {
 
 // resticLs lists the direct children of dir in a snapshot.
 func resticLs(r repositoryCfg, s repoSecrets, snapshotID, dir string) ([]lsEntry, error) {
+	if !filepath.IsAbs(dir) {
+		// filepath.Clean("") is ".", which would list nothing and look empty.
+		return nil, fmt.Errorf("restic ls: %q is not an absolute path", dir)
+	}
 	dir = filepath.Clean(dir)
 	entries := []lsEntry{}
 	code, stderr, err := resticCmd(r, s, []string{"ls", snapshotID}, []string{"--json", dir}, func(b []byte) {
@@ -385,6 +425,10 @@ type restoreSummary struct {
 	Warnings      []string `json:"warnings"`
 }
 
+// resticLiteral makes a path match itself only as restic's --include pattern: restic
+// 0.19 reads *, ?, [ and ] as glob characters and a backslash as their escape.
+var resticLiteral = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`, `[`, `\[`, `]`, `\]`).Replace
+
 // resticFdTarget is the restore target when the directory is held by file descriptor: it
 // is handed to restic as fd 3. The trailing "/." keeps restic from lstat-ing the magic
 // link itself, which it would try to remove as a stale item.
@@ -403,7 +447,7 @@ func resticRestoreAt(r repositoryCfg, s repoSecrets, snapshotID, include, target
 	if targetDir != nil {
 		target, extra = resticFdTarget, []*os.File{targetDir}
 	}
-	own := []string{"--json", "--retry-lock", "10m", "--target", target, "--include", include}
+	own := []string{"--json", "--retry-lock", resticLockWait, "--target", target, "--include", resticLiteral(include)}
 	if dryRun {
 		own = append(own, "--dry-run")
 	}
@@ -433,7 +477,7 @@ func resticRestoreAt(r repositoryCfg, s repoSecrets, snapshotID, include, target
 }
 
 func resticCheck(r repositoryCfg, s repoSecrets, subset string) error {
-	own := []string{"--retry-lock", "10m"}
+	own := []string{"--retry-lock", resticLockWait}
 	if subset == "" {
 		own = append(own, "--read-data")
 	} else {

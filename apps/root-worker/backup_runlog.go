@@ -28,39 +28,92 @@ type runRecord struct {
 
 var errBackupBusy = errors.New("the repository is busy with another backup, check or restore")
 
+var errRunActive = errors.New("this run is already in progress")
+
 var lockWait = 10 * time.Minute
 
 func backupLocksDir() string {
 	return envOr("HSI_BACKUP_LOCKS", "/run/hsi/backup")
 }
 
-// withLock takes an exclusive flock on <locks>/<key>.lock, waiting up to wait.
-func withLock(key string, wait time.Duration, fn func() error) error {
+// tryLock takes an exclusive flock on <locks>/<name> within wait. It returns the open
+// file (closing it releases the lock), errWait when the wait ends first, or
+// errInterrupted when the run is interrupted meanwhile.
+func tryLock(name string, wait time.Duration, errWait error) (*os.File, error) {
 	if err := os.MkdirAll(backupLocksDir(), 0o700); err != nil {
-		return err
+		return nil, err
 	}
-	f, err := os.OpenFile(filepath.Join(backupLocksDir(), key+".lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	f, err := os.OpenFile(filepath.Join(backupLocksDir(), name), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer f.Close()
 	deadline := time.Now().Add(wait)
 	for {
 		err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 		if err == nil {
-			break
+			return f, nil
 		}
-		if err != syscall.EWOULDBLOCK {
-			return err
+		if err != syscall.EWOULDBLOCK && err != syscall.EINTR {
+			f.Close()
+			return nil, err
+		}
+		if interrupted.Load() {
+			f.Close()
+			return nil, errInterrupted
 		}
 		if !time.Now().Before(deadline) {
-			return errBackupBusy
+			f.Close()
+			return nil, errWait
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+}
+
+// withLock runs fn holding the repository lock <locks>/<key>.lock, waiting up to wait.
+func withLock(key string, wait time.Duration, fn func() error) error {
+	f, err := tryLock(key+".lock", wait, errBackupBusy)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	return fn()
 }
+
+// runLockWait covers a status probe that holds the run lock for an instant.
+var runLockWait = 5 * time.Second
+
+// holdRunLock marks the run id (a plan, repository or restore run) as in progress for as
+// long as the process holds it: from before the run waits for its repository until its
+// record is written. A lock dies with its process, so a crash or a reboot never leaves
+// a run "running".
+func holdRunLock(id string) (release func(), err error) {
+	f, err := tryLock(id+".run", runLockWait, errRunActive)
+	if err != nil {
+		return nil, err
+	}
+	return func() { f.Close() }, nil
+}
+
+// lockHeld tells whether a process holds <locks>/<name>, without waiting.
+func lockHeld(name string) bool {
+	f, err := os.Open(filepath.Join(backupLocksDir(), name))
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err == nil {
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		return false
+	}
+	return err == syscall.EWOULDBLOCK
+}
+
+// runActive tells whether the run id is in progress.
+func runActive(id string) bool { return lockHeld(id + ".run") }
+
+// repositoryBusy tells whether a backup, check or restore holds the repository.
+func repositoryBusy(id string) bool { return lockHeld(id + ".lock") }
 
 func runLogPath(kind, id string) string {
 	return filepath.Join(backupStateDir(), kind, id+".jsonl")
@@ -136,6 +189,20 @@ func readProgress(id string) (*backupProgress, bool) {
 		return nil, false
 	}
 	return &p, true
+}
+
+// liveProgress is the progress of a run in progress. The progress file of a run that
+// ended without clearing it (killed, or the host went down) is removed.
+func liveProgress(id string) (*backupProgress, bool) {
+	p, ok := readProgress(id)
+	if !ok {
+		return nil, false
+	}
+	if !runActive(id) {
+		clearProgress(id)
+		return nil, false
+	}
+	return p, true
 }
 
 func clearProgress(id string) {
