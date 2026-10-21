@@ -581,7 +581,8 @@ func TestRepositoryLocationChangeIsProbed(t *testing.T) {
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "keep"})
 	calls := fakeRestic(t, nil, map[string]int{"cat": 1})
 	r := sampleConfig().Repositories[0]
-	r.Path = "/srv/other/restic"
+	r.Path = filepath.Join(t.TempDir(), "other")
+	_ = os.Mkdir(r.Path, 0o700)
 	_, ferr := buildPlan("backup.repository.save", mustJSON(map[string]any{"repository": r, "secrets": map[string]string{}}))
 	if ferr == nil || ferr.Code != "EUNREACHABLE" {
 		t.Fatalf("%+v", ferr)

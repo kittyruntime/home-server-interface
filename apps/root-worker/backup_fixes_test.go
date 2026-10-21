@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -18,15 +19,15 @@ func TestInterruptedRunRestartsAppsAndRecordsInterrupted(t *testing.T) {
 	f := &appsFake{running: map[string]bool{"vaultwarden": true}}
 	fakeApps(t, f)
 	calls := fakeRestic(t, nil, nil)
-	inner := runRestic
-	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+	inner := runResticFiles
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 		if strings.Contains(strings.Join(args, " "), "backup") {
 			// systemd stops the unit while restic runs; restic dies of the signal.
 			interruptRun(syscall.SIGTERM)
-			_, _, _ = inner(env, args, onLine)
+			_, _, _ = inner(env, args, extra, onLine)
 			return -1, "signal: terminated", nil
 		}
-		return inner(env, args, onLine)
+		return inner(env, args, extra, onLine)
 	}
 	if err := runPlan(planA, false, time.Now); !errors.Is(err, errInterrupted) {
 		t.Fatalf("got %v", err)
@@ -139,13 +140,13 @@ func TestRunShowsProgressWhileItHoldsItsLock(t *testing.T) {
 	_ = saveBackupConfig(sampleConfig())
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
 	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	inner := runRestic
+	inner := runResticFiles
 	var during *backupProgress
-	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 		if strings.Contains(strings.Join(args, " "), "backup") {
 			during = backupStatus()["plans"].([]planStatus)[0].Progress
 		}
-		return inner(env, args, onLine)
+		return inner(env, args, extra, onLine)
 	}
 	if err := runPlan(planA, false, time.Now); err != nil {
 		t.Fatal(err)
@@ -181,7 +182,7 @@ func TestRestoreIncludeEscapesGlobCharacters(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","total_files":1}`}}, nil)
 	path := `/srv/data/Movie [1080p]/a*b?\c.mkv`
-	if _, err := resticRestore(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s1", path, "/t", true, nil); err != nil {
+	if _, err := resticRestore(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "s1", path, "/t", true, nil); err != nil {
 		t.Fatal(err)
 	}
 	args := (*calls)[0].args
@@ -441,5 +442,110 @@ func TestStatusReportsMigrationSkippedUntilDismissed(t *testing.T) {
 	}
 	if got := backupStatus()["migrationSkipped"].([]map[string]string); len(got) != 0 {
 		t.Fatalf("%v", got)
+	}
+}
+
+// ── Critical: restic gets a local repository by descriptor ──────────────────
+
+func TestLocalRepositoryIsHeldAcrossARename(t *testing.T) {
+	setupVersionsPlan(t)
+	outside := t.TempDir()
+	calls := fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
+	inner := runResticFiles
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
+		if strings.Contains(strings.Join(args, " "), "backup") {
+			// A share member swaps the folder for a symlink after it was checked.
+			_ = os.Rename(testRepoPath, testRepoPath+".moved")
+			_ = os.Symlink(outside, testRepoPath)
+			// restic writes through the path it was given: in this process, fd 3 is the held file.
+			repo := envValue(env, "RESTIC_REPOSITORY")
+			if len(extra) > 0 {
+				repo = strings.Replace(repo, "/proc/self/fd/3", "/proc/self/fd/"+strconv.Itoa(int(extra[0].Fd())), 1)
+			}
+			_ = os.WriteFile(filepath.Join(repo, "config"), []byte("x"), 0o600)
+		}
+		return inner(env, args, extra, onLine)
+	}
+	if err := runPlan(planA, false, time.Now); err != nil {
+		t.Fatal(err)
+	}
+	if got := envValue((*calls)[0].env, "RESTIC_REPOSITORY"); got != "/proc/self/fd/3/." {
+		t.Fatalf("repository %q", got)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("redirected through the symlink: %v", ents)
+	}
+	if !fileExists(filepath.Join(testRepoPath+".moved", "config")) {
+		t.Fatal("the write did not land in the held folder")
+	}
+}
+
+func TestHeldRepositoryFdNumbering(t *testing.T) {
+	useBackupDirs(t)
+	calls := fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","total_files":1}`}}, nil)
+	r, sec := repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}
+	_, _ = resticSnapshots(r, sec)
+	target := t.TempDir()
+	dir, err := openDirNoFollow(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dir.Close()
+	_, _ = resticRestoreAt(r, sec, "s1", "/srv/a", "", dir, false, nil)
+	alone, restore := (*calls)[0], (*calls)[1]
+	if envValue(alone.env, "RESTIC_REPOSITORY") != "/proc/self/fd/3/." || len(alone.extra) != 1 || alone.extra[0] != testRepoPath {
+		t.Fatalf("alone: %v %v", alone.env, alone.extra)
+	}
+	if envValue(restore.env, "RESTIC_REPOSITORY") != "/proc/self/fd/4/." || len(restore.extra) != 2 || restore.extra[0] != target || restore.extra[1] != testRepoPath {
+		t.Fatalf("restore: %v %v", restore.env, restore.extra)
+	}
+	if strings.Count(strings.Join(restore.env, " "), "RESTIC_REPOSITORY=") != 1 {
+		t.Fatalf("two repositories in %v", restore.env)
+	}
+	for i, a := range restore.args {
+		if a == "--target" && restore.args[i+1] != "/proc/self/fd/3/." {
+			t.Fatalf("target %q", restore.args[i+1])
+		}
+	}
+	// Other types keep their location.
+	_, _ = resticSnapshots(repositoryCfg{Type: "rest", URL: "https://nas2.lan/"}, sec)
+	if c := (*calls)[2]; envValue(c.env, "RESTIC_REPOSITORY") != "rest:https://nas2.lan/" || len(c.extra) != 0 {
+		t.Fatalf("rest: %v %v", c.env, c.extra)
+	}
+}
+
+func TestResticRefusesASymlinkedRepository(t *testing.T) {
+	useBackupDirs(t)
+	calls := fakeRestic(t, nil, nil)
+	link := filepath.Join(t.TempDir(), "link")
+	_ = os.Symlink(testRepoPath, link)
+	parentLink := filepath.Join(t.TempDir(), "parent")
+	_ = os.Symlink(filepath.Dir(testRepoPath), parentLink)
+	for _, p := range []string{link, filepath.Join(parentLink, filepath.Base(testRepoPath))} {
+		r := repositoryCfg{Type: "local", Path: p}
+		if _, err := resticSnapshots(r, repoSecrets{Password: "p"}); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+			t.Errorf("%s: %v", p, err)
+		}
+		if err := resticInit(r, repoSecrets{Password: "p"}); err == nil {
+			t.Errorf("%s: init accepted", p)
+		}
+	}
+	if len(*calls) != 0 {
+		t.Fatalf("restic ran: %v", *calls)
+	}
+}
+
+func TestInitCreatesTheMissingFolderItHands(t *testing.T) {
+	useBackupDirs(t)
+	calls := fakeRestic(t, nil, nil)
+	path := filepath.Join(t.TempDir(), "new")
+	if err := resticInit(repositoryCfg{Type: "local", Path: path}, repoSecrets{Password: "p"}); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := os.Lstat(path); err != nil || st.Mode().Perm() != 0o700 || (*calls)[0].extra[0] != path {
+		t.Fatalf("%v %v %v", st, err, *calls)
+	}
+	if state, _ := resticProbe(repositoryCfg{Type: "local", Path: filepath.Join(t.TempDir(), "absent")}, repoSecrets{Password: "p"}); state != probeEmpty || len(*calls) != 1 {
+		t.Fatalf("probe of a missing folder: %s %v", state, *calls)
 	}
 }

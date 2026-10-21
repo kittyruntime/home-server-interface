@@ -25,11 +25,13 @@ func fakeRestic(t *testing.T, out map[string][]string, codes map[string]int) *[]
 	fake := func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 		call := resticCall{env: env, args: args}
 		dir := ""
-		for _, f := range extra {
+		for i, f := range extra {
 			link, _ := os.Readlink("/proc/self/fd/" + strconv.Itoa(int(f.Fd())))
 			call.extra = append(call.extra, link)
 			// The fake runs in this process: fd 3 of the child is this file.
-			dir = "/proc/self/fd/" + strconv.Itoa(int(f.Fd()))
+			if i == 0 {
+				dir = "/proc/self/fd/" + strconv.Itoa(int(f.Fd()))
+			}
 		}
 		*calls = append(*calls, call)
 		sub := ""
@@ -125,7 +127,7 @@ func TestResticSecretsNeverInArgs(t *testing.T) {
 
 func TestProbeStates(t *testing.T) {
 	useBackupDirs(t)
-	r := repositoryCfg{Type: "local", Path: "/srv/x"}
+	r := repositoryCfg{Type: "local", Path: testRepoPath}
 	for code, want := range map[int]probeState{0: "repository", 10: "empty", 12: "wrongPassword", 1: "unreachable"} {
 		fakeRestic(t, nil, map[string]int{"cat": code})
 		if got, _ := resticProbe(r, repoSecrets{Password: "p"}); got != want {
@@ -141,7 +143,7 @@ func TestBackupParsesSummaryAndProgress(t *testing.T) {
 		`{"message_type":"summary","snapshot_id":"abc123","files_new":2,"files_changed":1,"files_unmodified":7,"data_added":4096}`,
 	}}, nil)
 	var seen []backupProgress
-	sum, err := resticBackup(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, []string{"/srv/a"}, []string{"*.tmp"}, []string{"hsi", "plan:x"}, func(p backupProgress) { seen = append(seen, p) })
+	sum, err := resticBackup(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, []string{"/srv/a"}, []string{"*.tmp"}, []string{"hsi", "plan:x"}, func(p backupProgress) { seen = append(seen, p) })
 	if err != nil || sum.SnapshotID != "abc123" || sum.DataAdded != 4096 || sum.FilesNew != 2 {
 		t.Fatalf("%+v %v", sum, err)
 	}
@@ -156,7 +158,7 @@ func TestBackupExitThreeIsPartial(t *testing.T) {
 		`{"message_type":"error","error":{"message":"open /srv/a/x: permission denied"},"during":"archival","item":"/srv/a/x"}`,
 		`{"message_type":"summary","snapshot_id":"def","files_new":1}`,
 	}}, map[string]int{"backup": 3})
-	sum, err := resticBackup(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, []string{"/srv/a"}, nil, nil, nil)
+	sum, err := resticBackup(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, []string{"/srv/a"}, nil, nil, nil)
 	if err != nil || !sum.Partial || sum.SnapshotID != "def" || !strings.Contains(sum.Warning, "/srv/a/x") {
 		t.Fatalf("%+v %v", sum, err)
 	}
@@ -165,7 +167,7 @@ func TestBackupExitThreeIsPartial(t *testing.T) {
 func TestBackupFailureCarriesStderr(t *testing.T) {
 	useBackupDirs(t)
 	fakeRestic(t, nil, map[string]int{"backup": 1})
-	if _, err := resticBackup(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, []string{"/srv/a"}, nil, nil, nil); err == nil || !strings.Contains(err.Error(), "stderr backup") {
+	if _, err := resticBackup(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, []string{"/srv/a"}, nil, nil, nil); err == nil || !strings.Contains(err.Error(), "stderr backup") {
 		t.Fatalf("%v", err)
 	}
 }
@@ -173,7 +175,7 @@ func TestBackupFailureCarriesStderr(t *testing.T) {
 func TestForgetArgs(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, nil, nil)
-	_ = resticForget(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "pid", retentionPolicy{KeepDaily: 7, KeepMonthly: 6})
+	_ = resticForget(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "pid", retentionPolicy{KeepDaily: 7, KeepMonthly: 6})
 	a := strings.Join((*calls)[0].args, " ")
 	for _, want := range []string{"forget", "--prune", "--tag plan:pid", "--keep-daily 7", "--keep-monthly 6"} {
 		if !strings.Contains(a, want) {
@@ -193,7 +195,7 @@ func TestLsKeepsDirectChildren(t *testing.T) {
 		`{"struct_type":"node","name":"x.jpg","path":"/srv/a/photos/x.jpg","type":"file","size":3}`,
 		`{"struct_type":"node","name":"a.txt","path":"/srv/a/a.txt","type":"file","size":1}`,
 	}}, nil)
-	got, err := resticLs(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s", "/srv/a")
+	got, err := resticLs(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "s", "/srv/a")
 	if err != nil || len(got) != 2 || got[0].Name != "photos" {
 		t.Fatalf("%+v %v", got, err)
 	}
@@ -202,7 +204,7 @@ func TestLsKeepsDirectChildren(t *testing.T) {
 func TestRestoreDryRunArgs(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","files_restored":4,"files_skipped":1,"total_files":5}`}}, nil)
-	sum, err := resticRestore(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s1", "/srv/a/photos", "/srv/a/Restored/x", true, nil)
+	sum, err := resticRestore(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "s1", "/srv/a/photos", "/srv/a/Restored/x", true, nil)
 	if err != nil || sum.FilesRestored != 4 {
 		t.Fatalf("%+v %v", sum, err)
 	}
@@ -242,7 +244,7 @@ func TestRestoreProgressUsesRestoredCounters(t *testing.T) {
 		`{"message_type":"summary","files_restored":10,"total_files":10}`,
 	}}, nil)
 	var seen []backupProgress
-	_, err := resticRestore(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s1", "/a", "/t", false, func(p backupProgress) { seen = append(seen, p) })
+	_, err := resticRestore(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "s1", "/a", "/t", false, func(p backupProgress) { seen = append(seen, p) })
 	if err != nil || len(seen) != 1 || seen[0].FilesDone != 4 || seen[0].BytesDone != 40 || seen[0].TotalFiles != 10 {
 		t.Fatalf("%+v %v", seen, err)
 	}

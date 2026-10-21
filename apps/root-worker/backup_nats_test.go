@@ -76,9 +76,13 @@ func TestReadsRejectDashValues(t *testing.T) {
 	useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
 	called := false
-	prev := runRestic
+	prev, prevFiles := runRestic, runResticFiles
 	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) { called = true; return 0, "", nil }
-	t.Cleanup(func() { runRestic = prev })
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
+		called = true
+		return 0, "", nil
+	}
+	t.Cleanup(func() { runRestic, runResticFiles = prev, prevFiles })
 	snap := "0123456789abcdef"
 	cases := []struct{ repo, snap, path string }{
 		{"-x", snap, "/a"}, {repoA, "--help", "/a"}, {repoA, "zz", "/a"}, {repoA, snap, "-rf"}, {repoA, snap, "rel"},
