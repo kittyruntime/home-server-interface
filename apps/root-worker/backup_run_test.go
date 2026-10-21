@@ -15,7 +15,7 @@ type appsFake struct {
 
 func fakeApps(t *testing.T, f *appsFake) {
 	pr, pa := composeRunning, composeAction
-	composeRunning = func(a string) bool { return f.running[a] }
+	composeRunning = func(a string) (bool, error) { return f.running[a], nil }
 	composeAction = func(a string, args ...string) error {
 		f.calls = append(f.calls, a+" "+args[0])
 		if args[0] == "start" && a == f.failStart {
@@ -46,7 +46,7 @@ func TestRunVersionsStopsAndStartsApps(t *testing.T) {
 	f := &appsFake{running: map[string]bool{"vaultwarden": true}}
 	fakeApps(t, f)
 	calls := fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	if err := runPlan(planA, time.Now); err != nil {
+	if err := runPlan(planA, false, time.Now); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(f.calls, ",") != "vaultwarden stop,vaultwarden start" {
@@ -70,7 +70,7 @@ func TestRunVersionsRestartsAppsWhenSnapshotFails(t *testing.T) {
 	f := &appsFake{running: map[string]bool{"vaultwarden": true}}
 	fakeApps(t, f)
 	fakeRestic(t, nil, map[string]int{"backup": 1})
-	if err := runPlan(planA, time.Now); err == nil {
+	if err := runPlan(planA, false, time.Now); err == nil {
 		t.Fatal("expected failure")
 	}
 	if strings.Join(f.calls, ",") != "vaultwarden stop,vaultwarden start" {
@@ -86,7 +86,7 @@ func TestRunVersionsRestartsAppsWhenStartFails(t *testing.T) {
 	setupVersionsPlan(t, "vaultwarden")
 	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}, failStart: "vaultwarden"})
 	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	if err := runPlan(planA, time.Now); err == nil {
+	if err := runPlan(planA, false, time.Now); err == nil {
 		t.Fatal("expected failure")
 	}
 	runs, _ := lastRuns("runs", planA, 1)
@@ -101,7 +101,7 @@ func TestRunVersionsRefusesMissingVolume(t *testing.T) {
 	f := &appsFake{running: map[string]bool{"vaultwarden": true}}
 	fakeApps(t, f)
 	calls := fakeRestic(t, nil, nil)
-	if err := runPlan(planA, time.Now); err == nil {
+	if err := runPlan(planA, false, time.Now); err == nil {
 		t.Fatal("expected failure")
 	}
 	if len(f.calls) != 0 || len(*calls) != 0 {
@@ -119,7 +119,7 @@ func TestRunVersionsMarksInconsistentWhenStopFails(t *testing.T) {
 		return nil
 	}
 	calls := fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	_ = runPlan(planA, time.Now)
+	_ = runPlan(planA, false, time.Now)
 	if !strings.Contains(strings.Join((*calls)[0].args, " "), "--tag inconsistent") {
 		t.Fatal("not tagged inconsistent")
 	}
@@ -157,7 +157,7 @@ func TestRunVersionsStartsAppsBeforeForget(t *testing.T) {
 		}
 		return inner(env, args, onLine)
 	}
-	if err := runPlan(planA, time.Now); err != nil {
+	if err := runPlan(planA, false, time.Now); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(seq, ",") != "vaultwarden stop,vaultwarden start,forget" {
@@ -177,7 +177,7 @@ func TestRunVersionsStartsAppsWhoseStopFailed(t *testing.T) {
 		return nil
 	}
 	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	_ = runPlan(planA, time.Now)
+	_ = runPlan(planA, false, time.Now)
 	if strings.Join(calls, ",") != "vaultwarden stop,vaultwarden start" {
 		t.Fatalf("calls %v", calls)
 	}
@@ -190,7 +190,7 @@ func TestRunVersionsRecordsUnknownRepository(t *testing.T) {
 	if err := saveBackupConfig(c); err != nil {
 		t.Fatal(err)
 	}
-	if err := runPlan(planA, time.Now); err == nil {
+	if err := runPlan(planA, false, time.Now); err == nil {
 		t.Fatal("expected failure")
 	}
 	runs, _ := lastRuns("runs", planA, 1)

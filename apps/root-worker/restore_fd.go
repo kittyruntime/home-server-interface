@@ -234,6 +234,9 @@ type mergeResult struct {
 	warnings []string
 }
 
+// renameat moves a staged entry into place; tests swap it.
+var renameat = syscall.Renameat
+
 // beforeRenameHook runs between the destination check and the rename; tests use it to change the destination.
 var beforeRenameHook func(dst *os.File, name string)
 
@@ -320,9 +323,14 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 		if beforeRenameHook != nil {
 			beforeRenameHook(dst, name)
 		}
-		if err := syscall.Renameat(int(src.Fd()), name, int(dst.Fd()), name); err != nil {
+		if err := renameat(int(src.Fd()), name, int(dst.Fd()), name); err != nil {
 			if errors.Is(err, syscall.EISDIR) || errors.Is(err, syscall.ENOTDIR) {
 				res.warn(relName + " changed type at the destination, skipped")
+				continue
+			}
+			if errors.Is(err, syscall.EXDEV) {
+				// Another filesystem is mounted inside the restored path.
+				res.warn(relName + " is on another volume, skipped: restore it to a new folder")
 				continue
 			}
 			return fmt.Errorf("%s: %w", relName, err)
@@ -330,4 +338,99 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 		res.moved++
 	}
 	return nil
+}
+
+// ── Local repositories ───────────────────────────────────────────────────────
+// restic writes a local repository as root. A symbolic link on the way to it, or a
+// folder other users can write to, would let them send those writes elsewhere.
+
+// walkNoFollow opens path one component at a time from "/". With create, missing
+// components are made (the last one 0700, owned by us); without, the walk stops at the
+// first missing one and returns nil.
+func walkNoFollow(path string, create bool) (*os.File, error) {
+	fd, err := syscall.Open("/", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	cur := os.NewFile(uintptr(fd), "/")
+	comps := strings.Split(strings.TrimPrefix(filepath.Clean(path), "/"), "/")
+	for i, comp := range comps {
+		next, err := openatDir(cur, comp)
+		if errors.Is(err, syscall.ENOENT) && create {
+			mode := uint32(0o755)
+			if i == len(comps)-1 {
+				mode = 0o700
+			}
+			if merr := syscall.Mkdirat(int(cur.Fd()), comp, mode); merr != nil && !errors.Is(merr, syscall.EEXIST) {
+				cur.Close()
+				return nil, fmt.Errorf("create %s: %w", path, merr)
+			}
+			next, err = openatDir(cur, comp)
+		}
+		cur.Close()
+		if errors.Is(err, syscall.ENOENT) && !create {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("the repository folder %s goes through a symbolic link or a file", path)
+		}
+		cur = next
+	}
+	return cur, nil
+}
+
+// checkLocalRepoPath refuses a repository path with a symbolic link or a file in it,
+// and an existing folder that is not root's alone. The folder may not exist yet.
+func checkLocalRepoPath(path string) error {
+	f, err := walkNoFollow(path, false)
+	if err != nil || f == nil {
+		return err
+	}
+	defer f.Close()
+	return checkRepoDirFd(f, path)
+}
+
+func checkRepoDirFd(f *os.File, path string) error {
+	var st syscall.Stat_t
+	if err := syscall.Fstat(int(f.Fd()), &st); err != nil {
+		return err
+	}
+	if int(st.Uid) != restoreOwnerUID() || st.Mode&0o022 != 0 {
+		return fmt.Errorf("the repository folder %s must be owned by root and closed to other users", path)
+	}
+	return nil
+}
+
+// ensureLocalRepoDir creates the repository folder (0700) when it is missing, then
+// checks it as checkLocalRepoDir does.
+func ensureLocalRepoDir(path string) error {
+	f, err := walkNoFollow(path, true)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return checkRepoDirFd(f, path)
+}
+
+// checkLocalRepoDir fails unless path is a real directory reached without a symbolic
+// link, owned by root and not writable by other users.
+func checkLocalRepoDir(path string) error {
+	f, err := walkNoFollow(path, false)
+	if err != nil {
+		return err
+	}
+	if f == nil {
+		return fmt.Errorf("the repository folder %s does not exist", path)
+	}
+	defer f.Close()
+	return checkRepoDirFd(f, path)
+}
+
+// repositoryReady is checked before restic opens a repository: a local one must still
+// be a safe folder.
+func repositoryReady(r repositoryCfg) error {
+	if r.Type != "local" {
+		return nil
+	}
+	return checkLocalRepoDir(r.Path)
 }

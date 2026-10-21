@@ -69,11 +69,11 @@ func TestPlanSaveRejectsInvalid(t *testing.T) {
 func TestPlanRemoveRefusedWhileRunning(t *testing.T) {
 	useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
-	_ = writeProgress(planA, backupProgress{})
+	release := holdRun(t, planA)
 	if _, ferr := buildPlan("backup.plan.remove", mustJSON(map[string]any{"id": planA})); ferr == nil || ferr.Code != "EBUSY" {
 		t.Fatalf("%+v", ferr)
 	}
-	clearProgress(planA)
+	release()
 	p := planFor(t, "backup.plan.remove", map[string]any{"id": planA})
 	if _, ok, _ := p.execute(); !ok {
 		t.Fatal("apply failed")
@@ -230,7 +230,8 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
 	fakeRestic(t, map[string][]string{
 		"snapshots": {`[{"id":"abcdef1234567890","short_id":"abcdef12","time":"2026-03-04T05:06:07Z","paths":["/srv/data/photos"],"tags":[]}]`},
-		"restore":   {`{"message_type":"summary","files_restored":3,"total_files":4}`},
+		// files_restored counts the folders too: 3 files in 6 folders.
+		"restore": {`{"message_type":"summary","files_restored":9,"total_files":3}`},
 	}, nil)
 	data := filepath.Join(t.TempDir(), "data")
 	_ = os.MkdirAll(data, 0o755)
@@ -362,9 +363,9 @@ func TestRestoreRecordsTheFolderActuallyCreated(t *testing.T) {
 	if len(runs) != 2 {
 		t.Fatalf("%+v", runs)
 	}
-	got := []string{runs[0].Target, runs[1].Target}
-	if got[0] != filepath.Join(base, "Restored", "x-2") && got[1] != filepath.Join(base, "Restored", "x-2") {
-		t.Fatalf("targets %v", got)
+	// Newest first: the second restore found x taken and wrote x-2.
+	if runs[0].Target != filepath.Join(base, "Restored", "x-2") || runs[1].Target != filepath.Join(base, "Restored", "x") {
+		t.Fatalf("targets %q %q", runs[0].Target, runs[1].Target)
 	}
 	for _, r := range runs {
 		if !strings.HasPrefix(r.Target, filepath.Join(base, "Restored", "x")) {

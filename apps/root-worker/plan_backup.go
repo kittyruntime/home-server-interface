@@ -20,7 +20,8 @@ import (
 
 var backupSnapshotPattern = regexp.MustCompile(`^[0-9a-f]{8,64}$`)
 
-func invalid(msg string) *fsError { return &fsError{Code: "EINVALID", Message: msg} }
+// planInvalid is the refusal of a plan built from invalid input.
+func planInvalid(msg string) *fsError { return &fsError{Code: "EINVALID", Message: msg} }
 
 // randomPassword is 32 random bytes, base64url without padding.
 func randomPassword() string {
@@ -127,7 +128,7 @@ func planBackupPlanSave(raw json.RawMessage) (*opPlan, *fsError) {
 		Plan backupPlanCfg `json:"plan"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
-		return nil, invalid("Invalid request")
+		return nil, planInvalid("Invalid request")
 	}
 	cfg, fe := loadBackupConfigFsErr()
 	if fe != nil {
@@ -135,13 +136,22 @@ func planBackupPlanSave(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	next := withPlan(cfg, req.Plan)
 	if err := next.validate(); err != nil {
-		return nil, invalid(err.Error())
+		return nil, planInvalid(err.Error())
 	}
 	if v := req.Plan.Versions; v != nil {
 		for _, app := range v.StopApps {
 			if !fileExists(filepath.Join(containersDir, app, "compose.yaml")) {
-				return nil, invalid("The app " + app + " does not exist")
+				return nil, planInvalid("The app " + app + " does not exist")
 			}
+		}
+		repo, _ := next.repository(v.Repository)
+		for _, src := range v.Sources {
+			if clean, _ := cleanBackupPath(src); volumeMountFor(clean) == "" {
+				return nil, planInvalid("The source " + clean + " is not on a data volume")
+			}
+		}
+		if fe := sourcesApartFromRepository(req.Plan, repo); fe != nil {
+			return nil, fe
 		}
 	}
 	steps := []planStep{backupConfigStep("Save the backup plan "+req.Plan.Name, next)}
@@ -149,12 +159,28 @@ func planBackupPlanSave(raw json.RawMessage) (*opPlan, *fsError) {
 	return &opPlan{Op: "backup.plan.save", Observed: backupObserved(), Steps: steps}, nil
 }
 
+// sourcesApartFromRepository refuses a versions plan whose local repository is inside
+// one of its sources, or the other way round: the repository would back itself up.
+func sourcesApartFromRepository(p backupPlanCfg, repo repositoryCfg) *fsError {
+	if p.Versions == nil || repo.Type != "local" {
+		return nil
+	}
+	dest := filepath.Clean(repo.Path)
+	for _, src := range p.Versions.Sources {
+		clean := filepath.Clean(src)
+		if strings.HasPrefix(dest+"/", clean+"/") || strings.HasPrefix(clean+"/", dest+"/") {
+			return planInvalid("The source " + clean + " and the repository " + repo.Name + " overlap")
+		}
+	}
+	return nil
+}
+
 func planBackupPlanRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil || !backupIDPattern.MatchString(req.ID) {
-		return nil, invalid("Invalid backup plan")
+		return nil, planInvalid("Invalid backup plan")
 	}
 	cfg, fe := loadBackupConfigFsErr()
 	if fe != nil {
@@ -164,7 +190,7 @@ func planBackupPlanRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	if !ok {
 		return nil, &fsError{Code: "ENOENT", Message: "This backup plan does not exist"}
 	}
-	if _, running := readProgress(req.ID); running {
+	if runActive(req.ID) {
 		return nil, &fsError{Code: "EBUSY", Message: "This backup plan is running"}
 	}
 	steps := writeTimerSteps(filepath.Join(systemdDir(), planTimerName(req.ID)), "")
@@ -172,9 +198,10 @@ func planBackupPlanRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	return &opPlan{Op: "backup.plan.remove", Observed: backupObserved(), Steps: steps}, nil
 }
 
-// mergeSecrets keeps the stored value of every blank field, and the stored
-// password always: it is the one that opens the repository.
-func mergeSecrets(stored, given repoSecrets) repoSecrets {
+// mergeSecrets keeps the stored value of every blank field. The password is the
+// stored one too, whatever was given, unless the location changes: only then can a
+// given password be the one that opens the repository found there.
+func mergeSecrets(stored, given repoSecrets, locationChanged bool) repoSecrets {
 	pick := func(g, s string) string {
 		if g == "" {
 			return s
@@ -189,7 +216,7 @@ func mergeSecrets(stored, given repoSecrets) repoSecrets {
 		RestUser:        pick(given.RestUser, stored.RestUser),
 		RestPassword:    pick(given.RestPassword, stored.RestPassword),
 	}
-	if stored.Password != "" {
+	if stored.Password != "" && !locationChanged {
 		out.Password = stored.Password
 	}
 	return out
@@ -237,7 +264,7 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 		Secrets    repoSecrets   `json:"secrets"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
-		return nil, invalid("Invalid request")
+		return nil, planInvalid("Invalid request")
 	}
 	repo := req.Repository
 	cfg, fe := loadBackupConfigFsErr()
@@ -246,23 +273,34 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	next := withRepository(cfg, repo)
 	if err := next.validate(); err != nil {
-		return nil, invalid(err.Error())
+		return nil, planInvalid(err.Error())
 	}
-	_, exists := cfg.repository(repo.ID)
-	var stored repoSecrets
-	if exists {
-		stored, _ = readRepoSecrets(repo.ID)
-	}
-	sec := mergeSecrets(stored, req.Secrets)
-	if err := validateRepoSecrets(repo, sec); err != nil {
-		return nil, invalid(err.Error())
-	}
+	old, exists := cfg.repository(repo.ID)
 	location := resticRepository(repo)
+	locationChanged := !exists || resticRepository(old) != location
+	// Read even for a new repository: an apply that failed after the init left the
+	// secrets of this id, and a retry attaches with them.
+	stored, _ := readRepoSecrets(repo.ID)
+	sec := mergeSecrets(stored, req.Secrets, locationChanged)
+	if err := validateRepoSecrets(repo, sec); err != nil {
+		return nil, planInvalid(err.Error())
+	}
+	if repo.Type == "local" {
+		if err := checkLocalRepoPath(repo.Path); err != nil {
+			return nil, planInvalid(err.Error())
+		}
+	}
+	for _, pl := range next.Plans {
+		if pl.Versions != nil && pl.Versions.Repository == repo.ID {
+			if fe := sourcesApartFromRepository(pl, repo); fe != nil {
+				return nil, fe
+			}
+		}
+	}
 
 	p := &opPlan{Op: "backup.repository.save", Reply: map[string]any{}}
 	generate := false
-	old, _ := cfg.repository(repo.ID)
-	if !exists || resticRepository(old) != location {
+	if locationChanged {
 		// restic refuses an empty password: without one, a throwaway password
 		// tells an empty location (exit 10) from an existing repository (exit 12).
 		probeSec := sec
@@ -276,7 +314,8 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 				msg = "The location could not be reached"
 			}
 			return nil, &fsError{Code: "EUNREACHABLE", Message: msg}
-		case state != probeEmpty && sec.Password == "":
+		case state != probeEmpty && sec.Password == "", state == probeWrongPassword && req.Secrets.Password == "":
+			// Nothing was typed: ask for the password of the repository found there.
 			return nil, &fsError{Code: "EPASSWORD", Message: msgRepositoryExists}
 		case state == probeWrongPassword:
 			return nil, &fsError{Code: "EPASSWORD", Message: "Wrong password for this repository"}
@@ -287,6 +326,11 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 				run: func() (string, error) {
 					if generate {
 						sec.Password = randomPassword()
+					}
+					if repo.Type == "local" {
+						if err := ensureLocalRepoDir(repo.Path); err != nil {
+							return "", err
+						}
 					}
 					if err := resticInit(repo, sec); err != nil {
 						return "", err
@@ -329,7 +373,7 @@ func planRepositoryRemove(raw json.RawMessage) (*opPlan, *fsError) {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil || !backupIDPattern.MatchString(req.ID) {
-		return nil, invalid("Invalid repository")
+		return nil, planInvalid("Invalid repository")
 	}
 	cfg, fe := loadBackupConfigFsErr()
 	if fe != nil {
@@ -344,6 +388,9 @@ func planRepositoryRemove(raw json.RawMessage) (*opPlan, *fsError) {
 			return nil, &fsError{Code: "EINUSE", Message: "Used by the plan " + pl.Name}
 		}
 	}
+	if repositoryBusy(req.ID) {
+		return nil, &fsError{Code: "EBUSY", Message: "A check or a restore is using this repository"}
+	}
 	steps := writeTimerSteps(filepath.Join(systemdDir(), checkTimerName(req.ID)), "")
 	secretsPath, _ := repoSecretsPath(req.ID)
 	steps = append(steps, planStep{Kind: "delete", Target: secretsPath, Summary: "Delete the repository secrets",
@@ -356,7 +403,7 @@ func planRepositoryRemove(raw json.RawMessage) (*opPlan, *fsError) {
 
 // volumeMountFor is the mount point of the managed volume holding path, "" when none does.
 var volumeMountFor = func(path string) string {
-	vols, err := volumeStatuses()
+	vols, err := volumeStatesNow()
 	if err != nil {
 		return ""
 	}
@@ -416,21 +463,21 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		ConfirmOverwrite bool   `json:"confirmOverwrite"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
-		return nil, invalid("Invalid request")
+		return nil, planInvalid("Invalid request")
 	}
 	// Checked before any restic call: a value starting with "-" would be read as a flag.
 	if !backupIDPattern.MatchString(req.Repository) {
-		return nil, invalid("Invalid repository")
+		return nil, planInvalid("Invalid repository")
 	}
 	if !backupSnapshotPattern.MatchString(req.Snapshot) {
-		return nil, invalid("Invalid snapshot")
+		return nil, planInvalid("Invalid snapshot")
 	}
 	path, err := cleanBackupPath(req.Path)
 	if err != nil {
-		return nil, invalid("Invalid path")
+		return nil, planInvalid("Invalid path")
 	}
 	if req.Target != "new" && req.Target != "original" {
-		return nil, invalid("Invalid restore target")
+		return nil, planInvalid("Invalid restore target")
 	}
 	cfg, fe := loadBackupConfigFsErr()
 	if fe != nil {
@@ -443,6 +490,9 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	sec, err := readRepoSecrets(repo.ID)
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: "The repository secrets are missing"}
+	}
+	if err := repositoryReady(repo); err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
 	snaps, err := resticSnapshots(repo, sec)
 	if err != nil {
@@ -461,6 +511,11 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	// location (it must be on the same filesystem as the restored path).
 	base := volumeMountFor(path)
 	if base == "" {
+		if req.Target == "original" {
+			// Staging would put a root-owned Restored folder next to the path, in a
+			// folder HSI does not manage (a home folder, say).
+			return nil, planInvalid("Only a path on a data volume can be restored to its original location: restore it to a new folder")
+		}
 		base = filepath.Dir(path)
 	}
 	target, date, name := "/", req.Snapshot, ""
@@ -479,14 +534,18 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
-	if req.Target == "original" && sum.FilesRestored > 0 && !req.ConfirmOverwrite {
-		return nil, &fsError{Code: "ECONFIRM", Message: fmt.Sprintf("This replaces %d files at their original location", sum.FilesRestored)}
+	// total_files counts files; files_restored counts the folders too.
+	if sum.TotalFiles == 0 {
+		return nil, &fsError{Code: "ENOENT", Message: "Nothing to restore: the snapshot holds no file at " + path}
+	}
+	if req.Target == "original" && !req.ConfirmOverwrite {
+		return nil, &fsError{Code: "ECONFIRM", Message: fmt.Sprintf("This replaces %d files at their original location", sum.TotalFiles)}
 	}
 
 	p := &opPlan{Op: "backup.restore", Reply: map[string]any{}}
 	rr := restoreRequest{Repository: repo.ID, Snapshot: req.Snapshot, Path: path, Mode: req.Target, Base: base, Name: name}
 	p.Steps = []planStep{{Kind: "run", Target: target,
-		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, sum.FilesRestored),
+		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, sum.TotalFiles),
 		Destructive: req.Target == "original",
 		run: func() (string, error) {
 			rr.RunID = newRunID()
@@ -494,8 +553,7 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 			if err != nil {
 				return "", err
 			}
-			// Visible as running before the unit has started.
-			_ = writeProgress(rr.RunID, backupProgress{})
+			// Until the unit holds its run lock, the request file shows the restore as queued.
 			exe, err := os.Executable()
 			if err != nil {
 				return "", err
@@ -504,7 +562,6 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 			argv = append(argv, hsiEnvArgs(os.Environ())...)
 			argv = append(argv, exe, "backup", "restore", file)
 			if out, err := runArgv(argv); err != nil {
-				clearProgress(rr.RunID)
 				os.Remove(file)
 				return "", cmdError{cmdErrMessage(out, err)}
 			}
@@ -525,7 +582,9 @@ func hsiEnvArgs(environ []string) []string {
 		if !strings.HasPrefix(k, "HSI_") || strings.ContainsAny(kv, "\x00\r\n") {
 			continue
 		}
-		if strings.Contains(up, "TOKEN") || strings.Contains(up, "SECRET") || strings.Contains(up, "PASSWORD") || strings.Contains(up, "KEY") {
+		// HSI_BACKUP_SECRETS names the secrets folder, it holds no secret itself.
+		credential := strings.Contains(up, "TOKEN") || strings.Contains(up, "SECRET") || strings.Contains(up, "PASSWORD") || strings.Contains(up, "KEY")
+		if credential && k != "HSI_BACKUP_SECRETS" {
 			continue
 		}
 		out = append(out, "--setenv="+kv)
@@ -551,20 +610,24 @@ func writeRestoreRequest(r restoreRequest) (string, error) {
 // as a transient unit. Progress is kept under the run id, the result is logged under
 // the repository id (a failed one too, as soon as that id is known).
 func runRestoreRequest(file string) error {
-	defer os.Remove(file)
-	raw, err := os.ReadFile(file)
-	if err != nil {
-		return err
-	}
 	var rr restoreRequest
-	// Whatever happens next, a progress entry for this run is never left "running".
+	release := func() {}
+	// Whatever happens next, a progress entry for this run is never left "running", and
+	// the run lock goes last so that no status read sees the run neither queued nor running.
 	defer func() {
 		if backupIDPattern.MatchString(rr.RunID) {
 			clearProgress(rr.RunID)
 		}
+		os.Remove(file)
+		release()
 	}()
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
 	rec := runRecord{Start: time.Now()}
 	finish := func(err error) error {
+		err = asInterrupted(err)
 		if !backupIDPattern.MatchString(rr.Repository) {
 			return err
 		}
@@ -586,6 +649,10 @@ func runRestoreRequest(file string) error {
 	if err := rr.validate(); err != nil {
 		return finish(err)
 	}
+	if release, err = holdRunLock(rr.RunID); err != nil {
+		release = func() {}
+		return finish(err)
+	}
 
 	cfg, _, err := loadBackupConfig()
 	if err != nil {
@@ -597,6 +664,9 @@ func runRestoreRequest(file string) error {
 	}
 	_ = writeProgress(rr.RunID, backupProgress{})
 	return finish(withLock(repo.ID, lockWait, func() error {
+		if err := repositoryReady(repo); err != nil {
+			return err
+		}
 		sec, err := readRepoSecrets(repo.ID)
 		if err != nil {
 			return err
@@ -627,8 +697,13 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 		rec.Target = filepath.Join(rr.Base, "Restored", created)
 		defer final.Close()
 		sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", final, false, progress)
-		rec.Files, rec.Warnings = sum.FilesRestored, sum.Warnings
+		rec.Files, rec.Warnings = sum.TotalFiles, sum.Warnings
 		if err != nil {
+			// A failed restore leaves no empty folder behind. Only root can change the
+			// entries of Restored, and rmdir removes nothing that holds a file.
+			if unlinkat(restored, created, atRemoveDir) == nil {
+				rec.Target = ""
+			}
 			return err
 		}
 		return final.Chmod(0o755)

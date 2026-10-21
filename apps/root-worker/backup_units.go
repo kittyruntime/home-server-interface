@@ -24,9 +24,10 @@ func checkTimerName(id string) string {
 	return unitPrefix() + "-backup-check@" + id + ".timer"
 }
 
-// unitText keeps a user supplied name on one line of the unit file.
+// unitText keeps a user supplied name on one line of the unit file, and keeps a "%"
+// literal: systemd reads "%n" and the like as specifiers.
 func unitText(s string) string {
-	return strings.NewReplacer("\r", " ", "\n", " ").Replace(s)
+	return strings.NewReplacer("\r", " ", "\n", " ", "%", "%%").Replace(s)
 }
 
 func timerUnit(description, calendar, service string) string {
@@ -64,17 +65,34 @@ func nextElapse(timer string) *time.Time {
 	if err != nil {
 		return nil
 	}
-	// e.g. "Tue 2026-10-20 02:30:00 CEST"; empty or "n/a" when not scheduled.
-	s := strings.TrimSpace(string(out))
+	return parseElapse(strings.TrimSpace(string(out)), time.Local)
+}
+
+// parseElapse reads systemd's "Tue 2026-10-20 02:30:00 CEST" in loc. The zone name
+// settles the hour that a DST change repeats; without one, the time is read as local.
+func parseElapse(s string, loc *time.Location) *time.Time {
 	if s == "" || s == "n/a" {
 		return nil
 	}
-	if f := strings.Fields(s); len(f) >= 3 {
-		if t, err := time.ParseInLocation("2006-01-02 15:04:05", f[1]+" "+f[2], time.Local); err == nil {
+	f := strings.Fields(s)
+	if len(f) < 3 {
+		return nil
+	}
+	if len(f) >= 4 {
+		if t, err := time.ParseInLocation("2006-01-02 15:04:05 MST", f[1]+" "+f[2]+" "+f[3], loc); err == nil && knownZone(t, loc) {
 			return &t
 		}
 	}
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", f[1]+" "+f[2], loc); err == nil {
+		return &t
+	}
 	return nil
+}
+
+// knownZone tells whether the zone name was read as a zone of loc (or UTC): for a name
+// it does not know, time.Parse makes up a zone with a zero offset.
+func knownZone(t time.Time, loc *time.Location) bool {
+	return t.Location() == loc || t.Location() == time.UTC
 }
 
 // writeTimerSteps brings the timer file at path to content ("" removes it) and
