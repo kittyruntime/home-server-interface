@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
-import { applyPlanned, previewErrorOf } from '../../lib/plan'
+import { applyPlanned, previewCodeOf, previewErrorOf } from '../../lib/plan'
 import { randomId } from '../../lib/uuid'
-import { asksRepositoryPassword, emptyRepositoryForm, repositoryFormOf, repositoryPayload, WEEKDAYS } from '../../lib/backup'
+import { asksRepositoryPassword, emptyRepositoryForm, locationSecretsRequired, repositoryFormOf, repositoryPayload, WEEKDAYS } from '../../lib/backup'
 import PasswordReveal from './PasswordReveal.vue'
 
 type Repository = Awaited<ReturnType<typeof trpc.backup.status.query>>['repositories'][number]
@@ -17,8 +17,10 @@ const error = ref('')
 const passwordNeeded = ref('')
 const generated = ref('')
 
-// On edit the stored secrets are not shown: a blank field keeps them.
-const secretPlaceholder = computed(() => props.repository ? 'Unchanged' : '')
+// On edit the stored secrets are not shown: a blank field keeps them. A new type
+// has none stored, so its keys are required.
+const secretsRequired = computed(() => locationSecretsRequired(props.repository?.type ?? null, form.value.type))
+const secretPlaceholder = computed(() => secretsRequired.value ? '' : 'Unchanged')
 
 async function save() {
   error.value = ''
@@ -31,7 +33,8 @@ async function save() {
     else emit('saved')
   } catch (e) {
     const refused = previewErrorOf(e)
-    if (asksRepositoryPassword(refused)) passwordNeeded.value = refused
+    if (asksRepositoryPassword(previewCodeOf(e))) passwordNeeded.value = refused
+    else if (refused) error.value = refused
     else if (e instanceof Error && e.message) error.value = e.message
   }
 }
@@ -73,7 +76,7 @@ async function save() {
         <input v-model="form.path" required class="ui-input mt-1 font-mono" placeholder="/srv/restic/hsi" />
       </label>
       <label class="text-xs text-[var(--c-text-2)] sm:col-span-2">SSH key path
-        <input v-model="form.secrets.sshKeyPath" :required="!repository" class="ui-input mt-1 font-mono" :placeholder="secretPlaceholder || '/root/.ssh/hsi_backup'" />
+        <input v-model="form.secrets.sshKeyPath" :required="secretsRequired" class="ui-input mt-1 font-mono" :placeholder="secretPlaceholder || '/root/.ssh/hsi_backup'" />
       </label>
       <p class="sm:col-span-2 text-2xs text-[var(--c-text-3)]">The host must already exist in root's known_hosts and the private key must be mode 0600 or stricter.</p>
     </div>
@@ -81,6 +84,7 @@ async function save() {
     <div v-else-if="form.type === 's3'" class="grid gap-3 sm:grid-cols-2">
       <label class="text-xs text-[var(--c-text-2)]">Endpoint
         <input v-model="form.endpoint" required class="ui-input mt-1" placeholder="s3.eu-west-1.amazonaws.com" />
+        <span class="mt-1 block text-2xs text-[var(--c-text-3)]">HTTPS unless it starts with http://, e.g. http://minio.lan:9000 on the local network.</span>
       </label>
       <label class="text-xs text-[var(--c-text-2)]">Bucket
         <input v-model="form.bucket" required class="ui-input mt-1" placeholder="hsi-backups" />
@@ -89,10 +93,10 @@ async function save() {
         <input v-model="form.path" class="ui-input mt-1 font-mono" placeholder="home" />
       </label>
       <label class="text-xs text-[var(--c-text-2)]">Access key ID
-        <input v-model="form.secrets.accessKeyId" :required="!repository" autocomplete="off" class="ui-input mt-1 font-mono" :placeholder="secretPlaceholder" />
+        <input v-model="form.secrets.accessKeyId" :required="secretsRequired" autocomplete="off" class="ui-input mt-1 font-mono" :placeholder="secretPlaceholder" />
       </label>
       <label class="text-xs text-[var(--c-text-2)]">Secret access key
-        <input v-model="form.secrets.secretAccessKey" :required="!repository" type="password" autocomplete="new-password" class="ui-input mt-1" :placeholder="secretPlaceholder" />
+        <input v-model="form.secrets.secretAccessKey" :required="secretsRequired" type="password" autocomplete="new-password" class="ui-input mt-1" :placeholder="secretPlaceholder" />
       </label>
     </div>
 

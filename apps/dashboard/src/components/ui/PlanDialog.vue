@@ -6,7 +6,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import Modal from './Modal.vue'
 import { trpc } from '../../lib/trpc'
 import { confirmMatches } from '../../lib/confirm-text'
-import { planRequest, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
+import { planRequest, workerCodeOf, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
 
 // Review then apply an operation plan (#36): the exact files, commands and
 // devices HSI is about to touch, and the result of each step.
@@ -15,6 +15,7 @@ const modal = ref<InstanceType<typeof Modal> | null>(null)
 const preview = ref<PlanPreview | null>(null)
 const loading = ref(false)
 const loadError = ref('')
+const loadErrorCode = ref('')
 const applying = ref(false)
 const applied = ref<PlanApply | null>(null)
 const stale = ref(false)
@@ -27,6 +28,7 @@ async function load() {
   if (!req) return
   loading.value = true
   loadError.value = ''
+  loadErrorCode.value = ''
   stale.value = false
   applied.value = null
   applyError.value = ''
@@ -45,6 +47,7 @@ async function load() {
   } catch (e) {
     preview.value = null
     loadError.value = e instanceof Error ? e.message : String(e)
+    loadErrorCode.value = workerCodeOf(e)
   } finally {
     loading.value = false
   }
@@ -130,7 +133,7 @@ async function apply() {
 function onClose() {
   if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? 'A step failed' })
   else if (applyError.value) settle({ status: 'failed', error: applyError.value })
-  else settle({ status: 'cancelled', previewError: loadError.value || undefined })
+  else settle({ status: 'cancelled', previewError: loadError.value || undefined, previewCode: loadErrorCode.value || undefined })
   planRequest.value = null
   preview.value = null
   applied.value = null

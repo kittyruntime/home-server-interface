@@ -16,7 +16,7 @@ export function scheduleLabel(s: Schedule): string {
     case 'manual': return 'Manual'
     case 'hourly': return `Every hour at :${pad(s.minute)}`
     case 'daily': return `Every day at ${at}`
-    case 'weekly': return `Every ${WEEKDAYS[s.weekday]} at ${at}`
+    case 'weekly': return WEEKDAYS[s.weekday] ? `Every ${WEEKDAYS[s.weekday]} at ${at}` : `Every week at ${at}`
   }
 }
 
@@ -35,9 +35,10 @@ export function locationLabel(r: RepoLocation): string {
   switch (r.type) {
     case 'local': return r.path ?? ''
     case 'sftp': {
-      const target = `${r.user}@${r.host}`
+      const target = `${r.user ?? ''}@${r.host ?? ''}`
+      const path = r.path ?? ''
       // A non-default port sits between the host and the path, as restic's sftp URL form reads it.
-      return r.port && r.port !== 22 ? `${target}:${r.port}:${r.path}` : `${target}:${r.path}`
+      return r.port && r.port !== 22 ? `${target}:${r.port}:${path}` : `${target}:${path}`
     }
     case 's3': return [r.endpoint, r.bucket, r.path].filter(Boolean).join('/')
     case 'rest': return r.url ?? ''
@@ -52,16 +53,23 @@ function ago(end: Date, now: Date): string {
   return `${Math.floor(s / 86400)} d ago`
 }
 
+/** The first n characters of text, never cutting a character made of two UTF-16 units in half. */
+export function clip(text: string, n: number): string {
+  const chars = Array.from(text)
+  return chars.length > n ? chars.slice(0, n).join('') : text
+}
+
 /** The last run as a short sentence and the colour it deserves. */
 export function runLabel(r: { status: string; end?: string; error?: string } | null, now: Date = new Date()): { text: string; tone: 'ok' | 'warn' | 'err' | 'muted' } {
   if (!r) return { text: 'Never run', tone: 'muted' }
   if (r.status === 'success') {
-    const text = r.end ? `Succeeded ${ago(new Date(r.end), now)}` : 'Succeeded'
+    const end = r.end ? new Date(r.end) : null
+    const text = end && !Number.isNaN(end.getTime()) ? `Succeeded ${ago(end, now)}` : 'Succeeded'
     return { text, tone: 'ok' }
   }
-  if (r.status === 'failed') return { text: `Failed: ${(r.error ?? 'unknown error').slice(0, 120)}`, tone: 'err' }
+  if (r.status === 'failed') return { text: `Failed: ${clip(r.error ?? 'unknown error', 120)}`, tone: 'err' }
   if (r.status === 'running') return { text: 'Running', tone: 'muted' }
-  return { text: r.status, tone: 'muted' }
+  return { text: 'Unknown state', tone: 'muted' }
 }
 
 /** Binary units with one decimal from KB up, e.g. 1536 becomes "1.5 KB". */
@@ -70,7 +78,8 @@ export function bytesLabel(n: number): string {
   const units = ['KB', 'MB', 'GB', 'TB']
   let value = n / 1024
   let i = 0
-  while (value >= 1024 && i < units.length - 1) { value /= 1024; i++ }
+  // Compared once rounded: 1023.96 KB reads "1.0 MB", not "1024.0 KB".
+  while (Number(value.toFixed(1)) >= 1024 && i < units.length - 1) { value /= 1024; i++ }
   return `${value.toFixed(1)} ${units[i]}`
 }
 
@@ -305,12 +314,72 @@ export function repositoryPayload(f: RepositoryFormState) {
 }
 
 /**
- * Whether a refused preview asks for the password of an existing repository
- * (the worker's EPASSWORD: a repository already at the location, or a wrong
- * password). Only the message reaches the dashboard, so it is matched on.
+ * Whether a refused preview asks for the password of an existing repository:
+ * the worker's EPASSWORD (a repository already at the location, or a wrong password).
  */
-export function asksRepositoryPassword(message: string): boolean {
-  return /enter its password|wrong password for this repository/i.test(message)
+export function asksRepositoryPassword(code: string): boolean {
+  return code === 'EPASSWORD'
+}
+
+/** Whether a refused restore preview waits for the overwrite to be confirmed. */
+export function asksOverwriteConfirm(code: string): boolean {
+  return code === 'ECONFIRM'
+}
+
+/** The repository a plan form points at: the current one while it exists, else the first one. */
+export function defaultRepository(current: string, repositories: Array<{ id: string }>): string {
+  return repositories.some(r => r.id === current) ? current : repositories[0]?.id ?? ''
+}
+
+/** The SSH key or S3 keys are required unless they are stored already: on an edit that keeps the type. */
+export function locationSecretsRequired(storedType: RepoLocation['type'] | null, type: RepoLocation['type']): boolean {
+  return storedType !== type
+}
+
+/** A generated password exists nowhere else yet: its dialog closes only once the admin says it is stored. */
+export function canCloseReveal(mode: 'new' | 'ask', stored: boolean): boolean {
+  return mode === 'ask' || stored
+}
+
+/** Without a progress or a result for this long after the apply, a restore is given up on. */
+export const RESTORE_GRACE_MS = 30_000
+
+/**
+ * One poll of a restore: "done" with its record, "gone" once nothing was heard of it for
+ * RESTORE_GRACE_MS, else "wait" with the time it was last seen.
+ */
+export function restorePollStep<R extends { status: string }>(
+  s: { progress: unknown; result: R | null } | null, since: number, now: number,
+): { state: 'done'; result: R } | { state: 'gone' } | { state: 'wait'; since: number } {
+  if (s?.result && s.result.status !== 'running') return { state: 'done', result: s.result }
+  const seen = s && (s.progress || s.result) ? now : since
+  return now - seen > RESTORE_GRACE_MS ? { state: 'gone' } : { state: 'wait', since: seen }
+}
+
+/** Tokens for overlapping loads: only the latest one may land. `next` also outdates every earlier one. */
+export function latestOnly() {
+  let n = 0
+  return { next: () => { const id = ++n; return () => id === n } }
+}
+
+/** Runs `run` again after `delay()` each time it settles, until stopped; a run that ends after stop schedules nothing. */
+export function poller(
+  run: () => Promise<void>, delay: () => number,
+  timers: { set: (fn: () => void, ms: number) => unknown; clear: (t: unknown) => void } = { set: (fn, ms) => setTimeout(fn, ms), clear: t => clearTimeout(t as ReturnType<typeof setTimeout>) },
+) {
+  let timer: unknown
+  let stopped = false
+  const tick = async () => {
+    await run()
+    if (stopped) return
+    timers.clear(timer)
+    timer = timers.set(() => { void tick() }, delay())
+  }
+  return {
+    /** Runs now (also to refresh after a change) and keeps polling. */
+    now: () => { timers.clear(timer); return tick() },
+    stop: () => { stopped = true; timers.clear(timer) },
+  }
 }
 
 /** Text colour of a runLabel tone. */

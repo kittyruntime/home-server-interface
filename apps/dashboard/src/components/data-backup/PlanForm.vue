@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
-import { applyPlanned } from '../../lib/plan'
+import { applyPlanned, previewErrorOf } from '../../lib/plan'
 import { randomId } from '../../lib/uuid'
-import { emptyPlanForm, planFormOf, planPayload, WEEKDAYS, type PlanStatusLike } from '../../lib/backup'
+import { defaultRepository, emptyPlanForm, planFormOf, planPayload, WEEKDAYS, type PlanStatusLike } from '../../lib/backup'
 import ToggleSwitch from '../ui/ToggleSwitch.vue'
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
@@ -26,6 +26,10 @@ onMounted(async () => {
 const appChoices = computed(() => [...new Set([...apps.value, ...form.value.versions.stopApps])].sort())
 
 const noRepository = computed(() => props.repositories.length === 0)
+// A repository added (or removed) while the form is open becomes the choice when none is.
+watch(() => props.repositories, repos => {
+  form.value.versions.repository = defaultRepository(form.value.versions.repository, repos)
+})
 const RETENTION: Array<{ key: keyof typeof form.value.versions.retention; label: string }> = [
   { key: 'keepLast', label: 'Latest' }, { key: 'keepDaily', label: 'Daily' }, { key: 'keepWeekly', label: 'Weekly' }, { key: 'keepMonthly', label: 'Monthly' },
 ]
@@ -39,7 +43,10 @@ async function save() {
     })
     emit('saved')
   } catch (e) {
-    if (e instanceof Error && e.message) error.value = e.message
+    // A refused preview (a source off the data volumes, say) stays shown once its dialog is closed.
+    const refused = previewErrorOf(e)
+    if (refused) error.value = refused
+    else if (e instanceof Error && e.message) error.value = e.message
   }
 }
 </script>

@@ -48,7 +48,7 @@ export interface PlanRequest {
 export type PlanOutcome =
   | { status: 'applied'; result: PlanApply }
   | { status: 'failed'; error: string }
-  | { status: 'cancelled'; previewError?: string }
+  | { status: 'cancelled'; previewError?: string; previewCode?: string }
 
 export const planRequest = ref<PlanRequest | null>(null)
 let nextId = 0
@@ -59,8 +59,9 @@ let nextId = 0
  * and warnings when it ran; throws with the failure message when a step
  * failed; throws with an empty message when the user cancelled (callers that
  * show `e.message` then show nothing). When the preview itself was refused,
- * the thrown error also carries that reason as `previewError`, for a form
- * that can ask for what is missing (a repository password).
+ * the thrown error also carries that reason as `previewError` and the worker's
+ * code as `previewCode`, for a form that can ask for what is missing (a
+ * repository password) or show the reason once the dialog is closed.
  */
 export async function applyPlanned(
   op: PlanOp,
@@ -75,12 +76,24 @@ export async function applyPlanned(
     return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [] }
   }
   if (outcome.status === 'failed') throw new Error(outcome.error)
-  throw Object.assign(new Error(''), { previewError: outcome.previewError })
+  throw Object.assign(new Error(''), { previewError: outcome.previewError, previewCode: outcome.previewCode })
 }
 
 /** The refused preview's reason carried by an error from applyPlanned, or "". */
 export function previewErrorOf(e: unknown): string {
   const v = (e as { previewError?: unknown } | null)?.previewError
+  return typeof v === 'string' ? v : ''
+}
+
+/** The worker's code of a refused preview (EPASSWORD, ECONFIRM...), or "". */
+export function previewCodeOf(e: unknown): string {
+  const v = (e as { previewCode?: unknown } | null)?.previewCode
+  return typeof v === 'string' ? v : ''
+}
+
+/** The worker's code a tRPC error carries in its data, or "". */
+export function workerCodeOf(e: unknown): string {
+  const v = (e as { data?: { workerCode?: unknown } } | null)?.data?.workerCode
   return typeof v === 'string' ? v : ''
 }
 

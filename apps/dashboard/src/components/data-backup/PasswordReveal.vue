@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { canCloseReveal } from '../../lib/backup'
 import Modal from '../ui/Modal.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 
@@ -18,7 +19,7 @@ const copied = ref(false)
 const stored = ref(false)
 
 // A generated password exists nowhere else yet: closing needs the tick.
-const canClose = computed(() => props.mode === 'ask' || stored.value)
+const canClose = computed(() => canCloseReveal(props.mode, stored.value))
 
 async function reveal() {
   if (!accountPassword.value) return
