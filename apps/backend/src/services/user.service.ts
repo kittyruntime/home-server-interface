@@ -68,9 +68,10 @@ export async function createUser(
 }
 
 /** Whether password is the user's current one (bcrypt). */
+/** False for a wrong password, and for a user deleted while their session lives on. */
 export async function verifyPassword(prisma: PrismaClient, userId: string, password: string): Promise<boolean> {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { password: true } })
-  return bcrypt.compare(password, user.password)
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { password: true } })
+  return user ? bcrypt.compare(password, user.password) : false
 }
 
 export async function changePassword(

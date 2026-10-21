@@ -1,7 +1,19 @@
 import { TRPCError, initTRPC } from "@trpc/server"
 import type { Context } from "./context"
 
-const t = initTRPC.context<Context>().create()
+/**
+ * The root-worker's code of a failed request (EPASSWORD, ECONFIRM...), carried by the
+ * error requestSync throws. The dashboard reads it from the error data instead of
+ * matching messages.
+ */
+export function workerErrorCode(error: { cause?: unknown }): string | undefined {
+  const code = (error.cause as { code?: unknown } | undefined)?.code
+  return typeof code === "string" && /^E[A-Z]{2,15}$/.test(code) ? code : undefined
+}
+
+const t = initTRPC.context<Context>().create({
+  errorFormatter: ({ shape, error }) => ({ ...shape, data: { ...shape.data, workerCode: workerErrorCode(error) } }),
+})
 
 export const router = t.router
 export const publicProcedure = t.procedure

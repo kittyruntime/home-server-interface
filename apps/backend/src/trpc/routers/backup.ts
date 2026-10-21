@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { adminProcedure, router } from "../index"
 import { requestSync } from "../../nats"
 import { verifyPassword } from "../../services/user.service"
-import type { BackupStatus, RunRecord } from "../../services/backup-status"
+import type { BackupStatus, RunRecord, SnapshotEntry, SnapshotInfo } from "../../services/backup-status"
 
 // Reads and actions of the versioned backups (#15). Changes (plans, repositories,
 // restores) go through the storage plan procedures; the worker holds the state.
@@ -27,11 +27,11 @@ export const backupRouter = router({
 
   snapshots: adminProcedure
     .input(z.object({ repository: id }))
-    .query(({ input }) => requestSync<unknown[]>("root.backup.snapshots", input, 120_000)),
+    .query(({ input }) => requestSync<SnapshotInfo[]>("root.backup.snapshots", input, 120_000)),
 
   ls: adminProcedure
     .input(z.object({ repository: id, snapshot, path: z.string().min(1).max(4096).startsWith("/") }))
-    .query(({ input }) => requestSync<unknown[]>("root.backup.ls", input, 120_000)),
+    .query(({ input }) => requestSync<SnapshotEntry[]>("root.backup.ls", input, 120_000)),
 
   // Reveals the repository password after a re-authentication; counted by the
   // login rate limiter (see sensitiveCalls).
@@ -42,6 +42,10 @@ export const backupRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Wrong password" })
       return requestSync<{ password: string }>("root.backup.password", { repository: input.repository }, 15_000)
     }),
+
+  // Clears the list of former rsync plans the migration skipped, and its alert.
+  dismissMigration: adminProcedure
+    .mutation(() => requestSync<{ ok: true }>("root.backup.migrationDismiss", {}, 15_000)),
 
   restoreStatus: adminProcedure
     .input(z.object({ runId: id }))
