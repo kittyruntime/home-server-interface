@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
-import { applyPlanned, previewErrorOf } from '../../lib/plan'
+import { applyPlanned, previewCodeOf, previewErrorOf } from '../../lib/plan'
 import { formatDateTime } from '../../lib/format-date'
-import { breadcrumbs, bytesLabel, commonPrefix, parentPath, restorePayload } from '../../lib/backup'
+import { asksOverwriteConfirm, breadcrumbs, bytesLabel, commonPrefix, latestOnly, parentPath, restorePayload, restorePollStep } from '../../lib/backup'
 import Modal from '../ui/Modal.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
@@ -13,8 +13,8 @@ import BusyLabel from '../ui/BusyLabel.vue'
 // Browse the snapshots of a repository, pick a file or folder in one, and restore it
 // into a new folder or over its original location.
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
-type Snapshot = { id: string; shortId: string; time: string; paths: string[]; tags: string[]; consistent: boolean; plan: string }
-type Entry = { name: string; path: string; type: string; size: number; mtime: string }
+type Snapshot = Awaited<ReturnType<typeof trpc.backup.snapshots.query>>[number]
+type Entry = Awaited<ReturnType<typeof trpc.backup.ls.query>>[number]
 type Restored = NonNullable<Awaited<ReturnType<typeof trpc.backup.restoreStatus.query>>['result']>
 
 const props = defineProps<{ repository: Status['repositories'][number]; plans: Status['plans'] }>()
@@ -54,7 +54,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    snapshots.value = (await trpc.backup.snapshots.query({ repository: props.repository.id })) as Snapshot[]
+    snapshots.value = await trpc.backup.snapshots.query({ repository: props.repository.id })
   } catch (e) {
     error.value = e instanceof Error && e.message ? e.message : 'Failed to list the snapshots'
   } finally {
@@ -62,24 +62,24 @@ async function load() {
   }
 }
 
-// Counts folder loads, so a slow answer to an earlier click never replaces a later one.
-let listSeq = 0
+// Folder loads: a slow answer to an earlier click never replaces a later one.
+const folderLoads = latestOnly()
 
 async function open(path: string) {
   if (!snapshot.value) return
-  const seq = ++listSeq
+  const current = folderLoads.next()
   listing.value = true
   listError.value = ''
   try {
-    const found = (await trpc.backup.ls.query({ repository: props.repository.id, snapshot: snapshot.value.id, path })) as Entry[]
-    if (seq !== listSeq) return
+    const found = await trpc.backup.ls.query({ repository: props.repository.id, snapshot: snapshot.value.id, path })
+    if (!current()) return
     entries.value = found
     dir.value = path
   } catch (e) {
-    if (seq !== listSeq) return
+    if (!current()) return
     listError.value = e instanceof Error && e.message ? e.message : 'Failed to list this folder'
   } finally {
-    if (seq === listSeq) listing.value = false
+    if (current()) listing.value = false
   }
 }
 
@@ -93,7 +93,7 @@ function pick(s: Snapshot) {
 
 function back() {
   if (running.value) return
-  listSeq++
+  folderLoads.next()
   snapshot.value = null
   result.value = null
   restoreError.value = ''
@@ -108,30 +108,27 @@ function chooseTarget(t: 'new' | 'original') {
 let timer = 0
 let stopped = false
 
-// Without a progress or a result for this long after the apply, the restore is given up on.
-const STATUS_GRACE_MS = 30_000
-
 async function poll(runId: string, since: number) {
+  let s: Awaited<ReturnType<typeof trpc.backup.restoreStatus.query>> | null = null
   try {
-    const s = await trpc.backup.restoreStatus.query({ runId })
-    if (stopped) return
-    if (s.progress || s.result) since = Date.now()
-    progress.value = s.progress ? s.progress.percentDone : progress.value
-    if (s.result && s.result.status !== 'running') {
-      result.value = s.result
-      running.value = false
-      return
-    }
+    s = await trpc.backup.restoreStatus.query({ runId })
   } catch {
     // A missed poll is retried; the restore itself runs in its own unit.
   }
   if (stopped) return
-  if (Date.now() - since > STATUS_GRACE_MS) {
+  if (s?.progress) progress.value = s.progress.percentDone
+  const step = restorePollStep(s, since, Date.now())
+  if (step.state === 'done') {
+    result.value = step.result
+    running.value = false
+    return
+  }
+  if (step.state === 'gone') {
     unknown.value = true
     running.value = false
     return
   }
-  timer = window.setTimeout(() => poll(runId, since), 2_000)
+  timer = window.setTimeout(() => poll(runId, step.since), 2_000)
 }
 
 async function restore() {
@@ -153,7 +150,7 @@ async function restore() {
     void poll(reply.runId, Date.now())
   } catch (e) {
     const refused = previewErrorOf(e)
-    if (/replaces \d+ files/i.test(refused)) confirmError.value = refused
+    if (asksOverwriteConfirm(previewCodeOf(e))) confirmError.value = refused
     else if (refused) restoreError.value = refused
     else if (e instanceof Error && e.message) restoreError.value = e.message
   } finally {

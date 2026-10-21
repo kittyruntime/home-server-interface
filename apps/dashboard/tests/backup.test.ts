@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  asksOverwriteConfirm, canCloseReveal, clip, defaultRepository, latestOnly, locationSecretsRequired, poller, RESTORE_GRACE_MS, restorePollStep,
   asksRepositoryPassword, breadcrumbs, bytesLabel, commonPrefix, restorePayload, durationLabel, emptyPlanForm, emptyRepositoryForm, locationLabel, parentPath, planFormOf, planPayload,
   pollDelay, repositoryFormOf, repositoryPayload, retentionLabel, runLabel, scheduleLabel, untilLabel,
 } from '../src/lib/backup.ts'
@@ -127,10 +128,11 @@ test('repositoryFormOf leaves the secrets empty', () => {
   assert.equal(Object.values(f.secrets).every(v => v === ''), true)
 })
 
-test('asksRepositoryPassword spots the worker EPASSWORD messages', () => {
-  assert.equal(asksRepositoryPassword('This location already holds a restic repository: enter its password to attach it'), true)
-  assert.equal(asksRepositoryPassword('Wrong password for this repository'), true)
-  assert.equal(asksRepositoryPassword('The location could not be reached'), false)
+test('refusals are told apart by the worker code, not the message', () => {
+  assert.equal(asksRepositoryPassword('EPASSWORD'), true)
+  assert.equal(asksRepositoryPassword('EUNREACHABLE'), false)
+  assert.equal(asksOverwriteConfirm('ECONFIRM'), true)
+  assert.equal(asksOverwriteConfirm(''), false)
 })
 
 test('commonPrefix is the deepest directory shared by the snapshot paths', () => {
@@ -154,4 +156,72 @@ test('restorePayload only confirms an overwrite of the original location', () =>
   assert.deepEqual(restorePayload('r', 's', '/p', 'new', true), { repository: 'r', snapshot: 's', path: '/p', target: 'new', confirmOverwrite: false })
   assert.equal(restorePayload('r', 's', '/p', 'original', true).confirmOverwrite, true)
   assert.equal(restorePayload('r', 's', '/p', 'original', false).confirmOverwrite, false)
+})
+
+test('labels survive odd values', () => {
+  assert.equal(scheduleLabel({ every: 'weekly', minute: 0, hour: 3, weekday: 9 }), 'Every week at 03:00')
+  assert.equal(runLabel({ status: 'success', end: 'not a date' }).text, 'Succeeded')
+  assert.deepEqual(runLabel({ status: 'queued' }), { text: 'Unknown state', tone: 'muted' })
+  assert.equal(locationLabel({ type: 'sftp', user: 'nas', host: 'backup.lan' }), 'nas@backup.lan:')
+  assert.equal(bytesLabel(1024 * 1024 - 1), '1.0 MB')
+  assert.equal(bytesLabel(1023 * 1024), '1023.0 KB')
+  // An emoji is two UTF-16 units: a cut never leaves half of one.
+  assert.equal(clip('ab😀c', 3), 'ab😀')
+  assert.equal(runLabel({ status: 'failed', error: 'x'.repeat(119) + '😀😀' }).text, 'Failed: ' + 'x'.repeat(119) + '😀')
+})
+
+test('defaultRepository picks a repository added while the form is open', () => {
+  assert.equal(defaultRepository('', [{ id: 'r1' }]), 'r1')
+  assert.equal(defaultRepository('r2', [{ id: 'r1' }, { id: 'r2' }]), 'r2')
+  assert.equal(defaultRepository('gone', [{ id: 'r1' }]), 'r1')
+  assert.equal(defaultRepository('', []), '')
+})
+
+test('the keys of a new repository type are required on an edit', () => {
+  assert.equal(locationSecretsRequired(null, 's3'), true)
+  assert.equal(locationSecretsRequired('s3', 's3'), false)
+  assert.equal(locationSecretsRequired('local', 'sftp'), true)
+})
+
+test('a generated password closes only once stored', () => {
+  assert.equal(canCloseReveal('new', false), false)
+  assert.equal(canCloseReveal('new', true), true)
+  assert.equal(canCloseReveal('ask', false), true)
+})
+
+test('restorePollStep gives up after the grace period only', () => {
+  const t0 = 1_000_000
+  assert.deepEqual(restorePollStep(null, t0, t0 + 1000), { state: 'wait', since: t0 })
+  assert.deepEqual(restorePollStep({ progress: { percentDone: 0 }, result: null }, t0, t0 + RESTORE_GRACE_MS + 5), { state: 'wait', since: t0 + RESTORE_GRACE_MS + 5 })
+  assert.deepEqual(restorePollStep({ progress: null, result: null }, t0, t0 + RESTORE_GRACE_MS), { state: 'wait', since: t0 })
+  assert.deepEqual(restorePollStep({ progress: null, result: null }, t0, t0 + RESTORE_GRACE_MS + 1), { state: 'gone' })
+  const done = { status: 'success' }
+  assert.deepEqual(restorePollStep({ progress: null, result: done }, t0, t0 + 10 * RESTORE_GRACE_MS), { state: 'done', result: done })
+})
+
+test('latestOnly lets the latest load land', () => {
+  const loads = latestOnly()
+  const first = loads.next()
+  const second = loads.next()
+  assert.equal(first(), false)
+  assert.equal(second(), true)
+  loads.next()
+  assert.equal(second(), false)
+})
+
+test('poller stops for good, even when a run ends after stop', async () => {
+  const scheduled: Array<() => void> = []
+  let runs = 0
+  let release: () => void = () => {}
+  const p = poller(() => new Promise<void>(r => { runs++; release = r }), () => 5, { set: fn => { scheduled.push(fn); return scheduled.length }, clear: () => {} })
+  const first = p.now()
+  release()
+  await first
+  assert.equal(scheduled.length, 1)
+  scheduled[0]!()
+  p.stop()
+  release()
+  await new Promise(r => setTimeout(r, 0))
+  assert.equal(runs, 2)
+  assert.equal(scheduled.length, 1, 'nothing scheduled after stop')
 })

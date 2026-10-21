@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { trpc } from '../lib/trpc'
-import { pollDelay } from '../lib/backup'
+import { poller, pollDelay } from '../lib/backup'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
@@ -25,10 +25,7 @@ const loadError = ref('')
 const planEdit = ref<Plan | 'new' | null>(null)
 const repoEdit = ref<Repository | 'new' | null>(null)
 
-let timer: number | undefined
-let stopped = false
-
-async function load() {
+async function fetchStatus() {
   try {
     status.value = await trpc.backup.status.query()
     loadError.value = ''
@@ -38,13 +35,25 @@ async function load() {
   } finally {
     loading.value = false
   }
-  schedule()
 }
 
-function schedule() {
-  window.clearTimeout(timer)
-  if (stopped) return
-  timer = window.setTimeout(load, pollDelay(status.value?.plans ?? []))
+const polling = poller(fetchStatus, () => pollDelay(status.value?.plans ?? []))
+const load = () => polling.now()
+
+// Former rsync plans the migration could not convert, listed until dismissed.
+const dismissing = ref(false)
+const dismissError = ref('')
+async function dismissSkipped() {
+  dismissing.value = true
+  dismissError.value = ''
+  try {
+    await trpc.backup.dismissMigration.mutate()
+    await load()
+  } catch (e) {
+    dismissError.value = e instanceof Error && e.message ? e.message : 'Failed to dismiss'
+  } finally {
+    dismissing.value = false
+  }
 }
 
 function retry() {
@@ -64,7 +73,7 @@ function repoSaved() {
 }
 
 onMounted(load)
-onUnmounted(() => { stopped = true; window.clearTimeout(timer) })
+onUnmounted(() => polling.stop())
 </script>
 
 <template>
@@ -79,6 +88,15 @@ onUnmounted(() => { stopped = true; window.clearTimeout(timer) })
       <p v-if="!status.engine.installed" role="alert" class="mb-4 status-text text-warning">
         <span class="status-tag">[WARN]</span> The backup engine is not installed. Run the installer again to enable versioned backups.
       </p>
+
+      <div v-if="status.migrationSkipped.length" role="alert" class="mb-4 panel-card p-4 bg-[var(--c-surface)] space-y-2">
+        <p class="status-text text-warning"><span class="status-tag">[WARN]</span> These former backup plans could not be moved to the new backups. Create them again below.</p>
+        <ul class="text-xs text-[var(--c-text-2)] space-y-1">
+          <li v-for="s in status.migrationSkipped" :key="s.name" class="break-words"><span class="font-medium text-[var(--c-text-1)]">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
+        </ul>
+        <p v-if="dismissError" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
+        <button class="btn btn-ghost btn-xs" :disabled="dismissing" @click="dismissSkipped">Dismiss</button>
+      </div>
 
       <!-- Plans -->
       <section class="mb-6">
