@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -168,10 +169,33 @@ func resticCmdFiles(r repositoryCfg, s repoSecrets, lead []string, own []string,
 	}
 	args = append(args, global...)
 	args = append(args, own...)
-	if len(extra) > 0 {
-		return runResticFiles(resticEnv(r, s), args, extra, onLine)
+	env, files := resticEnv(r, s), extra
+	if r.Type == "local" {
+		repo, err := openLocalRepo(r.Path, lead[0] == "init")
+		if err != nil {
+			return 0, "", err
+		}
+		defer repo.Close()
+		env, files = heldRepository(env, extra, repo)
 	}
-	return runRestic(resticEnv(r, s), args, onLine)
+	return runResticFiles(env, args, files, onLine)
+}
+
+// resticFdPath is the path restic reaches the i-th file handed to it by (fd 3 is the first).
+func resticFdPath(i int) string { return "/proc/self/fd/" + strconv.Itoa(3+i) + "/." }
+
+// heldRepository hands restic a local repository by descriptor, after the other files
+// (a restore target is fd 3, the repository fd 4; alone, the repository is fd 3).
+// Whatever happens to the path meanwhile, restic writes into the folder checked.
+func heldRepository(env []string, extra []*os.File, repo *os.File) ([]string, []*os.File) {
+	files := append(append([]*os.File{}, extra...), repo)
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, "RESTIC_REPOSITORY=") {
+			out = append(out, e)
+		}
+	}
+	return append(out, "RESTIC_REPOSITORY="+resticFdPath(len(extra))), files
 }
 
 // resticRun runs a command whose output is not parsed and turns a failure into an error.
@@ -201,6 +225,10 @@ const (
 
 func resticProbe(r repositoryCfg, s repoSecrets) (probeState, string) {
 	code, stderr, err := resticCmd(r, s, []string{"cat"}, []string{"config"}, nil)
+	if errors.Is(err, errRepoMissing) {
+		// A local folder that does not exist yet: init creates it.
+		return probeEmpty, ""
+	}
 	if err != nil {
 		return probeUnreachable, err.Error()
 	}
@@ -432,7 +460,7 @@ var resticLiteral = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`, `[`, `\
 // resticFdTarget is the restore target when the directory is held by file descriptor: it
 // is handed to restic as fd 3. The trailing "/." keeps restic from lstat-ing the magic
 // link itself, which it would try to remove as a stale item.
-const resticFdTarget = "/proc/self/fd/3/."
+var resticFdTarget = resticFdPath(0)
 
 // resticRestore never passes --delete, so nothing at the target is removed.
 func resticRestore(r repositoryCfg, s repoSecrets, snapshotID, include, target string, dryRun bool, onProgress func(backupProgress)) (restoreSummary, error) {

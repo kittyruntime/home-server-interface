@@ -62,7 +62,7 @@ func TestRepositoryMovedIntoASourceIsRefused(t *testing.T) {
 func TestSnapshotsKeepOneHostAndOneRetentionGroup(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	r, sec := repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}
+	r, sec := repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}
 	if _, err := resticBackup(r, sec, []string{"/srv/a"}, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -115,6 +115,7 @@ func TestLocationChangeUsesTheGivenPassword(t *testing.T) {
 	calls := fakeRestic(t, nil, map[string]int{"cat": 0})
 	r := sampleConfig().Repositories[0]
 	r.Path = filepath.Join(t.TempDir(), "other")
+	_ = os.Mkdir(r.Path, 0o700)
 	p := planFor(t, "backup.repository.save", map[string]any{"repository": r, "secrets": map[string]string{"password": "theirs"}})
 	if envValue((*calls)[0].env, "RESTIC_PASSWORD") != "theirs" {
 		t.Fatal("the probe must use the password given for the new location")
@@ -134,6 +135,7 @@ func TestLocationChangeAsksForThePasswordWhenBlank(t *testing.T) {
 	fakeRestic(t, nil, map[string]int{"cat": 12})
 	r := sampleConfig().Repositories[0]
 	r.Path = filepath.Join(t.TempDir(), "other")
+	_ = os.Mkdir(r.Path, 0o700)
 	_, ferr := buildPlan("backup.repository.save", mustJSON(map[string]any{"repository": r, "secrets": map[string]string{}}))
 	if ferr == nil || ferr.Code != "EPASSWORD" || ferr.Message != msgRepositoryExists {
 		t.Fatalf("%+v", ferr)
@@ -330,7 +332,7 @@ func TestRealResticGetsEnvNotArgsAndATrimmedStderr(t *testing.T) {
 func TestSnapshotsParseAndInitArgs(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, map[string][]string{"snapshots": {`[{"id":"abc","short_id":"ab","time":"2026-01-02T03:04:05Z","paths":["/srv/a"],"tags":["hsi"]}]`}}, nil)
-	r, sec := repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}
+	r, sec := repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}
 	list, err := resticSnapshots(r, sec)
 	if err != nil || len(list) != 1 || list[0].ShortID != "ab" || list[0].Paths[0] != "/srv/a" || list[0].Time.Year() != 2026 {
 		t.Fatalf("%+v %v", list, err)
@@ -338,7 +340,7 @@ func TestSnapshotsParseAndInitArgs(t *testing.T) {
 	if err := resticInit(r, sec); err != nil {
 		t.Fatal(err)
 	}
-	if got := (*calls)[1].args; got[0] != "init" || envValue((*calls)[1].env, "RESTIC_REPOSITORY") != "/r" {
+	if got := (*calls)[1].args; got[0] != "init" || envValue((*calls)[1].env, "RESTIC_REPOSITORY") != "/proc/self/fd/3/." {
 		t.Fatalf("%v", got)
 	}
 	fakeRestic(t, nil, map[string]int{"snapshots": 1})
@@ -350,7 +352,7 @@ func TestSnapshotsParseAndInitArgs(t *testing.T) {
 func TestLsRefusesARelativeDir(t *testing.T) {
 	useBackupDirs(t)
 	calls := fakeRestic(t, nil, nil)
-	if _, err := resticLs(repositoryCfg{Type: "local", Path: "/r"}, repoSecrets{Password: "p"}, "s", ""); err == nil || len(*calls) != 0 {
+	if _, err := resticLs(repositoryCfg{Type: "local", Path: testRepoPath}, repoSecrets{Password: "p"}, "s", ""); err == nil || len(*calls) != 0 {
 		t.Fatalf("%v %v", err, *calls)
 	}
 }

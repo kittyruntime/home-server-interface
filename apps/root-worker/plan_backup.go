@@ -327,11 +327,7 @@ func planRepositorySave(raw json.RawMessage) (*opPlan, *fsError) {
 					if generate {
 						sec.Password = randomPassword()
 					}
-					if repo.Type == "local" {
-						if err := ensureLocalRepoDir(repo.Path); err != nil {
-							return "", err
-						}
-					}
+					// A missing local folder is created by the init, see resticCmdFiles.
 					if err := resticInit(repo, sec); err != nil {
 						return "", err
 					}

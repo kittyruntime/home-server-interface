@@ -395,39 +395,50 @@ func checkRepoDirFd(f *os.File, path string) error {
 	if err := syscall.Fstat(int(f.Fd()), &st); err != nil {
 		return err
 	}
-	if int(st.Uid) != restoreOwnerUID() || st.Mode&0o022 != 0 {
+	// No bit for the group or others: setgid aside, which a share volume's 2775 puts
+	// on every folder created below it.
+	if st.Mode&syscall.S_IFMT != syscall.S_IFDIR || int(st.Uid) != restoreOwnerUID() || st.Mode&0o077 != 0 {
 		return fmt.Errorf("the repository folder %s must be owned by root and closed to other users", path)
 	}
 	return nil
 }
 
-// ensureLocalRepoDir creates the repository folder (0700) when it is missing, then
-// checks it as checkLocalRepoDir does.
-func ensureLocalRepoDir(path string) error {
-	f, err := walkNoFollow(path, true)
+// openLocalRepo holds the repository folder by descriptor, checked on that descriptor.
+// With create (restic init), a missing folder is made 0700 from its held parent. Without,
+// a missing folder is reported as such (nil, errRepoMissing).
+func openLocalRepo(path string, create bool) (*os.File, error) {
+	f, err := walkNoFollow(path, create)
 	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return checkRepoDirFd(f, path)
-}
-
-// checkLocalRepoDir fails unless path is a real directory reached without a symbolic
-// link, owned by root and not writable by other users.
-func checkLocalRepoDir(path string) error {
-	f, err := walkNoFollow(path, false)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	if f == nil {
-		return fmt.Errorf("the repository folder %s does not exist", path)
+		return nil, errRepoMissing
 	}
-	defer f.Close()
-	return checkRepoDirFd(f, path)
+	if err := checkRepoDirFd(f, path); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
 }
 
-// repositoryReady is checked before restic opens a repository: a local one must still
-// be a safe folder.
+var errRepoMissing = errors.New("the repository folder does not exist")
+
+// checkLocalRepoDir fails unless path is a real directory reached without a symbolic
+// link, owned by root and closed to other users.
+func checkLocalRepoDir(path string) error {
+	f, err := openLocalRepo(path, false)
+	if err != nil {
+		if errors.Is(err, errRepoMissing) {
+			return fmt.Errorf("the repository folder %s does not exist", path)
+		}
+		return err
+	}
+	return f.Close()
+}
+
+// repositoryReady is checked before a run touches anything (apps, staging): a local
+// repository must still be a safe folder. restic itself gets the folder held, see
+// resticCmdFiles.
 func repositoryReady(r repositoryCfg) error {
 	if r.Type != "local" {
 		return nil

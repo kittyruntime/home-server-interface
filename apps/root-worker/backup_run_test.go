@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -150,12 +151,12 @@ func TestRunVersionsStartsAppsBeforeForget(t *testing.T) {
 		return nil
 	}
 	fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
-	inner := runRestic
-	runRestic = func(env, args []string, onLine func([]byte)) (int, string, error) {
+	inner := runResticFiles
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
 		if strings.Contains(strings.Join(args, " "), "forget") {
 			seq = append(seq, "forget")
 		}
-		return inner(env, args, onLine)
+		return inner(env, args, extra, onLine)
 	}
 	if err := runPlan(planA, false, time.Now); err != nil {
 		t.Fatal(err)
