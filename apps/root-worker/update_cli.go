@@ -1,9 +1,7 @@
 package main
 
 import (
-	"archive/tar"
 	"bufio"
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -248,8 +246,11 @@ func updateRollbackCLI(snapshotDir string, yes bool, reason string) int {
 }
 
 // updateApply is the dashboard update: download (or copy) the release into a private
-// staging dir, verify it, check the archive extracts safely, then run the verified
-// install.sh. A refusal changes nothing but last.json.
+// staging dir, verify it, then run the verified install.sh, which extracts the archive
+// after checking its layout. The worker does not extract it too: the signature is what
+// makes the archive trusted (the installer that unpacks it is in the same signed set),
+// and a second copy would double the disk an update needs. A refusal changes nothing
+// but last.json.
 func updateApply(version, archive string) int {
 	from := currentVersion()
 	refuse := func(step string, err error) int {
@@ -291,10 +292,6 @@ func updateApply(version, archive string) int {
 	}
 	if err != nil {
 		return refuse("verify", fmt.Errorf("the release %s is not authentic: %w", version, err))
-	}
-	root := strings.TrimSuffix(archiveName(version), "-linux-amd64.tar.gz")
-	if err := extractRelease(f.Archive, filepath.Join(stage, "release"), root); err != nil {
-		return refuse("extract", fmt.Errorf("the release %s archive is unsafe: %w", version, err))
 	}
 	return runInstaller(f.Installer, installerEnv(version, f.Archive))
 }
@@ -416,158 +413,6 @@ func copyCapped(src, dst string, max int64) error {
 		err = fmt.Errorf("%s is larger than the size cap", filepath.Base(src))
 	}
 	return err
-}
-
-// Caps on what a release archive may expand to.
-const (
-	releaseMaxEntries = 1_000_000
-	releaseMaxBytes   = 8 << 30
-)
-
-// extractRelease extracts archive (a .tar.gz whose entries all sit under root/) into
-// dest. Refused: absolute or parent paths, entries outside root, links leaving dest,
-// writing through a symlink, a name seen twice, setuid or setgid bits, and any entry
-// other than a directory, a regular file or a link.
-func extractRelease(archive, dest, root string) error {
-	fh, err := os.Open(archive)
-	if err != nil {
-		return err
-	}
-	defer fh.Close()
-	gz, err := gzip.NewReader(fh)
-	if err != nil {
-		return fmt.Errorf("not a gzip archive: %w", err)
-	}
-	defer gz.Close()
-	if err := os.MkdirAll(dest, 0o700); err != nil {
-		return err
-	}
-	tr := tar.NewReader(gz)
-	var total int64
-	for entries := 0; ; entries++ {
-		h, err := tr.Next()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("the archive is damaged: %w", err)
-		}
-		if entries >= releaseMaxEntries {
-			return errors.New("the archive has too many entries")
-		}
-		rel, err := releaseEntryPath(h.Name, root)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			continue
-		}
-		if h.Mode&(0o4000|0o2000) != 0 {
-			return fmt.Errorf("the archive holds a setuid or setgid entry: %s", h.Name)
-		}
-		target := filepath.Join(dest, rel)
-		switch h.Typeflag {
-		case tar.TypeDir:
-			if err := ensureDirs(dest, rel); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if total += h.Size; total > releaseMaxBytes {
-				return errors.New("the archive expands beyond the size cap")
-			}
-			if err := ensureDirs(dest, filepath.Dir(rel)); err != nil {
-				return err
-			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, os.FileMode(h.Mode).Perm()|0o600)
-			if err != nil {
-				return fmt.Errorf("%s: %w", h.Name, err)
-			}
-			_, err = io.Copy(out, io.LimitReader(tr, h.Size))
-			if cerr := out.Close(); err == nil {
-				err = cerr
-			}
-			if err != nil {
-				return err
-			}
-		case tar.TypeSymlink:
-			if filepath.IsAbs(h.Linkname) || !filepath.IsLocal(filepath.Join(filepath.Dir(rel), h.Linkname)) {
-				return fmt.Errorf("the archive holds a link leaving it: %s -> %s", h.Name, h.Linkname)
-			}
-			if err := ensureDirs(dest, filepath.Dir(rel)); err != nil {
-				return err
-			}
-			if err := os.Symlink(h.Linkname, target); err != nil {
-				return fmt.Errorf("%s: %w", h.Name, err)
-			}
-		case tar.TypeLink:
-			linkRel, err := releaseEntryPath(h.Linkname, root)
-			if err != nil || linkRel == "." {
-				return fmt.Errorf("the archive holds a link leaving it: %s -> %s", h.Name, h.Linkname)
-			}
-			if err := ensureDirs(dest, filepath.Dir(linkRel)); err != nil {
-				return err
-			}
-			if st, err := os.Lstat(filepath.Join(dest, linkRel)); err != nil || !st.Mode().IsRegular() {
-				return fmt.Errorf("the archive links %s to a missing file", h.Name)
-			}
-			if err := ensureDirs(dest, filepath.Dir(rel)); err != nil {
-				return err
-			}
-			if err := os.Link(filepath.Join(dest, linkRel), target); err != nil {
-				return fmt.Errorf("%s: %w", h.Name, err)
-			}
-		default:
-			return fmt.Errorf("the archive holds an entry that is not a file, directory or link: %s", h.Name)
-		}
-	}
-}
-
-// releaseEntryPath is name relative to root/, refused when it leaves it.
-func releaseEntryPath(name, root string) (string, error) {
-	if filepath.IsAbs(name) {
-		return "", fmt.Errorf("the archive holds an absolute path: %s", name)
-	}
-	if name != root && name != root+"/" && !strings.HasPrefix(name, root+"/") {
-		return "", fmt.Errorf("the archive holds a path outside %s: %s", root, name)
-	}
-	rel := strings.TrimPrefix(strings.TrimPrefix(name, root), "/")
-	if rel == "" {
-		return ".", nil
-	}
-	for _, part := range strings.Split(rel, "/") {
-		if part == ".." {
-			return "", fmt.Errorf("the archive holds a parent path: %s", name)
-		}
-	}
-	clean := filepath.Clean(filepath.FromSlash(rel))
-	if !filepath.IsLocal(clean) {
-		return "", fmt.Errorf("the archive holds a path outside it: %s", name)
-	}
-	return clean, nil
-}
-
-// ensureDirs creates each directory of rel under dest, refusing one that is a symlink
-// or a file, so nothing is ever written through a link.
-func ensureDirs(dest, rel string) error {
-	if rel == "." || rel == "" {
-		return nil
-	}
-	cur := dest
-	for _, part := range strings.Split(rel, string(filepath.Separator)) {
-		cur = filepath.Join(cur, part)
-		st, err := os.Lstat(cur)
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			if err := os.Mkdir(cur, 0o755); err != nil {
-				return err
-			}
-		case err != nil:
-			return err
-		case !st.IsDir():
-			return fmt.Errorf("the archive writes through %s, which is not a directory", strings.TrimPrefix(cur, dest+"/"))
-		}
-	}
-	return nil
 }
 
 type previousVersion struct {
