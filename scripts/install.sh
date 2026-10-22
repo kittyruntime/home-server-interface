@@ -379,8 +379,8 @@ link_flat_paths() {
 # with VERSION, database/data linked to the live database directory and the
 # @app/compose link of the data migrations, all root's. [prepare] then runs with the
 # staging dir (the Prisma client: node_modules is the app user's meanwhile, nothing
-# root runs lives there) before node_modules is root's again and the release is
-# renamed to releases/$VERSION, replacing a leftover of that version. With REPAIR=1
+# root runs lives there) before node_modules is root's again, the whole copy is checked
+# (code_tree_trusted) and the release is renamed to releases/$VERSION, replacing a leftover of that version. With REPAIR=1
 # (releases/$VERSION is the live release) it stays at STAGED_DIR instead, for
 # `update replace` at the switch. current is not touched.
 install_release_dir() {
@@ -400,6 +400,8 @@ install_release_dir() {
     if (( EUID == 0 )); then chown -hR "$APP_USER:" "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }; fi
     "$prepare" "$tmp" && root_owned "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }
   fi
+  # Nothing the app user wrote, or could still write, is left in the release.
+  code_tree_trusted "$tmp" || { rm -rf -- "$tmp"; return 1; }
   if [[ "${REPAIR:-0}" == 1 ]]; then
     STAGED_DIR=$tmp
     return 0
