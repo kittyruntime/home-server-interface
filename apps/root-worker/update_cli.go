@@ -23,6 +23,7 @@ import (
 
 const updateUsage = `usage: hsi-worker update <command>
   apply <version> [--archive <path>]      verify a release, then run its installer
+  apply-pending                           apply the version the dashboard asked for (update-apply unit)
   snapshot <from> <to>                    snapshot the database and configuration, print its dir
   mark <from> <to> <snapshot> <step> [--pid N]   write the in-progress marker
   switch <version>                        point current at releases/<version>
@@ -97,7 +98,7 @@ func runUpdateCLI(args []string) int {
 	if err := fs.Parse(rest); err != nil || fs.NArg() > 0 {
 		return fail(2, errors.New(updateUsage))
 	}
-	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "health": 1, "commit": 3, "rollback": 0, "status": 0, "recover": 0}
+	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "health": 1, "commit": 3, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
 	if n, ok := want[args[0]]; !ok || n != len(pos) {
 		return fail(2, errors.New(updateUsage))
 	}
@@ -105,6 +106,8 @@ func runUpdateCLI(args []string) int {
 	switch args[0] {
 	case "apply":
 		return updateApply(pos[0], *archive)
+	case "apply-pending":
+		return updateApplyPending()
 	case "snapshot":
 		dir, err := takeSnapshot(pos[0], pos[1], updateDBPath(), snapshotConfigFiles())
 		if err != nil {
@@ -250,8 +253,10 @@ func updateApply(version, archive string) int {
 		_ = writeLast(lastResult{From: from, To: version, Status: "refused", Step: step, Reason: err.Error()})
 		return 1
 	}
-	if err := checkReleaseVersion(version); err != nil {
-		return refuse("verify", err)
+	if checkReleaseVersion(version) != nil {
+		// Never echoed: the request may hold anything.
+		version = ""
+		return refuse("verify", errInvalidVersionRequested)
 	}
 	if err := os.MkdirAll(updateStateDir(), 0o700); err != nil {
 		return refuse("download", err)
@@ -287,6 +292,66 @@ func updateApply(version, archive string) int {
 		return refuse("extract", fmt.Errorf("the release %s archive is unsafe: %w", version, err))
 	}
 	return runInstaller(f.Installer, installerEnv(version, f.Archive))
+}
+
+var errInvalidVersionRequested = errors.New("invalid version requested")
+
+// pendingUpdatePath is the marker the backend writes to ask for an update, in the
+// database folder it owns.
+func pendingUpdatePath() string {
+	return envOr("HSI_PENDING_UPDATE", filepath.Join(filepath.Dir(updateDBPath()), ".pending-update"))
+}
+
+// pendingUpdateMax is how much of the marker is read: a version is far shorter.
+const pendingUpdateMax = 64
+
+// readPendingUpdate reads and removes the update request marker. Its folder is held
+// by descriptor and the marker opened without following a link: it must be a regular
+// file with no other hard link, owned like its folder (by the app user); at most
+// pendingUpdateMax bytes of its first line are read. The marker is removed whatever it
+// is, so the path unit does not start the update again.
+func readPendingUpdate() (string, error) {
+	dir, base, err := openParentNoFollow(pendingUpdatePath())
+	if err != nil {
+		return "", fmt.Errorf("read the update request: %w", err)
+	}
+	defer dir.Close()
+	defer func() { _ = unlinkat(dir, base, 0) }()
+	fd, err := syscall.Openat(int(dir.Fd()), base, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return "", fmt.Errorf("read the update request %s: %w", pendingUpdatePath(), err)
+	}
+	f := os.NewFile(uintptr(fd), base)
+	defer f.Close()
+	var st, dst syscall.Stat_t
+	if err := syscall.Fstat(fd, &st); err != nil {
+		return "", err
+	}
+	if err := syscall.Fstat(int(dir.Fd()), &dst); err != nil {
+		return "", err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFREG || st.Nlink != 1 || st.Uid != dst.Uid {
+		return "", fmt.Errorf("the update request %s is not a regular file of the owner of its folder", pendingUpdatePath())
+	}
+	b, err := io.ReadAll(io.LimitReader(f, pendingUpdateMax))
+	if err != nil {
+		return "", err
+	}
+	line, _, _ := strings.Cut(string(b), "\n")
+	return strings.TrimSpace(line), nil
+}
+
+// updateApplyPending is what the update-apply unit runs once the backend has written
+// the marker: the unit passes no value, the worker reads the marker itself.
+func updateApplyPending() int {
+	version, err := readPendingUpdate()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		logger.Error("update refused", "step", "verify", "error", err.Error())
+		_ = writeLast(lastResult{From: currentVersion(), Status: "refused", Step: "verify", Reason: err.Error()})
+		return 1
+	}
+	return updateApply(version, "")
 }
 
 // installerEnv passes the worker's environment (the update-apply unit sets APP_NAME,
