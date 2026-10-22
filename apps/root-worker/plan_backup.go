@@ -450,6 +450,21 @@ func (r restoreRequest) validate() error {
 	return nil
 }
 
+// filesCount is "1 file" or "N files".
+func filesCount(n int) string {
+	if n == 1 {
+		return "1 file"
+	}
+	return fmt.Sprintf("%d files", n)
+}
+
+func overwriteMessage(n int) string {
+	if n == 1 {
+		return "This replaces 1 file at its original location"
+	}
+	return fmt.Sprintf("This replaces %d files at their original location", n)
+}
+
 func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
 		Repository       string `json:"repository"`
@@ -538,13 +553,13 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, &fsError{Code: "ENOENT", Message: "Nothing to restore: the snapshot holds no file at " + path}
 	}
 	if req.Target == "original" && !req.ConfirmOverwrite {
-		return nil, &fsError{Code: "ECONFIRM", Message: fmt.Sprintf("This replaces %d files at their original location", files)}
+		return nil, &fsError{Code: "ECONFIRM", Message: overwriteMessage(files)}
 	}
 
 	p := &opPlan{Op: "backup.restore", Reply: map[string]any{}}
 	rr := restoreRequest{Repository: repo.ID, Snapshot: req.Snapshot, Path: path, Mode: req.Target, Base: base, Name: name}
 	p.Steps = []planStep{{Kind: "run", Target: target,
-		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, files),
+		Summary:     fmt.Sprintf("Restore %s from %s to %s (%s)", path, date, target, filesCount(files)),
 		Destructive: req.Target == "original",
 		run: func() (string, error) {
 			rr.RunID = newRunID()

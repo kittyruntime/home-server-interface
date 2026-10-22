@@ -32,10 +32,11 @@ var composeAction = func(ctx context.Context, app string, args ...string) error 
 	return nil
 }
 
-// Bounds of the compose calls of a run. The restart stays below TimeoutStopSec, so an
-// interrupted run still records itself before systemd kills it.
+// Bounds of the compose calls of a run. A stop is cut short by an interruption and the
+// restart stays below TimeoutStopSec (120 s), so an interrupted run still starts its
+// apps and records itself before systemd kills it.
 var (
-	appStopTimeout    = 5 * time.Minute
+	appStopTimeout    = 60 * time.Second
 	appRestartTimeout = 90 * time.Second
 )
 
@@ -82,6 +83,37 @@ var errInterrupted = errors.New("interrupted")
 
 var interrupted atomic.Bool
 
+// interruptedCh is closed at the interruption, for the waits it must cut short.
+var (
+	interruptMu   sync.Mutex
+	interruptedCh = make(chan struct{})
+)
+
+// untilInterrupted is a context that ends after d, or at once when the run is
+// interrupted: for an app stop, which must not use up the unit's stop timeout.
+func untilInterrupted(d time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	interruptMu.Lock()
+	ch := interruptedCh
+	interruptMu.Unlock()
+	go func() {
+		select {
+		case <-ch:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, cancel
+}
+
+// resetInterrupt clears an interruption; tests run several commands in one process.
+func resetInterrupt() {
+	interruptMu.Lock()
+	defer interruptMu.Unlock()
+	interrupted.Store(false)
+	interruptedCh = make(chan struct{})
+}
+
 var (
 	childMu  sync.Mutex
 	children = map[*os.Process]bool{}
@@ -104,7 +136,11 @@ func trackChild(p *os.Process) func() {
 
 // interruptRun marks the run interrupted and passes sig on to every running child.
 func interruptRun(sig os.Signal) {
-	interrupted.Store(true)
+	interruptMu.Lock()
+	if !interrupted.Swap(true) {
+		close(interruptedCh)
+	}
+	interruptMu.Unlock()
 	childMu.Lock()
 	defer childMu.Unlock()
 	for p := range children {
@@ -262,7 +298,7 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 		// A failed stop can leave a multi-container app half stopped, so it is
 		// started again too (starting running containers is harmless).
 		stopped = append(stopped, app)
-		ctx, cancel := context.WithTimeout(context.Background(), appStopTimeout)
+		ctx, cancel := untilInterrupted(appStopTimeout)
 		err = composeAction(ctx, app, "stop")
 		cancel()
 		if err != nil {

@@ -31,7 +31,7 @@ func useBackupDirs(t *testing.T) string {
 		}
 		return ""
 	}
-	t.Cleanup(func() { testRepoPath, volumeMountFor = prevRepo, prevMount; interrupted.Store(false) })
+	t.Cleanup(func() { testRepoPath, volumeMountFor = prevRepo, prevMount; resetInterrupt() })
 	return root
 }
 
