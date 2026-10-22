@@ -135,6 +135,8 @@ export const updateRouter = router({
       pending,
       lastResult:   worker?.last          ?? null,
       previous:     worker?.previous      ?? [],
+      rollbackTarget:  worker?.rollbackTarget  ?? null,
+      rollbackCommand: worker?.rollbackCommand ?? null,
       repoUrl:      `https://github.com/${GITHUB_REPO}`,
     }
   }),
