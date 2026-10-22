@@ -56,7 +56,22 @@ var runInstaller = func(installer string, env []string) int {
 // Keep two previous versions and two snapshots.
 const updateKeep = 2
 
+// loadWorkerEnvDefaults takes the HSI_ settings of the worker env file that the
+// environment does not set: an admin's `sudo hsi-worker update rollback` then uses
+// the paths of a custom APP_NAME install like the units do.
+func loadWorkerEnvDefaults() {
+	for k, v := range readEnvFile(workerEnvPath()) {
+		if !strings.HasPrefix(k, "HSI_") {
+			continue
+		}
+		if _, set := os.LookupEnv(k); !set {
+			os.Setenv(k, v)
+		}
+	}
+}
+
 func runUpdateCLI(args []string) int {
+	loadWorkerEnvDefaults()
 	fail := func(code int, err error) int {
 		fmt.Fprintln(os.Stderr, err.Error())
 		logger.Warn("update command failed", "error", err.Error())

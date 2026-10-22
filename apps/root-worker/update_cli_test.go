@@ -400,3 +400,42 @@ func TestMarkAndSwitchCLI(t *testing.T) {
 		t.Fatalf("a step change must keep the start time: %+v", p)
 	}
 }
+
+func TestUpdateCLILoadsWorkerEnv(t *testing.T) {
+	dir := t.TempDir()
+	env := filepath.Join(dir, "worker.env")
+	if err := os.WriteFile(env, []byte("NATS_PASS=secret\nHSI_UPDATE_STATE=/var/lib/nas/update\nHSI_INSTALL_DIR=/opt/nas\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HSI_WORKER_ENV", env)
+	t.Setenv("HSI_INSTALL_DIR", "/from/env")
+	t.Setenv("HSI_UPDATE_STATE", "")
+	os.Unsetenv("HSI_UPDATE_STATE")
+	t.Setenv("NATS_PASS", "")
+	os.Unsetenv("NATS_PASS")
+	loadWorkerEnvDefaults()
+	if got := os.Getenv("HSI_UPDATE_STATE"); got != "/var/lib/nas/update" {
+		t.Fatalf("HSI_UPDATE_STATE = %q", got)
+	}
+	if got := os.Getenv("HSI_INSTALL_DIR"); got != "/from/env" {
+		t.Fatalf("a variable set in the environment was replaced: %q", got)
+	}
+	if _, set := os.LookupEnv("NATS_PASS"); set {
+		t.Fatal("only HSI_ variables are taken from the worker env file")
+	}
+}
+
+func TestWorkerEnvFileFollowsTheInvokedName(t *testing.T) {
+	cases := map[string]string{
+		"/usr/local/bin/nas-worker":                "/etc/nas/worker.env",
+		"/usr/local/bin/hsi-worker":                "/etc/hsi/worker.env",
+		"/opt/hsi/releases/v1.67.0/bin/hsi-worker": "/etc/hsi/worker.env",
+		"/tmp/root-worker.test":                    "/etc/hsi/worker.env",
+		"/tmp/Bad_Name-worker":                     "/etc/hsi/worker.env",
+	}
+	for argv0, want := range cases {
+		if got := defaultWorkerEnvFor(argv0); got != want {
+			t.Errorf("%s: got %s, want %s", argv0, got, want)
+		}
+	}
+}

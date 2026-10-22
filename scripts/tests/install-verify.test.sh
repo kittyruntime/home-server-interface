@@ -120,6 +120,17 @@ out="$( (openssl() { if [[ "$1" == version ]]; then echo "OpenSSL 1.1.1w  11 Sep
          verify_release_files "$DL_DIR" "$NAME") 2>&1)"; rc=$?
 check "OpenSSL 1.1 refused" '[[ $rc -ne 0 && "$out" == *"OpenSSL 3"* ]]'
 
+# 10b. OpenSSL older than 3 with --allow-unsigned skips only the signature: the
+# checksums of SHA256SUMS are still checked.
+old_openssl() { if [[ "$1" == version ]]; then echo "OpenSSL 1.1.1w  11 Sep 2023"; else command openssl "$@"; fi; }
+fresh old-openssl-allow
+out="$( (openssl() { old_openssl "$@"; }; ALLOW_UNSIGNED=1; stage_release) 2>&1)"; rc=$?
+check "OpenSSL 1.1 with --allow-unsigned installs with a warning" '[[ $rc -eq 0 && "$out" == *"WARN"* && -f "$DL_DIR/release/server.js" ]]'
+fresh old-openssl-tampered
+echo extra >> "$SERVED/$NAME"
+out="$( (openssl() { old_openssl "$@"; }; ALLOW_UNSIGNED=1; stage_release) 2>&1)"; rc=$?
+check "OpenSSL 1.1 with --allow-unsigned still checks SHA256SUMS" '[[ $rc -ne 0 && "$out" == *"do not match SHA256SUMS"* && ! -e "$DL_DIR/release" ]]'
+
 # 11. HSI_RELEASE_ARCHIVE (already verified by the worker) skips the download.
 fresh local-archive
 mv "$SERVED/$NAME" "$TMP/verified.tar.gz"

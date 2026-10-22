@@ -155,11 +155,10 @@ openssl_can_verify() {
 }
 
 # verify_release_files <dir> <archive-name>: <dir>/SHA256SUMS must be signed by the
-# embedded key (SHA256SUMS.sig, base64 of the raw ed25519 signature) and list the
-# archive, and install.sh when <dir> holds one, with matching checksums. Every line
-# of SHA256SUMS must be "<sha256>  <name>", each name once.
+# embedded key (SHA256SUMS.sig, base64 of the raw ed25519 signature), then
+# check_release_sums.
 verify_release_files() {
-  local dir=$1 archive=$2 fp line name sums="" seen=" "
+  local dir=$1 archive=$2 fp
   openssl_can_verify \
     || die "OpenSSL 3 or newer is needed to verify the release signature (found: $(openssl version 2>/dev/null || echo none)). Upgrade OpenSSL, or install a release by hand after checking it."
   printf '%s\n' "$RELEASE_SIGNING_PUB" > "$dir/release-signing.pub"
@@ -174,6 +173,14 @@ verify_release_files() {
   openssl pkeyutl -verify -pubin -inkey "$dir/release-signing.pub" -rawin \
       -in "$dir/SHA256SUMS" -sigfile "$dir/SHA256SUMS.sig.bin" >/dev/null 2>&1 \
     || die "The SHA256SUMS signature is invalid: this release is not authentic."
+  check_release_sums "$dir" "$archive"
+}
+
+# check_release_sums <dir> <archive-name>: every line of <dir>/SHA256SUMS is
+# "<sha256>  <name>", each name once; the archive, and install.sh when <dir> holds
+# one, are listed and match.
+check_release_sums() {
+  local dir=$1 archive=$2 line name sums="" seen=" "
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ "$line" =~ ^[0-9a-fA-F]{64}\ \ ([^/[:space:]]+)$ ]] || die "SHA256SUMS has a malformed line."
     name=${BASH_REMATCH[1]}
@@ -211,6 +218,7 @@ stage_release() {
     curl -fsSL --progress-bar "$url/$name" -o "$TARBALL" || die "Download failed: $url/$name"
     if ! openssl_can_verify && [[ "$ALLOW_UNSIGNED" == "1" ]]; then
       warn "OpenSSL 3 is missing: installing $VERSION WITHOUT checking its signature (--allow-unsigned)."
+      check_release_sums "$DL_DIR" "$name"
     else
       verify_release_files "$DL_DIR" "$name"
       success "Signature and checksum verified"
@@ -232,12 +240,23 @@ stage_release() {
     || { rm -rf -- "$RELEASE_STAGE"; die "Could not extract the release archive."; }
 }
 
-# root_owned <path>...: recursively root-owned and not writable by group or others,
-# so the app user cannot change code the worker runs as root. Skipped when not root
-# (tests).
+# root_owned <path>...: recursively root-owned, not writable by group or others and
+# without setuid or setgid bits, so the app user cannot change code the worker runs
+# as root. Links are never followed. Skipped when not root (tests).
 root_owned() {
   (( EUID == 0 )) || return 0
-  chown -hR root:root "$@" && chmod -R go-w "$@"
+  chown -hR root:root "$@" && chmod -R go-w,ug-s "$@"
+}
+
+# check_data_paths: the data the app user owns must be real files and folders.
+# Root changes their owner and mode and writes .env: through a link planted by the
+# app user it would change any file of the system.
+check_data_paths() {
+  local p paths=("$DB_DIR" "$DB_FILE" "$DB_FILE-wal" "$ENV_FILE")
+  [[ "$FROM_SOURCE" -eq 1 ]] || paths+=("$APP_DIR/data" "$APP_DIR/database")
+  for p in "${paths[@]}"; do
+    [[ ! -L "$p" ]] || die "$p is a symbolic link: the installer refuses to work through it. Replace it with the real file or folder, then re-run."
+  done
 }
 
 # is_flat_install: code directly in INSTALL_DIR (before #9a), or a conversion that
@@ -298,88 +317,42 @@ link_flat_paths() {
   done
 }
 
-# install_release_dir: copies the validated stage to releases/$VERSION (replacing a
-# leftover of that version), root-owned, with VERSION, database/data linked to the
-# live database directory and the @app/compose link of the data migrations. current
-# is not touched.
+# install_release_dir [prepare]: copies the validated stage to releases/.staging-$$,
+# with VERSION, database/data linked to the live database directory and the
+# @app/compose link of the data migrations, all root's. [prepare] then runs with the
+# staging dir (the Prisma client: node_modules is the app user's meanwhile, nothing
+# root runs lives there) before node_modules is root's again and the release is
+# renamed to releases/$VERSION, replacing a leftover of that version. current is not
+# touched.
 install_release_dir() {
-  local releases="$INSTALL_DIR/releases" tmp
+  local releases="$INSTALL_DIR/releases" tmp prepare=${1:-}
   tmp="$releases/.staging-$$"
-  mkdir -p "$releases" && rm -rf -- "$tmp" && mkdir "$tmp" || return 1
-  cp -a "$RELEASE_STAGE/." "$tmp/" || { rm -rf -- "$tmp"; return 1; }
-  mkdir -p "$tmp/database" "$tmp/node_modules/@app" \
-    && rm -rf -- "$tmp/database/data" && ln -s "$DB_DIR" "$tmp/database/data" \
-    && ln -sfn ../../compose "$tmp/node_modules/@app/compose" \
-    && echo "$VERSION" > "$tmp/VERSION" \
-    && root_owned "$tmp" \
-    || { rm -rf -- "$tmp"; return 1; }
+  mkdir -p "$releases" && rm -rf -- "$releases"/.staging-* && mkdir "$tmp" || return 1
+  if ! { cp -a "$RELEASE_STAGE/." "$tmp/" \
+         && mkdir -p "$tmp/database" "$tmp/node_modules/@app" \
+         && rm -rf -- "$tmp/database/data" && ln -s "$DB_DIR" "$tmp/database/data" \
+         && ln -sfn ../../compose "$tmp/node_modules/@app/compose" \
+         && echo "$VERSION" > "$tmp/VERSION" \
+         && root_owned "$tmp"; }; then
+    rm -rf -- "$tmp"; return 1
+  fi
+  if [[ -n "$prepare" ]]; then
+    if (( EUID == 0 )); then chown -hR "$APP_USER:" "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }; fi
+    "$prepare" "$tmp" && root_owned "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }
+  fi
   rm -rf -- "${releases:?}/$VERSION" && mv -T -- "$tmp" "$releases/$VERSION"
 }
 
-json_string() {
-  local s=$1
-  s=${s//\\/\\\\}
-  s=${s//\"/\\\"}
-  printf '"%s"' "$s"
-}
-
-# write_install_snapshot <from> <to>: the snapshot of the first update from a version
-# before #9a, whose worker has no `update snapshot`. Same layout and manifest as the
-# worker's takeSnapshot (apps/root-worker/update_state.go), which readManifest
-# checks: $UPDATE_STATE/<from>-<to>/ holds database/<db name> (and -wal), files/<i>-<name>
-# and manifest.json {from, to, created (RFC 3339, UTC), database ("database/<db name>"),
-# dbTarget (the live database), files: [{src, saved ("files/<i>-<name>", "" when the
-# file did not exist), mode (permission bits as a number, 0600 is 384), existed}]}.
-# Files: the APP_NAME* unit files (service, timer, path, target; sorted), then
-# worker.env, .env, nats.conf, tls.json and backup.json. Copies keep mode and owner;
-# unit links stay links. Prints the snapshot dir.
-write_install_snapshot() {
-  local from=$1 to=$2 dir db base i=0 f saved mode existed ext entries="" units=()
-  dir="$UPDATE_STATE/$from-$to"
-  db=$DB_FILE
-  base=$(basename "$db")
-  mkdir -p -m 0700 "$UPDATE_STATE" && rm -rf -- "$dir" \
-    && mkdir -m 0700 "$dir" "$dir/files" "$dir/database" || return 1
-  cp -p -- "$db" "$dir/database/$base" || return 1
-  if [[ -e "$db-wal" ]]; then cp -p -- "$db-wal" "$dir/database/$base-wal" || return 1; fi
-  for ext in service timer path target; do
-    for f in "$SYSTEMD_DIR/$APP_NAME"*."$ext"; do
-      [[ -e "$f" || -L "$f" ]] && units+=("$f")
-    done
-  done
-  if (( ${#units[@]} > 0 )); then
-    mapfile -t units < <(printf '%s\n' "${units[@]}" | LC_ALL=C sort)
-  fi
-  for f in "${units[@]}" "$WORKER_ENV" "$ENV_FILE" "$NATS_CONF" "$TLS_DIR/tls.json" "$BACKUP_CONFIG"; do
-    saved="" mode=0 existed=false
-    if [[ -e "$f" || -L "$f" ]]; then
-      saved="files/$i-$(basename "$f")"
-      cp -P -p -- "$f" "$dir/$saved" || return 1
-      mode=$((8#$(stat -c %a -- "$f")))
-      existed=true
-    fi
-    entries+="${entries:+,}
-    {
-      \"src\": $(json_string "$f"),
-      \"saved\": $(json_string "$saved"),
-      \"mode\": $mode,
-      \"existed\": $existed
-    }"
-    i=$((i + 1))
-  done
-  cat > "$dir/manifest.json.tmp" <<JSON || return 1
-{
-  "from": $(json_string "$from"),
-  "to": $(json_string "$to"),
-  "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "database": $(json_string "database/$base"),
-  "dbTarget": $(json_string "$db"),
-  "files": [$entries
-  ]
-}
-JSON
-  chmod 600 "$dir/manifest.json.tmp" && sync && mv -T -- "$dir/manifest.json.tmp" "$dir/manifest.json" && sync || return 1
-  echo "$dir"
+# worker_update <worker binary> <args>: `hsi-worker update <args>` with the paths of
+# this install, so a custom APP_NAME or INSTALL_DIR is honoured before worker.env
+# carries them.
+worker_update() {
+  local bin=$1
+  shift
+  env HSI_INSTALL_DIR="$INSTALL_DIR" HSI_UPDATE_STATE="$UPDATE_STATE" HSI_UPDATE_DB="$DB_FILE" \
+    HSI_UNIT_PREFIX="$APP_NAME" HSI_WORKER_ENV="$WORKER_ENV" HSI_NATS_CONF="$NATS_CONF" \
+    HSI_BACKEND_ENV="$ENV_FILE" HSI_BACKUP_CONFIG="$BACKUP_CONFIG" \
+    "$bin" update "$@"
 }
 
 # END release functions
@@ -444,8 +417,6 @@ UPDATE_FINISHED=0
 CURRENT_STEP=""
 
 # Fixed paths the update snapshot and the worker share.
-SYSTEMD_DIR=/etc/systemd/system
-TLS_DIR=/var/lib/hsi/tls
 APP_CONF_DIR="/etc/${APP_NAME}"
 NATS_CONF="$APP_CONF_DIR/nats.conf"
 WORKER_ENV="$APP_CONF_DIR/worker.env"
@@ -461,18 +432,6 @@ version_lt() {
   local a=${1#v} b=${2#v}
   a=${a%%-*}; b=${b%%-*}
   [[ "$a" != "$b" && "$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -1)" == "$a" ]]
-}
-
-# worker_update <worker binary> <args>: `hsi-worker update <args>` with the paths of
-# this install, so a custom APP_NAME or INSTALL_DIR is honoured before worker.env
-# carries them.
-worker_update() {
-  local bin=$1
-  shift
-  env HSI_INSTALL_DIR="$INSTALL_DIR" HSI_UPDATE_STATE="$UPDATE_STATE" HSI_UPDATE_DB="$DB_FILE" \
-    HSI_UNIT_PREFIX="$APP_NAME" HSI_WORKER_ENV="$WORKER_ENV" HSI_NATS_CONF="$NATS_CONF" \
-    HSI_BACKEND_ENV="$ENV_FILE" HSI_BACKUP_CONFIG="$BACKUP_CONFIG" \
-    "$bin" update "$@"
 }
 
 # mark_update <step>: records the step in the in-progress marker. From the first
@@ -499,13 +458,15 @@ rollback_update() {
 
 # recover_interrupted_update: an installer killed midway left its marker. When the
 # worker did not roll it back yet (a version before #9a is current, or it did not
-# restart), the worker of the release updated to does it before anything else.
+# restart), it is rolled back before anything else.
 recover_interrupted_update() {
   local to bin status
   to=$(sed -n 's/^ *"to": *"\([^"]*\)".*/\1/p' "$UPDATE_STATE/in-progress.json" | head -1)
+  # The worker of the release updated to, else the one just verified: both have
+  # the update commands, the version floor guarantees it.
   bin="$INSTALL_DIR/releases/$to/bin/${RELEASE_APP_NAME}-worker"
-  [[ "$to" =~ $INSTALLED_VERSION_RE && -x "$bin" ]] \
-    || die "An interrupted update left $UPDATE_STATE/in-progress.json, but the worker of its release is missing. Run 'sudo ${APP_NAME}-worker update rollback', then re-run."
+  [[ "$to" =~ $INSTALLED_VERSION_RE && -x "$bin" && ! -L "$INSTALL_DIR/releases/$to" ]] \
+    || bin="$RELEASE_STAGE/bin/${RELEASE_APP_NAME}-worker"
   warn "An earlier update to $to was interrupted: rolling it back first."
   DB_FILE=$(sed -n 's/^HSI_UPDATE_DB=//p' "$WORKER_ENV" 2>/dev/null | head -1)
   DB_FILE=${DB_FILE:-$INSTALL_DIR/database/data/hsi.db}
@@ -526,10 +487,13 @@ cleanup_install_exit() {
     else
       if [[ -n "$DB_ROLLBACK_FILE" && -f "$DB_ROLLBACK_FILE" && -n "${DB_FILE:-}" ]]; then
         warn "Restoring the pre-update database backup."
-        cp -- "$DB_ROLLBACK_FILE" "$DB_FILE"
-        chown "$APP_USER:" "$DB_FILE"
+        run_as "$APP_USER" "cp -- '$DB_ROLLBACK_FILE' '$DB_FILE'"
       fi
-      if (( SERVICES_STOPPED == 1 )); then
+      # Release mode before the snapshot: nothing to undo, the previous version
+      # starts again if current still leads to it.
+      if (( SERVICES_STOPPED == 1 )) && [[ "$FROM_SOURCE" -eq 0 && -L "${INSTALL_DIR:-}/current" && ! -f "${INSTALL_DIR:-}/current/server.js" ]]; then
+        warn "Not restarting: $INSTALL_DIR/current does not lead to an installed release. Re-run the installer."
+      elif (( SERVICES_STOPPED == 1 )); then
         warn "Restarting the previous services after the failed update."
         if [[ -f "/etc/systemd/system/${APP_NAME}.target" ]]; then
           systemctl start "${APP_NAME}.target" >/dev/null 2>&1 || true
@@ -558,6 +522,14 @@ trap cleanup_install_exit EXIT
 
 # Also re-checked on every update: new releases may need new host tools.
 ensure_dependencies
+
+# One install or update at a time, the legacy migration included: the update lock
+# is held until the installer exits. The worker's interrupted-update recovery and
+# `update rollback` take it too.
+mkdir -p "$(dirname "$UPDATE_STATE")"
+install -d -m 0700 "$UPDATE_STATE"
+exec 9>>"$UPDATE_STATE/update.lock"
+flock -n 9 || die "Another update or rollback is running; wait for it to finish, then re-run."
 
 # ── Legacy "app" install migration (app -> hsi rename) ────────────────────────
 # Older installs used APP_NAME=app: units app*, /opt/app, user/group "app",
@@ -832,18 +804,6 @@ else
   [[ ! -L "$INSTALL_DIR" && ! -L "$INSTALL_DIR/releases" ]] \
     || die "INSTALL_DIR and its releases folder must be real directories, not links."
 
-  # One update at a time: the update lock is held until the installer exits. The
-  # worker's interrupted-update recovery and `update rollback` take it too.
-  mkdir -p "$(dirname "$UPDATE_STATE")"
-  install -d -m 0700 "$UPDATE_STATE"
-  exec 9>>"$UPDATE_STATE/update.lock"
-  flock -n 9 || die "Another update or rollback is running; wait for it to finish, then re-run."
-  if [[ -f "$UPDATE_STATE/in-progress.json" ]]; then
-    # The recovery takes the lock itself.
-    flock -u 9
-    recover_interrupted_update
-    flock -n 9 || die "Another update or rollback is running; wait for it to finish, then re-run."
-  fi
 
   step "Resolving release version"
   if [[ -z "$VERSION" ]]; then
@@ -884,6 +844,18 @@ else
     "
   }
 
+  # generate_prisma_client <release dir>: as the app user, in that release.
+  generate_prisma_client() {
+    local dir=$1
+    app_exec "
+      cd '$dir/database'
+      NODE_PATH='$dir/node_modules' \
+        PRISMA_SCHEMA_ENGINE_BINARY='$dir/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x' \
+        PRISMA_QUERY_ENGINE_LIBRARY='$dir/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node' \
+        '$dir/node_modules/.bin/prisma' generate
+    "
+  }
+
   step "Installing Node.js $NODE_VERSION via nvm"
   if [[ ! -f "$NVM_DIR/nvm.sh" ]]; then
     run_as "$APP_USER" "
@@ -905,6 +877,13 @@ else
   step "Downloading and verifying $VERSION"
   DL_DIR=$(mktemp -d)
   stage_release
+  # An update killed midway is rolled back before anything else (the recovery takes
+  # the lock itself).
+  if [[ -f "$UPDATE_STATE/in-progress.json" ]]; then
+    flock -u 9
+    recover_interrupted_update
+    flock -n 9 || die "Another update or rollback is running; wait for it to finish, then re-run."
+  fi
   RELEASE_WORKER_BIN="${RELEASE_APP_NAME}-worker"
   [[ -f "$RELEASE_STAGE/server.js" \
      && -f "$RELEASE_STAGE/public/index.html" \
@@ -912,6 +891,7 @@ else
      && -d "$RELEASE_STAGE/database/prisma" \
      && -d "$RELEASE_STAGE/compose/src" \
      && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
+     && -x "$RELEASE_STAGE/node_modules/.bin/tsx" \
      && -x "$RELEASE_STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
      && -s "$RELEASE_STAGE/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node" \
      && -f "$RELEASE_STAGE/runtime/package-lock.json" ]] \
@@ -948,6 +928,7 @@ else
 fi
 ENV_FILE="$APP_DIR/.env"
 
+check_data_paths
 if [[ -f "$DB_FILE" ]]; then
   IS_UPDATE=1
   warn "Existing installation detected, performing update (data preserved)"
@@ -1007,13 +988,18 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
 else
 
   # INSTALL_DIR, releases/ and every release are root's: the worker in them runs as
-  # root. The app user keeps what it writes: database/data, data and .env.
+  # root. The app user keeps what it writes: database/data, data and .env. INSTALL_DIR
+  # is root's first, so nothing in it can be swapped for a link after the check.
   step "Installing verified release"
-  mkdir -p "$INSTALL_DIR" "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
-  chown root:root "$INSTALL_DIR" "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
-  chmod 755 "$INSTALL_DIR" "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
+  mkdir -p "$INSTALL_DIR"
+  chown -h root:root "$INSTALL_DIR"
+  chmod 755 "$INSTALL_DIR"
+  check_data_paths
+  mkdir -p "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
+  chown -h root:root "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
+  chmod 755 "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
   mkdir -p "$DB_DIR" "$INSTALL_DIR/data"
-  chown "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data"
+  chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data"
 
   if [[ "$IS_UPDATE" -eq 1 ]]; then
     # The first update after #9a turns the flat install into releases/<its version>.
@@ -1030,26 +1016,27 @@ else
   # Leftovers of the file-by-file rollback of installers before #9a.
   rm -rf -- "$INSTALL_DIR"/.install-rollback-*
 
+  # The worker of the verified release: root runs nothing the app user can change.
+  NEW_WORKER="$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN"
   if [[ "$IS_UPDATE" -eq 1 ]]; then
-    # Taken while everything is stopped. A worker before #9a has no `update`
-    # command (it would start as the service): the installer writes that snapshot.
+    # Taken while everything is stopped, by descriptor without following links,
+    # also for a version before #9a (whose own worker has no `update` command).
+    # From the marker on, every failure rolls back.
     step "Snapshotting the database and configuration"
-    if version_lt "$OLD_VERSION" "$FIRST_SAFE_UPDATE_VERSION"; then
-      SNAP=$(write_install_snapshot "$OLD_VERSION" "$VERSION") || die "Could not snapshot the installation."
-    else
-      SNAP=$(worker_update "$INSTALL_DIR/releases/$OLD_VERSION/bin/${RELEASE_APP_NAME}-worker" snapshot "$OLD_VERSION" "$VERSION") \
-        || die "Could not snapshot the installation."
-    fi
+    SNAP=$(worker_update "$NEW_WORKER" snapshot "$OLD_VERSION" "$VERSION") \
+      || die "Could not snapshot the installation."
     success "Snapshot → $SNAP"
+    mark_update install
   fi
 
-  install_release_dir || die "Could not install $VERSION in $INSTALL_DIR/releases."
+  # The Prisma client is generated by the app user in the staging copy, before the
+  # release becomes root's: root never runs node or anything under the app user's
+  # home. Later Prisma commands run as the app user and skip generation.
+  step "Installing $VERSION and generating its Prisma client"
+  install_release_dir generate_prisma_client || die "Could not install $VERSION in $INSTALL_DIR/releases."
   REL_DIR="$INSTALL_DIR/releases/$VERSION"
   NEW_WORKER="$REL_DIR/bin/$RELEASE_WORKER_BIN"
   success "Installed in $REL_DIR"
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
-    mark_update install
-  fi
 
   step "Installing worker binary"
   # Through current, so the worker always matches the active release.
@@ -1057,28 +1044,10 @@ else
   success "Linked: $SYSTEM_WORKER → $INSTALL_DIR/current/bin/$RELEASE_WORKER_BIN"
   install_restic || true
 
-  step "Checking bundled runtime dependencies"
   PRISMA_BIN="$REL_DIR/node_modules/.bin/prisma"
   TSX_BIN="$REL_DIR/node_modules/.bin/tsx"
   PRISMA_SCHEMA_ENGINE_BIN="$REL_DIR/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"
   PRISMA_QUERY_ENGINE_LIB="$REL_DIR/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
-  [[ -x "$PRISMA_BIN" && -x "$TSX_BIN" ]] \
-    || die "Release archive is missing its locked runtime dependencies."
-  success "Locked runtime dependencies found"
-
-  # As root: the client is generated into the root-owned release. Later Prisma
-  # commands run as the app user and skip generation.
-  step "Generating Prisma client"
-  (
-    cd "$REL_DIR/database"
-    env HOME=/root PATH="$(dirname "$NODE_BIN"):$PATH" CHECKPOINT_DISABLE=1 \
-      NODE_PATH="$REL_DIR/node_modules" \
-      PRISMA_SCHEMA_ENGINE_BINARY="$PRISMA_SCHEMA_ENGINE_BIN" \
-      PRISMA_QUERY_ENGINE_LIBRARY="$PRISMA_QUERY_ENGINE_LIB" \
-      "$NODE_BIN" "$PRISMA_BIN" generate
-  ) || die "Could not generate the Prisma client."
-  root_owned "$REL_DIR/node_modules"
-  success "Prisma client generated"
 
   SERVER_DIR="$INSTALL_DIR/current"
   BACKEND_DIST="$INSTALL_DIR/current/server.js"
@@ -1093,7 +1062,7 @@ fi
 # =============================================================================
 step "Setting up database"
 mkdir -p "$DB_DIR"
-chown "$APP_USER:" "$DB_DIR"
+chown -h "$APP_USER:" "$DB_DIR"
 
 # ── Declarative container stacks ─────────────────────────────────────────────
 # The app user owns /opt/containers and writes compose.yaml files directly;
@@ -1106,10 +1075,12 @@ mkdir -p "$CONTAINERS_DIR"
 chown "$APP_USER" "$CONTAINERS_DIR"
 
 if [[ "$IS_UPDATE" -eq 1 ]]; then
+  # As the app user: the folder is its own, so root would follow any link in it.
   BACKUP="$DB_DIR/${APP_NAME}.db.bak-$(date +%Y%m%d-%H%M%S)"
-  cp "$DB_FILE" "$BACKUP"
+  run_as "$APP_USER" "cp -- '$DB_FILE' '$BACKUP'"
   success "Database backed up → $BACKUP"
-  ls -1t "$DB_DIR"/${APP_NAME}.db.bak-* 2>/dev/null | tail -n +6 | xargs -r rm --
+  run_as "$APP_USER" "find '$DB_DIR' -maxdepth 1 -type f -name '${APP_NAME}.db.bak-*' -printf '%T@ %p\\0' \
+    | sort -zrn | tail -zn +6 | cut -zd' ' -f2- | xargs -0r rm -f --"
   # Release mode restores the database from the update snapshot instead.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
     DB_ROLLBACK_FILE="$BACKUP"
@@ -1218,7 +1189,7 @@ if ! grep -q '^HSI_SECRETS_KEY=' "$ENV_FILE"; then
   printf 'HSI_SECRETS_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
   success "Generated notification secrets key → $ENV_FILE"
 fi
-chown "$APP_USER:" "$ENV_FILE"
+chown -h "$APP_USER:" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 
 # =============================================================================
@@ -1702,7 +1673,9 @@ fi
 # SOURCE MODE: record version from package.json
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
-  PKG_VERSION=$(node -e "process.stdout.write(require('$APP_DIR/package.json').version)" 2>/dev/null || echo "0.0.0")
+  # Read, not run: root executes no code of the checkout here.
+  PKG_VERSION=$(sed -n 's/^  "version": *"\([^"]*\)".*/\1/p' "$APP_DIR/package.json" | head -n 1)
+  PKG_VERSION=${PKG_VERSION:-0.0.0}
   echo "v${PKG_VERSION}" > "$APP_DIR/VERSION"
   chown "$APP_USER:" "$APP_DIR/VERSION"
   success "Version recorded → $APP_DIR/VERSION"
@@ -1870,7 +1843,8 @@ echo -e "    tail -f ${LOG_DIR}/root-worker.log       # worker logs"
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   echo -e "    sudo $0 --from-source        # re-run to update"
 else
-  echo -e "    curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sudo bash"
+  echo -e "    sudo ${APP_NAME}-worker update apply vX.Y.Z   # update to a release"
+  echo -e "    sudo ${APP_NAME}-worker update rollback        # back to the previous version"
 fi
 echo ""
 
