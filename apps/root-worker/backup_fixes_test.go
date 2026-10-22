@@ -662,3 +662,46 @@ func TestInterruptedCheckIsRecordedAsInterrupted(t *testing.T) {
 		t.Fatalf("%+v", runs[0])
 	}
 }
+
+func TestInterruptCutsAHangingStopShort(t *testing.T) {
+	setupVersionsPlan(t, "uptime-kuma")
+	var calls []string
+	fakeApps(t, &appsFake{running: map[string]bool{"uptime-kuma": true}})
+	prev := appStopTimeout
+	appStopTimeout = 3 * time.Second
+	t.Cleanup(func() { appStopTimeout = prev })
+	composeAction = func(ctx context.Context, a string, args ...string) error {
+		calls = append(calls, a+" "+args[0])
+		if args[0] == "stop" {
+			// docker compose stop hangs; systemctl stop arrives meanwhile.
+			go func() { time.Sleep(50 * time.Millisecond); interruptRun(syscall.SIGTERM) }()
+			<-ctx.Done()
+			return ctx.Err()
+		}
+		return nil
+	}
+	fakeRestic(t, nil, nil)
+	start := time.Now()
+	_ = runPlan(planA, false, time.Now)
+	if took := time.Since(start); took > time.Second {
+		t.Fatalf("the stop held the run %v", took)
+	}
+	if strings.Join(calls, ",") != "uptime-kuma stop,uptime-kuma start" {
+		t.Fatalf("apps %v", calls)
+	}
+	if appStopTimeout = prev; prev > 60*time.Second {
+		t.Fatalf("a stop may take %v", prev)
+	}
+}
+
+func TestRestoreCountsReadInTheSingular(t *testing.T) {
+	restorePreviewFixture(t, `{"message_type":"summary","files_restored":2,"total_files":2}`, lsNode("/srv/data/photos", "dir"), lsNode("/srv/data/photos/a.jpg", "file"))
+	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/srv/data/photos", "target": "original"}
+	if _, ferr := buildPlan("backup.restore", mustJSON(in)); ferr == nil || ferr.Message != "This replaces 1 file at its original location" {
+		t.Fatalf("%+v", ferr)
+	}
+	in["target"] = "new"
+	if p := planFor(t, "backup.restore", in); !strings.HasSuffix(p.Steps[0].Summary, "(1 file)") {
+		t.Fatalf("%s", p.Steps[0].Summary)
+	}
+}
