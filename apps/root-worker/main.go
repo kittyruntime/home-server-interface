@@ -990,6 +990,11 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "plan" {
 		os.Exit(runPlanCLI(os.Args[2:]))
 	}
+	// `hsi-worker update ...`: safe updates (#9a), used by the update-apply unit,
+	// the installer and the admin (`sudo hsi-worker update rollback`).
+	if len(os.Args) > 1 && os.Args[1] == "update" {
+		os.Exit(runUpdateCLI(os.Args[2:]))
+	}
 	// `hsi-worker volumes`: state of every HSI data volume (remounting one
 	// that came back), usable without the backend.
 	if len(os.Args) > 1 && os.Args[1] == "volumes" {
@@ -1002,6 +1007,10 @@ func main() {
 		fmt.Println(string(b))
 		os.Exit(0)
 	}
+
+	// An update interrupted midway (installer killed, power cut) is rolled back
+	// before anything else, NATS included: the new version may not reach it.
+	recoverInterrupted()
 
 	natsURL := getenv("NATS_URL", "nats://127.0.0.1:4222")
 	natsUser := getenv("NATS_USER", "worker")
@@ -1043,6 +1052,8 @@ func main() {
 
 	// ── Request-reply subscriptions (sync ops) ─────────────────────────────
 	for subj, handler := range map[string]func(*nats.Conn, *nats.Msg){
+		"root.health":                    handleRootHealth,
+		"root.update.status":             handleUpdateStatus,
 		"root.tls.status":                handleTLSStatus,
 		"root.tls.issue":                 handleTLSIssue,
 		"root.backup.status":             handleBackupStatus,
