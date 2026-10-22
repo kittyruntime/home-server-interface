@@ -89,10 +89,10 @@ onUnmounted(() => polling.stop())
         <span class="status-tag">[WARN]</span> The backup engine is not installed. Run the installer again to enable versioned backups.
       </p>
 
-      <div v-if="status.migrationSkipped.length" role="alert" class="mb-4 panel-card p-4 bg-[var(--c-surface)] space-y-2">
+      <div v-if="status.migrationSkipped?.length" role="alert" class="mb-4 panel-card p-4 bg-[var(--c-surface)] space-y-2">
         <p class="status-text text-warning"><span class="status-tag">[WARN]</span> These former backup plans could not be moved to the new backups. Create them again below.</p>
         <ul class="text-xs text-[var(--c-text-2)] space-y-1">
-          <li v-for="s in status.migrationSkipped" :key="s.name" class="break-words"><span class="font-medium text-[var(--c-text-1)]">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
+          <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-[var(--c-text-1)]">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
         </ul>
         <p v-if="dismissError" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
         <button class="btn btn-ghost btn-xs" :disabled="dismissing" @click="dismissSkipped">Dismiss</button>

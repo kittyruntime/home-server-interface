@@ -2553,6 +2553,16 @@ async function testBackupFinalFixes() {
   assert.ok(skipped[0]!.message.includes("Old mirror (invalid absolute backup path)"))
   assert.ok(backupTargets(base as any).includes("migration"), "a dismissed list clears its alert")
 
+  // An interrupted check raises no corruption alert; an interrupted run is a warning.
+  const check = (error: string) => ({ id: "r", name: "USB", type: "local", check: { every: "weekly", hour: 4, weekday: 0, day: 1, subset: "5%" }, hasPassword: true, nextCheck: null, lastCheck: { start: "x", status: "failed", error } })
+  assert.deepEqual(backupFindings({ ...base, repositories: [check("interrupted")] } as any), [])
+  assert.equal(backupFindings({ ...base, repositories: [check("pack damaged")] } as any)[0]!.severity, "critical")
+  const run = (error: string) => ({ id: "a", name: "Photos", type: "versions", enabled: true, schedule: { every: "daily", minute: 0, hour: 2, weekday: 0 }, nextRun: null, progress: null, last: { start: "x", status: "failed", error } })
+  const interruptedRun = backupFindings({ ...base, plans: [run("interrupted")] } as any)
+  assert.equal(interruptedRun[0]!.severity, "warning")
+  assert.ok(interruptedRun[0]!.message.includes("was interrupted"))
+  assert.equal(backupFindings({ ...base, plans: [run("interrupted; vaultwarden did not start again: x")] } as any)[0]!.severity, "critical")
+
   // A user deleted while their session lives on gets a refusal, not a server error.
   const { backupRouter } = await import("../trpc/routers/backup")
   const gone = backupRouter.createCaller({ user: { userId: "gone", isAdmin: true }, prisma: { user: { findUnique: async () => null }, auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
