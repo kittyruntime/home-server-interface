@@ -234,48 +234,6 @@ func TestApplyFromLocalArchive(t *testing.T) {
 	}
 }
 
-func TestExtractReleaseRefusesUnsafeEntries(t *testing.T) {
-	root := "hsi-v2.1.0"
-	cases := map[string][]tarEntry{
-		"parent path":       {{name: root + "/../x", body: "x", kind: tar.TypeReg}},
-		"absolute path":     {{name: "/etc/x", body: "x", kind: tar.TypeReg}},
-		"outside root":      {{name: "other/x", body: "x", kind: tar.TypeReg}},
-		"escaping symlink":  {{name: root + "/l", link: "../../etc", kind: tar.TypeSymlink}},
-		"absolute symlink":  {{name: root + "/l", link: "/etc", kind: tar.TypeSymlink}},
-		"escaping hardlink": {{name: root + "/l", link: "/etc/passwd", kind: tar.TypeLink}},
-		"write through link": {
-			{name: root + "/d", link: ".", kind: tar.TypeSymlink},
-			{name: root + "/d/x", body: "x", kind: tar.TypeReg},
-		},
-		"duplicate": {
-			{name: root + "/x", body: "x", kind: tar.TypeReg},
-			{name: root + "/x", body: "y", kind: tar.TypeReg},
-		},
-	}
-	for name, entries := range cases {
-		dir := t.TempDir()
-		archive := filepath.Join(dir, "a.tar.gz")
-		mustWrite(t, archive, buildArchive(t, entries))
-		dest := filepath.Join(dir, "out")
-		if err := extractRelease(archive, dest, root); err == nil {
-			t.Errorf("%s: accepted", name)
-		}
-	}
-	dir := t.TempDir()
-	archive := filepath.Join(dir, "a.tar.gz")
-	mustWrite(t, archive, goodArchive(t, "v2.1.0"))
-	dest := filepath.Join(dir, "out")
-	if err := extractRelease(archive, dest, root); err != nil {
-		t.Fatal(err)
-	}
-	if string(mustRead(t, filepath.Join(dest, "server2.js"))) != "console.log(1)" {
-		t.Fatal("hard link not extracted")
-	}
-	if l, _ := os.Readlink(filepath.Join(dest, "node_modules", ".bin", "prisma")); l != "../prisma/index.js" {
-		t.Fatalf("symlink %q", l)
-	}
-}
-
 func TestManualRollbackNeedsTypedVersion(t *testing.T) {
 	e, _ := preparedUpdate(t)
 	clearInProgress()

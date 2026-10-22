@@ -347,3 +347,30 @@ func TestUpdateStatusReportsTheRollbackTarget(t *testing.T) {
 		t.Fatalf("rollbackTarget without snapshot %v", st["rollbackTarget"])
 	}
 }
+
+// The worker verifies the signed files and leaves extraction to the installer, which
+// checks the archive layout itself: no second extracted copy of the release.
+func TestApplyDoesNotExtractTheArchive(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0")
+	_ = switchCurrent("v2.0.0")
+	fakeDownload(t, goodArchive(t, "v2.1.0"), nil)
+	var entries []string
+	prev := runInstaller
+	runInstaller = func(path string, env []string) int {
+		archive, _ := installerEnvValue(env, "HSI_RELEASE_ARCHIVE")
+		stage := filepath.Dir(filepath.Dir(archive))
+		des, _ := os.ReadDir(stage)
+		for _, d := range des {
+			entries = append(entries, d.Name())
+		}
+		return 0
+	}
+	t.Cleanup(func() { runInstaller = prev })
+	if code := runUpdateCLI([]string{"apply", "v2.1.0"}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Join(entries, ",") != "download" {
+		t.Fatalf("staging holds %v", entries)
+	}
+}

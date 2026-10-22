@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/tar"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -422,24 +421,6 @@ func TestRollbackCleansWantsOfRemovedUnits(t *testing.T) {
 }
 
 // ── M6: only dirs, files and links; no setuid or setgid ──────────────────────
-
-func TestExtractReleaseRefusesOtherTypesAndSetID(t *testing.T) {
-	root := "hsi-v2.1.0"
-	for name, entries := range map[string][]tarEntry{
-		"fifo":       {{name: root + "/f", kind: tar.TypeFifo}},
-		"char dev":   {{name: root + "/c", kind: tar.TypeChar}},
-		"block dev":  {{name: root + "/b", kind: tar.TypeBlock}},
-		"setuid":     {{name: root + "/s", body: "x", kind: tar.TypeReg, mode: 0o4755}},
-		"setgid dir": {{name: root + "/d/", kind: tar.TypeDir, mode: 0o2755}},
-	} {
-		dir := t.TempDir()
-		archive := filepath.Join(dir, "a.tar.gz")
-		mustWrite(t, archive, buildArchive(t, entries))
-		if err := extractRelease(archive, filepath.Join(dir, "out"), root); err == nil {
-			t.Errorf("%s: accepted", name)
-		}
-	}
-}
 
 // ── M7: broken snapshots and old staging dirs are pruned ─────────────────────
 
