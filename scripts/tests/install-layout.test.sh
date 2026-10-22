@@ -209,6 +209,15 @@ check "the server cannot write the log dir" '! grep -q "^ReadWritePaths=.*\$LOG_
 # INSTALL_DIR/database is root's.
 check "data paths re-checked after database becomes root's" 'awk "/chown -h root:root \"\\\$INSTALL_DIR\/releases\" \"\\\$INSTALL_DIR\/database\"/{f=1;next} f&&/check_data_paths/{ok=1;exit} f&&/chown -h \"\\\$APP_USER:\"/{exit} END{exit !ok}" "$ROOT/scripts/install.sh"'
 
+# A refused release changes nothing: it is downloaded and verified before the lock
+# dir, the legacy migration, the user and nvm.
+line_of() { grep -n -m1 -F -- "$1" "$ROOT/scripts/install.sh" | cut -d: -f1; }
+verify_at=$(line_of 'step "Downloading and verifying $VERSION"')
+for later in 'install -d -m 0700 "$UPDATE_STATE"' '  migrate_legacy_app_install' 'useradd -r -m' 'app_exec "nvm install'; do
+  at=$(line_of "$later")
+  check "the release is verified before: $later" '[[ -n "$verify_at" && -n "$at" && $verify_at -lt $at ]]'
+done
+
 # Versions and URLs the update relies on.
 first_go=$(sed -n 's/^const firstHealthVersion = "\(v[0-9.]*\)"$/\1/p' "$ROOT/apps/root-worker/update_health.go")
 first_sh=$(sed -n 's/^FIRST_SAFE_UPDATE_VERSION="\(v[0-9.]*\)"$/\1/p' "$ROOT/scripts/install.sh")

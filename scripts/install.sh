@@ -625,6 +625,41 @@ trap cleanup_install_exit EXIT
 # Also re-checked on every update: new releases may need new host tools.
 ensure_dependencies
 
+# Release mode: the release is resolved, downloaded, verified, extracted and checked
+# before anything on the host changes (lock dir, legacy migration, user, nvm). A
+# refused release leaves the host as it was.
+if [[ "$FROM_SOURCE" -eq 0 ]]; then
+  step "Resolving release version"
+  VERSION="${VERSION:-}"
+  if [[ -z "$VERSION" ]]; then
+    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+      | grep -oP '"tag_name":\s*"\K[^"]+')
+    [[ -n "$VERSION" ]] || die "Could not fetch latest release from GitHub."
+  fi
+  VERSION="v${VERSION#v}"
+  [[ "$VERSION" =~ $INSTALLED_VERSION_RE ]] \
+    || die "Invalid release version: $VERSION"
+  ! version_lt "$VERSION" "$FIRST_SAFE_UPDATE_VERSION" \
+    || die "This installer installs $FIRST_SAFE_UPDATE_VERSION or newer. To install $VERSION, run the install.sh of that release."
+
+  step "Downloading and verifying $VERSION"
+  DL_DIR=$(mktemp -d)
+  stage_release
+  RELEASE_WORKER_BIN="${RELEASE_APP_NAME}-worker"
+  [[ -f "$RELEASE_STAGE/server.js" \
+     && -f "$RELEASE_STAGE/public/index.html" \
+     && -x "$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN" \
+     && -d "$RELEASE_STAGE/database/prisma" \
+     && -d "$RELEASE_STAGE/compose/src" \
+     && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
+     && -x "$RELEASE_STAGE/node_modules/.bin/tsx" \
+     && -x "$RELEASE_STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
+     && -s "$RELEASE_STAGE/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node" \
+     && -f "$RELEASE_STAGE/runtime/package-lock.json" ]] \
+    || die "Release archive is incomplete."
+  success "Release downloaded and validated"
+fi
+
 # One install or update at a time, the legacy migration included: the update lock
 # is held until the installer exits. The worker's interrupted-update recovery and
 # `update rollback` take it too.
@@ -803,23 +838,9 @@ cleanup_legacy_app_units() {
 # Migrate a legacy "app"-named install FIRST - before either mode branch can
 # create the hsi user (release mode's useradd) or resolve paths, and before
 # fresh/update detection reads the DB under the new /opt/hsi location.
+# The release (release mode) is verified already: a missing or refused one changed
+# nothing.
 if detect_legacy_app_install; then
-  if [[ "$FROM_SOURCE" -eq 0 ]]; then
-    # Never start mutating the box for a release asset that does not exist
-    # (e.g. a pre-rename VERSION pin): resolve + normalize the version and
-    # HEAD-check the tarball now. Failing here changes NOTHING on disk.
-    if [[ -z "${VERSION:-}" ]]; then
-      VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep -oP '"tag_name":\s*"\K[^"]+')
-      [[ -n "$VERSION" ]] || die "Could not fetch latest release from GitHub."
-    fi
-    VERSION="v${VERSION#v}"
-    ! version_lt "$VERSION" "$FIRST_SAFE_UPDATE_VERSION" \
-      || die "This installer installs $FIRST_SAFE_UPDATE_VERSION or newer; $VERSION installs with its own installer - nothing was changed."
-    PRE_URL="${RELEASE_BASE_URL}/${VERSION}/${RELEASE_APP_NAME}-${VERSION}-linux-amd64.tar.gz"
-    curl -fsIL --max-time 30 "$PRE_URL" >/dev/null \
-      || die "Release asset not found for ${VERSION} (pre-rename version pin?) - nothing was changed. Re-run without VERSION to use the latest release."
-  fi
   migrate_legacy_app_install
 fi
 
@@ -876,7 +897,6 @@ if [[ "$FROM_SOURCE" -eq 1 ]]; then
 # =============================================================================
 else
 
-  VERSION="${VERSION:-}"
   INSTALL_DIR="${INSTALL_DIR:-/opt/${APP_NAME}}"
   APP_USER="${APP_USER:-${APP_NAME}}"
   NODE_VERSION="22"
@@ -909,17 +929,6 @@ else
     || die "INSTALL_DIR and its releases folder must be real directories, not links."
 
 
-  step "Resolving release version"
-  if [[ -z "$VERSION" ]]; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-      | grep -oP '"tag_name":\s*"\K[^"]+')
-    [[ -n "$VERSION" ]] || die "Could not fetch latest release from GitHub."
-  fi
-  VERSION="v${VERSION#v}"
-  [[ "$VERSION" =~ $INSTALLED_VERSION_RE ]] \
-    || die "Invalid release version: $VERSION"
-  ! version_lt "$VERSION" "$FIRST_SAFE_UPDATE_VERSION" \
-    || die "This installer installs $FIRST_SAFE_UPDATE_VERSION or newer. To install $VERSION, run the install.sh of that release."
   APP_DIR="$INSTALL_DIR"
 
   info "Version:      $VERSION"
@@ -976,11 +985,6 @@ else
   NODE_BIN=$(app_exec "nvm which $NODE_VERSION")
   success "Node: $NODE_BIN"
 
-  # Download, verify, fully extract and validate the release before stopping a
-  # running installation. Network, signature or archive failures leave it untouched.
-  step "Downloading and verifying $VERSION"
-  DL_DIR=$(mktemp -d)
-  stage_release
   # An update killed midway is rolled back before anything else (the recovery takes
   # the lock itself).
   if [[ -f "$UPDATE_STATE/in-progress.json" ]]; then
@@ -988,19 +992,6 @@ else
     recover_interrupted_update
     flock -n 9 || die "Another update or rollback is running; wait for it to finish, then re-run."
   fi
-  RELEASE_WORKER_BIN="${RELEASE_APP_NAME}-worker"
-  [[ -f "$RELEASE_STAGE/server.js" \
-     && -f "$RELEASE_STAGE/public/index.html" \
-     && -x "$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN" \
-     && -d "$RELEASE_STAGE/database/prisma" \
-     && -d "$RELEASE_STAGE/compose/src" \
-     && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
-     && -x "$RELEASE_STAGE/node_modules/.bin/tsx" \
-     && -x "$RELEASE_STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
-     && -s "$RELEASE_STAGE/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node" \
-     && -f "$RELEASE_STAGE/runtime/package-lock.json" ]] \
-    || die "Release archive is incomplete."
-  success "Release downloaded and validated"
 
 fi
 
