@@ -85,7 +85,7 @@ jobs:
       - name: Build root-worker (linux/amd64)
         run: |
           cd apps/root-worker
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o root-worker .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.buildVersion=v${VERSION}" -o root-worker .
 
       - name: Build dashboard
         run: |
@@ -127,6 +127,11 @@ jobs:
 
           echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
+      - name: Sign release
+        env:
+          HSI_RELEASE_SIGNING_KEY: ${{ secrets.HSI_RELEASE_SIGNING_KEY }}
+        run: scripts/sign-release.sh . "$ARCHIVE"
+
       - name: Extract changelog notes
         run: |
           NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
@@ -140,5 +145,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          files: ${{ env.ARCHIVE }}
+          files: |
+            ${{ env.ARCHIVE }}
+            install.sh
+            SHA256SUMS
+            SHA256SUMS.sig
           body: ${{ env.RELEASE_NOTES }}

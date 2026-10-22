@@ -4,6 +4,24 @@
 #
 # Bumps package.json, updates CHANGELOG.md, commits, tags, and pushes:
 # which triggers the release workflow on GitHub Actions.
+#
+# Releases are signed (scripts/sign-release.sh, run by the workflow) with an
+# ed25519 key whose private half is the repository secret HSI_RELEASE_SIGNING_KEY.
+# One-time setup by the maintainer, until the real key replaces the development one:
+#   1. openssl genpkey -algorithm ed25519 -out release-signing.key
+#      openssl pkey -in release-signing.key -pubout -out scripts/release-signing.pub
+#   2. gh secret set HSI_RELEASE_SIGNING_KEY < release-signing.key
+#   3. copy the public key to apps/root-worker/release-signing.pub and into the
+#      RELEASE_SIGNING_PUB heredoc of scripts/install.sh (a test keeps the three
+#      identical), and update the dev key fingerprint checks if they still apply
+#   4. store release-signing.key offline (password manager, hardware token), then
+#      delete the local copy
+# The workflow refuses to publish while scripts/release-signing.pub is the
+# development key.
+#
+# Key rotation: ship the new public key (the three copies) in a release signed by
+# the old key, then switch the secret. Installations update through the old key's
+# release and trust the new key from then on.
 set -euo pipefail
 
 REPO="kittyruntime/home-server-interface"

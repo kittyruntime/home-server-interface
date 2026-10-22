@@ -164,6 +164,24 @@ systemctl status hsi-server hsi-worker hsi-nats
 systemctl stop hsi.target      # stop HSI entirely, e.g. before manual work
 ```
 
+## Versions and rollback
+
+Each release lives in `/opt/hsi/releases/<version>/` and `/opt/hsi/current` is a
+symbolic link to the active one (the two previous versions are kept).
+`/usr/local/bin/hsi-worker` points into it. Before each update the database and
+configuration are copied to `/var/lib/hsi/update/<from>-<to>/`, and the result of
+the last update is in `/var/lib/hsi/update/last.json`.
+
+```bash
+ls -l /opt/hsi/current /opt/hsi/releases
+cat /var/lib/hsi/update/last.json
+sudo hsi-worker update status
+sudo hsi-worker update rollback   # previous version, with the data of its snapshot
+```
+
+The rollback loses everything changed in the database since that snapshot. See
+[Updates](/home-server-interface/guide/install/#updates).
+
 ## Backup plans
 
 Each plan is a systemd timer, `hsi-backup@<id>.timer`, and each versioned repository

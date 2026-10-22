@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Requirements, the install command, updates, version pinning and the first login.
+description: Requirements, the install command, safe updates and rollback, version pinning and the first login.
 ---
 
 ## Requirements
@@ -71,17 +71,94 @@ Installations that already have an administrator never see the assistant.
 Re-run the same command. The script detects an existing installation, preserves
 the database and all secrets, and restarts the services. Installs from before
 `hsi.target` are migrated automatically (`hsi` becomes `hsi-server`,
-`hsi-root-worker` becomes `hsi-worker`); if the update fails, the previous
-services are restored.
+`hsi-root-worker` becomes `hsi-worker`).
 
 Administrators can also update from the dashboard, which checks for new releases
-and runs pre-flight checks before installing one.
+and runs pre-flight checks before installing one. The result of the last update
+shows in Settings.
 
 ### Pin a version
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.54.0 bash
 ```
+
+## Updates
+
+How an update is made safe:
+
+- **Signed.** Each release carries `SHA256SUMS` (the checksums of the archive and
+  of `install.sh`) and `SHA256SUMS.sig`, an ed25519 signature of that file. The
+  installer and the worker check the signature with a public key they already
+  hold, then the checksums, before running anything from the download. Updates
+  never fetch code from the `main` branch. The checks need OpenSSL 3 or newer.
+- **Side by side.** A version is unpacked into `/opt/hsi/releases/<version>/`
+  and `/opt/hsi/current` points to the active one. The two previous versions are
+  kept. Your data never moves: `/opt/hsi/.env`, `/opt/hsi/database/data`,
+  `/opt/hsi/data`, `/etc/hsi` and `/var/lib/hsi`.
+- **Snapshot.** Before switching, the database and the configuration files are
+  copied to `/var/lib/hsi/update/<from>-<to>/` (the two latest are kept).
+- **Health gate.** After the switch the update waits up to two minutes for the
+  server to answer `/health` with the new version and the database reachable,
+  and for the worker to answer. If it does not, or if the update fails or is
+  interrupted, the previous version and the snapshot are restored
+  automatically.
+
+### Roll back by hand
+
+```bash
+sudo hsi-worker update status      # last update result and the rollback point
+sudo hsi-worker update rollback
+```
+
+`rollback` shows the previous version and the date of its snapshot, and asks
+for confirmation. It restores the previous code, the database and the
+configuration files as they were at the snapshot. Everything changed since is
+lost: users, shares, settings, and anything stored in the database. Files in
+your volumes and your containers' data are not touched. It is refused when no
+snapshot exists.
+
+A first update from a version published before safe updates, interrupted before
+the switch, boots the old version; only the next installer run rolls back.
+
+### Verify a release by hand
+
+Download the files of a release and check them yourself (OpenSSL 3 needed):
+
+```bash
+V=v1.67.0
+BASE=https://github.com/kittyruntime/home-server-interface/releases/download/$V
+curl -fsSLO $BASE/hsi-$V-linux-amd64.tar.gz
+curl -fsSLO $BASE/install.sh
+curl -fsSLO $BASE/SHA256SUMS
+curl -fsSLO $BASE/SHA256SUMS.sig
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/release-signing.pub -o release-signing.pub
+
+base64 -d SHA256SUMS.sig > SHA256SUMS.sig.bin
+openssl pkeyutl -verify -pubin -inkey release-signing.pub -rawin \
+  -in SHA256SUMS -sigfile SHA256SUMS.sig.bin     # Signature Verified Successfully
+sha256sum -c SHA256SUMS                          # both files: OK
+```
+
+### Releases published before signing
+
+Releases from before signing have no `SHA256SUMS`. To update from one of them,
+pass `--allow-unsigned` (or `HSI_ALLOW_UNSIGNED=1`) once, only for that step:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash -s -- --allow-unsigned
+```
+
+It installs without any signature check, and is also the way through on a host
+without OpenSSL 3.
+
+### What you trust on the first install
+
+The very first install has nothing to verify against: you trust the HTTPS
+connection to GitHub (the installer script and the release downloads) and the
+repository. The public key is embedded in that script, so from then on every
+update is checked against it. Source installs (`--from-source`) keep the
+previous layout, with no signing, no versions directory and no health gate.
 
 ## Services
 
