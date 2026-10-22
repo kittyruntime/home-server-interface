@@ -1133,14 +1133,16 @@ EOF
 cat > /etc/systemd/system/${APP_NAME}-backup@.service <<EOF
 [Unit]
 Description=${APP_NAME} backup plan %i
-After=network-online.target ${APP_NAME}-worker.service
+After=network-online.target ${APP_NAME}-worker.service docker.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/${APP_NAME}-worker backup run %i
 EnvironmentFile=$WORKER_ENV
-# An interrupted run starts the apps it stopped again before it exits.
+# An interrupted run starts the apps it stopped again before it exits: only the
+# worker gets SIGTERM (it passes it on to restic), never a docker compose child.
+KillMode=mixed
 TimeoutStopSec=120s
 Nice=10
 IOSchedulingClass=idle
@@ -1152,14 +1154,16 @@ EOF
 cat > /etc/systemd/system/${APP_NAME}-backup-check@.service <<EOF
 [Unit]
 Description=${APP_NAME} repository check %i
-After=network-online.target ${APP_NAME}-worker.service
+After=network-online.target ${APP_NAME}-worker.service docker.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/${APP_NAME}-worker backup check %i
 EnvironmentFile=$WORKER_ENV
-# An interrupted run starts the apps it stopped again before it exits.
+# An interrupted run starts the apps it stopped again before it exits: only the
+# worker gets SIGTERM (it passes it on to restic), never a docker compose child.
+KillMode=mixed
 TimeoutStopSec=120s
 Nice=10
 IOSchedulingClass=idle
