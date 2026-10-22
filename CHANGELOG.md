@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Signed releases** (#9a): every release ships `SHA256SUMS` and
+  `SHA256SUMS.sig` (ed25519). The installer and the worker verify the signature
+  and the checksums of the archive before running anything from it. The update
+  path no longer fetches anything from `main`. During an update root never runs
+  code owned by the app user or follows links it owns, and the log directory
+  is root-owned.
+
+### Added
+- **Safe updates** (#9a): versions install side by side under
+  `/opt/hsi/releases/<version>/` and `/opt/hsi/current` switches between them.
+  An update takes a database and configuration snapshot, then waits for the
+  health of the new version (server and worker) and rolls back automatically
+  when it does not come up. `sudo hsi-worker update rollback` goes back to the
+  previous version by hand, and the result of the last update shows in Settings.
+  Known limitation: a first update from a version before this one that is
+  interrupted before the switch boots the old version, and only the next
+  installer run rolls back.
+
 ## [1.66.0] - 2026-10-22
 
 ### Added

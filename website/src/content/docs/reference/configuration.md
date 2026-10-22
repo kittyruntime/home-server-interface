@@ -45,6 +45,7 @@ environment variables:
 | `SKIP_SEED` | `0` | Skip the database seed and the setup link. |
 | `HSI_LOG_LEVEL` | `info` | Root worker log level (`debug`, `info`, `warn`, `error`), kept in `/etc/hsi/worker.env` across updates. |
 | `SKIP_DEPS_INSTALL` | `0` | Only check host packages; fail instead of installing missing ones with `apt-get`. |
+| `HSI_ALLOW_UNSIGNED` | `0` | Same as `--allow-unsigned`: install a release published before signing, with no signature check. |
 
 Re-running the installer detects an existing installation, **preserves the
 database and all secrets**, and restarts the services.
