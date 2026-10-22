@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // Fixes of the final review of safe updates (#9a).
@@ -211,4 +213,90 @@ func assertLastRefusedWithout(t *testing.T, leak string) *lastResult {
 		t.Fatalf("last.json holds the marker content: %s", b)
 	}
 	return r
+}
+
+// stagedRepair is releases/v2.0.0 (current, file "old") and releases/.staging-77 (file "new").
+func stagedRepair(t *testing.T) *updateEnv {
+	t.Helper()
+	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0", ".staging-77")
+	mustWrite(t, filepath.Join(e.install, "releases", "v2.0.0", "server.js"), []byte("old"))
+	mustWrite(t, filepath.Join(e.install, "releases", ".staging-77", "server.js"), []byte("new"))
+	if err := switchCurrent("v2.0.0"); err != nil {
+		t.Fatal(err)
+	}
+	return e
+}
+
+func TestReplaceSwapsTheLiveReleaseAtomically(t *testing.T) {
+	e := stagedRepair(t)
+	live := filepath.Join(e.install, "releases", "v2.0.0")
+	var missing atomic.Bool
+	stop, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if _, err := os.Stat(filepath.Join(e.install, "current", "server.js")); err != nil {
+				missing.Store(true)
+			}
+		}
+	}()
+	code := runUpdateCLI([]string{"replace", "v2.0.0", ".staging-77"})
+	close(stop)
+	<-done
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if b, _ := os.ReadFile(filepath.Join(live, "server.js")); string(b) != "new" {
+		t.Fatalf("live release holds %q", b)
+	}
+	if _, err := os.Lstat(filepath.Join(e.install, "releases", ".staging-77")); !os.IsNotExist(err) {
+		t.Fatal("the previous copy was not removed")
+	}
+	if missing.Load() {
+		t.Fatal("the live release was missing during the replace")
+	}
+	if currentVersion() != "v2.0.0" {
+		t.Fatalf("current %q", currentVersion())
+	}
+}
+
+func TestReplaceRefusesBadOrUntrustedStaging(t *testing.T) {
+	e := stagedRepair(t)
+	for _, args := range [][]string{
+		{"replace", "v2.0.0", "../v2.0.0"},
+		{"replace", "v2.0.0", "v2.1.0"},
+		{"replace", "v2.0.0", ".staging-x"},
+		{"replace", "../etc", ".staging-77"},
+		{"replace", "v2.1.0", ".staging-77"},
+	} {
+		if code := runUpdateCLI(args); code == 0 {
+			t.Errorf("%v accepted", args)
+		}
+	}
+	if err := os.Chmod(filepath.Join(e.install, "releases", ".staging-77"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if code := runUpdateCLI([]string{"replace", "v2.0.0", ".staging-77"}); code == 0 {
+		t.Fatal("an untrusted staging copy replaced the live release")
+	}
+	if b, _ := os.ReadFile(filepath.Join(e.install, "releases", "v2.0.0", "server.js")); string(b) != "old" {
+		t.Fatalf("live release changed to %q", b)
+	}
+}
+
+func TestLatestSnapshotSkipsSameVersion(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v1.9.0", "v2.0.0")
+	writeTestManifest(t, e, "v1.9.0", "v2.0.0", time.Now().Add(-time.Hour))
+	writeTestManifest(t, e, "v2.0.0", "v2.0.0", time.Now())
+	s, ok := latestSnapshotFor("v2.0.0")
+	if !ok || s.Manifest.From != "v1.9.0" {
+		t.Fatalf("latest %+v %v", s.Manifest, ok)
+	}
 }

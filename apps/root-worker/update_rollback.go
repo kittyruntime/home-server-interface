@@ -358,10 +358,11 @@ func recoverUpdate() error {
 	return rollback(p.Snapshot, step, "interrupted")
 }
 
-// latestSnapshotFor returns the newest snapshot whose To is version.
+// latestSnapshotFor returns the newest snapshot whose To is version and whose From
+// differs (a same-version snapshot has nothing to go back to).
 func latestSnapshotFor(version string) (updateSnapshot, bool) {
 	for _, s := range listSnapshots() {
-		if s.Manifest.To == version {
+		if s.Manifest.To == version && s.Manifest.From != version {
 			return s, true
 		}
 	}

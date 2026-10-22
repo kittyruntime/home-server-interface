@@ -27,6 +27,7 @@ const updateUsage = `usage: hsi-worker update <command>
   snapshot <from> <to>                    snapshot the database and configuration, print its dir
   mark <from> <to> <snapshot> <step> [--pid N]   write the in-progress marker
   switch <version>                        point current at releases/<version>
+  replace <version> <staged>              swap releases/<staged> in for releases/<version> (repair)
   health <version> [--timeout 120]        wait until that version is healthy
   commit <from> <to> <snapshot>           record success, prune old versions and snapshots
   rollback [--snapshot <dir>] [--yes] [--reason <text>]   go back to the previous version
@@ -98,7 +99,7 @@ func runUpdateCLI(args []string) int {
 	if err := fs.Parse(rest); err != nil || fs.NArg() > 0 {
 		return fail(2, errors.New(updateUsage))
 	}
-	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "health": 1, "commit": 3, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
+	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "replace": 2, "health": 1, "commit": 3, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
 	if n, ok := want[args[0]]; !ok || n != len(pos) {
 		return fail(2, errors.New(updateUsage))
 	}
@@ -130,6 +131,10 @@ func runUpdateCLI(args []string) int {
 		}
 	case "switch":
 		if err := switchCurrent(pos[0]); err != nil {
+			return fail(1, err)
+		}
+	case "replace":
+		if err := replaceRelease(pos[0], pos[1]); err != nil {
 			return fail(1, err)
 		}
 	case "health":

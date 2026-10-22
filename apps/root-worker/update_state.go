@@ -486,6 +486,58 @@ func switchCurrent(version string) error {
 	return nil
 }
 
+var stagedReleaseRe = regexp.MustCompile(`^\.staging-\d+$`)
+
+// replaceRelease installs the staged copy releases/<staged> in place of releases/<version>,
+// the release current leads to when the installer runs again on the installed version
+// (a repair). The two folders are exchanged in one step, so the live release is never
+// missing, then the previous copy, now at <staged>, is removed. Descriptors only; the
+// staged copy must pass checkReleaseTrusted.
+func replaceRelease(version, staged string) error {
+	if err := checkInstalledVersion(version); err != nil {
+		return err
+	}
+	if !stagedReleaseRe.MatchString(staged) {
+		return fmt.Errorf("invalid staging folder %q", staged)
+	}
+	root, err := openDirNoFollow(installRoot())
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	rel, err := openatDir(root, "releases")
+	if err != nil {
+		return fmt.Errorf("%s is not a real directory: %w", releasesDir(), err)
+	}
+	defer rel.Close()
+	for _, name := range []string{version, staged} {
+		d, err := openatDir(rel, name)
+		if err != nil {
+			return fmt.Errorf("%s is not a release folder of %s", name, releasesDir())
+		}
+		if name == staged {
+			err = checkReleaseTrusted(d, version)
+		}
+		d.Close()
+		if err != nil {
+			return err
+		}
+	}
+	if err := exchangeAt(rel, staged, version); err != nil {
+		return fmt.Errorf("replace %s: %w", version, err)
+	}
+	old, err := openatDir(rel, staged)
+	if err != nil {
+		return err
+	}
+	err = removeChildren(old)
+	old.Close()
+	if err != nil {
+		return fmt.Errorf("remove the previous copy of %s: %w", version, err)
+	}
+	return unlinkat(rel, staged, atRemoveDir)
+}
+
 // currentVersion is the release the current link points to, else the VERSION file
 // of a flat install, else "".
 func currentVersion() string {
