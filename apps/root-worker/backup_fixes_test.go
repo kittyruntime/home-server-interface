@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -53,7 +54,11 @@ func TestInterruptKeepsAppRestartFailure(t *testing.T) {
 	setupVersionsPlan(t, "vaultwarden")
 	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}, failStart: "vaultwarden"})
 	fakeRestic(t, nil, map[string]int{"backup": 130})
-	interruptRun(syscall.SIGTERM)
+	inner := runResticFiles
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
+		interruptRun(syscall.SIGTERM)
+		return inner(env, args, extra, onLine)
+	}
 	_ = runPlan(planA, false, time.Now)
 	runs, _ := lastRuns("runs", planA, 1)
 	if !strings.HasPrefix(runs[0].Error, "interrupted") || !strings.Contains(runs[0].Error, "vaultwarden did not start again") {
@@ -197,19 +202,26 @@ func TestRestoreIncludeEscapesGlobCharacters(t *testing.T) {
 	t.Fatalf("no --include in %v", args)
 }
 
-func restorePreviewFixture(t *testing.T, summary string) {
+func lsNode(path, typ string) string {
+	return `{"struct_type":"node","name":"` + filepath.Base(path) + `","path":"` + path + `","type":"` + typ + `"}`
+}
+
+func restorePreviewFixture(t *testing.T, summary string, ls ...string) *[]resticCall {
 	t.Helper()
 	useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
-	fakeRestic(t, map[string][]string{
+	return fakeRestic(t, map[string][]string{
 		"snapshots": {`[{"id":"abcdef1234567890","short_id":"abcdef12","time":"2026-03-04T05:06:07Z"}]`},
 		"restore":   {summary},
+		"ls":        ls,
 	}, nil)
 }
 
 func TestRestorePreviewRefusesNothingToRestore(t *testing.T) {
-	restorePreviewFixture(t, `{"message_type":"summary","files_restored":0,"total_files":0}`)
+	// Folders only: restic counts them, they are no files to restore.
+	restorePreviewFixture(t, `{"message_type":"summary","files_restored":2,"total_files":2}`,
+		lsNode("/srv/data/Movie [1080p]", "dir"), lsNode("/srv/data/Movie [1080p]/extras", "dir"))
 	for _, target := range []string{"new", "original"} {
 		in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/srv/data/Movie [1080p]", "target": target, "confirmOverwrite": true}
 		_, ferr := buildPlan("backup.restore", mustJSON(in))
@@ -220,8 +232,10 @@ func TestRestorePreviewRefusesNothingToRestore(t *testing.T) {
 }
 
 func TestRestorePreviewCountsFilesNotFolders(t *testing.T) {
-	// A dry run of 2 files in 7 folders: files_restored counts the folders too.
-	restorePreviewFixture(t, `{"message_type":"summary","files_restored":9,"total_files":2}`)
+	// restic 0.19 counts the folders in total_files and files_restored: 2 files, 3 folders.
+	calls := restorePreviewFixture(t, `{"message_type":"summary","files_restored":5,"total_files":5}`,
+		lsNode("/srv/data/photos", "dir"), lsNode("/srv/data/photos/a.jpg", "file"), lsNode("/srv/data/photos/2025", "dir"),
+		lsNode("/srv/data/photos/2025/b.jpg", "file"), lsNode("/srv/data/photos/2025/c", "symlink"), lsNode("/srv/data/photos2/x.jpg", "file"))
 	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/srv/data/photos", "target": "original"}
 	if _, ferr := buildPlan("backup.restore", mustJSON(in)); ferr == nil || ferr.Message != "This replaces 2 files at their original location" {
 		t.Fatalf("%+v", ferr)
@@ -230,6 +244,11 @@ func TestRestorePreviewCountsFilesNotFolders(t *testing.T) {
 	p := planFor(t, "backup.restore", in)
 	if !strings.HasSuffix(p.Steps[0].Summary, "(2 files)") {
 		t.Fatalf("%s", p.Steps[0].Summary)
+	}
+	for _, c := range *calls {
+		if c.args[0] == "ls" && !strings.Contains(strings.Join(c.args, " "), "--json --recursive /srv/data/photos") {
+			t.Fatalf("ls %v", c.args)
+		}
 	}
 }
 
@@ -547,5 +566,99 @@ func TestInitCreatesTheMissingFolderItHands(t *testing.T) {
 	}
 	if state, _ := resticProbe(repositoryCfg{Type: "local", Path: filepath.Join(t.TempDir(), "absent")}, repoSecrets{Password: "p"}); state != probeEmpty || len(*calls) != 1 {
 		t.Fatalf("probe of a missing folder: %s %v", state, *calls)
+	}
+}
+
+// ── VM: an interruption during the stop phase ───────────────────────────────
+
+func TestInterruptDuringAppStopStartsTheAppAgain(t *testing.T) {
+	setupVersionsPlan(t, "uptime-kuma", "vaultwarden")
+	var calls []string
+	fakeApps(t, &appsFake{running: map[string]bool{"uptime-kuma": true, "vaultwarden": true}})
+	var restartDeadline time.Duration
+	composeAction = func(ctx context.Context, a string, args ...string) error {
+		calls = append(calls, a+" "+args[0])
+		switch args[0] {
+		case "stop":
+			// systemctl stop lands while docker compose stop runs.
+			interruptRun(syscall.SIGTERM)
+			return errors.New("Container uptime-kuma Error Error while Stopping")
+		case "start":
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if d, ok := ctx.Deadline(); ok {
+				restartDeadline = time.Until(d)
+			}
+		}
+		return nil
+	}
+	resticCalls := fakeRestic(t, map[string][]string{"backup": {summaryLine}}, nil)
+	_ = runPlan(planA, false, time.Now)
+	if strings.Join(calls, ",") != "uptime-kuma stop,uptime-kuma start" {
+		t.Fatalf("apps %v", calls)
+	}
+	if restartDeadline <= 0 || restartDeadline > appRestartTimeout {
+		t.Fatalf("restart bounded by %v", restartDeadline)
+	}
+	if len(*resticCalls) != 0 {
+		t.Fatal("snapshot taken after the interruption")
+	}
+	runs, _ := lastRuns("runs", planA, 1)
+	if runs[0].Error != "interrupted" {
+		t.Fatalf("%+v", runs[0])
+	}
+}
+
+func TestTransientUnitsSignalTheWorkerOnly(t *testing.T) {
+	calls := useUnits(t)
+	_ = saveBackupConfig(sampleConfig())
+	_ = backupRunNow(planA)
+	_ = backupCheckNow(repoA, true)
+	for _, c := range *calls {
+		if !strings.Contains(c, "-p KillMode=mixed") || !strings.Contains(c, "-p After=docker.service") || !strings.Contains(c, "-p TimeoutStopSec=120s") {
+			t.Fatalf("%s", c)
+		}
+	}
+	if len(*calls) != 2 {
+		t.Fatalf("%v", *calls)
+	}
+}
+
+func TestMigrationAndRestoreReloadUnchangedTimers(t *testing.T) {
+	calls := useUnits(t)
+	c := sampleConfig()
+	if err := writeAllTimers(c, false); err != nil {
+		t.Fatal(err)
+	}
+	*calls = nil
+	if err := writeAllTimers(c, true); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(strings.Join(*calls, "\n"), "daemon-reload") != 1 {
+		t.Fatalf("no reload for unchanged files: %v", *calls)
+	}
+	// The migration asks for it.
+	*calls = nil
+	if _, _, err := migrateRsyncPlans([]map[string]any{rsyncRow}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(strings.Join(*calls, "\n"), "daemon-reload") != 1 {
+		t.Fatalf("%v", *calls)
+	}
+}
+
+func TestInterruptedCheckIsRecordedAsInterrupted(t *testing.T) {
+	setupVersionsPlan(t)
+	fakeRestic(t, nil, map[string]int{"check": 130})
+	inner := runResticFiles
+	runResticFiles = func(env, args []string, extra []*os.File, onLine func([]byte)) (int, string, error) {
+		interruptRun(syscall.SIGTERM)
+		return inner(env, args, extra, onLine)
+	}
+	_ = runCheck(repoA, false, time.Now)
+	runs, _ := lastRuns("checks", repoA, 1)
+	if runs[0].Status != "failed" || runs[0].Error != "interrupted" {
+		t.Fatalf("%+v", runs[0])
 	}
 }

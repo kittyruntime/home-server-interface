@@ -526,22 +526,25 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 		target = filepath.Join(base, "Restored", name)
 	}
 
-	sum, err := resticRestore(repo, sec, req.Snapshot, path, target, true, nil)
+	if _, err := resticRestore(repo, sec, req.Snapshot, path, target, true, nil); err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
+	}
+	// restic's counters (total_files, files_restored) include the folders.
+	files, err := resticCountFiles(repo, sec, req.Snapshot, path)
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
-	// total_files counts files; files_restored counts the folders too.
-	if sum.TotalFiles == 0 {
+	if files == 0 {
 		return nil, &fsError{Code: "ENOENT", Message: "Nothing to restore: the snapshot holds no file at " + path}
 	}
 	if req.Target == "original" && !req.ConfirmOverwrite {
-		return nil, &fsError{Code: "ECONFIRM", Message: fmt.Sprintf("This replaces %d files at their original location", sum.TotalFiles)}
+		return nil, &fsError{Code: "ECONFIRM", Message: fmt.Sprintf("This replaces %d files at their original location", files)}
 	}
 
 	p := &opPlan{Op: "backup.restore", Reply: map[string]any{}}
 	rr := restoreRequest{Repository: repo.ID, Snapshot: req.Snapshot, Path: path, Mode: req.Target, Base: base, Name: name}
 	p.Steps = []planStep{{Kind: "run", Target: target,
-		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, sum.TotalFiles),
+		Summary:     fmt.Sprintf("Restore %s from %s to %s (%d files)", path, date, target, files),
 		Destructive: req.Target == "original",
 		run: func() (string, error) {
 			rr.RunID = newRunID()
@@ -554,7 +557,7 @@ func planRestore(raw json.RawMessage) (*opPlan, *fsError) {
 			if err != nil {
 				return "", err
 			}
-			argv := []string{"systemd-run", "--unit", unitPrefix() + "-restore-" + rr.RunID, "--collect"}
+			argv := append([]string{"systemd-run", "--unit", unitPrefix() + "-restore-" + rr.RunID, "--collect"}, backupUnitProps()...)
 			argv = append(argv, hsiEnvArgs(os.Environ())...)
 			argv = append(argv, exe, "backup", "restore", file)
 			if out, err := runArgv(argv); err != nil {
@@ -693,13 +696,17 @@ func restoreHeld(rr restoreRequest, repo repositoryCfg, sec repoSecrets, rec *ru
 		rec.Target = filepath.Join(rr.Base, "Restored", created)
 		defer final.Close()
 		sum, err := resticRestoreAt(repo, sec, rr.Snapshot, rr.Path, "", final, false, progress)
-		rec.Files, rec.Warnings = sum.TotalFiles, sum.Warnings
+		rec.Warnings = sum.Warnings
 		if err != nil {
 			// A failed restore leaves no empty folder behind. Only root can change the
 			// entries of Restored, and rmdir removes nothing that holds a file.
 			if unlinkat(restored, created, atRemoveDir) == nil {
 				rec.Target = ""
 			}
+			return err
+		}
+		// Counted on the folder restic wrote: its counters include the folders.
+		if rec.Files, err = countFiles(final); err != nil {
 			return err
 		}
 		return final.Chmod(0o755)

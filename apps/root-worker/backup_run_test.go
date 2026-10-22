@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -17,7 +18,7 @@ type appsFake struct {
 func fakeApps(t *testing.T, f *appsFake) {
 	pr, pa := composeRunning, composeAction
 	composeRunning = func(a string) (bool, error) { return f.running[a], nil }
-	composeAction = func(a string, args ...string) error {
+	composeAction = func(_ context.Context, a string, args ...string) error {
 		f.calls = append(f.calls, a+" "+args[0])
 		if args[0] == "start" && a == f.failStart {
 			return errors.New("port in use")
@@ -113,7 +114,7 @@ func TestRunVersionsRefusesMissingVolume(t *testing.T) {
 func TestRunVersionsMarksInconsistentWhenStopFails(t *testing.T) {
 	setupVersionsPlan(t, "vaultwarden")
 	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}})
-	composeAction = func(a string, args ...string) error {
+	composeAction = func(_ context.Context, a string, args ...string) error {
 		if args[0] == "stop" {
 			return errors.New("timeout")
 		}
@@ -146,7 +147,7 @@ func TestRunVersionsStartsAppsBeforeForget(t *testing.T) {
 	setupVersionsPlan(t, "vaultwarden")
 	var seq []string
 	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}})
-	composeAction = func(a string, args ...string) error {
+	composeAction = func(_ context.Context, a string, args ...string) error {
 		seq = append(seq, a+" "+args[0])
 		return nil
 	}
@@ -170,7 +171,7 @@ func TestRunVersionsStartsAppsWhoseStopFailed(t *testing.T) {
 	setupVersionsPlan(t, "vaultwarden")
 	var calls []string
 	fakeApps(t, &appsFake{running: map[string]bool{"vaultwarden": true}})
-	composeAction = func(a string, args ...string) error {
+	composeAction = func(_ context.Context, a string, args ...string) error {
 		calls = append(calls, a+" "+args[0])
 		if args[0] == "stop" {
 			return errors.New("timeout")

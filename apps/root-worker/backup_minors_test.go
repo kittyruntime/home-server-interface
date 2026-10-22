@@ -516,7 +516,7 @@ func TestRetryAfterAFailedApplyAttachesWithTheStoredPassword(t *testing.T) {
 }
 
 func TestOriginalRestoreOffTheDataVolumesIsRefused(t *testing.T) {
-	restorePreviewFixture(t, `{"message_type":"summary","files_restored":1,"total_files":1}`)
+	restorePreviewFixture(t, `{"message_type":"summary","files_restored":1,"total_files":1}`, lsNode("/home/admin/notes", "file"))
 	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/home/admin/notes", "target": "original", "confirmOverwrite": true}
 	if _, ferr := buildPlan("backup.restore", mustJSON(in)); ferr == nil || ferr.Code != "EINVALID" || !strings.Contains(ferr.Message, "data volume") {
 		t.Fatalf("%+v", ferr)
@@ -596,7 +596,7 @@ func TestNewTimersAreWrittenBeforeStaleOnesGo(t *testing.T) {
 	_ = os.Mkdir(filepath.Join(systemdDir(), planTimerName(planA)), 0o755)
 	c := sampleConfig()
 	c.Repositories[0].Check.Every = "off"
-	if err := writeAllTimers(c); err == nil {
+	if err := writeAllTimers(c, false); err == nil {
 		t.Fatal("expected failure")
 	}
 	if !fileExists(stale) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +14,30 @@ import (
 	"time"
 )
 
-var composeAction = runCompose
+// composeAction runs docker compose for an app within ctx. Its context is never the
+// interruption's: an app being started again must not be cancelled by the signal
+// that stops the run.
+var composeAction = func(ctx context.Context, app string, args ...string) error {
+	full, err := composeArgs(app, args...)
+	if err != nil {
+		return err
+	}
+	out, err := commandContext(ctx, "docker", full...).CombinedOutput()
+	if err != nil {
+		if msg := strings.TrimSpace(string(out)); msg != "" {
+			return errors.New(msg)
+		}
+		return err
+	}
+	return nil
+}
+
+// Bounds of the compose calls of a run. The restart stays below TimeoutStopSec, so an
+// interrupted run still records itself before systemd kills it.
+var (
+	appStopTimeout    = 5 * time.Minute
+	appRestartTimeout = 90 * time.Second
+)
 
 // composeRunning tells whether the app has a running container. An error means the
 // state is unknown: the app is then left alone and the snapshot is not consistent.
@@ -222,6 +246,10 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 	consistent := true
 	var stopped []string
 	for _, app := range o.StopApps {
+		if interrupted.Load() {
+			// No more stops: the run winds down and starts what it stopped.
+			break
+		}
 		running, err := composeRunning(app)
 		if err != nil {
 			consistent = false
@@ -234,7 +262,10 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 		// A failed stop can leave a multi-container app half stopped, so it is
 		// started again too (starting running containers is harmless).
 		stopped = append(stopped, app)
-		if err := composeAction(app, "stop"); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), appStopTimeout)
+		err = composeAction(ctx, app, "stop")
+		cancel()
+		if err != nil {
 			consistent = false
 			rec.Warnings = append(rec.Warnings, fmt.Sprintf("%s could not be stopped: %v", app, err))
 		}
@@ -247,9 +278,11 @@ func runVersions(plan backupPlanCfg, repo repositoryCfg, rec *runRecord) error {
 			return nil
 		}
 		restarted = true
+		ctx, cancel := context.WithTimeout(context.Background(), appRestartTimeout)
+		defer cancel()
 		var failed []string
 		for _, app := range stopped {
-			if serr := composeAction(app, "start"); serr != nil {
+			if serr := composeAction(ctx, app, "start"); serr != nil {
 				failed = append(failed, fmt.Sprintf("%s did not start again: %v", app, serr))
 			}
 		}
