@@ -375,6 +375,12 @@ func mergeInto(src, dst *os.File, rel string, res *mergeResult) error {
 // components are made (the last one 0700, owned by us); without, the walk stops at the
 // first missing one and returns nil.
 func walkNoFollow(path string, create bool) (*os.File, error) {
+	return walkDirNoFollow(path, "the repository folder", create, 0o700)
+}
+
+// walkDirNoFollow is walkNoFollow for any folder: what names it in errors, lastMode is
+// the mode of a created last component (others are 0755).
+func walkDirNoFollow(path, what string, create bool, lastMode uint32) (*os.File, error) {
 	fd, err := syscall.Open("/", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, err
@@ -386,7 +392,7 @@ func walkNoFollow(path string, create bool) (*os.File, error) {
 		if errors.Is(err, syscall.ENOENT) && create {
 			mode := uint32(0o755)
 			if i == len(comps)-1 {
-				mode = 0o700
+				mode = lastMode
 			}
 			if merr := syscall.Mkdirat(int(cur.Fd()), comp, mode); merr != nil && !errors.Is(merr, syscall.EEXIST) {
 				cur.Close()
@@ -399,7 +405,7 @@ func walkNoFollow(path string, create bool) (*os.File, error) {
 			return nil, nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("the repository folder %s goes through a symbolic link or a file", path)
+			return nil, fmt.Errorf("%s %s goes through a symbolic link or a file", what, path)
 		}
 		cur = next
 	}

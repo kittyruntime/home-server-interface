@@ -543,3 +543,181 @@ func TestUpdatePathsHonourOverrides(t *testing.T) {
 		t.Fatal("the lock does not follow HSI_UPDATE_STATE")
 	}
 }
+
+// ── Fix round 2 ───────────────────────────────────────────────────────────────
+
+// breakSnapshotDB makes the snapshot's database copy unusable (a directory).
+func breakSnapshotDB(t *testing.T, dir string) {
+	t.Helper()
+	db := filepath.Join(dir, "database", "hsi.db")
+	if err := os.Remove(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(db, 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRestoreDatabaseFailedCopyKeepsLiveFiles(t *testing.T) {
+	e, dir := preparedUpdate(t)
+	breakSnapshotDB(t, dir)
+	m, err := readManifest(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreDatabase(dir, m); err == nil {
+		t.Fatal("restored from a broken copy")
+	}
+	if string(mustRead(t, e.db)) != "new db" || string(mustRead(t, e.db+"-wal")) != "new wal" {
+		t.Fatal("a failed copy changed the live database or its journal")
+	}
+	entries, _ := os.ReadDir(filepath.Dir(e.db))
+	for _, en := range entries {
+		if strings.Contains(en.Name(), "hsi-tmp") {
+			t.Fatalf("leftover %s", en.Name())
+		}
+	}
+}
+
+func TestRollbackDoesNotStartAfterFailedRestore(t *testing.T) {
+	_, dir := preparedUpdate(t)
+	breakSnapshotDB(t, dir)
+	calls := fakeSystemctl(t)
+	fakeHealth(t, nil, nil)
+	if err := rollback(dir, "health", "x"); err == nil {
+		t.Fatal("succeeded")
+	}
+	for _, c := range *calls {
+		if strings.HasPrefix(c, "start") || c == "daemon-reload" {
+			t.Fatalf("went on after a failed restore: %v", *calls)
+		}
+	}
+	r, _ := readLast()
+	if r == nil || r.Status != "rollback-failed" || !strings.Contains(r.Reason, "update rollback --snapshot "+dir) {
+		t.Fatalf("last %+v", r)
+	}
+}
+
+func TestSnapshotNamesSymlinkedDatabasePath(t *testing.T) {
+	e := setupUpdateEnv(t)
+	real := t.TempDir()
+	mustWrite(t, filepath.Join(real, "hsi.db"), []byte("db"))
+	dataDir := filepath.Dir(e.db)
+	_ = os.RemoveAll(dataDir)
+	if err := os.Symlink(real, dataDir); err != nil {
+		t.Fatal(err)
+	}
+	want := "The database path " + e.db + " goes through a symbolic link; updates need the real path (set HSI_UPDATE_DB)"
+	if _, err := takeSnapshot("v2.0.0", "v2.1.0", e.db, nil); err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("want %q, got %v", want, err)
+	}
+	_ = os.Remove(dataDir)
+	_ = os.MkdirAll(dataDir, 0o755)
+	if err := os.Symlink(filepath.Join(real, "hsi.db"), e.db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := takeSnapshot("v2.0.0", "v2.1.0", e.db, nil); err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("want %q for a linked file, got %v", want, err)
+	}
+}
+
+func TestSnapshotNamesSymlinkedStateDir(t *testing.T) {
+	e := setupUpdateEnv(t)
+	mustWrite(t, e.db, []byte("db"))
+	_ = os.RemoveAll(e.state)
+	if err := os.Symlink(t.TempDir(), e.state); err != nil {
+		t.Fatal(err)
+	}
+	_, err := takeSnapshot("v2.0.0", "v2.1.0", e.db, nil)
+	if err == nil || !strings.Contains(err.Error(), "update state folder") || strings.Contains(err.Error(), "repository") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestRestoreRecreatesMissingParent(t *testing.T) {
+	e, dir := preparedUpdate(t)
+	fakeSystemctl(t)
+	fakeHealth(t, nil, nil)
+	etc := filepath.Dir(e.workerEnv)
+	if err := os.RemoveAll(etc); err != nil {
+		t.Fatal(err)
+	}
+	if err := rollback(dir, "health", "x"); err != nil {
+		t.Fatal(err)
+	}
+	if string(mustRead(t, e.workerEnv)) != "OLD=1\n" {
+		t.Fatal("worker.env not restored")
+	}
+	st, err := os.Lstat(etc)
+	if err != nil || !st.IsDir() || st.Mode().Perm() != 0o755 {
+		t.Fatalf("parent recreated as %v %v", st, err)
+	}
+}
+
+// symlinkedInstallRoot points HSI_INSTALL_DIR at a link to the real install dir.
+func symlinkedInstallRoot(t *testing.T, e *updateEnv) string {
+	t.Helper()
+	link := filepath.Join(t.TempDir(), "opt-link")
+	if err := os.Symlink(e.install, link); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HSI_INSTALL_DIR", link)
+	return link
+}
+
+func TestPruneReleasesRefusesSymlinks(t *testing.T) {
+	t.Run("install root", func(t *testing.T) {
+		e := setupUpdateEnv(t)
+		e.release(t, "v2.0.0", "v2.1.0", "v2.2.0", "v2.3.0")
+		_ = switchCurrent("v2.3.0")
+		symlinkedInstallRoot(t, e)
+		pruneReleases(1)
+		if _, err := os.Stat(filepath.Join(e.install, "releases", "v2.0.0")); err != nil {
+			t.Fatal("removed a release through a symlinked install dir")
+		}
+	})
+	t.Run("releases dir", func(t *testing.T) {
+		e := setupUpdateEnv(t)
+		real := t.TempDir()
+		for _, v := range []string{"v2.0.0", "v2.1.0", "v2.2.0"} {
+			_ = os.MkdirAll(filepath.Join(real, v, "bin"), 0o755)
+		}
+		_ = os.RemoveAll(filepath.Join(e.install, "releases"))
+		if err := os.Symlink(real, filepath.Join(e.install, "releases")); err != nil {
+			t.Fatal(err)
+		}
+		pruneReleases(0)
+		if _, err := os.Stat(filepath.Join(real, "v2.0.0", "bin")); err != nil {
+			t.Fatal("removed a release through a symlinked releases dir")
+		}
+	})
+	t.Run("a release swapped for a link", func(t *testing.T) {
+		e := setupUpdateEnv(t)
+		e.release(t, "v2.1.0", "v2.2.0")
+		_ = switchCurrent("v2.2.0")
+		victim := t.TempDir()
+		mustWrite(t, filepath.Join(victim, "keep"), []byte("x"))
+		if err := os.Symlink(victim, filepath.Join(e.install, "releases", "v2.0.0")); err != nil {
+			t.Fatal(err)
+		}
+		pruneReleases(0)
+		if _, err := os.Stat(filepath.Join(victim, "keep")); err != nil {
+			t.Fatal("followed a release link")
+		}
+		if _, err := os.Stat(filepath.Join(e.install, "releases", "v2.1.0")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("a real old release was kept")
+		}
+	})
+}
+
+func TestSwitchCurrentRefusesSymlinkedInstallRoot(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0")
+	symlinkedInstallRoot(t, e)
+	if err := switchCurrent("v2.0.0"); err == nil {
+		t.Fatal("switched through a symlinked install dir")
+	}
+	if _, err := os.Lstat(filepath.Join(e.install, "current")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("created current through a symlinked install dir")
+	}
+}
