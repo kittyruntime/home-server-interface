@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.66.0] - 2026-10-22
+
 ### Added
 - **Versioned backups** (#15): backup plans can now keep history with restic
   (downloaded by the installer from the official release at a pinned,
@@ -1399,7 +1401,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...HEAD
+[1.66.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...v1.66.0
 [1.65.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.2...v1.65.0
 [1.64.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.1...v1.64.2
 [1.64.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.0...v1.64.1
