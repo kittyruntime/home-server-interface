@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
@@ -184,4 +185,29 @@ func copyRegularAt(srcDir *os.File, srcName string, dstDir *os.File, tmp string,
 		err = cerr
 	}
 	return err
+}
+
+// sysRenameat2 is the renameat2 syscall number, which package syscall does not name.
+var sysRenameat2 = map[string]uintptr{"amd64": 316, "arm64": 276, "riscv64": 276, "loong64": 276, "386": 353, "arm": 382}[runtime.GOARCH]
+
+const renameExchangeFlag = 0x2 // RENAME_EXCHANGE
+
+// exchangeAt swaps dir/a and dir/b in one step (renameat2 RENAME_EXCHANGE): each
+// name always leads to one of the two entries.
+func exchangeAt(dir *os.File, a, b string) error {
+	if sysRenameat2 == 0 {
+		return syscall.ENOSYS
+	}
+	pa, err := syscall.BytePtrFromString(a)
+	if err != nil {
+		return err
+	}
+	pb, err := syscall.BytePtrFromString(b)
+	if err != nil {
+		return err
+	}
+	if _, _, e := syscall.Syscall6(sysRenameat2, dir.Fd(), uintptr(unsafe.Pointer(pa)), dir.Fd(), uintptr(unsafe.Pointer(pb)), renameExchangeFlag, 0); e != 0 {
+		return e
+	}
+	return dir.Sync()
 }

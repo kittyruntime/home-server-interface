@@ -380,10 +380,12 @@ link_flat_paths() {
 # @app/compose link of the data migrations, all root's. [prepare] then runs with the
 # staging dir (the Prisma client: node_modules is the app user's meanwhile, nothing
 # root runs lives there) before node_modules is root's again and the release is
-# renamed to releases/$VERSION, replacing a leftover of that version. current is not
-# touched.
+# renamed to releases/$VERSION, replacing a leftover of that version. With REPAIR=1
+# (releases/$VERSION is the live release) it stays at STAGED_DIR instead, for
+# `update replace` at the switch. current is not touched.
 install_release_dir() {
   local releases="$INSTALL_DIR/releases" tmp prepare=${1:-}
+  STAGED_DIR=""
   tmp="$releases/.staging-$$"
   mkdir -p "$releases" && rm -rf -- "$releases"/.staging-* && mkdir "$tmp" || return 1
   if ! { cp -a "$RELEASE_STAGE/." "$tmp/" \
@@ -397,6 +399,10 @@ install_release_dir() {
   if [[ -n "$prepare" ]]; then
     if (( EUID == 0 )); then chown -hR "$APP_USER:" "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }; fi
     "$prepare" "$tmp" && root_owned "$tmp/node_modules" || { rm -rf -- "$tmp"; return 1; }
+  fi
+  if [[ "${REPAIR:-0}" == 1 ]]; then
+    STAGED_DIR=$tmp
+    return 0
   fi
   rm -rf -- "${releases:?}/$VERSION" && mv -T -- "$tmp" "$releases/$VERSION"
 }
@@ -505,6 +511,12 @@ NEW_WORKER=""
 UPDATE_MARKED=0
 UPDATE_FINISHED=0
 CURRENT_STEP=""
+# REPAIR=1: the installer runs again on the installed version. No snapshot, marker
+# or rollback point; the release is staged aside and swapped in at the switch.
+# SAFE_UPDATE=1: an update to another version, snapshotted and rolled back on failure.
+REPAIR=0
+SAFE_UPDATE=0
+STAGED_DIR=""
 
 # Fixed paths the update snapshot and the worker share.
 APP_CONF_DIR="/etc/${APP_NAME}"
@@ -1112,10 +1124,16 @@ else
   link_flat_paths || die "Could not link the code paths of $INSTALL_DIR through current."
   # Leftovers of the file-by-file rollback of installers before #9a.
   rm -rf -- "$INSTALL_DIR"/.install-rollback-*
+  if [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$INSTALL_DIR/releases/$VERSION" ]]; then
+    REPAIR=1
+    info "$VERSION is the installed version: reinstalling it (no snapshot, nothing to roll back to)"
+  elif [[ "$IS_UPDATE" -eq 1 ]]; then
+    SAFE_UPDATE=1
+  fi
 
   # The worker of the verified release: root runs nothing the app user can change.
   NEW_WORKER="$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN"
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
+  if (( SAFE_UPDATE )); then
     # Taken while everything is stopped, by descriptor without following links,
     # also for a version before #9a (whose own worker has no `update` command).
     # From the marker on, every failure rolls back.
@@ -1131,7 +1149,8 @@ else
   # home. Later Prisma commands run as the app user and skip generation.
   step "Installing $VERSION and generating its Prisma client"
   install_release_dir generate_prisma_client || die "Could not install $VERSION in $INSTALL_DIR/releases."
-  REL_DIR="$INSTALL_DIR/releases/$VERSION"
+  # A repair runs from the staged copy until the switch swaps it in.
+  REL_DIR="${STAGED_DIR:-$INSTALL_DIR/releases/$VERSION}"
   NEW_WORKER="$REL_DIR/bin/$RELEASE_WORKER_BIN"
   success "Installed in $REL_DIR"
 
@@ -1181,7 +1200,7 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
   # Release mode restores the database from the update snapshot instead.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
     DB_ROLLBACK_FILE="$BACKUP"
-  else
+  elif (( SAFE_UPDATE )); then
     mark_update migrate
   fi
 
@@ -1627,8 +1646,15 @@ EOF
 # Release mode: current switches to the new release with a rename, so it is never
 # missing; until here the previous version could still start from it.
 if [[ "$FROM_SOURCE" -eq 0 ]]; then
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
+  if (( SAFE_UPDATE )); then
     mark_update switch
+  fi
+  if (( REPAIR )); then
+    # The staged copy and the live release are swapped in one step.
+    worker_update "$NEW_WORKER" replace "$VERSION" "$(basename -- "$STAGED_DIR")" \
+      || die "Could not replace $INSTALL_DIR/releases/$VERSION with the reinstalled copy."
+    REL_DIR="$INSTALL_DIR/releases/$VERSION"
+    NEW_WORKER="$REL_DIR/bin/$RELEASE_WORKER_BIN"
   fi
   worker_update "$NEW_WORKER" switch "$VERSION" || die "Could not switch $INSTALL_DIR/current to $VERSION."
   success "$INSTALL_DIR/current → releases/$VERSION"
@@ -1750,11 +1776,11 @@ EOF
   # version $VERSION) and for the running worker to answer root.health. A failed
   # update goes back to the previous version and database.
   step "Checking that $VERSION is healthy"
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
+  if (( SAFE_UPDATE )); then
     mark_update health
   fi
   if HEALTH_OUT=$(worker_update "$NEW_WORKER" health "$VERSION" --timeout 120 2>&1); then
-    if [[ "$IS_UPDATE" -eq 1 ]]; then
+    if (( SAFE_UPDATE )); then
       CURRENT_STEP=commit
       worker_update "$NEW_WORKER" commit "$OLD_VERSION" "$VERSION" "$SNAP" \
         || die "Could not record the successful update."
@@ -1764,7 +1790,7 @@ EOF
   else
     HEALTH_REASON=$(grep -v '^{' <<<"$HEALTH_OUT" | tail -n 1)
     HEALTH_REASON=${HEALTH_REASON:-$VERSION did not become healthy}
-    if [[ "$IS_UPDATE" -eq 1 ]]; then
+    if (( SAFE_UPDATE )); then
       rollback_update "$HEALTH_REASON"
       die "The update to $VERSION failed its health checks: $HEALTH_REASON"
     fi

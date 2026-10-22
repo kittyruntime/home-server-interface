@@ -151,6 +151,16 @@ echo kept > "$NEW/marker"
 check "a failed preparation keeps the installed release" '! (install_release_dir false) && [[ "$(cat "$NEW/marker")" == kept ]] && ! compgen -G "$INSTALL_DIR/releases/.staging-*" >/dev/null'
 install_release_dir
 
+# Reinstalling the live version (a repair) never removes it: the copy stays staged
+# for `update replace`, which swaps it in at the switch.
+echo live > "$NEW/marker"
+STAGED_DIR=""
+REPAIR=1 install_release_dir; rc=$?
+check "a repair leaves the live release in place" '[[ $rc -eq 0 && "$(cat "$NEW/marker")" == live ]]'
+check "a repair stages the copy aside" '[[ "$STAGED_DIR" == "$INSTALL_DIR/releases/.staging-"* && -f "$STAGED_DIR/server.js" && ! -e "$STAGED_DIR/marker" ]]'
+rm -rf -- "$STAGED_DIR"
+check "the installer repairs instead of snapshotting when the version is the installed one" 'grep -q "^    REPAIR=1$" "$ROOT/scripts/install.sh" && grep -q "replace \"\$VERSION\"" "$ROOT/scripts/install.sh" && ! grep -q "^  if \[\[ \"\$IS_UPDATE\" -eq 1 \]\]; then$" <(sed -n "/^  # The worker of the verified release/,/^  step \"Installing \$VERSION/p" "$ROOT/scripts/install.sh")'
+
 # Root never follows a link planted in a path the app user controls.
 APP_DIR="$INSTALL_DIR"; ENV_FILE="$INSTALL_DIR/.env"; FROM_SOURCE=0
 out="$( (check_data_paths) 2>&1)"; rc=$?
@@ -259,5 +269,10 @@ check "the worker switches current on this layout" '[[ $rc -eq 0 && "$(readlink 
 status="$(worker_update "$TMP/hsi-worker" status 2>"$TMP/status.err")"; rc=$?
 check "the worker reports v1.67.0 as current" '[[ $rc -eq 0 && "$status" == *"\"current\":\"v1.67.0\""* ]]'
 check "the worker reads the snapshot back" '[[ "$status" == *"\"version\":\"v1.65.0\",\"snapshot\":\"$SNAP\""* ]]'
+# A repair of v1.67.0: staged aside, swapped in by the worker.
+REPAIR=1 install_release_dir
+echo repaired > "$STAGED_DIR/server.js"
+worker_update "$TMP/hsi-worker" replace v1.67.0 "$(basename "$STAGED_DIR")"; rc=$?
+check "the worker swaps the repaired copy in" '[[ $rc -eq 0 && "$(cat "$INSTALL_DIR/current/server.js")" == repaired && ! -e "$STAGED_DIR" ]]'
 
 exit $FAILED
