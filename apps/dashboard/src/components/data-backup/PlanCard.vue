@@ -65,23 +65,14 @@ async function remove() {
 
 <template>
   <article class="panel-card p-5 bg-[var(--c-surface)]">
-    <div class="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <h3 class="text-sm font-medium text-[var(--c-text-1)]">{{ plan.name }}</h3>
-          <span class="badge badge-muted">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</span>
-          <span v-if="!plan.enabled" class="badge badge-muted">Paused</span>
-        </div>
-        <p class="mt-1 break-all font-mono text-2xs text-[var(--c-text-3)]">{{ route }}</p>
+    <!-- Full width: long source paths wrap at the card's width, never in a squeezed column. -->
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="min-w-0 break-words text-sm font-medium text-[var(--c-text-1)]">{{ plan.name }}</h3>
+        <span class="badge badge-muted">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</span>
+        <span v-if="!plan.enabled" class="badge badge-muted">Paused</span>
       </div>
-      <div class="flex shrink-0 flex-wrap gap-1">
-        <button class="btn btn-primary btn-xs" :disabled="running || starting" @click="runNow">
-          <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">Run now</BusyLabel>
-        </button>
-        <button class="btn btn-ghost btn-xs" @click="emit('edit')">Edit</button>
-        <button class="btn btn-ghost btn-xs" @click="history = true">History</button>
-        <button class="btn btn-ghost btn-xs text-danger" @click="remove">Remove…</button>
-      </div>
+      <p class="mt-1 font-mono text-2xs text-[var(--c-text-3)] [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
     </div>
 
     <div v-if="plan.progress" class="mt-3 flex items-center gap-3">
@@ -97,6 +88,15 @@ async function remove() {
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
     </div>
     <p v-if="error" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+
+    <div class="mt-4 flex flex-wrap gap-1">
+      <button class="btn btn-primary btn-xs" :disabled="running || starting" @click="runNow">
+        <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">Run now</BusyLabel>
+      </button>
+      <button class="btn btn-ghost btn-xs" @click="emit('edit')">Edit</button>
+      <button class="btn btn-ghost btn-xs" @click="history = true">History</button>
+      <button class="btn btn-ghost btn-xs text-danger" @click="remove">Remove…</button>
+    </div>
 
     <RunHistory v-if="history" kind="runs" :id="plan.id" :title="`History of ${plan.name}`" @close="history = false" />
   </article>

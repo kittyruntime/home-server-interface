@@ -14,7 +14,7 @@ function dismiss() {
 const steps: Array<{ target: 'places' | 'store' | 'backups'; title: string; description: string }> = [
   { target: 'places', title: 'Add a Place', description: 'Map a server folder so you can browse, share and manage it.' },
   { target: 'store', title: 'Install an app', description: 'Deploy a self-hosted app from the curated App Store.' },
-  { target: 'backups', title: 'Set up a backup plan', description: 'Protect your data with a scheduled rsync backup.' },
+  { target: 'backups', title: 'Set up a backup plan', description: 'Keep versions of your data, or a copy elsewhere, on a schedule.' },
 ]
 </script>
 
