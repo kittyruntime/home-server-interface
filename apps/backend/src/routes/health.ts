@@ -21,11 +21,26 @@ export async function checkDatabase(query: () => Promise<unknown>, timeoutMs = D
   }
 }
 
+// /health is public: concurrent calls share one in-flight probe and its result
+// is kept for a short while, so a stuck database cannot pile up queries.
+export function shareProbe(probe: () => Promise<boolean>, ttlMs: number): () => Promise<boolean> {
+  let inflight: Promise<boolean> | null = null
+  let cached: { value: boolean; at: number } | null = null
+  return () => {
+    if (cached && Date.now() - cached.at < ttlMs) return Promise.resolve(cached.value)
+    inflight ??= probe().then(value => {
+      cached = { value, at: Date.now() }
+      return value
+    }).finally(() => { inflight = null })
+    return inflight
+  }
+}
+
 export interface HealthProbes { nats: () => boolean; db: () => Promise<boolean> }
 
 const defaultProbes: HealthProbes = {
   nats: isNatsConnected,
-  db: () => checkDatabase(() => prisma.$queryRaw`SELECT 1`),
+  db: shareProbe(() => checkDatabase(() => prisma.$queryRaw`SELECT 1`), DB_TIMEOUT_MS),
 }
 
 // The update health gate (root-worker) reads this exact shape: 200 only when

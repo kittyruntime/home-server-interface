@@ -1,7 +1,11 @@
 // Wording for the outcome of the last HSI update and the version it left behind.
 
-export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string }
-export interface PreviousVersion { version: string; snapshotCreated: string }
+// Types come from the backend (update.status), erased at build time.
+import type { trpc } from './trpc'
+
+type UpdateStatus = Awaited<ReturnType<typeof trpc.update.status.query>>
+export type UpdateResult = NonNullable<UpdateStatus['lastResult']>
+export type PreviousVersion = UpdateStatus['previous'][number]
 
 /** The command that goes back to the previous version (the unit is hsi-worker). */
 export const ROLLBACK_COMMAND = 'sudo hsi-worker update rollback'
@@ -20,5 +24,6 @@ export function lastResultText(r: UpdateResult | null): string | null {
 export function previousVersionText(previous: PreviousVersion[], formatDay: (iso: string) => string): string | null {
   const p = previous[0]
   if (!p) return null
-  return `Previous version: ${p.version} (database from ${formatDay(p.snapshotCreated)}). To go back:`
+  const db = p.snapshotCreated ? `database from ${formatDay(p.snapshotCreated)}` : 'no database snapshot'
+  return `Previous version: ${p.version} (${db}). To go back:`
 }

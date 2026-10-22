@@ -754,6 +754,35 @@ async function testHealthRoute() {
 
 await testHealthRoute()
 
+async function testSharedProbeAndSlowWorker() {
+  const { shareProbe } = await import("../routes/health")
+  let runs = 0
+  let release: (v: boolean) => void = () => {}
+  const probe = shareProbe(() => { runs++; return new Promise<boolean>(r => { release = r }) }, 2_000)
+  const calls = Promise.all([probe(), probe(), probe()])
+  release(true)
+  assert.deepEqual(await calls, [true, true, true])
+  assert.equal(runs, 1, "concurrent calls share one query")
+  assert.equal(await probe(), true)
+  assert.equal(runs, 1, "the result is cached")
+  const expiring = shareProbe(async () => { runs++; return true }, 0)
+  await expiring(); await expiring()
+  assert.equal(runs, 3, "an expired result is probed again")
+
+  // A worker that never answers delays update.status by the 2 s cap at most.
+  let asked: number | undefined
+  const never = (_s: string, _p: Record<string, unknown>, timeout?: number) => { asked = timeout; return new Promise<never>(() => {}) }
+  const started = Date.now()
+  assert.equal(await watch.readWorkerUpdateStatus(never as any, 50), null)
+  assert.ok(Date.now() - started < 1000)
+  assert.equal(asked, 50)
+  const answer = { last: null, current: "v1", previous: [] }
+  assert.deepEqual(await watch.readWorkerUpdateStatus((async () => answer) as any), answer)
+  assert.equal(await watch.readWorkerUpdateStatus((async () => { throw new Error("down") }) as any), null)
+}
+
+await testSharedProbeAndSlowWorker()
+
 async function testReviewFixes() {
   const key = Buffer.alloc(32, 5)
 
