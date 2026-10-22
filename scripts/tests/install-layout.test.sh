@@ -150,6 +150,11 @@ check "the preparation step runs on the staging copy" '[[ $rc -eq 0 && "$PREPARE
 echo kept > "$NEW/marker"
 check "a failed preparation keeps the installed release" '! (install_release_dir false) && [[ "$(cat "$NEW/marker")" == kept ]] && ! compgen -G "$INSTALL_DIR/releases/.staging-*" >/dev/null'
 install_release_dir
+# What the app user left in node_modules must be root's and closed once prepared.
+writable() { echo x > "$1/node_modules/w"; chmod 666 "$1/node_modules/w"; }
+check "a release whose node_modules stays writable is refused" '! (install_release_dir writable) >/dev/null 2>&1 && [[ ! -e "$NEW/node_modules/w" ]] && ! compgen -G "$INSTALL_DIR/releases/.staging-*" >/dev/null'
+foreign() { echo x > "$1/node_modules/f"; }
+check "a release with entries that are not root's is refused" '! (CODE_UID=$(( $(id -u) + 1 )); install_release_dir foreign) >/dev/null 2>&1 && [[ ! -e "$NEW/node_modules/f" ]]'
 
 # Reinstalling the live version (a repair) never removes it: the copy stays staged
 # for `update replace`, which swaps it in at the switch.
