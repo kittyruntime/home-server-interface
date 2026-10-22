@@ -248,6 +248,59 @@ root_owned() {
   chown -hR root:root "$@" && chmod -R go-w,ug-s "$@"
 }
 
+# The owner of release code: root (tests set their own uid).
+CODE_UID=0
+
+# code_tree_trusted <path>: <path> and everything under it, links included, belong to
+# CODE_UID, and nothing but a link is writable by group or others or has setuid or
+# setgid. Checked after root_owned: an entry the app user created during the chown
+# would still be its own.
+code_tree_trusted() {
+  local found
+  [[ -e "$1" || -L "$1" ]] || return 1
+  found=$(find "$1" \( ! -uid "$CODE_UID" -o \( ! -type l -perm /6022 \) \) -print -quit) || return 1
+  [[ -z "$found" ]]
+}
+
+# trusted_worker <path>: a regular file, not a link, that code_tree_trusted accepts.
+trusted_worker() {
+  [[ -f "$1" && ! -L "$1" ]] && code_tree_trusted "$1"
+}
+
+# quarantine_untrusted_releases: before #9a the app user owned INSTALL_DIR, so it
+# could have created current and releases/ itself. Each releases/v* that is not a real
+# folder entirely root's (code_tree_trusted), and a current that does not link to
+# exactly $INSTALL_DIR/releases/<version> of a remaining release, is moved to a new
+# root-only $INSTALL_DIR/.untrusted-*: never run, never followed, never a rollback
+# target. Renames only, so a link is moved, not followed.
+quarantine_untrusted_releases() {
+  local e target q="" moved=()
+  if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
+    for e in "$INSTALL_DIR"/releases/v*; do
+      [[ -e "$e" || -L "$e" ]] || continue
+      [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
+      moved+=("$e")
+    done
+  fi
+  if [[ -L "$INSTALL_DIR/current" ]]; then
+    target=$(readlink -- "$INSTALL_DIR/current")
+    if ! [[ "$(dirname -- "$target")" == "$INSTALL_DIR/releases" \
+            && "$(basename -- "$target")" =~ $INSTALLED_VERSION_RE \
+            && -d "$target" && ! -L "$target" ]] \
+       || [[ " ${moved[*]} " == *" $target "* ]]; then
+      moved+=("$INSTALL_DIR/current")
+    fi
+  elif [[ -e "$INSTALL_DIR/current" ]]; then
+    moved+=("$INSTALL_DIR/current")
+  fi
+  (( ${#moved[@]} > 0 )) || return 0
+  q=$(mktemp -d "$INSTALL_DIR/.untrusted-XXXXXX") || return 1
+  for e in "${moved[@]}"; do
+    mv -T -- "$e" "$q/$(basename -- "$e")" || return 1
+    warn "$e was not installed by the installer (not root's alone): moved to $q"
+  done
+}
+
 # check_data_paths: the data the app user owns must be real files and folders.
 # Root changes their owner and mode and writes .env: through a link planted by the
 # app user it would change any file of the system.
@@ -283,24 +336,29 @@ flat_version() {
 # convert_flat_install: moves the code paths of a flat install, VERSION last, into
 # releases/<its version>/ and points current at it, so the version updated from is a
 # rollback target. .env, database/data and data never move. Every move is a rename:
-# an interrupted conversion resumes. The release keeps the worker that ran as root
-# (/usr/local/bin), not the app-owned copy in bin/. Sets OLD_VERSION.
+# an interrupted conversion resumes. The moved folders were the app user's: the tree
+# is root's, and checked, before anything is written into it. The release keeps the
+# worker that ran as root (/usr/local/bin), never the app-owned copy in bin/. Sets
+# OLD_VERSION.
 convert_flat_install() {
-  local old rel dest
+  local old rel dest worker
   old=$(flat_version)
   dest="$INSTALL_DIR/releases/$old"
+  worker="$dest/bin/${RELEASE_APP_NAME}-worker"
   mkdir -p "$dest/database" || return 1
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] || continue
     mkdir -p "$dest/$(dirname "$rel")" && mv -T -- "$INSTALL_DIR/$rel" "$dest/$rel" || return 1
   done
+  root_owned "$dest" && code_tree_trusted "$dest" || return 1
+  rm -f -- "$worker" "$worker.tmp" || return 1
   if [[ -f "$SYSTEM_WORKER" && ! -L "$SYSTEM_WORKER" ]]; then
-    mkdir -p "$dest/bin" && cp -- "$SYSTEM_WORKER" "$dest/bin/${RELEASE_APP_NAME}-worker.tmp" \
-      && chmod 755 "$dest/bin/${RELEASE_APP_NAME}-worker.tmp" \
-      && mv -T -- "$dest/bin/${RELEASE_APP_NAME}-worker.tmp" "$dest/bin/${RELEASE_APP_NAME}-worker" || return 1
+    local owner=(); (( EUID == 0 )) && owner=(-o root -g root)
+    mkdir -p "$dest/bin" && install -m 755 "${owner[@]}" -- "$SYSTEM_WORKER" "$worker.tmp" \
+      && mv -T -- "$worker.tmp" "$worker" && trusted_worker "$worker" || return 1
   fi
   ln -sfn "$DB_DIR" "$dest/database/data" || return 1
-  root_owned "$dest" || return 1
+  root_owned "$dest" && code_tree_trusted "$dest" || return 1
   ln -sfn "$dest" "$INSTALL_DIR/current.tmp" && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" || return 1
   OLD_VERSION=$old
 }
@@ -1037,6 +1095,8 @@ else
   check_data_paths
   mkdir -p "$DB_DIR" "$INSTALL_DIR/data"
   chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data"
+  # Only now that INSTALL_DIR and releases/ are root's: nothing can be added after.
+  quarantine_untrusted_releases || die "Could not move untrusted releases out of $INSTALL_DIR/releases."
 
   if [[ "$IS_UPDATE" -eq 1 ]]; then
     # The first update after #9a turns the flat install into releases/<its version>.

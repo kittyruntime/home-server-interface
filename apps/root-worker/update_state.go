@@ -394,9 +394,62 @@ func tryUpdateLock() (f *os.File, ok bool, err error) {
 	return f, true, nil
 }
 
+// releaseOwnerUID is who must own release code: whoever runs the worker, root in
+// production (tests swap it).
+var releaseOwnerUID = os.Geteuid
+
+// releaseWorkerName is the worker binary of every release archive (bin/hsi-worker).
+const releaseWorkerName = "hsi-worker"
+
+// checkReleaseTrusted refuses a release whose worker another user could have changed:
+// the hsi-worker unit runs it as root through current. The release folder and its bin/
+// must be releaseOwnerUID's and closed to group and other writers; bin/hsi-worker, when
+// present, a regular file of the same owner, closed too, without setuid or setgid.
+func checkReleaseTrusted(ver *os.File, version string) error {
+	untrusted := func(what string) error {
+		return fmt.Errorf("%s of release %s is not root's alone, refusing to run it", what, version)
+	}
+	closed := func(st syscall.Stat_t) bool {
+		return int(st.Uid) == releaseOwnerUID() && st.Mode&0o6022 == 0
+	}
+	var st syscall.Stat_t
+	if err := syscall.Fstat(int(ver.Fd()), &st); err != nil {
+		return err
+	}
+	if !closed(st) {
+		return untrusted("the folder")
+	}
+	bin, err := openatDir(ver, "bin")
+	if errors.Is(err, syscall.ENOENT) {
+		return nil
+	}
+	if err != nil {
+		return untrusted("bin/")
+	}
+	defer bin.Close()
+	if err := syscall.Fstat(int(bin.Fd()), &st); err != nil {
+		return err
+	}
+	if !closed(st) {
+		return untrusted("bin/")
+	}
+	st, err = statAt(bin, releaseWorkerName)
+	if errors.Is(err, syscall.ENOENT) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFREG || !closed(st) {
+		return untrusted("bin/" + releaseWorkerName)
+	}
+	return nil
+}
+
 // switchCurrent points installRoot()/current at releases/<version> with a rename, so
 // the link is never missing. It works from a held, no-follow descriptor of installRoot:
-// a symlink on the way to it, or as releases/ or the version, is refused.
+// a symlink on the way to it, or as releases/ or the version, is refused, and so is a
+// release checkReleaseTrusted refuses.
 func switchCurrent(version string) error {
 	if err := checkInstalledVersion(version); err != nil {
 		return err
@@ -415,7 +468,11 @@ func switchCurrent(version string) error {
 	if err != nil {
 		return fmt.Errorf("version %s is not installed in %s", version, releasesDir())
 	}
+	err = checkReleaseTrusted(ver, version)
 	ver.Close()
+	if err != nil {
+		return err
+	}
 	tmp := fmt.Sprintf("current.tmp-%d", os.Getpid())
 	if err := removeAt(root, tmp); err != nil {
 		return err

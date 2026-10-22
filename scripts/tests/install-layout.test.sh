@@ -16,11 +16,13 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
 source "$TMP/func.sh"
+CODE_UID=$(id -u)
+umask 022
 
 APP_NAME=hsi
 RELEASE_APP_NAME=hsi
@@ -71,12 +73,57 @@ check "links leave data alone" '[[ ! -L "$INSTALL_DIR/.env" && ! -L "$DB_DIR" &&
 link_flat_paths
 check "linking again is harmless" '[[ "$(readlink "$INSTALL_DIR/server.js")" == "$INSTALL_DIR/current/server.js" ]]'
 
-# A flat install without VERSION is named v0.0.0-flat.
+# A flat install without VERSION is named v0.0.0-flat. Without a worker in
+# /usr/local/bin, the app-owned copy in bin/ does not become the release's worker.
 ALT="$TMP/alt"
-mkdir -p "$ALT/database/data"; echo s > "$ALT/server.js"
+mkdir -p "$ALT/database/data" "$ALT/bin"; echo s > "$ALT/server.js"; echo 'app-owned copy' > "$ALT/bin/hsi-worker"
 ( INSTALL_DIR="$ALT"; DB_DIR="$ALT/database/data"; SYSTEM_WORKER="$TMP/none"; OLD_VERSION=""
   convert_flat_install && [[ "$OLD_VERSION" == v0.0.0-flat && -f "$ALT/releases/v0.0.0-flat/server.js" ]] ); rc=$?
 check "flat install without VERSION becomes v0.0.0-flat" '[[ $rc -eq 0 ]]'
+check "the app-owned worker copy is not kept as the release's worker" '[[ ! -e "$ALT/releases/v0.0.0-flat/bin/hsi-worker" ]]'
+
+# The conversion never writes through a link the app user planted in its bin/:
+# the moved tree is root's before the worker is copied in.
+C1A="$TMP/c1a"
+mkdir -p "$C1A/database/data" "$C1A/bin" "$TMP/c1a-victim"
+echo s > "$C1A/server.js"; echo v1.65.0 > "$C1A/VERSION"
+echo 'victim' > "$TMP/c1a-victim/file"
+ln -s "$TMP/c1a-victim/file" "$C1A/bin/hsi-worker.tmp"
+( INSTALL_DIR="$C1A"; DB_DIR="$C1A/database/data"; OLD_VERSION=""; convert_flat_install ); rc=$?
+check "a planted bin/hsi-worker.tmp link is not written through" '[[ "$(cat "$TMP/c1a-victim/file")" == victim ]]'
+check "the converted release's worker is a regular copy of the root worker" '[[ $rc -eq 0 && -f "$C1A/releases/v1.65.0/bin/hsi-worker" && ! -L "$C1A/releases/v1.65.0/bin/hsi-worker" ]] && cmp -s "$SYSTEM_WORKER" "$C1A/releases/v1.65.0/bin/hsi-worker"'
+check "the converted release is trusted code" 'code_tree_trusted "$C1A/releases/v1.65.0"'
+# A moved tree that is not entirely root's (CODE_UID stands for root) is refused.
+C1C="$TMP/c1c"
+mkdir -p "$C1C/database/data"; echo s > "$C1C/server.js"
+( INSTALL_DIR="$C1C"; DB_DIR="$C1C/database/data"; OLD_VERSION=""; CODE_UID=$(( $(id -u) + 1 )); convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "a converted tree left with entries that are not root's is refused" '[[ $rc -ne 0 && ! -L "$C1C/current" ]]'
+
+# Before #9a the app user owned INSTALL_DIR and could plant current and releases/:
+# whatever is not root's alone, or a current that does not lead to exactly one of
+# the remaining releases, is moved aside before it is trusted.
+C1B="$TMP/c1b"
+mkdir -p "$C1B/database/data" "$C1B/releases/v1.66.0/bin" "$C1B/releases/v1.64.0/bin" "$C1B/releases/v1.63.0"
+echo s > "$C1B/server.js"; echo v1.65.0 > "$C1B/VERSION"
+printf '#!/bin/sh\n' > "$C1B/releases/v1.66.0/bin/hsi-worker"; chmod 775 "$C1B/releases/v1.66.0/bin/hsi-worker"
+printf '#!/bin/sh\n' > "$C1B/releases/v1.64.0/bin/hsi-worker"; chmod 755 "$C1B/releases/v1.64.0/bin/hsi-worker"
+ln -s "$TMP/c1a-victim" "$C1B/releases/v1.62.0"
+ln -s "$C1B/releases/v1.66.0" "$C1B/current"
+( INSTALL_DIR="$C1B"; quarantine_untrusted_releases ) >/dev/null 2>&1; rc=$?
+check "quarantine runs" '[[ $rc -eq 0 ]]'
+check "a group-writable release is moved aside" '[[ ! -e "$C1B/releases/v1.66.0" ]] && compgen -G "$C1B/.untrusted-*/v1.66.0" >/dev/null'
+check "a release that is a link is moved aside, not followed" '[[ ! -L "$C1B/releases/v1.62.0" && -d "$TMP/c1a-victim" ]] && compgen -G "$C1B/.untrusted-*/v1.62.0" >/dev/null'
+check "a current leading to a moved release is moved aside" '[[ ! -e "$C1B/current" && ! -L "$C1B/current" ]]'
+check "trusted releases stay" '[[ -d "$C1B/releases/v1.64.0" && -d "$C1B/releases/v1.63.0" ]]'
+check "the flat install is converted next" 'INSTALL_DIR="$C1B" is_flat_install'
+ln -s "$C1B/releases/v1.64.0/../v1.63.0" "$C1B/current"
+( INSTALL_DIR="$C1B"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "a current that is not exactly releases/<version> is moved aside" '[[ ! -L "$C1B/current" && -d "$C1B/releases/v1.63.0" ]]'
+ln -s "$C1B/releases/v1.64.0" "$C1B/current"
+( INSTALL_DIR="$C1B"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "a current leading to a trusted release stays" '[[ "$(readlink "$C1B/current")" == "$C1B/releases/v1.64.0" ]]'
+( INSTALL_DIR="$C1B"; CODE_UID=$(( $(id -u) + 1 )); quarantine_untrusted_releases ) >/dev/null 2>&1
+check "releases that are not root's are moved aside" '[[ ! -e "$C1B/releases/v1.64.0" && ! -L "$C1B/current" ]]'
 
 # The new release next to it.
 VERSION=v1.67.0
