@@ -27,3 +27,10 @@ test('previous version line names the date and the rollback command', () => {
     `Previous version: v1.66.0 (database from ${formatDay('2026-10-22T10:00:00Z')}). To go back:`,
   )
 })
+
+test('a previous version without a snapshot says so instead of formatting null', () => {
+  assert.equal(
+    previousVersionText([{ version: 'v1.66.0', snapshot: null, snapshotCreated: null }], formatDay),
+    'Previous version: v1.66.0 (no database snapshot). To go back:',
+  )
+})

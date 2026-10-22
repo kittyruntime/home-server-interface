@@ -84,14 +84,24 @@ export async function checkUpdateAttempt(
 // Shapes of the worker's root.update.status reply. The worker's state dir is
 // root-only, so the backend asks over NATS instead of reading last.json.
 export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string }
-export interface PreviousVersion { version: string; snapshot: string; snapshotCreated: string }
+// snapshot and snapshotCreated are null when the version has no database snapshot.
+export interface PreviousVersion { version: string; snapshot: string | null; snapshotCreated: string | null }
 export interface WorkerUpdateStatus { last: UpdateResult | null; current: string; previous: PreviousVersion[] }
 
-export async function readWorkerUpdateStatus(): Promise<WorkerUpdateStatus | null> {
+// Short timeout: update.status waits on this, and the worker may be down.
+export async function readWorkerUpdateStatus(
+  request: typeof requestSync = requestSync, timeoutMs = 2_000,
+): Promise<WorkerUpdateStatus | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    return await requestSync<WorkerUpdateStatus>("root.update.status", {}, 5_000)
+    return await Promise.race([
+      request<WorkerUpdateStatus>("root.update.status", {}, timeoutMs),
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs) }),
+    ])
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
