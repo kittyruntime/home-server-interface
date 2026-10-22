@@ -1,0 +1,3 @@
+dev-signing.key is a DEVELOPMENT ed25519 private key, public on purpose.
+It only signs test fixtures. It is never used for real releases and the
+matching public key must be replaced by the maintainer's production key.
