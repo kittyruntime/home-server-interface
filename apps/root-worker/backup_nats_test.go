@@ -193,7 +193,7 @@ func TestStaleTimersAreRemoved(t *testing.T) {
 	staleCheck := filepath.Join(systemdDir(), checkTimerName(repoA))
 	_ = os.WriteFile(stale, []byte("x"), 0o644)
 	_ = os.WriteFile(staleCheck, []byte("x"), 0o644)
-	if err := writeAllTimers(backupConfig{}); err != nil {
+	if err := writeAllTimers(backupConfig{}, false); err != nil {
 		t.Fatal(err)
 	}
 	if fileExists(stale) || fileExists(staleCheck) {

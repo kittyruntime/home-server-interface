@@ -188,8 +188,7 @@ func backupRunNow(id string) *fsError {
 	if err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}
 	}
-	argv := []string{"systemd-run", "--unit", unitPrefix() + "-backup-run-" + id, "--collect",
-		"-p", "Nice=10", "-p", "IOSchedulingClass=idle", "-p", "TimeoutStopSec=" + backupStopTimeout}
+	argv := append([]string{"systemd-run", "--unit", unitPrefix() + "-backup-run-" + id, "--collect"}, backupUnitProps()...)
 	argv = append(argv, hsiEnvArgs(os.Environ())...)
 	argv = append(argv, exe, "backup", "run", id, "--manual")
 	if out, err := runArgv(argv); err != nil {
@@ -201,6 +200,14 @@ func backupRunNow(id string) *fsError {
 // backupStopTimeout leaves an interrupted run the time to start its apps again, as the
 // TimeoutStopSec= of the backup units does.
 const backupStopTimeout = "120s"
+
+// backupUnitProps are the settings of the backup unit templates, for the transient
+// units: on a stop only the worker gets SIGTERM (KillMode=mixed), never a docker compose
+// child, and at shutdown docker stops after the unit, once the apps are started again.
+func backupUnitProps() []string {
+	return []string{"-p", "Nice=10", "-p", "IOSchedulingClass=idle", "-p", "TimeoutStopSec=" + backupStopTimeout,
+		"-p", "KillMode=mixed", "-p", "After=docker.service"}
+}
 
 func backupCheckNow(id string, full bool) *fsError {
 	if !backupIDPattern.MatchString(id) {
@@ -223,8 +230,7 @@ func backupCheckNow(id string, full bool) *fsError {
 	if err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}
 	}
-	argv := []string{"systemd-run", "--unit", unitPrefix() + "-backup-check-full-" + id, "--collect",
-		"-p", "Nice=10", "-p", "IOSchedulingClass=idle", "-p", "TimeoutStopSec=" + backupStopTimeout}
+	argv := append([]string{"systemd-run", "--unit", unitPrefix() + "-backup-check-full-" + id, "--collect"}, backupUnitProps()...)
 	argv = append(argv, hsiEnvArgs(os.Environ())...)
 	argv = append(argv, exe, "backup", "check", id, "--full")
 	if out, err := runArgv(argv); err != nil {
@@ -320,7 +326,7 @@ func migrateRsyncPlans(rows []map[string]any) (int, []map[string]string, error) 
 	}
 	// backup.json marks the migration done, so it is written last: a failed timer
 	// leaves no configuration and the backend retries the whole migration.
-	if err := writeAllTimers(cfg); err != nil {
+	if err := writeAllTimers(cfg, true); err != nil {
 		return 0, skipped, err
 	}
 	if err := saveMigrationSkipped(skipped); err != nil {
@@ -378,7 +384,7 @@ func syncBackupTimers() {
 		}
 		return
 	}
-	if err := writeAllTimers(cfg); err != nil {
+	if err := writeAllTimers(cfg, false); err != nil {
 		logger.Warn("backup timers not written", "error", err.Error())
 	}
 }
@@ -402,8 +408,10 @@ func staleTimers(keep map[string]string) []string {
 
 // writeAllTimers writes the timer of every plan and repository of cfg, removes the
 // other backup timers of the host, reloads systemd once and enables each timer. The new
-// timers are written before any is removed, and an unchanged host only gets enabled.
-func writeAllTimers(cfg backupConfig) error {
+// timers are written before any is removed. With reload, systemd is reloaded even when
+// no file changed (a migration or a configuration restore, where a unit may have been
+// edited by hand); without, an unchanged host only gets its timers enabled.
+func writeAllTimers(cfg backupConfig, reload bool) error {
 	timers := map[string]string{}
 	for _, p := range cfg.Plans {
 		if u := planTimerUnit(p); u != "" {
@@ -427,7 +435,7 @@ func writeAllTimers(cfg backupConfig) error {
 	if err := os.MkdirAll(systemdDir(), 0o755); err != nil {
 		return err
 	}
-	changed := len(stale) > 0
+	changed := reload || len(stale) > 0
 	for _, name := range names {
 		path := filepath.Join(systemdDir(), name)
 		if cur, err := os.ReadFile(path); err == nil && string(cur) == timers[name] {

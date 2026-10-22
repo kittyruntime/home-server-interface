@@ -208,6 +208,33 @@ func removeChildren(d *os.File) error {
 	return nil
 }
 
+// countFiles counts the entries other than folders in the tree held by dir, through
+// descriptors only.
+func countFiles(dir *os.File) (int, error) {
+	entries, err := readDirFd(dir)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			n++
+			continue
+		}
+		child, err := openatDir(dir, e.Name())
+		if err != nil {
+			return 0, err
+		}
+		c, err := countFiles(child)
+		child.Close()
+		if err != nil {
+			return 0, err
+		}
+		n += c
+	}
+	return n, nil
+}
+
 // descendDirs opens path's components below start, one by one, and returns the last as a
 // new descriptor (a duplicate of start when path is "/"). The caller closes it.
 func descendDirs(start *os.File, path string) (*os.File, error) {

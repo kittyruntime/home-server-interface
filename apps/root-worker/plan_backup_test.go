@@ -193,7 +193,8 @@ func TestRestoreOriginalNeedsConfirmation(t *testing.T) {
 	useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
-	fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","files_restored":3,"total_files":3}`}}, nil)
+	fakeRestic(t, map[string][]string{"restore": {`{"message_type":"summary","files_restored":3,"total_files":3}`},
+		"ls": {lsNode("/srv/data/photos/a", "file")}}, nil)
 	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": "/srv/data/photos", "target": "original"}
 	if _, ferr := buildPlan("backup.restore", mustJSON(in)); ferr == nil || ferr.Code != "ECONFIRM" {
 		t.Fatalf("%+v", ferr)
@@ -228,14 +229,22 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	calls := useUnits(t)
 	_ = saveBackupConfig(sampleConfig())
 	_ = writeRepoSecrets(repoA, repoSecrets{Password: "p"})
-	fakeRestic(t, map[string][]string{
-		"snapshots": {`[{"id":"abcdef1234567890","short_id":"abcdef12","time":"2026-03-04T05:06:07Z","paths":["/srv/data/photos"],"tags":[]}]`},
-		// files_restored counts the folders too: 3 files in 6 folders.
-		"restore": {`{"message_type":"summary","files_restored":9,"total_files":3}`},
-	}, nil)
 	data := filepath.Join(t.TempDir(), "data")
 	_ = os.MkdirAll(data, 0o755)
-	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": filepath.Join(data, "photos"), "target": "new"}
+	photos := filepath.Join(data, "photos")
+	fakeRestic(t, map[string][]string{
+		"snapshots": {`[{"id":"abcdef1234567890","short_id":"abcdef12","time":"2026-03-04T05:06:07Z","paths":["/srv/data/photos"],"tags":[]}]`},
+		// restic's counters include the folders: 9, for 3 files.
+		"restore": {`{"message_type":"summary","files_restored":9,"total_files":9}`},
+		"ls":      {lsNode(photos, "dir"), lsNode(photos+"/a", "file"), lsNode(photos+"/s", "dir"), lsNode(photos+"/s/b", "file"), lsNode(photos+"/s/c", "file")},
+	}, nil)
+	// The restore writes 3 files in 2 folders under the new folder.
+	fakeResticRestore = func(dir string) {
+		writeStaged(t, dir, photos+"/a", "a")
+		writeStaged(t, dir, photos+"/s/b", "b")
+		writeStaged(t, dir, photos+"/s/c", "c")
+	}
+	in := map[string]any{"repository": repoA, "snapshot": "abcdef12", "path": photos, "target": "new"}
 	p := planFor(t, "backup.restore", in)
 	if p.Steps[0].Destructive || !strings.Contains(p.Steps[0].Summary, "(3 files)") {
 		t.Fatalf("%+v", p.Steps[0])
@@ -251,7 +260,7 @@ func TestRestoreNewStartsUnitAndRunRequestLogs(t *testing.T) {
 	if st, err := os.Stat(file); err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("request file: %v", err)
 	}
-	if !strings.Contains(strings.Join(*calls, "\n"), "systemd-run --unit hsi-restore-"+id+" --collect") {
+	if !strings.Contains(strings.Join(*calls, "\n"), "systemd-run --unit hsi-restore-"+id+" --collect -p Nice=10 -p IOSchedulingClass=idle -p TimeoutStopSec=120s -p KillMode=mixed -p After=docker.service") {
 		t.Fatalf("calls %v", *calls)
 	}
 	if !strings.Contains(strings.Join(*calls, "\n"), "--setenv=HSI_BACKUP_STATE="+os.Getenv("HSI_BACKUP_STATE")) {

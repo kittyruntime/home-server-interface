@@ -445,6 +445,29 @@ func resticLs(r repositoryCfg, s repoSecrets, snapshotID, dir string) ([]lsEntry
 	return entries, nil
 }
 
+// resticCountFiles counts the files (not the folders) a restore of path would write:
+// restic's own counters include the folders.
+func resticCountFiles(r repositoryCfg, s repoSecrets, snapshotID, path string) (int, error) {
+	n := 0
+	code, stderr, err := resticCmd(r, s, []string{"ls", snapshotID}, []string{"--json", "--recursive", path}, func(b []byte) {
+		var node struct {
+			StructType string `json:"struct_type"`
+			Type       string `json:"type"`
+			Path       string `json:"path"`
+		}
+		if json.Unmarshal(b, &node) != nil || node.StructType != "node" || node.Type != "file" {
+			return
+		}
+		if node.Path == path || strings.HasPrefix(node.Path, path+"/") {
+			n++
+		}
+	})
+	if err := resticResult("ls", code, stderr, err); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 type restoreSummary struct {
 	FilesRestored int      `json:"filesRestored"`
 	FilesSkipped  int      `json:"filesSkipped"`

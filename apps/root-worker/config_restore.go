@@ -557,7 +557,7 @@ func restoreBackupConfig(dir, stamp string) error {
 			return err
 		}
 	}
-	return writeAllTimers(cfg)
+	return writeAllTimers(cfg, true)
 }
 
 // restoreTLS applies the TLS part of an archive without changing how this
