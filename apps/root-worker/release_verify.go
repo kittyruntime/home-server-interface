@@ -64,9 +64,10 @@ func checkTrustedKey(pub ed25519.PublicKey) error {
 	return nil
 }
 
-// insecureReleaseURLAllowed reports whether HSI_RELEASE_BASE_URL explicitly sets an http URL (tests).
+// insecureReleaseURLAllowed reports whether the base URL in use is http and was set
+// explicitly through HSI_RELEASE_BASE_URL (tests, VM).
 func insecureReleaseURLAllowed() bool {
-	return strings.HasPrefix(os.Getenv("HSI_RELEASE_BASE_URL"), "http://")
+	return os.Getenv("HSI_RELEASE_BASE_URL") != "" && strings.HasPrefix(releaseBaseURL, "http://")
 }
 
 func readSmallFile(path string, max int64) ([]byte, error) {

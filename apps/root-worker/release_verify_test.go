@@ -329,3 +329,24 @@ func TestDownloadReleaseRefusesHTTPRedirect(t *testing.T) {
 		t.Fatalf("want a redirect refusal, got %v", err)
 	}
 }
+
+// The http allowance follows the base URL actually in use, not the variable alone.
+func TestDownloadReleaseInsecureFollowsBaseURLInUse(t *testing.T) {
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("x")) }))
+	defer plain.Close()
+	tls := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, plain.URL+"/x", http.StatusFound)
+	}))
+	defer tls.Close()
+	t.Setenv("HSI_RELEASE_BASE_URL", plain.URL)
+	prev := releaseBaseURL
+	releaseBaseURL = tls.URL
+	t.Cleanup(func() { releaseBaseURL = prev })
+	prevTransport := releaseTransport
+	releaseTransport = tls.Client().Transport
+	t.Cleanup(func() { releaseTransport = prevTransport })
+	_, err := downloadRelease("v1.2.3", t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "redirect") {
+		t.Fatalf("want a redirect refusal, got %v", err)
+	}
+}
