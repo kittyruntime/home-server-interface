@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -39,6 +40,7 @@ type healthTarget struct {
 	URL        string
 	CAFile     string // PEM roots for https; never skip verification
 	ServerName string // name checked in the certificate, when not the URL host
+	Pin        bool   // CAFile is the served certificate itself: compare it, ignore its dates
 	Version    string
 	Timeout    time.Duration
 	Interval   time.Duration
@@ -64,6 +66,7 @@ func healthTargetFor(version string) healthTarget {
 		t.URL = fmt.Sprintf("https://127.0.0.1:%d/health", c.Port)
 		t.CAFile = filepath.Join(tlsDir(), "server.crt")
 		t.ServerName = certificateName(t.CAFile)
+		t.Pin = true
 	}
 	return t
 }
@@ -90,6 +93,30 @@ func certificateName(path string) string {
 	return ""
 }
 
+// pinCertificate makes cfg accept only the leaf of pemBytes. The probe proves it
+// reaches our own server, not that the certificate is still valid (expiry is reported
+// by the TLS status and its alerts): the chain and name are still checked, at a time
+// inside the leaf's validity.
+func pinCertificate(cfg *tls.Config, pemBytes []byte) error {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return errors.New("server.crt holds no certificate")
+	}
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("server.crt: %w", err)
+	}
+	inside := leaf.NotBefore.Add(leaf.NotAfter.Sub(leaf.NotBefore) / 2)
+	cfg.Time = func() time.Time { return inside }
+	cfg.VerifyPeerCertificate = func(raw [][]byte, _ [][]*x509.Certificate) error {
+		if len(raw) == 0 || !bytes.Equal(raw[0], leaf.Raw) {
+			return errors.New("the server presents a certificate other than server.crt")
+		}
+		return nil
+	}
+	return nil
+}
+
 // httpHealth is one probe of the server's /health.
 var httpHealth = func(t healthTarget) error {
 	timeout := 5 * time.Second
@@ -106,7 +133,13 @@ var httpHealth = func(t healthTarget) error {
 		if !pool.AppendCertsFromPEM(pemBytes) {
 			return fmt.Errorf("%s holds no certificate", t.CAFile)
 		}
-		transport.TLSClientConfig = &tls.Config{RootCAs: pool, ServerName: t.ServerName, MinVersion: tls.VersionTLS12}
+		cfg := &tls.Config{RootCAs: pool, ServerName: t.ServerName, MinVersion: tls.VersionTLS12}
+		if t.Pin {
+			if err := pinCertificate(cfg, pemBytes); err != nil {
+				return err
+			}
+		}
+		transport.TLSClientConfig = cfg
 	}
 	client := &http.Client{
 		Timeout:   timeout,

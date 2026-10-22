@@ -1009,7 +1009,9 @@ func main() {
 	}
 
 	// An update interrupted midway (installer killed, power cut) is rolled back
-	// before anything else, NATS included: the new version may not reach it.
+	// before the worker connects to NATS. The unit Requires the NATS service, so a
+	// NATS that no longer starts keeps the worker, and this recovery, from running:
+	// `sudo hsi-worker update rollback` is then the way back.
 	recoverInterrupted()
 
 	natsURL := getenv("NATS_URL", "nats://127.0.0.1:4222")

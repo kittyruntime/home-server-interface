@@ -180,11 +180,14 @@ func TestSnapshotRefusesBadVersions(t *testing.T) {
 }
 
 func TestReadManifestResolvesRelativePaths(t *testing.T) {
-	setupUpdateEnv(t)
-	dir := t.TempDir()
+	e := setupUpdateEnv(t)
+	dir := filepath.Join(e.state, "v1.66.0-v1.67.0")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	mustWrite(t, filepath.Join(dir, "manifest.json"), []byte(`{"from":"v1.66.0","to":"v1.67.0","created":"2026-10-22T10:00:00Z",
-"database":"database/hsi.db","dbTarget":"/opt/hsi/database/data/hsi.db",
-"files":[{"src":"/etc/hsi/worker.env","saved":"files/0-worker.env","mode":384,"existed":true}]}`))
+"database":"database/hsi.db","dbTarget":"`+e.db+`",
+"files":[{"src":"`+e.workerEnv+`","saved":"files/0-worker.env","mode":384,"existed":true}]}`))
 	m, err := readManifest(dir)
 	if err != nil {
 		t.Fatal(err)

@@ -18,6 +18,7 @@ import (
 type tarEntry struct {
 	name, body, link string
 	kind             byte
+	mode             int64
 }
 
 func buildArchive(t *testing.T, entries []tarEntry) []byte {
@@ -32,6 +33,9 @@ func buildArchive(t *testing.T, entries []tarEntry) []byte {
 			h.Mode = 0o755
 		case tar.TypeReg:
 			h.Size = int64(len(e.body))
+		}
+		if e.mode != 0 {
+			h.Mode = e.mode
 		}
 		if err := tw.WriteHeader(h); err != nil {
 			t.Fatal(err)

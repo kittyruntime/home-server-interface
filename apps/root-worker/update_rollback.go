@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -14,110 +15,121 @@ import (
 
 // rollback stops the stack, points current back to the snapshot's From, restores the
 // database and the configuration, starts the stack and checks From's health. It runs
-// once: a failure is recorded as rollback-failed, never retried. last.json is written
-// and the in-progress marker cleared before it returns.
+// once: a failure is recorded as rollback-failed, never retried. When the stack cannot
+// be stopped or From is not installed, nothing is restored or started. last.json is
+// written and the in-progress marker cleared before it returns.
 func rollback(snapshotDir, step, reason string) error {
-	m, err := readManifest(snapshotDir)
-	if err != nil {
-		r := lastResult{Status: "rollback-failed", Step: step,
-			Reason: fmt.Sprintf("%s; the rollback failed: %v (snapshot %s)", reason, err, snapshotDir)}
-		if p, _ := readInProgress(); p != nil {
-			r.From, r.To = p.From, p.To
-		}
-		_ = writeLast(r)
+	manual := fmt.Sprintf("run 'sudo %s-worker update rollback --snapshot %s'", unitPrefix(), snapshotDir)
+	failed := func(from, to string, err error) error {
+		logger.Error("update: rollback failed", "snapshot", snapshotDir, "error", err.Error())
+		_ = writeLast(lastResult{From: from, To: to, Status: "rollback-failed", Step: step,
+			Reason: fmt.Sprintf("%s; the rollback failed: %v (snapshot %s; %s)", reason, err, snapshotDir, manual)})
 		clearInProgress()
 		return err
 	}
+	m, err := readManifest(snapshotDir)
+	if err != nil {
+		from, to := "", ""
+		if p, _ := readInProgress(); p != nil {
+			from, to = p.From, p.To
+		}
+		return failed(from, to, err)
+	}
 	logger.Warn("update: rolling back", "from", m.To, "to", m.From, "step", step, "reason", reason)
 	target := unitPrefix() + ".target"
-	var failed []string
 	if out, err := systemctl("stop", target); err != nil {
-		failed = append(failed, "stop "+target+": "+cmdErrMessage(out, err))
+		return failed(m.From, m.To, fmt.Errorf("stop %s: %s", target, cmdErrMessage(out, err)))
 	}
 	if err := switchCurrent(m.From); err != nil {
-		failed = append(failed, err.Error())
+		return failed(m.From, m.To, fmt.Errorf("%w; the services are left stopped", err))
 	}
+	var errs []string
 	if err := restoreDatabase(snapshotDir, m); err != nil {
-		failed = append(failed, "restore the database: "+err.Error())
+		errs = append(errs, "restore the database: "+err.Error())
 	}
 	if err := restoreFiles(snapshotDir, m); err != nil {
-		failed = append(failed, err.Error())
+		errs = append(errs, err.Error())
 	}
 	if out, err := systemctl("daemon-reload"); err != nil {
-		failed = append(failed, "daemon-reload: "+cmdErrMessage(out, err))
+		errs = append(errs, "daemon-reload: "+cmdErrMessage(out, err))
 	}
 	if out, err := systemctl("start", target); err != nil {
-		failed = append(failed, "start "+target+": "+cmdErrMessage(out, err))
+		errs = append(errs, "start "+target+": "+cmdErrMessage(out, err))
 	}
-	if len(failed) == 0 {
+	if len(errs) == 0 {
 		if err := waitHealthy(healthTargetFor(m.From)); err != nil {
-			failed = append(failed, err.Error())
+			errs = append(errs, err.Error())
 		}
 	}
-	r := lastResult{From: m.From, To: m.To, Status: "rolled-back", Step: step, Reason: reason}
-	var result error
-	if len(failed) > 0 {
-		result = errors.New(strings.Join(failed, "; "))
-		r.Status = "rollback-failed"
-		r.Reason = fmt.Sprintf("%s; the rollback failed: %v (snapshot %s)", reason, result, snapshotDir)
-		logger.Error("update: rollback failed", "snapshot", snapshotDir, "error", result.Error())
+	if len(errs) > 0 {
+		return failed(m.From, m.To, errors.New(strings.Join(errs, "; ")))
 	}
-	if err := writeLast(r); err != nil && result == nil {
-		result = err
-	}
+	err = writeLast(lastResult{From: m.From, To: m.To, Status: "rolled-back", Step: step, Reason: reason})
 	clearInProgress()
-	return result
+	return err
 }
 
+// restoreDatabase puts the snapshot database in place. Journals of the version rolled
+// back from are removed first: they would be replayed over the restored file.
 func restoreDatabase(dir string, m snapshotManifest) error {
-	saved := snapshotPath(dir, m.Database)
-	if _, err := os.Stat(saved); err != nil {
+	snap, err := openDirNoFollow(dir)
+	if err != nil {
 		return err
 	}
-	if err := copyPreserving(saved, m.DBTarget); err != nil {
+	defer snap.Close()
+	src, err := descendDirs(snap, filepath.Dir(m.Database))
+	if err != nil {
 		return err
 	}
-	// A journal of the version rolled back from would be replayed over the restored file.
+	defer src.Close()
+	name := filepath.Base(m.Database)
+	dst, base, err := openParentNoFollow(m.DBTarget)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
 	for _, ext := range []string{"-wal", "-shm", "-journal"} {
-		if err := os.Remove(m.DBTarget + ext); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err := removeAt(dst, base+ext); err != nil {
 			return err
 		}
 	}
-	if _, err := os.Lstat(saved + "-wal"); err == nil {
-		return copyPreserving(saved+"-wal", m.DBTarget+"-wal")
+	if err := copyAt(src, name, dst, base, 0, false); err != nil {
+		return err
+	}
+	if _, err := statAt(src, name+"-wal"); err == nil {
+		return copyAt(src, name+"-wal", dst, base+"-wal", 0, false)
 	}
 	return nil
 }
 
 // restoreFiles puts back each snapshotted file with its mode, removes those that did
-// not exist, and removes unit files of the prefix created since the snapshot.
+// not exist, and removes unit files of the prefix created since the snapshot along
+// with the *.wants links to them.
 func restoreFiles(dir string, m snapshotManifest) error {
+	snap, err := openDirNoFollow(dir)
+	if err != nil {
+		return err
+	}
+	defer snap.Close()
 	var failed []string
 	listed := map[string]bool{}
+	removed := map[string]bool{}
 	unitsListed := false
 	for _, f := range m.Files {
 		listed[f.Src] = true
-		if filepath.Dir(f.Src) == systemdDir() {
+		if isUnitPath(f.Src) {
 			unitsListed = true
 		}
-		if !f.Existed {
-			if err := os.Remove(f.Src); err != nil && !errors.Is(err, os.ErrNotExist) {
-				failed = append(failed, err.Error())
-			}
-			continue
-		}
-		if err := restoreFile(snapshotPath(dir, f.Saved), f); err != nil {
+		if err := restoreFile(snap, f); err != nil {
 			failed = append(failed, fmt.Sprintf("restore %s: %v", f.Src, err))
+		} else if !f.Existed && isUnitPath(f.Src) {
+			removed[filepath.Base(f.Src)] = true
 		}
 	}
 	// Only a snapshot that lists units knows which ones are new.
 	if unitsListed {
-		for _, u := range unitFiles() {
-			if !listed[u] {
-				if err := os.Remove(u); err != nil && !errors.Is(err, os.ErrNotExist) {
-					failed = append(failed, err.Error())
-				}
-			}
+		if err := removeNewUnits(listed, removed); err != nil {
+			failed = append(failed, err.Error())
 		}
 	}
 	if len(failed) > 0 {
@@ -126,18 +138,110 @@ func restoreFiles(dir string, m snapshotManifest) error {
 	return nil
 }
 
-func restoreFile(saved string, f snapFile) error {
-	if err := os.MkdirAll(filepath.Dir(f.Src), 0o755); err != nil {
+func restoreFile(snap *os.File, f snapFile) error {
+	dst, base, err := openParentNoFollow(f.Src)
+	if err != nil {
+		if !f.Existed && errors.Is(err, syscall.ENOENT) {
+			return nil
+		}
 		return err
 	}
-	if err := copyPreserving(saved, f.Src); err != nil {
+	defer dst.Close()
+	if !f.Existed {
+		return removeAt(dst, base)
+	}
+	src, err := descendDirs(snap, filepath.Dir(f.Saved))
+	if err != nil {
 		return err
 	}
-	st, err := os.Lstat(f.Src)
-	if err != nil || st.Mode()&os.ModeSymlink != 0 {
+	defer src.Close()
+	return copyAt(src, filepath.Base(f.Saved), dst, base, os.FileMode(f.Mode), isUnitPath(f.Src))
+}
+
+func removeNewUnits(listed, removed map[string]bool) error {
+	sd, err := openDirNoFollow(systemdDir())
+	if err != nil {
 		return err
 	}
-	return os.Chmod(f.Src, os.FileMode(f.Mode).Perm())
+	defer sd.Close()
+	entries, err := readDirFd(sd)
+	if err != nil {
+		return err
+	}
+	var failed []string
+	for _, e := range entries {
+		p := filepath.Join(filepath.Clean(systemdDir()), e.Name())
+		if !isUnitPath(p) || listed[p] {
+			continue
+		}
+		if err := removeAt(sd, e.Name()); err != nil {
+			failed = append(failed, err.Error())
+			continue
+		}
+		removed[e.Name()] = true
+	}
+	for _, e := range entries {
+		if !e.IsDir() || !(strings.HasSuffix(e.Name(), ".wants") || strings.HasSuffix(e.Name(), ".requires")) {
+			continue
+		}
+		if err := removeLinksTo(sd, e.Name(), removed); err != nil {
+			failed = append(failed, err.Error())
+		}
+	}
+	if len(failed) > 0 {
+		return errors.New(strings.Join(failed, "; "))
+	}
+	return nil
+}
+
+// removeLinksTo removes the links of systemd/<wants> that name a removed unit.
+func removeLinksTo(sd *os.File, wants string, removed map[string]bool) error {
+	d, err := openatDir(sd, wants)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	entries, err := readDirFd(d)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.Type()&os.ModeSymlink == 0 {
+			continue
+		}
+		target, err := readlinkAt(d, e.Name())
+		if err != nil {
+			continue
+		}
+		if removed[e.Name()] || removed[filepath.Base(target)] {
+			if err := removeAt(d, e.Name()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// bootTime is when the host started; a marker older than that has a meaningless PID.
+var bootTime = func() time.Time {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return time.Time{}
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if v, ok := strings.CutPrefix(line, "btime "); ok {
+			if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
+				return time.Unix(n, 0)
+			}
+		}
+	}
+	return time.Time{}
+}
+
+// installerAlive tells whether the marker's installer may still run: its PID exists
+// and was given in this boot. The update lock stays the authority.
+func installerAlive(p *inProgress) bool {
+	return pidAlive(p.PID) && !p.Started.Before(bootTime())
 }
 
 // pidAlive tells whether a process with this pid exists.
@@ -167,7 +271,7 @@ func recoverInterrupted() {
 		return // the installer is running
 	}
 	lock.Close()
-	if pidAlive(p.PID) {
+	if installerAlive(p) {
 		return
 	}
 	logger.Warn("update: an interrupted update is rolled back", "from", p.From, "to", p.To, "step", p.Step)
@@ -208,7 +312,7 @@ func recoverUpdate() error {
 	if err != nil || p == nil {
 		return err
 	}
-	if pidAlive(p.PID) {
+	if installerAlive(p) {
 		return nil
 	}
 	if p.Step == "recovering" {

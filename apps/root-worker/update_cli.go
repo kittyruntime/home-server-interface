@@ -121,14 +121,15 @@ func runUpdateCLI(args []string) int {
 			return fail(1, err)
 		}
 	case "commit":
+		if err := checkCommit(pos[0], pos[1], pos[2]); err != nil {
+			return fail(1, err)
+		}
 		if err := writeLast(lastResult{From: pos[0], To: pos[1], Status: "success"}); err != nil {
 			return fail(1, err)
 		}
 		clearInProgress()
-		if _, err := os.Stat(filepath.Join(pos[2], "manifest.json")); err != nil {
-			logger.Warn("update: committed without a readable snapshot", "snapshot", pos[2])
-		}
 		pruneSnapshots(updateKeep)
+		pruneStaging(stagingMaxAge)
 		pruneReleases(updateKeep)
 	case "rollback":
 		return updateRollbackCLI(*snapshot, *yes, *reason)
@@ -143,8 +144,33 @@ func runUpdateCLI(args []string) int {
 	return 0
 }
 
+// checkCommit refuses a commit that is not the update in progress.
+func checkCommit(from, to, snapshot string) error {
+	if err := checkInstalledVersion(from); err != nil {
+		return err
+	}
+	if err := checkInstalledVersion(to); err != nil {
+		return err
+	}
+	p, err := readInProgress()
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return errors.New("no update is in progress")
+	}
+	if p.From != from || p.To != to || filepath.Clean(p.Snapshot) != filepath.Clean(snapshot) {
+		return fmt.Errorf("the update in progress is %s -> %s (snapshot %s)", p.From, p.To, p.Snapshot)
+	}
+	return nil
+}
+
+// stagingMaxAge is when a leftover apply-* staging dir is removed.
+const stagingMaxAge = 24 * time.Hour
+
 // updateRollbackCLI is the manual rollback (confirmed by typing the previous version)
-// and the installer's (--yes; the installer holds the update lock).
+// and the scripted one (--yes). Both take the update lock, except when the installer,
+// which holds it, sets HSI_UPDATE_LOCK_HELD=1.
 func updateRollbackCLI(snapshotDir string, yes bool, reason string) int {
 	fail := func(err error) int {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -165,7 +191,8 @@ func updateRollbackCLI(snapshotDir string, yes bool, reason string) int {
 	if p, _ := readInProgress(); p != nil && p.Snapshot == snapshotDir {
 		step = p.Step
 	}
-	if !yes {
+	// The installer calling `rollback --yes` already holds the lock and says so.
+	if !yes || os.Getenv("HSI_UPDATE_LOCK_HELD") != "1" {
 		lock, free, err := tryUpdateLock()
 		if err != nil {
 			return fail(err)
@@ -174,6 +201,8 @@ func updateRollbackCLI(snapshotDir string, yes bool, reason string) int {
 			return fail(errors.New("an update is running; wait for it to finish"))
 		}
 		defer lock.Close()
+	}
+	if !yes {
 		fmt.Fprintf(updateStdout, "This goes back to %s with the database of %s.\n", m.From, snapshotAge(m.Created))
 		fmt.Fprintln(updateStdout, "Everything changed since then (users, shares, settings, app changes) will be lost.")
 		fmt.Fprintf(updateStdout, "Type %s to confirm: ", m.From)
@@ -212,6 +241,7 @@ func updateApply(version, archive string) int {
 	if err := os.MkdirAll(updateStateDir(), 0o700); err != nil {
 		return refuse("download", err)
 	}
+	pruneStaging(stagingMaxAge)
 	stage, err := os.MkdirTemp(updateStateDir(), "apply-")
 	if err != nil {
 		return refuse("download", err)
@@ -311,7 +341,8 @@ const (
 
 // extractRelease extracts archive (a .tar.gz whose entries all sit under root/) into
 // dest. Refused: absolute or parent paths, entries outside root, links leaving dest,
-// writing through a symlink, a name seen twice. Other entry types are skipped.
+// writing through a symlink, a name seen twice, setuid or setgid bits, and any entry
+// other than a directory, a regular file or a link.
 func extractRelease(archive, dest, root string) error {
 	fh, err := os.Open(archive)
 	if err != nil {
@@ -345,6 +376,9 @@ func extractRelease(archive, dest, root string) error {
 		}
 		if rel == "." {
 			continue
+		}
+		if h.Mode&(0o4000|0o2000) != 0 {
+			return fmt.Errorf("the archive holds a setuid or setgid entry: %s", h.Name)
 		}
 		target := filepath.Join(dest, rel)
 		switch h.Typeflag {
@@ -397,6 +431,8 @@ func extractRelease(archive, dest, root string) error {
 			if err := os.Link(filepath.Join(dest, linkRel), target); err != nil {
 				return fmt.Errorf("%s: %w", h.Name, err)
 			}
+		default:
+			return fmt.Errorf("the archive holds an entry that is not a file, directory or link: %s", h.Name)
 		}
 	}
 }
