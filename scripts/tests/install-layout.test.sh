@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir write_install_snapshot; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -93,35 +93,37 @@ check "new release links @app/compose" '[[ "$(readlink "$NEW/node_modules/@app/c
 check "installing leaves current alone" '[[ "$(readlink "$INSTALL_DIR/current")" == "$REL" ]]'
 check "no staging dir is left" '! compgen -G "$INSTALL_DIR/releases/.staging-*" >/dev/null'
 
-# The first update's snapshot, written by the installer, read by the worker.
-SYSTEMD_DIR="$TMP/systemd"
-APP_CONF_DIR="$TMP/etc/hsi"
-WORKER_ENV="$APP_CONF_DIR/worker.env"
-NATS_CONF="$APP_CONF_DIR/nats.conf"
-BACKUP_CONFIG="$APP_CONF_DIR/backup.json"
-ENV_FILE="$INSTALL_DIR/.env"
-TLS_DIR="$TMP/tls"
-UPDATE_STATE="$TMP/state"
-mkdir -p "$SYSTEMD_DIR" "$APP_CONF_DIR" "$TLS_DIR"
-echo '[Unit]' > "$SYSTEMD_DIR/hsi-server.service"
-echo '[Unit]' > "$SYSTEMD_DIR/hsi.target"
-echo '[Timer]' > "$SYSTEMD_DIR/hsi-backup@1.timer"
-ln -s "$SYSTEMD_DIR/hsi-server.service" "$SYSTEMD_DIR/hsi.service"
-echo '[Unit]' > "$SYSTEMD_DIR/other.service"
-echo 'NATS_PASS=x' > "$WORKER_ENV"; chmod 600 "$WORKER_ENV"
-echo 'conf' > "$NATS_CONF"
-echo '{}' > "$TLS_DIR/tls.json"
-echo 'db-wal' > "$DB_FILE-wal"
-SNAP="$(write_install_snapshot v1.65.0 v1.67.0)"; rc=$?
-check "installer snapshot written" '[[ $rc -eq 0 && "$SNAP" == "$UPDATE_STATE/v1.65.0-v1.67.0" && -f "$SNAP/manifest.json" ]]'
-check "snapshot holds the database and its WAL" '[[ "$(cat "$SNAP/database/hsi.db")" == db && "$(cat "$SNAP/database/hsi.db-wal")" == db-wal ]]'
-check "snapshot keeps a unit link as a link" 'compgen -G "$SNAP/files/*-hsi.service" >/dev/null && [[ -L "$(compgen -G "$SNAP/files/*-hsi.service")" ]]'
-check "snapshot skips other prefixes" '! grep -q other.service "$SNAP/manifest.json"'
-check "a missing file is listed as not existing" 'grep -q "\"src\": \"$BACKUP_CONFIG\"" "$SNAP/manifest.json" && grep -A3 "\"src\": \"$BACKUP_CONFIG\"" "$SNAP/manifest.json" | grep -q "\"existed\": false"'
-check "modes are numbers (0600 is 384)" 'grep -A3 "\"src\": \"$WORKER_ENV\"" "$SNAP/manifest.json" | grep -q "\"mode\": 384"'
+# install_release_dir runs its preparation step (the Prisma client, as the app user)
+# on the staging copy, before the release gets its final name.
+rm -rf "$NEW"
+prepare() { PREPARED_IN=$1; [[ ! -e "$NEW" ]] && echo client > "$1/node_modules/generated"; }
+PREPARED_IN=""
+install_release_dir prepare; rc=$?
+check "the preparation step runs on the staging copy" '[[ $rc -eq 0 && "$PREPARED_IN" == "$INSTALL_DIR/releases/.staging-"* && "$(cat "$NEW/node_modules/generated")" == client ]]'
+echo kept > "$NEW/marker"
+check "a failed preparation keeps the installed release" '! (install_release_dir false) && [[ "$(cat "$NEW/marker")" == kept ]] && ! compgen -G "$INSTALL_DIR/releases/.staging-*" >/dev/null'
+install_release_dir
+
+# Root never follows a link planted in a path the app user controls.
+APP_DIR="$INSTALL_DIR"; ENV_FILE="$INSTALL_DIR/.env"; FROM_SOURCE=0
+out="$( (check_data_paths) 2>&1)"; rc=$?
+check "real data paths pass" '[[ $rc -eq 0 ]]'
+for planted in "$DB_DIR" "$DB_FILE" "$DB_FILE-wal" "$ENV_FILE" "$INSTALL_DIR/data" "$INSTALL_DIR/database"; do
+  mv "$planted" "$planted.real" 2>/dev/null || true
+  ln -s /etc/passwd "$planted"
+  out="$( (check_data_paths) 2>&1)"; rc=$?
+  check "a link at ${planted#"$INSTALL_DIR"/} is refused" '[[ $rc -ne 0 && "$out" == *"$planted"*"symbolic link"* ]]'
+  rm "$planted"
+  mv "$planted.real" "$planted" 2>/dev/null || true
+done
+
+# Versions and URLs the update relies on.
+first_go=$(sed -n 's/^const firstHealthVersion = "\(v[0-9.]*\)"$/\1/p' "$ROOT/apps/root-worker/update_health.go")
+first_sh=$(sed -n 's/^FIRST_SAFE_UPDATE_VERSION="\(v[0-9.]*\)"$/\1/p' "$ROOT/scripts/install.sh")
+check "FIRST_SAFE_UPDATE_VERSION equals firstHealthVersion" '[[ -n "$first_go" && "$first_go" == "$first_sh" ]]'
+check "nothing but comments in install.sh names a /main/ URL" '! grep -n "/main/" "$ROOT/scripts/install.sh" | grep -qv "^[0-9]*:#"'
 
 # Generated files the update depends on.
-check "no unit fetches install.sh from main" '! grep -q "raw.githubusercontent.com/\${REPO}/main/scripts/install.sh -o" "$ROOT/scripts/install.sh"'
 {
   echo 'set -u'
   sed -n '/^  cat > \/etc\/systemd\/system\/\${APP_NAME}-update-apply.service << EOF$/,/^EOF$/p' "$ROOT/scripts/install.sh" \
@@ -136,6 +138,7 @@ mkdir -p "$TMP/units"
 check "update-apply unit and nats.conf render under set -u" '[[ ! -s "$TMP/render.err" && -f "$TMP/units/hsi-update-apply.service" && -f "$TMP/nats.conf" ]]'
 # systemd turns $$ into $ before bash runs the command.
 apply_cmd="$(sed -n 's/^ExecStart=//p' "$TMP/units/hsi-update-apply.service" | sed 's/\$\$/$/g')"
+check "the update-apply unit names no /main/ URL" '! grep -q "/main/" "$TMP/units/hsi-update-apply.service"'
 check "update-apply runs the worker on the pending version" '[[ "$apply_cmd" == *"exec /usr/local/bin/hsi-worker update apply \"\$v\""* ]]'
 check "update-apply reads the worker settings" 'grep -qx "EnvironmentFile=/etc/hsi/worker.env" "$TMP/units/hsi-update-apply.service"'
 mkdir -p "$TMP/pending"; printf 'v1.67.0' > "$TMP/pending/.pending-update"
@@ -146,22 +149,38 @@ check "update-apply passes the marker version and removes the marker" '[[ "$appl
 check "the worker NATS user may ask root.health" 'grep -A5 "user: \"worker\"" "$TMP/nats.conf" | grep -q "publish: *\[ \"events.>\", \"root.health\","'
 
 if ! command -v go >/dev/null; then
-  echo "FAIL go is needed to build the worker for the manifest check"
+  echo "FAIL go is needed to build the worker for the snapshot check"
   exit 1
 fi
 if ! (cd "$ROOT/apps/root-worker" && CGO_ENABLED=0 go build -o "$TMP/hsi-worker" .) 2>"$TMP/build.err"; then
   echo "FAIL could not build the worker"; cat "$TMP/build.err"; exit 1
 fi
-worker() {
-  env HSI_INSTALL_DIR="$INSTALL_DIR" HSI_UPDATE_STATE="$UPDATE_STATE" HSI_UPDATE_DB="$DB_FILE" \
-    HSI_SYSTEMD_DIR="$SYSTEMD_DIR" HSI_UNIT_PREFIX=hsi HSI_WORKER_ENV="$WORKER_ENV" HSI_NATS_CONF="$NATS_CONF" \
-    HSI_BACKEND_ENV="$ENV_FILE" HSI_TLS_DIR="$TLS_DIR" HSI_BACKUP_CONFIG="$BACKUP_CONFIG" HSI_LOG_LEVEL=error \
-    "$TMP/hsi-worker" update "$@"
-}
-worker switch v1.67.0; rc=$?
+# The first update's snapshot is taken by the worker of the staged release, called
+# the way the installer calls it, and read back by the same worker.
+SYSTEMD_DIR="$TMP/systemd"
+APP_CONF_DIR="$TMP/etc/hsi"
+WORKER_ENV="$APP_CONF_DIR/worker.env"
+NATS_CONF="$APP_CONF_DIR/nats.conf"
+BACKUP_CONFIG="$APP_CONF_DIR/backup.json"
+UPDATE_STATE="$TMP/state"
+export HSI_SYSTEMD_DIR="$SYSTEMD_DIR" HSI_TLS_DIR="$TMP/tls" HSI_LOG_LEVEL=error
+mkdir -p "$SYSTEMD_DIR" "$APP_CONF_DIR" "$HSI_TLS_DIR"
+echo '[Unit]' > "$SYSTEMD_DIR/hsi-server.service"
+echo '[Unit]' > "$SYSTEMD_DIR/hsi.target"
+ln -s "$SYSTEMD_DIR/hsi-server.service" "$SYSTEMD_DIR/hsi.service"
+echo '[Unit]' > "$SYSTEMD_DIR/other.service"
+echo 'NATS_PASS=x' > "$WORKER_ENV"; chmod 600 "$WORKER_ENV"
+echo 'conf' > "$NATS_CONF"
+echo '{}' > "$HSI_TLS_DIR/tls.json"
+echo 'db-wal' > "$DB_FILE-wal"
+SNAP="$(worker_update "$TMP/hsi-worker" snapshot v1.65.0 v1.67.0 2>"$TMP/snap.err")"; rc=$?
+check "the staged worker snapshots a pre-9a install" '[[ $rc -eq 0 && "$SNAP" == "$UPDATE_STATE/v1.65.0-v1.67.0" && -f "$SNAP/manifest.json" ]]'
+check "snapshot holds the database and its WAL" '[[ "$(cat "$SNAP/database/hsi.db")" == db && "$(cat "$SNAP/database/hsi.db-wal")" == db-wal ]]'
+check "snapshot lists the unit files and configuration" 'grep -q "hsi-server.service" "$SNAP/manifest.json" && grep -q "\"src\": \"$WORKER_ENV\"" "$SNAP/manifest.json" && ! grep -q other.service "$SNAP/manifest.json"'
+worker_update "$TMP/hsi-worker" switch v1.67.0; rc=$?
 check "the worker switches current on this layout" '[[ $rc -eq 0 && "$(readlink "$INSTALL_DIR/current")" == "$NEW" ]]'
-status="$(worker status 2>"$TMP/status.err")"; rc=$?
+status="$(worker_update "$TMP/hsi-worker" status 2>"$TMP/status.err")"; rc=$?
 check "the worker reports v1.67.0 as current" '[[ $rc -eq 0 && "$status" == *"\"current\":\"v1.67.0\""* ]]'
-check "the worker accepts the installer snapshot" '[[ "$status" == *"\"version\":\"v1.65.0\",\"snapshot\":\"$SNAP\""* ]]'
+check "the worker reads the snapshot back" '[[ "$status" == *"\"version\":\"v1.65.0\",\"snapshot\":\"$SNAP\""* ]]'
 
 exit $FAILED

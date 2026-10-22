@@ -131,8 +131,10 @@ func releasePublicKey() (ed25519.PublicKey, error) {
 	return pub, nil
 }
 
+// archiveName is the release archive of version. Archives keep the hsi name whatever
+// unit prefix the install uses.
 func archiveName(version string) string {
-	return unitPrefix() + "-" + version + "-linux-amd64.tar.gz"
+	return "hsi-" + version + "-linux-amd64.tar.gz"
 }
 
 // verifyRelease checks the signature over Sums, then the sha256 of Archive and

@@ -29,8 +29,20 @@ func updateLockPath() string { return filepath.Join(updateStateDir(), "update.lo
 func updateDBPath() string {
 	return envOr("HSI_UPDATE_DB", filepath.Join(installRoot(), "database", "data", "hsi.db"))
 }
-func workerEnvPath() string { return envOr("HSI_WORKER_ENV", "/etc/hsi/worker.env") }
-func natsConfPath() string  { return envOr("HSI_NATS_CONF", "/etc/hsi/nats.conf") }
+func workerEnvPath() string { return envOr("HSI_WORKER_ENV", defaultWorkerEnvFor(os.Args[0])) }
+
+var workerNameRe = regexp.MustCompile(`^([a-z][a-z0-9-]{0,31})-worker$`)
+
+// defaultWorkerEnvFor is /etc/<prefix>/worker.env for a worker invoked as
+// <prefix>-worker (the installer links /usr/local/bin/<APP_NAME>-worker), else the
+// hsi one.
+func defaultWorkerEnvFor(argv0 string) string {
+	if m := workerNameRe.FindStringSubmatch(filepath.Base(argv0)); m != nil {
+		return filepath.Join("/etc", m[1], "worker.env")
+	}
+	return "/etc/hsi/worker.env"
+}
+func natsConfPath() string { return envOr("HSI_NATS_CONF", "/etc/hsi/nats.conf") }
 
 // installedVersionRe also accepts the name the installer gives a flat install
 // it moves under releases/ ("v0.0.0-flat").
