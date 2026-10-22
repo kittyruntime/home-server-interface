@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -82,6 +81,24 @@ type lastResult struct {
 	At     time.Time `json:"at"`
 }
 
+// snapshotRel is p (absolute, or relative to the snapshot dir) relative to dir,
+// refused when it leaves it.
+func snapshotRel(dir, p string) (string, error) {
+	rel := p
+	if filepath.IsAbs(p) {
+		r, err := filepath.Rel(filepath.Clean(dir), filepath.Clean(p))
+		if err != nil {
+			return "", err
+		}
+		rel = r
+	}
+	rel = filepath.Clean(rel)
+	if !filepath.IsLocal(rel) {
+		return "", fmt.Errorf("%s is outside the snapshot", p)
+	}
+	return rel, nil
+}
+
 func snapshotPath(dir, p string) string {
 	if filepath.IsAbs(p) {
 		return p
@@ -92,13 +109,18 @@ func snapshotPath(dir, p string) string {
 // snapshotConfigFiles lists what the installer rewrites: the unit files of the
 // prefix and the configuration HSI generates.
 func snapshotConfigFiles() []string {
-	files := unitFiles()
-	return append(files, workerEnvPath(), backendEnvPath(), natsConfPath(), tlsConfigPath(), backupConfigPath())
+	return append(unitFiles(), fixedConfigFiles()...)
 }
+
+func fixedConfigFiles() []string {
+	return []string{workerEnvPath(), backendEnvPath(), natsConfPath(), tlsConfigPath(), backupConfigPath()}
+}
+
+var unitExts = []string{"service", "timer", "path", "target"}
 
 func unitFiles() []string {
 	var files []string
-	for _, ext := range []string{"service", "timer", "path"} {
+	for _, ext := range unitExts {
 		m, _ := filepath.Glob(filepath.Join(systemdDir(), unitPrefix()+"*."+ext))
 		files = append(files, m...)
 	}
@@ -106,9 +128,38 @@ func unitFiles() []string {
 	return files
 }
 
+// isUnitPath tells whether p is systemdDir()/<prefix>*.{service,timer,path,target}.
+func isUnitPath(p string) bool {
+	if filepath.Dir(p) != filepath.Clean(systemdDir()) || !strings.HasPrefix(filepath.Base(p), unitPrefix()) {
+		return false
+	}
+	for _, ext := range unitExts {
+		if strings.HasSuffix(p, "."+ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// snapshotSourceAllowed is the set of files a snapshot may save and a rollback may write.
+func snapshotSourceAllowed(p string) bool {
+	if isUnitPath(p) {
+		return true
+	}
+	for _, f := range fixedConfigFiles() {
+		if p == filepath.Clean(f) {
+			return true
+		}
+	}
+	return false
+}
+
+var snapshotNameRe = regexp.MustCompile(`^(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$`)
+
 // takeSnapshot copies the database and files into <state>/<from>-<to>/, replacing an
-// older snapshot of the same pair. Copies keep mode and owner and reach the disk
-// before the manifest is written.
+// older snapshot of the same pair. Sources are read without following links (unit
+// files that are links are saved as links); copies keep mode and owner and reach the
+// disk before the manifest is written. Paths in the manifest are relative to it.
 func takeSnapshot(from, to string, dbPath string, files []string) (string, error) {
 	if err := checkInstalledVersion(from); err != nil {
 		return "", err
@@ -116,44 +167,52 @@ func takeSnapshot(from, to string, dbPath string, files []string) (string, error
 	if err := checkInstalledVersion(to); err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(updateStateDir(), 0o700); err != nil {
+	state, err := walkNoFollow(updateStateDir(), true)
+	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(updateStateDir(), from+"-"+to)
+	defer state.Close()
+	name := from + "-" + to
+	dir := filepath.Join(updateStateDir(), name)
+	// The state dir is root's alone: removing by path there is safe.
 	if err := os.RemoveAll(dir); err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "files"), 0o700); err != nil {
+	snap, err := mkdirAt(state, name)
+	if err != nil {
 		return "", err
 	}
+	defer snap.Close()
+	filesDir, err := mkdirAt(snap, "files")
+	if err != nil {
+		return "", err
+	}
+	defer filesDir.Close()
+	dbDir, err := mkdirAt(snap, "database")
+	if err != nil {
+		return "", err
+	}
+	defer dbDir.Close()
+
 	m := snapshotManifest{From: from, To: to, Created: time.Now().UTC(), DBTarget: dbPath, Files: []snapFile{}}
-	m.Database = filepath.Join(dir, "database", filepath.Base(dbPath))
-	if err := os.MkdirAll(filepath.Dir(m.Database), 0o700); err != nil {
-		return "", err
-	}
-	if err := copyPreserving(dbPath, m.Database); err != nil {
+	src, base, err := openParentNoFollow(dbPath)
+	if err != nil {
 		return "", fmt.Errorf("snapshot the database: %w", err)
 	}
-	if _, err := os.Lstat(dbPath + "-wal"); err == nil {
-		if err := copyPreserving(dbPath+"-wal", m.Database+"-wal"); err != nil {
+	defer src.Close()
+	m.Database = filepath.Join("database", base)
+	if err := copyAt(src, base, dbDir, base, 0, false); err != nil {
+		return "", fmt.Errorf("snapshot the database: %w", err)
+	}
+	if _, err := statAt(src, base+"-wal"); err == nil {
+		if err := copyAt(src, base+"-wal", dbDir, base+"-wal", 0, false); err != nil {
 			return "", fmt.Errorf("snapshot the database: %w", err)
 		}
 	}
-	for i, src := range files {
-		f := snapFile{Src: src}
-		st, err := os.Lstat(src)
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			m.Files = append(m.Files, f)
-			continue
-		case err != nil:
-			return "", err
-		}
-		f.Existed = true
-		f.Mode = uint32(st.Mode().Perm())
-		f.Saved = filepath.Join(dir, "files", fmt.Sprintf("%d-%s", i, filepath.Base(src)))
-		if err := copyPreserving(src, f.Saved); err != nil {
-			return "", fmt.Errorf("snapshot %s: %w", src, err)
+	for i, p := range files {
+		f, err := snapshotFile(filesDir, i, filepath.Clean(p))
+		if err != nil {
+			return "", fmt.Errorf("snapshot %s: %w", p, err)
 		}
 		m.Files = append(m.Files, f)
 	}
@@ -161,12 +220,51 @@ func takeSnapshot(from, to string, dbPath string, files []string) (string, error
 	if err := writeBackupFile(filepath.Join(dir, "manifest.json"), append(b, '\n'), 0o600); err != nil {
 		return "", err
 	}
-	syncDir(dir)
+	_ = snap.Sync()
 	return dir, nil
 }
 
+func snapshotFile(filesDir *os.File, i int, p string) (snapFile, error) {
+	f := snapFile{Src: p}
+	parent, base, err := openParentNoFollow(p)
+	if errors.Is(err, syscall.ENOENT) {
+		return f, nil
+	}
+	if err != nil {
+		return f, err
+	}
+	defer parent.Close()
+	st, err := statAt(parent, base)
+	if errors.Is(err, syscall.ENOENT) {
+		return f, nil
+	}
+	if err != nil {
+		return f, err
+	}
+	f.Existed = true
+	f.Mode = st.Mode & 0o777
+	saved := fmt.Sprintf("%d-%s", i, base)
+	f.Saved = filepath.Join("files", saved)
+	return f, copyAt(parent, base, filesDir, saved, 0, isUnitPath(p))
+}
+
+// mkdirAt creates dir/name (0700) and opens it without following a link.
+func mkdirAt(dir *os.File, name string) (*os.File, error) {
+	if err := syscall.Mkdirat(int(dir.Fd()), name, 0o700); err != nil && !errors.Is(err, syscall.EEXIST) {
+		return nil, err
+	}
+	return openatDir(dir, name)
+}
+
+// readManifest loads a snapshot and confines what it names: the dir must be
+// <state>/<from>-<to>, the database must restore to updateDBPath(), each file must be
+// one a snapshot saves, and every copy must sit inside the snapshot dir.
 func readManifest(dir string) (snapshotManifest, error) {
 	var m snapshotManifest
+	dir = filepath.Clean(dir)
+	if filepath.Dir(dir) != filepath.Clean(updateStateDir()) || !snapshotNameRe.MatchString(filepath.Base(dir)) {
+		return m, fmt.Errorf("%s is not a snapshot of %s", dir, updateStateDir())
+	}
 	b, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
 	if err != nil {
 		return m, fmt.Errorf("read the snapshot: %w", err)
@@ -174,73 +272,31 @@ func readManifest(dir string) (snapshotManifest, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return m, fmt.Errorf("the snapshot manifest is unreadable: %w", err)
 	}
-	if checkInstalledVersion(m.From) != nil || checkInstalledVersion(m.To) != nil || m.Database == "" || !filepath.IsAbs(m.DBTarget) {
-		return m, errors.New("the snapshot manifest is incomplete")
+	if checkInstalledVersion(m.From) != nil || checkInstalledVersion(m.To) != nil || filepath.Base(dir) != m.From+"-"+m.To {
+		return m, fmt.Errorf("the snapshot %s does not match its manifest", dir)
 	}
-	for _, f := range m.Files {
-		if !filepath.IsAbs(f.Src) || (f.Existed && f.Saved == "") {
-			return m, errors.New("the snapshot manifest lists an invalid file")
+	if filepath.Clean(m.DBTarget) != filepath.Clean(updateDBPath()) {
+		return m, fmt.Errorf("the snapshot restores the database to %s, not %s", m.DBTarget, updateDBPath())
+	}
+	if m.Database, err = snapshotRel(dir, m.Database); err != nil || m.Database == "." {
+		return m, fmt.Errorf("the snapshot database is outside the snapshot")
+	}
+	for i, f := range m.Files {
+		f.Src = filepath.Clean(f.Src)
+		if !filepath.IsAbs(f.Src) || !snapshotSourceAllowed(f.Src) {
+			return m, fmt.Errorf("the snapshot lists %s, which an update does not change", f.Src)
 		}
+		if f.Mode > 0o777 {
+			return m, fmt.Errorf("the snapshot gives %s an invalid mode", f.Src)
+		}
+		if f.Existed {
+			if f.Saved, err = snapshotRel(dir, f.Saved); err != nil || f.Saved == "." {
+				return m, fmt.Errorf("the snapshot copy of %s is outside the snapshot", f.Src)
+			}
+		}
+		m.Files[i] = f
 	}
 	return m, nil
-}
-
-// copyPreserving copies src to dst (a symlink as a symlink, like cp -P), keeping the
-// mode and the owner; the data is synced and lands with a rename.
-func copyPreserving(src, dst string) error {
-	st, err := os.Lstat(src)
-	if err != nil {
-		return err
-	}
-	tmp := dst + ".hsi-tmp"
-	_ = os.Remove(tmp)
-	if st.Mode()&os.ModeSymlink != 0 {
-		target, err := os.Readlink(src)
-		if err != nil {
-			return err
-		}
-		if err := os.Symlink(target, tmp); err != nil {
-			return err
-		}
-		if sys, ok := st.Sys().(*syscall.Stat_t); ok {
-			_ = os.Lchown(tmp, int(sys.Uid), int(sys.Gid))
-		}
-		return os.Rename(tmp, dst)
-	}
-	if !st.Mode().IsRegular() {
-		return fmt.Errorf("%s is not a regular file", src)
-	}
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(out, in)
-	if sys, ok := st.Sys().(*syscall.Stat_t); ok && err == nil {
-		err = out.Chown(int(sys.Uid), int(sys.Gid))
-	}
-	if err == nil {
-		err = out.Chmod(st.Mode().Perm())
-	}
-	if err == nil {
-		err = out.Sync()
-	}
-	if cerr := out.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(tmp, dst)
-	}
-	if err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	syncDir(filepath.Dir(dst))
-	return nil
 }
 
 func syncDir(dir string) {
@@ -412,13 +468,41 @@ func listSnapshots() []updateSnapshot {
 	return out
 }
 
+// pruneSnapshots keeps the keep newest snapshots and removes the others, and any
+// snapshot dir whose manifest is missing or unreadable.
 func pruneSnapshots(keep int) {
+	readable := map[string]bool{}
 	for i, s := range listSnapshots() {
+		readable[s.Dir] = true
 		if i >= keep {
-			if err := os.RemoveAll(s.Dir); err != nil {
-				logger.Warn("update: could not remove an old snapshot", "dir", s.Dir, "error", err.Error())
-			}
+			removeStateDir(s.Dir)
 		}
+	}
+	entries, _ := os.ReadDir(updateStateDir())
+	for _, e := range entries {
+		dir := filepath.Join(updateStateDir(), e.Name())
+		if e.IsDir() && snapshotNameRe.MatchString(e.Name()) && !readable[dir] {
+			removeStateDir(dir)
+		}
+	}
+}
+
+// pruneStaging removes apply-* staging dirs older than maxAge (a crashed apply).
+func pruneStaging(maxAge time.Duration) {
+	entries, _ := os.ReadDir(updateStateDir())
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), "apply-") {
+			continue
+		}
+		if info, err := e.Info(); err == nil && time.Since(info.ModTime()) > maxAge {
+			removeStateDir(filepath.Join(updateStateDir(), e.Name()))
+		}
+	}
+}
+
+func removeStateDir(dir string) {
+	if err := os.RemoveAll(dir); err != nil {
+		logger.Warn("update: could not remove an old update dir", "dir", dir, "error", err.Error())
 	}
 }
 

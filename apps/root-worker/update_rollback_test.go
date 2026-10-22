@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // preparedUpdate is a host snapshotted for v2.0.0 -> v2.1.0, then changed the way an
@@ -195,7 +196,7 @@ func TestRecoverInterrupted(t *testing.T) {
 		_, dir := preparedUpdate(t)
 		calls := fakeSystemctl(t)
 		started := inProcessRecovery(t)
-		_ = writeInProgress(inProgress{From: "v2.0.0", To: "v2.1.0", Snapshot: dir, Step: "health", PID: os.Getpid()})
+		_ = writeInProgress(inProgress{From: "v2.0.0", To: "v2.1.0", Snapshot: dir, Step: "health", PID: os.Getpid(), Started: time.Now()})
 		recoverInterrupted()
 		if *started != 0 || len(*calls) != 0 {
 			t.Fatal("recovered an update whose installer is alive")
