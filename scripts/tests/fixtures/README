@@ -1,0 +1,3 @@
+dev-signing.key is a DEVELOPMENT ed25519 private key, public on purpose (the
+same as apps/root-worker/testdata/dev-signing.key). It only signs test
+fixtures and is never used for real releases.

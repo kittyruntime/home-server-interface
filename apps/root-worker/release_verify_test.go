@@ -155,6 +155,15 @@ func TestEmbeddedKeyMatchesScriptsCopy(t *testing.T) {
 	if string(releaseSigningPub) != string(scripts) {
 		t.Fatal("embedded release-signing.pub differs from scripts/release-signing.pub")
 	}
+	// The installer verifies with its own copy, the RELEASE_SIGNING_PUB heredoc.
+	install := string(mustRead(t, "../../scripts/install.sh"))
+	_, heredoc, ok := strings.Cut(install, "\nRELEASE_SIGNING_PUB=$(cat <<'PEM'\n")
+	if ok {
+		heredoc, _, ok = strings.Cut(heredoc, "\nPEM\n")
+	}
+	if !ok || heredoc+"\n" != string(scripts) {
+		t.Fatal("the RELEASE_SIGNING_PUB heredoc of scripts/install.sh differs from scripts/release-signing.pub")
+	}
 	if _, err := releasePublicKey(); err != nil {
 		t.Fatal(err)
 	}
