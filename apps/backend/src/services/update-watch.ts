@@ -1,6 +1,7 @@
-import { readFile, rm, access } from "node:fs/promises"
+import { readFile, rm, access, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { log } from "../utils/log"
+import { requestSync } from "../nats"
 import { dispatchEvent, type NotificationEvent } from "./notifications"
 
 // Detects HSI updates that did not land. update.apply records the attempt next
@@ -17,6 +18,8 @@ export const FAILURE_AFTER_MS = 15 * 60_000
 export const RESTART_GRACE_MS = 5 * 60_000
 export const NO_RESTART_FAILURE_AFTER_MS = 60 * 60_000
 export const CHECK_EVERY_MS = 5 * 60_000
+
+export const NOTIFIED_FILE = ".update-result-notified.json"
 
 export interface UpdateAttempt { from: string; target: string; requestedAt: string }
 
@@ -78,11 +81,61 @@ export async function checkUpdateAttempt(
   return decision.kind
 }
 
+// Shapes of the worker's root.update.status reply. The worker's state dir is
+// root-only, so the backend asks over NATS instead of reading last.json.
+export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string }
+export interface PreviousVersion { version: string; snapshot: string; snapshotCreated: string }
+export interface WorkerUpdateStatus { last: UpdateResult | null; current: string; previous: PreviousVersion[] }
+
+export async function readWorkerUpdateStatus(): Promise<WorkerUpdateStatus | null> {
+  try {
+    return await requestSync<WorkerUpdateStatus>("root.update.status", {}, 5_000)
+  } catch {
+    return null
+  }
+}
+
+const ALERTING_STATUSES: Record<string, string> = {
+  "rolled-back": "rolled back",
+  "rollback-failed": "rollback failed",
+  "refused": "refused",
+}
+
+// Notifies a rolled-back, rollback-failed or refused update once: the `at` of
+// the last notified result is kept next to the attempt record.
+export async function notifyUpdateResult(
+  dir: string, last: UpdateResult | null, dispatch: (e: NotificationEvent) => unknown,
+): Promise<"none" | "notified"> {
+  const outcome = last ? ALERTING_STATUSES[last.status] : undefined
+  if (!last || !outcome || typeof last.at !== "string") return "none"
+  const at = Date.parse(last.at)
+  if (!Number.isFinite(at)) return "none"
+  const file = join(dir, NOTIFIED_FILE)
+  try {
+    const notified = Date.parse((JSON.parse(await readFile(file, "utf8")) as { at?: string }).at ?? "")
+    if (Number.isFinite(notified) && at <= notified) return "none"
+  } catch { /* never notified, or an unreadable record: notify */ }
+  dispatch({
+    type: "update.failed", severity: "critical", source: "system.update", target: last.to,
+    message: `Update from ${last.from} to ${last.to} ${outcome} at step ${last.step}: ${last.reason}`,
+    time: new Date().toISOString(),
+  })
+  try {
+    await writeFile(file, JSON.stringify({ at: last.at }), "utf8")
+  } catch (err) {
+    log.error({ err, file }, "update-watch: could not record the notified update result")
+  }
+  return "notified"
+}
+
 export function startUpdateWatch(opts: { dir: () => string; currentVersion: () => string }): void {
   const startedAt = new Date()
   const run = () => {
     checkUpdateAttempt(opts.dir(), opts.currentVersion(), new Date(), e => void dispatchEvent(e), startedAt)
       .catch(err => log.error({ err }, "update-watch: check failed"))
+    readWorkerUpdateStatus()
+      .then(status => notifyUpdateResult(opts.dir(), status?.last ?? null, e => void dispatchEvent(e)))
+      .catch(err => log.error({ err }, "update-watch: result check failed"))
   }
   run()
   setInterval(run, CHECK_EVERY_MS).unref()

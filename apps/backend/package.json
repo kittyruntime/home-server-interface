@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "DASHBOARD_PATH=../dashboard/dist vite-node src/server.ts",
     "prebuild": "pnpm --filter @app/database db:generate",
-    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:@prisma/client --external:@prisma/engines --external:fsevents --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --log-level=warning",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --define:__HSI_VERSION__=\"\\\"v$(node -p 'require(\"../../package.json\").version')\\\"\" --external:@prisma/client --external:@prisma/engines --external:fsevents --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --log-level=warning",
     "pretypecheck": "pnpm --filter @app/database db:generate",
     "typecheck": "tsc --noEmit",
     "test": "vite-node src/tests/run.ts",

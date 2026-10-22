@@ -680,6 +680,80 @@ async function testUpdateWatch() {
 
 await testUpdateWatch()
 
+async function testUpdateResultNotifications() {
+  const { writeFile, readFile } = await import("node:fs/promises")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-update-result-"))
+  try {
+    const events: any[] = []
+    const dispatch = (e: unknown) => { events.push(e) }
+    const rolledBack = { from: "v1.66.0", to: "v1.67.0", status: "rolled-back", step: "health", reason: "database check failed", at: "2026-10-22T10:00:00Z" }
+    assert.equal(await watch.notifyUpdateResult(dir, null, dispatch), "none")
+    assert.equal(await watch.notifyUpdateResult(dir, { ...rolledBack, status: "success" }, dispatch), "none")
+    assert.equal(await watch.notifyUpdateResult(dir, rolledBack, dispatch), "notified")
+    assert.equal(events.length, 1)
+    assert.deepEqual(
+      [events[0].source, events[0].severity, events[0].target],
+      ["system.update", "critical", "v1.67.0"],
+    )
+    assert.match(events[0].message, /rolled back/)
+    assert.match(events[0].message, /health/)
+    assert.match(events[0].message, /database check failed/)
+    // Once per result, also across restarts (the notified time is persisted).
+    assert.equal(await watch.notifyUpdateResult(dir, rolledBack, dispatch), "none")
+    assert.equal(events.length, 1)
+    assert.match(await readFile(join(dir, watch.NOTIFIED_FILE), "utf8"), /2026-10-22T10:00:00Z/)
+    // A newer result is notified again; an older one never is.
+    const refused = { ...rolledBack, status: "refused", step: "verify", reason: "bad signature", at: "2026-10-23T10:00:00Z" }
+    assert.equal(await watch.notifyUpdateResult(dir, refused, dispatch), "notified")
+    assert.equal(events.length, 2)
+    assert.match(events[1].message, /refused/)
+    assert.equal(await watch.notifyUpdateResult(dir, rolledBack, dispatch), "none")
+    const failedRollback = { ...rolledBack, status: "rollback-failed", at: "2026-10-24T10:00:00Z" }
+    assert.equal(await watch.notifyUpdateResult(dir, failedRollback, dispatch), "notified")
+    assert.match(events[2].message, /rollback failed/)
+    // A corrupt notified file does not stop the alert.
+    await writeFile(join(dir, watch.NOTIFIED_FILE), "{nope")
+    assert.equal(await watch.notifyUpdateResult(dir, failedRollback, dispatch), "notified")
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+await testUpdateResultNotifications()
+
+async function testHealthRoute() {
+  const Fastify = (await import("fastify")).default
+  const { healthRoutes } = await import("../routes/health")
+  const probe = async (nats: boolean, db: boolean) => {
+    const app = Fastify()
+    await app.register(healthRoutes, { nats: () => nats, db: async () => db })
+    const res = await app.inject({ method: "GET", url: "/health" })
+    await app.close()
+    return { status: res.statusCode, body: res.json() }
+  }
+  const ok = await probe(true, true)
+  assert.equal(ok.status, 200)
+  assert.deepEqual(ok.body, { status: "ok", nats: true, db: true, version: "dev" })
+  const dbDown = await probe(true, false)
+  assert.equal(dbDown.status, 503)
+  assert.equal(dbDown.body.db, false)
+  assert.equal(dbDown.body.nats, true)
+  assert.equal(dbDown.body.status, "degraded")
+  const natsDown = await probe(false, true)
+  assert.equal(natsDown.status, 503)
+  assert.equal(natsDown.body.nats, false)
+  assert.equal(natsDown.body.version, "dev")
+  // A database that never answers is reported down instead of hanging the probe.
+  const { checkDatabase } = await import("../routes/health")
+  const started = Date.now()
+  assert.equal(await checkDatabase(() => new Promise(() => {}), 50), false)
+  assert.ok(Date.now() - started < 1000)
+  assert.equal(await checkDatabase(async () => 1, 50), true)
+  assert.equal(await checkDatabase(async () => { throw new Error("down") }, 50), false)
+}
+
+await testHealthRoute()
+
 async function testReviewFixes() {
   const key = Buffer.alloc(32, 5)
 
