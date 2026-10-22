@@ -167,7 +167,7 @@ func takeSnapshot(from, to string, dbPath string, files []string) (string, error
 	if err := checkInstalledVersion(to); err != nil {
 		return "", err
 	}
-	state, err := walkNoFollow(updateStateDir(), true)
+	state, err := walkDirNoFollow(updateStateDir(), "the update state folder", true, 0o700)
 	if err != nil {
 		return "", err
 	}
@@ -195,11 +195,18 @@ func takeSnapshot(from, to string, dbPath string, files []string) (string, error
 	defer dbDir.Close()
 
 	m := snapshotManifest{From: from, To: to, Created: time.Now().UTC(), DBTarget: dbPath, Files: []snapFile{}}
+	linked := fmt.Errorf("The database path %s goes through a symbolic link; updates need the real path (set HSI_UPDATE_DB)", dbPath)
 	src, base, err := openParentNoFollow(dbPath)
+	if notRealDir(err) {
+		return "", linked
+	}
 	if err != nil {
 		return "", fmt.Errorf("snapshot the database: %w", err)
 	}
 	defer src.Close()
+	if st, err := statAt(src, base); err == nil && st.Mode&syscall.S_IFMT == syscall.S_IFLNK {
+		return "", linked
+	}
 	m.Database = filepath.Join("database", base)
 	if err := copyAt(src, base, dbDir, base, 0, false); err != nil {
 		return "", fmt.Errorf("snapshot the database: %w", err)
@@ -376,25 +383,37 @@ func tryUpdateLock() (f *os.File, ok bool, err error) {
 }
 
 // switchCurrent points installRoot()/current at releases/<version> with a rename, so
-// the link is never missing.
+// the link is never missing. It works from a held, no-follow descriptor of installRoot:
+// a symlink on the way to it, or as releases/ or the version, is refused.
 func switchCurrent(version string) error {
 	if err := checkInstalledVersion(version); err != nil {
 		return err
 	}
-	target := filepath.Join(releasesDir(), version)
-	if st, err := os.Stat(target); err != nil || !st.IsDir() {
-		return fmt.Errorf("version %s is not installed in %s", version, releasesDir())
-	}
-	tmp := fmt.Sprintf("%s.tmp-%d", currentLink(), os.Getpid())
-	_ = os.Remove(tmp)
-	if err := os.Symlink(target, tmp); err != nil {
+	root, err := openDirNoFollow(installRoot())
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, currentLink()); err != nil {
-		_ = os.Remove(tmp)
+	defer root.Close()
+	rel, err := openatDir(root, "releases")
+	if err != nil {
+		return fmt.Errorf("%s is not a real directory: %w", releasesDir(), err)
+	}
+	ver, err := openatDir(rel, version)
+	rel.Close()
+	if err != nil {
+		return fmt.Errorf("version %s is not installed in %s", version, releasesDir())
+	}
+	ver.Close()
+	tmp := fmt.Sprintf("current.tmp-%d", os.Getpid())
+	if err := removeAt(root, tmp); err != nil {
+		return err
+	}
+	if err := symlinkAt(filepath.Join(releasesDir(), version), root, tmp); err != nil {
+		return err
+	}
+	if err := commitAt(root, tmp, "current"); err != nil {
 		return fmt.Errorf("switch to %s: %w", version, err)
 	}
-	syncDir(installRoot())
 	return nil
 }
 
@@ -531,8 +550,37 @@ func pruneReleases(keep int) {
 		if i < keep || needed[v] {
 			continue
 		}
-		if err := os.RemoveAll(filepath.Join(releasesDir(), v)); err != nil {
+		if err := removeRelease(v); err != nil {
 			logger.Warn("update: could not remove an old release", "version", v, "error", err.Error())
 		}
 	}
+}
+
+// removeRelease deletes releases/<version> through descriptors only, refusing a
+// symlinked installRoot or releases dir; a release that is a link is unlinked, never
+// followed.
+func removeRelease(version string) error {
+	root, err := openDirNoFollow(installRoot())
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	rel, err := openatDir(root, "releases")
+	if err != nil {
+		return fmt.Errorf("%s is not a real directory: %w", releasesDir(), err)
+	}
+	defer rel.Close()
+	d, err := openatDir(rel, version)
+	if notRealDir(err) {
+		return removeAt(rel, version)
+	}
+	if err != nil {
+		return err
+	}
+	err = removeChildren(d)
+	d.Close()
+	if err != nil {
+		return err
+	}
+	return unlinkat(rel, version, atRemoveDir)
 }

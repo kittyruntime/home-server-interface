@@ -16,7 +16,8 @@ import (
 // rollback stops the stack, points current back to the snapshot's From, restores the
 // database and the configuration, starts the stack and checks From's health. It runs
 // once: a failure is recorded as rollback-failed, never retried. When the stack cannot
-// be stopped or From is not installed, nothing is restored or started. last.json is
+// be stopped or From is not installed, nothing is restored; when a restore fails,
+// nothing is started. last.json is
 // written and the in-progress marker cleared before it returns.
 func rollback(snapshotDir, step, reason string) error {
 	manual := fmt.Sprintf("run 'sudo %s-worker update rollback --snapshot %s'", unitPrefix(), snapshotDir)
@@ -50,6 +51,9 @@ func rollback(snapshotDir, step, reason string) error {
 	if err := restoreFiles(snapshotDir, m); err != nil {
 		errs = append(errs, err.Error())
 	}
+	if len(errs) > 0 {
+		return failed(m.From, m.To, fmt.Errorf("%s; the services are left stopped", strings.Join(errs, "; ")))
+	}
 	if out, err := systemctl("daemon-reload"); err != nil {
 		errs = append(errs, "daemon-reload: "+cmdErrMessage(out, err))
 	}
@@ -69,8 +73,10 @@ func rollback(snapshotDir, step, reason string) error {
 	return err
 }
 
-// restoreDatabase puts the snapshot database in place. Journals of the version rolled
-// back from are removed first: they would be replayed over the restored file.
+// restoreDatabase puts the snapshot database in place. The copies are staged first,
+// so a failed copy leaves the live database and its journals as they were; then the
+// journals of the version rolled back from are removed (they would be replayed over
+// the restored file) and the copies renamed into place.
 func restoreDatabase(dir string, m snapshotManifest) error {
 	snap, err := openDirNoFollow(dir)
 	if err != nil {
@@ -88,16 +94,34 @@ func restoreDatabase(dir string, m snapshotManifest) error {
 		return err
 	}
 	defer dst.Close()
-	for _, ext := range []string{"-wal", "-shm", "-journal"} {
-		if err := removeAt(dst, base+ext); err != nil {
+	tmpDB, err := stageAt(src, name, dst, base, 0, false)
+	if err != nil {
+		return err
+	}
+	tmpWAL := ""
+	if _, err := statAt(src, name+"-wal"); err == nil {
+		if tmpWAL, err = stageAt(src, name+"-wal", dst, base+"-wal", 0, false); err != nil {
+			_ = removeAt(dst, tmpDB)
 			return err
 		}
 	}
-	if err := copyAt(src, name, dst, base, 0, false); err != nil {
+	for _, ext := range []string{"-wal", "-shm", "-journal"} {
+		if err := removeAt(dst, base+ext); err != nil {
+			_ = removeAt(dst, tmpDB)
+			if tmpWAL != "" {
+				_ = removeAt(dst, tmpWAL)
+			}
+			return err
+		}
+	}
+	if err := commitAt(dst, tmpDB, base); err != nil {
+		if tmpWAL != "" {
+			_ = removeAt(dst, tmpWAL)
+		}
 		return err
 	}
-	if _, err := statAt(src, name+"-wal"); err == nil {
-		return copyAt(src, name+"-wal", dst, base+"-wal", 0, false)
+	if tmpWAL != "" {
+		return commitAt(dst, tmpWAL, base+"-wal")
 	}
 	return nil
 }
@@ -140,10 +164,15 @@ func restoreFiles(dir string, m snapshotManifest) error {
 
 func restoreFile(snap *os.File, f snapFile) error {
 	dst, base, err := openParentNoFollow(f.Src)
-	if err != nil {
-		if !f.Existed && errors.Is(err, syscall.ENOENT) {
+	if errors.Is(err, syscall.ENOENT) {
+		if !f.Existed {
 			return nil
 		}
+		// A folder removed since the snapshot comes back root-owned, 0755.
+		dst, err = walkDirNoFollow(filepath.Dir(f.Src), "the folder", true, 0o755)
+		base = filepath.Base(f.Src)
+	}
+	if err != nil {
 		return err
 	}
 	defer dst.Close()

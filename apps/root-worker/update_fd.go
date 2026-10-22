@@ -86,44 +86,58 @@ func openParentNoFollow(path string) (*os.File, string, error) {
 	return d, filepath.Base(path), nil
 }
 
-// copyAt copies srcDir/srcName to dstDir/dstName. A regular file is read from a
-// descriptor opened O_NOFOLLOW and must have no other hard link; a symbolic link is
-// copied as a link only when allowLink. Owner and mode (mode 0 keeps the source's)
-// are set on the temp file's descriptor before the rename.
+// copyAt copies srcDir/srcName to dstDir/dstName (stageAt, then a rename).
 func copyAt(srcDir *os.File, srcName string, dstDir *os.File, dstName string, mode os.FileMode, allowLink bool) error {
-	st, err := statAt(srcDir, srcName)
+	tmp, err := stageAt(srcDir, srcName, dstDir, dstName, mode, allowLink)
 	if err != nil {
 		return err
 	}
+	return commitAt(dstDir, tmp, dstName)
+}
+
+// stageAt copies srcDir/srcName to dstDir/<dstName>.hsi-tmp and returns that name. A
+// regular file is read from a descriptor opened O_NOFOLLOW and must have no other hard
+// link; a symbolic link is copied as a link only when allowLink. Owner and mode (mode 0
+// keeps the source's) are set on the temp file's descriptor.
+func stageAt(srcDir *os.File, srcName string, dstDir *os.File, dstName string, mode os.FileMode, allowLink bool) (string, error) {
+	st, err := statAt(srcDir, srcName)
+	if err != nil {
+		return "", err
+	}
 	tmp := dstName + ".hsi-tmp"
 	if err := removeAt(dstDir, tmp); err != nil {
-		return err
+		return "", err
 	}
 	switch st.Mode & syscall.S_IFMT {
 	case syscall.S_IFLNK:
 		if !allowLink {
-			return fmt.Errorf("%s is a symbolic link", srcName)
+			return "", fmt.Errorf("%s is a symbolic link", srcName)
 		}
 		target, err := readlinkAt(srcDir, srcName)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if err := symlinkAt(target, dstDir, tmp); err != nil {
-			return err
+			return "", err
 		}
 		if err := syscall.Fchownat(int(dstDir.Fd()), tmp, int(st.Uid), int(st.Gid), atSymlinkNoFollow); err != nil {
 			_ = removeAt(dstDir, tmp)
-			return err
+			return "", err
 		}
 	case syscall.S_IFREG:
 		if err := copyRegularAt(srcDir, srcName, dstDir, tmp, mode); err != nil {
 			_ = removeAt(dstDir, tmp)
-			return err
+			return "", err
 		}
 	default:
-		return fmt.Errorf("%s is not a regular file", srcName)
+		return "", fmt.Errorf("%s is not a regular file", srcName)
 	}
-	if err := renameat(int(dstDir.Fd()), tmp, int(dstDir.Fd()), dstName); err != nil {
+	return tmp, nil
+}
+
+// commitAt renames a staged dstDir/tmp over dstDir/name and syncs the directory.
+func commitAt(dstDir *os.File, tmp, name string) error {
+	if err := renameat(int(dstDir.Fd()), tmp, int(dstDir.Fd()), name); err != nil {
 		_ = removeAt(dstDir, tmp)
 		return err
 	}
