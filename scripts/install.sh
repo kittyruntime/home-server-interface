@@ -343,6 +343,38 @@ install_release_dir() {
   rm -rf -- "${releases:?}/$VERSION" && mv -T -- "$tmp" "$releases/$VERSION"
 }
 
+# The files systemd appends the services' output to (StandardOutput=append:).
+LOG_FILES=(app.log root-worker.log backup.log)
+
+# prepare_log_dir <dir> <group>: root's 0755, since systemd opens its files as root.
+# A link in place of the dir or of any entry, and a file with other hard links, is
+# removed, never followed; the remaining regular files and the LOG_FILES, created
+# when missing, are root:<group> 0640, so the backend reads them (job logs) without
+# writing. The dir is root's before its entries are looked at, so the app user can
+# no longer swap them.
+prepare_log_dir() {
+  local dir=$1 group=$2 f
+  if [[ -L "$dir" ]]; then rm -f -- "$dir" || return 1; fi
+  [[ ! -e "$dir" || -d "$dir" ]] || die "$dir is not a folder: move it away, then re-run."
+  mkdir -p "$dir" || return 1
+  if (( EUID == 0 )); then chown -h root:root "$dir" || return 1; fi
+  chmod 755 "$dir" || return 1
+  for f in "$dir"/* "$dir"/.[!.]*; do
+    [[ -e "$f" || -L "$f" ]] || continue
+    if [[ -L "$f" || ( -f "$f" && "$(stat -c %h -- "$f")" != 1 ) ]]; then
+      rm -f -- "$f" || return 1
+    fi
+  done
+  for f in "${LOG_FILES[@]}"; do
+    [[ -e "$dir/$f" ]] || : > "$dir/$f" || return 1
+  done
+  for f in "$dir"/*; do
+    [[ -f "$f" && ! -L "$f" ]] || continue
+    if (( EUID == 0 )); then chown -h "root:$group" "$f" || return 1; fi
+    chmod 0640 "$f" || return 1
+  done
+}
+
 # worker_update <worker binary> <args>: `hsi-worker update <args>` with the paths of
 # this install, so a custom APP_NAME or INSTALL_DIR is honoured before worker.env
 # carries them.
@@ -596,7 +628,9 @@ migrate_service_names() {
 
 migrate_legacy_app_install() {
   step "Migrating legacy 'app' install to 'hsi'"
-  mkdir -p /var/log/hsi
+  # mlog appends as root: the folder must be root's before (its group is set once
+  # the user is renamed).
+  prepare_log_dir /var/log/hsi root || die "Could not prepare /var/log/hsi."
   mlog "migration started (pid $$)"
 
   # 1. Stop legacy services. NEVER app-update-apply.service: during an
@@ -998,6 +1032,9 @@ else
   mkdir -p "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
   chown -h root:root "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
   chmod 755 "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
+  # Again: database/ was the app user's before, so database/data could have been
+  # swapped between the first check and that chown.
+  check_data_paths
   mkdir -p "$DB_DIR" "$INSTALL_DIR/data"
   chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data"
 
@@ -1327,13 +1364,17 @@ step "Installing systemd services"
 
 # Backend + worker write their stdout/stderr to files here instead of the
 # systemd journal, so operators have plain log files to tail/ship.
+# Root's: systemd appends to these files as root (see prepare_log_dir).
 LOG_DIR="/var/log/${APP_NAME}"
-install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$LOG_DIR"
+prepare_log_dir "$LOG_DIR" "$APP_GROUP_NAME" || die "Could not prepare $LOG_DIR."
 
 # Keep those files from growing unbounded. copytruncate because systemd holds
 # the file open (StandardOutput=append:); no service restart needed to rotate.
+# As root, in a folder only root writes.
 cat > /etc/logrotate.d/${APP_NAME} <<ROTATE
 $LOG_DIR/*.log {
+  su root root
+  create 0640 root $APP_GROUP_NAME
   weekly
   rotate 8
   compress
@@ -1517,7 +1558,7 @@ ReadOnlyPaths=-/var/lib/hsi/tls
 # CONTAINERS_DIR: the backend writes compose.yaml files itself (containerStacks.ts);
 # without it ProtectSystem=strict makes /opt read-only and App Store installs fail.
 # BACKUP_STAGING_DIR: configuration backups and restores are staged there (#1).
-ReadWritePaths=$DB_DIR $APP_DIR /tmp $LOG_DIR $CONTAINERS_DIR $BACKUP_STAGING_DIR
+ReadWritePaths=$DB_DIR $APP_DIR /tmp $CONTAINERS_DIR $BACKUP_STAGING_DIR
 
 [Install]
 WantedBy=${APP_NAME}.target

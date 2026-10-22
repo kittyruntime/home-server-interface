@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -116,6 +116,41 @@ for planted in "$DB_DIR" "$DB_FILE" "$DB_FILE-wal" "$ENV_FILE" "$INSTALL_DIR/dat
   rm "$planted"
   mv "$planted.real" "$planted" 2>/dev/null || true
 done
+
+# The log dir is root's: systemd appends to its files as root, so a link or a
+# hardlink planted by the app user is replaced, never followed.
+LOGS="$TMP/var/log/hsi"
+mkdir -p "$LOGS" "$TMP/victim"
+echo secret > "$TMP/victim/target"
+echo mine > "$TMP/victim/own"
+ln -s "$TMP/victim/target" "$LOGS/app.log"
+ln "$TMP/victim/own" "$LOGS/root-worker.log"
+echo old > "$LOGS/backup.log"; chmod 666 "$LOGS/backup.log"
+ln -s "$TMP/victim" "$LOGS/nested"
+out="$( (prepare_log_dir "$LOGS" "$(id -gn)") 2>&1)"; rc=$?
+check "log dir prepared" '[[ $rc -eq 0 && -d "$LOGS" && ! -L "$LOGS" && "$(stat -c %a "$LOGS")" == 755 ]]'
+check "a planted log link is replaced by a file" '[[ ! -L "$LOGS/app.log" && -f "$LOGS/app.log" && ! -s "$LOGS/app.log" && "$(cat "$TMP/victim/target")" == secret ]]'
+check "a planted hardlink is replaced" '[[ "$(stat -c %h "$TMP/victim/own")" == 1 && -f "$LOGS/root-worker.log" && ! -s "$LOGS/root-worker.log" ]]'
+check "an existing log keeps its lines with mode 0640" '[[ "$(cat "$LOGS/backup.log")" == old && "$(stat -c %a "$LOGS/backup.log")" == 640 ]]'
+check "new log files are 0640" '[[ "$(stat -c %a "$LOGS/app.log")" == 640 ]]'
+check "other links in the log dir are removed" '[[ ! -e "$LOGS/nested" && ! -L "$LOGS/nested" && -d "$TMP/victim" ]]'
+rm -rf "$LOGS"; ln -s "$TMP/victim" "$LOGS"
+( prepare_log_dir "$LOGS" "$(id -gn)" ) >/dev/null 2>&1; rc=$?
+check "a log dir that is a link is replaced by a real dir" '[[ $rc -eq 0 && -d "$LOGS" && ! -L "$LOGS" && -f "$TMP/victim/target" && ! -e "$TMP/victim/app.log" ]]'
+
+{
+  echo 'set -u'
+  sed -n '/^cat > \/etc\/logrotate.d\/\${APP_NAME} <<ROTATE$/,/^ROTATE$/p' "$ROOT/scripts/install.sh" | sed "s#/etc/logrotate.d#$TMP#"
+} > "$TMP/rotate.sh"
+( APP_NAME=hsi LOG_DIR=/var/log/hsi APP_GROUP_NAME=hsi bash "$TMP/rotate.sh" ) 2>"$TMP/rotate.err"
+check "logrotate stanza renders" '[[ ! -s "$TMP/rotate.err" && -f "$TMP/hsi" ]]'
+check "logrotate rotates as root" 'grep -qx "  su root root" "$TMP/hsi"'
+check "logrotate creates root files the app group reads" 'grep -qx "  create 0640 root hsi" "$TMP/hsi"'
+check "the server cannot write the log dir" '! grep -q "^ReadWritePaths=.*\$LOG_DIR" "$ROOT/scripts/install.sh"'
+
+# Ownership order in the release block: data paths are checked again once
+# INSTALL_DIR/database is root's.
+check "data paths re-checked after database becomes root's" 'awk "/chown -h root:root \"\\\$INSTALL_DIR\/releases\" \"\\\$INSTALL_DIR\/database\"/{f=1;next} f&&/check_data_paths/{ok=1;exit} f&&/chown -h \"\\\$APP_USER:\"/{exit} END{exit !ok}" "$ROOT/scripts/install.sh"'
 
 # Versions and URLs the update relies on.
 first_go=$(sed -n 's/^const firstHealthVersion = "\(v[0-9.]*\)"$/\1/p' "$ROOT/apps/root-worker/update_health.go")
