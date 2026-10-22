@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -298,5 +300,50 @@ func TestLatestSnapshotSkipsSameVersion(t *testing.T) {
 	s, ok := latestSnapshotFor("v2.0.0")
 	if !ok || s.Manifest.From != "v1.9.0" {
 		t.Fatalf("latest %+v %v", s.Manifest, ok)
+	}
+}
+
+func statusJSON(t *testing.T) map[string]any {
+	t.Helper()
+	var out bytes.Buffer
+	prev := updateStdout
+	updateStdout = &out
+	t.Cleanup(func() { updateStdout = prev })
+	if code := runUpdateCLI([]string{"status"}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var st map[string]any
+	if err := json.Unmarshal(out.Bytes(), &st); err != nil {
+		t.Fatalf("%v: %s", err, out.String())
+	}
+	return st
+}
+
+// The status names the version `update rollback` would bring back, which is not
+// always the newest previous version.
+func TestUpdateStatusReportsTheRollbackTarget(t *testing.T) {
+	e := setupUpdateEnv(t)
+	t.Setenv("HSI_UNIT_PREFIX", "nas")
+	e.release(t, "v2.0.0", "v2.1.0", "v2.2.0")
+	_ = switchCurrent("v2.2.0")
+	created := time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC)
+	snap := writeTestManifest(t, e, "v2.0.0", "v2.2.0", created)
+	writeTestManifest(t, e, "v2.2.0", "v2.2.0", created.Add(time.Hour))
+	st := statusJSON(t)
+	target, ok := st["rollbackTarget"].(map[string]any)
+	if !ok || target["version"] != "v2.0.0" || target["snapshot"] != snap || target["snapshotCreated"] != "2026-10-20T08:00:00Z" {
+		t.Fatalf("rollbackTarget %v", st["rollbackTarget"])
+	}
+	if prev := st["previous"].([]any); prev[0].(map[string]any)["version"] != "v2.1.0" {
+		t.Fatalf("previous %v", prev)
+	}
+	if st["rollbackCommand"] != "sudo nas-worker update rollback" {
+		t.Fatalf("rollbackCommand %v", st["rollbackCommand"])
+	}
+
+	setupUpdateEnv(t)
+	e.release(t, "v2.0.0")
+	if st := statusJSON(t); st["rollbackTarget"] != nil {
+		t.Fatalf("rollbackTarget without snapshot %v", st["rollbackTarget"])
 	}
 }

@@ -86,7 +86,12 @@ export async function checkUpdateAttempt(
 export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string }
 // snapshot and snapshotCreated are null when the version has no database snapshot.
 export interface PreviousVersion { version: string; snapshot: string | null; snapshotCreated: string | null }
-export interface WorkerUpdateStatus { last: UpdateResult | null; current: string; previous: PreviousVersion[] }
+// rollbackTarget is what `update rollback` brings back (null: nothing to go back to);
+// rollbackCommand names the worker of this install.
+export interface WorkerUpdateStatus {
+  last: UpdateResult | null; current: string; previous: PreviousVersion[]
+  rollbackTarget?: PreviousVersion | null; rollbackCommand?: string
+}
 
 // Short timeout: update.status waits on this, and the worker may be down.
 export async function readWorkerUpdateStatus(

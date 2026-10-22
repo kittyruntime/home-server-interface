@@ -576,17 +576,29 @@ type previousVersion struct {
 	SnapshotCreated *time.Time `json:"snapshotCreated"`
 }
 
+// updateStatusReply: RollbackTarget is what `update rollback` brings back (the From
+// of the newest snapshot taken for the current version), null when there is none;
+// Previous lists every other installed version for information.
 type updateStatusReply struct {
-	Last     *lastResult       `json:"last"`
-	Current  string            `json:"current"`
-	Previous []previousVersion `json:"previous"`
+	Last            *lastResult       `json:"last"`
+	Current         string            `json:"current"`
+	Previous        []previousVersion `json:"previous"`
+	RollbackTarget  *previousVersion  `json:"rollbackTarget"`
+	RollbackCommand string            `json:"rollbackCommand"`
 }
 
 // updateStatus is what `update status` prints and root.update.status answers.
 func updateStatus() updateStatusReply {
-	st := updateStatusReply{Current: currentVersion(), Previous: []previousVersion{}}
+	st := updateStatusReply{Current: currentVersion(), Previous: []previousVersion{},
+		RollbackCommand: fmt.Sprintf("sudo %s-worker update rollback", unitPrefix())}
 	if r, err := readLast(); err == nil {
 		st.Last = r
+	}
+	if s, ok := latestSnapshotFor(st.Current); ok {
+		if fi, err := os.Lstat(filepath.Join(releasesDir(), s.Manifest.From)); err == nil && fi.IsDir() {
+			dir, created := s.Dir, s.Manifest.Created
+			st.RollbackTarget = &previousVersion{Version: s.Manifest.From, Snapshot: &dir, SnapshotCreated: &created}
+		}
 	}
 	snaps := listSnapshots()
 	for _, v := range installedReleases() {

@@ -5,10 +5,12 @@ import type { trpc } from './trpc'
 
 type UpdateStatus = Awaited<ReturnType<typeof trpc.update.status.query>>
 export type UpdateResult = NonNullable<UpdateStatus['lastResult']>
-export type PreviousVersion = UpdateStatus['previous'][number]
+export type RollbackTarget = NonNullable<UpdateStatus['rollbackTarget']>
 
-/** The command that goes back to the previous version (the unit is hsi-worker). */
-export const ROLLBACK_COMMAND = 'sudo hsi-worker update rollback'
+/** The command that goes back to the previous version, as the worker names it. */
+export function rollbackCommand(fromWorker: string | null | undefined): string {
+  return fromWorker || 'sudo hsi-worker update rollback'
+}
 
 export function lastResultText(r: UpdateResult | null): string | null {
   if (!r) return null
@@ -20,10 +22,9 @@ export function lastResultText(r: UpdateResult | null): string | null {
   return null
 }
 
-/** The sentence before the rollback command, or null without a previous version. */
-export function previousVersionText(previous: PreviousVersion[], formatDay: (iso: string) => string): string | null {
-  const p = previous[0]
-  if (!p) return null
-  const db = p.snapshotCreated ? `database from ${formatDay(p.snapshotCreated)}` : 'no database snapshot'
-  return `Previous version: ${p.version} (${db}). To go back:`
+/** The sentence before the rollback command, or null when `update rollback` has nothing to go back to. */
+export function previousVersionText(target: RollbackTarget | null, formatDay: (iso: string) => string): string | null {
+  if (!target) return null
+  const db = target.snapshotCreated ? `database from ${formatDay(target.snapshotCreated)}` : 'no database snapshot'
+  return `Previous version: ${target.version} (${db}). To go back:`
 }
