@@ -1700,8 +1700,9 @@ EOF
 
   # The worker downloads and verifies the requested release, then runs the
   # install.sh from it. It runs here, outside the stack the update stops. The
-  # marker is written by the backend: only its first line is read, and the worker
-  # refuses anything but a vX.Y.Z version.
+  # marker is written by the backend, so the worker opens it itself (never through
+  # a link, a regular file of the app user, 64 bytes at most), removes it, and
+  # refuses anything but a vX.Y.Z version. The unit passes it nothing.
   cat > /etc/systemd/system/${APP_NAME}-update-apply.service << EOF
 [Unit]
 Description=Apply pending ${APP_NAME} update
@@ -1719,7 +1720,8 @@ Environment=BACKEND_PORT=${BACKEND_PORT}
 Environment=NATS_SERVER_VERSION=${NATS_SERVER_VERSION}
 Environment=SKIP_NGINX=${SKIP_NGINX}
 Environment=SKIP_SEED=${SKIP_SEED}
-ExecStart=/bin/bash -c 'read -r -n 64 v < "${DB_DIR}/.pending-update"; rm -f "${DB_DIR}/.pending-update"; exec ${SYSTEM_WORKER} update apply "\$\$v"'
+Environment=HSI_PENDING_UPDATE=${DB_DIR}/.pending-update
+ExecStart=${SYSTEM_WORKER} update apply-pending
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${APP_NAME}-update

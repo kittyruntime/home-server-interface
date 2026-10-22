@@ -218,16 +218,11 @@ mkdir -p "$TMP/units"
   NATS_CONF="$TMP/nats.conf" NATS_DATA_DIR=/var/lib/hsi/nats NATS_BACKEND_PASS=b NATS_WORKER_PASS=w \
   bash "$TMP/render.sh" ) 2>"$TMP/render.err"
 check "update-apply unit and nats.conf render under set -u" '[[ ! -s "$TMP/render.err" && -f "$TMP/units/hsi-update-apply.service" && -f "$TMP/nats.conf" ]]'
-# systemd turns $$ into $ before bash runs the command.
-apply_cmd="$(sed -n 's/^ExecStart=//p' "$TMP/units/hsi-update-apply.service" | sed 's/\$\$/$/g')"
+apply_cmd="$(sed -n 's/^ExecStart=//p' "$TMP/units/hsi-update-apply.service")"
 check "the update-apply unit names no /main/ URL" '! grep -q "/main/" "$TMP/units/hsi-update-apply.service"'
-check "update-apply runs the worker on the pending version" '[[ "$apply_cmd" == *"exec /usr/local/bin/hsi-worker update apply \"\$v\""* ]]'
+check "update-apply runs the worker, which reads the marker itself" '[[ "$apply_cmd" == "/usr/local/bin/hsi-worker update apply-pending" ]]'
+check "update-apply names the marker of this install" 'grep -qx "Environment=HSI_PENDING_UPDATE=/opt/hsi/database/data/.pending-update" "$TMP/units/hsi-update-apply.service"'
 check "update-apply reads the worker settings" 'grep -qx "EnvironmentFile=/etc/hsi/worker.env" "$TMP/units/hsi-update-apply.service"'
-mkdir -p "$TMP/pending"; printf 'v1.67.0' > "$TMP/pending/.pending-update"
-fake_cmd="${apply_cmd//\/opt\/hsi\/database\/data/$TMP/pending}"
-fake_cmd="${fake_cmd//exec \/usr\/local\/bin\/hsi-worker/echo}"
-apply_out="$(eval "$fake_cmd")"
-check "update-apply passes the marker version and removes the marker" '[[ "$apply_out" == "update apply v1.67.0" && ! -e "$TMP/pending/.pending-update" ]]'
 check "the worker NATS user may ask root.health" 'grep -A5 "user: \"worker\"" "$TMP/nats.conf" | grep -q "publish: *\[ \"events.>\", \"root.health\","'
 
 if ! command -v go >/dev/null; then
