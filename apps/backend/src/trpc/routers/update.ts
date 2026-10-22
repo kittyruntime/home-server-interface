@@ -6,6 +6,7 @@ import { execFile } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { requestSync } from "../../nats"
 import { log } from "../../utils/log"
+import { readWorkerUpdateStatus } from "../../services/update-watch"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -119,11 +120,12 @@ function fmtMb(bytes: number): string {
 }
 
 export const updateRouter = router({
-  status: adminProcedure.query(() => {
+  status: adminProcedure.query(async () => {
     const current  = readCurrentVersion()
     const check    = readCheck()
     const pending  = fs.existsSync(pendingUpdateFile())
     const hasUpdate = check ? isNewer(check.latestVersion, current) : false
+    const worker   = await readWorkerUpdateStatus()
     return {
       current,
       latest:       check?.latestVersion  ?? null,
@@ -131,6 +133,8 @@ export const updateRouter = router({
       checkedAt:    check?.checkedAt      ?? null,
       releaseNotes: check?.releaseNotes   ?? null,
       pending,
+      lastResult:   worker?.last          ?? null,
+      previous:     worker?.previous      ?? [],
       repoUrl:      `https://github.com/${GITHUB_REPO}`,
     }
   }),
