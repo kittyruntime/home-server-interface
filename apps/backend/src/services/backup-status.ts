@@ -77,6 +77,9 @@ export interface SnapshotEntry { name: string; path: string; type: string; size:
 
 export interface BackupFinding { target: string; severity: "warning" | "critical"; message: string }
 
+/** A run or check the worker recorded as stopped before its end (a shutdown, a stop of its unit). */
+const isInterrupted = (error: string) => error === "interrupted" || error.startsWith("interrupted;")
+
 export function backupFindings(s: BackupStatus): BackupFinding[] {
   const out: BackupFinding[] = []
   for (const p of s.plans) {
@@ -84,13 +87,16 @@ export function backupFindings(s: BackupStatus): BackupFinding[] {
     const error = p.last.error ?? "unknown error"
     out.push({
       target: `plan:${p.id}`,
-      // An app that stayed down is an outage, not just a missed backup.
+      // An app that stayed down is an outage, not just a missed backup. A run stopped
+      // by a shutdown is a missed backup.
       severity: error.includes("did not start again") ? "critical" : "warning",
-      message: `Backup "${p.name}" failed: ${error}`,
+      message: isInterrupted(error) ? `Backup "${p.name}" was interrupted: ${error}` : `Backup "${p.name}" failed: ${error}`,
     })
   }
   for (const r of s.repositories) {
     if (r.lastCheck?.status !== "failed") continue
+    // A check stopped by a shutdown found nothing wrong: no corruption alert.
+    if (isInterrupted(r.lastCheck.error ?? "")) continue
     out.push({ target: `repository:${r.id}`, severity: "critical", message: `Integrity check of "${r.name}" failed: ${r.lastCheck.error ?? "unknown error"}` })
   }
   if (!s.engine.installed && s.plans.some(p => p.type === "versions")) {
