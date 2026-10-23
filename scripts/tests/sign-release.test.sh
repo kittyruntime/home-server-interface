@@ -23,11 +23,14 @@ NAME="hsi-v1.67.0-linux-amd64.tar.gz"
 mkdir -p "$TMP/rel"
 echo archive > "$TMP/rel/$NAME"
 SIGN="$ROOT/scripts/sign-release.sh"
+unset GITHUB_ACTIONS
 
 check "refuses an empty key" '! HSI_RELEASE_SIGNING_KEY= HSI_ALLOW_DEV_SIGNING_KEY=1 "$SIGN" "$TMP/rel" "$NAME" >/dev/null 2>&1'
 check "refuses the development public key" '! HSI_RELEASE_SIGNING_KEY="$DEV_KEY" "$SIGN" "$TMP/rel" "$NAME" >/dev/null 2>&1'
 check "refuses a key that does not match the public key" \
   '! HSI_RELEASE_SIGNING_KEY="$(openssl genpkey -algorithm ed25519)" HSI_ALLOW_DEV_SIGNING_KEY=1 "$SIGN" "$TMP/rel" "$NAME" >/dev/null 2>&1'
+check "refuses the development key override in CI" \
+  'rm -f "$TMP/rel/SHA256SUMS"; ! GITHUB_ACTIONS=true HSI_RELEASE_SIGNING_KEY="$DEV_KEY" HSI_ALLOW_DEV_SIGNING_KEY=1 "$SIGN" "$TMP/rel" "$NAME" >/dev/null 2>&1 && [[ ! -e "$TMP/rel/SHA256SUMS" ]]'
 check "signs with the matching key" 'HSI_RELEASE_SIGNING_KEY="$DEV_KEY" HSI_ALLOW_DEV_SIGNING_KEY=1 "$SIGN" "$TMP/rel" "$NAME" >/dev/null'
 check "produces the four release files" '[[ -f "$TMP/rel/install.sh" && -s "$TMP/rel/SHA256SUMS" && -s "$TMP/rel/SHA256SUMS.sig" ]]'
 check "SHA256SUMS lists exactly the archive and install.sh" \
