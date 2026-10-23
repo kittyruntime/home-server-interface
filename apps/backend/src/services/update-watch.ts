@@ -116,13 +116,15 @@ const ALERTING_STATUSES: Record<string, string> = {
   "refused": "refused",
 }
 
-// Notifies a rolled-back, rollback-failed or refused update once: the `at` of
+// Notifies a rolled-back (except by hand), rollback-failed or refused update once: the `at` of
 // the last notified result is kept next to the attempt record.
 export async function notifyUpdateResult(
   dir: string, last: UpdateResult | null, dispatch: (e: NotificationEvent) => unknown,
 ): Promise<"none" | "notified"> {
   const outcome = last ? ALERTING_STATUSES[last.status] : undefined
   if (!last || !outcome || typeof last.at !== "string") return "none"
+  // `update rollback` run by the administrator: done on purpose, nothing to alert on.
+  if (last.status === "rolled-back" && last.step === "manual") return "none"
   const at = Date.parse(last.at)
   if (!Number.isFinite(at)) return "none"
   const file = join(dir, NOTIFIED_FILE)
