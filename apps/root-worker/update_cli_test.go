@@ -82,10 +82,22 @@ func writeSignedRelease(t *testing.T, dir, version string, archive []byte) relea
 	return f
 }
 
+// trustDevKey makes update apply trust the development key the fixtures are signed
+// with, and allows it, for this test only.
+func trustDevKey(t *testing.T) {
+	t.Helper()
+	t.Setenv("HSI_ALLOW_DEV_SIGNING_KEY", "1")
+	prev := trustedReleaseKey
+	trustedReleaseKey = func() (ed25519.PublicKey, error) {
+		return devSigningKey(t).Public().(ed25519.PublicKey), nil
+	}
+	t.Cleanup(func() { trustedReleaseKey = prev })
+}
+
 // fakeDownload makes downloadRelease write a signed release, then lets tamper change it.
 func fakeDownload(t *testing.T, archive []byte, tamper func(releaseFiles)) {
 	t.Helper()
-	t.Setenv("HSI_ALLOW_DEV_SIGNING_KEY", "1")
+	trustDevKey(t)
 	prev := downloadRelease
 	downloadRelease = func(version, dir string) (releaseFiles, error) {
 		f := writeSignedRelease(t, dir, version, archive)
@@ -218,7 +230,7 @@ func TestApplyFromLocalArchive(t *testing.T) {
 	e := setupUpdateEnv(t)
 	e.release(t, "v2.0.0")
 	_ = switchCurrent("v2.0.0")
-	t.Setenv("HSI_ALLOW_DEV_SIGNING_KEY", "1")
+	trustDevKey(t)
 	installs := fakeInstaller(t, 0)
 	src := t.TempDir()
 	f := writeSignedRelease(t, src, "v2.1.0", goodArchive(t, "v2.1.0"))

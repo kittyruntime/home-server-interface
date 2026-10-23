@@ -23,6 +23,8 @@ fi
 source "$TMP/func.sh"
 
 DEV_KEY="$ROOT/scripts/tests/fixtures/dev-signing.key"
+# The installer embeds the production key; these tests sign with the development key.
+RELEASE_SIGNING_PUB="$(openssl pkey -in "$DEV_KEY" -pubout)"
 VERSION=v1.67.0
 RELEASE_APP_NAME=hsi
 NAME="hsi-${VERSION}-linux-amd64.tar.gz"

@@ -19,10 +19,17 @@ sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts
 source "$TMP/func.sh"
 
 DEV_KEY="$(cat "$ROOT/scripts/tests/fixtures/dev-signing.key")"
+# The installer embeds the production key; this test signs with the development key.
+RELEASE_SIGNING_PUB="$(printf '%s\n' "$DEV_KEY" | openssl pkey -pubout)"
 NAME="hsi-v1.67.0-linux-amd64.tar.gz"
 mkdir -p "$TMP/rel"
 echo archive > "$TMP/rel/$NAME"
-SIGN="$ROOT/scripts/sign-release.sh"
+# The script checks the key against scripts/release-signing.pub (the production key):
+# run a copy in a scratch tree whose public key is the development one.
+mkdir -p "$TMP/tree/scripts"
+cp "$ROOT/scripts/sign-release.sh" "$ROOT/scripts/install.sh" "$TMP/tree/scripts/"
+printf '%s\n' "$RELEASE_SIGNING_PUB" > "$TMP/tree/scripts/release-signing.pub"
+SIGN="$TMP/tree/scripts/sign-release.sh"
 unset GITHUB_ACTIONS
 
 check "refuses an empty key" '! HSI_RELEASE_SIGNING_KEY= HSI_ALLOW_DEV_SIGNING_KEY=1 "$SIGN" "$TMP/rel" "$NAME" >/dev/null 2>&1'
