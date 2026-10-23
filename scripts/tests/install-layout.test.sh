@@ -196,6 +196,14 @@ check "a planted hardlink is replaced" '[[ "$(stat -c %h "$TMP/victim/own")" == 
 check "an existing log keeps its lines with mode 0640" '[[ "$(cat "$LOGS/backup.log")" == old && "$(stat -c %a "$LOGS/backup.log")" == 640 ]]'
 check "new log files are 0640" '[[ "$(stat -c %a "$LOGS/app.log")" == 640 ]]'
 check "other links in the log dir are removed" '[[ ! -e "$LOGS/nested" && ! -L "$LOGS/nested" && -d "$TMP/victim" ]]'
+# A folder or a FIFO in place of a log file is moved aside or removed, never written
+# into: systemd needs a regular file there.
+mkdir -p "$TMP/logtypes"; mkdir "$TMP/logtypes/app.log"; echo keep > "$TMP/logtypes/app.log/inner"
+mkfifo "$TMP/logtypes/backup.log"
+( prepare_log_dir "$TMP/logtypes" "$(id -gn)" ) >/dev/null 2>&1; rc=$?
+check "a folder named like a log file is replaced by a log file" '[[ $rc -eq 0 && -f "$TMP/logtypes/app.log" && ! -L "$TMP/logtypes/app.log" ]]'
+check "the folder is moved aside untouched" 'compgen -G "$TMP/logtypes/app.log.moved-*/inner" >/dev/null && [[ "$(cat "$TMP"/logtypes/app.log.moved-*/inner)" == keep && ! -e "$TMP/logtypes/app.log.moved-*/app.log" ]]'
+check "a FIFO named like a log file is replaced by a log file" '[[ -f "$TMP/logtypes/backup.log" && ! -p "$TMP/logtypes/backup.log" ]]'
 rm -rf "$LOGS"; ln -s "$TMP/victim" "$LOGS"
 ( prepare_log_dir "$LOGS" "$(id -gn)" ) >/dev/null 2>&1; rc=$?
 check "a log dir that is a link is replaced by a real dir" '[[ $rc -eq 0 && -d "$LOGS" && ! -L "$LOGS" && -f "$TMP/victim/target" && ! -e "$TMP/victim/app.log" ]]'
