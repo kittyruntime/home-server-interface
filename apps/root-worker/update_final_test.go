@@ -534,3 +534,134 @@ func TestReplaceWarnsWhenTheOldCopyStays(t *testing.T) {
 		t.Fatalf("current holds %q", b)
 	}
 }
+
+// recordPublishes swaps the publish of update results for a recorder.
+func recordPublishes(t *testing.T) *[]lastResult {
+	t.Helper()
+	var got []lastResult
+	prev := publishUpdateResult
+	publishUpdateResult = func(r lastResult) { got = append(got, r) }
+	t.Cleanup(func() { publishUpdateResult = prev })
+	return &got
+}
+
+// Results are kept as a bounded history, so one is never lost to the next, and each
+// is announced to the backend as it is written.
+func TestUpdateResultHistory(t *testing.T) {
+	setupUpdateEnv(t)
+	published := recordPublishes(t)
+	base := time.Date(2026, 10, 23, 5, 0, 0, 0, time.UTC)
+	for i := 0; i < 25; i++ {
+		if err := writeLast(lastResult{From: "v2.0.0", To: fmt.Sprintf("v2.0.%d", i+1), Status: "refused", At: base}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := readResultHistory()
+	if len(h) != updateHistoryMax || h[0].To != "v2.0.6" || h[len(h)-1].To != "v2.0.25" {
+		t.Fatalf("history %d entries, first %+v last %+v", len(h), h[0], h[len(h)-1])
+	}
+	for i := 1; i < len(h); i++ {
+		if !h[i].At.After(h[i-1].At) {
+			t.Fatalf("results %d and %d share a time: %v", i-1, i, h[i].At)
+		}
+	}
+	if len(*published) != 25 || (*published)[24].To != "v2.0.25" {
+		t.Fatalf("published %d", len(*published))
+	}
+	st := statusJSON(t)
+	hist, _ := st["history"].([]any)
+	if len(hist) != updateHistoryMax || hist[len(hist)-1].(map[string]any)["to"] != "v2.0.25" {
+		t.Fatalf("status history %v", st["history"])
+	}
+	entries, _ := os.ReadDir(updateStateDir())
+	for _, en := range entries {
+		if strings.HasSuffix(en.Name(), ".tmp") {
+			t.Fatalf("leftover %s", en.Name())
+		}
+	}
+}
+
+// After a successful rollback the failed release goes, unless a snapshot still rolls
+// back to it, and the usual retention applies.
+func TestRollbackRemovesTheFailedReleaseAndPrunes(t *testing.T) {
+	e, dir := preparedUpdate(t)
+	recordPublishes(t)
+	fakeSystemctl(t)
+	fakeHealth(t, nil, nil)
+	e.release(t, "v1.0.0", "v1.1.0", "v1.2.0")
+	writeTestManifest(t, e, "v1.0.0", "v1.1.0", time.Now().Add(-3*time.Hour))
+	if err := rollback(dir, "health", "x"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(e.install, "releases", "v2.1.0")); !os.IsNotExist(err) {
+		t.Fatal("the failed release was kept")
+	}
+	got := installedReleases()
+	if strings.Join(got, ",") != "v1.2.0,v1.1.0" {
+		t.Fatalf("previous releases %v, want the 2 newest", got)
+	}
+	if _, err := os.Stat(filepath.Join(e.state, "v1.0.0-v1.1.0")); !os.IsNotExist(err) {
+		t.Fatal("a snapshot whose release is gone was kept")
+	}
+	if currentVersion() != "v2.0.0" {
+		t.Fatalf("current %s", currentVersion())
+	}
+}
+
+func TestRollbackKeepsAFailedReleaseAnotherSnapshotNeeds(t *testing.T) {
+	e, dir := preparedUpdate(t)
+	recordPublishes(t)
+	fakeSystemctl(t)
+	fakeHealth(t, nil, nil)
+	e.release(t, "v2.2.0")
+	writeTestManifest(t, e, "v2.1.0", "v2.2.0", time.Now().Add(-time.Minute))
+	if err := rollback(dir, "health", "x"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(e.install, "releases", "v2.1.0")); err != nil {
+		t.Fatal("a release another snapshot rolls back to was removed")
+	}
+}
+
+// Retention never drops current or the snapshot `update rollback` would use, even
+// when newer snapshots exist.
+func TestPruneKeepsCurrentAndTheRollbackTarget(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v1.0.0", "v1.1.0", "v1.2.0", "v2.0.0")
+	_ = switchCurrent("v2.0.0")
+	target := writeTestManifest(t, e, "v1.0.0", "v2.0.0", time.Now().Add(-5*time.Hour))
+	writeTestManifest(t, e, "v1.1.0", "v1.2.0", time.Now().Add(-2*time.Hour))
+	writeTestManifest(t, e, "v1.2.0", "v1.1.0", time.Now().Add(-time.Hour))
+	pruneUpdateState()
+	if _, err := os.Stat(target); err != nil {
+		t.Fatal("the rollback target snapshot was pruned")
+	}
+	for _, v := range []string{"v2.0.0", "v1.0.0"} {
+		if _, err := os.Stat(filepath.Join(e.install, "releases", v)); err != nil {
+			t.Fatalf("%s was pruned", v)
+		}
+	}
+}
+
+// A repair records its own result, so the status no longer shows an older one; a
+// success raises no alert.
+func TestRepairRecordsASuccess(t *testing.T) {
+	e := setupUpdateEnv(t)
+	published := recordPublishes(t)
+	e.release(t, "v2.0.0")
+	_ = switchCurrent("v2.0.0")
+	_ = writeLast(lastResult{From: "v2.1.0", To: "v2.0.0", Status: "rolled-back", Step: "manual"})
+	if code := runUpdateCLI([]string{"repaired", "v2.0.0"}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	r, _ := readLast()
+	if r == nil || r.Status != "success" || r.Step != "repair" || r.From != "v2.0.0" || r.To != "v2.0.0" {
+		t.Fatalf("last %+v", r)
+	}
+	if len(*published) != 2 {
+		t.Fatalf("published %d", len(*published))
+	}
+	if code := runUpdateCLI([]string{"repaired", "v2.1.0"}); code == 0 {
+		t.Fatal("recorded a repair of a version that is not current")
+	}
+}

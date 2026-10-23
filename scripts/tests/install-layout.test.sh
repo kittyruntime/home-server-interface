@@ -532,6 +532,8 @@ out="$( ( INSTALL_DIR="$FL"; UPDATE_STATE="$TMP/fl-state"; DB_DIR="$FL/database/
   quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION safe=$SAFE_UPDATE" ) 2>&1)"
 check "a <core>-flat record matches a top VERSION of <core> and resumes" '[[ "$out" == *"old=v1.67.0-flat safe=1"* && "$(readlink "$FL/current")" == "$FL/releases/v1.67.0-flat" ]]'
 
+check "a healthy repair records its result" 'grep -A12 "HEALTH_OUT=\$(worker_update" "$ROOT/scripts/install.sh" | grep -q "worker_update \"\$NEW_WORKER\" repaired \"\$VERSION\""'
+
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
 line_of() { grep -n -m1 -F -- "$1" "$ROOT/scripts/install.sh" | cut -d: -f1; }

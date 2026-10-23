@@ -417,12 +417,11 @@ func TestRollbackCleansWantsOfRemovedUnits(t *testing.T) {
 	}
 }
 
-// ── M6: only dirs, files and links; no setuid or setgid ──────────────────────
-
 // ── M7: broken snapshots and old staging dirs are pruned ─────────────────────
 
 func TestPruneRemovesBrokenSnapshotsAndOldStaging(t *testing.T) {
 	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0") // a snapshot is kept only while its release is installed
 	good := writeTestManifest(t, e, "v2.0.0", "v2.1.0", time.Now())
 	broken := filepath.Join(e.state, "v2.1.0-v2.2.0")
 	if err := os.MkdirAll(broken, 0o700); err != nil {

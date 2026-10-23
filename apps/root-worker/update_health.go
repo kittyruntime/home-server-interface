@@ -203,6 +203,26 @@ var natsHealth = func() error {
 	return nil
 }
 
+// updateResultSubject is where a new update result is announced; the backend checks
+// the results as soon as it hears it (its periodic check stays the fallback).
+const updateResultSubject = "events.update.result"
+
+// publishUpdateResult tells the backend a result was written. Best effort: the
+// stack may be down (a failed rollback), and the backend polls anyway.
+var publishUpdateResult = func(r lastResult) {
+	url, user, pass := workerNATSCredentials()
+	nc, err := nats.Connect(url, nats.UserInfo(user, pass), nats.Timeout(2*time.Second), nats.NoReconnect())
+	if err != nil {
+		logger.Debug("update: could not announce the result", "error", err.Error())
+		return
+	}
+	defer nc.Close()
+	b, _ := json.Marshal(r)
+	if err := nc.Publish(updateResultSubject, b); err == nil {
+		_ = nc.FlushTimeout(2 * time.Second)
+	}
+}
+
 // workerNATSCredentials reads NATS_URL/USER/PASS from the environment, else from
 // worker.env (a CLI run from a shell or the installer has no EnvironmentFile).
 func workerNATSCredentials() (url, user, pass string) {
