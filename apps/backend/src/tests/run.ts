@@ -688,7 +688,7 @@ async function testUpdateResultNotifications() {
     const dispatch = (e: unknown) => { events.push(e) }
     const rolledBack = { from: "v1.66.0", to: "v1.67.0", status: "rolled-back", step: "health", reason: "database check failed", at: "2026-10-22T10:00:00Z" }
     assert.equal(await watch.notifyUpdateResult(dir, null, dispatch), "none")
-    assert.equal(await watch.notifyUpdateResult(dir, { ...rolledBack, status: "success" }, dispatch), "none")
+    assert.equal(await watch.notifyUpdateResult(dir, { ...rolledBack, status: "success", at: "2026-10-21T10:00:00Z" }, dispatch), "none")
     assert.equal(await watch.notifyUpdateResult(dir, rolledBack, dispatch), "notified")
     assert.equal(events.length, 1)
     assert.deepEqual(
@@ -727,6 +727,56 @@ async function testUpdateResultNotifications() {
 }
 
 await testUpdateResultNotifications()
+
+async function testUpdateResultHistory() {
+  const dir = await mkdtemp(join(tmpdir(), "hsi-update-history-"))
+  try {
+    const events: any[] = []
+    const dispatch = (e: unknown) => { events.push(e) }
+    // Two results written between two checks: both notified, oldest first, once each.
+    const refused = { from: "v1.67.1", to: "v1.67.9", status: "refused", step: "verify", reason: "bad signature", at: "2026-10-23T05:18:42Z" }
+    const rolledBack = { from: "v1.67.1", to: "v1.67.2", status: "rolled-back", step: "health", reason: "server down", at: "2026-10-23T05:21:10Z" }
+    assert.equal(await watch.notifyUpdateResults(dir, [rolledBack, refused], dispatch), 2)
+    assert.deepEqual(events.map(e => e.target), ["v1.67.9", "v1.67.2"])
+    assert.equal(await watch.notifyUpdateResults(dir, [refused, rolledBack], dispatch), 0)
+    const ok = { ...rolledBack, status: "success", step: "commit", at: "2026-10-23T06:00:00Z" }
+    const manual = { ...rolledBack, step: "manual", at: "2026-10-23T06:10:00Z" }
+    assert.equal(await watch.notifyUpdateResults(dir, [refused, rolledBack, ok, manual], dispatch), 0)
+    assert.equal(events.length, 2)
+
+    // A result written after the boot check is notified when the worker announces it.
+    const dir2 = await mkdtemp(join(tmpdir(), "hsi-update-announce-"))
+    let history: any[] = []
+    let announce: () => void = () => {}
+    const seen: any[] = []
+    const watcher = watch.watchUpdateResults({
+      dir: () => dir2,
+      readStatus: async () => ({ last: history.at(-1) ?? null, current: "v1.67.1", previous: [], history }),
+      dispatch: e => { seen.push(e) },
+      subscribe: cb => { announce = cb },
+    })
+    await watcher.check()
+    assert.equal(seen.length, 0)
+    history = [rolledBack]
+    announce()
+    await watcher.idle()
+    assert.equal(seen.length, 1)
+    assert.equal(seen[0].target, "v1.67.2")
+    // An older worker reports only last: it is still read.
+    history = []
+    const legacy = watch.watchUpdateResults({
+      dir: () => dir2, dispatch: e => { seen.push(e) }, subscribe: () => {},
+      readStatus: async () => ({ last: { ...refused, at: "2026-10-24T00:00:00Z" }, current: "v1.67.1", previous: [] }),
+    })
+    await legacy.check()
+    assert.equal(seen.length, 2)
+    await rm(dir2, { recursive: true, force: true })
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+await testUpdateResultHistory()
 
 async function testPendingUpdateIsWrittenAtomically() {
   const { writePendingUpdate } = await import("../trpc/routers/update")
