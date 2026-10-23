@@ -28,6 +28,7 @@ const updateUsage = `usage: hsi-worker update <command>
   replace <version> <staged>              swap releases/<staged> in for releases/<version> (repair)
   health <version> [--timeout 120]        wait until that version is healthy
   commit <from> <to> <snapshot>           record success, prune old versions and snapshots
+  repaired <version>                      record a reinstall of the current version, prune
   rollback [--snapshot <dir>] [--yes] [--reason <text>]   go back to the previous version
   status                                  last result, current and previous versions (JSON)`
 
@@ -97,7 +98,7 @@ func runUpdateCLI(args []string) int {
 	if err := fs.Parse(rest); err != nil || fs.NArg() > 0 {
 		return fail(2, errors.New(updateUsage))
 	}
-	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "replace": 2, "health": 1, "commit": 3, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
+	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "replace": 2, "health": 1, "commit": 3, "repaired": 1, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
 	if n, ok := want[args[0]]; !ok || n != len(pos) {
 		return fail(2, errors.New(updateUsage))
 	}
@@ -149,9 +150,18 @@ func runUpdateCLI(args []string) int {
 			return fail(1, err)
 		}
 		clearInProgress()
-		pruneSnapshots(updateKeep)
-		pruneStaging(stagingMaxAge)
-		pruneReleases(updateKeep)
+		pruneUpdateState()
+	case "repaired":
+		if err := checkInstalledVersion(pos[0]); err != nil {
+			return fail(2, err)
+		}
+		if currentVersion() != pos[0] {
+			return fail(1, fmt.Errorf("%s is not the current version (%s)", pos[0], currentVersion()))
+		}
+		if err := writeLast(lastResult{From: pos[0], To: pos[0], Status: "success", Step: "repair"}); err != nil {
+			return fail(1, err)
+		}
+		pruneUpdateState()
 	case "rollback":
 		return updateRollbackCLI(*snapshot, *yes, *reason)
 	case "status":
@@ -426,6 +436,7 @@ type previousVersion struct {
 // Previous lists every other installed version for information.
 type updateStatusReply struct {
 	Last            *lastResult       `json:"last"`
+	History         []lastResult      `json:"history"`
 	Current         string            `json:"current"`
 	Previous        []previousVersion `json:"previous"`
 	RollbackTarget  *previousVersion  `json:"rollbackTarget"`
@@ -438,6 +449,10 @@ func updateStatus() updateStatusReply {
 		RollbackCommand: fmt.Sprintf("sudo %s-worker update rollback", unitPrefix())}
 	if r, err := readLast(); err == nil {
 		st.Last = r
+	}
+	st.History = readResultHistory()
+	if st.History == nil {
+		st.History = []lastResult{}
 	}
 	if s, ok := latestSnapshotFor(st.Current); ok {
 		if fi, err := os.Lstat(filepath.Join(releasesDir(), s.Manifest.From)); err == nil && fi.IsDir() {

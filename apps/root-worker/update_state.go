@@ -352,11 +352,58 @@ func readInProgress() (*inProgress, error) {
 	return &p, nil
 }
 
+// updateHistoryMax is how many results results.jsonl keeps.
+const updateHistoryMax = 20
+
+// writeLast records an update result: appended to results.jsonl (the last
+// updateHistoryMax, oldest first, rewritten atomically), so a result is never lost
+// to the next one before the backend reads it, then written to last.json and
+// announced to the backend (publishUpdateResult). Each result gets a time after the
+// previous one, so the backend can tell them apart.
 func writeLast(r lastResult) error {
 	if r.At.IsZero() {
 		r.At = time.Now().UTC()
 	}
-	return writeStateJSON("last.json", r)
+	h := readResultHistory()
+	if n := len(h); n > 0 && !r.At.After(h[n-1].At) {
+		r.At = h[n-1].At.Add(time.Millisecond)
+	}
+	h = append(h, r)
+	if len(h) > updateHistoryMax {
+		h = h[len(h)-updateHistoryMax:]
+	}
+	var buf []byte
+	for _, e := range h {
+		b, _ := json.Marshal(e)
+		buf = append(append(buf, b...), '\n')
+	}
+	if err := os.MkdirAll(updateStateDir(), 0o700); err != nil {
+		return err
+	}
+	if err := writeBackupFile(filepath.Join(updateStateDir(), "results.jsonl"), buf, 0o644); err != nil {
+		return err
+	}
+	if err := writeStateJSON("last.json", r); err != nil {
+		return err
+	}
+	publishUpdateResult(r)
+	return nil
+}
+
+// readResultHistory is results.jsonl, oldest first; unreadable lines are skipped.
+func readResultHistory() []lastResult {
+	b, err := os.ReadFile(filepath.Join(updateStateDir(), "results.jsonl"))
+	if err != nil {
+		return nil
+	}
+	var out []lastResult
+	for _, line := range strings.Split(string(b), "\n") {
+		var r lastResult
+		if strings.TrimSpace(line) != "" && json.Unmarshal([]byte(line), &r) == nil {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func readLast() (*lastResult, error) {
@@ -638,15 +685,39 @@ func listSnapshots() []updateSnapshot {
 	return out
 }
 
-// pruneSnapshots keeps the keep newest snapshots and removes the others, and any
-// snapshot dir whose manifest is missing or unreadable.
+// pruneUpdateState is the retention applied after a commit, a rollback, a recovery
+// and a repair: releases first (pruneReleases), then the snapshots, which go with
+// the release they roll back to (pruneSnapshots), then staging leftovers.
+func pruneUpdateState() {
+	pruneReleases(updateKeep)
+	pruneSnapshots(updateKeep)
+	pruneStaging(stagingMaxAge)
+}
+
+// pruneSnapshots keeps the snapshot `update rollback` would use and, up to keep in all,
+// the newest others whose release (From) is still installed or current; it removes
+// the rest (a snapshot whose release is gone rolls back to nothing) and any snapshot
+// dir whose manifest is missing or unreadable.
 func pruneSnapshots(keep int) {
 	readable := map[string]bool{}
-	for i, s := range listSnapshots() {
+	cur := currentVersion()
+	target, hasTarget := latestSnapshotFor(cur)
+	kept := 0
+	if hasTarget {
+		kept = 1
+	}
+	for _, s := range listSnapshots() {
 		readable[s.Dir] = true
-		if i >= keep {
-			removeStateDir(s.Dir)
+		if hasTarget && s.Dir == target.Dir {
+			continue
 		}
+		fi, err := os.Lstat(filepath.Join(releasesDir(), s.Manifest.From))
+		installed := s.Manifest.From == cur || (err == nil && fi.IsDir())
+		if installed && kept < keep {
+			kept++
+			continue
+		}
+		removeStateDir(s.Dir)
 	}
 	entries, _ := os.ReadDir(updateStateDir())
 	for _, e := range entries {
@@ -690,15 +761,17 @@ func installedReleases() []string {
 	return out
 }
 
-// pruneReleases keeps current, the keep newest other versions and any version a
-// remaining snapshot rolls back to.
+// pruneReleases keeps current, the release `update rollback` goes back to (the From
+// of latestSnapshotFor current) and the keep newest other releases, and removes the
+// others.
 func pruneReleases(keep int) {
-	needed := map[string]bool{}
-	for _, s := range listSnapshots() {
-		needed[s.Manifest.From] = true
+	cur := currentVersion()
+	kept := map[string]bool{cur: true}
+	if t, ok := latestSnapshotFor(cur); ok {
+		kept[t.Manifest.From] = true
 	}
 	for i, v := range installedReleases() {
-		if i < keep || needed[v] {
+		if i < keep || kept[v] {
 			continue
 		}
 		if err := removeRelease(v); err != nil {

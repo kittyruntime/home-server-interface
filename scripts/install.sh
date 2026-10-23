@@ -2067,6 +2067,9 @@ EOF
       worker_update "$NEW_WORKER" commit "$OLD_VERSION" "$VERSION" "$SNAP" \
         || die "Could not record the successful update."
       UPDATE_FINISHED=1
+    elif (( REPAIR )); then
+      # A reinstall is a result too: the status no longer shows an older one.
+      worker_update "$NEW_WORKER" repaired "$VERSION" || warn "Could not record the reinstall of $VERSION."
     fi
     success "$VERSION is healthy"
   else

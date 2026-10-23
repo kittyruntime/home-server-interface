@@ -67,9 +67,27 @@ func rollback(snapshotDir, step, reason string) error {
 	if len(errs) > 0 {
 		return failed(m.From, m.To, errors.New(strings.Join(errs, "; ")))
 	}
+	removeFailedRelease(snapshotDir, m)
 	err = writeLast(lastResult{From: m.From, To: m.To, Status: "rolled-back", Step: step, Reason: reason})
 	clearInProgress()
+	pruneUpdateState()
 	return err
+}
+
+// removeFailedRelease deletes releases/<To> once the rollback to From succeeded,
+// unless it is current or another snapshot still rolls back to it.
+func removeFailedRelease(snapshotDir string, m snapshotManifest) {
+	if m.To == m.From || m.To == currentVersion() {
+		return
+	}
+	for _, s := range listSnapshots() {
+		if s.Dir != filepath.Clean(snapshotDir) && s.Manifest.From == m.To {
+			return
+		}
+	}
+	if err := removeRelease(m.To); err != nil {
+		logger.Warn("update: could not remove the failed release", "version", m.To, "error", err.Error())
+	}
 }
 
 // restoreDatabase puts the snapshot database in place. The copies are staged first,
