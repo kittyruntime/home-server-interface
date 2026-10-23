@@ -504,3 +504,33 @@ func TestSwitchCurrentRefusesPlantedTempFolder(t *testing.T) {
 		t.Fatal("the planted folder was touched")
 	}
 }
+
+// A live release missing behind current (killed repair, removed by hand) is replaced
+// by a plain rename.
+func TestReplaceRenamesWhenTheLiveReleaseIsMissing(t *testing.T) {
+	e := stagedRepair(t)
+	if err := os.RemoveAll(filepath.Join(e.install, "releases", "v2.0.0")); err != nil {
+		t.Fatal(err)
+	}
+	if code := runUpdateCLI([]string{"replace", "v2.0.0", ".staging-77"}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if b, _ := os.ReadFile(filepath.Join(e.install, "current", "server.js")); string(b) != "new" {
+		t.Fatalf("current holds %q", b)
+	}
+}
+
+// Once the exchange is done the new release is live: failing to remove the old copy
+// is a warning, not a failed replace.
+func TestReplaceWarnsWhenTheOldCopyStays(t *testing.T) {
+	e := stagedRepair(t)
+	prev := removeOldReleaseCopy
+	removeOldReleaseCopy = func(*os.File, string) error { return syscall.EBUSY }
+	t.Cleanup(func() { removeOldReleaseCopy = prev })
+	if code := runUpdateCLI([]string{"replace", "v2.0.0", ".staging-77"}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if b, _ := os.ReadFile(filepath.Join(e.install, "current", "server.js")); string(b) != "new" {
+		t.Fatalf("current holds %q", b)
+	}
+}

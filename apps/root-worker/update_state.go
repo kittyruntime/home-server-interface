@@ -496,8 +496,9 @@ var stagedReleaseRe = regexp.MustCompile(`^\.staging-\d+$`)
 // replaceRelease installs the staged copy releases/<staged> in place of releases/<version>,
 // the release current leads to when the installer runs again on the installed version
 // (a repair). The two folders are exchanged in one step, so the live release is never
-// missing, then the previous copy, now at <staged>, is removed. Descriptors only; the
-// staged copy must pass checkReleaseTrusted.
+// missing, then the previous copy, now at <staged>, is removed (a failure from there on
+// only warns: the new copy is live). When releases/<version> is missing it is a plain
+// rename. Descriptors only; the staged copy must pass checkReleaseTrusted.
 func replaceRelease(version, staged string) error {
 	if err := checkInstalledVersion(version); err != nil {
 		return err
@@ -515,32 +516,56 @@ func replaceRelease(version, staged string) error {
 		return fmt.Errorf("%s is not a real directory: %w", releasesDir(), err)
 	}
 	defer rel.Close()
-	for _, name := range []string{version, staged} {
-		d, err := openatDir(rel, name)
-		if err != nil {
-			return fmt.Errorf("%s is not a release folder of %s", name, releasesDir())
-		}
-		if name == staged {
-			err = checkReleaseTrusted(d, version)
-		}
-		d.Close()
-		if err != nil {
-			return err
-		}
+	st, err := openatDir(rel, staged)
+	if err != nil {
+		return fmt.Errorf("%s is not a release folder of %s", staged, releasesDir())
 	}
+	err = checkReleaseTrusted(st, version)
+	st.Close()
+	if err != nil {
+		return err
+	}
+	live, err := openatDir(rel, version)
+	if target, lerr := readlinkAt(root, "current"); errors.Is(err, syscall.ENOENT) && lerr == nil &&
+		target == filepath.Join(releasesDir(), version) {
+		// current dangles: nothing live to keep, a plain rename.
+		if err := renameat(int(rel.Fd()), staged, int(rel.Fd()), version); err != nil {
+			return fmt.Errorf("replace %s: %w", version, err)
+		}
+		_ = rel.Sync()
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("%s is not a release folder of %s", version, releasesDir())
+	}
+	live.Close()
 	if err := exchangeAt(rel, staged, version); err != nil {
 		return fmt.Errorf("replace %s: %w", version, err)
 	}
-	old, err := openatDir(rel, staged)
+	// The new copy is live from here: what follows can only warn.
+	if err := rel.Sync(); err != nil {
+		logger.Warn("update: could not sync the releases folder", "error", err.Error())
+	}
+	if err := removeOldReleaseCopy(rel, staged); err != nil {
+		msg := fmt.Sprintf("%s is replaced; its previous copy stays in %s: %v", version, filepath.Join(releasesDir(), staged), err)
+		fmt.Fprintln(os.Stderr, "warning:", msg)
+		logger.Warn("update: " + msg)
+	}
+	return nil
+}
+
+// removeOldReleaseCopy deletes releases/<name> by descriptor (tests swap it).
+var removeOldReleaseCopy = func(rel *os.File, name string) error {
+	old, err := openatDir(rel, name)
 	if err != nil {
 		return err
 	}
 	err = removeChildren(old)
 	old.Close()
 	if err != nil {
-		return fmt.Errorf("remove the previous copy of %s: %w", version, err)
+		return err
 	}
-	return unlinkat(rel, staged, atRemoveDir)
+	return unlinkat(rel, name, atRemoveDir)
 }
 
 // currentVersion is the release the current link points to, else the VERSION file

@@ -209,5 +209,5 @@ func exchangeAt(dir *os.File, a, b string) error {
 	if _, _, e := syscall.Syscall6(sysRenameat2, dir.Fd(), uintptr(unsafe.Pointer(pa)), dir.Fd(), uintptr(unsafe.Pointer(pb)), renameExchangeFlag, 0); e != 0 {
 		return e
 	}
-	return dir.Sync()
+	return nil
 }
