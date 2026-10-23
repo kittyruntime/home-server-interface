@@ -486,6 +486,30 @@ recover_interrupted_update() {
   success "Interrupted update rolled back"
 }
 
+# The folders under HOME that nvm, npm and node write to.
+APP_HOME_DIRS=(.nvm .npm .cache .config .local)
+
+# prepare_app_home: installs migrated from the app -> hsi rename keep HOME ==
+# INSTALL_DIR, which the installer makes root's, so the app user can no longer create
+# its dot folders there. Each missing one is created for it. Done only once INSTALL_DIR
+# is root's and closed to other writers (before that the app user creates them
+# itself), so nothing can be swapped between the check and the act; a dot folder
+# that is a link or not a folder is refused, never followed.
+prepare_app_home() {
+  local d p found
+  [[ "$APP_HOME" == "$INSTALL_DIR" && -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || return 0
+  found=$(find "$INSTALL_DIR" -maxdepth 0 \( ! -uid "$CODE_UID" -o -perm /022 \) -print -quit) || return 1
+  [[ -z "$found" ]] || return 0
+  for d in "${APP_HOME_DIRS[@]}"; do
+    p="$INSTALL_DIR/$d"
+    if [[ -L "$p" || ( -e "$p" && ! -d "$p" ) ]]; then
+      die "$p is a link or not a folder: the installer refuses to work through it. Replace it with a real folder, then re-run."
+    fi
+    [[ -d "$p" ]] && continue
+    mkdir -m 0700 -- "$p" && chown -h "$APP_USER:" "$p" || return 1
+  done
+}
+
 # END release functions
 
 # ── Host packages ──────────────────────────────────────────────────────────────
@@ -959,6 +983,7 @@ else
 
   APP_HOME=$(getent passwd "$APP_USER" | cut -d: -f6)
   NVM_DIR="$APP_HOME/.nvm"
+  prepare_app_home || die "Could not prepare the folders of $APP_USER in $APP_HOME."
 
   app_exec() {
     run_as "$APP_USER" "
@@ -1102,6 +1127,8 @@ else
   mkdir -p "$INSTALL_DIR"
   chown -h root:root "$INSTALL_DIR"
   chmod 755 "$INSTALL_DIR"
+  # A legacy home in INSTALL_DIR: its dot folders, now that INSTALL_DIR is root's.
+  prepare_app_home || die "Could not prepare the folders of $APP_USER in $APP_HOME."
   check_data_paths
   mkdir -p "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
   chown -h root:root "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
