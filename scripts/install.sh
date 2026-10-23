@@ -453,6 +453,39 @@ worker_update() {
     "$bin" update "$@"
 }
 
+# trusted_release <dir>: INSTALL_DIR and releases/ are root's and closed to other
+# writers, and so is everything in <dir> (code_tree_trusted): nothing on the way to
+# what root runs from it can be swapped between the check and the run.
+trusted_release() {
+  local found
+  [[ -d "$1" && ! -L "$1" && ! -L "$INSTALL_DIR" && ! -L "$INSTALL_DIR/releases" ]] || return 1
+  found=$(find "$INSTALL_DIR" "$INSTALL_DIR/releases" -maxdepth 0 \( ! -uid "$CODE_UID" -o -perm /022 \) -print -quit) || return 1
+  [[ -z "$found" ]] && code_tree_trusted "$1"
+}
+
+# recover_interrupted_update: an installer killed midway left its marker. When the
+# worker did not roll it back yet (a version before #9a is current, or it did not
+# restart), it is rolled back before anything else. Every failure says why.
+recover_interrupted_update() {
+  local to="" bin status=""
+  to=$(sed -n 's/^ *"to": *"\([^"]*\)".*/\1/p' "$UPDATE_STATE/in-progress.json" 2>/dev/null | head -1) || true
+  # The worker of the release updated to when it is trusted, else the one just
+  # verified: both have the update commands, the version floor guarantees it.
+  bin="$INSTALL_DIR/releases/$to/bin/${RELEASE_APP_NAME}-worker"
+  if ! [[ "$to" =~ $INSTALLED_VERSION_RE ]] || ! trusted_release "$INSTALL_DIR/releases/$to" || ! trusted_worker "$bin"; then
+    bin="$RELEASE_STAGE/bin/${RELEASE_APP_NAME}-worker"
+  fi
+  warn "An earlier update to ${to:-an unknown version} was interrupted: rolling it back first."
+  DB_FILE=$(sed -n 's/^HSI_UPDATE_DB=//p' "$WORKER_ENV" 2>/dev/null | head -1) || true
+  DB_FILE=${DB_FILE:-$INSTALL_DIR/database/data/hsi.db}
+  ENV_FILE="$INSTALL_DIR/.env"
+  worker_update "$bin" recover || warn "The worker could not finish the recovery."
+  status=$(sed -n 's/^ *"status": *"\([^"]*\)".*/\1/p' "$UPDATE_STATE/last.json" 2>/dev/null | head -1) || true
+  [[ ! -f "$UPDATE_STATE/in-progress.json" && "$status" == "rolled-back" ]] \
+    || die "The interrupted update could not be rolled back (see $UPDATE_STATE/last.json). Run 'sudo ${APP_NAME}-worker update rollback', then re-run."
+  success "Interrupted update rolled back"
+}
+
 # END release functions
 
 # ── Host packages ──────────────────────────────────────────────────────────────
@@ -558,28 +591,6 @@ rollback_update() {
   else
     warn "The rollback failed: run 'sudo ${APP_NAME}-worker update rollback --snapshot $SNAP'."
   fi
-}
-
-# recover_interrupted_update: an installer killed midway left its marker. When the
-# worker did not roll it back yet (a version before #9a is current, or it did not
-# restart), it is rolled back before anything else.
-recover_interrupted_update() {
-  local to bin status
-  to=$(sed -n 's/^ *"to": *"\([^"]*\)".*/\1/p' "$UPDATE_STATE/in-progress.json" | head -1)
-  # The worker of the release updated to, else the one just verified: both have
-  # the update commands, the version floor guarantees it.
-  bin="$INSTALL_DIR/releases/$to/bin/${RELEASE_APP_NAME}-worker"
-  [[ "$to" =~ $INSTALLED_VERSION_RE && -x "$bin" && ! -L "$INSTALL_DIR/releases/$to" ]] \
-    || bin="$RELEASE_STAGE/bin/${RELEASE_APP_NAME}-worker"
-  warn "An earlier update to $to was interrupted: rolling it back first."
-  DB_FILE=$(sed -n 's/^HSI_UPDATE_DB=//p' "$WORKER_ENV" 2>/dev/null | head -1)
-  DB_FILE=${DB_FILE:-$INSTALL_DIR/database/data/hsi.db}
-  ENV_FILE="$INSTALL_DIR/.env"
-  worker_update "$bin" recover || true
-  status=$(sed -n 's/^ *"status": *"\([^"]*\)".*/\1/p' "$UPDATE_STATE/last.json" 2>/dev/null | head -1)
-  [[ ! -f "$UPDATE_STATE/in-progress.json" && "$status" == "rolled-back" ]] \
-    || die "The interrupted update could not be rolled back (see $UPDATE_STATE/last.json). Run 'sudo ${APP_NAME}-worker update rollback', then re-run."
-  success "Interrupted update rolled back"
 }
 
 cleanup_install_exit() {
