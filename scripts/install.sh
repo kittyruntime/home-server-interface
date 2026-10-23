@@ -416,7 +416,8 @@ LOG_FILES=(app.log root-worker.log backup.log)
 
 # prepare_log_dir <dir> <group>: root's 0755, since systemd opens its files as root.
 # A link in place of the dir or of any entry, and a file with other hard links, is
-# removed, never followed; the remaining regular files and the LOG_FILES, created
+# removed, never followed; a LOG_FILES name that is not a regular file is moved aside
+# (a folder) or removed; the remaining regular files and the LOG_FILES, created
 # when missing, are root:<group> 0640, so the backend reads them (job logs) without
 # writing. The dir is root's before its entries are looked at, so the app user can
 # no longer swap them.
@@ -433,8 +434,15 @@ prepare_log_dir() {
       rm -f -- "$f" || return 1
     fi
   done
+  # systemd appends to each LOG_FILES entry: anything but a regular file there is
+  # moved aside (a folder, left as it is and never written into) or removed.
   for f in "${LOG_FILES[@]}"; do
-    [[ -e "$dir/$f" ]] || : > "$dir/$f" || return 1
+    if [[ -d "$dir/$f" && ! -L "$dir/$f" ]]; then
+      mv -T -- "$dir/$f" "$dir/$f.moved-$(date +%Y%m%d%H%M%S)-$$" || return 1
+    elif [[ ( -e "$dir/$f" || -L "$dir/$f" ) && ! -f "$dir/$f" ]]; then
+      rm -f -- "$dir/$f" || return 1
+    fi
+    [[ -f "$dir/$f" ]] || : > "$dir/$f" || return 1
   done
   for f in "$dir"/*; do
     [[ -f "$f" && ! -L "$f" ]] || continue
