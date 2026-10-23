@@ -37,8 +37,10 @@
 #   VERSION               Release tag to install     (default: latest)
 #   INSTALL_DIR           Installation directory     (default: /opt/APP_NAME)
 #   APP_USER              System user to run as      (default: APP_NAME)
-#   HSI_ALLOW_UNSIGNED    Set to 1 (or pass --allow-unsigned) to install a
-#                         release published before signing (no SHA256SUMS)
+#   HSI_ALLOW_UNSIGNED    Set to 1 (or pass --allow-unsigned) to skip the
+#                         signature on a host without OpenSSL 3 (checksums
+#                         are still checked), or take a release without
+#                         SHA256SUMS (none from v1.67.0 on)
 #   HSI_RELEASE_BASE_URL  Where releases are downloaded from (tests, VM)
 #   HSI_RELEASE_ARCHIVE   Archive already verified by `hsi-worker update apply`
 # =============================================================================
@@ -227,7 +229,7 @@ stage_release() {
     warn "The release $VERSION is not signed (no SHA256SUMS): installing it unverified (--allow-unsigned)."
     curl -fsSL --progress-bar "$url/$name" -o "$TARBALL" || die "Download failed: $url/$name"
   else
-    die "The release $VERSION has no SHA256SUMS (or it could not be downloaded), so it cannot be verified. A release published before signing installs with --allow-unsigned (or HSI_ALLOW_UNSIGNED=1)."
+    die "The release $VERSION has no SHA256SUMS (or it could not be downloaded), so it cannot be verified. Every release this installer accepts is signed: check the version and the network, then re-run (--allow-unsigned would take it unverified)."
   fi
   tar -tzf "$TARBALL" | while IFS= read -r entry; do
     [[ "$entry" == "$root" || "$entry" == "$root/"* ]] || exit 1
