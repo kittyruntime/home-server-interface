@@ -118,12 +118,14 @@ install_restic() {
 }
 
 # Run a shell snippet as another user with that user's HOME. runuser ships with
-# util-linux, so the installer does not depend on sudo being installed.
+# util-linux, so the installer does not depend on sudo being installed. The update
+# lock (fd 9) is closed for it: an app process must not hold the lock or write to it.
+# app_exec goes through here too.
 run_as() {
   local user=$1 home
   shift
   home=$(getent passwd "$user" | cut -d: -f6)
-  runuser -u "$user" -- env HOME="${home:-/}" bash -c "$*"
+  runuser -u "$user" -- env HOME="${home:-/}" bash -c "$*" 9>&-
 }
 
 # ── Safe updates (#9a): signed releases, side-by-side layout ───────────────────

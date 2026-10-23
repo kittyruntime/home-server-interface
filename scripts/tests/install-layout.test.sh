@@ -336,6 +336,17 @@ rm "$TIR/opt/releases"
   ENV_FILE="$TIR/opt/.env" APP_HOME=/nonexistent APP_USER="$(id -un)" FROM_SOURCE=0; take_install_root ) >/dev/null 2>&1; rc=$?
 check "a real install dir is prepared" '[[ $rc -eq 0 && -d "$TIR/opt/releases" && -d "$TIR/opt/database/data" && -d "$TIR/opt/data" ]]'
 
+# Commands run as the app user never inherit the update lock (fd 9): an app process
+# could keep the lock held, or append to the lock file.
+sed -n '/^run_as() {/,/^}/p' "$ROOT/scripts/install.sh" > "$TMP/run_as.sh"
+fd_seen="$( (
+  source "$TMP/run_as.sh"
+  runuser() { shift 3; "$@"; }   # runuser -u <user> -- cmd...: run cmd as is
+  exec 9>>"$TMP/update.lock"
+  run_as "$(id -un)" '[[ -e /proc/self/fd/9 ]] && echo open || echo closed'
+) 2>&1)"
+check "run_as children do not see the lock fd" '[[ "$fd_seen" == closed ]]'
+
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
 line_of() { grep -n -m1 -F -- "$1" "$ROOT/scripts/install.sh" | cut -d: -f1; }
