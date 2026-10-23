@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependencies**: vite 7.3.7 (development server fixes, including
+  launch-editor command execution) and klauspost/compress 1.20.3 in the root
+  worker (out-of-bounds write in s2). Other dependencies updated within their
+  current major versions, and the CI actions moved to their Node 24 releases.
+
 ## [1.67.0] - 2026-10-23
 
 ### Security
