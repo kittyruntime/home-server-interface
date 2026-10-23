@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is resolve_installed; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -78,10 +78,10 @@ check "linking again is harmless" '[[ "$(readlink "$INSTALL_DIR/server.js")" == 
 # /usr/local/bin, the app-owned copy in bin/ does not become the release's worker.
 ALT="$TMP/alt"
 mkdir -p "$ALT/database/data" "$ALT/bin"; echo s > "$ALT/server.js"; echo 'app-owned copy' > "$ALT/bin/hsi-worker"
-( INSTALL_DIR="$ALT"; DB_DIR="$ALT/database/data"; SYSTEM_WORKER="$TMP/none"; OLD_VERSION=""
+( INSTALL_DIR="$ALT"; DB_DIR="$ALT/database/data"; OLD_VERSION=""
   convert_flat_install && [[ "$OLD_VERSION" == v0.0.0-flat && -f "$ALT/releases/v0.0.0-flat/server.js" ]] ); rc=$?
 check "flat install without VERSION becomes v0.0.0-flat" '[[ $rc -eq 0 ]]'
-check "the app-owned worker copy is not kept as the release's worker" '[[ ! -e "$ALT/releases/v0.0.0-flat/bin/hsi-worker" ]]'
+check "the app-owned worker copy is not kept as the release's worker" 'cmp -s "$SYSTEM_WORKER" "$ALT/releases/v0.0.0-flat/bin/hsi-worker"''
 
 # The conversion never writes through a link the app user planted in its bin/:
 # the moved tree is root's before the worker is copied in.
@@ -142,12 +142,12 @@ interrupt_c1e() { # a conversion killed before root_owned, the tree left the app
   ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; DB_DIR="$C1E/database/data"; root_owned() { return 1; }; convert_flat_install ) >/dev/null 2>&1
   chmod 777 "$C1E/releases/v1.65.0/public"
 }
-q_c1e() { ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; quarantine_untrusted_releases ) 2>&1; }
+q_c1e() { ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; IS_UPDATE=1; quarantine_untrusted_releases ) 2>&1; }
 flat_c1e; interrupt_c1e
 check "an interrupted conversion is recorded in the update state, not in INSTALL_DIR" '[[ -f "$CONV_STATE/conversion" && ! -e "$C1E/.converting" ]] && grep -qx "version=v1.65.0" "$CONV_STATE/conversion" && grep -qx "install_inode=$(stat -c %i "$C1E")" "$CONV_STATE/conversion"'
 out="$(q_c1e)"; rc=$?
 check "the interrupted conversion is not quarantined" '[[ $rc -eq 0 && -d "$C1E/releases/v1.65.0" ]] && ! compgen -G "$C1E/.untrusted-*" >/dev/null'
-check "it is still a flat install to convert" 'INSTALL_DIR="$C1E" is_flat_install'
+check "it is still a flat install to convert" 'INSTALL_DIR="$C1E" UPDATE_STATE="$CONV_STATE" is_flat_install'
 echo 'planted' > "$C1E/releases/v1.65.0/bin/hsi-worker"   # the app user rewrites its worker meanwhile
 ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; DB_DIR="$C1E/database/data"; root_owned() { chmod -R go-w,ug-s "$@"; }; OLD_VERSION=""
   convert_flat_install && [[ "$OLD_VERSION" == v1.65.0 ]] ) >/dev/null 2>&1; rc=$?
@@ -197,7 +197,7 @@ check "a group-writable release is moved aside" '[[ ! -e "$C1B/releases/v1.66.0"
 check "a release that is a link is moved aside, not followed" '[[ ! -L "$C1B/releases/v1.62.0" && -d "$TMP/c1a-victim" ]] && compgen -G "$C1B/.untrusted-*/v1.62.0" >/dev/null'
 check "a current leading to a moved release is moved aside" '[[ ! -e "$C1B/current" && ! -L "$C1B/current" ]]'
 check "trusted releases stay" '[[ -d "$C1B/releases/v1.64.0" && -d "$C1B/releases/v1.63.0" ]]'
-check "the flat install is converted next" 'INSTALL_DIR="$C1B" is_flat_install'
+check "with root-owned releases left it is a releases install, not a flat one" '! INSTALL_DIR="$C1B" is_flat_install'
 ln -s "$C1B/releases/v1.64.0/../v1.63.0" "$C1B/current"
 ( INSTALL_DIR="$C1B"; quarantine_untrusted_releases ) >/dev/null 2>&1
 check "a current that is not exactly releases/<version> is moved aside" '[[ ! -L "$C1B/current" && -d "$C1B/releases/v1.63.0" ]]'
@@ -206,6 +206,7 @@ ln -s "$C1B/releases/v1.64.0" "$C1B/current"
 check "a current leading to a trusted release stays" '[[ "$(readlink "$C1B/current")" == "$C1B/releases/v1.64.0" ]]'
 ( INSTALL_DIR="$C1B"; CODE_UID=$(( $(id -u) + 1 )); quarantine_untrusted_releases ) >/dev/null 2>&1
 check "releases that are not root's are moved aside" '[[ ! -e "$C1B/releases/v1.64.0" && ! -L "$C1B/current" ]]'
+check "with every planted release moved aside the flat install is converted next" 'INSTALL_DIR="$C1B" is_flat_install'
 
 # The new release next to it.
 VERSION=v1.67.0
@@ -423,6 +424,74 @@ check "current is re-checked before the switch" 'grep -A3 "mark_update switch" "
 check "current is checked after the switch" 'grep -A2 "switch \"\$VERSION\" || die" "$ROOT/scripts/install.sh" | grep -q "current_release_is \"\$VERSION\""'
 check "a repair is refused while an update is in progress" 'grep -A3 "^    REPAIR=1$" "$ROOT/scripts/install.sh" | grep -q "in-progress.json"'
 check "a repair re-checks current before the replace" 'grep -B3 "replace \"\$VERSION\"" "$ROOT/scripts/install.sh" | grep -q "current_release_is \"\$VERSION\""'
+
+# What a run updates from is decided from the releases layout, never from what the app
+# user could write (the flat VERSION file), and never by turning a releases install
+# into a flat one.
+lay() { # <dir>: an install dir in the releases layout, worker linked through current
+  rm -rf "$1"; mkdir -p "$1/database/data" "$1/releases" "$TMP/lay-usr"
+  ln -sfn "$1/current/bin/hsi-worker" "$TMP/lay-usr/hsi-worker"
+}
+lay_release() { # <dir> <version>
+  mkdir -p "$1/releases/$2/bin"; echo "worker $2" > "$1/releases/$2/bin/hsi-worker"; chmod 755 "$1/releases/$2/bin/hsi-worker"
+  echo s > "$1/releases/$2/server.js"; echo "$2" > "$1/releases/$2/VERSION"
+}
+resolve_in() { # <dir> <is update>: resolve_installed there, prints OLD REPAIR SAFE
+  ( INSTALL_DIR="$1"; UPDATE_STATE="$TMP/lay-state"; DB_DIR="$1/database/data"; SYSTEM_WORKER="$TMP/lay-usr/hsi-worker"
+    IS_UPDATE=$2; VERSION=v1.67.0; rm -rf "$UPDATE_STATE"; mkdir -m 700 "$UPDATE_STATE"
+    quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION repair=$REPAIR safe=$SAFE_UPDATE" ) 2>&1
+}
+LAY="$TMP/lay"
+lay "$LAY"; lay_release "$LAY" v1.66.0
+ln -s "$LAY/releases/v1.67.0" "$LAY/current"   # v1.67.0 removed: current dangles
+ln -s "$LAY/current/server.js" "$LAY/server.js"
+out="$(resolve_in "$LAY" 1)"
+check "a dangling current is pointed at the remaining release" '[[ "$out" == *"old=v1.66.0 repair=0 safe=1"* && "$(readlink "$LAY/current")" == "$LAY/releases/v1.66.0" ]]'
+check "the dangling current is reported" '[[ "$out" == *WARN*current* ]]'
+check "a releases install is never converted as flat" '[[ "$(cat "$LAY/releases/v1.66.0/bin/hsi-worker")" == "worker v1.66.0" && ! -e "$LAY/releases/v0.0.0-flat" ]]'
+lay "$LAY"; lay_release "$LAY" v1.65.0; lay_release "$LAY" v1.66.2; lay_release "$LAY" v1.66.10
+ln -s "$LAY/releases/v1.67.0" "$LAY/current"
+out="$(resolve_in "$LAY" 1)"
+check "with several releases the newest is chosen" '[[ "$out" == *"old=v1.66.10 "* && "$(readlink "$LAY/current")" == "$LAY/releases/v1.66.10" ]]'
+lay "$LAY"; ln -s "$LAY/releases/v1.67.0" "$LAY/current"; echo '{}' > "$TMP/lay-last.json"
+out="$( ( INSTALL_DIR="$LAY"; UPDATE_STATE="$TMP/lay-state"; DB_DIR="$LAY/database/data"; SYSTEM_WORKER="$TMP/lay-usr/hsi-worker"
+  IS_UPDATE=1; VERSION=v1.67.0; rm -rf "$UPDATE_STATE"; mkdir -m 700 "$UPDATE_STATE"; cp "$TMP/lay-last.json" "$UPDATE_STATE/last.json"
+  quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION repair=$REPAIR safe=$SAFE_UPDATE" ) 2>&1)"
+check "with no release left the run is a fresh install of the releases" '[[ "$out" == *"old= repair=0 safe=0"* && ! -e "$LAY/releases/v0.0.0-flat" && ! -L "$LAY/current" ]]'
+# A run on the installed version of a releases install is a repair...
+lay "$LAY"; lay_release "$LAY" v1.67.0; ln -s "$LAY/releases/v1.67.0" "$LAY/current"
+out="$(resolve_in "$LAY" 1)"
+check "current on the target version is a repair" '[[ "$out" == *"old=v1.67.0 repair=1 safe=0"* ]]'
+# ...but a flat install whose VERSION file names the target is an update.
+FV="$TMP/flatv"; rm -rf "$FV"; mkdir -p "$FV/database/data" "$FV/public"
+echo s > "$FV/server.js"; echo v1.67.0 > "$FV/VERSION"
+out="$( ( INSTALL_DIR="$FV"; UPDATE_STATE="$TMP/lay-state"; DB_DIR="$FV/database/data"; IS_UPDATE=1; VERSION=v1.67.0
+  rm -rf "$UPDATE_STATE"; mkdir -m 700 "$UPDATE_STATE"; quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION repair=$REPAIR safe=$SAFE_UPDATE" ) 2>&1)"
+check "a flat VERSION naming the target never makes a repair" '[[ "$out" == *"repair=0 safe=1"* && "$out" != *"old=v1.67.0 "* && ! -e "$FV/releases/v1.67.0" ]]'
+check "that flat version is kept under its own name" '[[ "$out" == *"old=v1.67.0-flat "* && -f "$FV/releases/v1.67.0-flat/server.js" ]]'
+# The conversion never removes a worker it cannot replace, nor converts an empty tree.
+NW="$TMP/noworker"; rm -rf "$NW"; mkdir -p "$NW/database/data" "$NW/bin"; echo s > "$NW/server.js"; echo 'app copy' > "$NW/bin/hsi-worker"
+( INSTALL_DIR="$NW"; DB_DIR="$NW/database/data"; SYSTEM_WORKER="$TMP/lay-usr/hsi-worker"; convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "no conversion without a real root worker to keep" '[[ $rc -ne 0 && -f "$NW/server.js" && "$(cat "$NW/bin/hsi-worker")" == "app copy" && ! -e "$NW/releases" ]]'
+rm -f "$UPDATE_STATE/conversion"
+EMPTY="$TMP/emptytree"; rm -rf "$EMPTY"; mkdir -p "$EMPTY/database/data"
+( INSTALL_DIR="$EMPTY"; DB_DIR="$EMPTY/database/data"; convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "an empty tree is never converted into v0.0.0-flat" '[[ $rc -ne 0 && ! -e "$EMPTY/releases/v0.0.0-flat" ]]'
+rm -f "$UPDATE_STATE/conversion"
+# The record is written only once the release folder exists; a record whose release
+# never appeared (nothing moved yet) is stale and cleared.
+check "the record is written after the release folder" 'sed -n "/^convert_flat_install() {/,/^}/p" "$ROOT/scripts/install.sh" | awk "/mkdir -p \"\\\$dest\/database\"/{m=NR} /record_conversion \"\\\$old\"/{r=NR} END{exit !(m && r && m < r)}"'
+ST="$TMP/stale"; rm -rf "$ST" "$TMP/stale-state"; mkdir -p "$ST/database/data" "$ST/releases"; mkdir -m 700 "$TMP/stale-state"
+echo s > "$ST/server.js"; echo v1.65.0 > "$ST/VERSION"
+printf 'version=v1.65.0\ninstall_dir=%s\ninstall_inode=%s\nstarted=%s\n' "$ST" "$(stat -c %i "$ST")" "$(date +%s)" > "$TMP/stale-state/conversion"; chmod 600 "$TMP/stale-state/conversion"
+out="$( ( INSTALL_DIR="$ST"; UPDATE_STATE="$TMP/stale-state"; DB_DIR="$ST/database/data"; IS_UPDATE=1; VERSION=v1.67.0
+  quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION" ) 2>&1)"
+check "a record from before the release folder existed is cleared and the conversion runs" '[[ "$out" == *"old=v1.65.0"* && ! -e "$TMP/stale-state/conversion" && "$(readlink "$ST/current")" == "$ST/releases/v1.65.0" ]]'
+# The exemption for the recorded release holds only when this run converts.
+NC="$TMP/notconv"; rm -rf "$NC" "$TMP/nc-state"; mkdir -p "$NC/database/data" "$NC/releases/v1.65.0"; chmod 777 "$NC/releases/v1.65.0"; mkdir -m 700 "$TMP/nc-state"
+printf 'version=v1.65.0\ninstall_dir=%s\ninstall_inode=%s\nstarted=%s\n' "$NC" "$(stat -c %i "$NC")" "$(date +%s)" > "$TMP/nc-state/conversion"; chmod 600 "$TMP/nc-state/conversion"
+out="$( ( INSTALL_DIR="$NC"; UPDATE_STATE="$TMP/nc-state"; IS_UPDATE=0; quarantine_untrusted_releases ) 2>&1)"; rc=$?
+check "without an update to convert, the recorded release is quarantined and the record cleared" '[[ $rc -eq 0 && ! -e "$NC/releases/v1.65.0" && ! -e "$TMP/nc-state/conversion" && "$out" == *WARN*conversion* ]]'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
