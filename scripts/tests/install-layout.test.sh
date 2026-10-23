@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -272,6 +272,20 @@ check "nothing is done while INSTALL_DIR is still writable by others" '[[ $rc -e
 chmod 755 "$HOMEDIR"
 ( INSTALL_DIR="$TMP/elsewhere" APP_HOME="$HOMEDIR" APP_USER="$(id -un)"; prepare_app_home ) >/dev/null 2>&1
 check "a home outside INSTALL_DIR is left alone" '[[ ! -e "$HOMEDIR/.cache" ]]'
+
+# INSTALL_DIR was the app user's before #9a: releases/ and database/ are checked for
+# links only once INSTALL_DIR is root's, before root changes their mode.
+TIR="$TMP/tir"
+mkdir -p "$TIR/opt" "$TMP/tir-victim"; chmod 700 "$TMP/tir-victim"
+ln -s "$TMP/tir-victim" "$TIR/opt/releases"
+out="$( ( INSTALL_DIR="$TIR/opt" APP_DIR="$TIR/opt" DB_DIR="$TIR/opt/database/data" DB_FILE="$TIR/opt/database/data/hsi.db" \
+  ENV_FILE="$TIR/opt/.env" APP_HOME=/nonexistent APP_USER="$(id -un)" FROM_SOURCE=0; take_install_root ) 2>&1)"; rc=$?
+check "a releases/ swapped for a link is refused" '[[ $rc -ne 0 && "$out" == *"releases"*"link"* ]]'
+check "the link target keeps its mode" '[[ "$(stat -c %a "$TMP/tir-victim")" == 700 ]]'
+rm "$TIR/opt/releases"
+( INSTALL_DIR="$TIR/opt" APP_DIR="$TIR/opt" DB_DIR="$TIR/opt/database/data" DB_FILE="$TIR/opt/database/data/hsi.db" \
+  ENV_FILE="$TIR/opt/.env" APP_HOME=/nonexistent APP_USER="$(id -un)" FROM_SOURCE=0; take_install_root ) >/dev/null 2>&1; rc=$?
+check "a real install dir is prepared" '[[ $rc -eq 0 && -d "$TIR/opt/releases" && -d "$TIR/opt/database/data" && -d "$TIR/opt/data" ]]'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.

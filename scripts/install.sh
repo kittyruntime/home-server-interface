@@ -541,6 +541,31 @@ version_lt() {
   [[ -z "$sb" || "$sa" < "$sb" ]]
 }
 
+# take_install_root: INSTALL_DIR, then releases/ and database/, become root's 0755;
+# database/data and data stay the app user's. Before #9a INSTALL_DIR was the app
+# user's, so each entry is checked for a link only once its parent is root's (the app
+# user can no longer swap it), and before root changes its mode.
+take_install_root() {
+  local owner=root:root
+  (( EUID == 0 )) || owner=""
+  mkdir -p "$INSTALL_DIR" || return 1
+  if [[ -n "$owner" ]]; then chown -h "$owner" "$INSTALL_DIR" || return 1; fi
+  chmod 755 "$INSTALL_DIR" || return 1
+  # A legacy home in INSTALL_DIR: its dot folders, now that INSTALL_DIR is root's.
+  prepare_app_home || return 1
+  check_data_paths
+  [[ ! -L "$INSTALL_DIR/releases" ]] \
+    || die "$INSTALL_DIR/releases is a symbolic link: the installer refuses to work through it. Remove it, then re-run."
+  mkdir -p "$INSTALL_DIR/releases" "$INSTALL_DIR/database" || return 1
+  if [[ -n "$owner" ]]; then chown -h root:root "$INSTALL_DIR/releases" "$INSTALL_DIR/database" || return 1; fi
+  chmod 755 "$INSTALL_DIR/releases" "$INSTALL_DIR/database" || return 1
+  # Again: database/ was the app user's before, so database/data could have been
+  # swapped between the first check and that chown.
+  check_data_paths
+  mkdir -p "$DB_DIR" "$INSTALL_DIR/data" || return 1
+  if [[ -n "$owner" ]]; then chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data" || return 1; fi
+}
+
 # END release functions
 
 # ── Host packages ──────────────────────────────────────────────────────────────
@@ -1149,20 +1174,7 @@ else
   # root. The app user keeps what it writes: database/data, data and .env. INSTALL_DIR
   # is root's first, so nothing in it can be swapped for a link after the check.
   step "Installing verified release"
-  mkdir -p "$INSTALL_DIR"
-  chown -h root:root "$INSTALL_DIR"
-  chmod 755 "$INSTALL_DIR"
-  # A legacy home in INSTALL_DIR: its dot folders, now that INSTALL_DIR is root's.
-  prepare_app_home || die "Could not prepare the folders of $APP_USER in $APP_HOME."
-  check_data_paths
-  mkdir -p "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
-  chown -h root:root "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
-  chmod 755 "$INSTALL_DIR/releases" "$INSTALL_DIR/database"
-  # Again: database/ was the app user's before, so database/data could have been
-  # swapped between the first check and that chown.
-  check_data_paths
-  mkdir -p "$DB_DIR" "$INSTALL_DIR/data"
-  chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data"
+  take_install_root || die "Could not prepare $INSTALL_DIR."
   # Only now that INSTALL_DIR and releases/ are root's: nothing can be added after.
   quarantine_untrusted_releases || die "Could not move untrusted releases out of $INSTALL_DIR/releases."
 
