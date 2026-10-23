@@ -80,8 +80,12 @@ shows in Settings.
 ### Pin a version
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.54.0 bash
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo VERSION=v1.67.0 bash
 ```
+
+This installer installs v1.67.0 or newer (the first release with safe updates).
+Running it again with the version already installed reinstalls that version in
+place, without a snapshot.
 
 ## Updates
 
@@ -132,7 +136,7 @@ curl -fsSLO $BASE/hsi-$V-linux-amd64.tar.gz
 curl -fsSLO $BASE/install.sh
 curl -fsSLO $BASE/SHA256SUMS
 curl -fsSLO $BASE/SHA256SUMS.sig
-curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/release-signing.pub -o release-signing.pub
+curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/$V/scripts/release-signing.pub -o release-signing.pub
 
 base64 -d SHA256SUMS.sig > SHA256SUMS.sig.bin
 openssl pkeyutl -verify -pubin -inkey release-signing.pub -rawin \
@@ -140,17 +144,24 @@ openssl pkeyutl -verify -pubin -inkey release-signing.pub -rawin \
 sha256sum -c SHA256SUMS                          # both files: OK
 ```
 
-### Releases published before signing
+The public key is fetched at the release tag. The same key is embedded in every
+`install.sh` (`RELEASE_SIGNING_PUB`): compare it with the copy of the installer
+you already trust rather than relying on one download alone.
 
-Releases from before signing have no `SHA256SUMS`. To update from one of them,
-pass `--allow-unsigned` (or `HSI_ALLOW_UNSIGNED=1`) once, only for that step:
+### Hosts without OpenSSL 3
+
+Every release this installer accepts (v1.67.0 and newer) is signed, so updates
+never need to skip the check. `--allow-unsigned` (or `HSI_ALLOW_UNSIGNED=1`)
+only helps on a host without OpenSSL 3, which cannot check the signature: the
+checksums are still checked, the signature is not. It also lets through a release
+that has no `SHA256SUMS`, though none is published that way. Prefer upgrading
+OpenSSL:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash -s -- --allow-unsigned
 ```
 
-It installs without any signature check, and is also the way through on a host
-without OpenSSL 3.
+The dashboard update never allows it.
 
 ### What you trust on the first install
 
