@@ -273,14 +273,14 @@ onUnmounted(() => clearInterval(timer))
       </div>
 
       <!-- Last update result and the version it left behind -->
-      <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, formatDay)" class="panel-card p-5 space-y-2">
+      <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="panel-card p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
            :class="['text-sm', lastResultIsProblem(status.lastResult) ? 'text-danger' : 'text-[var(--c-text-2)]']">
           {{ lastResultText(status.lastResult) }}
           <span class="text-xs text-[var(--c-text-3)]">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
-        <p v-if="previousVersionText(status.rollbackTarget, formatDay)" class="text-sm text-[var(--c-text-2)]">
-          {{ previousVersionText(status.rollbackTarget, formatDay) }}
+        <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-[var(--c-text-2)]">
+          {{ previousVersionText(status.rollbackTarget, status.current, formatDay) }}
           <code class="font-mono text-xs text-[var(--c-text-1)]">{{ rollbackCommand(status.rollbackCommand) }}</code>
         </p>
       </div>
