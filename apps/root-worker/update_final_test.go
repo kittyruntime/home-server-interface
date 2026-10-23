@@ -417,3 +417,65 @@ source "$1"
 		}
 	}
 }
+
+// A database rename that fails after the journals were set aside puts them back.
+func TestRestoreDatabaseKeepsJournalsWhenTheCommitFails(t *testing.T) {
+	e, dir := preparedUpdate(t)
+	mustWrite(t, e.db+"-shm", []byte("new shm"))
+	prev := renameat
+	renameat = func(od int, op string, nd int, np string) error {
+		if np == filepath.Base(e.db) {
+			return syscall.EIO
+		}
+		return prev(od, op, nd, np)
+	}
+	t.Cleanup(func() { renameat = prev })
+	m, err := readManifest(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreDatabase(dir, m); err == nil {
+		t.Fatal("the restore succeeded")
+	}
+	for p, want := range map[string]string{e.db: "new db", e.db + "-wal": "new wal", e.db + "-shm": "new shm"} {
+		if b, err := os.ReadFile(p); err != nil || string(b) != want {
+			t.Fatalf("%s holds %q (%v), want %q", filepath.Base(p), b, err, want)
+		}
+	}
+	entries, _ := os.ReadDir(filepath.Dir(e.db))
+	for _, en := range entries {
+		if strings.Contains(en.Name(), "hsi-tmp") || strings.Contains(en.Name(), "hsi-old") {
+			t.Fatalf("leftover %s", en.Name())
+		}
+	}
+	// Without the failure the journals of the version rolled back from are gone.
+	renameat = prev
+	if err := restoreDatabase(dir, m); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(e.db + "-shm"); !os.IsNotExist(err) {
+		t.Fatal("the -shm of the version rolled back from was kept")
+	}
+	if b, _ := os.ReadFile(e.db); string(b) != "old db" {
+		t.Fatalf("db %q", b)
+	}
+	entries, _ = os.ReadDir(filepath.Dir(e.db))
+	for _, en := range entries {
+		if strings.Contains(en.Name(), "hsi-old") {
+			t.Fatalf("leftover %s", en.Name())
+		}
+	}
+}
+
+// A folder a rollback recreates is named in its errors for what it is.
+func TestRestoreFolderNames(t *testing.T) {
+	e := setupUpdateEnv(t)
+	for src, want := range map[string]string{
+		filepath.Join(e.systemd, "hsi-server.service"): "the systemd unit folder",
+		e.workerEnv: "the configuration folder of worker.env",
+	} {
+		if got := restoreFolderName(src); got != want {
+			t.Errorf("%s: %q, want %q", src, got, want)
+		}
+	}
+}

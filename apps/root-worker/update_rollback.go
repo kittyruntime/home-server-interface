@@ -74,8 +74,9 @@ func rollback(snapshotDir, step, reason string) error {
 
 // restoreDatabase puts the snapshot database in place. The copies are staged first,
 // so a failed copy leaves the live database and its journals as they were; then the
-// journals of the version rolled back from are removed (they would be replayed over
-// the restored file) and the copies renamed into place.
+// journals of the version rolled back from are renamed aside (they would be replayed
+// over the restored file), the copies renamed into place, and the journals set aside
+// removed, or put back when the database could not be renamed.
 func restoreDatabase(dir string, m snapshotManifest) error {
 	snap, err := openDirNoFollow(dir)
 	if err != nil {
@@ -104,20 +105,42 @@ func restoreDatabase(dir string, m snapshotManifest) error {
 			return err
 		}
 	}
-	for _, ext := range []string{"-wal", "-shm", "-journal"} {
-		if err := removeAt(dst, base+ext); err != nil {
-			_ = removeAt(dst, tmpDB)
-			if tmpWAL != "" {
-				_ = removeAt(dst, tmpWAL)
-			}
-			return err
-		}
-	}
-	if err := commitAt(dst, tmpDB, base); err != nil {
+	dropStaged := func() {
+		_ = removeAt(dst, tmpDB)
 		if tmpWAL != "" {
 			_ = removeAt(dst, tmpWAL)
 		}
+	}
+	// The live journals are renamed aside, not removed, until the database is in
+	// place: a failed rename of the database puts them back.
+	var aside []string
+	putBack := func() {
+		for _, ext := range aside {
+			_ = renameat(int(dst.Fd()), base+ext+".hsi-old", int(dst.Fd()), base+ext)
+		}
+	}
+	for _, ext := range []string{"-wal", "-shm", "-journal"} {
+		if _, err := statAt(dst, base+ext); errors.Is(err, syscall.ENOENT) {
+			continue
+		}
+		if err := removeAt(dst, base+ext+".hsi-old"); err == nil {
+			err = renameat(int(dst.Fd()), base+ext, int(dst.Fd()), base+ext+".hsi-old")
+			if err == nil {
+				aside = append(aside, ext)
+				continue
+			}
+		}
+		putBack()
+		dropStaged()
+		return fmt.Errorf("set the journal %s aside: %w", base+ext, err)
+	}
+	if err := commitAt(dst, tmpDB, base); err != nil {
+		putBack()
+		dropStaged()
 		return err
+	}
+	for _, ext := range aside {
+		_ = removeAt(dst, base+ext+".hsi-old")
 	}
 	if tmpWAL != "" {
 		return commitAt(dst, tmpWAL, base+"-wal")
@@ -168,7 +191,7 @@ func restoreFile(snap *os.File, f snapFile) error {
 			return nil
 		}
 		// A folder removed since the snapshot comes back root-owned, 0755.
-		dst, err = walkDirNoFollow(filepath.Dir(f.Src), "the folder", true, 0o755)
+		dst, err = walkDirNoFollow(filepath.Dir(f.Src), restoreFolderName(f.Src), true, 0o755)
 		base = filepath.Base(f.Src)
 	}
 	if err != nil {
@@ -184,6 +207,14 @@ func restoreFile(snap *os.File, f snapFile) error {
 	}
 	defer src.Close()
 	return copyAt(src, filepath.Base(f.Saved), dst, base, os.FileMode(f.Mode), isUnitPath(f.Src))
+}
+
+// restoreFolderName names the folder of a restored file in errors.
+func restoreFolderName(src string) string {
+	if isUnitPath(src) {
+		return "the systemd unit folder"
+	}
+	return "the configuration folder of " + filepath.Base(src)
 }
 
 func removeNewUnits(listed, removed map[string]bool) error {
