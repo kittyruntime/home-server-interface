@@ -33,6 +33,20 @@ export function updateStateDir(): string {
     : path.join(installDir(), "packages", "database", "data")
 }
 
+// The update-apply path unit starts as soon as the marker exists: it is written
+// to a temporary name in the same folder, then renamed, so the worker never reads
+// a partial value.
+export function writePendingUpdate(file: string, version: string): void {
+  const tmp = `${file}.tmp-${process.pid}`
+  try {
+    fs.writeFileSync(tmp, version, { encoding: "utf8", flag: "wx" })
+    fs.renameSync(tmp, file)
+  } catch (e) {
+    fs.rmSync(tmp, { force: true })
+    throw e
+  }
+}
+
 function pendingUpdateFile(): string {
   return path.join(updateStateDir(), ".pending-update")
 }
@@ -223,7 +237,7 @@ export const updateRouter = router({
       // if HSI does not come back on this version.
       const attempt = { from: readCurrentVersion(), target: input.version, requestedAt: new Date().toISOString() }
       fs.writeFileSync(path.join(updateStateDir(), ".update-attempt.json"), JSON.stringify(attempt), "utf8")
-      fs.writeFileSync(pendingUpdateFile(), input.version, "utf8")
+      writePendingUpdate(pendingUpdateFile(), input.version)
       return { ok: true }
     }),
 
