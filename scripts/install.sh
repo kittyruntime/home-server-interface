@@ -310,6 +310,16 @@ conversion_in_progress() {
   now=$(date +%s) || return 2
   [[ "$v" =~ $INSTALLED_VERSION_RE && "$dir" == "$INSTALL_DIR" && "$inode" =~ ^[0-9]+$ && "$started" =~ ^[0-9]+$ ]] || return 2
   [[ "$inode" == "$(stat -c %i -- "$INSTALL_DIR")" ]] && (( started <= now )) || return 2
+  # Killed before the release folder existed (installers that recorded first): nothing
+  # moved yet, the flat install is whole. The record is stale: cleared.
+  if [[ ! -e "$INSTALL_DIR/releases/$v" && ! -L "$INSTALL_DIR/releases/$v" && ! -e "$INSTALL_DIR/current" && ! -L "$INSTALL_DIR/current" \
+        && -f "$INSTALL_DIR/server.js" && ! -L "$INSTALL_DIR/server.js" \
+        && -f "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" \
+        && "$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION")" == "$v" ]]; then
+    rm -f -- "$f" || return 2
+    warn "Cleared the record of a conversion of $v that had not started."
+    return 1
+  fi
   [[ -d "$INSTALL_DIR/releases/$v" && ! -L "$INSTALL_DIR/releases/$v" ]] || return 2
   # VERSION moves last: still at the top, it must name the same version.
   if [[ -e "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" ]]; then
@@ -348,12 +358,18 @@ quarantine_untrusted_releases() {
   local e target q="" moved=() converting CONVERTING=""
   check_conversion
   converting=$CONVERTING
+  if [[ -n "$converting" && "${IS_UPDATE:-0}" != 1 ]]; then
+    rm -f -- "$(conversion_record)" || return 1
+    warn "This run converts nothing: the record of the interrupted conversion of $converting is cleared and its release checked like any other."
+    converting=""
+  fi
   if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
     for e in "$INSTALL_DIR"/releases/v* "$INSTALL_DIR"/releases/.staging-*; do
       [[ -e "$e" || -L "$e" ]] || continue
       [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
-      # The installer's own conversion, killed before the tree was root's: resumed.
-      [[ -n "$converting" && "$e" == "$INSTALL_DIR/releases/$converting" && -d "$e" && ! -L "$e" ]] && continue
+      # The installer's own conversion, killed before the tree was root's: resumed,
+      # when this run updates (and so converts).
+      [[ -n "$converting" && "${IS_UPDATE:-0}" == 1 && "$e" == "$INSTALL_DIR/releases/$converting" && -d "$e" && ! -L "$e" ]] && continue
       moved+=("$e")
     done
   fi
@@ -396,24 +412,40 @@ check_data_paths() {
   done
 }
 
-# is_flat_install: code directly in INSTALL_DIR (before #9a), or a conversion that
-# was interrupted before current was linked.
-is_flat_install() {
-  [[ ! -L "$INSTALL_DIR/current" ]] \
-    && { [[ -f "$INSTALL_DIR/server.js" && ! -L "$INSTALL_DIR/server.js" ]] || [[ -d "$INSTALL_DIR/releases" ]]; }
+# has_releases_layout: the install is already in the releases layout (#9a): a trusted
+# release exists, or the update state holds a result or a snapshot of a 9a update.
+has_releases_layout() {
+  local e
+  for e in "$INSTALL_DIR"/releases/v*; do
+    trusted_release "$e" && return 0
+  done
+  [[ -e "$UPDATE_STATE/last.json" ]] && return 0
+  compgen -G "$UPDATE_STATE/v*-v*" >/dev/null
 }
 
-# flat_version: the VERSION of a flat install; after an interrupted conversion moved
-# it, the only release present; else v0.0.0-flat.
+# is_flat_install: code directly in INSTALL_DIR (before #9a) with no releases layout,
+# or a conversion of this install that was interrupted (check_conversion). A
+# releases-layout install is never flat, whatever is in releases/ or at the top.
+is_flat_install() {
+  local CONVERTING=""
+  [[ ! -L "$INSTALL_DIR/current" ]] || return 1
+  check_conversion
+  [[ -n "$CONVERTING" ]] && return 0
+  has_releases_layout && return 1
+  [[ -f "$INSTALL_DIR/server.js" && ! -L "$INSTALL_DIR/server.js" ]]
+}
+
+# flat_version: the name a flat install gets under releases/: its VERSION file, else
+# v0.0.0-flat. That file is the app user's: when it names the version being installed,
+# the release is called <version>-flat, so it never takes the target's name (an
+# interrupted conversion resumes from its record instead).
 flat_version() {
-  local v="" found
+  local v=""
   if [[ -f "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" ]]; then
-    v=$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION")
-  else
-    found=("$INSTALL_DIR"/releases/v*/)
-    (( ${#found[@]} == 1 )) && [[ -d "${found[0]}" ]] && v=$(basename "${found[0]}")
+    v=$(head -c 64 -- "$INSTALL_DIR/VERSION" | tr -d '[:space:]')
   fi
   [[ "$v" =~ $INSTALLED_VERSION_RE ]] || v="v0.0.0-flat"
+  [[ "$v" != "${VERSION:-}" ]] || v="${v%%-*}-flat"
   echo "$v"
 }
 
@@ -428,24 +460,31 @@ flat_version() {
 convert_flat_install() {
   local old rel dest worker CONVERTING=""
   check_conversion
+  # Only a flat tree is converted, and only when the root worker can be kept: the
+  # app-owned copy in bin/ is never kept, so without it the release would have none.
+  if [[ -z "$CONVERTING" ]] && ! [[ -f "$INSTALL_DIR/server.js" && ! -L "$INSTALL_DIR/server.js" ]]; then
+    warn "$INSTALL_DIR holds no flat install to convert."; return 1
+  fi
+  if ! [[ -f "$SYSTEM_WORKER" && ! -L "$SYSTEM_WORKER" ]]; then
+    warn "$SYSTEM_WORKER is not the worker of a flat install: nothing to keep as its root worker."; return 1
+  fi
   old=${CONVERTING:-$(flat_version)}
   dest="$INSTALL_DIR/releases/$old"
   worker="$dest/bin/${RELEASE_APP_NAME}-worker"
-  # Recorded before the first rename: a run killed before the tree is root's is
-  # resumed next time instead of quarantined.
-  record_conversion "$old" || return 1
   mkdir -p "$dest/database" || return 1
+  # Recorded once its folder exists and before the first rename: a run killed before
+  # the tree is root's is resumed next time instead of quarantined.
+  record_conversion "$old" || return 1
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] || continue
     mkdir -p "$dest/$(dirname "$rel")" && mv -T -- "$INSTALL_DIR/$rel" "$dest/$rel" || return 1
   done
   root_owned "$dest" && code_tree_trusted "$dest" || return 1
-  rm -f -- "$worker" "$worker.tmp" || return 1
-  if [[ -f "$SYSTEM_WORKER" && ! -L "$SYSTEM_WORKER" ]]; then
-    local owner=(); (( EUID == 0 )) && owner=(-o root -g root)
-    mkdir -p "$dest/bin" && install -m 755 "${owner[@]}" -- "$SYSTEM_WORKER" "$worker.tmp" \
-      && mv -T -- "$worker.tmp" "$worker" && trusted_worker "$worker" || return 1
-  fi
+  # The root copy (checked above) replaces the app-owned one in one rename.
+  local owner=(); (( EUID == 0 )) && owner=(-o root -g root)
+  rm -f -- "$worker.tmp" && mkdir -p "$dest/bin" \
+    && install -m 755 "${owner[@]}" -- "$SYSTEM_WORKER" "$worker.tmp" \
+    && mv -T -- "$worker.tmp" "$worker" && trusted_worker "$worker" || return 1
   ln -sfn "$DB_DIR" "$dest/database/data" || return 1
   root_owned "$dest" && code_tree_trusted "$dest" || return 1
   # -T: a folder at current.tmp is refused, never linked into and renamed to current.
@@ -666,6 +705,61 @@ current_release_is() {
   [[ "$1" =~ $INSTALLED_VERSION_RE && -L "$INSTALL_DIR/current" ]] || return 1
   target=$(readlink -- "$INSTALL_DIR/current") || return 1
   [[ "$target" == "$INSTALL_DIR/releases/$1" ]] && trusted_release "$target"
+}
+
+# point_current_at_newest: a releases-layout install whose current was missing or
+# dangling (quarantine moved it aside) gets current back on its newest trusted
+# release, said in the output. Without one, current stays missing.
+point_current_at_newest() {
+  local e v best=""
+  for e in "$INSTALL_DIR"/releases/v*; do
+    trusted_release "$e" || continue
+    v=$(basename -- "$e")
+    [[ "$v" =~ $INSTALLED_VERSION_RE ]] || continue
+    [[ -z "$best" ]] || version_lt "$best" "$v" && best=$v
+  done
+  [[ -n "$best" ]] || return 0
+  ln -sfnT -- "$INSTALL_DIR/releases/$best" "$INSTALL_DIR/current.tmp" \
+    && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" && current_release_is "$best" || return 1
+  warn "$INSTALL_DIR/current led to no installed release: pointed at $best, the newest one."
+}
+
+# resolve_installed: what this run updates from, from the filesystem only. REPAIR (the
+# run installs the version current leads to) is decided from the releases layout as
+# found, before any conversion, never from the app user's flat VERSION file. Then:
+#   - a flat install (is_flat_install) is converted, OLD_VERSION its release;
+#   - a releases install with current missing has it pointed at its newest release;
+#   - with no installed release left, the run is a fresh install of the releases
+#     layout over the kept data: no snapshot, nothing to roll back to.
+# Sets OLD_VERSION, REPAIR and SAFE_UPDATE (an update with a snapshot and a rollback).
+resolve_installed() {
+  REPAIR=0; SAFE_UPDATE=0; OLD_VERSION=""
+  if [[ ! -L "$INSTALL_DIR/current" ]] && ! is_flat_install && has_releases_layout; then
+    point_current_at_newest || return 1
+  fi
+  if current_release_is "${VERSION:-}"; then
+    REPAIR=1
+    [[ ! -e "$UPDATE_STATE/in-progress.json" ]] \
+      || die "An update is recorded as in progress ($UPDATE_STATE/in-progress.json): refusing to reinstall $VERSION over it."
+    info "$VERSION is the installed version: reinstalling it (no snapshot, nothing to roll back to)"
+  fi
+  [[ "$IS_UPDATE" -eq 1 ]] || return 0
+  if (( REPAIR )); then
+    OLD_VERSION=$VERSION
+    return 0
+  fi
+  if is_flat_install; then
+    convert_flat_install || die "Could not move the installed version under $INSTALL_DIR/releases."
+    success "Previous version kept as $INSTALL_DIR/releases/$OLD_VERSION"
+  elif [[ -L "$INSTALL_DIR/current" ]]; then
+    OLD_VERSION=$(basename -- "$(readlink -- "$INSTALL_DIR/current")") || OLD_VERSION=""
+  else
+    warn "No installed release is left in $INSTALL_DIR/releases: installing $VERSION afresh (data kept, no snapshot, nothing to roll back to)."
+    return 0
+  fi
+  current_release_is "$OLD_VERSION" \
+    || die "The installed version could not be determined from $INSTALL_DIR/current."
+  SAFE_UPDATE=1
 }
 
 # END release functions
@@ -1280,28 +1374,10 @@ else
   # Only now that INSTALL_DIR and releases/ are root's: nothing can be added after.
   quarantine_untrusted_releases || die "Could not move untrusted releases out of $INSTALL_DIR/releases."
 
-  if [[ "$IS_UPDATE" -eq 1 ]]; then
-    # The first update after #9a turns the flat install into releases/<its version>.
-    if is_flat_install; then
-      convert_flat_install || die "Could not move the installed version under $INSTALL_DIR/releases."
-      success "Previous version kept as $INSTALL_DIR/releases/$OLD_VERSION"
-    else
-      OLD_VERSION=$(basename -- "$(readlink -- "$INSTALL_DIR/current")") || OLD_VERSION=""
-    fi
-    current_release_is "$OLD_VERSION" \
-      || die "The installed version could not be determined from $INSTALL_DIR/current."
-  fi
+  resolve_installed || die "Could not determine the installed version in $INSTALL_DIR."
   link_flat_paths || die "Could not link the code paths of $INSTALL_DIR through current."
   # Leftovers of the file-by-file rollback of installers before #9a.
   rm -rf -- "$INSTALL_DIR"/.install-rollback-*
-  if [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$INSTALL_DIR/releases/$VERSION" ]]; then
-    REPAIR=1
-    [[ ! -e "$UPDATE_STATE/in-progress.json" ]] \
-      || die "An update is recorded as in progress ($UPDATE_STATE/in-progress.json): refusing to reinstall $VERSION over it."
-    info "$VERSION is the installed version: reinstalling it (no snapshot, nothing to roll back to)"
-  elif [[ "$IS_UPDATE" -eq 1 ]]; then
-    SAFE_UPDATE=1
-  fi
 
   # The worker of the verified release: root runs nothing the app user can change.
   NEW_WORKER="$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN"
