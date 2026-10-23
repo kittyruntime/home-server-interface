@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -246,6 +246,24 @@ check "a release that is not root's is not run" '[[ "$(cat "$REC/ran")" == "$REC
 printf '#!/bin/bash\nexit 1\n' > "$REC/opt/releases/v1.67.0/bin/hsi-worker"
 recover_case; rc=$?
 check "a failed recovery says so" '[[ $rc -ne 0 ]] && grep -q "could not be rolled back" "$REC/out"'
+
+# Installs from before the app -> hsi rename keep HOME == INSTALL_DIR, which is root's
+# now: the dot folders node, nvm and npm write to are created for the app user, and
+# only once nothing in INSTALL_DIR can be swapped any more.
+HOMEDIR="$TMP/legacy-home"
+mkdir -p "$HOMEDIR/.nvm"; chmod 755 "$HOMEDIR"
+( INSTALL_DIR="$HOMEDIR" APP_HOME="$HOMEDIR" APP_USER="$(id -un)"; prepare_app_home ) >/dev/null 2>&1; rc=$?
+check "the dot folders are created in a legacy home" '[[ $rc -eq 0 && -d "$HOMEDIR/.npm" && -d "$HOMEDIR/.cache" && -d "$HOMEDIR/.config" && -d "$HOMEDIR/.local" && -d "$HOMEDIR/.nvm" ]]'
+check "they belong to the app user" '[[ "$(stat -c %U "$HOMEDIR/.cache")" == "$(id -un)" ]]'
+rmdir "$HOMEDIR/.npm"; ln -s "$TMP/c1a-victim" "$HOMEDIR/.npm"
+out="$( ( INSTALL_DIR="$HOMEDIR" APP_HOME="$HOMEDIR" APP_USER="$(id -un)"; prepare_app_home ) 2>&1)"; rc=$?
+check "a dot folder that is a link is refused, not followed" '[[ $rc -ne 0 && "$out" == *".npm"*"link"* && -L "$HOMEDIR/.npm" && -f "$TMP/c1a-victim/file" ]]'
+rm "$HOMEDIR/.npm"; rmdir "$HOMEDIR/.cache"; chmod 775 "$HOMEDIR"
+( INSTALL_DIR="$HOMEDIR" APP_HOME="$HOMEDIR" APP_USER="$(id -un)"; prepare_app_home ) >/dev/null 2>&1; rc=$?
+check "nothing is done while INSTALL_DIR is still writable by others" '[[ $rc -eq 0 && ! -e "$HOMEDIR/.cache" ]]'
+chmod 755 "$HOMEDIR"
+( INSTALL_DIR="$TMP/elsewhere" APP_HOME="$HOMEDIR" APP_USER="$(id -un)"; prepare_app_home ) >/dev/null 2>&1
+check "a home outside INSTALL_DIR is left alone" '[[ ! -e "$HOMEDIR/.cache" ]]'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
