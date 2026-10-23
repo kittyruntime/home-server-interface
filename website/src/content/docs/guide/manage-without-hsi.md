@@ -170,7 +170,10 @@ Each release lives in `/opt/hsi/releases/<version>/` and `/opt/hsi/current` is a
 symbolic link to the active one (the two previous versions are kept).
 `/usr/local/bin/hsi-worker` points into it. Before each update the database and
 configuration are copied to `/var/lib/hsi/update/<from>-<to>/`, and the result of
-the last update is in `/var/lib/hsi/update/last.json`.
+the last update is in `/var/lib/hsi/update/last.json` (the last 20 results in
+`results.jsonl`). After an update, a rollback or a reinstall, the two newest
+previous versions and the snapshots they need are kept; a version that failed and
+was rolled back is removed.
 
 ```bash
 ls -l /opt/hsi/current /opt/hsi/releases
