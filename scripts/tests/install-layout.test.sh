@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -213,6 +213,39 @@ check "the server cannot write the log dir" '! grep -q "^ReadWritePaths=.*\$LOG_
 # Ownership order in the release block: data paths are checked again once
 # INSTALL_DIR/database is root's.
 check "data paths re-checked after database becomes root's" 'awk "/chown -h root:root \"\\\$INSTALL_DIR\/releases\" \"\\\$INSTALL_DIR\/database\"/{f=1;next} f&&/check_data_paths/{ok=1;exit} f&&/chown -h \"\\\$APP_USER:\"/{exit} END{exit !ok}" "$ROOT/scripts/install.sh"'
+
+# An interrupted update found by the next installer run is rolled back, with a
+# message on every failure, and only by a worker root can trust.
+REC="$TMP/rec"
+mkdir -p "$REC/state" "$REC/stage/bin" "$REC/opt/releases/v1.67.0/bin"
+fake_worker() { # <path> <exit code>: records its run, rolls back like the real one
+  printf '#!/bin/bash\necho "$0" >> "%s/ran"\n[[ "$2" == recover ]] || exit 0\nrm -f "%s/state/in-progress.json"\nprintf "{\\n  \\"status\\": \\"rolled-back\\"\\n}\\n" > "%s/state/last.json"\nexit %s\n' "$REC" "$REC" "$REC" "$2" > "$1"
+  chmod 755 "$1"
+}
+recover_case() { # <worker exit code>: runs the recovery with no worker.env at all
+  rm -f "$REC/ran" "$REC/state/last.json"
+  printf '{\n  "from": "v1.66.0",\n  "to": "v1.67.0",\n  "step": "health"\n}\n' > "$REC/state/in-progress.json"
+  ( set -e; UPDATE_STATE="$REC/state" INSTALL_DIR="$REC/opt" RELEASE_STAGE="$REC/stage" WORKER_ENV="$REC/missing.env" \
+    NATS_CONF=x BACKUP_CONFIG=x APP_NAME=hsi RELEASE_APP_NAME=hsi CODE_UID=${1:-$CODE_UID}
+    recover_interrupted_update ) > "$REC/out" 2>&1
+}
+fake_worker "$REC/stage/bin/hsi-worker" 0
+fake_worker "$REC/opt/releases/v1.67.0/bin/hsi-worker" 0
+recover_case; rc=$?
+check "the recovery runs without worker.env" '[[ $rc -eq 0 && ! -f "$REC/state/in-progress.json" ]]'
+check "the recovery uses the trusted worker of the release updated to" '[[ "$(cat "$REC/ran")" == "$REC/opt/releases/v1.67.0/bin/hsi-worker" ]]'
+chmod 775 "$REC/opt/releases/v1.67.0/bin/hsi-worker"
+recover_case
+check "a writable release worker is not run; the verified one is" '[[ "$(cat "$REC/ran")" == "$REC/stage/bin/hsi-worker" ]]'
+chmod 755 "$REC/opt/releases/v1.67.0/bin/hsi-worker"; chmod 777 "$REC/opt/releases"
+recover_case
+check "a release under a writable releases/ is not run" '[[ "$(cat "$REC/ran")" == "$REC/stage/bin/hsi-worker" ]]'
+chmod 755 "$REC/opt/releases"
+recover_case $(( $(id -u) + 1 ))
+check "a release that is not root's is not run" '[[ "$(cat "$REC/ran")" == "$REC/stage/bin/hsi-worker" ]]'
+printf '#!/bin/bash\nexit 1\n' > "$REC/opt/releases/v1.67.0/bin/hsi-worker"
+recover_case; rc=$?
+check "a failed recovery says so" '[[ $rc -ne 0 ]] && grep -q "could not be rolled back" "$REC/out"'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.

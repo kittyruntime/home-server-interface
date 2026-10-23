@@ -192,14 +192,20 @@ func TestRecoverInterrupted(t *testing.T) {
 			t.Fatal("marker removed")
 		}
 	})
-	t.Run("installer alive", func(t *testing.T) {
+	t.Run("PID reused in the same boot", func(t *testing.T) {
+		// The lock is the authority: free means the installer is gone, whatever runs
+		// under its PID now.
 		_, dir := preparedUpdate(t)
-		calls := fakeSystemctl(t)
+		fakeSystemctl(t)
+		fakeHealth(t, nil, nil)
 		started := inProcessRecovery(t)
 		_ = writeInProgress(inProgress{From: "v2.0.0", To: "v2.1.0", Snapshot: dir, Step: "health", PID: os.Getpid(), Started: time.Now()})
 		recoverInterrupted()
-		if *started != 0 || len(*calls) != 0 {
-			t.Fatal("recovered an update whose installer is alive")
+		if *started != 1 {
+			t.Fatal("a live process with the marker's PID blocked the recovery")
+		}
+		if r, _ := readLast(); r == nil || r.Status != "rolled-back" {
+			t.Fatalf("last %+v", r)
 		}
 	})
 	t.Run("recovery itself interrupted", func(t *testing.T) {

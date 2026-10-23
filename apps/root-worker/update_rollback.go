@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -251,40 +250,10 @@ func removeLinksTo(sd *os.File, wants string, removed map[string]bool) error {
 	return nil
 }
 
-// bootTime is when the host started; a marker older than that has a meaningless PID.
-var bootTime = func() time.Time {
-	b, err := os.ReadFile("/proc/stat")
-	if err != nil {
-		return time.Time{}
-	}
-	for _, line := range strings.Split(string(b), "\n") {
-		if v, ok := strings.CutPrefix(line, "btime "); ok {
-			if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
-				return time.Unix(n, 0)
-			}
-		}
-	}
-	return time.Time{}
-}
-
-// installerAlive tells whether the marker's installer may still run: its PID exists
-// and was given in this boot. The update lock stays the authority.
-func installerAlive(p *inProgress) bool {
-	return pidAlive(p.PID) && !p.Started.Before(bootTime())
-}
-
-// pidAlive tells whether a process with this pid exists.
-func pidAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	err := syscall.Kill(pid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
-}
-
-// recoverInterrupted runs at worker start: an update whose marker is still there,
-// whose installer is gone and whose lock nobody holds was interrupted (killed,
-// power cut) and is rolled back. The rollback stops the stack the worker belongs
+// recoverInterrupted runs at worker start: an update whose marker is still there and
+// whose lock nobody holds was interrupted (killed, power cut) and is rolled back. The
+// installer holds the lock until it exits, so a free lock means it is gone, whatever
+// process now has the PID of the marker (kept for information). The rollback stops the stack the worker belongs
 // to, so it runs outside the worker's unit (startRecovery).
 func recoverInterrupted() {
 	p, err := readInProgress()
@@ -300,9 +269,6 @@ func recoverInterrupted() {
 		return // the installer is running
 	}
 	lock.Close()
-	if installerAlive(p) {
-		return
-	}
 	logger.Warn("update: an interrupted update is rolled back", "from", p.From, "to", p.To, "step", p.Step)
 	if err := startRecovery(); err != nil {
 		logger.Error("update: could not start the recovery", "error", err.Error())
@@ -340,9 +306,6 @@ func recoverUpdate() error {
 	p, err := readInProgress()
 	if err != nil || p == nil {
 		return err
-	}
-	if installerAlive(p) {
-		return nil
 	}
 	if p.Step == "recovering" {
 		reason := fmt.Sprintf("the recovery of an interrupted update was interrupted too; run 'sudo %s-worker update rollback --snapshot %s'", unitPrefix(), p.Snapshot)

@@ -335,16 +335,13 @@ func TestHttpHealthPinsAnExpiredImportedCertificate(t *testing.T) {
 	}
 }
 
-// ── M3: a marker from before the boot does not trust its PID ─────────────────
+// ── M3: a marker's PID never blocks the recovery (the lock is the authority) ──
 
 func TestRecoverIgnoresPIDFromBeforeBoot(t *testing.T) {
 	_, dir := preparedUpdate(t)
 	fakeSystemctl(t)
 	fakeHealth(t, nil, nil)
 	started := inProcessRecovery(t)
-	prev := bootTime
-	bootTime = func() time.Time { return time.Now().Add(time.Hour) }
-	t.Cleanup(func() { bootTime = prev })
 	_ = writeInProgress(inProgress{From: "v2.0.0", To: "v2.1.0", Snapshot: dir, Step: "health", PID: os.Getpid(), Started: time.Now()})
 	recoverInterrupted()
 	if *started != 1 {
