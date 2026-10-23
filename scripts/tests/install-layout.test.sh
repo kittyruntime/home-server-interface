@@ -125,6 +125,29 @@ rm -rf "$C1D/current"; rm -f "$C1D/current"; mkdir -p "$C1D/current/bin"
 ( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1
 check "a current that is a real folder is moved aside" '[[ ! -e "$C1D/current" ]]'
 
+# A conversion killed after its renames, before the tree was root's, is resumed
+# (its root-owned .converting marker names it) instead of quarantined.
+C1E="$TMP/c1e"
+mkdir -p "$C1E/database/data" "$C1E/public"
+echo s > "$C1E/server.js"; echo '<html>' > "$C1E/public/index.html"; echo v1.65.0 > "$C1E/VERSION"
+( INSTALL_DIR="$C1E"; DB_DIR="$C1E/database/data"; root_owned() { return 1; }; convert_flat_install ) >/dev/null 2>&1
+chmod 777 "$C1E/releases/v1.65.0/public"   # still the app user's, as when interrupted
+check "an interrupted conversion leaves its marker" '[[ -f "$C1E/.converting" && "$(cat "$C1E/.converting")" == v1.65.0 && ! -e "$C1E/server.js" ]]'
+( INSTALL_DIR="$C1E"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "the interrupted conversion is not quarantined" '[[ -d "$C1E/releases/v1.65.0" ]] && ! compgen -G "$C1E/.untrusted-*" >/dev/null'
+check "it is still a flat install to convert" 'INSTALL_DIR="$C1E" is_flat_install'
+( INSTALL_DIR="$C1E"; DB_DIR="$C1E/database/data"; root_owned() { chmod -R go-w,ug-s "$@"; }; OLD_VERSION=""
+  convert_flat_install && [[ "$OLD_VERSION" == v1.65.0 ]] ) >/dev/null 2>&1; rc=$?
+check "the conversion resumes and takes ownership" '[[ $rc -eq 0 && "$(readlink "$C1E/current")" == "$C1E/releases/v1.65.0" && -f "$C1E/current/public/index.html" && "$(stat -c %a "$C1E/releases/v1.65.0/public")" == 755 && ! -e "$C1E/.converting" ]]'
+echo v1.65.0 > "$C1E/.converting"
+( INSTALL_DIR="$C1E"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "a marker left after current was linked is removed" '[[ ! -e "$C1E/.converting" && -L "$C1E/current" ]]'
+# A marker the installer did not write (writable by others) protects nothing.
+C1F="$TMP/c1f"
+mkdir -p "$C1F/releases/v1.65.0"; chmod 777 "$C1F/releases/v1.65.0"; echo v1.65.0 > "$C1F/.converting"; chmod 666 "$C1F/.converting"
+( INSTALL_DIR="$C1F"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "a planted marker is moved aside with the release" '[[ ! -e "$C1F/releases/v1.65.0" && ! -e "$C1F/.converting" ]]'
+
 # Before #9a the app user owned INSTALL_DIR and could plant current and releases/:
 # whatever is not root's alone, or a current that does not lead to exactly one of
 # the remaining releases, is moved aside before it is trusted.

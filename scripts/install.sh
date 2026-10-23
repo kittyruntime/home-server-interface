@@ -269,6 +269,17 @@ trusted_worker() {
   [[ -f "$1" && ! -L "$1" ]] && code_tree_trusted "$1"
 }
 
+# conversion_in_progress: prints the version of the flat conversion an earlier run
+# began, from INSTALL_DIR/.converting, when that marker is the installer's: a regular
+# file of CODE_UID that nobody else can write (the app user cannot create one).
+conversion_in_progress() {
+  local m="$INSTALL_DIR/.converting" v
+  [[ -f "$m" && ! -L "$m" ]] && code_tree_trusted "$m" || return 1
+  v=$(head -c 64 -- "$m" | tr -d '[:space:]')
+  [[ "$v" =~ $INSTALLED_VERSION_RE ]] || return 1
+  echo "$v"
+}
+
 # quarantine_untrusted_releases: before #9a the app user owned INSTALL_DIR, so it
 # could have created current and releases/ itself. Each releases/v* that is not a real
 # folder entirely root's (code_tree_trusted), and a current that does not link to
@@ -276,13 +287,21 @@ trusted_worker() {
 # not a link included), and anything at current.tmp*, is moved to a new
 # root-only $INSTALL_DIR/.untrusted-*, as is a releases/.staging-* that is not
 # root's alone: never run, never followed, never a rollback target. Renames only,
-# so a link is moved, not followed.
+# so a link is moved, not followed. The release a .converting marker of the installer
+# names (conversion_in_progress) is left for convert_flat_install to finish; a
+# marker the installer did not write is moved aside too.
 quarantine_untrusted_releases() {
-  local e target q="" moved=()
+  local e target q="" moved=() converting=""
+  converting=$(conversion_in_progress) || true
+  if [[ -z "$converting" && ( -e "$INSTALL_DIR/.converting" || -L "$INSTALL_DIR/.converting" ) ]]; then
+    moved+=("$INSTALL_DIR/.converting")
+  fi
   if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
     for e in "$INSTALL_DIR"/releases/v* "$INSTALL_DIR"/releases/.staging-*; do
       [[ -e "$e" || -L "$e" ]] || continue
       [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
+      # The installer's own conversion, killed before the tree was root's: resumed.
+      [[ -n "$converting" && "$e" == "$INSTALL_DIR/releases/$converting" && -d "$e" && ! -L "$e" ]] && continue
       moved+=("$e")
     done
   fi
@@ -296,6 +315,10 @@ quarantine_untrusted_releases() {
     fi
   elif [[ -e "$INSTALL_DIR/current" ]]; then
     moved+=("$INSTALL_DIR/current")
+  fi
+  # A conversion killed after it linked current is finished: its marker goes.
+  if [[ -n "$converting" && -L "$INSTALL_DIR/current" && " ${moved[*]} " != *" $INSTALL_DIR/current "* ]]; then
+    rm -f -- "$INSTALL_DIR/.converting" || return 1
   fi
   # The temporary names current is switched through (current.tmp here,
   # current.tmp-<pid> in the worker): whatever is there was planted.
@@ -344,16 +367,19 @@ flat_version() {
 
 # convert_flat_install: moves the code paths of a flat install, VERSION last, into
 # releases/<its version>/ and points current at it, so the version updated from is a
-# rollback target. .env, database/data and data never move. Every move is a rename:
-# an interrupted conversion resumes. The moved folders were the app user's: the tree
+# rollback target. .env, database/data and data never move. Every move is a rename,
+# and the .converting marker names the version: an interrupted conversion resumes. The moved folders were the app user's: the tree
 # is root's, and checked, before anything is written into it. The release keeps the
 # worker that ran as root (/usr/local/bin), never the app-owned copy in bin/. Sets
 # OLD_VERSION.
 convert_flat_install() {
-  local old rel dest worker
-  old=$(flat_version)
+  local old rel dest worker marker="$INSTALL_DIR/.converting"
+  old=$(conversion_in_progress) || old=$(flat_version)
   dest="$INSTALL_DIR/releases/$old"
   worker="$dest/bin/${RELEASE_APP_NAME}-worker"
+  # Written before the first rename (INSTALL_DIR is root's): a run killed before
+  # the tree is root's is resumed next time instead of quarantined.
+  rm -f -- "$marker" && (set -C; printf '%s\n' "$old" > "$marker") || return 1
   mkdir -p "$dest/database" || return 1
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] || continue
@@ -371,6 +397,7 @@ convert_flat_install() {
   # -T: a folder at current.tmp is refused, never linked into and renamed to current.
   ln -sfnT -- "$dest" "$INSTALL_DIR/current.tmp" && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" || return 1
   [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$dest" ]] && trusted_release "$dest" || return 1
+  rm -f -- "$marker" || return 1
   OLD_VERSION=$old
 }
 
