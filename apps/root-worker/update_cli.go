@@ -296,7 +296,7 @@ func updateApply(version, archive string) int {
 	if err != nil {
 		return refuse("download", err)
 	}
-	pub, err := releasePublicKey()
+	pub, err := trustedReleaseKey()
 	if err == nil {
 		err = verifyRelease(pub, f, version)
 	}
@@ -305,6 +305,10 @@ func updateApply(version, archive string) int {
 	}
 	return runInstaller(f.Installer, installerEnv(version, f.Archive))
 }
+
+// trustedReleaseKey is the key update apply and apply-pending trust: the embedded
+// release key. A seam for unit tests, which sign fixtures with the development key.
+var trustedReleaseKey = releasePublicKey
 
 var errInvalidVersionRequested = errors.New("invalid version requested")
 
