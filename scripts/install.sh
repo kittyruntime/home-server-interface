@@ -135,7 +135,7 @@ run_as() {
 # apps/root-worker/release-signing.pub; a test keeps the three identical.
 RELEASE_SIGNING_PUB=$(cat <<'PEM'
 -----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAQMjBiANUezp60y5OYMMRTJvmiElfHzjGNfHqlecSWn0=
+MCowBQYDK2VwAyEAzDoqK85JnrFg3pbgBlCoVRVW3FkLz77S7Tj9MFDuOo4=
 -----END PUBLIC KEY-----
 PEM
 )
