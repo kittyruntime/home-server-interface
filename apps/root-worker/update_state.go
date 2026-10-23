@@ -474,6 +474,11 @@ func switchCurrent(version string) error {
 		return err
 	}
 	tmp := fmt.Sprintf("current.tmp-%d", os.Getpid())
+	// Only a leftover link is removed: anything else there was planted, and is
+	// neither entered nor renamed to current.
+	if st, err := statAt(root, tmp); err == nil && st.Mode&syscall.S_IFMT != syscall.S_IFLNK {
+		return fmt.Errorf("%s is not a link, refusing to switch through it (move it away)", filepath.Join(installRoot(), tmp))
+	}
 	if err := removeAt(root, tmp); err != nil {
 		return err
 	}
