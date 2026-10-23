@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the checksums of the archive before running anything from it. The update
   path no longer fetches anything from `main`. During an update root never runs
   code owned by the app user or follows links it owns, and the log directory
-  is root-owned.
+  is root-owned. Releases or a `current` link the app user could have
+  created before this version are moved aside instead of trusted, the worker
+  reads the dashboard's update request itself, and `/health` reports the
+  version and the database only to local callers.
 
 ### Added
 - **Safe updates** (#9a): versions install side by side under
@@ -22,7 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   health of the new version (server and worker) and rolls back automatically
   when it does not come up. `sudo hsi-worker update rollback` goes back to the
   previous version by hand, and the result of the last update shows in Settings.
-  Known limitation: a first update from a version before this one that is
+  Running the installer again on the installed version reinstalls it in
+  place, without a snapshot. A rollback run by hand is shown as such and
+  raises no alert. Known limitation: a first update from a version before this one that is
   interrupted before the switch boots the old version, and only the next
   installer run rolls back.
 
