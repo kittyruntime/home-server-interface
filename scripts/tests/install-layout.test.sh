@@ -99,6 +99,32 @@ mkdir -p "$C1C/database/data"; echo s > "$C1C/server.js"
 ( INSTALL_DIR="$C1C"; DB_DIR="$C1C/database/data"; OLD_VERSION=""; CODE_UID=$(( $(id -u) + 1 )); convert_flat_install ) >/dev/null 2>&1; rc=$?
 check "a converted tree left with entries that are not root's is refused" '[[ $rc -ne 0 && ! -L "$C1C/current" ]]'
 
+# A real folder planted at current.tmp (the name the conversion links through) never
+# becomes current: quarantine moves it aside, and the conversion refuses it anyway.
+C1D="$TMP/c1d"
+plant_flat() { # <dir>: a flat v1.65.0 with an app-owned current.tmp/ and current.tmp-77/
+  rm -rf "$1"; mkdir -p "$1/database/data" "$1/current.tmp/bin" "$1/current.tmp-77/bin"
+  echo s > "$1/server.js"; echo v1.65.0 > "$1/VERSION"
+  printf '#!/bin/sh\necho planted\n' > "$1/current.tmp/bin/hsi-worker"
+  cp "$1/current.tmp/bin/hsi-worker" "$1/current.tmp-77/bin/hsi-worker"
+}
+plant_flat "$C1D"
+( INSTALL_DIR="$C1D"; DB_DIR="$C1D/database/data"; OLD_VERSION=""; convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "the conversion refuses a folder at current.tmp" '[[ $rc -ne 0 && ! -d "$C1D/current/bin" ]] && ! { [[ -e "$C1D/current" && ! -L "$C1D/current" ]]; }'
+plant_flat "$C1D"
+( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1; rc=$?
+check "quarantine moves current.tmp and current.tmp-<pid> aside" '[[ $rc -eq 0 && ! -e "$C1D/current.tmp" && ! -e "$C1D/current.tmp-77" ]] && compgen -G "$C1D/.untrusted-*/current.tmp" >/dev/null && compgen -G "$C1D/.untrusted-*/current.tmp-77" >/dev/null'
+( INSTALL_DIR="$C1D"; DB_DIR="$C1D/database/data"; OLD_VERSION=""; convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "after quarantine current links to the converted release" '[[ $rc -eq 0 && -L "$C1D/current" && "$(readlink "$C1D/current")" == "$C1D/releases/v1.65.0" ]] && cmp -s "$SYSTEM_WORKER" "$C1D/current/bin/hsi-worker"'
+mkdir -p "$C1D/releases/.staging-5/node_modules"; chmod 777 "$C1D/releases/.staging-5/node_modules"
+mkdir -p "$C1D/releases/.staging-6"
+( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "an untrusted staging folder is moved aside, a trusted one left for removal" '[[ ! -e "$C1D/releases/.staging-5" && -d "$C1D/releases/.staging-6" ]] && compgen -G "$C1D/.untrusted-*/.staging-5" >/dev/null'
+rm -rf "$C1D/releases/.staging-6"
+rm -rf "$C1D/current"; rm -f "$C1D/current"; mkdir -p "$C1D/current/bin"
+( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "a current that is a real folder is moved aside" '[[ ! -e "$C1D/current" ]]'
+
 # Before #9a the app user owned INSTALL_DIR and could plant current and releases/:
 # whatever is not root's alone, or a current that does not lead to exactly one of
 # the remaining releases, is moved aside before it is trusted.

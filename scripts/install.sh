@@ -272,13 +272,15 @@ trusted_worker() {
 # quarantine_untrusted_releases: before #9a the app user owned INSTALL_DIR, so it
 # could have created current and releases/ itself. Each releases/v* that is not a real
 # folder entirely root's (code_tree_trusted), and a current that does not link to
-# exactly $INSTALL_DIR/releases/<version> of a remaining release, is moved to a new
-# root-only $INSTALL_DIR/.untrusted-*: never run, never followed, never a rollback
-# target. Renames only, so a link is moved, not followed.
+# exactly $INSTALL_DIR/releases/<version> of a remaining release (a current that is
+# not a link included), and anything at current.tmp*, is moved to a new
+# root-only $INSTALL_DIR/.untrusted-*, as is a releases/.staging-* that is not
+# root's alone: never run, never followed, never a rollback target. Renames only,
+# so a link is moved, not followed.
 quarantine_untrusted_releases() {
   local e target q="" moved=()
   if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
-    for e in "$INSTALL_DIR"/releases/v*; do
+    for e in "$INSTALL_DIR"/releases/v* "$INSTALL_DIR"/releases/.staging-*; do
       [[ -e "$e" || -L "$e" ]] || continue
       [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
       moved+=("$e")
@@ -295,6 +297,11 @@ quarantine_untrusted_releases() {
   elif [[ -e "$INSTALL_DIR/current" ]]; then
     moved+=("$INSTALL_DIR/current")
   fi
+  # The temporary names current is switched through (current.tmp here,
+  # current.tmp-<pid> in the worker): whatever is there was planted.
+  for e in "$INSTALL_DIR"/current.tmp*; do
+    [[ -e "$e" || -L "$e" ]] && moved+=("$e")
+  done
   (( ${#moved[@]} > 0 )) || return 0
   q=$(mktemp -d "$INSTALL_DIR/.untrusted-XXXXXX") || return 1
   for e in "${moved[@]}"; do
@@ -361,7 +368,9 @@ convert_flat_install() {
   fi
   ln -sfn "$DB_DIR" "$dest/database/data" || return 1
   root_owned "$dest" && code_tree_trusted "$dest" || return 1
-  ln -sfn "$dest" "$INSTALL_DIR/current.tmp" && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" || return 1
+  # -T: a folder at current.tmp is refused, never linked into and renamed to current.
+  ln -sfnT -- "$dest" "$INSTALL_DIR/current.tmp" && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" || return 1
+  [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$dest" ]] && trusted_release "$dest" || return 1
   OLD_VERSION=$old
 }
 
@@ -373,7 +382,7 @@ link_flat_paths() {
   local rel
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] && continue
-    mkdir -p "$INSTALL_DIR/$(dirname "$rel")" && ln -sfn "$INSTALL_DIR/current/$rel" "$INSTALL_DIR/$rel" || return 1
+    mkdir -p "$INSTALL_DIR/$(dirname "$rel")" && ln -sfnT -- "$INSTALL_DIR/current/$rel" "$INSTALL_DIR/$rel" || return 1
   done
 }
 

@@ -479,3 +479,28 @@ func TestRestoreFolderNames(t *testing.T) {
 		}
 	}
 }
+
+// A folder planted at the worker's temporary link name is refused with a clear
+// message, never renamed to current.
+func TestSwitchCurrentRefusesPlantedTempFolder(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0", "v2.1.0")
+	if err := switchCurrent("v2.0.0"); err != nil {
+		t.Fatal(err)
+	}
+	planted := filepath.Join(e.install, fmt.Sprintf("current.tmp-%d", os.Getpid()))
+	if err := os.MkdirAll(filepath.Join(planted, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(planted, "bin", "hsi-worker"), []byte("planted"))
+	err := switchCurrent("v2.1.0")
+	if err == nil || !strings.Contains(err.Error(), "current.tmp-") || !strings.Contains(err.Error(), "not a link") {
+		t.Fatalf("want a clear refusal, got %v", err)
+	}
+	if fi, err := os.Lstat(filepath.Join(e.install, "current")); err != nil || fi.Mode()&os.ModeSymlink == 0 || currentVersion() != "v2.0.0" {
+		t.Fatalf("current changed: %v %v %s", fi, err, currentVersion())
+	}
+	if _, err := os.Stat(filepath.Join(planted, "bin", "hsi-worker")); err != nil {
+		t.Fatal("the planted folder was touched")
+	}
+}
