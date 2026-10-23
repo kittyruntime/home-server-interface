@@ -24,4 +24,15 @@ else
   FAILED=1
 fi
 
+# The development key fingerprint is written three times; they must agree.
+fp_install=$(sed -n 's/^DEV_SIGNING_KEY_FINGERPRINT="\([0-9a-f]*\)"$/\1/p' "$ROOT/scripts/install.sh")
+fp_sign=$(sed -n 's/^DEV_KEY_FINGERPRINT="\([0-9a-f]*\)"$/\1/p' "$ROOT/scripts/sign-release.sh")
+fp_go=$(sed -n 's/^const devKeyFingerprint = "\([0-9a-f]*\)"$/\1/p' "$ROOT/apps/root-worker/release_verify.go")
+if [[ ${#fp_install} -eq 64 && "$fp_install" == "$fp_sign" && "$fp_install" == "$fp_go" ]]; then
+  echo "PASS dev key fingerprints match"
+else
+  echo "FAIL dev key fingerprints differ: install.sh '$fp_install', sign-release.sh '$fp_sign', release_verify.go '$fp_go'"
+  FAILED=1
+fi
+
 exit $FAILED

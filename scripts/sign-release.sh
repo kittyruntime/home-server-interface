@@ -9,7 +9,8 @@
 # The private key (PEM PKCS#8) comes from HSI_RELEASE_SIGNING_KEY. Refuses to
 # sign while scripts/release-signing.pub is still the development key (its
 # private half is in the repository), unless HSI_ALLOW_DEV_SIGNING_KEY=1
-# (tests only).
+# (tests only: refused when GITHUB_ACTIONS=true). The development key fingerprint is
+# also in scripts/install.sh and release_verify.go; a test keeps the three equal.
 set -euo pipefail
 
 DEV_KEY_FINGERPRINT="0c9fde95a7afa23901ce53c94613f8f7a710af273942f2e7ff9aa86941cd4e7a"
@@ -19,6 +20,10 @@ DIR="${1:-}"
 ARCHIVE="${2:-}"
 if [[ -z "$DIR" || -z "$ARCHIVE" ]]; then
   echo "Usage: $0 <dir> <archive-name>" >&2
+  exit 1
+fi
+if [[ "${HSI_ALLOW_DEV_SIGNING_KEY:-}" == "1" && "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "HSI_ALLOW_DEV_SIGNING_KEY is for tests only and is refused in CI." >&2
   exit 1
 fi
 if [[ -z "${HSI_RELEASE_SIGNING_KEY:-}" ]]; then

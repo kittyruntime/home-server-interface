@@ -13,7 +13,8 @@
 #   2. gh secret set HSI_RELEASE_SIGNING_KEY < release-signing.key
 #   3. copy the public key to apps/root-worker/release-signing.pub and into the
 #      RELEASE_SIGNING_PUB heredoc of scripts/install.sh (a test keeps the three
-#      identical), and update the dev key fingerprint checks if they still apply
+#      identical). Leave the dev key fingerprints as they are: they name the
+#      development key, which never changes, so it stays refused
 #   4. store release-signing.key offline (password manager, hardware token), then
 #      delete the local copy
 # The workflow refuses to publish while scripts/release-signing.pub is the
