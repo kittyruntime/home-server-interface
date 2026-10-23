@@ -287,6 +287,13 @@ record_conversion() {
     && mv -T -- "$tmp" "$f"
 }
 
+# flat_name_matches <release name> <flat VERSION>: the name flat_version gives that
+# VERSION file: itself, <core>-flat when it named the target, v0.0.0-flat when invalid.
+flat_name_matches() {
+  [[ "$1" == "$2" || "$1" == "${2%%-*}-flat" ]] && return 0
+  [[ "$1" == v0.0.0-flat && ! "$2" =~ $INSTALLED_VERSION_RE ]]
+}
+
 # conversion_in_progress: prints the version of the conversion an earlier run of this
 # installer began and returns 0; returns 1 when there is no record. Returns 2 when a
 # record exists but anything about it does not hold now: the state dir is not root's
@@ -314,16 +321,16 @@ conversion_in_progress() {
   # moved yet, the flat install is whole. The record is stale: cleared.
   if [[ ! -e "$INSTALL_DIR/releases/$v" && ! -L "$INSTALL_DIR/releases/$v" && ! -e "$INSTALL_DIR/current" && ! -L "$INSTALL_DIR/current" \
         && -f "$INSTALL_DIR/server.js" && ! -L "$INSTALL_DIR/server.js" \
-        && -f "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" \
-        && "$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION")" == "$v" ]]; then
+        && -f "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" ]] \
+     && flat_name_matches "$v" "$(head -c 64 -- "$INSTALL_DIR/VERSION" | tr -d '[:space:]')"; then
     rm -f -- "$f" || return 2
     warn "Cleared the record of a conversion of $v that had not started."
     return 1
   fi
   [[ -d "$INSTALL_DIR/releases/$v" && ! -L "$INSTALL_DIR/releases/$v" ]] || return 2
-  # VERSION moves last: still at the top, it must name the same version.
+  # VERSION moves last: still at the top, it must name the same release.
   if [[ -e "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" ]]; then
-    [[ -f "$INSTALL_DIR/VERSION" && "$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION")" == "$v" ]] || return 2
+    [[ -f "$INSTALL_DIR/VERSION" ]] && flat_name_matches "$v" "$(head -c 64 -- "$INSTALL_DIR/VERSION" | tr -d '[:space:]')" || return 2
   fi
   if [[ -L "$INSTALL_DIR/current" ]]; then
     target=$(readlink -- "$INSTALL_DIR/current") || return 2
@@ -353,7 +360,9 @@ check_conversion() {
 # root-only $INSTALL_DIR/.untrusted-*, as is a releases/.staging-* that is not
 # root's alone: never run, never followed, never a rollback target. Renames only,
 # so a link is moved, not followed. The release an interrupted conversion of this
-# install was moving (check_conversion) is left for convert_flat_install to finish.
+# install was moving (check_conversion) is left for convert_flat_install to finish;
+# without such a record, a releases/v* that is not complete (release_complete) is
+# moved aside too.
 quarantine_untrusted_releases() {
   local e target q="" moved=() converting CONVERTING=""
   check_conversion
@@ -366,7 +375,13 @@ quarantine_untrusted_releases() {
   if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
     for e in "$INSTALL_DIR"/releases/v* "$INSTALL_DIR"/releases/.staging-*; do
       [[ -e "$e" || -L "$e" ]] || continue
-      [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
+      # Without a conversion record, an incomplete release (a run killed between its
+      # mkdir and its record) is no release: swept too.
+      if [[ "$e" == "$INSTALL_DIR"/releases/v* && -z "$converting" ]]; then
+        release_complete "$e" && continue
+      else
+        [[ -d "$e" && ! -L "$e" ]] && code_tree_trusted "$e" && continue
+      fi
       # The installer's own conversion, killed before the tree was root's: resumed,
       # when this run updates (and so converts).
       [[ -n "$converting" && "${IS_UPDATE:-0}" == 1 && "$e" == "$INSTALL_DIR/releases/$converting" && -d "$e" && ! -L "$e" ]] && continue
@@ -397,7 +412,7 @@ quarantine_untrusted_releases() {
   q=$(mktemp -d "$INSTALL_DIR/.untrusted-XXXXXX") || return 1
   for e in "${moved[@]}"; do
     mv -T -- "$e" "$q/$(basename -- "$e")" || return 1
-    warn "$e was not installed by the installer (not root's alone): moved to $q"
+    warn "$e was not left by a completed install (incomplete, planted or not root's alone): moved to $q"
   done
 }
 
@@ -412,12 +427,21 @@ check_data_paths() {
   done
 }
 
-# has_releases_layout: the install is already in the releases layout (#9a): a trusted
+# release_complete <dir>: an installed release, not a folder left by a killed run:
+# trusted_release, with a regular server.js and public/index.html and a trusted
+# bin/hsi-worker.
+release_complete() {
+  trusted_release "$1" \
+    && [[ -f "$1/server.js" && ! -L "$1/server.js" && -f "$1/public/index.html" && ! -L "$1/public/index.html" && ! -L "$1/public" ]] \
+    && [[ -d "$1/bin" && ! -L "$1/bin" ]] && trusted_worker "$1/bin/${RELEASE_APP_NAME}-worker"
+}
+
+# has_releases_layout: the install is already in the releases layout (#9a): a complete
 # release exists, or the update state holds a result or a snapshot of a 9a update.
 has_releases_layout() {
   local e
   for e in "$INSTALL_DIR"/releases/v*; do
-    trusted_release "$e" && return 0
+    release_complete "$e" && return 0
   done
   [[ -e "$UPDATE_STATE/last.json" ]] && return 0
   compgen -G "$UPDATE_STATE/v*-v*" >/dev/null
@@ -471,10 +495,16 @@ convert_flat_install() {
   old=${CONVERTING:-$(flat_version)}
   dest="$INSTALL_DIR/releases/$old"
   worker="$dest/bin/${RELEASE_APP_NAME}-worker"
+  local created=0
+  [[ -e "$dest" || -L "$dest" ]] || created=1
   mkdir -p "$dest/database" || return 1
   # Recorded once its folder exists and before the first rename: a run killed before
-  # the tree is root's is resumed next time instead of quarantined.
-  record_conversion "$old" || return 1
+  # the tree is root's is resumed next time instead of quarantined. A failed record
+  # leaves no empty release behind.
+  if ! record_conversion "$old"; then
+    (( created )) && rmdir -- "$dest/database" "$dest"
+    return 1
+  fi
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] || continue
     mkdir -p "$dest/$(dirname "$rel")" && mv -T -- "$INSTALL_DIR/$rel" "$dest/$rel" || return 1
@@ -708,12 +738,12 @@ current_release_is() {
 }
 
 # point_current_at_newest: a releases-layout install whose current was missing or
-# dangling (quarantine moved it aside) gets current back on its newest trusted
-# release, said in the output. Without one, current stays missing.
+# dangling (quarantine moved it aside) gets current back on its newest complete
+# release (release_complete), said in the output. Without one, current stays missing.
 point_current_at_newest() {
   local e v best=""
   for e in "$INSTALL_DIR"/releases/v*; do
-    trusted_release "$e" || continue
+    release_complete "$e" || continue
     v=$(basename -- "$e")
     [[ "$v" =~ $INSTALLED_VERSION_RE ]] || continue
     [[ -z "$best" ]] || version_lt "$best" "$v" && best=$v

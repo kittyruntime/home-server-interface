@@ -189,6 +189,10 @@ mkdir -p "$C1B/database/data" "$C1B/releases/v1.66.0/bin" "$C1B/releases/v1.64.0
 echo s > "$C1B/server.js"; echo v1.65.0 > "$C1B/VERSION"
 printf '#!/bin/sh\n' > "$C1B/releases/v1.66.0/bin/hsi-worker"; chmod 775 "$C1B/releases/v1.66.0/bin/hsi-worker"
 printf '#!/bin/sh\n' > "$C1B/releases/v1.64.0/bin/hsi-worker"; chmod 755 "$C1B/releases/v1.64.0/bin/hsi-worker"
+for r in v1.64.0 v1.63.0; do   # complete releases: server.js, public/index.html, a worker
+  mkdir -p "$C1B/releases/$r/bin" "$C1B/releases/$r/public"; echo s > "$C1B/releases/$r/server.js"; echo h > "$C1B/releases/$r/public/index.html"
+  printf '#!/bin/sh\n' > "$C1B/releases/$r/bin/hsi-worker"; chmod 755 "$C1B/releases/$r/bin/hsi-worker"
+done
 ln -s "$TMP/c1a-victim" "$C1B/releases/v1.62.0"
 ln -s "$C1B/releases/v1.66.0" "$C1B/current"
 ( INSTALL_DIR="$C1B"; quarantine_untrusted_releases ) >/dev/null 2>&1; rc=$?
@@ -435,6 +439,7 @@ lay() { # <dir>: an install dir in the releases layout, worker linked through cu
 lay_release() { # <dir> <version>
   mkdir -p "$1/releases/$2/bin"; echo "worker $2" > "$1/releases/$2/bin/hsi-worker"; chmod 755 "$1/releases/$2/bin/hsi-worker"
   echo s > "$1/releases/$2/server.js"; echo "$2" > "$1/releases/$2/VERSION"
+  mkdir -p "$1/releases/$2/public"; echo '<html>' > "$1/releases/$2/public/index.html"
 }
 resolve_in() { # <dir> <is update>: resolve_installed there, prints OLD REPAIR SAFE
   ( INSTALL_DIR="$1"; UPDATE_STATE="$TMP/lay-state"; DB_DIR="$1/database/data"; SYSTEM_WORKER="$TMP/lay-usr/hsi-worker"
@@ -480,7 +485,14 @@ check "an empty tree is never converted into v0.0.0-flat" '[[ $rc -ne 0 && ! -e 
 rm -f "$UPDATE_STATE/conversion"
 # The record is written only once the release folder exists; a record whose release
 # never appeared (nothing moved yet) is stale and cleared.
-check "the record is written after the release folder" 'sed -n "/^convert_flat_install() {/,/^}/p" "$ROOT/scripts/install.sh" | awk "/mkdir -p \"\\\$dest\/database\"/{m=NR} /record_conversion \"\\\$old\"/{r=NR} END{exit !(m && r && m < r)}"'
+# Behaviour: record_conversion runs once the release folder exists, and a failed
+# record leaves no empty release behind.
+SPY="$TMP/spy"; ORD="$TMP/order"; rm -rf "$ORD"; mkdir -p "$ORD/database/data"; echo s > "$ORD/server.js"; echo v1.65.0 > "$ORD/VERSION"
+( INSTALL_DIR="$ORD"; DB_DIR="$ORD/database/data"
+  record_conversion() { [[ -d "$INSTALL_DIR/releases/$1" ]] && echo exists > "$SPY" || echo missing > "$SPY"; return 1; }
+  convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "the record is written once the release folder exists" '[[ "$(cat "$SPY")" == exists ]]'
+check "a failed record leaves no empty release and the flat install whole" '[[ $rc -ne 0 && ! -e "$ORD/releases/v1.65.0" && -f "$ORD/server.js" ]]'
 ST="$TMP/stale"; rm -rf "$ST" "$TMP/stale-state"; mkdir -p "$ST/database/data" "$ST/releases"; mkdir -m 700 "$TMP/stale-state"
 echo s > "$ST/server.js"; echo v1.65.0 > "$ST/VERSION"
 printf 'version=v1.65.0\ninstall_dir=%s\ninstall_inode=%s\nstarted=%s\n' "$ST" "$(stat -c %i "$ST")" "$(date +%s)" > "$TMP/stale-state/conversion"; chmod 600 "$TMP/stale-state/conversion"
@@ -492,6 +504,33 @@ NC="$TMP/notconv"; rm -rf "$NC" "$TMP/nc-state"; mkdir -p "$NC/database/data" "$
 printf 'version=v1.65.0\ninstall_dir=%s\ninstall_inode=%s\nstarted=%s\n' "$NC" "$(stat -c %i "$NC")" "$(date +%s)" > "$TMP/nc-state/conversion"; chmod 600 "$TMP/nc-state/conversion"
 out="$( ( INSTALL_DIR="$NC"; UPDATE_STATE="$TMP/nc-state"; IS_UPDATE=0; quarantine_untrusted_releases ) 2>&1)"; rc=$?
 check "without an update to convert, the recorded release is quarantined and the record cleared" '[[ $rc -eq 0 && ! -e "$NC/releases/v1.65.0" && ! -e "$TMP/nc-state/conversion" && "$out" == *WARN*conversion* ]]'
+
+# An empty or incomplete releases/v* (a run killed between its mkdir and its record)
+# is no installed release: it never makes a releases layout, never becomes current,
+# and is swept when no conversion is recorded. Reproduces scratchpad/e1/run.sh.
+E1="$TMP/e1"; rm -rf "$E1" "$TMP/e1-state"; mkdir -m 700 "$TMP/e1-state"
+mkdir -p "$E1/database/data" "$E1/bin" "$E1/public"; echo s > "$E1/server.js"; echo '<html>' > "$E1/public/index.html"; echo v1.65.0 > "$E1/VERSION"
+mkdir -p "$E1/releases/v1.65.0/database"
+out="$( ( INSTALL_DIR="$E1"; UPDATE_STATE="$TMP/e1-state"; DB_DIR="$E1/database/data"; IS_UPDATE=1; VERSION=v1.67.0
+  quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION repair=$REPAIR safe=$SAFE_UPDATE" ) 2>&1)"
+check "an empty release left by a kill is swept, and the flat install converted" '[[ "$out" == *"old=v1.65.0 repair=0 safe=1"* && -f "$E1/releases/v1.65.0/server.js" && -f "$E1/current/public/index.html" && ! -e "$E1/server.js" ]]' 
+check "the swept empty release went to quarantine" 'compgen -G "$E1/.untrusted-*/v1.65.0" >/dev/null'
+check "an incomplete release makes no releases layout" 'mkdir -p "$TMP/e1b/releases/v1.0.0/bin" && ! INSTALL_DIR="$TMP/e1b" UPDATE_STATE="$TMP/e1-state" has_releases_layout'
+mkdir -p "$TMP/e1b/releases/v1.0.0/public"; echo s > "$TMP/e1b/releases/v1.0.0/server.js"; echo h > "$TMP/e1b/releases/v1.0.0/public/index.html"
+printf '#!/bin/sh\n' > "$TMP/e1b/releases/v1.0.0/bin/hsi-worker"; chmod 755 "$TMP/e1b/releases/v1.0.0/bin/hsi-worker"
+check "a complete release makes a releases layout" 'INSTALL_DIR="$TMP/e1b" UPDATE_STATE="$TMP/e1-state" has_releases_layout'
+chmod 775 "$TMP/e1b/releases/v1.0.0/bin/hsi-worker"
+check "a release whose worker is not trusted is incomplete" '! INSTALL_DIR="$TMP/e1b" UPDATE_STATE="$TMP/e1-state" has_releases_layout'
+# A flat VERSION equal to the target is recorded as <core>-flat, and still matches.
+FL="$TMP/flatrec"; rm -rf "$FL" "$TMP/fl-state"; mkdir -m 700 "$TMP/fl-state"
+mkdir -p "$FL/database/data" "$FL/public"; echo s > "$FL/server.js"; echo '<html>' > "$FL/public/index.html"; echo v1.67.0 > "$FL/VERSION"
+( INSTALL_DIR="$FL"; UPDATE_STATE="$TMP/fl-state"; DB_DIR="$FL/database/data"; VERSION=v1.67.0
+  mv() { if [[ "$*" == *"/VERSION "* ]]; then return 1; fi; command mv "$@"; }   # killed before VERSION moved
+  convert_flat_install ) >/dev/null 2>&1
+check "the record names <core>-flat while VERSION stays at the top" 'grep -qx "version=v1.67.0-flat" "$TMP/fl-state/conversion" && [[ -f "$FL/VERSION" ]]'
+out="$( ( INSTALL_DIR="$FL"; UPDATE_STATE="$TMP/fl-state"; DB_DIR="$FL/database/data"; IS_UPDATE=1; VERSION=v1.67.0
+  quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION safe=$SAFE_UPDATE" ) 2>&1)"
+check "a <core>-flat record matches a top VERSION of <core> and resumes" '[[ "$out" == *"old=v1.67.0-flat safe=1"* && "$(readlink "$FL/current")" == "$FL/releases/v1.67.0-flat" ]]'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
