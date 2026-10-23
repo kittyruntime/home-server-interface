@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previous version by hand, and the result of the last update shows in Settings.
   Running the installer again on the installed version reinstalls it in
   place, without a snapshot. A rollback run by hand is shown as such and
-  raises no alert. Known limitation: a first update from a version before this one that is
+  raises no alert. Every refused, failed or rolled-back update is notified
+  once, as soon as it happens. A version that failed and was rolled back is
+  removed, and only the two newest previous versions are kept. Known limitation: a first update from a version before this one that is
   interrupted before the switch boots the old version, and only the next
   installer run rolls back.
 
