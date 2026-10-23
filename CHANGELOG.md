@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.68.0] - 2026-10-23
+
 ### Security
 - **Dependencies**: vite 7.3.7 (development server fixes, including
   launch-editor command execution) and klauspost/compress 1.20.3 in the root
@@ -1435,7 +1437,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...HEAD
+[1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0
 [1.67.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...v1.67.0
 [1.66.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...v1.66.0
 [1.65.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.64.2...v1.65.0
