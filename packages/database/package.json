@@ -29,11 +29,11 @@
     "seed": "vite-node prisma/seed.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
+    "@app/compose": "workspace:*",
+    "@types/node": "^24.19.2",
     "prisma": "^6.19.3",
     "tsx": "4.23.12",
     "typescript": "~5.9.3",
-    "vite-node": "^5.3.0",
-    "@app/compose": "workspace:*"
+    "vite-node": "^5.3.0"
   }
 }
