@@ -510,6 +510,27 @@ prepare_app_home() {
   done
 }
 
+# version_lt <a> <b>: a sorts before b, the way compareVersions in the worker orders
+# them (a test keeps both in step): X.Y.Z numerically, then a version with a suffix
+# ("-rc1") before the same one without, two suffixes in byte order.
+version_lt() {
+  local a=${1#v} b=${2#v} sa="" sb="" i x y LC_ALL=C
+  local -a pa pb
+  [[ "$a" == *-* ]] && sa=${a#*-}
+  [[ "$b" == *-* ]] && sb=${b#*-}
+  IFS=. read -r -a pa <<<"${a%%-*}"
+  IFS=. read -r -a pb <<<"${b%%-*}"
+  for i in 0 1 2; do
+    x=${pa[i]:-0}; y=${pb[i]:-0}
+    [[ "$x" =~ ^[0-9]+$ ]] || x=0
+    [[ "$y" =~ ^[0-9]+$ ]] || y=0
+    if (( 10#$x != 10#$y )); then (( 10#$x < 10#$y )); return; fi
+  done
+  [[ "$sa" != "$sb" ]] || return 1
+  [[ -n "$sa" ]] || return 1
+  [[ -z "$sb" || "$sa" < "$sb" ]]
+}
+
 # END release functions
 
 # ── Host packages ──────────────────────────────────────────────────────────────
@@ -588,12 +609,6 @@ SYSTEM_WORKER="/usr/local/bin/${APP_NAME}-worker"
 # (firstHealthVersion in apps/root-worker/update_health.go).
 FIRST_SAFE_UPDATE_VERSION="v1.67.0"
 
-# version_lt <a> <b>: a sorts before b (numeric X.Y.Z, suffix ignored).
-version_lt() {
-  local a=${1#v} b=${2#v}
-  a=${a%%-*}; b=${b%%-*}
-  [[ "$a" != "$b" && "$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -1)" == "$a" ]]
-}
 
 # mark_update <step>: records the step in the in-progress marker. From the first
 # mark on, any failure rolls the update back (cleanup_install_exit).
