@@ -711,6 +711,13 @@ async function testUpdateResultNotifications() {
     const failedRollback = { ...rolledBack, status: "rollback-failed", at: "2026-10-24T10:00:00Z" }
     assert.equal(await watch.notifyUpdateResult(dir, failedRollback, dispatch), "notified")
     assert.match(events[2].message, /rollback failed/)
+    // A rollback the administrator ran by hand is no failure to alert on; a manual
+    // rollback that failed still is.
+    const manual = { ...rolledBack, step: "manual", reason: "rolled back by the administrator", at: "2026-10-25T10:00:00Z" }
+    assert.equal(await watch.notifyUpdateResult(dir, manual, dispatch), "none")
+    assert.equal(events.length, 3)
+    const manualFailed = { ...manual, status: "rollback-failed", at: "2026-10-26T10:00:00Z" }
+    assert.equal(await watch.notifyUpdateResult(dir, manualFailed, dispatch), "notified")
     // A corrupt notified file does not stop the alert.
     await writeFile(join(dir, watch.NOTIFIED_FILE), "{nope")
     assert.equal(await watch.notifyUpdateResult(dir, failedRollback, dispatch), "notified")
