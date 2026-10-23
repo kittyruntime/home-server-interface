@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify"
+import type { FastifyInstance, FastifyRequest } from "fastify"
 import { prisma } from "@app/database"
 import { isNatsConnected } from "../nats"
 import { HSI_VERSION } from "../version"
@@ -43,14 +43,26 @@ const defaultProbes: HealthProbes = {
   db: shareProbe(() => checkDatabase(() => prisma.$queryRaw`SELECT 1`), DB_TIMEOUT_MS),
 }
 
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"])
+
+// A direct loopback caller (the update gate runs on the host): the socket peer, not
+// req.ip, and no forwarding header, so a request a local proxy forwards does not count.
+export function isLocalCaller(req: FastifyRequest): boolean {
+  const h = req.headers
+  return LOOPBACK.has(req.socket.remoteAddress ?? "") && !h["x-forwarded-for"] && !h["x-real-ip"] && !h.forwarded
+}
+
 // The update health gate (root-worker) reads this exact shape: 200 only when
-// NATS and the database both answer, and the running version is reported.
+// NATS and the database both answer, and the running version is reported. The
+// version and the database state go to local callers only; others get the status.
 export async function healthRoutes(app: FastifyInstance, opts: Partial<HealthProbes> = {}) {
   const probes = { ...defaultProbes, ...opts }
-  app.get("/health", async (_req, reply) => {
+  app.get("/health", async (req, reply) => {
     const nats = probes.nats()
     const db = await probes.db()
     const healthy = nats && db
-    return reply.status(healthy ? 200 : 503).send({ status: healthy ? "ok" : "degraded", nats, db, version: HSI_VERSION })
+    const status = healthy ? "ok" : "degraded"
+    return reply.status(healthy ? 200 : 503)
+      .send(isLocalCaller(req) ? { status, nats, db, version: HSI_VERSION } : { status, nats })
   })
 }

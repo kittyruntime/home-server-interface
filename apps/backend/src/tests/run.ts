@@ -724,10 +724,10 @@ await testUpdateResultNotifications()
 async function testHealthRoute() {
   const Fastify = (await import("fastify")).default
   const { healthRoutes } = await import("../routes/health")
-  const probe = async (nats: boolean, db: boolean) => {
+  const probe = async (nats: boolean, db: boolean, from: { remoteAddress?: string; headers?: Record<string, string> } = {}) => {
     const app = Fastify()
     await app.register(healthRoutes, { nats: () => nats, db: async () => db })
-    const res = await app.inject({ method: "GET", url: "/health" })
+    const res = await app.inject({ method: "GET", url: "/health", remoteAddress: from.remoteAddress ?? "127.0.0.1", headers: from.headers })
     await app.close()
     return { status: res.statusCode, body: res.json() }
   }
@@ -743,6 +743,17 @@ async function testHealthRoute() {
   assert.equal(natsDown.status, 503)
   assert.equal(natsDown.body.nats, false)
   assert.equal(natsDown.body.version, "dev")
+  // The version and the database state are for the update gate on loopback only;
+  // other callers, and requests a local proxy forwards, see what they saw before.
+  assert.deepEqual((await probe(true, true, { remoteAddress: "::1" })).body.version, "dev")
+  assert.deepEqual((await probe(true, true, { remoteAddress: "::ffff:127.0.0.1" })).body.db, true)
+  const remote = await probe(true, true, { remoteAddress: "192.168.1.20" })
+  assert.equal(remote.status, 200)
+  assert.deepEqual(remote.body, { status: "ok", nats: true })
+  assert.deepEqual((await probe(true, false, { remoteAddress: "192.168.1.20" })).body, { status: "degraded", nats: true })
+  assert.deepEqual((await probe(true, true, { headers: { "x-forwarded-for": "192.168.1.20" } })).body, { status: "ok", nats: true })
+  assert.deepEqual((await probe(true, true, { headers: { "x-real-ip": "192.168.1.20" } })).body, { status: "ok", nats: true })
+  assert.deepEqual((await probe(true, true, { headers: { forwarded: "for=192.168.1.20" } })).body, { status: "ok", nats: true })
   // A database that never answers is reported down instead of hanging the probe.
   const { checkDatabase } = await import("../routes/health")
   const started = Date.now()
