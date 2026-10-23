@@ -55,6 +55,11 @@ function testMultiServiceIsNotApp() {
   assert.deepEqual(p.services.sort(), ["jellyfin", "second"])
 }
 
+function testInvalidComposeYamlIsRejected() {
+  assert.throws(() => parseComposeYaml("services: ["), /invalid yaml/i)
+  assert.throws(() => parseComposeYaml("services:\n  web: nope"), /mapping/i)
+}
+
 function testPlaceVolumesRejected() {
   assert.throws(() => generateComposeYaml({ ...base, volumes: [{ type: "place", source: "place-id", target: "/media", readOnly: false }] }),
     /place volumes must be resolved/)
@@ -214,6 +219,7 @@ function testRepairAddsMissingDeclarations() {
 testFreshRoundTrip()
 testUnknownFieldsAndCommentsSurviveEdit()
 testMultiServiceIsNotApp()
+testInvalidComposeYamlIsRejected()
 testPlaceVolumesRejected()
 testEmptyValuesDeleteKeys()
 testStackNameRegex()

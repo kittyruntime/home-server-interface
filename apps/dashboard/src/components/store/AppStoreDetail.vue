@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
+import { appPermissions } from '../../lib/app-permissions'
 import { versionLabel } from '../../lib/store'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
@@ -17,7 +18,7 @@ const emit = defineEmits<{ back: []; install: []; open: []; update: []; rollback
 const inst = computed(() => props.app.installedApp)
 const version = computed(() => versionLabel(props.app))
 const canOpen = computed(() => !!inst.value && (inst.value.webUrl != null || inst.value.webPort != null))
-const settings = computed(() => props.app.env.filter(e => e.prompt || e.required))
+const permissions = computed(() => appPermissions(props.app))
 
 // The grid card that opened this page is gone: keyboard focus starts here.
 const backButton = ref<HTMLButtonElement | null>(null)
@@ -77,24 +78,19 @@ onMounted(() => backButton.value?.focus())
         </p>
       </div>
 
-      <!-- What the install asks for -->
-      <div v-if="!inst && (app.ports.length || app.volumes.length || settings.length)" class="space-y-2">
-        <h4 class="eyebrow">What it needs</h4>
-        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-          <template v-for="p in app.ports" :key="`p-${p.container}-${p.protocol}`">
-            <dt class="text-[var(--c-text-3)]">Port</dt>
-            <dd class="text-[var(--c-text-2)] break-words">{{ p.label }} <span class="font-mono text-[var(--c-text-3)]">{{ p.container }}/{{ p.protocol }}</span></dd>
-          </template>
-          <template v-for="v in app.volumes" :key="`v-${v.target}`">
-            <dt class="text-[var(--c-text-3)]">Folder</dt>
-            <dd class="text-[var(--c-text-2)] break-words">{{ v.label }} <span class="font-mono text-[var(--c-text-3)]">{{ v.target }}</span></dd>
-          </template>
-          <template v-for="e in settings" :key="`e-${e.key}`">
-            <dt class="text-[var(--c-text-3)]">Setting</dt>
-            <dd class="text-[var(--c-text-2)] break-words">{{ e.prompt ?? e.key }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span></dd>
+      <section v-if="permissions.length" class="space-y-2" aria-labelledby="perm-heading">
+        <h4 id="perm-heading" class="eyebrow">Permissions</h4>
+        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
+          <template v-for="p in permissions" :key="`${p.kind}-${p.detail}`">
+            <dt class="text-[var(--c-text-3)]">{{ p.kind }}</dt>
+            <dd class="text-[var(--c-text-2)] break-words">
+              {{ p.title }}
+              <span class="font-mono text-[var(--c-text-3)]">{{ p.detail }}</span>
+              <span v-if="p.note" class="text-2xs uppercase tracking-caps text-[var(--c-text-3)]">{{ p.note }}</span>
+            </dd>
           </template>
         </dl>
-      </div>
+      </section>
 
       <p class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ app.image }}</p>
     </div>

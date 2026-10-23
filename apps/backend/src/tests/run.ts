@@ -221,6 +221,43 @@ async function testStackFsOpsRejectPathTraversalNames() {
 
 await testStackFsOpsRejectPathTraversalNames()
 
+async function testFullComposeImportCreatesAndProtectsAnApp() {
+  const { containerRouter } = await import("../trpc/routers/container")
+  const caller = containerRouter.createCaller({
+    user: { userId: "test-admin", isAdmin: true, isUserManager: false, mustChangePassword: false, capabilities: [] },
+    prisma: { auditLog: { create: async () => ({}) } },
+    req: { ip: "127.0.0.1", headers: {} },
+    audit: {},
+  } as any)
+  const content = [
+    "services:",
+    "  web:",
+    "    image: nginx",
+    "    depends_on:",
+    "      - db",
+    "  db:",
+    "    image: postgres",
+    "networks:",
+    "  frontend: {}",
+    "volumes:",
+    "  data: {}",
+  ].join("\n")
+  assert.deepEqual(await caller.app.importCompose({ name: "full-compose", content }), {
+    name: "full-compose", services: ["web", "db"],
+  })
+  assert.equal(await stackExists("full-compose"), true)
+  await assert.rejects(
+    caller.app.importCompose({ name: "full-compose", content }),
+    (e: any) => e.code === "CONFLICT",
+  )
+  await assert.rejects(
+    caller.app.importCompose({ name: "empty-compose", content: "services: {}" }),
+    (e: any) => e.code === "BAD_REQUEST" && /at least one service/i.test(e.message),
+  )
+}
+
+await testFullComposeImportCreatesAndProtectsAnApp()
+
 await rm(stacksTestDir, { recursive: true, force: true })
 
 const { interpolateTemplate, ruleMatches, selectConnectorIds, renderWebhookRequest, SEVERITY_RANK } = await import("../services/notifications")

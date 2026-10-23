@@ -25,6 +25,12 @@ const loading    = ref(false)
 const containers = ref<UnmanagedContainer[]>([])
 const importing  = ref<Set<string>>(new Set())
 const error      = ref<string | null>(null)
+const composeOpen = ref(false)
+const composeName = ref('')
+const composeContent = ref('')
+const composeError = ref<string | null>(null)
+const composeImporting = ref(false)
+const composeFile = ref<HTMLInputElement | null>(null)
 let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
 async function load() {
@@ -76,6 +82,35 @@ async function importContainer(c: UnmanagedContainer) {
     const next = new Set(importing.value)
     next.delete(c.name)
     importing.value = next
+  }
+}
+
+function openComposeFile() {
+  composeFile.value?.click()
+}
+
+async function readComposeFile(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  composeContent.value = await file.text()
+  if (!composeName.value) composeName.value = file.name.replace(/\.ya?ml$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^[^a-z0-9]+/, '').slice(0, 64)
+}
+
+async function importCompose() {
+  composeError.value = null
+  if (!composeName.value.trim()) { composeError.value = 'Enter an app name.'; return }
+  if (!composeContent.value.trim()) { composeError.value = 'Paste a compose file or choose a file.'; return }
+  composeImporting.value = true
+  try {
+    await trpc.container.app.importCompose.mutate({ name: composeName.value.trim(), content: composeContent.value })
+    composeOpen.value = false
+    composeName.value = ''
+    composeContent.value = ''
+    emit('imported')
+  } catch (e: any) {
+    composeError.value = e?.message ?? 'Import failed'
+  } finally {
+    composeImporting.value = false
   }
 }
 
@@ -135,6 +170,23 @@ onUnmounted(() => {
     <!-- Expanded content -->
     <Transition name="slide">
       <div v-if="expanded" class="content">
+
+        <div class="compose-import">
+          <div class="compose-import-header">
+            <span class="compose-import-title">Import compose file</span>
+            <button class="import-btn" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</button>
+          </div>
+          <div v-if="composeOpen" class="compose-import-form">
+            <input v-model="composeName" class="compose-name" placeholder="App name, for example media" maxlength="64" />
+            <input ref="composeFile" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readComposeFile" />
+            <button class="file-btn" type="button" @click="openComposeFile">Choose YAML file</button>
+            <textarea v-model="composeContent" class="compose-textarea" rows="8" spellcheck="false" placeholder="services:\n  web:\n    image: nginx"></textarea>
+            <p v-if="composeError" class="state-msg state-msg--error" role="alert">{{ composeError }}</p>
+            <button class="import-btn" :disabled="composeImporting" @click="importCompose">
+              {{ composeImporting ? 'Importing…' : 'Import app' }}
+            </button>
+          </div>
+        </div>
 
         <div v-if="error" class="state-msg state-msg--error">
           <svg viewBox="0 0 16 16" fill="none" class="state-icon">
@@ -290,6 +342,52 @@ onUnmounted(() => {
 /* ── Content ── */
 .content {
   padding: 0 0.75rem 0.75rem;
+}
+
+.compose-import {
+  margin: 0 0.5rem 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+.compose-import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.compose-import-title {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--c-text-2);
+}
+.compose-import-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.compose-name,
+.compose-textarea {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: var(--c-bg-2);
+  color: var(--c-text-1);
+  padding: 0.5rem;
+  font-size: var(--text-xs, 0.75rem);
+}
+.compose-textarea {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.file-btn {
+  width: fit-content;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  color: var(--c-text-2);
+  background: transparent;
+  font-size: var(--text-2xs, 0.7rem);
+  cursor: pointer;
 }
 
 .state-msg {
