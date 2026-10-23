@@ -16,13 +16,14 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
 source "$TMP/func.sh"
 CODE_UID=$(id -u)
 umask 022
+UPDATE_STATE="$TMP/upd-state"; mkdir -m 700 "$UPDATE_STATE"
 
 APP_NAME=hsi
 RELEASE_APP_NAME=hsi
@@ -98,6 +99,7 @@ C1C="$TMP/c1c"
 mkdir -p "$C1C/database/data"; echo s > "$C1C/server.js"
 ( INSTALL_DIR="$C1C"; DB_DIR="$C1C/database/data"; OLD_VERSION=""; CODE_UID=$(( $(id -u) + 1 )); convert_flat_install ) >/dev/null 2>&1; rc=$?
 check "a converted tree left with entries that are not root's is refused" '[[ $rc -ne 0 && ! -L "$C1C/current" ]]'
+rm -f "$UPDATE_STATE/conversion"   # that failed conversion was another install's
 
 # A real folder planted at current.tmp (the name the conversion links through) never
 # becomes current: quarantine moves it aside, and the conversion refuses it anyway.
@@ -111,6 +113,7 @@ plant_flat() { # <dir>: a flat v1.65.0 with an app-owned current.tmp/ and curren
 plant_flat "$C1D"
 ( INSTALL_DIR="$C1D"; DB_DIR="$C1D/database/data"; OLD_VERSION=""; convert_flat_install ) >/dev/null 2>&1; rc=$?
 check "the conversion refuses a folder at current.tmp" '[[ $rc -ne 0 && ! -d "$C1D/current/bin" ]] && ! { [[ -e "$C1D/current" && ! -L "$C1D/current" ]]; }'
+rm -f "$UPDATE_STATE/conversion"   # that failed conversion was another install's
 plant_flat "$C1D"
 ( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1; rc=$?
 check "quarantine moves current.tmp and current.tmp-<pid> aside" '[[ $rc -eq 0 && ! -e "$C1D/current.tmp" && ! -e "$C1D/current.tmp-77" ]] && compgen -G "$C1D/.untrusted-*/current.tmp" >/dev/null && compgen -G "$C1D/.untrusted-*/current.tmp-77" >/dev/null'
@@ -125,28 +128,58 @@ rm -rf "$C1D/current"; rm -f "$C1D/current"; mkdir -p "$C1D/current/bin"
 ( INSTALL_DIR="$C1D"; quarantine_untrusted_releases ) >/dev/null 2>&1
 check "a current that is a real folder is moved aside" '[[ ! -e "$C1D/current" ]]'
 
-# A conversion killed after its renames, before the tree was root's, is resumed
-# (its root-owned .converting marker names it) instead of quarantined.
+# A conversion killed after its renames, before the tree was root's, is resumed. Its
+# record lives in the root-only update state dir and names the install (path, inode,
+# start); any mismatch stops the installer instead of trusting it.
 C1E="$TMP/c1e"
-mkdir -p "$C1E/database/data" "$C1E/public"
-echo s > "$C1E/server.js"; echo '<html>' > "$C1E/public/index.html"; echo v1.65.0 > "$C1E/VERSION"
-( INSTALL_DIR="$C1E"; DB_DIR="$C1E/database/data"; root_owned() { return 1; }; convert_flat_install ) >/dev/null 2>&1
-chmod 777 "$C1E/releases/v1.65.0/public"   # still the app user's, as when interrupted
-check "an interrupted conversion leaves its marker" '[[ -f "$C1E/.converting" && "$(cat "$C1E/.converting")" == v1.65.0 && ! -e "$C1E/server.js" ]]'
-( INSTALL_DIR="$C1E"; quarantine_untrusted_releases ) >/dev/null 2>&1
-check "the interrupted conversion is not quarantined" '[[ -d "$C1E/releases/v1.65.0" ]] && ! compgen -G "$C1E/.untrusted-*" >/dev/null'
+CONV_STATE="$TMP/conv-state"; mkdir -m 700 "$CONV_STATE"
+flat_c1e() {
+  rm -rf "$C1E"; mkdir -p "$C1E/database/data" "$C1E/public" "$C1E/bin"
+  echo s > "$C1E/server.js"; echo '<html>' > "$C1E/public/index.html"; echo v1.65.0 > "$C1E/VERSION"
+  echo 'app-owned copy' > "$C1E/bin/hsi-worker"
+}
+interrupt_c1e() { # a conversion killed before root_owned, the tree left the app user's
+  ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; DB_DIR="$C1E/database/data"; root_owned() { return 1; }; convert_flat_install ) >/dev/null 2>&1
+  chmod 777 "$C1E/releases/v1.65.0/public"
+}
+q_c1e() { ( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; quarantine_untrusted_releases ) 2>&1; }
+flat_c1e; interrupt_c1e
+check "an interrupted conversion is recorded in the update state, not in INSTALL_DIR" '[[ -f "$CONV_STATE/conversion" && ! -e "$C1E/.converting" ]] && grep -qx "version=v1.65.0" "$CONV_STATE/conversion" && grep -qx "install_inode=$(stat -c %i "$C1E")" "$CONV_STATE/conversion"'
+out="$(q_c1e)"; rc=$?
+check "the interrupted conversion is not quarantined" '[[ $rc -eq 0 && -d "$C1E/releases/v1.65.0" ]] && ! compgen -G "$C1E/.untrusted-*" >/dev/null'
 check "it is still a flat install to convert" 'INSTALL_DIR="$C1E" is_flat_install'
-( INSTALL_DIR="$C1E"; DB_DIR="$C1E/database/data"; root_owned() { chmod -R go-w,ug-s "$@"; }; OLD_VERSION=""
+echo 'planted' > "$C1E/releases/v1.65.0/bin/hsi-worker"   # the app user rewrites its worker meanwhile
+( INSTALL_DIR="$C1E"; UPDATE_STATE="$CONV_STATE"; DB_DIR="$C1E/database/data"; root_owned() { chmod -R go-w,ug-s "$@"; }; OLD_VERSION=""
   convert_flat_install && [[ "$OLD_VERSION" == v1.65.0 ]] ) >/dev/null 2>&1; rc=$?
-check "the conversion resumes and takes ownership" '[[ $rc -eq 0 && "$(readlink "$C1E/current")" == "$C1E/releases/v1.65.0" && -f "$C1E/current/public/index.html" && "$(stat -c %a "$C1E/releases/v1.65.0/public")" == 755 && ! -e "$C1E/.converting" ]]'
-echo v1.65.0 > "$C1E/.converting"
-( INSTALL_DIR="$C1E"; quarantine_untrusted_releases ) >/dev/null 2>&1
-check "a marker left after current was linked is removed" '[[ ! -e "$C1E/.converting" && -L "$C1E/current" ]]'
-# A marker the installer did not write (writable by others) protects nothing.
-C1F="$TMP/c1f"
-mkdir -p "$C1F/releases/v1.65.0"; chmod 777 "$C1F/releases/v1.65.0"; echo v1.65.0 > "$C1F/.converting"; chmod 666 "$C1F/.converting"
-( INSTALL_DIR="$C1F"; quarantine_untrusted_releases ) >/dev/null 2>&1
-check "a planted marker is moved aside with the release" '[[ ! -e "$C1F/releases/v1.65.0" && ! -e "$C1F/.converting" ]]'
+check "the conversion resumes and takes ownership" '[[ $rc -eq 0 && "$(readlink "$C1E/current")" == "$C1E/releases/v1.65.0" && -f "$C1E/current/public/index.html" && "$(stat -c %a "$C1E/releases/v1.65.0/public")" == 755 && ! -e "$CONV_STATE/conversion" ]]'
+check "a resumed release runs the root worker, never the app-written one" 'cmp -s "$SYSTEM_WORKER" "$C1E/releases/v1.65.0/bin/hsi-worker"'
+# Any record that does not match this install stops the installer.
+for spoil in inode dir version future mode flatversion; do
+  flat_c1e; interrupt_c1e
+  case $spoil in
+    inode) sed -i "s/^install_inode=.*/install_inode=1/" "$CONV_STATE/conversion" ;;
+    dir) sed -i "s|^install_dir=.*|install_dir=/opt/other|" "$CONV_STATE/conversion" ;;
+    version) sed -i "s/^version=.*/version=v1.64.0/" "$CONV_STATE/conversion" ;;
+    future) sed -i "s/^started=.*/started=$(( $(date +%s) + 3600 ))/" "$CONV_STATE/conversion" ;;
+    mode) chmod 666 "$CONV_STATE/conversion" ;;
+    flatversion) echo v1.64.0 > "$C1E/VERSION" ;;
+  esac
+  out="$(q_c1e)"; rc=$?
+  check "a conversion record with a wrong $spoil stops the installer" '[[ $rc -ne 0 && "$out" == *"DIE"*"conversion"* && -d "$C1E/releases/v1.65.0" && ! -L "$C1E/current" ]]'
+  rm -f "$CONV_STATE/conversion"
+done
+flat_c1e; interrupt_c1e; chmod 755 "$CONV_STATE"
+out="$(q_c1e)"; rc=$?
+check "a record in a state dir others can read stops the installer" '[[ $rc -ne 0 && "$out" == *"DIE"* ]]'
+chmod 700 "$CONV_STATE"; rm -f "$CONV_STATE/conversion"
+# Without a record, an app-owned release is quarantined as before.
+flat_c1e; interrupt_c1e; rm -f "$CONV_STATE/conversion"
+q_c1e >/dev/null; rc=$?
+check "an interrupted release without a record is quarantined" '[[ $rc -eq 0 && ! -e "$C1E/releases/v1.65.0" ]]'
+# A planted .converting under INSTALL_DIR means nothing.
+flat_c1e; interrupt_c1e; rm -f "$CONV_STATE/conversion"; echo v1.65.0 > "$C1E/.converting"
+q_c1e >/dev/null
+check "a marker under INSTALL_DIR is ignored" '[[ ! -e "$C1E/releases/v1.65.0" ]]'
 
 # Before #9a the app user owned INSTALL_DIR and could plant current and releases/:
 # whatever is not root's alone, or a current that does not lead to exactly one of
@@ -346,6 +379,50 @@ fd_seen="$( (
   run_as "$(id -un)" '[[ -e /proc/self/fd/9 ]] && echo open || echo closed'
 ) 2>&1)"
 check "run_as children do not see the lock fd" '[[ "$fd_seen" == closed ]]'
+
+# Every trust check fails closed: an error, a missing path or an odd type is untrusted.
+FC="$TMP/failclosed"
+mkdir -p "$FC/releases/v1.0.0/bin" "$FC/releases/v1.0.0/locked/deep"
+printf '#!/bin/sh\n' > "$FC/releases/v1.0.0/bin/hsi-worker"; chmod 755 "$FC/releases/v1.0.0/bin/hsi-worker"
+check "a readable trusted tree passes" 'INSTALL_DIR="$FC" trusted_release "$FC/releases/v1.0.0"'
+chmod 000 "$FC/releases/v1.0.0/locked"
+check "a tree find cannot read is untrusted" '! code_tree_trusted "$FC/releases/v1.0.0" 2>/dev/null'
+check "a release find cannot read is untrusted" '! INSTALL_DIR="$FC" trusted_release "$FC/releases/v1.0.0" 2>/dev/null'
+( INSTALL_DIR="$FC"; UPDATE_STATE="$TMP/upd-state"; quarantine_untrusted_releases ) >/dev/null 2>&1
+check "quarantine moves a release it cannot read" '[[ ! -e "$FC/releases/v1.0.0" ]]'
+chmod -R u+rwx "$FC"/.untrusted-* 2>/dev/null
+check "a missing path is untrusted" '! code_tree_trusted "$FC/none" && ! trusted_worker "$FC/none" && ! INSTALL_DIR="$FC" trusted_release "$FC/none"'
+mkfifo "$FC/fifo"
+check "a FIFO is not a trusted worker" '! trusted_worker "$FC/fifo"'
+ln -s /bin/sh "$FC/link"
+check "a link is not a trusted worker" '! trusted_worker "$FC/link"'
+check "a release reached through a link is untrusted" 'ln -s "$FC/releases" "$TMP/fc-rel" && ! INSTALL_DIR="$FC" trusted_release "$TMP/fc-rel/../releases"' 2>/dev/null
+( INSTALL_DIR="$FC"; UPDATE_STATE="$TMP/no-such-state"; DB_DIR="$FC/database/data"; mkdir -p "$FC/database/data"; echo s > "$FC/server.js"; convert_flat_install ) >/dev/null 2>&1; rc=$?
+check "a conversion that cannot record itself does not start" '[[ $rc -ne 0 && -f "$FC/server.js" ]]'
+
+# Recorded versions are checked against what current resolves to at each use.
+CR="$TMP/cr"
+mkdir -p "$CR/releases/v1.0.0" "$CR/releases/v1.1.0"
+ln -s "$CR/releases/v1.0.0" "$CR/current"
+check "current resolves to the recorded version" 'INSTALL_DIR="$CR" current_release_is v1.0.0'
+check "another version does not match" '! INSTALL_DIR="$CR" current_release_is v1.1.0'
+rm "$CR/current"; ln -s "$CR/releases/v1.0.0/" "$CR/current"
+check "a current that is not exactly releases/<version> does not match" '! INSTALL_DIR="$CR" current_release_is v1.0.0'
+rm "$CR/current"; ln -s "$CR/releases/v9.0.0" "$CR/current"
+check "a dangling current does not match" '! INSTALL_DIR="$CR" current_release_is v9.0.0'
+rm "$CR/current"; ln -s "$CR/releases/v1.1.0" "$CR/current"; chmod 777 "$CR/releases/v1.1.0"
+check "an untrusted release does not match" '! INSTALL_DIR="$CR" current_release_is v1.1.0'
+rm "$CR/current"; mkdir "$CR/current"
+check "a current that is a folder does not match" '! INSTALL_DIR="$CR" current_release_is v1.0.0'
+# The release block uses it before each step that relies on the recorded version.
+block="$(sed -n '/^# RELEASE MODE: keep the previous version/,/^# RELEASE MODE: install update checker/p' "$ROOT/scripts/install.sh")"
+block_of() { sed -n '/^if \[\[ "\$FROM_SOURCE" -eq 0 \]\]; then$/,/^fi$/p' "$ROOT/scripts/install.sh"; }
+check "OLD_VERSION is what current resolves to" 'grep -q "current_release_is \"\$OLD_VERSION\" ||" <<<"$block" && ! grep -q "\-d \"\$INSTALL_DIR/releases/\$OLD_VERSION\" \]\]" <<<"$block"'
+check "current is re-checked before the snapshot" 'grep -B3 "SNAP=\$(worker_update" <<<"$block" | grep -q "current_release_is \"\$OLD_VERSION\""'
+check "current is re-checked before the switch" 'grep -A3 "mark_update switch" "$ROOT/scripts/install.sh" | grep -q "current_release_is \"\$OLD_VERSION\""'
+check "current is checked after the switch" 'grep -A2 "switch \"\$VERSION\" || die" "$ROOT/scripts/install.sh" | grep -q "current_release_is \"\$VERSION\""'
+check "a repair is refused while an update is in progress" 'grep -A3 "^    REPAIR=1$" "$ROOT/scripts/install.sh" | grep -q "in-progress.json"'
+check "a repair re-checks current before the replace" 'grep -B3 "replace \"\$VERSION\"" "$ROOT/scripts/install.sh" | grep -q "current_release_is \"\$VERSION\""'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.

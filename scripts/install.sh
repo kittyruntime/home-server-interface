@@ -271,15 +271,68 @@ trusted_worker() {
   [[ -f "$1" && ! -L "$1" ]] && code_tree_trusted "$1"
 }
 
-# conversion_in_progress: prints the version of the flat conversion an earlier run
-# began, from INSTALL_DIR/.converting, when that marker is the installer's: a regular
-# file of CODE_UID that nobody else can write (the app user cannot create one).
+# The record of a flat conversion in progress: in the root-only update state dir,
+# never where the app user writes.
+conversion_record() { echo "$UPDATE_STATE/conversion"; }
+
+# record_conversion <version>: written before the first rename of a conversion, with
+# what identifies this install (path, inode of INSTALL_DIR, start time).
+record_conversion() {
+  local f tmp
+  f=$(conversion_record); tmp="$f.tmp"
+  rm -f -- "$tmp" || return 1
+  ( umask 077; set -C
+    printf 'version=%s\ninstall_dir=%s\ninstall_inode=%s\nstarted=%s\n' \
+      "$1" "$INSTALL_DIR" "$(stat -c %i -- "$INSTALL_DIR")" "$(date +%s)" > "$tmp" ) \
+    && mv -T -- "$tmp" "$f"
+}
+
+# conversion_in_progress: prints the version of the conversion an earlier run of this
+# installer began and returns 0; returns 1 when there is no record. Returns 2 when a
+# record exists but anything about it does not hold now: the state dir is not root's
+# 0700, the record is not a regular root-owned file only root can write, a field is
+# missing, the path or the inode of INSTALL_DIR differ, the start time is in the
+# future, the release it names is not a real folder, a VERSION left at the top names
+# another version, or current already leads elsewhere. Each check fails closed.
 conversion_in_progress() {
-  local m="$INSTALL_DIR/.converting" v
-  [[ -f "$m" && ! -L "$m" ]] && code_tree_trusted "$m" || return 1
-  v=$(head -c 64 -- "$m" | tr -d '[:space:]')
-  [[ "$v" =~ $INSTALLED_VERSION_RE ]] || return 1
+  local f found v dir inode started now target
+  f=$(conversion_record)
+  [[ -e "$f" || -L "$f" ]] || return 1
+  [[ -d "$UPDATE_STATE" && ! -L "$UPDATE_STATE" && -f "$f" && ! -L "$f" ]] || return 2
+  found=$(find "$UPDATE_STATE" -maxdepth 0 \( ! -uid "$CODE_UID" -o -perm /077 \) -print -quit) || return 2
+  [[ -z "$found" ]] || return 2
+  found=$(find "$f" -maxdepth 0 \( ! -uid "$CODE_UID" -o -perm /022 \) -print -quit) || return 2
+  [[ -z "$found" ]] || return 2
+  v=$(sed -n 's/^version=//p' -- "$f") || return 2
+  dir=$(sed -n 's/^install_dir=//p' -- "$f") || return 2
+  inode=$(sed -n 's/^install_inode=//p' -- "$f") || return 2
+  started=$(sed -n 's/^started=//p' -- "$f") || return 2
+  now=$(date +%s) || return 2
+  [[ "$v" =~ $INSTALLED_VERSION_RE && "$dir" == "$INSTALL_DIR" && "$inode" =~ ^[0-9]+$ && "$started" =~ ^[0-9]+$ ]] || return 2
+  [[ "$inode" == "$(stat -c %i -- "$INSTALL_DIR")" ]] && (( started <= now )) || return 2
+  [[ -d "$INSTALL_DIR/releases/$v" && ! -L "$INSTALL_DIR/releases/$v" ]] || return 2
+  # VERSION moves last: still at the top, it must name the same version.
+  if [[ -e "$INSTALL_DIR/VERSION" && ! -L "$INSTALL_DIR/VERSION" ]]; then
+    [[ -f "$INSTALL_DIR/VERSION" && "$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION")" == "$v" ]] || return 2
+  fi
+  if [[ -L "$INSTALL_DIR/current" ]]; then
+    target=$(readlink -- "$INSTALL_DIR/current") || return 2
+    [[ "$target" == "$INSTALL_DIR/releases/$v" ]] || return 2
+  elif [[ -e "$INSTALL_DIR/current" ]]; then
+    return 2
+  fi
   echo "$v"
+}
+
+# check_conversion: conversion_in_progress, with a record that does not match this
+# install stopping the installer. Sets CONVERTING (empty: none).
+check_conversion() {
+  local rc=0
+  CONVERTING=$(conversion_in_progress) || rc=$?
+  if (( rc == 2 )); then
+    die "The record of an interrupted conversion ($(conversion_record)) does not match $INSTALL_DIR: refusing to trust it. Check $INSTALL_DIR/releases, remove the record, then re-run."
+  fi
+  (( rc == 0 )) || CONVERTING=""
 }
 
 # quarantine_untrusted_releases: before #9a the app user owned INSTALL_DIR, so it
@@ -289,15 +342,12 @@ conversion_in_progress() {
 # not a link included), and anything at current.tmp*, is moved to a new
 # root-only $INSTALL_DIR/.untrusted-*, as is a releases/.staging-* that is not
 # root's alone: never run, never followed, never a rollback target. Renames only,
-# so a link is moved, not followed. The release a .converting marker of the installer
-# names (conversion_in_progress) is left for convert_flat_install to finish; a
-# marker the installer did not write is moved aside too.
+# so a link is moved, not followed. The release an interrupted conversion of this
+# install was moving (check_conversion) is left for convert_flat_install to finish.
 quarantine_untrusted_releases() {
-  local e target q="" moved=() converting=""
-  converting=$(conversion_in_progress) || true
-  if [[ -z "$converting" && ( -e "$INSTALL_DIR/.converting" || -L "$INSTALL_DIR/.converting" ) ]]; then
-    moved+=("$INSTALL_DIR/.converting")
-  fi
+  local e target q="" moved=() converting CONVERTING=""
+  check_conversion
+  converting=$CONVERTING
   if [[ -d "$INSTALL_DIR/releases" && ! -L "$INSTALL_DIR/releases" ]]; then
     for e in "$INSTALL_DIR"/releases/v* "$INSTALL_DIR"/releases/.staging-*; do
       [[ -e "$e" || -L "$e" ]] || continue
@@ -318,9 +368,9 @@ quarantine_untrusted_releases() {
   elif [[ -e "$INSTALL_DIR/current" ]]; then
     moved+=("$INSTALL_DIR/current")
   fi
-  # A conversion killed after it linked current is finished: its marker goes.
+  # A conversion killed after it linked current is finished: its record goes.
   if [[ -n "$converting" && -L "$INSTALL_DIR/current" && " ${moved[*]} " != *" $INSTALL_DIR/current "* ]]; then
-    rm -f -- "$INSTALL_DIR/.converting" || return 1
+    rm -f -- "$(conversion_record)" || return 1
   fi
   # The temporary names current is switched through (current.tmp here,
   # current.tmp-<pid> in the worker): whatever is there was planted.
@@ -370,18 +420,20 @@ flat_version() {
 # convert_flat_install: moves the code paths of a flat install, VERSION last, into
 # releases/<its version>/ and points current at it, so the version updated from is a
 # rollback target. .env, database/data and data never move. Every move is a rename,
-# and the .converting marker names the version: an interrupted conversion resumes. The moved folders were the app user's: the tree
+# and record_conversion names the version: an interrupted conversion resumes. Fresh
+# or resumed, bin/hsi-worker (the only file root runs) is always the root copy. The moved folders were the app user's: the tree
 # is root's, and checked, before anything is written into it. The release keeps the
 # worker that ran as root (/usr/local/bin), never the app-owned copy in bin/. Sets
 # OLD_VERSION.
 convert_flat_install() {
-  local old rel dest worker marker="$INSTALL_DIR/.converting"
-  old=$(conversion_in_progress) || old=$(flat_version)
+  local old rel dest worker CONVERTING=""
+  check_conversion
+  old=${CONVERTING:-$(flat_version)}
   dest="$INSTALL_DIR/releases/$old"
   worker="$dest/bin/${RELEASE_APP_NAME}-worker"
-  # Written before the first rename (INSTALL_DIR is root's): a run killed before
-  # the tree is root's is resumed next time instead of quarantined.
-  rm -f -- "$marker" && (set -C; printf '%s\n' "$old" > "$marker") || return 1
+  # Recorded before the first rename: a run killed before the tree is root's is
+  # resumed next time instead of quarantined.
+  record_conversion "$old" || return 1
   mkdir -p "$dest/database" || return 1
   for rel in "${RELEASE_CODE_PATHS[@]}" VERSION; do
     [[ -e "$INSTALL_DIR/$rel" && ! -L "$INSTALL_DIR/$rel" ]] || continue
@@ -399,7 +451,7 @@ convert_flat_install() {
   # -T: a folder at current.tmp is refused, never linked into and renamed to current.
   ln -sfnT -- "$dest" "$INSTALL_DIR/current.tmp" && mv -T -- "$INSTALL_DIR/current.tmp" "$INSTALL_DIR/current" || return 1
   [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$dest" ]] && trusted_release "$dest" || return 1
-  rm -f -- "$marker" || return 1
+  rm -f -- "$(conversion_record)" || return 1
   OLD_VERSION=$old
 }
 
@@ -501,11 +553,13 @@ worker_update() {
     "$bin" update "$@"
 }
 
-# trusted_release <dir>: INSTALL_DIR and releases/ are root's and closed to other
+# trusted_release <dir>: <dir> is exactly $INSTALL_DIR/releases/<name>, INSTALL_DIR
+# and releases/ are root's and closed to other
 # writers, and so is everything in <dir> (code_tree_trusted): nothing on the way to
 # what root runs from it can be swapped between the check and the run.
 trusted_release() {
   local found
+  [[ "$(dirname -- "$1")" == "$INSTALL_DIR/releases" && "$(basename -- "$1")" =~ ^[^./][^/]*$ ]] || return 1
   [[ -d "$1" && ! -L "$1" && ! -L "$INSTALL_DIR" && ! -L "$INSTALL_DIR/releases" ]] || return 1
   found=$(find "$INSTALL_DIR" "$INSTALL_DIR/releases" -maxdepth 0 \( ! -uid "$CODE_UID" -o -perm /022 \) -print -quit) || return 1
   [[ -z "$found" ]] && code_tree_trusted "$1"
@@ -602,6 +656,16 @@ take_install_root() {
   check_data_paths
   mkdir -p "$DB_DIR" "$INSTALL_DIR/data" || return 1
   if [[ -n "$owner" ]]; then chown -h "$APP_USER:" "$DB_DIR" "$INSTALL_DIR/data" || return 1; fi
+}
+
+# current_release_is <version>: current is a link to exactly
+# $INSTALL_DIR/releases/<version>, a trusted release. A recorded version (OLD_VERSION,
+# VERSION in a repair) is checked with it at each use: a mismatch stops the installer.
+current_release_is() {
+  local target
+  [[ "$1" =~ $INSTALLED_VERSION_RE && -L "$INSTALL_DIR/current" ]] || return 1
+  target=$(readlink -- "$INSTALL_DIR/current") || return 1
+  [[ "$target" == "$INSTALL_DIR/releases/$1" ]] && trusted_release "$target"
 }
 
 # END release functions
@@ -1222,9 +1286,9 @@ else
       convert_flat_install || die "Could not move the installed version under $INSTALL_DIR/releases."
       success "Previous version kept as $INSTALL_DIR/releases/$OLD_VERSION"
     else
-      OLD_VERSION=$(basename "$(readlink "$INSTALL_DIR/current")")
+      OLD_VERSION=$(basename -- "$(readlink -- "$INSTALL_DIR/current")") || OLD_VERSION=""
     fi
-    [[ "$OLD_VERSION" =~ $INSTALLED_VERSION_RE && -d "$INSTALL_DIR/releases/$OLD_VERSION" ]] \
+    current_release_is "$OLD_VERSION" \
       || die "The installed version could not be determined from $INSTALL_DIR/current."
   fi
   link_flat_paths || die "Could not link the code paths of $INSTALL_DIR through current."
@@ -1232,6 +1296,8 @@ else
   rm -rf -- "$INSTALL_DIR"/.install-rollback-*
   if [[ -L "$INSTALL_DIR/current" && "$(readlink -- "$INSTALL_DIR/current")" == "$INSTALL_DIR/releases/$VERSION" ]]; then
     REPAIR=1
+    [[ ! -e "$UPDATE_STATE/in-progress.json" ]] \
+      || die "An update is recorded as in progress ($UPDATE_STATE/in-progress.json): refusing to reinstall $VERSION over it."
     info "$VERSION is the installed version: reinstalling it (no snapshot, nothing to roll back to)"
   elif [[ "$IS_UPDATE" -eq 1 ]]; then
     SAFE_UPDATE=1
@@ -1244,6 +1310,7 @@ else
     # also for a version before #9a (whose own worker has no `update` command).
     # From the marker on, every failure rolls back.
     step "Snapshotting the database and configuration"
+    current_release_is "$OLD_VERSION" || die "$INSTALL_DIR/current no longer leads to $OLD_VERSION."
     SNAP=$(worker_update "$NEW_WORKER" snapshot "$OLD_VERSION" "$VERSION") \
       || die "Could not snapshot the installation."
     success "Snapshot → $SNAP"
@@ -1754,8 +1821,10 @@ EOF
 if [[ "$FROM_SOURCE" -eq 0 ]]; then
   if (( SAFE_UPDATE )); then
     mark_update switch
+    current_release_is "$OLD_VERSION" || die "$INSTALL_DIR/current no longer leads to $OLD_VERSION."
   fi
   if (( REPAIR )); then
+    current_release_is "$VERSION" || die "$INSTALL_DIR/current no longer leads to $VERSION."
     # The staged copy and the live release are swapped in one step.
     worker_update "$NEW_WORKER" replace "$VERSION" "$(basename -- "$STAGED_DIR")" \
       || die "Could not replace $INSTALL_DIR/releases/$VERSION with the reinstalled copy."
@@ -1763,6 +1832,7 @@ if [[ "$FROM_SOURCE" -eq 0 ]]; then
     NEW_WORKER="$REL_DIR/bin/$RELEASE_WORKER_BIN"
   fi
   worker_update "$NEW_WORKER" switch "$VERSION" || die "Could not switch $INSTALL_DIR/current to $VERSION."
+  current_release_is "$VERSION" || die "$INSTALL_DIR/current does not lead to $VERSION after the switch."
   success "$INSTALL_DIR/current → releases/$VERSION"
 fi
 
