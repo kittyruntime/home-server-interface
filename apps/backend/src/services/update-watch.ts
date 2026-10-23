@@ -1,7 +1,7 @@
 import { readFile, rm, access, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { log } from "../utils/log"
-import { requestSync } from "../nats"
+import { requestSync, natsSubscribe } from "../nats"
 import { dispatchEvent, type NotificationEvent } from "./notifications"
 
 // Detects HSI updates that did not land. update.apply records the attempt next
@@ -88,9 +88,10 @@ export interface UpdateResult { from: string; to: string; status: string; step: 
 export interface PreviousVersion { version: string; snapshot: string | null; snapshotCreated: string | null }
 // rollbackTarget is what `update rollback` brings back (null: nothing to go back to);
 // rollbackCommand names the worker of this install.
+// history: the last results, oldest first (workers before it report only last).
 export interface WorkerUpdateStatus {
   last: UpdateResult | null; current: string; previous: PreviousVersion[]
-  rollbackTarget?: PreviousVersion | null; rollbackCommand?: string
+  rollbackTarget?: PreviousVersion | null; rollbackCommand?: string; history?: UpdateResult[]
 }
 
 // Short timeout: update.status waits on this, and the worker may be down.
@@ -116,43 +117,96 @@ const ALERTING_STATUSES: Record<string, string> = {
   "refused": "refused",
 }
 
-// Notifies a rolled-back (except by hand), rollback-failed or refused update once: the `at` of
-// the last notified result is kept next to the attempt record.
+// One result (the last.json of a worker before results.jsonl): notifyUpdateResults.
 export async function notifyUpdateResult(
   dir: string, last: UpdateResult | null, dispatch: (e: NotificationEvent) => unknown,
 ): Promise<"none" | "notified"> {
-  const outcome = last ? ALERTING_STATUSES[last.status] : undefined
-  if (!last || !outcome || typeof last.at !== "string") return "none"
-  // `update rollback` run by the administrator: done on purpose, nothing to alert on.
-  if (last.status === "rolled-back" && last.step === "manual") return "none"
-  const at = Date.parse(last.at)
-  if (!Number.isFinite(at)) return "none"
+  return (await notifyUpdateResults(dir, last ? [last] : [], dispatch)) > 0 ? "notified" : "none"
+}
+
+// Notifies, oldest first, each rolled-back (except by hand), rollback-failed or refused
+// result newer than the last one handled (its `at` is kept next to the attempt record), and
+// records the newest result seen: two results written between two checks are both
+// notified, and each only once. Returns how many were notified.
+export async function notifyUpdateResults(
+  dir: string, results: UpdateResult[], dispatch: (e: NotificationEvent) => unknown,
+): Promise<number> {
   const file = join(dir, NOTIFIED_FILE)
+  let notified = -Infinity
   try {
-    const notified = Date.parse((JSON.parse(await readFile(file, "utf8")) as { at?: string }).at ?? "")
-    if (Number.isFinite(notified) && at <= notified) return "none"
-  } catch { /* never notified, or an unreadable record: notify */ }
-  dispatch({
-    type: "update.failed", severity: "critical", source: "system.update", target: last.to,
-    message: `Update from ${last.from} to ${last.to} ${outcome} at step ${last.step}: ${last.reason}`,
-    time: new Date().toISOString(),
-  })
+    const at = Date.parse((JSON.parse(await readFile(file, "utf8")) as { at?: string }).at ?? "")
+    if (Number.isFinite(at)) notified = at
+  } catch { /* never notified, or an unreadable record */ }
+  const fresh = results
+    .filter(r => r && typeof r.at === "string" && Number.isFinite(Date.parse(r.at)) && Date.parse(r.at) > notified)
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  if (fresh.length === 0) return 0
+  let count = 0
+  for (const r of fresh) {
+    const outcome = ALERTING_STATUSES[r.status]
+    if (!outcome || (r.status === "rolled-back" && r.step === "manual")) continue
+    dispatch({
+      type: "update.failed", severity: "critical", source: "system.update", target: r.to,
+      message: `Update from ${r.from} to ${r.to} ${outcome} at step ${r.step}: ${r.reason}`,
+      time: new Date().toISOString(),
+    })
+    count++
+  }
   try {
-    await writeFile(file, JSON.stringify({ at: last.at }), "utf8")
+    await writeFile(file, JSON.stringify({ at: fresh[fresh.length - 1]!.at }), "utf8")
   } catch (err) {
     log.error({ err, file }, "update-watch: could not record the notified update result")
   }
-  return "notified"
+  return count
 }
+
+// Checks the worker's results at boot, on each announcement the worker publishes
+// after writing one (subscribe), and when called (the periodic fallback). Checks
+// never overlap: one asked for while another runs follows it.
+export function watchUpdateResults(opts: {
+  dir: () => string
+  readStatus: () => Promise<WorkerUpdateStatus | null>
+  dispatch: (e: NotificationEvent) => unknown
+  subscribe: (onResult: () => void) => void
+}): { check: () => Promise<void>; idle: () => Promise<void> } {
+  let running: Promise<void> = Promise.resolve()
+  const once = async () => {
+    const status = await opts.readStatus()
+    if (!status) return
+    const results = status.history ?? (status.last ? [status.last] : [])
+    await notifyUpdateResults(opts.dir(), results, opts.dispatch)
+  }
+  const check = () => {
+    running = running.then(once).catch(err => log.error({ err }, "update-watch: result check failed"))
+    return running
+  }
+  opts.subscribe(() => { void check() })
+  return { check, idle: () => running }
+}
+
+// The worker announces each new result on this subject (best effort).
+export const UPDATE_RESULT_SUBJECT = "events.update.result"
 
 export function startUpdateWatch(opts: { dir: () => string; currentVersion: () => string }): void {
   const startedAt = new Date()
+  const results = watchUpdateResults({
+    dir: opts.dir,
+    readStatus: () => readWorkerUpdateStatus(),
+    dispatch: e => void dispatchEvent(e),
+    subscribe: onResult => {
+      void (async () => {
+        try {
+          for await (const _msg of natsSubscribe(UPDATE_RESULT_SUBJECT)) onResult()
+        } catch (err) {
+          log.error({ err }, "update-watch: the result subscription ended")
+        }
+      })()
+    },
+  })
   const run = () => {
     checkUpdateAttempt(opts.dir(), opts.currentVersion(), new Date(), e => void dispatchEvent(e), startedAt)
       .catch(err => log.error({ err }, "update-watch: check failed"))
-    readWorkerUpdateStatus()
-      .then(status => notifyUpdateResult(opts.dir(), status?.last ?? null, e => void dispatchEvent(e)))
-      .catch(err => log.error({ err }, "update-watch: result check failed"))
+    void results.check()
   }
   run()
   setInterval(run, CHECK_EVERY_MS).unref()
