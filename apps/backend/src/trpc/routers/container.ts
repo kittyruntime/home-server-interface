@@ -12,7 +12,7 @@ import {
 import { assertDockerReady, getDockerStatus, dockerProblem } from "../../services/docker-status"
 import {
   generateComposeYaml, parseComposeYaml,
-  zAppInput, zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, type AppInput,
+  zAppInput, zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, STACK_NAME_RE, type AppInput,
 } from "@app/compose"
 
 // ── Error mapper ──────────────────────────────────────────────────────────────
@@ -88,6 +88,27 @@ const appRouter = router({
       await writeStack(input.name, input.content)
       return { name: input.name }
     }),
+
+  importCompose: adminProcedure.input(z.object({
+    name: z.string().min(1).max(64).refine(name => STACK_NAME_RE.test(name), "Invalid app name"),
+    content: z.string().min(1),
+  })).mutation(async ({ input }) => {
+    if (await stackExists(input.name)) {
+      throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+    }
+    let parsed: ReturnType<typeof parseComposeYaml>
+    try {
+      parsed = parseComposeYaml(input.content)
+    } catch (e: any) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "The file is not valid YAML" })
+    }
+    if (parsed.services.length === 0) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The file must declare at least one service" })
+    }
+    await assertVolumeAvailable(composeBindSources(input.content))
+    await writeStack(input.name, input.content)
+    return { name: input.name, services: parsed.services }
+  }),
 
   apply: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {

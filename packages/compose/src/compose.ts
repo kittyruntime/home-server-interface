@@ -201,7 +201,18 @@ export function repairNamedVolumeDeclarations(content: string): string | null {
 
 export function parseComposeYaml(content: string): ParsedCompose {
   const doc = parseDocument(content)
+  if (doc.errors.length > 0) {
+    throw new Error(`Invalid YAML: ${doc.errors[0]?.message ?? "parse error"}`)
+  }
   const json = (doc.toJS() ?? {}) as Record<string, any>
+  if (json.services !== undefined && (!json.services || typeof json.services !== "object" || Array.isArray(json.services))) {
+    throw new Error("The services field must be a mapping")
+  }
+  for (const [name, service] of Object.entries(json.services ?? {})) {
+    if (!service || typeof service !== "object" || Array.isArray(service)) {
+      throw new Error(`Service ${name} must be a mapping`)
+    }
+  }
   const services: string[] = Object.keys(json.services ?? {})
   const unknownFields: string[] = []
   const svcName = services.length === 1 ? services[0] : null
