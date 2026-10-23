@@ -728,6 +728,27 @@ async function testUpdateResultNotifications() {
 
 await testUpdateResultNotifications()
 
+async function testPendingUpdateIsWrittenAtomically() {
+  const { writePendingUpdate } = await import("../trpc/routers/update")
+  const { readFile, link, readdir, writeFile } = await import("node:fs/promises")
+  const dir = await mkdtemp(join(tmpdir(), "hsi-pending-"))
+  try {
+    const marker = join(dir, ".pending-update")
+    // A second name for the old file: an in-place write would change it too, a
+    // rename replaces the marker with a new, complete file.
+    await writeFile(marker, "v1.0.0")
+    await link(marker, join(dir, "witness"))
+    writePendingUpdate(marker, "v1.67.0")
+    assert.equal(await readFile(marker, "utf8"), "v1.67.0")
+    assert.equal(await readFile(join(dir, "witness"), "utf8"), "v1.0.0", "the marker was written in place")
+    assert.deepEqual((await readdir(dir)).sort(), [".pending-update", "witness"], "a temporary file was left")
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+await testPendingUpdateIsWrittenAtomically()
+
 async function testHealthRoute() {
   const Fastify = (await import("fastify")).default
   const { healthRoutes } = await import("../routes/health")
