@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -372,5 +374,46 @@ func TestApplyDoesNotExtractTheArchive(t *testing.T) {
 	}
 	if strings.Join(entries, ",") != "download" {
 		t.Fatalf("staging holds %v", entries)
+	}
+}
+
+// version_lt in scripts/install.sh (the installer's version floor) orders versions
+// the way compareVersions does (the worker's firstHealthVersion and pruning).
+func TestInstallerVersionOrderMatchesCompareVersions(t *testing.T) {
+	versions := []string{"v1.67.0", "v1.67.0-rc1", "v1.67.0-rc2", "v1.67.0-beta", "v1.66.9", "v1.67.1",
+		"v1.68.0-rc1", "v2.0.0", "v0.0.0-flat", "v1.10.0", "v1.9.0", "v1.67.0-Z", "v1.67.0-a"}
+	var script strings.Builder
+	script.WriteString(`set -u
+sed -n '/^# BEGIN release functions/,/^# END release functions/p' ../../scripts/install.sh > "$1"
+source "$1"
+`)
+	for _, a := range versions {
+		for _, b := range versions {
+			fmt.Fprintf(&script, "version_lt %s %s && echo '%s<%s' || echo '%s>=%s'\n", a, b, a, b, a, b)
+		}
+	}
+	cmd := exec.Command("bash", "-c", script.String(), "bash", filepath.Join(t.TempDir(), "func.sh"))
+	cmd.Env = append(os.Environ(), "LC_ALL=en_US.UTF-8")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	i := 0
+	for _, a := range versions {
+		for _, b := range versions {
+			want := a + ">=" + b
+			if compareVersions(a, b) < 0 {
+				want = a + "<" + b
+			}
+			if i >= len(lines) || lines[i] != want {
+				got := "nothing"
+				if i < len(lines) {
+					got = lines[i]
+				}
+				t.Errorf("version_lt says %s, compareVersions %s", got, want)
+			}
+			i++
+		}
 	}
 }
