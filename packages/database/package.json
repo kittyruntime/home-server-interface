@@ -12,26 +12,21 @@
   },
   "scripts": {
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:migrate:permissions": "vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts",
     "pretypecheck": "prisma generate",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-better-sqlite3": "7.10.1",
+    "@prisma/client": "7.10.1",
     "bcryptjs": "^2.4.3"
-  },
-  "prisma": {
-    "schema": "prisma/schema",
-    "seed": "vite-node prisma/seed.ts"
   },
   "devDependencies": {
     "@app/compose": "workspace:*",
     "@types/node": "^24.19.2",
-    "prisma": "^6.19.3",
+    "prisma": "7.10.1",
     "tsx": "4.23.12",
     "typescript": "~5.9.3",
     "vite-node": "^5.3.0"

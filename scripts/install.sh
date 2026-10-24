@@ -147,7 +147,7 @@ DEV_SIGNING_KEY_FINGERPRINT="0c9fde95a7afa23901ce53c94613f8f7a710af273942f2e7ff9
 # INSTALL_DIR; they move to releases/<version>/ and are linked back (link_flat_paths).
 RELEASE_CODE_PATHS=(
   server.js public bin node_modules runtime scripts
-  database/prisma database/src database/package.json compose
+  database/prisma database/prisma.config.ts database/src database/package.json compose
   package.json pnpm-lock.yaml pnpm-workspace.yaml LICENSE CHANGELOG.md README.md
 )
 INSTALLED_VERSION_RE='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'

@@ -34,7 +34,8 @@
       "@prisma/client",
       "@prisma/engines",
       "prisma",
-      "esbuild"
+      "esbuild",
+      "better-sqlite3"
     ],
     "overrides": {
       "brace-expansion": "5.0.12",

@@ -4,7 +4,7 @@ import { chmod, copyFile, mkdtemp, open, readdir, rename, rm, stat, unlink, writ
 import path from "node:path"
 import { once } from "node:events"
 import { pipeline } from "node:stream/promises"
-import { prisma, PrismaClient } from "@app/database"
+import { prisma, createPrismaClient } from "@app/database"
 import { requestSync } from "../nats"
 
 // Encrypted configuration backups. Format 1 holds the database only; format 2
@@ -128,7 +128,7 @@ export async function createEncryptedConfigBackup(password: string, hsiVersion: 
 }
 
 export async function validateRestoredDatabase(filename: string) {
-  const restored = new PrismaClient({ datasources: { db: { url: `file:${filename}` } } })
+  const restored = createPrismaClient(`file:${filename}`)
   try {
     const integrity = await restored.$queryRawUnsafe<Array<Record<string, string>>>("PRAGMA integrity_check")
     if (integrity.length !== 1 || Object.values(integrity[0] ?? {})[0] !== "ok") throw new Error("Backup database integrity check failed")
@@ -166,7 +166,7 @@ export async function validateRestoredDatabase(filename: string) {
 
 /** What the restored database holds, for the preview. */
 export async function countRestoredDatabase(filename: string) {
-  const restored = new PrismaClient({ datasources: { db: { url: `file:${filename}` } } })
+  const restored = createPrismaClient(`file:${filename}`)
   try {
     const [users, admins, groups, places, shares, connectors, placeRows] = await Promise.all([
       restored.user.count(), restored.user.count({ where: { isAdmin: true } }), restored.group.count(), restored.place.count(),
@@ -213,7 +213,7 @@ export async function swapDatabase(restoredFile: string, auditUserId: string, au
 
     // Add the successful restore to the database that will become active. The
     // initiating account may not exist in an older/different backup.
-    const restored = new PrismaClient({ datasources: { db: { url: `file:${local}` } } })
+    const restored = createPrismaClient(`file:${local}`)
     try {
       const actor = await restored.user.findUnique({ where: { id: auditUserId }, select: { id: true } })
       await restored.auditLog.create({ data: { userId: actor?.id, action: "system.configRestore", ip: auditIp, success: true } })
