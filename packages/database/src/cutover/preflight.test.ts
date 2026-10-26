@@ -37,7 +37,7 @@ test("refuses drift without changing the database", async () => {
     db.exec("CREATE TABLE manual_drift (id INTEGER PRIMARY KEY)")
     db.close()
     const before = createHash("sha256").update(await readFile(filename)).digest("hex")
-    assert.throws(() => inspectDatabase(filename), /unknown|drift/i)
+    assert.throws(() => inspectDatabase(filename), /unrecognized SQLite schema \(fingerprint [a-f0-9]{64}\)/i)
     assert.equal(createHash("sha256").update(await readFile(filename)).digest("hex"), before)
   })
 })
