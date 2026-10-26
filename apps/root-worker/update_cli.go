@@ -23,6 +23,7 @@ const updateUsage = `usage: hsi-worker update <command>
   apply <version> [--archive <path>]      verify a release, then run its installer
   apply-pending                           apply the version the dashboard asked for (update-apply unit)
   snapshot <from> <to>                    snapshot the database and configuration, print its dir
+  snapshot-compose <snapshot> --manifest <path>   add staged Compose targets to the snapshot
   mark <from> <to> <snapshot> <step> [--pid N]   write the in-progress marker
   switch <version>                        point current at releases/<version>
   replace <version> <staged>              swap releases/<staged> in for releases/<version> (repair)
@@ -84,6 +85,7 @@ func runUpdateCLI(args []string) int {
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	archive := fs.String("archive", "", "")
+	composeManifest := fs.String("manifest", "", "")
 	timeout := fs.Int("timeout", int(healthTimeout/time.Second), "")
 	snapshot := fs.String("snapshot", "", "")
 	yes := fs.Bool("yes", false, "")
@@ -98,7 +100,7 @@ func runUpdateCLI(args []string) int {
 	if err := fs.Parse(rest); err != nil || fs.NArg() > 0 {
 		return fail(2, errors.New(updateUsage))
 	}
-	want := map[string]int{"apply": 1, "snapshot": 2, "mark": 4, "switch": 1, "replace": 2, "health": 1, "commit": 3, "repaired": 1, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
+	want := map[string]int{"apply": 1, "snapshot": 2, "snapshot-compose": 1, "mark": 4, "switch": 1, "replace": 2, "health": 1, "commit": 3, "repaired": 1, "rollback": 0, "status": 0, "recover": 0, "apply-pending": 0}
 	if n, ok := want[args[0]]; !ok || n != len(pos) {
 		return fail(2, errors.New(updateUsage))
 	}
@@ -114,6 +116,13 @@ func runUpdateCLI(args []string) int {
 			return fail(1, err)
 		}
 		fmt.Fprintln(updateStdout, dir)
+	case "snapshot-compose":
+		if *composeManifest == "" {
+			return fail(2, errors.New(updateUsage))
+		}
+		if err := addComposeSnapshot(pos[0], *composeManifest); err != nil {
+			return fail(1, err)
+		}
 	case "mark":
 		p := inProgress{From: pos[0], To: pos[1], Snapshot: pos[2], Step: pos[3], Started: time.Now().UTC(), PID: *pid}
 		if err := checkInstalledVersion(p.From); err != nil {

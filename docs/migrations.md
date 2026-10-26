@@ -1,8 +1,10 @@
-# SQLite cutover inventory (candidate)
+# SQLite cutover inventory
 
-Generated from the 115 non-draft, non-prerelease GitHub releases through v1.68.0. `inventory.py` builds a temporary SQLite database for each distinct published Prisma schema with Prisma 7 and records its canonical `sqlite_master` fingerprint. This is **not** the release matrix until populated copies and historical data scripts have been validated.
+Generated from the 115 non-draft, non-prerelease GitHub releases through v1.68.0. `inventory.py` builds a temporary SQLite database for each distinct published Prisma schema with Prisma 7 and records its canonical `sqlite_master` fingerprint. The 20 representative fingerprints were also compared with databases built by the published Prisma 6 generation (6.19.3 for 14 states, 6.9.0 for the six oldest states); all 20 matched. `states.json` and `conversions.json` record the release-to-state mapping and the SHA-256 of each of the 19 historical SQL conversions. CI regenerates both files and refuses a difference. Populated installed databases still need Darnold's regression matrix before release.
 
-The v1.68.0 baseline fingerprint is `630655afec24010fcb96246e79cc64f000b9e6bf7b4d8e506662a3cfa4c51917`. The existing partial Prisma migration was never run by any published installer (`migrate deploy` and `migrate resolve` are absent in all 115 published `scripts/install.sh` files); its original SQL is archived unchanged. A manually populated `_prisma_migrations` table needs explicit review and must not be auto-baselined.
+The v1.68.0 baseline fingerprint is `630655afec24010fcb96246e79cc64f000b9e6bf7b4d8e506662a3cfa4c51917`. The existing partial Prisma migration was never run by any published installer (`migrate deploy` and `migrate resolve` are absent in all 115 published `scripts/install.sh` files); its original SQL is archived unchanged. A manually populated `_prisma_migrations` table needs explicit review and is refused by preflight.
+
+The installer stops services and takes the #9a DB/WAL/configuration snapshot. It then checks the SQLite fingerprint, integrity and Prisma ledger before any database write. Historical updates stage Compose files separately, add their targets to the same snapshot, convert the versioned data and schema, verify the exact baseline, mark it applied, then run `prisma migrate deploy`. Fresh installs deploy directly; an exact v1.68.0 database without a ledger is baselined directly. The generated Prisma 7 client ships in the signed release archive. Compose activation, seed and health checks happen under the update rollback marker, so failure restores the old release, DB/WAL/ledger and recorded Compose files. Unknown or partial states stop with a restore/support instruction.
 
 | SQLite SHA-256 | Objects | Published releases | Script variants |
 | --- | ---: | --- | ---: |
@@ -29,7 +31,7 @@ The v1.68.0 baseline fingerprint is `630655afec24010fcb96246e79cc64f000b9e6bf7b4
 
 ## Required release validation
 
-- Compare each candidate fingerprint with an actual populated SQLite copy produced by its published release and update path.
+- Compare each fingerprint with an actual populated SQLite copy produced by its published release and update path.
 - Preserve users, permissions, volumes, Compose applications, backups and migration ledger through direct conversion.
 - Review SQL and data conversion checksums, then inject conversion, resolve, deploy, seed and health failures to prove rollback/retry.
 - Do not publish while any candidate release or data-script variant lacks a tested conversion.
