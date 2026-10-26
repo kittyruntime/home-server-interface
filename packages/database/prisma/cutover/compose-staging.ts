@@ -52,9 +52,12 @@ interface LegacyRow {
 async function main() {
   if (!stageDir || !path.isAbsolute(stageDir)) throw new Error("HSI_CONTAINERS_STAGE must be an absolute path")
   await mkdir(stageDir!, { recursive: true, mode: 0o700 })
-  const rows = (await tableExists("ContainerApp")) ? await prisma.$queryRawUnsafe<LegacyRow[]>(
+  const columns = (await tableExists("ContainerApp"))
+    ? await prisma.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("ContainerApp")`) : []
+  const hasExtraHosts = columns.some(column => column.name === "extraHosts")
+  const rows = columns.length ? await prisma.$queryRawUnsafe<LegacyRow[]>(
     `SELECT "name","image","ports","envs","volumes","networkNames","labels",
-            "capAdd","capDrop","extraHosts","restartPolicy","hostname","user",
+            "capAdd","capDrop",${hasExtraHosts ? '"extraHosts"' : "'[]' AS \"extraHosts\""},"restartPolicy","hostname","user",
             "command","cpuLimit","memoryLimit","pinnedUrl"
      FROM "ContainerApp" ORDER BY "createdAt"`) : []
   let written = 0, skipped = 0
