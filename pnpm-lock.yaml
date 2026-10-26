@@ -225,10 +225,16 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      better-sqlite3:
+        specifier: 12.11.1
+        version: 12.11.1
     devDependencies:
       '@app/compose':
         specifier: workspace:*
         version: link:../compose
+      '@types/better-sqlite3':
+        specifier: 7.6.13
+        version: 7.6.13
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
@@ -1789,6 +1795,9 @@ packages:
 
   '@types/bcryptjs@2.4.6':
     resolution: {integrity: sha512-9xlo6R2qDs5uixm0bcIqCeMCE6HiQsIyel9KQySStiyqNl2tnj2mP3DX1Nf56MD6KMenNNlBBsy3LJ7gUEQPXQ==}
+
+  '@types/better-sqlite3@7.6.13':
+    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
   '@types/d3-array@3.0.3':
     resolution: {integrity: sha512-Reoy+pKnvsksN0lQUlcH6dOGjRZ/3WRwXR//m+/8lt1BXeI4xyaUZoqULNjyXXRuh0Mj4LNpkCvhUpQlY3X5xQ==}
@@ -5604,6 +5613,10 @@ snapshots:
     optional: true
 
   '@types/bcryptjs@2.4.6': {}
+
+  '@types/better-sqlite3@7.6.13':
+    dependencies:
+      '@types/node': 24.19.2
 
   '@types/d3-array@3.0.3': {}
 

@@ -21,10 +21,12 @@
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.1",
     "@prisma/client": "7.10.1",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "12.11.1"
   },
   "devDependencies": {
     "@app/compose": "workspace:*",
+    "@types/better-sqlite3": "7.6.13",
     "@types/node": "^24.19.2",
     "prisma": "7.10.1",
     "tsx": "4.23.12",

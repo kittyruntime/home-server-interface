@@ -2,7 +2,7 @@
 """Rebuild the SQLite schema of every published HSI tag for the cutover review.
 
 Uses Prisma 7 `db push` only on temporary databases. Never runs on an installed DB.
-The output is an inventory candidate; populated release fixtures remain the release gate.
+The checked-in output is verified in CI; populated release fixtures remain a release gate.
 """
 import hashlib
 import json
@@ -74,7 +74,7 @@ def main():
         if info["dataScripts"] not in state["dataScriptVariants"]:
             state["dataScriptVariants"].append(info["dataScripts"])
     output = {"note": "Generated from each published tag's schema using Prisma 7 on empty temporary SQLite databases; validate on populated release fixtures before release.", "releases": releases, "states": list(states.values())}
-    (pathlib.Path(__file__).parent / "inventory-candidate.json").write_text(json.dumps(output, indent=2) + "\n")
+    (pathlib.Path(__file__).parent / "states.json").write_text(json.dumps(output, indent=2) + "\n")
     print(f"{len(releases)} published releases, {len(candidates)} schema source variants, {len(states)} SQLite schema states")
 
 

@@ -14,10 +14,11 @@
 //              pnpm --filter @app/database exec vite-node prisma/data-migrations/2026-09-23-compose-migration.ts
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { createPrismaClient } from "../../src/index"
+import { PrismaClient } from "@prisma/client"
 import { generateComposeYaml, type AppInput } from "@app/compose"
 
-const prisma = createPrismaClient()
+const url = process.env.DATABASE_URL
+const prisma = url ? new PrismaClient({ datasources: { db: { url } } }) : new PrismaClient()
 const stacksDir = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
 
 async function tableExists(name: string): Promise<boolean> {

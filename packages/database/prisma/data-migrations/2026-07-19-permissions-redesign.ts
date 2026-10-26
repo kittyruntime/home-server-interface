@@ -4,9 +4,10 @@
 // Prisma schema here FIRST; a subsequent `db push` is then a no-op.
 // Run (prod):  pnpm --filter @app/database exec vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts
 // Test (copy): DATABASE_URL="file:/abs/copy.db" pnpm --filter @app/database exec vite-node prisma/data-migrations/2026-07-19-permissions-redesign.ts
-import { createPrismaClient } from "../../src/index"
+import { PrismaClient } from "@prisma/client"
 
-const prisma = createPrismaClient()
+const url = process.env.DATABASE_URL
+const prisma = url ? new PrismaClient({ datasources: { db: { url } } }) : new PrismaClient()
 
 async function tableExists(name: string): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<{ name: string }[]>(
