@@ -1,10 +1,10 @@
 # SQLite cutover inventory
 
-Generated from the 115 non-draft, non-prerelease GitHub releases through v1.68.0. `inventory.py` builds a temporary SQLite database for each distinct published Prisma schema with Prisma 7 and records its canonical `sqlite_master` fingerprint. The 20 representative fingerprints were also compared with databases built by the published Prisma 6 generation (6.19.3 for 14 states, 6.9.0 for the six oldest states); all 20 matched. `states.json` and `conversions.json` record the release-to-state mapping and the SHA-256 of each of the 19 historical SQL conversions. CI regenerates both files and refuses a difference. Populated installed databases still need Darnold's regression matrix before release.
+Generated from the 115 non-draft, non-prerelease GitHub releases through v1.68.0. `inventory.py` builds a temporary SQLite database for each distinct published Prisma schema with Prisma 7 and records its canonical `sqlite_master` fingerprint. The 20 representative fingerprints were also compared with databases built by the published Prisma 6 generation (6.19.3 for 14 states, 6.9.0 for the six oldest states); all 20 matched. `states.json` and `conversions.json` record the release-to-state mapping and the SHA-256 of each of the 19 historical SQL conversions. CI regenerates both files and refuses a difference. Published release validation uses populated installed databases and rollback tests.
 
 The v1.68.0 baseline fingerprint is `630655afec24010fcb96246e79cc64f000b9e6bf7b4d8e506662a3cfa4c51917`. The existing partial Prisma migration was never run by any published installer (`migrate deploy` and `migrate resolve` are absent in all 115 published `scripts/install.sh` files); its original SQL is archived unchanged. A manually populated `_prisma_migrations` table needs explicit review and is refused by preflight.
 
-The installer stops services and takes the #9a DB/WAL/configuration snapshot. It then checks the SQLite fingerprint, integrity and Prisma ledger before any database write. Historical updates stage Compose files separately, add their targets to the same snapshot, convert the versioned data and schema, verify the exact baseline, mark it applied, then run `prisma migrate deploy`. Fresh installs deploy directly; an exact v1.68.0 database without a ledger is baselined directly. The generated Prisma 7 client ships in the signed release archive. Compose activation, seed and health checks happen under the update rollback marker, so failure restores the old release, DB/WAL/ledger and recorded Compose files. Unknown or partial states stop with a restore/support instruction.
+The installer stops services and takes an update snapshot of the database, WAL and configuration. It then checks the SQLite fingerprint, integrity and Prisma ledger before any database write. Historical updates stage Compose files separately, add their targets to the same update snapshot, convert the versioned data and schema, verify the exact baseline, mark it applied, then run `prisma migrate deploy`. Fresh installs deploy directly; an exact v1.68.0 database without a ledger is baselined directly. The generated Prisma 7 client ships in the signed release archive. Compose activation, seed and health checks happen under the update rollback marker, so failure restores the old release, DB/WAL/ledger and recorded Compose files. Unknown or partial states stop with a diagnostic and the database fingerprint when available.
 
 | SQLite SHA-256 | Objects | Published releases | Script variants |
 | --- | ---: | --- | ---: |
@@ -29,9 +29,10 @@ The installer stops services and takes the #9a DB/WAL/configuration snapshot. It
 | `1693b534decade705e5cb1bcc6707de2c1bfbbd828b8eae54522b88c27691d40` | 21 | v1.6.1, v1.6.0, v1.5.0, v1.4.0, v1.3.0, v1.2.0, v1.1.0, v1.0.0, v0.2.0, v0.1.2, v0.1.1, v0.1.0 | 1 |
 | `6060e09e5079ec116cd806e530334ec6df444a230a023b58f8b8ec444e05137f` | 15 | v0.0.2, v0.0.1 | 1 |
 
-## Required release validation
+## If an update fails
 
-- Compare each fingerprint with an actual populated SQLite copy produced by its published release and update path.
-- Preserve users, permissions, volumes, Compose applications, backups and migration ledger through direct conversion.
-- Review SQL and data conversion checksums, then inject conversion, resolve, deploy, seed and health failures to prove rollback/retry.
-- Do not publish while any candidate release or data-script variant lacks a tested conversion.
+The installer restores the previous release and its update snapshot automatically after a failed upgrade. The dashboard shows the failed step and its cause. The terminal reports the database backup path (`hsi.db.bak-*`). Keep that backup and send the error message and any database fingerprint to support. If the automatic rollback fails, run the command printed by the installer; on an installed release this is usually `sudo hsi-worker update rollback --snapshot <path>`. A reinstall of the same version does not create an update snapshot. Its database backup can be used for manual recovery.
+
+## Next migration
+
+The preflight in this release accepts exactly the `0_baseline_v1680` ledger and its baseline schema. A later release that adds migrations must update the accepted ledger and fingerprints before shipping.

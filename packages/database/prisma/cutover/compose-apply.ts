@@ -6,10 +6,10 @@ import { constants } from "node:fs"
 import { mkdir, lstat, open, readFile, rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { STACK_NAME_RE } from "../../../compose/src/index"
+import { reportCutoverError } from "./error"
 
 const stacksDir = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
 const stageDir = process.env.HSI_CONTAINERS_STAGE
-if (!path.isAbsolute(stacksDir) || !stageDir || !path.isAbsolute(stageDir)) throw new Error("absolute HSI_CONTAINERS_DIR and HSI_CONTAINERS_STAGE required")
 
 type Entry = { name: string; operation: "create" | "replace"; originalSha256: string | null; stagedSha256: string }
 const sha = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex")
@@ -26,6 +26,8 @@ async function regularFile(filename: string): Promise<Buffer | null> {
   }
 }
 
+try {
+if (!path.isAbsolute(stacksDir) || !stageDir || !path.isAbsolute(stageDir)) throw new Error("absolute HSI_CONTAINERS_DIR and HSI_CONTAINERS_STAGE required")
 const manifest = JSON.parse(await readFile(path.join(stageDir, "manifest.json"), "utf8")) as { entries: Entry[] }
 if (!Array.isArray(manifest.entries)) throw new Error("invalid Compose stage manifest")
 const seen = new Set<string>()
@@ -56,3 +58,5 @@ for (const entry of manifest.entries) {
   } finally { await rm(tempPath, { force: true }) }
 }
 console.log(`activated ${manifest.entries.length} staged Compose files`)
+
+} catch (error) { reportCutoverError(error) }

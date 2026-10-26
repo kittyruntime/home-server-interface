@@ -39,17 +39,21 @@ export function inspectDatabase(filename: string): Inspection {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return { kind: "fresh" }
     throw error
   }
-  if (!stat.isFile() || stat.size === 0) throw new Error("unknown SQLite database: missing or partial file; restore the pre-update snapshot before retrying")
+  if (!stat.isFile() || stat.size === 0) throw new Error("SQLite database file is empty or incomplete")
 
   const inventory = JSON.parse(readFileSync(path.join(cutoverDir, "states.json"), "utf8")) as { states: State[] }
   const conversions = JSON.parse(readFileSync(path.join(cutoverDir, "conversions.json"), "utf8")) as Conversion[]
   const baseline = inventory.states[0]!.sqliteSha256
-  const db = new Database(filename, { readonly: true, fileMustExist: true })
+  let db: Database.Database
+  try { db = new Database(filename, { readonly: true, fileMustExist: true }) }
+  catch { throw new Error("SQLite database file cannot be opened") }
   try {
-    const integrity = db.pragma("integrity_check", { simple: true })
-    if (integrity !== "ok") throw new Error(`SQLite integrity check failed: ${String(integrity)}; restore the pre-update snapshot`)
+    let integrity: unknown
+    try { integrity = db.pragma("integrity_check", { simple: true }) }
+    catch { throw new Error("SQLite database file is corrupt or is not a database") }
+    if (integrity !== "ok") throw new Error(`SQLite integrity check failed: ${String(integrity)}`)
     if ((db.pragma("foreign_key_check") as unknown[]).length > 0) {
-      throw new Error("SQLite foreign key check failed; restore the pre-update snapshot or contact support")
+      throw new Error("SQLite foreign key check failed")
     }
     const fingerprint = canonicalSchema(db)
     const hasLedger = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='_prisma_migrations'").get())
@@ -58,22 +62,22 @@ export function inspectDatabase(filename: string): Inspection {
       try {
         rows = db.prepare("SELECT migration_name,checksum,finished_at,rolled_back_at FROM _prisma_migrations").all() as typeof rows
       } catch {
-        throw new Error("unrecognized Prisma migration ledger; restore the pre-update snapshot or contact support")
+        throw new Error("unrecognized Prisma migration ledger")
       }
       const expectedChecksum = sha256(readFileSync(baselinePath))
       if (rows.length !== 1 || rows[0]?.migration_name !== "0_baseline_v1680" || rows[0]?.checksum !== expectedChecksum || !rows[0]?.finished_at || rows[0]?.rolled_back_at) {
-        throw new Error("unrecognized or partial Prisma migration ledger; restore the pre-update snapshot or contact support")
+        throw new Error("unrecognized or partial Prisma migration ledger")
       }
-      if (fingerprint !== baseline) throw new Error("drifted SQLite schema with Prisma migration ledger; restore the pre-update snapshot or contact support")
+      if (fingerprint !== baseline) throw new Error(`drifted SQLite schema with Prisma migration ledger (fingerprint ${fingerprint})`)
       return { kind: "migrated", fingerprint }
     }
     if (fingerprint === baseline) return { kind: "baseline", fingerprint }
     const known = inventory.states.find(state => state.sqliteSha256 === fingerprint)
     const conversion = conversions.find(item => item.source === fingerprint)
-    if (!known || !conversion) throw new Error(`unknown or drifted SQLite schema (${fingerprint}); restore the pre-update snapshot or contact support`)
+    if (!known || !conversion) throw new Error(`unrecognized SQLite schema (fingerprint ${fingerprint})`)
     const sqlFile = path.resolve(cutoverDir, conversion.sql)
     if (!sqlFile.startsWith(cutoverDir + path.sep) || sha256(readFileSync(sqlFile)) !== conversion.sqlSha256) {
-      throw new Error(`conversion checksum mismatch for ${fingerprint}; restore the release archive`)
+      throw new Error(`conversion checksum mismatch for ${fingerprint}; reinstall the release archive`)
     }
     return { kind: "historical", fingerprint, conversion }
   } finally {

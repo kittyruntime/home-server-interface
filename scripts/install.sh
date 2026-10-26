@@ -894,12 +894,35 @@ rollback_update() {
   fi
 }
 
+UPDATE_FAILURE_REASON=""
+# Preserve one stable, single-line cause for the worker's lastResult and dashboard.
+run_db_step() {
+  local label=$1 output status detail
+  shift
+  if output=$("$@" 2>&1); then
+    [[ -z "$output" ]] || printf '%s\n' "$output"
+    DB_STEP_OUTPUT=$output
+    return 0
+  else
+    status=$?
+  fi
+  [[ -z "$output" ]] || printf '%s\n' "$output" >&2
+  detail=$(sed -n 's/^error: //p' <<< "$output" | tail -n 1)
+  detail=${detail:-"$label failed (exit $status)"}
+  UPDATE_FAILURE_REASON="$label: $detail"
+  if [[ "$label" == "Database preflight" ]]; then
+    UPDATE_FAILURE_REASON="$UPDATE_FAILURE_REASON. Database was not modified; send the fingerprint or database error to support"
+    [[ -z "${PREVIOUS_BACKUP:-}" ]] || UPDATE_FAILURE_REASON="$UPDATE_FAILURE_REASON (previous backup: $PREVIOUS_BACKUP)"
+  fi
+  die "$UPDATE_FAILURE_REASON"
+}
+
 cleanup_install_exit() {
   local status=$?
   set +e
   if (( status != 0 )); then
     if (( UPDATE_MARKED == 1 && UPDATE_FINISHED == 0 )); then
-      rollback_update "the installer failed during the '$CURRENT_STEP' step (exit $status)"
+      rollback_update "${UPDATE_FAILURE_REASON:-the installer failed during the '$CURRENT_STEP' step (exit $status)}"
     else
       if [[ "$FROM_SOURCE" -eq 1 && -f "${COMPOSE_STAGE:-}/manifest.json" ]]; then
         if ! db_tsx prisma/cutover/compose-restore-source.ts; then
@@ -921,7 +944,11 @@ cleanup_install_exit() {
       if (( SERVICES_STOPPED == 1 )) && [[ "$FROM_SOURCE" -eq 0 && -L "${INSTALL_DIR:-}/current" && ! -f "${INSTALL_DIR:-}/current/server.js" ]]; then
         warn "Not restarting: $INSTALL_DIR/current does not lead to an installed release. Re-run the installer."
       elif (( SERVICES_STOPPED == 1 )); then
-        warn "Restarting the previous services after the failed update."
+        if (( REPAIR )); then
+          warn "Restarting the services after the failed reinstall. No update snapshot was created."
+        else
+          warn "Restarting the previous services after the failed update."
+        fi
         if [[ -f "/etc/systemd/system/${APP_NAME}.target" ]]; then
           systemctl start "${APP_NAME}.target" >/dev/null 2>&1 || true
         else
@@ -1457,6 +1484,7 @@ chown "$APP_USER" "$CONTAINERS_DIR"
 
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   # As the app user: the folder is its own, so root would follow any link in it.
+  PREVIOUS_BACKUP=$(find "$DB_DIR" -maxdepth 1 -type f -name 'hsi.db.bak-*' ! -name '*-wal' -printf '%T@ %p\n' | sort -rn | sed -n '1s/^[^ ]* //p')
   BACKUP="$DB_FILE.bak-$(date +%Y%m%d-%H%M%S)"
   run_as "$APP_USER" "cp -- '$DB_FILE' '$BACKUP'"
   if [[ "$FROM_SOURCE" -eq 1 && -f "$DB_FILE-wal" ]]; then
@@ -1497,40 +1525,44 @@ db_prisma() {
 COMPOSE_STAGE="$DB_DIR/.hsi-compose-stage-$VERSION"
 run_as "$APP_USER" "rm -rf -- '$COMPOSE_STAGE'"
 step "Checking the published SQLite state and migration ledger"
-CUTOVER_INSPECTION=$(db_tsx prisma/cutover/cli.ts inspect "$DB_FILE") \
-  || die "Database preflight failed before conversion. Restore the #9a snapshot or contact support."
-read -r CUTOVER_KIND CUTOVER_SOURCE CUTOVER_PERMISSIONS CUTOVER_COMPOSE <<< "$CUTOVER_INSPECTION"
+run_db_step "Database preflight" db_tsx prisma/cutover/cli.ts inspect "$DB_FILE"
+CUTOVER_INSPECTION=$DB_STEP_OUTPUT
+read -r CUTOVER_KIND CUTOVER_SOURCE CUTOVER_PERMISSIONS CUTOVER_COMPOSE CUTOVER_RELEASE <<< "$CUTOVER_INSPECTION"
 case "$CUTOVER_KIND" in fresh|baseline|migrated|historical) ;; *) die "Unrecognized cutover state: $CUTOVER_INSPECTION" ;; esac
-success "SQLite state: $CUTOVER_KIND${CUTOVER_SOURCE:+ ($CUTOVER_SOURCE)}"
+if [[ "$CUTOVER_KIND" == historical ]]; then
+  success "Database from a published version ($CUTOVER_RELEASE or nearby): preparing conversion"
+else
+  success "SQLite state: $CUTOVER_KIND"
+fi
 
 if [[ "$CUTOVER_KIND" == historical ]]; then
   # Stage all Compose changes before touching the database. The worker records
   # their previous state in the same #9a snapshot used for DB/WAL rollback.
-  db_tsx prisma/cutover/compose-staging.ts
+  run_db_step "Application conversion" db_tsx prisma/cutover/compose-staging.ts
   if (( SAFE_UPDATE )); then
     HSI_CONTAINERS_DIR="$CONTAINERS_DIR" worker_update "$NEW_WORKER" snapshot-compose "$SNAP" --manifest "$COMPOSE_STAGE/manifest.json" \
       || die "Could not add Compose files to the update snapshot."
   fi
   if [[ "$CUTOVER_PERMISSIONS" == 1 ]]; then
     step "Converting historical role and permission data"
-    db_tsx prisma/cutover/permissions-redesign.ts
+    run_db_step "Role and permission conversion" db_tsx prisma/cutover/permissions-redesign.ts
   fi
   step "Applying versioned conversion from $CUTOVER_SOURCE"
-  db_tsx prisma/cutover/cli.ts convert "$DB_FILE" "$CUTOVER_SOURCE"
+  run_db_step "SQL conversion" db_tsx prisma/cutover/cli.ts convert "$DB_FILE" "$CUTOVER_SOURCE"
   CUTOVER_KIND=baseline
 fi
 
 if [[ "$CUTOVER_KIND" == baseline ]]; then
-  step "Recording the verified v1.68.0 baseline"
-  db_prisma migrate resolve --applied 0_baseline_v1680
+  step "Marking the database as migrated"
+  run_db_step "Migration ledger" db_prisma migrate resolve --applied 0_baseline_v1680
 fi
 step "Deploying versioned Prisma migrations"
-db_prisma migrate deploy
-db_tsx prisma/cutover/cli.ts verify "$DB_FILE"
+run_db_step "Migration deployment" db_prisma migrate deploy
+run_db_step "Database verification" db_tsx prisma/cutover/cli.ts verify "$DB_FILE"
 success "Versioned schema deployed"
 
 if [[ -f "$COMPOSE_STAGE/manifest.json" ]]; then
-  db_tsx prisma/cutover/compose-apply.ts
+  run_db_step "Application activation" db_tsx prisma/cutover/compose-apply.ts
 fi
 
 # Managed HTTPS (#12): a new install serves HTTPS with its own local
@@ -1547,7 +1579,8 @@ fi
 
 SETUP_LINK=""
 if [[ "${SKIP_SEED}" != "1" ]]; then
-  SEED_OUTPUT=$(db_tsx prisma/seed.ts)
+  run_db_step "Seed and grants" db_tsx prisma/seed.ts
+  SEED_OUTPUT=$DB_STEP_OUTPUT
   if [[ "$IS_UPDATE" -eq 1 ]]; then
     success "Seed applied (new permissions/roles merged, existing data untouched)"
   else

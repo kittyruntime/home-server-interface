@@ -6,11 +6,11 @@ import { createHash } from "node:crypto"
 import path from "node:path"
 import { createPrismaClient } from "../../src/index"
 import { generateComposeYaml, repairNamedVolumeDeclarations, STACK_NAME_RE, type AppInput } from "../../../compose/src/index"
+import { reportCutoverError } from "./error"
 
 const prisma = createPrismaClient()
 const stacksDir = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
 const stageDir = process.env.HSI_CONTAINERS_STAGE
-if (!stageDir || !path.isAbsolute(stageDir)) throw new Error("HSI_CONTAINERS_STAGE must be an absolute path")
 
 type Entry = { name: string; operation: "create" | "replace"; originalSha256: string | null; stagedSha256: string }
 const entries: Entry[] = []
@@ -34,9 +34,9 @@ async function tableExists(name: string): Promise<boolean> {
   return rows.length > 0
 }
 
-function dec<T>(s: unknown, fallback: T): T {
+function dec<T>(s: unknown, fallback: T, appName: string): T {
   if (s == null) return fallback
-  try { return JSON.parse(String(s)) as T } catch { throw new Error(`invalid historical ContainerApp JSON: ${String(s).slice(0, 80)}`) }
+  try { return JSON.parse(String(s)) as T } catch { throw new Error(`application "${appName}" has invalid settings. In the current version, edit or remove this application, then retry the update`) }
 }
 
 interface LegacyRow {
@@ -50,6 +50,7 @@ interface LegacyRow {
 }
 
 async function main() {
+  if (!stageDir || !path.isAbsolute(stageDir)) throw new Error("HSI_CONTAINERS_STAGE must be an absolute path")
   await mkdir(stageDir!, { recursive: true, mode: 0o700 })
   const rows = (await tableExists("ContainerApp")) ? await prisma.$queryRawUnsafe<LegacyRow[]>(
     `SELECT "name","image","ports","envs","volumes","networkNames","labels",
@@ -58,17 +59,17 @@ async function main() {
      FROM "ContainerApp" ORDER BY "createdAt"`) : []
   let written = 0, skipped = 0
   for (const row of rows) {
-    if (!STACK_NAME_RE.test(row.name)) throw new Error(`unsafe container app name: ${row.name}`)
+    if (!STACK_NAME_RE.test(row.name)) throw new Error(`application "${row.name}" has an invalid name. In the current version, rename or remove it, then retry the update`)
     const appDir = path.join(stacksDir, row.name)
     try {
-      if (!(await lstat(appDir)).isDirectory()) throw new Error(`container app path is not a real directory: ${appDir}`)
+      if (!(await lstat(appDir)).isDirectory()) throw new Error(`application "${row.name}" directory is not a regular directory. Fix it in the current version, then retry the update`)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
     }
     const composePath = path.join(stacksDir, row.name, "compose.yaml")
     // Existing hand-created Compose files remain authoritative.
     try {
-      if (!(await lstat(composePath)).isFile()) throw new Error(`Compose path is not a regular file: ${composePath}`)
+      if (!(await lstat(composePath)).isFile()) throw new Error(`application "${row.name}" Compose path is not a regular file. Fix it in the current version, then retry the update`)
       await readFile(composePath, "utf8")
       skipped++
       continue
@@ -77,14 +78,14 @@ async function main() {
     }
 
     const resolved: AppInput["volumes"] = []
-    for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [])) {
+    for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [], row.name)) {
       if (v.type === "place") {
         // $queryRawUnsafe returns the rows as a flat array of objects
         // ([{ path }]), not an array of arrays.
         const places = await prisma.$queryRawUnsafe<Array<{ path: string }>>(
           `SELECT "path" FROM "Place" WHERE "id"=?`, v.source)
         const p = places[0]?.path
-        if (!p) throw new Error(`app ${row.name}: referenced place ${v.source} is missing`)
+        if (!p) throw new Error(`application "${row.name}" uses a deleted place. In the current version, edit or remove this application, then retry the update`)
         resolved.push({ type: "bind", source: p, target: v.target, readOnly: v.readOnly })
       } else {
         resolved.push(v as AppInput["volumes"][number])
@@ -93,9 +94,9 @@ async function main() {
 
     const input: AppInput = {
       name: row.name, image: row.image,
-      ports: dec(row.ports, []), envs: dec(row.envs, []), volumes: resolved,
-      networkNames: dec(row.networkNames, []), labels: dec(row.labels, []),
-      capAdd: dec(row.capAdd, []), capDrop: dec(row.capDrop, []), extraHosts: dec(row.extraHosts, []),
+      ports: dec(row.ports, [], row.name), envs: dec(row.envs, [], row.name), volumes: resolved,
+      networkNames: dec(row.networkNames, [], row.name), labels: dec(row.labels, [], row.name),
+      capAdd: dec(row.capAdd, [], row.name), capDrop: dec(row.capDrop, [], row.name), extraHosts: dec(row.extraHosts, [], row.name),
       restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
@@ -130,4 +131,4 @@ async function main() {
   await prisma.$disconnect()
 }
 
-main().catch(e => { console.error(e); process.exit(1) })
+main().catch(async error => { reportCutoverError(error); await prisma.$disconnect() })

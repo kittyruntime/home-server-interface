@@ -35,3 +35,14 @@ assert (root/'live/sample-app/compose.yaml').read_text() == (root/'staged/sample
 PY
 (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/staged" node --import tsx prisma/cutover/compose-restore-source.ts)
 test ! -e "$tmp/live/sample-app/compose.yaml"
+python3 - "$tmp/old.db" <<'PY'
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute('UPDATE "ContainerApp" SET "volumes"=? WHERE "name"=?',
+               ('[{"type":"place","source":"deleted","target":"/media","readOnly":true}]', 'sample-app'))
+PY
+if (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/bad-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/error" 2>&1; then
+  echo 'missing place was accepted' >&2; exit 1
+fi
+grep -q '^error: application "sample-app" uses a deleted place.*retry the update$' "$tmp/error"
+! grep -q ' at .*\.ts:' "$tmp/error"

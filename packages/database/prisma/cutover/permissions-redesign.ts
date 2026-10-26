@@ -1,6 +1,7 @@
 // Versioned cutover from the published Role/Permission model.
 // Run only after matching an inventoried source fingerprint and taking #9a snapshot.
 import { createPrismaClient } from "../../src/index"
+import { reportCutoverError } from "./error"
 
 const prisma = createPrismaClient()
 
@@ -107,4 +108,4 @@ async function main() {
   console.log("[permissions-redesign] done.")
 }
 
-main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1) })
+main().then(() => prisma.$disconnect()).catch(async error => { reportCutoverError(error); await prisma.$disconnect() })

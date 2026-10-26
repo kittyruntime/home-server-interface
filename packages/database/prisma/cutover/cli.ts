@@ -4,15 +4,17 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import Database from "better-sqlite3"
 import { inspectDatabase } from "../../src/cutover/preflight"
+import { reportCutoverError } from "./error"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
+try {
 const [command, filename, source] = process.argv.slice(2)
 if (!command || !filename || !path.isAbsolute(filename)) throw new Error("usage: cli.ts inspect|convert|verify <absolute-db-path> [source-fingerprint]")
 
 if (command === "inspect") {
   const result = inspectDatabase(filename)
   if (result.kind === "historical") {
-    console.log([result.kind, result.fingerprint, Number(result.conversion.needsPermissions), Number(result.conversion.needsCompose)].join(" "))
+    console.log([result.kind, result.fingerprint, Number(result.conversion.needsPermissions), Number(result.conversion.needsCompose), result.conversion.representativeRelease].join(" "))
   } else {
     console.log(result.kind)
   }
@@ -40,3 +42,4 @@ if (command === "inspect") {
 } else {
   throw new Error(`unknown cutover command: ${command}`)
 }
+} catch (error) { reportCutoverError(error) }
