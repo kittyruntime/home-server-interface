@@ -31,12 +31,14 @@ for (const [field, value] of [["ports", '{"a":1}'], ["ports", '"x"'], ["volumes"
 
 test("unparseable JSON keeps the warning and fallback", () => {
   const warnings: string[] = []
+  const reasons: string[] = []
   const originalWarn = console.warn
   console.warn = message => warnings.push(String(message))
   try {
-    assert.deepEqual(decodeSetting("broken-json", [], "sample-app", "ports", "object"), [])
+    assert.deepEqual(decodeSetting("broken-json", [], "sample-app", "ports", "object", reason => reasons.push(reason)), [])
   } finally {
     console.warn = originalWarn
   }
   assert.deepEqual(warnings, ['warning: application "sample-app": invalid ports settings were skipped'])
+  assert.deepEqual(reasons, ['the saved value could not be read'])
 })

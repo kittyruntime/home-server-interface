@@ -2108,7 +2108,7 @@ EOF
         COMPOSE_SKIP_ARGS=(--skipped-settings "$COMPOSE_STAGE/skipped-settings.json")
       fi
       worker_update "$NEW_WORKER" commit "$OLD_VERSION" "$VERSION" "$SNAP" \
-        "${COMPOSE_SKIP_ARGS[@]}" \
+        ${COMPOSE_SKIP_ARGS[@]+"${COMPOSE_SKIP_ARGS[@]}"} \
         || die "Could not record the successful update."
       UPDATE_FINISHED=1
     elif (( REPAIR )); then

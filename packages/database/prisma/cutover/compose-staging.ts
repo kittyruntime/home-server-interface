@@ -94,8 +94,8 @@ async function main() {
         const p = places[0]?.path
         if (!p) {
           console.warn(`warning: application "${row.name}": volume ${v.target} uses a deleted place and was skipped`)
-          skippedSettings.push({ application: row.name, setting: `volume ${v.target}`, reason: "uses a deleted place and was skipped",
-            remediation: `Choose an existing location for ${v.target} in /opt/containers/${row.name}/compose.yaml, then restart the application.` })
+          skippedSettings.push({ application: row.name, setting: `volume ${v.target}`, reason: "the Place it used was deleted",
+            remediation: `Choose an existing Place for ${v.target} in /opt/containers/${row.name}/compose.yaml, then restart the application.` })
           continue
         }
         resolved.push({ type: "bind", source: p, target: v.target, readOnly: v.readOnly })

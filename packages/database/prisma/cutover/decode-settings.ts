@@ -4,7 +4,7 @@ export function decodeSetting<T>(s: unknown, fallback: T[], appName: string, fie
   try { value = JSON.parse(String(s)) } catch {
     const reason = `invalid ${field} settings were skipped`
     console.warn(`warning: application "${appName}": ${reason}`)
-    onSkip?.(reason)
+    onSkip?.('the saved value could not be read')
     return fallback
   }
   if (!Array.isArray(value) || !value.every(item => itemKind === "string"

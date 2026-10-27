@@ -65,9 +65,9 @@ test('a reinstall reads as such', () => {
   assert.equal(lastResultText({ ...base, from: 'v1.67.0', to: 'v1.67.0', status: 'success', step: 'repair' }), 'Reinstalled v1.67.0')
 })
 
-test('a partial update identifies the skipped settings and is a problem', () => {
+test('a partial update identifies the skipped settings without treating the completed update as a failure', () => {
   const partial = { ...base, status: 'partial', skippedSettings: [{ application: 'photos', setting: 'volume /media', reason: 'uses a deleted place', remediation: 'Choose an existing Place for /media, then retry.' }] }
-  assert.match(lastResultText(partial) ?? '', /skipped Compose settings/)
-  assert.equal(lastResultIsProblem(partial), true)
+  assert.equal(lastResultText(partial), 'Updated from v1.66.0 to v1.67.0, but some application settings were not carried over.')
+  assert.equal(lastResultIsProblem(partial), false)
   assert.equal(lastResultIsProblem({ ...base, status: 'success', skippedSettings: [] }), false)
 })

@@ -275,15 +275,15 @@ onUnmounted(() => clearInterval(timer))
       <!-- Last update result and the version it left behind -->
       <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="panel-card p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
-           :class="['text-sm', lastResultIsProblem(status.lastResult) ? 'text-danger' : 'text-[var(--c-text-2)]']">
+           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-danger' : 'text-[var(--c-text-2)]']">
           {{ lastResultText(status.lastResult) }}
           <span class="text-xs text-[var(--c-text-3)]">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
-        <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-danger">
-          <p>These application settings were not carried over. Correct them before retrying the update.</p>
+        <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-warning">
+          <p>The update is complete. These application settings were not carried over, so the applications may not behave as before. Fix each one, then restart the application. Running the update again will not restore them.</p>
           <ul class="list-disc pl-5 space-y-2">
             <li v-for="(item, index) in status.lastResult.skippedSettings" :key="index">
-              <strong>{{ item.application }} — {{ item.setting }}</strong>: {{ item.reason }}.
+              <strong>{{ item.application }} ({{ item.setting }})</strong>: {{ item.reason }}.
               {{ item.remediation }}
             </li>
           </ul>

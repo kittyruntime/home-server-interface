@@ -11,7 +11,7 @@ func TestReadSkippedComposeSettings(t *testing.T) {
 		t.Fatalf("clean update: %v, %v", got, err)
 	}
 	path := filepath.Join(t.TempDir(), "skipped.json")
-	good := `[{"application":"photos","setting":"volume /media","reason":"uses a deleted place and was skipped","remediation":"Choose an existing location."}]`
+	good := `[{"application":"photos","setting":"volume /media","reason":"the Place it used was deleted","remediation":"Choose an existing Place."}]`
 	if err := os.WriteFile(path, []byte(good), 0o600); err != nil {
 		t.Fatal(err)
 	}

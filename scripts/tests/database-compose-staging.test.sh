@@ -51,8 +51,8 @@ python3 - "$tmp/missing-place-stage/skipped-settings.json" <<'PY'
 import json,sys
 items=json.load(open(sys.argv[1]))
 assert len(items)==1 and items[0]['application']=='sample-app'
-assert items[0]['setting']=='volume /media' and 'deleted place' in items[0]['reason']
-assert 'compose.yaml' in items[0]['remediation']
+assert items[0]['setting']=='volume /media' and items[0]['reason']=='the Place it used was deleted'
+assert 'existing Place' in items[0]['remediation'] and 'compose.yaml' in items[0]['remediation']
 PY
 python3 - "$tmp/old.db" <<'PY'
 import sqlite3,sys
@@ -67,6 +67,7 @@ import json,sys
 items=json.load(open(sys.argv[1]))
 assert {item['setting'] for item in items}=={'ports','volume /media'}
 assert all(item['application']=='sample-app' and item['reason'] and item['remediation'] for item in items)
+assert {item['setting']:item['reason'] for item in items}=={'ports':'the saved value could not be read','volume /media':'the Place it used was deleted'}
 PY
 
 # Valid JSON with the wrong shape must abort and identify the offending setting.
