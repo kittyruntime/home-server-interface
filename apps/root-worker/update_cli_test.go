@@ -349,6 +349,19 @@ func TestUpdateStatusJSON(t *testing.T) {
 	}
 }
 
+func TestCommitRecordsSkippedComposeSettings(t *testing.T) {
+	e := setupUpdateEnv(t)
+	e.release(t, "v2.0.0", "v2.1.0")
+	if err := switchCurrent("v2.1.0"); err != nil { t.Fatal(err) }
+	snap := writeTestManifest(t, e, "v2.0.0", "v2.1.0", time.Now())
+	if err := writeInProgress(inProgress{From: "v2.0.0", To: "v2.1.0", Snapshot: snap, Step: "health", PID: 1}); err != nil { t.Fatal(err) }
+	report := filepath.Join(t.TempDir(), "skipped.json")
+	mustWrite(t, report, []byte(`[{"application":"photos","setting":"volume /media","reason":"uses a deleted place and was skipped","remediation":"Choose an existing location."}]`))
+	if code := runUpdateCLI([]string{"commit", "v2.0.0", "v2.1.0", snap, "--skipped-settings", report}); code != 0 { t.Fatalf("exit %d", code) }
+	r, err := readLast()
+	if err != nil || r == nil || r.Status != "partial" || len(r.SkippedSettings) != 1 || r.SkippedSettings[0].Setting != "volume /media" { t.Fatalf("last %+v, %v", r, err) }
+}
+
 func TestMarkAndSwitchCLI(t *testing.T) {
 	e := setupUpdateEnv(t)
 	e.release(t, "v2.0.0", "v2.1.0")

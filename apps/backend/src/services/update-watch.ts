@@ -83,7 +83,8 @@ export async function checkUpdateAttempt(
 
 // Shapes of the worker's root.update.status reply. The worker's state dir is
 // root-only, so the backend asks over NATS instead of reading last.json.
-export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string }
+export interface SkippedComposeSetting { application: string; setting: string; reason: string; remediation: string }
+export interface UpdateResult { from: string; to: string; status: string; step: string; reason: string; at: string; skippedSettings?: SkippedComposeSetting[] }
 // snapshot and snapshotCreated are null when the version has no database snapshot.
 export interface PreviousVersion { version: string; snapshot: string | null; snapshotCreated: string | null }
 // rollbackTarget is what `update rollback` brings back (null: nothing to go back to);

@@ -15,6 +15,14 @@ const stageDir = process.env.HSI_CONTAINERS_STAGE
 
 type Entry = { name: string; operation: "create" | "replace"; originalSha256: string | null; stagedSha256: string }
 const entries: Entry[] = []
+type SkippedSetting = { application: string; setting: string; reason: string; remediation: string }
+const skippedSettings: SkippedSetting[] = []
+function settingSkip(app: string, field: string) {
+  return (reason: string) => skippedSettings.push({
+    application: app, setting: field, reason,
+    remediation: `Restore ${field} in /opt/containers/${app}/compose.yaml, then restart the application.`,
+  })
+}
 function sha256(text: string) { return createHash("sha256").update(text).digest("hex") }
 async function stage(name: string, operation: Entry["operation"], original: string | null, content: string) {
   if (!STACK_NAME_RE.test(name)) throw new Error(`unsafe container app name: ${name}`)
@@ -77,7 +85,7 @@ async function main() {
     }
 
     const resolved: AppInput["volumes"] = []
-    for (const v of decodeSetting<{ type: string; source: string; target: string; readOnly: boolean }>(row.volumes, [], row.name, "volumes", "object")) {
+    for (const v of decodeSetting<{ type: string; source: string; target: string; readOnly: boolean }>(row.volumes, [], row.name, "volumes", "object", settingSkip(row.name, "volumes"))) {
       if (v.type === "place") {
         // $queryRawUnsafe returns the rows as a flat array of objects
         // ([{ path }]), not an array of arrays.
@@ -86,6 +94,8 @@ async function main() {
         const p = places[0]?.path
         if (!p) {
           console.warn(`warning: application "${row.name}": volume ${v.target} uses a deleted place and was skipped`)
+          skippedSettings.push({ application: row.name, setting: `volume ${v.target}`, reason: "uses a deleted place and was skipped",
+            remediation: `Choose an existing location for ${v.target} in /opt/containers/${row.name}/compose.yaml, then restart the application.` })
           continue
         }
         resolved.push({ type: "bind", source: p, target: v.target, readOnly: v.readOnly })
@@ -96,9 +106,9 @@ async function main() {
 
     const input: AppInput = {
       name: row.name, image: row.image,
-      ports: decodeSetting(row.ports, [], row.name, "ports", "object"), envs: decodeSetting(row.envs, [], row.name, "envs", "object"), volumes: resolved,
-      networkNames: decodeSetting(row.networkNames, [], row.name, "networkNames", "string"), labels: decodeSetting(row.labels, [], row.name, "labels", "object"),
-      capAdd: decodeSetting(row.capAdd, [], row.name, "capAdd", "string"), capDrop: decodeSetting(row.capDrop, [], row.name, "capDrop", "string"), extraHosts: decodeSetting(row.extraHosts, [], row.name, "extraHosts", "string"),
+      ports: decodeSetting(row.ports, [], row.name, "ports", "object", settingSkip(row.name, "ports")), envs: decodeSetting(row.envs, [], row.name, "envs", "object", settingSkip(row.name, "envs")), volumes: resolved,
+      networkNames: decodeSetting(row.networkNames, [], row.name, "networkNames", "string", settingSkip(row.name, "networkNames")), labels: decodeSetting(row.labels, [], row.name, "labels", "object", settingSkip(row.name, "labels")),
+      capAdd: decodeSetting(row.capAdd, [], row.name, "capAdd", "string", settingSkip(row.name, "capAdd")), capDrop: decodeSetting(row.capDrop, [], row.name, "capDrop", "string", settingSkip(row.name, "capDrop")), extraHosts: decodeSetting(row.extraHosts, [], row.name, "extraHosts", "string", settingSkip(row.name, "extraHosts")),
       restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
@@ -129,6 +139,7 @@ async function main() {
     if (fixed !== null) { await stage(name, "replace", original, fixed); repaired++ }
   }
   await writeFile(path.join(stageDir!, "manifest.json"), JSON.stringify({ entries }, null, 2) + "\n", { mode: 0o600 })
+  if (skippedSettings.length) await writeFile(path.join(stageDir!, "skipped-settings.json"), JSON.stringify(skippedSettings) + "\n", { mode: 0o600 })
   console.log(`compose cutover staged: ${written} new, ${repaired} repaired, ${skipped} existing`)
   await prisma.$disconnect()
 }

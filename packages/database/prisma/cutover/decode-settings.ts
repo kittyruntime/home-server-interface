@@ -1,8 +1,10 @@
-export function decodeSetting<T>(s: unknown, fallback: T[], appName: string, field: string, itemKind: "object" | "string"): T[] {
+export function decodeSetting<T>(s: unknown, fallback: T[], appName: string, field: string, itemKind: "object" | "string", onSkip?: (reason: string) => void): T[] {
   if (s == null) return fallback
   let value: unknown
   try { value = JSON.parse(String(s)) } catch {
-    console.warn(`warning: application "${appName}": invalid ${field} settings were skipped`)
+    const reason = `invalid ${field} settings were skipped`
+    console.warn(`warning: application "${appName}": ${reason}`)
+    onSkip?.(reason)
     return fallback
   }
   if (!Array.isArray(value) || !value.every(item => itemKind === "string"

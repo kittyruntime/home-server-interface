@@ -28,7 +28,7 @@ const updateUsage = `usage: hsi-worker update <command>
   switch <version>                        point current at releases/<version>
   replace <version> <staged>              swap releases/<staged> in for releases/<version> (repair)
   health <version> [--timeout 120]        wait until that version is healthy
-  commit <from> <to> <snapshot>           record success, prune old versions and snapshots
+  commit <from> <to> <snapshot> [--skipped-settings <path>]   record outcome and prune
   repaired <version>                      record a reinstall of the current version, prune
   rollback [--snapshot <dir>] [--yes] [--reason <text>]   go back to the previous version
   status                                  last result, current and previous versions (JSON)`
@@ -86,6 +86,7 @@ func runUpdateCLI(args []string) int {
 	fs.SetOutput(io.Discard)
 	archive := fs.String("archive", "", "")
 	composeManifest := fs.String("manifest", "", "")
+	skippedSettingsPath := fs.String("skipped-settings", "", "")
 	timeout := fs.Int("timeout", int(healthTimeout/time.Second), "")
 	snapshot := fs.String("snapshot", "", "")
 	yes := fs.Bool("yes", false, "")
@@ -155,7 +156,15 @@ func runUpdateCLI(args []string) int {
 		if err := checkCommit(pos[0], pos[1], pos[2]); err != nil {
 			return fail(1, err)
 		}
-		if err := writeLast(lastResult{From: pos[0], To: pos[1], Status: "success"}); err != nil {
+		skipped, err := readSkippedComposeSettings(*skippedSettingsPath)
+		if err != nil {
+			return fail(1, err)
+		}
+		status := "success"
+		if len(skipped) > 0 {
+			status = "partial"
+		}
+		if err := writeLast(lastResult{From: pos[0], To: pos[1], Status: status, SkippedSettings: skipped}); err != nil {
 			return fail(1, err)
 		}
 		clearInProgress()

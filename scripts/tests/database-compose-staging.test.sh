@@ -24,6 +24,7 @@ assert manifest['entries']==[{'name':'sample-app','operation':'create','original
 yaml=(root/'staged/sample-app/compose.yaml').read_text()
 assert 'photos:' in yaml and 'name: photos' in yaml and '/srv/media:/media:ro' in yaml, yaml
 assert not (root/'live/sample-app/compose.yaml').exists()
+assert not (root/'staged/skipped-settings.json').exists()
 with sqlite3.connect(root/'old.db') as db:
     assert db.execute('SELECT COUNT(*) FROM "ContainerApp"').fetchone()[0]==1
 PY
@@ -46,6 +47,13 @@ PY
 grep -q '^warning: application "sample-app": volume /media uses a deleted place and was skipped$' "$tmp/output"
 test -f "$tmp/missing-place-stage/sample-app/compose.yaml"
 ! grep -q '/media' "$tmp/missing-place-stage/sample-app/compose.yaml"
+python3 - "$tmp/missing-place-stage/skipped-settings.json" <<'PY'
+import json,sys
+items=json.load(open(sys.argv[1]))
+assert len(items)==1 and items[0]['application']=='sample-app'
+assert items[0]['setting']=='volume /media' and 'deleted place' in items[0]['reason']
+assert 'compose.yaml' in items[0]['remediation']
+PY
 python3 - "$tmp/old.db" <<'PY'
 import sqlite3,sys
 with sqlite3.connect(sys.argv[1]) as db:
@@ -54,6 +62,12 @@ PY
 (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/invalid-json-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1
 grep -q '^warning: application "sample-app": invalid ports settings were skipped$' "$tmp/output"
 test -f "$tmp/invalid-json-stage/sample-app/compose.yaml"
+python3 - "$tmp/invalid-json-stage/skipped-settings.json" <<'PY'
+import json,sys
+items=json.load(open(sys.argv[1]))
+assert {item['setting'] for item in items}=={'ports','volume /media'}
+assert all(item['application']=='sample-app' and item['reason'] and item['remediation'] for item in items)
+PY
 
 # Valid JSON with the wrong shape must abort and identify the offending setting.
 for field in ports volumes envs networkNames labels capAdd capDrop extraHosts; do

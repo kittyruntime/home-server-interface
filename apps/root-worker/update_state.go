@@ -84,15 +84,23 @@ type inProgress struct {
 	PID      int       `json:"pid"`
 }
 
-// lastResult is the outcome of the last update; Status is success, rolled-back,
-// rollback-failed or refused.
+// lastResult is the outcome of the last update; Status is success, partial,
+// rolled-back, rollback-failed or refused.
+type skippedComposeSetting struct {
+	Application string `json:"application"`
+	Setting     string `json:"setting"`
+	Reason      string `json:"reason"`
+	Remediation string `json:"remediation"`
+}
+
 type lastResult struct {
-	From   string    `json:"from"`
-	To     string    `json:"to"`
-	Status string    `json:"status"`
-	Step   string    `json:"step"`
-	Reason string    `json:"reason"`
-	At     time.Time `json:"at"`
+	From            string                  `json:"from"`
+	To              string                  `json:"to"`
+	Status          string                  `json:"status"`
+	Step            string                  `json:"step"`
+	Reason          string                  `json:"reason"`
+	SkippedSettings []skippedComposeSetting `json:"skippedSettings,omitempty"`
+	At              time.Time               `json:"at"`
 }
 
 // snapshotRel is p (absolute, or relative to the snapshot dir) relative to dir,

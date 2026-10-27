@@ -17,6 +17,7 @@ export function lastResultText(r: UpdateResult | null): string | null {
   const why = `at step ${r.step} (${r.reason})`
   if (r.status === 'success' && r.step === 'repair') return `Reinstalled ${r.to}`
   if (r.status === 'success') return `Updated from ${r.from} to ${r.to}`
+  if (r.status === 'partial') return `Updated from ${r.from} to ${r.to} with skipped Compose settings. Review the items below before retrying.`
   if (r.status === 'rolled-back' && r.step === 'manual') return `Rolled back from ${r.to} to ${r.from} by hand.`
   if (r.status === 'rolled-back') return `Update to ${r.to} failed ${why}. Rolled back to ${r.from}.`
   if (r.status === 'rollback-failed') return `Update to ${r.to} failed ${why} and the rollback failed. Manual recovery is needed.`

@@ -2103,7 +2103,12 @@ EOF
   if HEALTH_OUT=$(worker_update "$NEW_WORKER" health "$VERSION" --timeout 120 2>&1); then
     if (( SAFE_UPDATE )); then
       CURRENT_STEP=commit
+      COMPOSE_SKIP_ARGS=()
+      if [[ -f "${COMPOSE_STAGE:-}/skipped-settings.json" ]]; then
+        COMPOSE_SKIP_ARGS=(--skipped-settings "$COMPOSE_STAGE/skipped-settings.json")
+      fi
       worker_update "$NEW_WORKER" commit "$OLD_VERSION" "$VERSION" "$SNAP" \
+        "${COMPOSE_SKIP_ARGS[@]}" \
         || die "Could not record the successful update."
       UPDATE_FINISHED=1
     elif (( REPAIR )); then

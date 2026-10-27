@@ -279,6 +279,15 @@ onUnmounted(() => clearInterval(timer))
           {{ lastResultText(status.lastResult) }}
           <span class="text-xs text-[var(--c-text-3)]">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
+        <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-danger">
+          <p>These application settings were not carried over. Correct them before retrying the update.</p>
+          <ul class="list-disc pl-5 space-y-2">
+            <li v-for="(item, index) in status.lastResult.skippedSettings" :key="index">
+              <strong>{{ item.application }} — {{ item.setting }}</strong>: {{ item.reason }}.
+              {{ item.remediation }}
+            </li>
+          </ul>
+        </div>
         <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-[var(--c-text-2)]">
           {{ previousVersionText(status.rollbackTarget, status.current, formatDay) }}
           <code class="font-mono text-xs text-[var(--c-text-1)]">{{ rollbackCommand(status.rollbackCommand) }}</code>
