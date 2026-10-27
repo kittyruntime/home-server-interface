@@ -16,6 +16,7 @@
     "pretypecheck": "pnpm --filter @app/database db:generate",
     "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
     "smoke:backend": "node scripts/smoke-backend.mjs",
+    "pretest:shell": "pnpm --filter @app/database db:generate",
     "test:shell": "bash scripts/tests/restic-download.test.sh && bash scripts/tests/backup-units.test.sh && bash scripts/tests/signing-key-copies.test.sh && bash scripts/tests/install-verify.test.sh && bash scripts/tests/sign-release.test.sh && bash scripts/tests/install-layout.test.sh && bash scripts/tests/database-baseline.test.sh && bash scripts/tests/database-compose-staging.test.sh && bash scripts/tests/database-old-container.test.sh",
     "check:go": "test -z \"$(gofmt -l apps/root-worker)\" && cd apps/root-worker && go vet ./...",
     "verify": "pnpm lint && scripts/check-i18n.sh && scripts/check-no-em-dash.sh && pnpm test:shell && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",
