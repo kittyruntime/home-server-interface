@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.68.1] - 2026-10-28
+
 ### Changed
 - **Versioned database migrations** (#9b, #104): the database moves to Prisma 7
   and to versioned migrations, starting from a v1.68.0 baseline. An update from
@@ -1459,7 +1461,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...HEAD
+[1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
 [1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0
 [1.67.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...v1.67.0
 [1.66.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...v1.66.0
