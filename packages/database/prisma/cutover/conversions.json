@@ -1,0 +1,154 @@
+[
+  {
+    "source": "207863ea1ae2748c79c68dc7631e69ed30fa873b5c5d2bd25e40adc9771a95b1",
+    "representativeRelease": "v1.64.2",
+    "needsPermissions": false,
+    "needsCompose": false,
+    "sql": "conversions/207863ea1ae2748c/migration.sql",
+    "sqlSha256": "57dc773f0c5e0bff0b25c5d5c87aa613a204b420b9f998625546f2e2e2367db5"
+  },
+  {
+    "source": "5bbf125e724c6ea06e37231f031e8364b4e93cc1791272d4beb055d91c6c626b",
+    "representativeRelease": "v1.60.0",
+    "needsPermissions": false,
+    "needsCompose": false,
+    "sql": "conversions/5bbf125e724c6ea0/migration.sql",
+    "sqlSha256": "3a2a96e24f9f86617db6cea6a95a63050d07773e482921148734aa9b7370d9b1"
+  },
+  {
+    "source": "1b19ed10f6e7cbf919aa957b8fe04ef14ee1bcf616b6f146012d4d7da324db26",
+    "representativeRelease": "v1.57.0",
+    "needsPermissions": false,
+    "needsCompose": false,
+    "sql": "conversions/1b19ed10f6e7cbf9/migration.sql",
+    "sqlSha256": "9457d0bb8ac264a08191f03f238fa3513842c193c27ed287c7059932e8405281"
+  },
+  {
+    "source": "3e1798df1946f86c0e407b56af956853654fba4361755303b2be69d9a09b4517",
+    "representativeRelease": "v1.53.1",
+    "needsPermissions": false,
+    "needsCompose": false,
+    "sql": "conversions/3e1798df1946f86c/migration.sql",
+    "sqlSha256": "931064da184f405834c80762150f97b21fe98fbdb49486cdad722df8b084afa3"
+  },
+  {
+    "source": "820a70e08e70843403c7415e269ba23771e2db76327a74033c542f26e5a1dfde",
+    "representativeRelease": "v1.52.0",
+    "needsPermissions": false,
+    "needsCompose": true,
+    "sql": "conversions/820a70e08e708434/migration.sql",
+    "sqlSha256": "aee0a3eaab51961467b68d6eda5bd6c99564259e7719c1336cb0330016de5d54"
+  },
+  {
+    "source": "ec3885727c69333d02be5121e6cd2a5c264e3a790db1e36b38ac6c56621be0b2",
+    "representativeRelease": "v1.50.3",
+    "needsPermissions": false,
+    "needsCompose": true,
+    "sql": "conversions/ec3885727c69333d/migration.sql",
+    "sqlSha256": "e10c0dbd9ed6fbbbf99703fcddaec3eed645b3bc2d84652acd71539d6938c0d4"
+  },
+  {
+    "source": "55dd299a5f80a779ab426f11e8e21529e7e36242c8c095cce950e950e1e5e5ad",
+    "representativeRelease": "v1.46.0",
+    "needsPermissions": false,
+    "needsCompose": true,
+    "sql": "conversions/55dd299a5f80a779/migration.sql",
+    "sqlSha256": "19946b87d05f8700e7e6ecd64408f5dba995b460392961703a8976697960f617"
+  },
+  {
+    "source": "149a384874fb3eba5ba9b44bf34aec449f35dd417b2005e106864f4e2c75a4e0",
+    "representativeRelease": "v1.42.0",
+    "needsPermissions": false,
+    "needsCompose": true,
+    "sql": "conversions/149a384874fb3eba/migration.sql",
+    "sqlSha256": "f426b7d4e890a468932f40b47b303078768d73fbb36063a5e41a88085c43347a"
+  },
+  {
+    "source": "bd7f44cea49b2169d5543afee8f3b0f9c487ee1228c0b610e641ecdef6f404d9",
+    "representativeRelease": "v1.41.0",
+    "needsPermissions": false,
+    "needsCompose": true,
+    "sql": "conversions/bd7f44cea49b2169/migration.sql",
+    "sqlSha256": "02852002c112b33075b70300d9d20cba5c485f7caf1313d97336a8961a14417a"
+  },
+  {
+    "source": "dfd9eee2221623679e7e95150589b30f0fb3041c18c90ba34183cc7e73463ef1",
+    "representativeRelease": "v1.34.1",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/dfd9eee222162367/migration.sql",
+    "sqlSha256": "86c5c026871f5696982363e9c4beaeb644d2991911253f5f97bde0d2aa3ca471"
+  },
+  {
+    "source": "e526488b1a2d718470a303dc84ba26534bf24a2ef386ff886c89531a9c178b64",
+    "representativeRelease": "v1.32.0",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/e526488b1a2d7184/migration.sql",
+    "sqlSha256": "0a94946fe8f2dc56b59b7d875c9d445923088c1136966e076a5b81ec4973aaab"
+  },
+  {
+    "source": "a1c5e5e56fa8d568a2946e512e3e85e9cb7dc3fe7308a54c038dc091da3e6ddf",
+    "representativeRelease": "v1.29.0",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/a1c5e5e56fa8d568/migration.sql",
+    "sqlSha256": "db04ce2d913613b97694ecbc5abab4597e6e84303e2a9aa14eae8a53536ec544"
+  },
+  {
+    "source": "23730dc8b76b49e00bb02480406be8eda3316fe46e36ba7f5ab7cf4879cc8b9d",
+    "representativeRelease": "v1.28.6",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/23730dc8b76b49e0/migration.sql",
+    "sqlSha256": "189a5aac0deb9771b9224418da6f3fe57a63c4eee57b860eec96bd97062df64b"
+  },
+  {
+    "source": "a3cfc846a3fbebfd7ce368a28d2e354e5714b5d37fb9832e67c083f66879ec45",
+    "representativeRelease": "v1.24.0",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/a3cfc846a3fbebfd/migration.sql",
+    "sqlSha256": "6272d4d4905c14184ee81591179e3dbf5562c1b839be73b5761b98684e08184d"
+  },
+  {
+    "source": "99898fd11fd3882c6e27bbdf6c97082defd28c5a60141983e01d8132b66c7b43",
+    "representativeRelease": "v1.19.1",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/99898fd11fd3882c/migration.sql",
+    "sqlSha256": "f9d685ecf1e8e3fedeee31ae6e8fb4a0a610d708de5c273c0ae40055d41dd116"
+  },
+  {
+    "source": "8e49b95f5522f37ec689a625e4cc33a6281a20db8dc730044b30aa0f2c8e66be",
+    "representativeRelease": "v1.17.1",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/8e49b95f5522f37e/migration.sql",
+    "sqlSha256": "8d75001df08c4a0741e752002a4114d9f91c539c6cce1fa0a0bb36f3fd0879b9"
+  },
+  {
+    "source": "4e7742dc12371b38a41eb15e3965bd915b646d2f163d463d536c9bc051415e0f",
+    "representativeRelease": "v1.11.3",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/4e7742dc12371b38/migration.sql",
+    "sqlSha256": "8d75001df08c4a0741e752002a4114d9f91c539c6cce1fa0a0bb36f3fd0879b9"
+  },
+  {
+    "source": "1693b534decade705e5cb1bcc6707de2c1bfbbd828b8eae54522b88c27691d40",
+    "representativeRelease": "v1.6.1",
+    "needsPermissions": true,
+    "needsCompose": true,
+    "sql": "conversions/1693b534decade70/migration.sql",
+    "sqlSha256": "5d40373da6f6e6987c044bdbbf5fa42f7827e0c714df9e5ae1782f86451bd9b1"
+  },
+  {
+    "source": "6060e09e5079ec116cd806e530334ec6df444a230a023b58f8b8ec444e05137f",
+    "representativeRelease": "v0.0.2",
+    "needsPermissions": true,
+    "needsCompose": false,
+    "sql": "conversions/6060e09e5079ec11/migration.sql",
+    "sqlSha256": "a56a3d75d6848f6e15a0cefa0aa7bcf0e7c85cbad95d5fe2c5ce60f535f001b1"
+  }
+]

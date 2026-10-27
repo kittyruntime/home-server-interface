@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,15 +84,23 @@ type inProgress struct {
 	PID      int       `json:"pid"`
 }
 
-// lastResult is the outcome of the last update; Status is success, rolled-back,
-// rollback-failed or refused.
+// lastResult is the outcome of the last update; Status is success, partial,
+// rolled-back, rollback-failed or refused.
+type skippedComposeSetting struct {
+	Application string `json:"application"`
+	Setting     string `json:"setting"`
+	Reason      string `json:"reason"`
+	Remediation string `json:"remediation"`
+}
+
 type lastResult struct {
-	From   string    `json:"from"`
-	To     string    `json:"to"`
-	Status string    `json:"status"`
-	Step   string    `json:"step"`
-	Reason string    `json:"reason"`
-	At     time.Time `json:"at"`
+	From            string                  `json:"from"`
+	To              string                  `json:"to"`
+	Status          string                  `json:"status"`
+	Step            string                  `json:"step"`
+	Reason          string                  `json:"reason"`
+	SkippedSettings []skippedComposeSetting `json:"skippedSettings,omitempty"`
+	At              time.Time               `json:"at"`
 }
 
 // snapshotRel is p (absolute, or relative to the snapshot dir) relative to dir,
@@ -155,6 +165,9 @@ func isUnitPath(p string) bool {
 
 // snapshotSourceAllowed is the set of files a snapshot may save and a rollback may write.
 func snapshotSourceAllowed(p string) bool {
+	if isComposePath(p) {
+		return true
+	}
 	if isUnitPath(p) {
 		return true
 	}
@@ -164,6 +177,104 @@ func snapshotSourceAllowed(p string) bool {
 		}
 	}
 	return false
+}
+
+func updateContainersDir() string { return envOr("HSI_CONTAINERS_DIR", "/opt/containers") }
+
+var composeNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+
+func isComposePath(p string) bool {
+	root := filepath.Clean(updateContainersDir())
+	if !filepath.IsAbs(root) || filepath.Base(p) != "compose.yaml" {
+		return false
+	}
+	name := filepath.Base(filepath.Dir(p))
+	return composeNameRe.MatchString(name) && filepath.Clean(p) == filepath.Join(root, name, "compose.yaml")
+}
+
+type stagedComposeManifest struct {
+	Entries []struct {
+		Name           string  `json:"name"`
+		Operation      string  `json:"operation"`
+		OriginalSHA256 *string `json:"originalSha256"`
+		StagedSHA256   string  `json:"stagedSha256"`
+	} `json:"entries"`
+}
+
+// addComposeSnapshot extends an existing #9a snapshot before the installer
+// changes any live Compose file. The manifest is root-owned and atomically
+// replaced only after all intended targets have been copied.
+func addComposeSnapshot(dir, stagedManifest string) error {
+	m, err := readManifest(dir)
+	if err != nil {
+		return err
+	}
+	if !filepath.IsAbs(stagedManifest) {
+		return errors.New("Compose stage manifest path must be absolute")
+	}
+	b, err := os.ReadFile(stagedManifest)
+	if err != nil {
+		return err
+	}
+	var staged stagedComposeManifest
+	if err := json.Unmarshal(b, &staged); err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	for _, f := range m.Files {
+		seen[f.Src] = true
+	}
+	snap, err := openDirNoFollow(dir)
+	if err != nil {
+		return err
+	}
+	defer snap.Close()
+	filesDir, err := openatDir(snap, "files")
+	if err != nil {
+		return err
+	}
+	defer filesDir.Close()
+	for _, entry := range staged.Entries {
+		p := filepath.Join(updateContainersDir(), entry.Name, "compose.yaml")
+		if !composeNameRe.MatchString(entry.Name) || !isComposePath(p) || seen[p] {
+			return fmt.Errorf("invalid or duplicate Compose target %q", entry.Name)
+		}
+		seen[p] = true
+		if len(entry.StagedSHA256) != 64 {
+			return fmt.Errorf("invalid staged checksum for %s", entry.Name)
+		}
+		if _, err := hex.DecodeString(entry.StagedSHA256); err != nil {
+			return err
+		}
+		f, err := snapshotFile(filesDir, len(m.Files), p)
+		if err != nil {
+			return err
+		}
+		if (entry.Operation == "create" && f.Existed) || (entry.Operation == "replace" && !f.Existed) || (entry.Operation != "create" && entry.Operation != "replace") {
+			return fmt.Errorf("Compose target %s changed since staging", p)
+		}
+		if f.Existed {
+			if entry.OriginalSHA256 == nil {
+				return fmt.Errorf("missing original checksum for %s", p)
+			}
+			contents, err := os.ReadFile(filepath.Join(dir, f.Saved))
+			if err != nil {
+				return err
+			}
+			h := sha256.Sum256(contents)
+			if hex.EncodeToString(h[:]) != *entry.OriginalSHA256 {
+				return fmt.Errorf("Compose target %s changed since staging", p)
+			}
+		} else if entry.OriginalSHA256 != nil {
+			return fmt.Errorf("unexpected original checksum for %s", p)
+		}
+		m.Files = append(m.Files, f)
+	}
+	b, err = json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	return writeBackupFile(filepath.Join(dir, "manifest.json"), append(b, '\n'), 0o600)
 }
 
 var snapshotNameRe = regexp.MustCompile(`^(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$`)

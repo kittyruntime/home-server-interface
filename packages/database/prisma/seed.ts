@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client"
+import { createPrismaClient } from "../src/index"
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient()
+const prisma = createPrismaClient()
 
 async function main() {
   // No default account (#12): a fresh install creates its administrator in the

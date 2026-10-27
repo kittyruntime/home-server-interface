@@ -16,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
 
@@ -53,6 +55,18 @@ jobs:
 
       - name: Test backend and root-worker
         run: pnpm test
+
+      - name: Verify published SQLite inventory and conversion checksums
+        run: |
+          python3 packages/database/prisma/cutover/inventory.py
+          python3 packages/database/prisma/cutover/generate-conversions.py
+          git diff --exit-code -- packages/database/prisma/cutover/states.json packages/database/prisma/cutover/conversions.json packages/database/prisma/cutover/conversions
+          test -z "$(git ls-files --others --exclude-standard packages/database/prisma/cutover/conversions)"
+
+      - name: Test SQLite cutover and installer
+        run: |
+          pnpm --filter @app/database exec tsx --test src/cutover/preflight.test.ts
+          pnpm test:shell
 
   build:
     runs-on: ubuntu-latest

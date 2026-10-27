@@ -17,6 +17,7 @@ export function lastResultText(r: UpdateResult | null): string | null {
   const why = `at step ${r.step} (${r.reason})`
   if (r.status === 'success' && r.step === 'repair') return `Reinstalled ${r.to}`
   if (r.status === 'success') return `Updated from ${r.from} to ${r.to}`
+  if (r.status === 'partial') return `Updated from ${r.from} to ${r.to}, but some application settings were not carried over.`
   if (r.status === 'rolled-back' && r.step === 'manual') return `Rolled back from ${r.to} to ${r.from} by hand.`
   if (r.status === 'rolled-back') return `Update to ${r.to} failed ${why}. Rolled back to ${r.from}.`
   if (r.status === 'rollback-failed') return `Update to ${r.to} failed ${why} and the rollback failed. Manual recovery is needed.`
@@ -26,7 +27,7 @@ export function lastResultText(r: UpdateResult | null): string | null {
 
 /** Whether the last result is a failure to show as such (a rollback by hand is not). */
 export function lastResultIsProblem(r: UpdateResult): boolean {
-  return r.status !== 'success' && !(r.status === 'rolled-back' && r.step === 'manual')
+  return r.status !== 'success' && r.status !== 'partial' && !(r.status === 'rolled-back' && r.step === 'manual')
 }
 
 /** Orders vX.Y.Z like the worker: numerically, a suffixed version before the same one without. */

@@ -81,7 +81,8 @@ jobs:
           PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x \
             node runtime/node_modules/@prisma/engines/scripts/postinstall.js
           test -x runtime/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
-          test -s runtime/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
+          test -s runtime/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+          test -s packages/database/src/generated/prisma/client.ts
 
       - name: Build root-worker (linux/amd64)
         run: |
@@ -111,6 +112,7 @@ jobs:
             apps/backend/dist/server.js \
             apps/dashboard/dist \
             packages/database/package.json \
+            packages/database/prisma.config.ts \
             packages/database/prisma \
             packages/database/src \
             packages/compose/package.json \

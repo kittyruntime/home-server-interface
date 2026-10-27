@@ -4,4 +4,4 @@ packages:
   - packages/*
   - website
 
-onlyBuiltDependencies: '@prisma/client @prisma/engines prisma esbuild'
+onlyBuiltDependencies: '@prisma/client @prisma/engines prisma esbuild better-sqlite3'

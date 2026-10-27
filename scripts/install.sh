@@ -147,7 +147,7 @@ DEV_SIGNING_KEY_FINGERPRINT="0c9fde95a7afa23901ce53c94613f8f7a710af273942f2e7ff9
 # INSTALL_DIR; they move to releases/<version>/ and are linked back (link_flat_paths).
 RELEASE_CODE_PATHS=(
   server.js public bin node_modules runtime scripts
-  database/prisma database/src database/package.json compose
+  database/prisma database/prisma.config.ts database/src database/package.json compose
   package.json pnpm-lock.yaml pnpm-workspace.yaml LICENSE CHANGELOG.md README.md
 )
 INSTALLED_VERSION_RE='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'
@@ -843,6 +843,7 @@ ensure_dependencies() {
 DL_DIR=""
 RELEASE_STAGE=""
 DB_ROLLBACK_FILE=""
+DB_ROLLBACK_WAL_FILE=""
 SERVICES_STOPPED=0
 # Release-mode update state (#9a): the snapshot, the worker of the new release
 # that records each step, and whether the update reached its end.
@@ -893,23 +894,61 @@ rollback_update() {
   fi
 }
 
+UPDATE_FAILURE_REASON=""
+# Preserve one stable, single-line cause for the worker's lastResult and dashboard.
+run_db_step() {
+  local label=$1 output status detail
+  shift
+  if output=$("$@" 2>&1); then
+    [[ -z "$output" ]] || printf '%s\n' "$output"
+    DB_STEP_OUTPUT=$output
+    return 0
+  else
+    status=$?
+  fi
+  [[ -z "$output" ]] || printf '%s\n' "$output" >&2
+  detail=$(sed -n 's/^error: //p' <<< "$output" | tail -n 1)
+  detail=${detail:-"$label failed (exit $status)"}
+  UPDATE_FAILURE_REASON="$label: $detail"
+  if [[ "$label" == "Database preflight" ]]; then
+    UPDATE_FAILURE_REASON="$UPDATE_FAILURE_REASON. Database was not modified; send the fingerprint or database error to support"
+    [[ -z "${PREVIOUS_BACKUP:-}" ]] || UPDATE_FAILURE_REASON="$UPDATE_FAILURE_REASON (previous backup: $PREVIOUS_BACKUP)"
+  fi
+  die "$UPDATE_FAILURE_REASON"
+}
+
 cleanup_install_exit() {
   local status=$?
   set +e
   if (( status != 0 )); then
     if (( UPDATE_MARKED == 1 && UPDATE_FINISHED == 0 )); then
-      rollback_update "the installer failed during the '$CURRENT_STEP' step (exit $status)"
+      rollback_update "${UPDATE_FAILURE_REASON:-the installer failed during the '$CURRENT_STEP' step (exit $status)}"
     else
+      if [[ "$FROM_SOURCE" -eq 1 && -f "${COMPOSE_STAGE:-}/manifest.json" ]]; then
+        if ! db_tsx prisma/cutover/compose-restore-source.ts; then
+          warn "Could not restore staged Compose files; keeping $COMPOSE_STAGE for manual recovery."
+          COMPOSE_STAGE_KEEP=1
+        fi
+      fi
       if [[ -n "$DB_ROLLBACK_FILE" && -f "$DB_ROLLBACK_FILE" && -n "${DB_FILE:-}" ]]; then
         warn "Restoring the pre-update database backup."
         run_as "$APP_USER" "cp -- '$DB_ROLLBACK_FILE' '$DB_FILE'"
+        if [[ -n "$DB_ROLLBACK_WAL_FILE" && -f "$DB_ROLLBACK_WAL_FILE" ]]; then
+          run_as "$APP_USER" "cp -- '$DB_ROLLBACK_WAL_FILE' '$DB_FILE-wal'"
+        else
+          run_as "$APP_USER" "rm -f -- '$DB_FILE-wal'"
+        fi
       fi
       # Release mode before the snapshot: nothing to undo, the previous version
       # starts again if current still leads to it.
       if (( SERVICES_STOPPED == 1 )) && [[ "$FROM_SOURCE" -eq 0 && -L "${INSTALL_DIR:-}/current" && ! -f "${INSTALL_DIR:-}/current/server.js" ]]; then
         warn "Not restarting: $INSTALL_DIR/current does not lead to an installed release. Re-run the installer."
       elif (( SERVICES_STOPPED == 1 )); then
-        warn "Restarting the previous services after the failed update."
+        if (( REPAIR )); then
+          warn "Restarting the services after the failed reinstall. No update snapshot was created."
+        else
+          warn "Restarting the previous services after the failed update."
+        fi
         if [[ -f "/etc/systemd/system/${APP_NAME}.target" ]]; then
           systemctl start "${APP_NAME}.target" >/dev/null 2>&1 || true
         else
@@ -920,6 +959,9 @@ cleanup_install_exit() {
   fi
   if [[ -n "$DL_DIR" && -d "$DL_DIR" ]]; then
     rm -rf -- "$DL_DIR"
+  fi
+  if [[ -n "${COMPOSE_STAGE:-}" && -d "$COMPOSE_STAGE" && -n "${APP_USER:-}" && "${COMPOSE_STAGE_KEEP:-0}" != 1 ]]; then
+    run_as "$APP_USER" "rm -rf -- '$COMPOSE_STAGE'" || true
   fi
 }
 trap cleanup_install_exit EXIT
@@ -1271,18 +1313,6 @@ else
     "
   }
 
-  # generate_prisma_client <release dir>: as the app user, in that release.
-  generate_prisma_client() {
-    local dir=$1
-    app_exec "
-      cd '$dir/database'
-      NODE_PATH='$dir/node_modules' \
-        PRISMA_SCHEMA_ENGINE_BINARY='$dir/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x' \
-        PRISMA_QUERY_ENGINE_LIBRARY='$dir/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node' \
-        '$dir/node_modules/.bin/prisma' generate
-    "
-  }
-
   step "Installing Node.js $NODE_VERSION via nvm"
   if [[ ! -f "$NVM_DIR/nvm.sh" ]]; then
     run_as "$APP_USER" "
@@ -1314,31 +1344,16 @@ fi
 # =============================================================================
 if [[ "$FROM_SOURCE" -eq 1 ]]; then
   DB_DIR="$APP_DIR/packages/database/data"
-  SCHEMA_DIR="$APP_DIR/packages/database/prisma/schema"
 else
   DB_DIR="$APP_DIR/database/data"
-  if [[ -d "$APP_DIR/database/prisma/schema" ]]; then
-    SCHEMA_DIR="$APP_DIR/database/prisma/schema"
-  else
-    SCHEMA_DIR="$RELEASE_STAGE/database/prisma/schema"
-  fi
 fi
-# The DB filename comes from the Prisma datasource, which is independent of
-# APP_NAME (e.g. the schema targets hsi.db while APP_NAME=app). Derive it from
-# the schema so update-detection and the pre-push backup point at the REAL DB;
-# using "${APP_NAME}.db" blindly would miss it, mis-detect a fresh install, and
-# skip the data migrations below. Fall back only when no schema is on disk yet
-# (a true first install, nothing extracted).
-DB_URL_PATH=$(grep -rhoP 'url\s*=\s*"file:\K[^"]+' "$SCHEMA_DIR" 2>/dev/null | head -1)
-if [[ -n "$DB_URL_PATH" ]]; then
-  DB_FILE="$DB_DIR/$(basename "$DB_URL_PATH")"
-else
-  DB_FILE="$DB_DIR/${APP_NAME}.db"
-fi
+# Prisma 7 keeps its datasource in prisma.config.ts. All published HSI
+# schemas used hsi.db, including installations with a custom APP_NAME.
+DB_FILE="$DB_DIR/hsi.db"
 ENV_FILE="$APP_DIR/.env"
 
 check_data_paths
-if [[ -f "$DB_FILE" ]]; then
+if [[ -s "$DB_FILE" || -s "$DB_FILE-wal" ]]; then
   IS_UPDATE=1
   warn "Existing installation detected, performing update (data preserved)"
 else
@@ -1423,11 +1438,11 @@ else
     mark_update install
   fi
 
-  # The Prisma client is generated by the app user in the staging copy, before the
-  # release becomes root's: root never runs node or anything under the app user's
-  # home. Later Prisma commands run as the app user and skip generation.
-  step "Installing $VERSION and generating its Prisma client"
-  install_release_dir generate_prisma_client || die "Could not install $VERSION in $INSTALL_DIR/releases."
+  # Prisma 7's client is generated in CI and included in the signed archive.
+  # Runtime generation would rewrite code under this root-owned release.
+  step "Installing $VERSION with its generated Prisma client"
+  [[ -s "$RELEASE_STAGE/database/src/generated/prisma/client.ts" ]] || die "The release is missing its generated Prisma client."
+  install_release_dir || die "Could not install $VERSION in $INSTALL_DIR/releases."
   # A repair runs from the staged copy until the switch swaps it in.
   REL_DIR="${STAGED_DIR:-$INSTALL_DIR/releases/$VERSION}"
   NEW_WORKER="$REL_DIR/bin/$RELEASE_WORKER_BIN"
@@ -1441,8 +1456,6 @@ else
 
   PRISMA_BIN="$REL_DIR/node_modules/.bin/prisma"
   TSX_BIN="$REL_DIR/node_modules/.bin/tsx"
-  PRISMA_SCHEMA_ENGINE_BIN="$REL_DIR/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"
-  PRISMA_QUERY_ENGINE_LIB="$REL_DIR/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
 
   SERVER_DIR="$INSTALL_DIR/current"
   BACKEND_DIST="$INSTALL_DIR/current/server.js"
@@ -1471,10 +1484,15 @@ chown "$APP_USER" "$CONTAINERS_DIR"
 
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   # As the app user: the folder is its own, so root would follow any link in it.
-  BACKUP="$DB_DIR/${APP_NAME}.db.bak-$(date +%Y%m%d-%H%M%S)"
+  PREVIOUS_BACKUP=$(find "$DB_DIR" -maxdepth 1 -type f -name 'hsi.db.bak-*' ! -name '*-wal' -printf '%T@ %p\n' | sort -rn | sed -n '1s/^[^ ]* //p')
+  BACKUP="$DB_FILE.bak-$(date +%Y%m%d-%H%M%S)"
   run_as "$APP_USER" "cp -- '$DB_FILE' '$BACKUP'"
+  if [[ "$FROM_SOURCE" -eq 1 && -f "$DB_FILE-wal" ]]; then
+    DB_ROLLBACK_WAL_FILE="$BACKUP-wal"
+    run_as "$APP_USER" "cp -- '$DB_FILE-wal' '$DB_ROLLBACK_WAL_FILE'"
+  fi
   success "Database backed up → $BACKUP"
-  run_as "$APP_USER" "find '$DB_DIR' -maxdepth 1 -type f -name '${APP_NAME}.db.bak-*' -printf '%T@ %p\\0' \
+  run_as "$APP_USER" "find '$DB_DIR' -maxdepth 1 -type f -name 'hsi.db.bak-*' -printf '%T@ %p\\0' \
     | sort -zrn | tail -zn +6 | cut -zd' ' -f2- | xargs -0r rm -f --"
   # Release mode restores the database from the update snapshot instead.
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
@@ -1483,48 +1501,68 @@ if [[ "$IS_UPDATE" -eq 1 ]]; then
     mark_update migrate
   fi
 
-  # ── Data migrations (idempotent): MUST run BEFORE `db push` ────────────────
-  # `db push --accept-data-loss` DROPS any table/column the new schema removed.
-  # A migration that folds data out of a soon-to-be-dropped table (e.g. old
-  # Role/Permission grants → UserPlacePermission) must therefore run against the
-  # OLD shape, before the push, otherwise that data is gone. Each script self-
-  # guards and is idempotent, so running the whole directory on every update is
-  # safe (already-applied migrations no-op). An absolute DATABASE_URL is passed
-  # so the transform hits the live DB regardless of CWD (the schema's relative
-  # datasource path would resolve differently from within prisma/data-migrations).
-  MIGRATIONS_DIR="$DB_WORK_DIR/prisma/data-migrations"
-  if compgen -G "$MIGRATIONS_DIR/*.ts" > /dev/null 2>&1; then
-    # The runner imports @prisma/client, generated above in release mode and by
-    # the canonical backend prebuild in source mode.
-    for m in "$MIGRATIONS_DIR"/*.ts; do
-      rel="prisma/data-migrations/$(basename "$m")"
-      step "Running data migration: $(basename "$m")"
-      if [[ "$FROM_SOURCE" -eq 1 ]]; then
-        run_as "$APP_USER" "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' pnpm exec tsx '$rel'"
-      else
-        app_exec "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' NODE_PATH='$REL_DIR/node_modules' '$TSX_BIN' '$rel'"
-      fi
-    done
-    success "Data migrations applied"
-  fi
+fi
 
-  # --accept-data-loss is required for column-type changes (e.g. Int -> BigInt);
-  # Prisma flags those as lossy even when SQLite preserves the values. The DB was
-  # just backed up above, so this is safe, and without the flag such schema
-  # changes silently fail on update, leaving the running DB stale.
+# The same checked-in cutover manifest drives preflight and conversion. Every
+# Prisma invocation gets the absolute URL: Prisma 7 no longer reads it from the
+# schema, and the release archive has a different working directory.
+db_tsx() {
+  local command=$1; shift
   if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
+    run_as "$APP_USER" "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' HSI_CONTAINERS_DIR='$CONTAINERS_DIR' HSI_CONTAINERS_STAGE='$COMPOSE_STAGE' pnpm exec tsx '$command' $*"
   else
-    app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$REL_DIR/node_modules' PRISMA_SCHEMA_ENGINE_BINARY='$PRISMA_SCHEMA_ENGINE_BIN' PRISMA_QUERY_ENGINE_LIBRARY='$PRISMA_QUERY_ENGINE_LIB' '$PRISMA_BIN' db push --accept-data-loss --skip-generate"
+    app_exec "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' HSI_CONTAINERS_DIR='$CONTAINERS_DIR' HSI_CONTAINERS_STAGE='$COMPOSE_STAGE' NODE_PATH='$REL_DIR/node_modules' '$TSX_BIN' '$command' $*"
   fi
-  success "Schema migrated (existing data preserved)"
+}
+db_prisma() {
+  if [[ "$FROM_SOURCE" -eq 1 ]]; then
+    run_as "$APP_USER" "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' pnpm exec prisma $*"
+  else
+    app_exec "cd '$DB_WORK_DIR' && DATABASE_URL='file:$DB_FILE' NODE_PATH='$REL_DIR/node_modules' '$PRISMA_BIN' $*"
+  fi
+}
+
+COMPOSE_STAGE="$DB_DIR/.hsi-compose-stage-$VERSION"
+run_as "$APP_USER" "rm -rf -- '$COMPOSE_STAGE'"
+step "Checking the published SQLite state and migration ledger"
+run_db_step "Database preflight" db_tsx prisma/cutover/cli.ts inspect "$DB_FILE"
+CUTOVER_INSPECTION=$DB_STEP_OUTPUT
+read -r CUTOVER_KIND CUTOVER_SOURCE CUTOVER_PERMISSIONS CUTOVER_COMPOSE CUTOVER_RELEASE <<< "$CUTOVER_INSPECTION"
+case "$CUTOVER_KIND" in fresh|baseline|migrated|historical) ;; *) die "Unrecognized cutover state: $CUTOVER_INSPECTION" ;; esac
+if [[ "$CUTOVER_KIND" == historical ]]; then
+  success "Database from a published version ($CUTOVER_RELEASE or nearby): preparing conversion"
 else
-  if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec prisma db push --accept-data-loss"
-  else
-    app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$REL_DIR/node_modules' PRISMA_SCHEMA_ENGINE_BINARY='$PRISMA_SCHEMA_ENGINE_BIN' PRISMA_QUERY_ENGINE_LIBRARY='$PRISMA_QUERY_ENGINE_LIB' '$PRISMA_BIN' db push --accept-data-loss --skip-generate"
+  success "SQLite state: $CUTOVER_KIND"
+fi
+
+if [[ "$CUTOVER_KIND" == historical ]]; then
+  # Stage all Compose changes before touching the database. The worker records
+  # their previous state in the same #9a snapshot used for DB/WAL rollback.
+  run_db_step "Application conversion" db_tsx prisma/cutover/compose-staging.ts
+  if (( SAFE_UPDATE )); then
+    HSI_CONTAINERS_DIR="$CONTAINERS_DIR" worker_update "$NEW_WORKER" snapshot-compose "$SNAP" --manifest "$COMPOSE_STAGE/manifest.json" \
+      || die "Could not add Compose files to the update snapshot."
   fi
-  success "Schema created"
+  if [[ "$CUTOVER_PERMISSIONS" == 1 ]]; then
+    step "Converting historical role and permission data"
+    run_db_step "Role and permission conversion" db_tsx prisma/cutover/permissions-redesign.ts
+  fi
+  step "Applying versioned conversion from $CUTOVER_SOURCE"
+  run_db_step "SQL conversion" db_tsx prisma/cutover/cli.ts convert "$DB_FILE" "$CUTOVER_SOURCE"
+  CUTOVER_KIND=baseline
+fi
+
+if [[ "$CUTOVER_KIND" == baseline ]]; then
+  step "Marking the database as migrated"
+  run_db_step "Migration ledger" db_prisma migrate resolve --applied 0_baseline_v1680
+fi
+step "Deploying versioned Prisma migrations"
+run_db_step "Migration deployment" db_prisma migrate deploy
+run_db_step "Database verification" db_tsx prisma/cutover/cli.ts verify "$DB_FILE"
+success "Versioned schema deployed"
+
+if [[ -f "$COMPOSE_STAGE/manifest.json" ]]; then
+  run_db_step "Application activation" db_tsx prisma/cutover/compose-apply.ts
 fi
 
 # Managed HTTPS (#12): a new install serves HTTPS with its own local
@@ -1541,11 +1579,8 @@ fi
 
 SETUP_LINK=""
 if [[ "${SKIP_SEED}" != "1" ]]; then
-  if [[ "$FROM_SOURCE" -eq 1 ]]; then
-    SEED_OUTPUT=$(run_as "$APP_USER" "cd '$DB_WORK_DIR' && pnpm exec tsx prisma/seed.ts")
-  else
-    SEED_OUTPUT=$(app_exec "cd '$DB_WORK_DIR' && NODE_PATH='$REL_DIR/node_modules' '$TSX_BIN' prisma/seed.ts")
-  fi
+  run_db_step "Seed and grants" db_tsx prisma/seed.ts
+  SEED_OUTPUT=$DB_STEP_OUTPUT
   if [[ "$IS_UPDATE" -eq 1 ]]; then
     success "Seed applied (new permissions/roles merged, existing data untouched)"
   else
@@ -1584,6 +1619,10 @@ if ! grep -q '^HSI_SECRETS_KEY=' "$ENV_FILE"; then
   printf 'HSI_SECRETS_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
   success "Generated notification secrets key → $ENV_FILE"
 fi
+# The bundled backend resolves its generated client from server.js; the URL
+# must therefore be explicit rather than derived from that file's location.
+sed -i '/^DATABASE_URL=/d' "$ENV_FILE"
+printf 'DATABASE_URL=file:%s\n' "$DB_FILE" >> "$ENV_FILE"
 chown -h "$APP_USER:" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 
@@ -2064,7 +2103,12 @@ EOF
   if HEALTH_OUT=$(worker_update "$NEW_WORKER" health "$VERSION" --timeout 120 2>&1); then
     if (( SAFE_UPDATE )); then
       CURRENT_STEP=commit
+      COMPOSE_SKIP_ARGS=()
+      if [[ -f "${COMPOSE_STAGE:-}/skipped-settings.json" ]]; then
+        COMPOSE_SKIP_ARGS=(--skipped-settings "$COMPOSE_STAGE/skipped-settings.json")
+      fi
       worker_update "$NEW_WORKER" commit "$OLD_VERSION" "$VERSION" "$SNAP" \
+        ${COMPOSE_SKIP_ARGS[@]+"${COMPOSE_SKIP_ARGS[@]}"} \
         || die "Could not record the successful update."
       UPDATE_FINISHED=1
     elif (( REPAIR )); then

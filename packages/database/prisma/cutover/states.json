@@ -1,0 +1,1253 @@
+{
+  "note": "Generated from each published tag's schema using Prisma 7 on empty temporary SQLite databases; validate on populated release fixtures before release.",
+  "releases": {
+    "v1.68.0": {
+      "schemaSourceSha256": "b0a513fac9b594746366a625945d82fa1172733317533e1ca5c20740b07d02d3",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.67.0": {
+      "schemaSourceSha256": "b0a513fac9b594746366a625945d82fa1172733317533e1ca5c20740b07d02d3",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.66.0": {
+      "schemaSourceSha256": "b0a513fac9b594746366a625945d82fa1172733317533e1ca5c20740b07d02d3",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.65.0": {
+      "schemaSourceSha256": "b0a513fac9b594746366a625945d82fa1172733317533e1ca5c20740b07d02d3",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.64.2": {
+      "schemaSourceSha256": "e2db55b07bf3874d6165278834fae474386067004bd6b7f3a5b170809260c82d",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.64.1": {
+      "schemaSourceSha256": "e2db55b07bf3874d6165278834fae474386067004bd6b7f3a5b170809260c82d",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.64.0": {
+      "schemaSourceSha256": "e2db55b07bf3874d6165278834fae474386067004bd6b7f3a5b170809260c82d",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.63.0": {
+      "schemaSourceSha256": "a152c22540b602e5aa44601626b17b8396723b3881c5b346394fc4b96fc1d19b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.62.1": {
+      "schemaSourceSha256": "a152c22540b602e5aa44601626b17b8396723b3881c5b346394fc4b96fc1d19b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.62.0": {
+      "schemaSourceSha256": "a152c22540b602e5aa44601626b17b8396723b3881c5b346394fc4b96fc1d19b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.61.0": {
+      "schemaSourceSha256": "a152c22540b602e5aa44601626b17b8396723b3881c5b346394fc4b96fc1d19b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.60.0": {
+      "schemaSourceSha256": "cb29039feb51ec5818f00507535e29b7a1e3dac818ca3c8979c6026fbde5861d",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.59.0": {
+      "schemaSourceSha256": "db15fc22f89c7ae6ad9914c9c6b30e4017aa11450885f6a6d0132d965ffc921b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.58.0": {
+      "schemaSourceSha256": "db15fc22f89c7ae6ad9914c9c6b30e4017aa11450885f6a6d0132d965ffc921b",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.57.0": {
+      "schemaSourceSha256": "d5dc6a0ea3c2902bf9d85c9e6f9ecd01c0ea9bad04aa6d962a2c68274403f6ee",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.56.0": {
+      "schemaSourceSha256": "d5dc6a0ea3c2902bf9d85c9e6f9ecd01c0ea9bad04aa6d962a2c68274403f6ee",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.55.1": {
+      "schemaSourceSha256": "d5dc6a0ea3c2902bf9d85c9e6f9ecd01c0ea9bad04aa6d962a2c68274403f6ee",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.55.0": {
+      "schemaSourceSha256": "d5dc6a0ea3c2902bf9d85c9e6f9ecd01c0ea9bad04aa6d962a2c68274403f6ee",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+        },
+        {
+          "file": "2026-09-25-compose-named-volumes.ts",
+          "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+        }
+      ]
+    },
+    "v1.54.0": {
+      "schemaSourceSha256": "d5dc6a0ea3c2902bf9d85c9e6f9ecd01c0ea9bad04aa6d962a2c68274403f6ee",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "77de856d52f1936ffead042d77ce7e22f353ee3a5d7431b008ff67c97cc5f88e"
+        }
+      ]
+    },
+    "v1.53.1": {
+      "schemaSourceSha256": "a57412e043bf32ee5d2a4e36a2ff6d2a985b03f6d4ee5be6a2396192c639189a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "77de856d52f1936ffead042d77ce7e22f353ee3a5d7431b008ff67c97cc5f88e"
+        }
+      ]
+    },
+    "v1.53.0": {
+      "schemaSourceSha256": "a57412e043bf32ee5d2a4e36a2ff6d2a985b03f6d4ee5be6a2396192c639189a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        },
+        {
+          "file": "2026-09-23-compose-migration.ts",
+          "sha256": "77de856d52f1936ffead042d77ce7e22f353ee3a5d7431b008ff67c97cc5f88e"
+        }
+      ]
+    },
+    "v1.52.0": {
+      "schemaSourceSha256": "8bc56f2424530e80e51be54b62a0a084a9d76e9c92ad4f870daa33df493c6a91",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.51.0": {
+      "schemaSourceSha256": "8bc56f2424530e80e51be54b62a0a084a9d76e9c92ad4f870daa33df493c6a91",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.50.3": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.50.2": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.50.1": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.50.0": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.49.0": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.48.1": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.48.0": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.47.0": {
+      "schemaSourceSha256": "e92c6aba085a6e6317a492a63f43fd771bdf1ae735635966bff7136a0520b58a",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.46.0": {
+      "schemaSourceSha256": "08e9761a626cb04a109b673a7fe78107ef5826e6799669e626dff812d76a87b8",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.45.0": {
+      "schemaSourceSha256": "08e9761a626cb04a109b673a7fe78107ef5826e6799669e626dff812d76a87b8",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.44.1": {
+      "schemaSourceSha256": "08e9761a626cb04a109b673a7fe78107ef5826e6799669e626dff812d76a87b8",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.44.0": {
+      "schemaSourceSha256": "08e9761a626cb04a109b673a7fe78107ef5826e6799669e626dff812d76a87b8",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.43.0": {
+      "schemaSourceSha256": "08e9761a626cb04a109b673a7fe78107ef5826e6799669e626dff812d76a87b8",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.42.0": {
+      "schemaSourceSha256": "862e07309c0d6067cf98914eeb7724868f159f6a2b832066153a050dc623af25",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.41.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.40.1": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.40.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.39.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.38.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.37.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.36.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.35.0": {
+      "schemaSourceSha256": "29176133bf720c9c1310d8460a4df7d3940b06fd2da283db9a9f8735f5f2fc0e",
+      "dataScripts": [
+        {
+          "file": "2026-07-19-permissions-redesign.ts",
+          "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+        }
+      ]
+    },
+    "v1.34.1": {
+      "schemaSourceSha256": "e0a4c0581bd8050c45f7d93dcb9f21b61ed1f3c0d1522b6ea75d3610aaea9ec6",
+      "dataScripts": []
+    },
+    "v1.34.0": {
+      "schemaSourceSha256": "e0a4c0581bd8050c45f7d93dcb9f21b61ed1f3c0d1522b6ea75d3610aaea9ec6",
+      "dataScripts": []
+    },
+    "v1.33.1": {
+      "schemaSourceSha256": "e0a4c0581bd8050c45f7d93dcb9f21b61ed1f3c0d1522b6ea75d3610aaea9ec6",
+      "dataScripts": []
+    },
+    "v1.33.0": {
+      "schemaSourceSha256": "e0a4c0581bd8050c45f7d93dcb9f21b61ed1f3c0d1522b6ea75d3610aaea9ec6",
+      "dataScripts": []
+    },
+    "v1.32.0": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.31.1": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.31.0": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.30.0": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.29.2": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.29.1": {
+      "schemaSourceSha256": "b27dce20dfe3f5ce5f6952473a7a610f9cb1f408e44a7de4e2295e1cea04e166",
+      "dataScripts": []
+    },
+    "v1.29.0": {
+      "schemaSourceSha256": "98fb1250e0038a67a762c9557096a263f04ca6244bba62a41926bc54d7fbe1d1",
+      "dataScripts": []
+    },
+    "v1.28.6": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.5": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.4": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.3": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.2": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.1": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.28.0": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.27.2": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.27.1": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.27.0": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.26.0": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.25.0": {
+      "schemaSourceSha256": "6949bf49d9550895ed23f461175955787ce8a0c9e5267ecb491583aaeb3e9019",
+      "dataScripts": []
+    },
+    "v1.24.0": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.23.2": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.23.1": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.23.0": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.22.0": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.21.0": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.20.0": {
+      "schemaSourceSha256": "bc4ec2722aad9d7efec14dee56fe7d9262d42300eab94d3833aa17686293e498",
+      "dataScripts": []
+    },
+    "v1.19.1": {
+      "schemaSourceSha256": "586c3437f0f2dfc34c6f8e906aba00511cc7a3b7205c1022925dc9bace841fb6",
+      "dataScripts": []
+    },
+    "v1.19.0": {
+      "schemaSourceSha256": "586c3437f0f2dfc34c6f8e906aba00511cc7a3b7205c1022925dc9bace841fb6",
+      "dataScripts": []
+    },
+    "v1.18.2": {
+      "schemaSourceSha256": "586c3437f0f2dfc34c6f8e906aba00511cc7a3b7205c1022925dc9bace841fb6",
+      "dataScripts": []
+    },
+    "v1.17.1": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.16.0": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.15.1": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.15.0": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.14.0": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.12.3": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.12.2": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.12.1": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.12.0": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.11.5": {
+      "schemaSourceSha256": "390737124017f6a881067e61ee5f27dde25a540cec19b6b4177a526db39502af",
+      "dataScripts": []
+    },
+    "v1.11.3": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.11.2": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.11.1": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.11.0": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.10.2": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.10.1": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.10.0": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.9.0": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.8.2": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.8.1": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.8.0": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.7.1": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.7.0": {
+      "schemaSourceSha256": "804d71f4e0b8b19540b7b9f7ca7141b4ec03e352f1d5d5216d092bfa89b7af34",
+      "dataScripts": []
+    },
+    "v1.6.1": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.6.0": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.5.0": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.4.0": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.3.0": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.2.0": {
+      "schemaSourceSha256": "3f07667de33a7ed80a6f629498e3f41aa05c1197cacf0a854fc2a699de00c040",
+      "dataScripts": []
+    },
+    "v1.1.0": {
+      "schemaSourceSha256": "937f1820a6db2097cb22b0369e04a68d9a9f983d4b7e2515d90198bced92847f",
+      "dataScripts": []
+    },
+    "v1.0.0": {
+      "schemaSourceSha256": "937f1820a6db2097cb22b0369e04a68d9a9f983d4b7e2515d90198bced92847f",
+      "dataScripts": []
+    },
+    "v0.2.0": {
+      "schemaSourceSha256": "80906fa23d174c8dc3fee40bff02f75515745d24c173986e4608e782a0fd0817",
+      "dataScripts": []
+    },
+    "v0.1.2": {
+      "schemaSourceSha256": "80906fa23d174c8dc3fee40bff02f75515745d24c173986e4608e782a0fd0817",
+      "dataScripts": []
+    },
+    "v0.1.1": {
+      "schemaSourceSha256": "80906fa23d174c8dc3fee40bff02f75515745d24c173986e4608e782a0fd0817",
+      "dataScripts": []
+    },
+    "v0.1.0": {
+      "schemaSourceSha256": "80906fa23d174c8dc3fee40bff02f75515745d24c173986e4608e782a0fd0817",
+      "dataScripts": []
+    },
+    "v0.0.2": {
+      "schemaSourceSha256": "5e4b3405aa2f673772191c84561386248ad4b8dbd3c067ac8b2c08573bfba4ec",
+      "dataScripts": []
+    },
+    "v0.0.1": {
+      "schemaSourceSha256": "5e4b3405aa2f673772191c84561386248ad4b8dbd3c067ac8b2c08573bfba4ec",
+      "dataScripts": []
+    }
+  },
+  "states": [
+    {
+      "sqliteSha256": "630655afec24010fcb96246e79cc64f000b9e6bf7b4d8e506662a3cfa4c51917",
+      "objectCount": 34,
+      "releases": [
+        "v1.68.0",
+        "v1.67.0",
+        "v1.66.0",
+        "v1.65.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+          },
+          {
+            "file": "2026-09-25-compose-named-volumes.ts",
+            "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "207863ea1ae2748c79c68dc7631e69ed30fa873b5c5d2bd25e40adc9771a95b1",
+      "objectCount": 33,
+      "releases": [
+        "v1.64.2",
+        "v1.64.1",
+        "v1.64.0",
+        "v1.63.0",
+        "v1.62.1",
+        "v1.62.0",
+        "v1.61.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+          },
+          {
+            "file": "2026-09-25-compose-named-volumes.ts",
+            "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "5bbf125e724c6ea06e37231f031e8364b4e93cc1791272d4beb055d91c6c626b",
+      "objectCount": 32,
+      "releases": [
+        "v1.60.0",
+        "v1.59.0",
+        "v1.58.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "70c1849f6bcc8dd2078956bf22176ce9678ca2529597f007e424d0776b83f98f"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+          },
+          {
+            "file": "2026-09-25-compose-named-volumes.ts",
+            "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+          }
+        ],
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+          },
+          {
+            "file": "2026-09-25-compose-named-volumes.ts",
+            "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "1b19ed10f6e7cbf919aa957b8fe04ef14ee1bcf616b6f146012d4d7da324db26",
+      "objectCount": 30,
+      "releases": [
+        "v1.57.0",
+        "v1.56.0",
+        "v1.55.1",
+        "v1.55.0",
+        "v1.54.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "5e89af5f8d815fa9f570c06435c2e41c0e26ccec0ba386785e2de19d0abf8814"
+          },
+          {
+            "file": "2026-09-25-compose-named-volumes.ts",
+            "sha256": "fa0d34974614a5aedd73149d5ea5f26d28ed088743c037b07d5ca23bf7a1e1c8"
+          }
+        ],
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "77de856d52f1936ffead042d77ce7e22f353ee3a5d7431b008ff67c97cc5f88e"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "3e1798df1946f86c0e407b56af956853654fba4361755303b2be69d9a09b4517",
+      "objectCount": 25,
+      "releases": [
+        "v1.53.1",
+        "v1.53.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          },
+          {
+            "file": "2026-09-23-compose-migration.ts",
+            "sha256": "77de856d52f1936ffead042d77ce7e22f353ee3a5d7431b008ff67c97cc5f88e"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "820a70e08e70843403c7415e269ba23771e2db76327a74033c542f26e5a1dfde",
+      "objectCount": 31,
+      "releases": [
+        "v1.52.0",
+        "v1.51.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "ec3885727c69333d02be5121e6cd2a5c264e3a790db1e36b38ac6c56621be0b2",
+      "objectCount": 30,
+      "releases": [
+        "v1.50.3",
+        "v1.50.2",
+        "v1.50.1",
+        "v1.50.0",
+        "v1.49.0",
+        "v1.48.1",
+        "v1.48.0",
+        "v1.47.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "55dd299a5f80a779ab426f11e8e21529e7e36242c8c095cce950e950e1e5e5ad",
+      "objectCount": 29,
+      "releases": [
+        "v1.46.0",
+        "v1.45.0",
+        "v1.44.1",
+        "v1.44.0",
+        "v1.43.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "149a384874fb3eba5ba9b44bf34aec449f35dd417b2005e106864f4e2c75a4e0",
+      "objectCount": 27,
+      "releases": [
+        "v1.42.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "bd7f44cea49b2169d5543afee8f3b0f9c487ee1228c0b610e641ecdef6f404d9",
+      "objectCount": 25,
+      "releases": [
+        "v1.41.0",
+        "v1.40.1",
+        "v1.40.0",
+        "v1.39.0",
+        "v1.38.0",
+        "v1.37.0",
+        "v1.36.0",
+        "v1.35.0"
+      ],
+      "dataScriptVariants": [
+        [
+          {
+            "file": "2026-07-19-permissions-redesign.ts",
+            "sha256": "932fe374f99841c393ef1b81a897f5b5b0de48aa2e861c201c1a8e857b51b145"
+          }
+        ]
+      ]
+    },
+    {
+      "sqliteSha256": "dfd9eee2221623679e7e95150589b30f0fb3041c18c90ba34183cc7e73463ef1",
+      "objectCount": 28,
+      "releases": [
+        "v1.34.1",
+        "v1.34.0",
+        "v1.33.1",
+        "v1.33.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "e526488b1a2d718470a303dc84ba26534bf24a2ef386ff886c89531a9c178b64",
+      "objectCount": 28,
+      "releases": [
+        "v1.32.0",
+        "v1.31.1",
+        "v1.31.0",
+        "v1.30.0",
+        "v1.29.2",
+        "v1.29.1"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "a1c5e5e56fa8d568a2946e512e3e85e9cb7dc3fe7308a54c038dc091da3e6ddf",
+      "objectCount": 28,
+      "releases": [
+        "v1.29.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "23730dc8b76b49e00bb02480406be8eda3316fe46e36ba7f5ab7cf4879cc8b9d",
+      "objectCount": 25,
+      "releases": [
+        "v1.28.6",
+        "v1.28.5",
+        "v1.28.4",
+        "v1.28.3",
+        "v1.28.2",
+        "v1.28.1",
+        "v1.28.0",
+        "v1.27.2",
+        "v1.27.1",
+        "v1.27.0",
+        "v1.26.0",
+        "v1.25.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "a3cfc846a3fbebfd7ce368a28d2e354e5714b5d37fb9832e67c083f66879ec45",
+      "objectCount": 23,
+      "releases": [
+        "v1.24.0",
+        "v1.23.2",
+        "v1.23.1",
+        "v1.23.0",
+        "v1.22.0",
+        "v1.21.0",
+        "v1.20.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "99898fd11fd3882c6e27bbdf6c97082defd28c5a60141983e01d8132b66c7b43",
+      "objectCount": 22,
+      "releases": [
+        "v1.19.1",
+        "v1.19.0",
+        "v1.18.2"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "8e49b95f5522f37ec689a625e4cc33a6281a20db8dc730044b30aa0f2c8e66be",
+      "objectCount": 21,
+      "releases": [
+        "v1.17.1",
+        "v1.16.0",
+        "v1.15.1",
+        "v1.15.0",
+        "v1.14.0",
+        "v1.12.3",
+        "v1.12.2",
+        "v1.12.1",
+        "v1.12.0",
+        "v1.11.5"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "4e7742dc12371b38a41eb15e3965bd915b646d2f163d463d536c9bc051415e0f",
+      "objectCount": 21,
+      "releases": [
+        "v1.11.3",
+        "v1.11.2",
+        "v1.11.1",
+        "v1.11.0",
+        "v1.10.2",
+        "v1.10.1",
+        "v1.10.0",
+        "v1.9.0",
+        "v1.8.2",
+        "v1.8.1",
+        "v1.8.0",
+        "v1.7.1",
+        "v1.7.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "1693b534decade705e5cb1bcc6707de2c1bfbbd828b8eae54522b88c27691d40",
+      "objectCount": 21,
+      "releases": [
+        "v1.6.1",
+        "v1.6.0",
+        "v1.5.0",
+        "v1.4.0",
+        "v1.3.0",
+        "v1.2.0",
+        "v1.1.0",
+        "v1.0.0",
+        "v0.2.0",
+        "v0.1.2",
+        "v0.1.1",
+        "v0.1.0"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    },
+    {
+      "sqliteSha256": "6060e09e5079ec116cd806e530334ec6df444a230a023b58f8b8ec444e05137f",
+      "objectCount": 15,
+      "releases": [
+        "v0.0.2",
+        "v0.0.1"
+      ],
+      "dataScriptVariants": [
+        []
+      ]
+    }
+  ]
+}

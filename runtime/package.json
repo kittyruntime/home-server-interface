@@ -5,9 +5,10 @@
   "description": "Pinned runtime dependencies bundled into Home Server Interface release archives.",
   "license": "MPL-2.0",
   "dependencies": {
-    "@prisma/client": "6.19.3",
+    "@prisma/adapter-better-sqlite3": "7.10.1",
+    "@prisma/client": "7.10.1",
     "bcryptjs": "2.4.3",
-    "prisma": "6.19.3",
+    "prisma": "7.10.1",
     "tsx": "4.23.15",
     "yaml": "^2.9.0",
     "zod": "^3.25.76"
