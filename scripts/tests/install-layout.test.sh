@@ -532,7 +532,16 @@ out="$( ( INSTALL_DIR="$FL"; UPDATE_STATE="$TMP/fl-state"; DB_DIR="$FL/database/
   quarantine_untrusted_releases && resolve_installed && echo "old=$OLD_VERSION safe=$SAFE_UPDATE" ) 2>&1)"
 check "a <core>-flat record matches a top VERSION of <core> and resumes" '[[ "$out" == *"old=v1.67.0-flat safe=1"* && "$(readlink "$FL/current")" == "$FL/releases/v1.67.0-flat" ]]'
 
-check "a healthy repair records its result" 'grep -A12 "HEALTH_OUT=\$(worker_update" "$ROOT/scripts/install.sh" | grep -q "worker_update \"\$NEW_WORKER\" repaired \"\$VERSION\""'
+# Run the installer's health gate with a healthy worker. The recording command
+# must follow the health check on the repair path, regardless of intervening lines.
+HEALTH_GATE="$TMP/health-gate.sh"
+sed -n '/^  # Health gate:/,/^fi$/{ /^fi$/d; p; }' "$ROOT/scripts/install.sh" > "$HEALTH_GATE"
+HEALTH_SPY="$TMP/health-spy"
+( SAFE_UPDATE=0 REPAIR=1 VERSION=v1.67.0 NEW_WORKER=new-worker
+  step() { :; }
+  worker_update() { printf '%s\n' "$*" >> "$HEALTH_SPY"; }
+  source "$HEALTH_GATE" ); rc=$?
+check "a healthy repair records its result" '[[ $rc -eq 0 ]] && cmp -s "$HEALTH_SPY" <(printf "%s\n" "new-worker health v1.67.0 --timeout 120" "new-worker repaired v1.67.0")'
 
 # A refused release changes nothing: it is downloaded and verified before the lock
 # dir, the legacy migration, the user and nvm.
