@@ -1353,7 +1353,7 @@ DB_FILE="$DB_DIR/hsi.db"
 ENV_FILE="$APP_DIR/.env"
 
 check_data_paths
-if [[ -f "$DB_FILE" ]]; then
+if [[ -s "$DB_FILE" || -s "$DB_FILE-wal" ]]; then
   IS_UPDATE=1
   warn "Existing installation detected, performing update (data preserved)"
 else

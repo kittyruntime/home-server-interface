@@ -27,7 +27,8 @@ fi
 grep -q '^error: SQLite database file is corrupt or is not a database$' "$tmp/output"
 ! grep -q ' at .*\.ts:' "$tmp/output"
 touch "$tmp/empty.db"
-if DATABASE_URL="file:$tmp/empty.db" node --import tsx prisma/cutover/cli.ts inspect "$tmp/empty.db" >"$tmp/output" 2>&1; then
-  echo 'empty database was accepted' >&2; exit 1
-fi
-grep -q '^error: SQLite database file is empty or incomplete$' "$tmp/output"
+DATABASE_URL="file:$tmp/empty.db" node --import tsx prisma/cutover/cli.ts inspect "$tmp/empty.db" >"$tmp/output" 2>&1
+grep -qx 'fresh' "$tmp/output"
+DATABASE_URL="file:$tmp/empty.db" pnpm exec prisma migrate deploy >/dev/null
+DATABASE_URL="file:$tmp/empty.db" node --import tsx prisma/cutover/cli.ts verify "$tmp/empty.db" >"$tmp/output" 2>&1
+grep -qx 'migrated' "$tmp/output"

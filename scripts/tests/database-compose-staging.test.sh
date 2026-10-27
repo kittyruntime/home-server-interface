@@ -41,8 +41,15 @@ with sqlite3.connect(sys.argv[1]) as db:
     db.execute('UPDATE "ContainerApp" SET "volumes"=? WHERE "name"=?',
                ('[{"type":"place","source":"deleted","target":"/media","readOnly":true}]', 'sample-app'))
 PY
-if (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/bad-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/error" 2>&1; then
-  echo 'missing place was accepted' >&2; exit 1
-fi
-grep -q '^error: application "sample-app" uses a deleted place.*retry the update$' "$tmp/error"
-! grep -q ' at .*\.ts:' "$tmp/error"
+(cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/missing-place-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1
+grep -q '^warning: application "sample-app": volume /media uses a deleted place and was skipped$' "$tmp/output"
+test -f "$tmp/missing-place-stage/sample-app/compose.yaml"
+! grep -q '/media' "$tmp/missing-place-stage/sample-app/compose.yaml"
+python3 - "$tmp/old.db" <<'PY'
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute('UPDATE "ContainerApp" SET "ports"=? WHERE "name"=?', ('broken-json', 'sample-app'))
+PY
+(cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/invalid-json-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1
+grep -q '^warning: application "sample-app": invalid ports settings were skipped$' "$tmp/output"
+test -f "$tmp/invalid-json-stage/sample-app/compose.yaml"

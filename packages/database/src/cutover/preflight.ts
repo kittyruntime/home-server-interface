@@ -39,7 +39,17 @@ export function inspectDatabase(filename: string): Inspection {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return { kind: "fresh" }
     throw error
   }
-  if (!stat.isFile() || stat.size === 0) throw new Error("SQLite database file is empty or incomplete")
+  if (!stat.isFile()) throw new Error("SQLite database path is not a regular file")
+  if (stat.size === 0) {
+    // A zero-byte file can be left by an interrupted first installation.
+    // Keep a non-empty WAL out of this path: it may contain recoverable data.
+    let wal: ReturnType<typeof lstatSync> | undefined
+    try { wal = lstatSync(`${filename}-wal`) } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+    }
+    if (wal && (!wal.isFile() || wal.size > 0)) throw new Error("SQLite database file is empty but its WAL may contain data")
+    return { kind: "fresh" }
+  }
 
   const inventory = JSON.parse(readFileSync(path.join(cutoverDir, "states.json"), "utf8")) as { states: State[] }
   const conversions = JSON.parse(readFileSync(path.join(cutoverDir, "conversions.json"), "utf8")) as Conversion[]

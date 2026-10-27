@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -18,6 +18,23 @@ async function withDatabase(run: (filename: string) => Promise<void>) {
 test("recognizes a missing database as a fresh install", async () => {
   await withDatabase(async filename => {
     assert.equal(inspectDatabase(filename).kind, "fresh")
+  })
+})
+
+test("recognizes a zero-byte database left by an interrupted fresh install", async () => {
+  await withDatabase(async filename => {
+    await writeFile(filename, "")
+    assert.equal(inspectDatabase(filename).kind, "fresh")
+    assert.equal((await readFile(filename)).length, 0)
+  })
+})
+
+test("refuses to discard a non-empty WAL beside a zero-byte database", async () => {
+  await withDatabase(async filename => {
+    await writeFile(filename, "")
+    await writeFile(`${filename}-wal`, "recoverable-data")
+    assert.throws(() => inspectDatabase(filename), /WAL may contain data/)
+    assert.equal((await readFile(`${filename}-wal`)).toString(), "recoverable-data")
   })
 })
 

@@ -34,9 +34,12 @@ async function tableExists(name: string): Promise<boolean> {
   return rows.length > 0
 }
 
-function dec<T>(s: unknown, fallback: T, appName: string): T {
+function dec<T>(s: unknown, fallback: T, appName: string, field: string): T {
   if (s == null) return fallback
-  try { return JSON.parse(String(s)) as T } catch { throw new Error(`application "${appName}" has invalid settings. In the current version, edit or remove this application, then retry the update`) }
+  try { return JSON.parse(String(s)) as T } catch {
+    console.warn(`warning: application "${appName}": invalid ${field} settings were skipped`)
+    return fallback
+  }
 }
 
 interface LegacyRow {
@@ -81,14 +84,17 @@ async function main() {
     }
 
     const resolved: AppInput["volumes"] = []
-    for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [], row.name)) {
+    for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [], row.name, "volumes")) {
       if (v.type === "place") {
         // $queryRawUnsafe returns the rows as a flat array of objects
         // ([{ path }]), not an array of arrays.
         const places = await prisma.$queryRawUnsafe<Array<{ path: string }>>(
           `SELECT "path" FROM "Place" WHERE "id"=?`, v.source)
         const p = places[0]?.path
-        if (!p) throw new Error(`application "${row.name}" uses a deleted place. In the current version, edit or remove this application, then retry the update`)
+        if (!p) {
+          console.warn(`warning: application "${row.name}": volume ${v.target} uses a deleted place and was skipped`)
+          continue
+        }
         resolved.push({ type: "bind", source: p, target: v.target, readOnly: v.readOnly })
       } else {
         resolved.push(v as AppInput["volumes"][number])
@@ -97,9 +103,9 @@ async function main() {
 
     const input: AppInput = {
       name: row.name, image: row.image,
-      ports: dec(row.ports, [], row.name), envs: dec(row.envs, [], row.name), volumes: resolved,
-      networkNames: dec(row.networkNames, [], row.name), labels: dec(row.labels, [], row.name),
-      capAdd: dec(row.capAdd, [], row.name), capDrop: dec(row.capDrop, [], row.name), extraHosts: dec(row.extraHosts, [], row.name),
+      ports: dec(row.ports, [], row.name, "ports"), envs: dec(row.envs, [], row.name, "envs"), volumes: resolved,
+      networkNames: dec(row.networkNames, [], row.name, "networkNames"), labels: dec(row.labels, [], row.name, "labels"),
+      capAdd: dec(row.capAdd, [], row.name, "capAdd"), capDrop: dec(row.capDrop, [], row.name, "capDrop"), extraHosts: dec(row.extraHosts, [], row.name, "extraHosts"),
       restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
