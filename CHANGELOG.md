@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Versioned database migrations** (#9b, #104): the database moves to Prisma 7
+  and to versioned migrations, starting from a v1.68.0 baseline. An update from
+  any earlier published release first checks the database fingerprint,
+  integrity and migration ledger, then converts it with a versioned SQL
+  conversion and runs `prisma migrate deploy`. The database, its WAL, the
+  configuration and the Compose files of apps are part of the update snapshot,
+  so a failure at any step, including the health check, restores the previous
+  release with its data. An unknown or partially migrated database stops the
+  update with a diagnostic and its fingerprint instead of being modified. See
+  `docs/migrations.md`.
+
+### Added
+- **Skipped app settings after an update**: when an old app has unreadable
+  settings or a volume pointing to a deleted place, the update converts the
+  rest of the app, ends as partial, and Settings lists each skipped setting or
+  volume with the fix to apply in its Compose file.
+
+### Fixed
+- An interrupted first install that left an empty `hsi.db` no longer blocks
+  the next install.
+
 ## [1.68.0] - 2026-10-23
 
 ### Security
