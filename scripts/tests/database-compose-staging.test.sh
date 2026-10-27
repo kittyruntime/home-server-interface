@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+(cd "$root/packages/database" && node --import tsx prisma/cutover/decode-settings.test.ts)
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
 python3 - "$root/scripts/tests/fixtures/database/v1.52.0.sql" "$tmp/old.db" <<'PY'
@@ -53,3 +54,39 @@ PY
 (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/invalid-json-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1
 grep -q '^warning: application "sample-app": invalid ports settings were skipped$' "$tmp/output"
 test -f "$tmp/invalid-json-stage/sample-app/compose.yaml"
+
+# Valid JSON with the wrong shape must abort and identify the offending setting.
+for field in ports volumes envs networkNames labels capAdd capDrop extraHosts; do
+  python3 - "$tmp/old.db" "$field" <<'PY'
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute(f'UPDATE "ContainerApp" SET "{sys.argv[2]}"=? WHERE "name"=?', ('null', 'sample-app'))
+PY
+  if (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/wrong-$field-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1; then
+    echo "staging accepted wrong-shaped $field" >&2
+    exit 1
+  fi
+  grep -q 'application "sample-app"' "$tmp/output"
+  grep -q "$field" "$tmp/output"
+  ! grep -Eq 'TypeError|Cannot read properties|is not a function' "$tmp/output"
+  test ! -e "$tmp/wrong-$field-stage/manifest.json"
+  test ! -e "$tmp/live/sample-app/compose.yaml"
+  python3 - "$tmp/old.db" "$field" <<'PY'
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute(f'UPDATE "ContainerApp" SET "{sys.argv[2]}"=? WHERE "name"=?', ('[]', 'sample-app'))
+PY
+done
+
+python3 - "$tmp/old.db" <<'PY'
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute('UPDATE "ContainerApp" SET "volumes"=? WHERE "name"=?', ('[null]', 'sample-app'))
+PY
+if (cd "$root/packages/database" && DATABASE_URL="file:$tmp/old.db" HSI_CONTAINERS_DIR="$tmp/live" HSI_CONTAINERS_STAGE="$tmp/wrong-volume-entry-stage" node --import tsx prisma/cutover/compose-staging.ts) >"$tmp/output" 2>&1; then
+  echo 'staging accepted a null volume entry' >&2
+  exit 1
+fi
+grep -q 'application "sample-app"' "$tmp/output"
+grep -q 'volumes' "$tmp/output"
+! grep -Eq 'TypeError|Cannot read properties|is not a function' "$tmp/output"

@@ -6,6 +6,7 @@ import { createHash } from "node:crypto"
 import path from "node:path"
 import { createPrismaClient } from "../../src/index"
 import { generateComposeYaml, repairNamedVolumeDeclarations, STACK_NAME_RE, type AppInput } from "../../../compose/src/index"
+import { decodeSetting } from "./decode-settings"
 import { reportCutoverError } from "./error"
 
 const prisma = createPrismaClient()
@@ -32,14 +33,6 @@ async function tableExists(name: string): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<{ name: string }[]>(
     `SELECT name FROM sqlite_master WHERE type='table' AND name=?`, name)
   return rows.length > 0
-}
-
-function dec<T>(s: unknown, fallback: T, appName: string, field: string): T {
-  if (s == null) return fallback
-  try { return JSON.parse(String(s)) as T } catch {
-    console.warn(`warning: application "${appName}": invalid ${field} settings were skipped`)
-    return fallback
-  }
 }
 
 interface LegacyRow {
@@ -84,7 +77,7 @@ async function main() {
     }
 
     const resolved: AppInput["volumes"] = []
-    for (const v of dec<Array<{ type: string; source: string; target: string; readOnly: boolean }>>(row.volumes, [], row.name, "volumes")) {
+    for (const v of decodeSetting<{ type: string; source: string; target: string; readOnly: boolean }>(row.volumes, [], row.name, "volumes", "object")) {
       if (v.type === "place") {
         // $queryRawUnsafe returns the rows as a flat array of objects
         // ([{ path }]), not an array of arrays.
@@ -103,9 +96,9 @@ async function main() {
 
     const input: AppInput = {
       name: row.name, image: row.image,
-      ports: dec(row.ports, [], row.name, "ports"), envs: dec(row.envs, [], row.name, "envs"), volumes: resolved,
-      networkNames: dec(row.networkNames, [], row.name, "networkNames"), labels: dec(row.labels, [], row.name, "labels"),
-      capAdd: dec(row.capAdd, [], row.name, "capAdd"), capDrop: dec(row.capDrop, [], row.name, "capDrop"), extraHosts: dec(row.extraHosts, [], row.name, "extraHosts"),
+      ports: decodeSetting(row.ports, [], row.name, "ports", "object"), envs: decodeSetting(row.envs, [], row.name, "envs", "object"), volumes: resolved,
+      networkNames: decodeSetting(row.networkNames, [], row.name, "networkNames", "string"), labels: decodeSetting(row.labels, [], row.name, "labels", "object"),
+      capAdd: decodeSetting(row.capAdd, [], row.name, "capAdd", "string"), capDrop: decodeSetting(row.capDrop, [], row.name, "capDrop", "string"), extraHosts: decodeSetting(row.extraHosts, [], row.name, "extraHosts", "string"),
       restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
