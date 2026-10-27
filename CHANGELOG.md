@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.68.1] - 2026-10-27
+
+### Changed
+- **Database upgrades** (#112): The database engine moves to Prisma 7. The
+  installer now uses versioned migrations for existing databases, with a
+  snapshot of the database and configuration before the upgrade and rollback
+  to that snapshot if the upgrade fails.
+- **Compose migration warnings** (#112): When an upgrade skips old app settings
+  or volumes it cannot carry over, the dashboard warns which Compose settings
+  need manual correction.
+
 ## [1.68.0] - 2026-10-23
 
 ### Security
@@ -1437,7 +1448,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...HEAD
+[1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
 [1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0
 [1.67.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...v1.67.0
 [1.66.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.65.0...v1.66.0
