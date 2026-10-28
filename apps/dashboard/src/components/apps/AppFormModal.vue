@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ChevronLeftIcon, UploadIcon } from '@lucide/vue'
+import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
@@ -350,20 +351,17 @@ async function applyNow() {
       <h2 class="text-sm font-semibold text-foreground flex-1">
         {{ editName ? `Edit ${editName}` : 'New App' }}
       </h2>
-      <button
+      <Button
         v-if="!editName && !multiSvc"
+        variant="ghost" size="sm"
         @click="showCompose = !showCompose"
         :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
-        :class="[
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
-          showCompose
-            ? 'bg-primary/10 text-primary hover:opacity-80'
-            : 'text-muted-foreground hover:text-foreground/80 hover:bg-accent',
-        ]"
+        :aria-pressed="showCompose"
+        :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-muted-foreground']"
       >
-        <UploadIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        <UploadIcon class="size-3.5" aria-hidden="true" />
         <span class="hidden sm:inline">Import Compose</span><span class="sm:hidden">Compose</span>
-      </button>
+      </Button>
     </div>
 
     <!-- Compose import panel -->
@@ -421,18 +419,11 @@ async function applyNow() {
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-border px-5 overflow-x-auto shrink-0">
-      <button
-        v-for="tab in visibleTabs" :key="tab.id"
-        @click="activeTab = tab.id"
-        :class="[
-          'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-          activeTab === tab.id
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground/80',
-        ]"
-      >{{ tab.label }}</button>
-    </div>
+    <Tabs :model-value="activeTab" class="shrink-0 border-b border-border px-5 py-2 overflow-x-auto" @update:model-value="v => activeTab = v as Tab">
+      <TabsList>
+        <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
+      </TabsList>
+    </Tabs>
 
     <!-- Tab content -->
     <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
@@ -498,7 +489,7 @@ async function applyNow() {
             class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5 font-mono"
           >
             {{ n }}
-            <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>
+            <button type="button" :aria-label="`Remove network ${n}`" class="ml-1 rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></button>
           </span>
           <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">No networks attached.</span>
         </div>

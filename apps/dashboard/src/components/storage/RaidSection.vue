@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon, ZapIcon } from '@lucide/vue'
+import { CheckIcon, EllipsisVerticalIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon, ZapIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -22,6 +22,7 @@ import RaidLevelVisual from './RaidLevelVisual.vue'
 import Hint from '../ui/Hint.vue'
 import ImportFound from './ImportFound.vue'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
@@ -308,7 +309,6 @@ async function doDestroyRaid() {
   }
 }
 
-const openMenu = ref<string | null>(null)
 
 const shown = computed(() => props.only ? raids.value.filter(x => x.name === props.only) : raids.value)
 </script>
@@ -337,8 +337,6 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
     <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
-
-    <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
     <!-- RAID arrays list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
@@ -378,25 +376,21 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 LVM {{ raidPvVg(r.name) }} →
               </Button>
               <!-- ⋯ menu -->
-              <div class="relative z-30">
-                <button @click.stop="openMenu = openMenu === r.name ? null : r.name"
-                  :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === r.name ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                  </svg>
-                </button>
-                <div v-if="openMenu === r.name"
-                  class="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[176px]">
-                  <div class="px-3 pt-2.5 pb-1.5 border-b border-border">
-                    <p class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</p>
-                  </div>
-                  <button @click="openDestroy(r); openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left">
-                    <Trash2Icon class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Array actions">
+                    <EllipsisVerticalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="min-w-[176px]">
+                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" @select="openDestroy(r)">
+                    <Trash2Icon />
                     Destroy array…
-                  </button>
-                </div>
-              </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <p v-if="raidDescription(r.level)" class="text-2xs text-muted-foreground px-4 pb-1">{{ raidDescription(r.level) }}</p>

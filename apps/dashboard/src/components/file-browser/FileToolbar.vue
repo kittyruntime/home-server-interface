@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
 import { ref, nextTick } from 'vue'
 import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Crumb = { label: string; path: string; clickable: boolean }
@@ -59,7 +61,6 @@ async function openSearch() {
   searchInput.value?.focus()
 }
 
-const newMenuOpen = ref(false)
 </script>
 
 <template>
@@ -67,8 +68,6 @@ const newMenuOpen = ref(false)
     class="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-muted flex-shrink-0 h-11"
     @click.stop
   >
-    <button v-if="newMenuOpen" class="fixed inset-0 z-20" aria-label="Close menu" @click="newMenuOpen = false" />
-
     <!-- Mobile: places sidebar toggle -->
     <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" title="Places" aria-label="Toggle places sidebar"
       class="sm:hidden flex-shrink-0"
@@ -86,10 +85,10 @@ const newMenuOpen = ref(false)
     <nav v-if="currentPath" class="flex items-center gap-0.5 text-sm flex-1 min-w-0 overflow-x-auto">
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
         <span v-if="i > 0" class="text-muted-foreground select-none mx-0.5 flex-shrink-0">›</span>
-        <button v-if="crumb.clickable" @click="emit('navigate', crumb.path)"
-          class="px-1 py-0.5 text-muted-foreground hover:text-foreground rounded-sm hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
+        <Button v-if="crumb.clickable" variant="ghost" size="xs" @click="emit('navigate', crumb.path)"
+          class="px-1 font-normal text-muted-foreground whitespace-nowrap flex-shrink-0">
           {{ crumb.label }}
-        </button>
+        </Button>
         <span v-else class="px-1 text-foreground whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>
       </template>
     </nav>
@@ -107,76 +106,71 @@ const newMenuOpen = ref(false)
         </Button>
         <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
 
-        <button @click="emit('copy')" title="Copy" aria-label="Copy selection" class="sel-btn">
+        <Button variant="ghost" size="icon-sm" @click="emit('copy')" title="Copy" aria-label="Copy selection" class="text-muted-foreground">
           <CopyIcon class="w-4 h-4" aria-hidden="true" />
-        </button>
-        <button @click="emit('cut')" title="Cut" aria-label="Cut selection" class="sel-btn">
+        </Button>
+        <Button variant="ghost" size="icon-sm" @click="emit('cut')" title="Cut" aria-label="Cut selection" class="text-muted-foreground">
           <ScissorsIcon class="w-4 h-4" aria-hidden="true" />
-        </button>
+        </Button>
 
         <template v-if="selectedCount === 1">
-          <button @click="emit('startRename', selectedEntries[0]!)" title="Rename" aria-label="Rename selection" class="sel-btn">
+          <Button variant="ghost" size="icon-sm" @click="emit('startRename', selectedEntries[0]!)" title="Rename" aria-label="Rename selection" class="text-muted-foreground">
             <PencilIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" title="Download" aria-label="Download selection" class="sel-btn">
+          </Button>
+          <Button variant="ghost" size="icon-sm" v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" title="Download" aria-label="Download selection" class="text-muted-foreground">
             <DownloadIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button @click="emit('openPermissions')" title="Permissions" aria-label="Edit permissions" class="sel-btn">
+          </Button>
+          <Button variant="ghost" size="icon-sm" @click="emit('openPermissions')" title="Permissions" aria-label="Edit permissions" class="text-muted-foreground">
             <KeyRoundIcon class="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button @click="emit('share')" title="Share" aria-label="Share selection" class="sel-btn">
+          </Button>
+          <Button variant="ghost" size="icon-sm" @click="emit('share')" title="Share" aria-label="Share selection" class="text-muted-foreground">
             <Share2Icon class="w-4 h-4" aria-hidden="true" />
-          </button>
+          </Button>
         </template>
 
-        <button @click="emit('delete')" title="Delete" aria-label="Delete selection" class="sel-btn sel-btn-danger">
+        <Button variant="ghost" size="icon-sm" @click="emit('delete')" title="Delete" aria-label="Delete selection" class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
-        </button>
+        </Button>
         <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
       </template>
 
       <!-- New (folder / file) -->
-      <div v-if="currentPath" class="relative">
-        <button @click.stop="newMenuOpen = !newMenuOpen" title="New" aria-label="Create new folder or file" :aria-expanded="newMenuOpen"
-          :class="['flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-xs',
-            newMenuOpen ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
-          <PlusIcon class="w-4 h-4" aria-hidden="true" />
-          <span class="hidden sm:inline">New</span>
-          <ChevronDownIcon class="hidden sm:block w-3 h-3" aria-hidden="true" />
-        </button>
-        <Transition name="ui-pop">
-          <div v-if="newMenuOpen"
-            class="absolute left-0 top-full z-30 mt-1.5 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-            <button @click="emit('createFolder'); newMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
-              <FolderPlusIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-              New folder
-            </button>
-            <button @click="emit('createFile'); newMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
-              <FileTextIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-              New file
-            </button>
-          </div>
-        </Transition>
-      </div>
+      <DropdownMenu v-if="currentPath">
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="sm" title="New" aria-label="Create new folder or file" class="gap-1 px-2 text-xs text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+            <PlusIcon aria-hidden="true" />
+            <span class="hidden sm:inline">New</span>
+            <ChevronDownIcon class="hidden sm:block size-3" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" class="min-w-[160px]">
+          <DropdownMenuItem @select="emit('createFolder')">
+            <FolderPlusIcon aria-hidden="true" />
+            New folder
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="emit('createFile')">
+            <FileTextIcon aria-hidden="true" />
+            New file
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <!-- Upload -->
-      <button v-if="currentPath" @click="emit('uploadClick')" title="Upload files" aria-label="Upload files"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-xs">
-        <UploadIcon class="w-4 h-4" aria-hidden="true" />
+      <Button variant="ghost" size="sm" v-if="currentPath" @click="emit('uploadClick')" title="Upload files" aria-label="Upload files"
+        class="gap-1 px-2 text-xs text-muted-foreground">
+        <UploadIcon aria-hidden="true" />
         <span class="hidden sm:inline">Upload</span>
-      </button>
+      </Button>
 
       <!-- Paste -->
-      <button v-if="clipboard && currentPath" @click.stop="emit('paste')" title="Paste" aria-label="Paste files"
-        :class="['flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors',
+      <Button variant="ghost" size="sm" v-if="clipboard && currentPath" @click.stop="emit('paste')" title="Paste" aria-label="Paste files"
+        :class="['gap-1 px-2 text-xs',
           clipboard.mode === 'cut'
-            ? 'bg-warning/15 text-warning hover:bg-warning/25'
-            : 'bg-primary/10 text-primary hover:opacity-80']">
-        <ClipboardPasteIcon class="w-4 h-4" aria-hidden="true" />
+            ? 'bg-warning/15 text-warning hover:bg-warning/25 hover:text-warning'
+            : 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary']">
+        <ClipboardPasteIcon aria-hidden="true" />
         <span class="hidden sm:inline">Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }} {{ clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }}</span>
-      </button>
+      </Button>
 
       <!-- Divider -->
       <div v-if="currentPath" class="w-px h-4 bg-input mx-1" />
@@ -188,16 +182,19 @@ const newMenuOpen = ref(false)
       </Button>
 
       <!-- View toggle -->
-      <div class="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-        <button @click="emit('update:viewMode', 'list')" title="List view" aria-label="List view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-          <ListIcon class="w-4 h-4" aria-hidden="true" />
-        </button>
-        <button @click="emit('update:viewMode', 'grid')" title="Grid view" aria-label="Grid view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-          <LayoutGridIcon class="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
+      <ToggleGroup
+        type="single" variant="outline" size="sm"
+        :model-value="viewMode"
+        aria-label="View mode"
+        @update:model-value="v => { if (v === 'list' || v === 'grid') emit('update:viewMode', v) }"
+      >
+        <ToggleGroupItem value="list" title="List view" aria-label="List view">
+          <ListIcon aria-hidden="true" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="grid" title="Grid view" aria-label="Grid view">
+          <LayoutGridIcon aria-hidden="true" />
+        </ToggleGroupItem>
+      </ToggleGroup>
 
       <!-- Search: collapsed to an icon until opened, so it doesn't permanently
            claim ~150px from the breadcrumb (tight in a narrow desktop-mode
@@ -216,26 +213,15 @@ const newMenuOpen = ref(false)
             @keydown.escape="clearSearch"
             type="text"
             placeholder="Search…"
-            class="pl-6 pr-6 py-1 text-xs w-28 sm:w-36"
+            class="h-7 pl-6 pr-6 text-xs w-28 sm:w-36"
           />
-          <button @click="clearSearch" title="Close search" aria-label="Close search"
-            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            <XIcon class="w-3 h-3" aria-hidden="true" />
-          </button>
+          <Button variant="ghost" size="icon-xs" @click="clearSearch" title="Close search" aria-label="Close search"
+            class="absolute right-0.5 top-1/2 -translate-y-1/2 size-5 text-muted-foreground">
+            <XIcon class="size-3" aria-hidden="true" />
+          </Button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-@reference "../../style.css";
-
-.sel-btn {
-  @apply p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors;
-}
-.sel-btn-danger:hover {
-  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
-  color: var(--primary);
-}
-</style>

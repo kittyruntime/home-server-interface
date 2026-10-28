@@ -11,6 +11,7 @@ import { possibleLevels, usableBytes, tolerance, proposeName, mountFor, levelsHi
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Slider } from '@/components/ui/slider'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 // Create volume (#40): free disks to a mounted, owned, optionally shared
@@ -252,10 +253,17 @@ function diskLabel(d: BlockDev): string {
           <Button variant="link" class="h-auto p-0 mt-4 text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
             {{ s.advanced ? 'Hide advanced' : 'Advanced' }}
           </Button>
-          <label v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">Use {{ s.lvPercent }}% of the volume group
-            <input type="range" min="10" max="100" step="5" v-model.number="s.lvPercent" class="w-full accent-primary" />
-            <span class="block mt-1">The rest stays free in the volume group, for another volume or for snapshots.</span>
-          </label>
+          <div v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">
+            <span id="lv-percent-label">Use {{ s.lvPercent }}% of the volume group</span>
+            <Slider
+              class="mt-2"
+              :model-value="[s.lvPercent]"
+              :min="10" :max="100" :step="5"
+              aria-labelledby="lv-percent-label"
+              @update:model-value="v => { if (v?.[0] != null) s.lvPercent = v[0] }"
+            />
+            <span class="block mt-2">The rest stays free in the volume group, for another volume or for snapshots.</span>
+          </div>
         </template>
 
         <!-- 4. Filesystem -->

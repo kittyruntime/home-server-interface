@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Textarea } from '@/components/ui/textarea'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
@@ -193,7 +194,7 @@ function setStandardPorts(enabled: boolean) {
 
         <form v-if="form === 'proxy'" class="mt-4 space-y-3" @submit.prevent="submitProxy">
           <label class="block text-xs text-muted-foreground">Trusted proxies, one per line
-            <textarea v-model="proxies" rows="3" class="input mt-1 w-full font-mono text-sm" />
+            <Textarea v-model="proxies" rows="3" class="mt-1 w-full font-mono text-sm" />
           </label>
           <p class="text-xs text-muted-foreground">Leave empty when the proxy runs on this server</p>
           <Button size="sm" type="submit">Review change</Button>

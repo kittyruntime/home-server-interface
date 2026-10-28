@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ChevronRightIcon, InfoIcon, RefreshCwIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -370,12 +371,16 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
             <Checkbox v-model="prefs.grouped" /> Group by role
           </label>
-          <div class="flex rounded-lg border border-border overflow-hidden text-xs" role="group" aria-label="View">
-            <button v-for="v in (['table', 'cards'] as View[])" :key="v" @click="prefs.view = v" :aria-pressed="view === v"
-              :class="['px-2.5 py-1.5 transition-colors', view === v ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent']">
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="view"
+            aria-label="View"
+            @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
+          >
+            <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v" class="px-2.5 text-xs">
               {{ v === 'table' ? 'Table' : 'Details' }}
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-muted-foreground">

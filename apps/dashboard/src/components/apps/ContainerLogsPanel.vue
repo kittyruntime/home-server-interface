@@ -158,26 +158,29 @@ onUnmounted(() => controller?.abort())
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <!-- Follow toggle -->
-            <button
+            <Button
+              variant="outline" size="xs"
               @click="toggleFollow"
               :title="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
-              :class="['flex items-center gap-1.5 px-2.5 py-1 text-2xs rounded-md border transition-colors',
+              :aria-pressed="follow"
+              :class="['bg-transparent text-2xs dark:bg-transparent',
                 follow
-                  ? 'bg-primary/20 border-primary/50 text-primary'
-                  : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58]']"
+                  ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary dark:bg-primary/20'
+                  : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:border-[#30363d]']"
             >
-              <ArrowDownIcon class="w-3 h-3" aria-hidden="true" />
+              <ArrowDownIcon class="size-3" aria-hidden="true" />
               Follow
-            </button>
+            </Button>
             <!-- Clear -->
-            <button
+            <Button
+              variant="outline" size="xs"
               @click="clear"
               title="Clear"
-              class="flex items-center gap-1.5 px-2.5 py-1 text-2xs border border-[#30363d] text-[#7d8590] rounded-md hover:border-[#484f58] hover:text-[#e6edf3] transition-colors"
+              class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:bg-transparent dark:border-[#30363d]"
             >
-              <XIcon class="w-3 h-3" aria-hidden="true" />
+              <XIcon class="size-3" aria-hidden="true" />
               Clear
-            </button>
+            </Button>
             <!-- Close -->
             <Button variant="ghost" size="icon-sm"
               @click="emit('close')"

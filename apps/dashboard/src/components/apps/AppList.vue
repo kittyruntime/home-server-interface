@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { BookmarkIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
+import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
@@ -299,8 +300,8 @@ async function unpin(app: App) {
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
           <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-border p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-card']">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">Blocked</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-muted-foreground" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
-            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="link" class="h-auto p-0 touch-target text-success active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</Button><Button variant="link" class="h-auto p-0 touch-target text-warning active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</Button><Button variant="link" class="h-auto p-0 touch-target text-foreground/80 active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</Button><Button variant="link" class="h-auto p-0 touch-target text-foreground/80 active:bg-accent" @click="openLogs(app)">Logs</Button></div>
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">Blocked</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-muted-foreground" aria-label="Edit container" @click="openEdit(app)"><EllipsisIcon /></Button></div>
+            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</Button><Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" @click="openLogs(app)">Logs</Button></div>
           </article>
         </div>
 
@@ -374,36 +375,17 @@ async function unpin(app: App) {
                   </Button>
 
                   <!-- Start / Stop / Restart -->
-                  <div class="flex items-center border border-input rounded-lg overflow-hidden mr-1.5">
-                    <button
-                      @click="runAction(app.id, 'start')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Start"
-                      class="px-2 py-1.5 text-muted-foreground hover:text-success hover:bg-accent disabled:opacity-30 transition-colors"
-                    >
-                      <PlayIcon class="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
-                    <span class="w-px h-4 bg-input" />
-                    <button
-                      @click="runAction(app.id, 'stop')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Stop"
-                      class="px-2 py-1.5 text-muted-foreground hover:text-warning hover:bg-accent disabled:opacity-30 transition-colors"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="6" width="12" height="12" rx="1"/>
-                      </svg>
-                    </button>
-                    <span class="w-px h-4 bg-input" />
-                    <button
-                      @click="runAction(app.id, 'restart')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Restart"
-                      class="px-2 py-1.5 text-muted-foreground hover:text-primary hover:bg-accent disabled:opacity-30 transition-colors"
-                    >
-                      <RefreshCwIcon class="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <ButtonGroup class="mr-1.5" aria-label="Container actions">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Start" aria-label="Start" class="text-muted-foreground hover:text-success" @click="runAction(app.id, 'start')">
+                      <PlayIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Stop" aria-label="Stop" class="text-muted-foreground hover:text-warning" @click="runAction(app.id, 'stop')">
+                      <SquareIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Restart" aria-label="Restart" class="text-muted-foreground hover:text-primary" @click="runAction(app.id, 'restart')">
+                      <RefreshCwIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </ButtonGroup>
 
                   <!-- Logs -->
                   <Button variant="ghost" size="icon-sm"
@@ -415,18 +397,14 @@ async function unpin(app: App) {
                   </Button>
 
                   <!-- Pin -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
                     :title="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
-                    :class="[
-                      'p-1.5 rounded-lg transition-colors hover:bg-accent',
-                      app.app?.pinnedUrl ? 'text-primary hover:text-foreground/80' : 'text-muted-foreground hover:text-foreground/80',
-                    ]"
+                    :aria-pressed="!!app.app?.pinnedUrl"
+                    :class="app.app?.pinnedUrl ? 'text-primary' : 'text-muted-foreground'"
                   >
-                    <svg class="w-3.5 h-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                  </button>
+                    <BookmarkIcon class="size-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" aria-hidden="true" />
+                  </Button>
 
                   <!-- Edit -->
                   <Button variant="ghost" size="icon-sm"

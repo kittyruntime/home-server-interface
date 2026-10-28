@@ -135,15 +135,8 @@ async function toggleMember(userId: string) {
       </template>
       <template v-else>
         <span class="text-xs text-destructive shrink-0">Delete?</span>
-        <button
-          @click="deleteGroup"
-          :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded-sm bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40"
-        >Yes</button>
-        <button
-          @click="deleteConfirm = false"
-          class="text-xs px-2 py-1 rounded-sm text-muted-foreground hover:text-foreground/80 transition-colors"
-        >No</button>
+        <Button variant="destructive" size="xs" :disabled="deleteBusy" @click="deleteGroup">Yes</Button>
+        <Button variant="ghost" size="xs" @click="deleteConfirm = false">No</Button>
       </template>
     </div>
 

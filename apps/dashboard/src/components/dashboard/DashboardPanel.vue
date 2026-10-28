@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { LayoutGridIcon, PlusIcon, XIcon } from '@lucide/vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ChevronsLeftRightIcon, ChevronsUpDownIcon, LayoutGridIcon, PlusIcon, XIcon } from '@lucide/vue'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { computed } from 'vue'
 import SegmentedBar from '../ui/SegmentedBar.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
 import HttpsBanner from './HttpsBanner.vue'
@@ -32,17 +33,6 @@ const SMART_DOT: Record<string, string> = {
   unknown: 'bg-muted-foreground',
 }
 
-const addOpen = ref(false)
-
-function onAddWidget(type: Parameters<typeof addWidget>[0]) {
-  addWidget(type)
-  addOpen.value = false
-}
-
-// Close add dropdown on outside click
-function onDocClick() { addOpen.value = false }
-onMounted(() => document.addEventListener('click', onDocClick))
-onUnmounted(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <template>
@@ -56,31 +46,19 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       </div>
 
       <!-- Add widget dropdown -->
-      <div class="relative">
-        <button
-          @click.stop="addOpen = !addOpen"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-input text-foreground/80 text-sm rounded-lg hover:bg-accent transition-colors"
-        >
-          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-          Add
-        </button>
-
-        <Transition name="dropdown">
-          <div
-            v-if="addOpen"
-            class="absolute right-0 top-full mt-1.5 bg-card border border-input rounded-xl overflow-hidden z-20 min-w-[140px]"
-          >
-            <button
-              v-for="cat in catalog"
-              :key="cat.type"
-              @click.stop="onAddWidget(cat.type)"
-              class="w-full text-left px-4 py-2.5 text-sm text-foreground/80 hover:bg-accent transition-colors"
-            >
-              {{ cat.label }}
-            </button>
-          </div>
-        </Transition>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="outline" size="sm">
+            <PlusIcon aria-hidden="true" />
+            Add
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="min-w-[140px]">
+          <DropdownMenuItem v-for="cat in catalog" :key="cat.type" @select="addWidget(cat.type)">
+            {{ cat.label }}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
 
     <HttpsBanner v-if="isAdmin" @navigate="emit('navigate', $event)" />
@@ -99,17 +77,15 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
           :class="['relative group/card bg-muted border border-border rounded-xl p-4 sm:p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-1 sm:col-span-2' : 'col-span-1']"
         >
           <!-- Widget controls -->
-          <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
-            <button
+          <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon-xs"
               @click="toggleCols(w)"
               :title="w.cols === 1 ? 'Expand' : 'Shrink'"
-              class="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground/80 hover:bg-accent rounded-md transition-colors text-xs"
+              :aria-label="w.cols === 1 ? 'Expand widget' : 'Shrink widget'"
+              class="text-muted-foreground"
             >
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4M8 15l4 4 4-4" v-if="w.cols === 1"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 8l-4 4 4 4M15 8l4 4-4 4" v-else/>
-              </svg>
-            </button>
+              <component :is="w.cols === 1 ? ChevronsLeftRightIcon : ChevronsUpDownIcon" class="size-3.5" aria-hidden="true" />
+            </Button>
             <Button variant="ghost" size="icon-xs"
               @click="removeWidget(w.id)"
               title="Remove"

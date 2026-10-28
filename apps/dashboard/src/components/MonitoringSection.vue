@@ -8,6 +8,8 @@ import {
 } from 'chart.js'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import ErrorState from './ui/ErrorState.vue'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
@@ -139,16 +141,16 @@ const chartOptions = {
     <p class="text-sm text-muted-foreground mb-6">Live usage now, and history over time.</p>
 
     <!-- View toggle -->
-    <div class="flex items-center gap-1 mb-6 p-1 rounded-lg bg-muted w-fit">
-      <button @click="viewMode = 'live'"
-        :class="['px-3 py-1.5 text-xs rounded-md transition-colors', viewMode === 'live' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-        Live
-      </button>
-      <button @click="viewMode = 'history'; loadHistory()"
-        :class="['px-3 py-1.5 text-xs rounded-md transition-colors', viewMode === 'history' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-        History
-      </button>
-    </div>
+    <Tabs
+      :model-value="viewMode"
+      class="mb-6"
+      @update:model-value="v => { if (v === 'history') { viewMode = 'history'; loadHistory() } else viewMode = 'live' }"
+    >
+      <TabsList>
+        <TabsTrigger value="live">Live</TabsTrigger>
+        <TabsTrigger value="history">History</TabsTrigger>
+      </TabsList>
+    </Tabs>
 
     <LoadingState v-if="loading" variant="block" />
     <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
@@ -254,16 +256,15 @@ const chartOptions = {
 
     <div v-else-if="viewMode === 'history'">
       <!-- Period selector -->
-      <div class="flex gap-1 mb-5">
-        <button v-for="p in (['1h','6h','24h','7d'] as const)" :key="p"
-          @click="period = p; loadHistory()"
-          :class="['px-3 py-1 text-xs rounded-lg border transition-colors',
-            period === p
-              ? 'border-primary/50 text-primary bg-primary/10'
-              : 'border-border text-muted-foreground hover:border-input']">
-          {{ p }}
-        </button>
-      </div>
+      <ToggleGroup
+        type="single" variant="outline" size="sm"
+        class="mb-5"
+        :model-value="period"
+        aria-label="History period"
+        @update:model-value="v => { if (typeof v === 'string' && v) { period = v as Period; loadHistory() } }"
+      >
+        <ToggleGroupItem v-for="p in (['1h','6h','24h','7d'] as const)" :key="p" :value="p" class="px-3 text-xs">{{ p }}</ToggleGroupItem>
+      </ToggleGroup>
 
       <LoadingState v-if="historyLoading" />
       <ErrorState v-else-if="historyError" :message="historyError" retry-label="Retry" @retry="loadHistory" />

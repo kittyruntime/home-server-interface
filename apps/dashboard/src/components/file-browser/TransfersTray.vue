@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, PlayIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, PauseIcon, PlayIcon, SquareIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { LOADING } from '../../lib/loading'
 import { ref, computed } from 'vue'
 import { useUploads, type Transfer, type TransferStatus } from '../../lib/uploads'
@@ -137,13 +137,10 @@ function handleReselectPick(e: Event) {
   >
     <!-- Header -->
     <div class="flex items-center gap-3 px-3.5 py-2">
-      <button
-        @click="collapsed = !collapsed"
-        class="flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors shrink-0"
-      >
-        <ChevronDownIcon class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
+      <Button variant="ghost" size="xs" :aria-expanded="!collapsed" class="-ml-2 shrink-0 text-foreground/80" @click="collapsed = !collapsed">
+        <ChevronDownIcon class="size-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
         Transfers · {{ activeCount }} active
-      </button>
+      </Button>
 
       <!-- Mini overall progress bar -->
       <div v-if="activeCount > 0" class="flex-1 h-1 bg-muted rounded-full overflow-hidden">
@@ -214,23 +211,18 @@ function handleReselectPick(e: Event) {
 
           <!-- Actions -->
           <div class="flex gap-0.5 shrink-0">
-            <button v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
-              class="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              <PlayIcon v-if="t.status === 'paused'" class="w-3 h-3" aria-hidden="true" />
-              <svg v-else class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
-              </svg>
-            </button>
-            <button v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Cancel"
-              class="p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="4" y="4" width="16" height="16" rx="2"/>
-              </svg>
-            </button>
-            <button v-if="canRetry(t)" @click="retryOrReselect(t)"
-              class="px-1.5 py-0.5 rounded-sm text-2xs font-medium text-primary hover:bg-primary/10 transition-colors">
+            <Button variant="ghost" size="icon-xs" v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
+              :aria-label="t.status === 'paused' ? 'Resume' : 'Pause'" class="text-muted-foreground">
+              <PlayIcon v-if="t.status === 'paused'" class="size-3" aria-hidden="true" />
+              <PauseIcon v-else class="size-3" fill="currentColor" aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Cancel" aria-label="Cancel"
+              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+              <SquareIcon class="size-3" fill="currentColor" aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="xs" v-if="canRetry(t)" @click="retryOrReselect(t)" class="h-5 px-1.5 text-2xs text-primary hover:text-primary hover:bg-primary/10">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
-            </button>
+            </Button>
             <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
               class="text-muted-foreground hover:text-foreground">
               <XIcon class="w-3 h-3" aria-hidden="true" />

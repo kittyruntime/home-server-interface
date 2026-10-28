@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import SortableHeader from '../ui/SortableHeader.vue'
+import { Input } from '@/components/ui/input'
 import { CheckIcon, EyeIcon, FileTextIcon, FolderIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -98,9 +101,9 @@ function fileExt(name: string): string {
       <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
       <template v-if="renamingPath === entry.path">
-        <input
-          :value="renameValue"
-          @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+        <Input
+          :model-value="renameValue"
+          @update:model-value="v => emit('update:renameValue', String(v))"
           @click.stop
           @keydown.enter="emit('commitRename')"
           @keydown.escape="emit('cancelRename')"
@@ -134,34 +137,13 @@ function fileExt(name: string): string {
           />
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium">
-          <button @click="emit('setSort', 'name')" class="flex items-center gap-1 hover:text-foreground transition-colors">
-            Name
-            <span class="w-3 inline-flex justify-center">
-              <svg v-if="sortField === 'name'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
-              </svg>
-            </span>
-          </button>
+          <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'"  @click="emit('setSort', 'name')">Name</SortableHeader>
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium text-right">
-          <button @click="emit('setSort', 'size')" class="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
-            <span class="w-3 inline-flex justify-center">
-              <svg v-if="sortField === 'size'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
-              </svg>
-            </span>
-            Size
-          </button>
+          <SortableHeader :active="sortField === 'size'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'size')">Size</SortableHeader>
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium text-right">
-          <button @click="emit('setSort', 'date')" class="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
-            <span class="w-3 inline-flex justify-center">
-              <svg v-if="sortField === 'date'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
-              </svg>
-            </span>
-            Modified
-          </button>
+          <SortableHeader :active="sortField === 'date'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'date')">Modified</SortableHeader>
         </TableHead>
       </TableRow>
     </TableHeader>
@@ -241,16 +223,16 @@ function fileExt(name: string): string {
             <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
             <template v-if="renamingPath === entry.path">
-              <input
-                :value="renameValue"
-                @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+              <Input
+                :model-value="renameValue"
+                @update:model-value="v => emit('update:renameValue', String(v))"
                 @click.stop
                 @keydown.enter="emit('commitRename')"
                 @keydown.escape="emit('cancelRename')"
                 @blur="emit('cancelRename')"
                 @focus="($event.target as HTMLInputElement).select()"
                 autofocus
-                class="bg-background border border-primary rounded-sm px-2 py-0.5 text-sm text-foreground focus:outline-none flex-1 min-w-0"
+                class="h-7 min-w-0 flex-1 border-primary px-2 py-0.5"
               />
             </template>
             <template v-else>
@@ -266,14 +248,16 @@ function fileExt(name: string): string {
               <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-muted-foreground text-2xs font-mono shrink-0">
                 {{ fileExt(entry.name) }}
               </span>
-              <button
+              <Button
                 v-if="entry.type === 'file'"
+                variant="ghost" size="icon-xs"
                 @click.stop="emit('openFile', entry)"
                 title="Preview"
-                class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all shrink-0"
+                :aria-label="`Preview ${entry.name}`"
+                class="shrink-0 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
               >
-                <EyeIcon class="w-4 h-4" aria-hidden="true" />
-              </button>
+                <EyeIcon class="size-4" aria-hidden="true" />
+              </Button>
             </template>
           </div>
         </TableCell>

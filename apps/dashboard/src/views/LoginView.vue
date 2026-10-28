@@ -96,16 +96,18 @@ async function handleLogin() {
               class="pr-10"
               placeholder="••••••••"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               @click="showPassword = !showPassword"
               :aria-label="showPassword ? 'Hide password' : 'Show password'"
               :aria-pressed="showPassword"
-              class="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors"
+              class="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
             >
-              <EyeIcon v-if="!showPassword" class="w-4 h-4" aria-hidden="true" />
-              <EyeOffIcon v-else class="w-4 h-4" aria-hidden="true" />
-            </button>
+              <EyeIcon v-if="!showPassword" aria-hidden="true" />
+              <EyeOffIcon v-else aria-hidden="true" />
+            </Button>
           </div>
         </div>
 

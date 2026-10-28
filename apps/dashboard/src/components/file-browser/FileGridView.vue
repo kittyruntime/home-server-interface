@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { CheckIcon, EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
@@ -122,27 +124,29 @@ function fileExt(name: string): string {
         <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-muted-foreground bg-background px-1 rounded-sm leading-tight">
           {{ fileExt(entry.name) }}
         </span>
-        <button
+        <Button
+          variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"
           title="Preview"
-          class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all"
+          :aria-label="`Preview ${entry.name}`"
+          class="absolute -top-1 -right-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
         >
-          <EyeIcon class="w-4 h-4" aria-hidden="true" />
-        </button>
+          <EyeIcon class="size-4" aria-hidden="true" />
+        </Button>
       </div>
 
       <!-- Name / Rename -->
       <template v-if="renamingPath === entry.path">
-        <input
-          :value="renameValue"
-          @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+        <Input
+          :model-value="renameValue"
+          @update:model-value="v => emit('update:renameValue', String(v))"
           @click.stop
           @keydown.enter="emit('commitRename')"
           @keydown.escape="emit('cancelRename')"
           @blur="emit('cancelRename')"
           @focus="($event.target as HTMLInputElement).select()"
           autofocus
-          class="text-xs bg-background border border-primary rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none w-full text-center"
+          class="h-6 w-full border-primary px-1.5 py-0.5 text-center text-xs md:text-xs"
         />
       </template>
       <template v-else>

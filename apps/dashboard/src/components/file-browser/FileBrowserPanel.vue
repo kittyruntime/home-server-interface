@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
@@ -144,7 +145,7 @@ function setSort(field: SortField) {
 // ── filter (Cmd/Ctrl+K) ──────────────────────────────────────────────────────
 const showFilter  = ref(false)
 const filterQuery = ref('')
-const filterInput = ref<HTMLInputElement | null>(null)
+const filterInput = ref<InstanceType<typeof Input> | null>(null)
 
 const displayEntries = computed(() => {
   const q = filterQuery.value.trim().toLowerCase()
@@ -166,7 +167,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
     if (tag === 'textarea') return
-    if (tag === 'input' && document.activeElement !== filterInput.value) return
+    if (tag === 'input' && document.activeElement !== filterInput.value?.el) return
     e.preventDefault()
     if (showFilter.value) filterInput.value?.focus()
     else openFilter()
@@ -660,12 +661,13 @@ onMounted(async () => {
           <!-- Filter bar (Cmd/Ctrl+K) -->
           <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-background border-b border-border flex items-center gap-2">
             <SearchIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-            <input
+            <Input
               ref="filterInput"
               v-model="filterQuery"
               placeholder="Filter by name…"
+              aria-label="Filter by name"
               @keydown.escape="closeFilter"
-              class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
             />
             <span v-if="filterQuery" class="text-2xs text-muted-foreground">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
             <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-muted-foreground hover:text-foreground">

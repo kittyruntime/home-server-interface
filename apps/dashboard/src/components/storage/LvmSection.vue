@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
+import { CheckIcon, EllipsisVerticalIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -16,6 +16,7 @@ import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
 import ImportFound from './ImportFound.vue'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
@@ -190,7 +191,6 @@ function openFormat(dev: BlockDev) { formatWiz.value?.open(dev) }
 function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
 function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
-const openMenu = ref<string | null>(null)
 
 const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === props.only) : lvmVGs.value)
 </script>
@@ -221,8 +221,6 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
     <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
-
-    <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
     <!-- VG list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
@@ -267,25 +265,21 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 + Add LV
               </Button>
               <!-- ⋯ menu for VG -->
-              <div v-if="!isSystemVg(vg.name)" class="relative z-30">
-                <button @click.stop="openMenu = openMenu === ('vg:' + vg.name) ? null : ('vg:' + vg.name)"
-                  :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === ('vg:' + vg.name) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                  </svg>
-                </button>
-                <div v-if="openMenu === ('vg:' + vg.name)"
-                  class="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[176px]">
-                  <div class="px-3 pt-2.5 pb-1.5 border-b border-border">
-                    <p class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</p>
-                  </div>
-                  <button @click="removeVgDlg = { vg, busy: false, err: '' }; openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left">
-                    <Trash2Icon class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <DropdownMenu v-if="!isSystemVg(vg.name)">
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Volume group actions">
+                    <EllipsisVerticalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="min-w-[176px]">
+                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" @select="removeVgDlg = { vg, busy: false, err: '' }">
+                    <Trash2Icon />
                     Remove VG…
-                  </button>
-                </div>
-              </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

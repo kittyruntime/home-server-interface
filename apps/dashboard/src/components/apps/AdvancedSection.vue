@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { XIcon } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { applyPlanned } from '../../lib/plan'
 import { Button } from '@/components/ui/button'
@@ -154,7 +155,7 @@ function removeExtraHost(h: string) {
           class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5"
         >
           {{ cap }}
-          <button @click="removeCap('capAdd', cap)" class="hover:opacity-60 transition-colors">×</button>
+          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeCap('capAdd', cap)"><XIcon class="size-3" aria-hidden="true" /></button>
         </span>
       </div>
       <div class="flex gap-2">
@@ -178,7 +179,7 @@ function removeExtraHost(h: string) {
           class="inline-flex items-center gap-1 text-xs bg-warning/15 text-warning border border-warning/20 rounded-sm px-2 py-0.5"
         >
           {{ cap }}
-          <button @click="removeCap('capDrop', cap)" class="hover:opacity-70 transition-colors">×</button>
+          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeCap('capDrop', cap)"><XIcon class="size-3" aria-hidden="true" /></button>
         </span>
       </div>
       <div class="flex gap-2">
@@ -202,7 +203,7 @@ function removeExtraHost(h: string) {
           class="inline-flex items-center gap-1 text-xs bg-muted text-foreground/80 border border-input rounded-sm px-2 py-0.5 font-mono"
         >
           {{ h }}
-          <button @click="removeExtraHost(h)" class="hover:opacity-60 transition-colors">×</button>
+          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeExtraHost(h)"><XIcon class="size-3" aria-hidden="true" /></button>
         </span>
       </div>
       <div class="flex gap-2">
