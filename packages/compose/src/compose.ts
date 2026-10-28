@@ -186,6 +186,42 @@ export function generateComposeYaml(input: AppInput, existing?: string): string 
   return String(doc)
 }
 
+/** A service an App Store app runs beside its main one (database, cache, #26). */
+export interface Sidecar {
+  name:        string
+  image:       string
+  environment: Record<string, string>
+  /** Named volumes, already unique to the app (`<app>-<volume>`). */
+  volumes:     Array<{ source: string; target: string }>
+  command?:    string[]
+}
+
+/**
+ * Adds sidecar services to a generated file: each runs as `<main>-<name>`,
+ * restarts with the app, and the main service waits for them. They are plain
+ * Compose services: the forms leave them untouched.
+ */
+export function withSidecars(content: string, main: string, sidecars: Sidecar[]): string {
+  if (!sidecars.length) return content
+  const doc = parseDocument(content)
+  const services = ensureMap(doc, ["services"])
+  for (const sc of sidecars) {
+    if (sc.name === main || services.has(sc.name)) throw new Error(`Service ${sc.name} already exists`)
+    const svc: Record<string, unknown> = {
+      container_name: `${main}-${sc.name}`,
+      image:          sc.image,
+      restart:        "unless-stopped",
+    }
+    if (Object.keys(sc.environment).length) svc.environment = sc.environment
+    if (sc.volumes.length) svc.volumes = sc.volumes.map(v => `${v.source}:${v.target}`)
+    if (sc.command?.length) svc.command = sc.command
+    services.set(sc.name, doc.createNode(svc))
+  }
+  ensureService(doc, main).set("depends_on", doc.createNode(sidecars.map(sc => sc.name)))
+  syncVolumeDeclarations(doc)
+  return String(doc)
+}
+
 // Adds the missing top-level declarations for named volumes referenced by any
 // service, for files written before HSI declared them. Returns the repaired
 // content, or null when the file needs no change. Comments and every other
@@ -199,7 +235,12 @@ export function repairNamedVolumeDeclarations(content: string): string | null {
   return after === before ? null : after
 }
 
-export function parseComposeYaml(content: string): ParsedCompose {
+/**
+ * `main` names the service the forms manage when the file has several (an App
+ * Store app with its database, #26): HSI writes it under the stack's name.
+ * The other services are kept as written and listed in unknownFields.
+ */
+export function parseComposeYaml(content: string, main?: string): ParsedCompose {
   const doc = parseDocument(content)
   if (doc.errors.length > 0) {
     throw new Error(`Invalid YAML: ${doc.errors[0]?.message ?? "parse error"}`)
@@ -215,7 +256,8 @@ export function parseComposeYaml(content: string): ParsedCompose {
   }
   const services: string[] = Object.keys(json.services ?? {})
   const unknownFields: string[] = []
-  const svcName = services.length === 1 ? services[0] : null
+  const svcName = services.length === 1 ? services[0]
+    : main !== undefined && services.includes(main) ? main : null
   const svc = svcName ? json.services[svcName] : null
 
   for (const [k] of Object.entries(json)) {
@@ -223,6 +265,7 @@ export function parseComposeYaml(content: string): ParsedCompose {
     if (k === "services" || k === "networks" || k === "volumes") continue
     unknownFields.push(k)
   }
+  if (svc) for (const name of services) if (name !== svcName) unknownFields.push(`services.${name}`)
   if (svc) for (const [k] of Object.entries(svc)) {
     if (!(MANAGED_SERVICE_KEYS as readonly string[]).includes(k)) unknownFields.push(`services.${svcName}.${k}`)
   }

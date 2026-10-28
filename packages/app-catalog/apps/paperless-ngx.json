@@ -1,0 +1,29 @@
+{
+  "id": "paperless-ngx",
+  "name": "Paperless-ngx",
+  "category": "Productivity",
+  "tagline": "Scan, index and search all your paper documents.",
+  "description": "Paperless-ngx turns your scans and PDFs into a searchable archive with OCR, tags and correspondents. Drop files in its inbox folder and it files them for you. Runs with its own Redis.",
+  "website": "https://docs.paperless-ngx.com",
+  "image": "ghcr.io/paperless-ngx/paperless-ngx:2.14.7",
+  "changelog": "https://github.com/paperless-ngx/paperless-ngx/releases",
+  "webUiPort": 8000,
+  "ports": [{ "container": 8000, "protocol": "tcp", "label": "Web UI", "hostDefault": 8010 }],
+  "env": [
+    { "key": "PAPERLESS_ADMIN_USER", "default": "admin", "prompt": "Administrator name", "required": true },
+    { "key": "PAPERLESS_ADMIN_PASSWORD", "prompt": "Administrator password", "secret": true, "required": true },
+    { "key": "PAPERLESS_TIME_ZONE", "default": "Europe/Paris", "prompt": "Timezone" },
+    { "key": "PAPERLESS_OCR_LANGUAGE", "default": "eng", "prompt": "OCR languages (e.g. eng, fra, eng+fra)" },
+    { "key": "PAPERLESS_SECRET_KEY", "secret": true },
+    { "key": "PAPERLESS_REDIS", "default": "redis://redis:6379" }
+  ],
+  "volumes": [
+    { "target": "/usr/src/paperless/data", "label": "Data (index and settings)", "suggest": "place" },
+    { "target": "/usr/src/paperless/media", "label": "Documents", "suggest": "place" },
+    { "target": "/usr/src/paperless/consume", "label": "Inbox (files to import)", "suggest": "place" },
+    { "target": "/usr/src/paperless/export", "label": "Exports", "suggest": "place" }
+  ],
+  "services": [
+    { "name": "redis", "label": "Redis (task queue)", "image": "redis:7.4-alpine", "volumes": [{ "name": "redis", "target": "/data" }] }
+  ]
+}

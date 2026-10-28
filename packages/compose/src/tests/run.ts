@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { composeBindSources, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations } from "../compose.js"
+import { composeBindSources, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from "../compose.js"
 import { parseDocument } from "yaml"
 import { STACK_NAME_RE, type AppInput } from "../model.js"
 
@@ -258,5 +258,34 @@ volumes:
   assert.deepEqual(composeBindSources("::: not yaml"), [])
   assert.deepEqual(composeBindSources("services:\n  a:\n    image: x\n"), [])
 }
+
+function testSidecarsKeepTheMainServiceEditable() {
+  const app: AppInput = { ...base, name: "paperless", networkNames: [], volumes: [] }
+  const y = withSidecars(generateComposeYaml(app), "paperless", [
+    { name: "redis", image: "redis:7.4-alpine", environment: {}, volumes: [{ source: "paperless-redis", target: "/data" }] },
+    { name: "db", image: "postgres:16-alpine", environment: { POSTGRES_PASSWORD: "s3cret" }, volumes: [], command: ["postgres", "-c", "max_connections=50"] },
+  ])
+  const doc = parseDocument(y).toJS() as any
+  assert.deepEqual(Object.keys(doc.services), ["paperless", "redis", "db"])
+  assert.deepEqual(doc.services.paperless.depends_on, ["redis", "db"])
+  assert.equal(doc.services.redis.container_name, "paperless-redis")
+  assert.deepEqual(doc.services.db.command, ["postgres", "-c", "max_connections=50"])
+  assert.deepEqual(doc.volumes, { "paperless-redis": { name: "paperless-redis" } })
+
+  // Without a name the file has no single service; with it the forms get the main one.
+  assert.equal(parseComposeYaml(y).app, null)
+  const p = parseComposeYaml(y, "paperless")
+  assert.equal(p.app?.image, base.image)
+  assert.deepEqual(p.services, ["paperless", "redis", "db"])
+  assert.ok(p.unknownFields.includes("services.redis") && p.unknownFields.includes("services.db"))
+
+  // Editing the main service in the forms leaves the sidecars as they are.
+  const edited = generateComposeYaml({ ...p.app!, envs: [{ key: "TZ", value: "UTC" }] }, y)
+  const after = parseDocument(edited).toJS() as any
+  assert.deepEqual(after.services.redis, doc.services.redis)
+  assert.deepEqual(after.services.paperless.depends_on, ["redis", "db"])
+  assert.throws(() => withSidecars(y, "paperless", [{ name: "paperless", image: "x:1", environment: {}, volumes: [] }]), /already exists/)
+}
+testSidecarsKeepTheMainServiceEditable()
 
 console.log("Compose package tests passed")

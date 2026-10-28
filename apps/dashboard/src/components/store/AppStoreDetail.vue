@@ -74,6 +74,14 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
       <div class="space-y-2">
         <h4 class="eyebrow">About</h4>
         <p class="text-sm text-foreground/80 leading-relaxed">{{ app.description }}</p>
+        <div v-if="app.services?.length" class="text-xs">
+          <span class="text-muted-foreground">Installs with: </span>
+          <template v-for="(sc, i) in app.services" :key="sc.name">
+            <span v-if="i" class="text-muted-foreground">, </span>
+            <span class="text-foreground/80">{{ sc.label }}</span>
+            <span class="font-mono text-muted-foreground"> ({{ sc.image }})</span>
+          </template>
+        </div>
         <p class="text-xs flex gap-4 flex-wrap">
           <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Website ↗</a>
           <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Release notes ↗</a>

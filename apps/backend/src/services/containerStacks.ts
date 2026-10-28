@@ -95,7 +95,7 @@ function observedForStack(all: ObservedContainer[], name: string, services: stri
 export async function listStacks() {
   const [scanned, all] = await Promise.all([scanStacks(), observedContainers()])
   return scanned.map(s => {
-    const parsed = parseComposeYaml(s.content)
+    const parsed = parseComposeYaml(s.content, s.name)
     const observed = observedForStack(all, s.name, parsed.services)
     const status = stackStatus(observed)
     const pendingApply = parsed.services.length > 0 &&

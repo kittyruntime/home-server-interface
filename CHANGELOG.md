@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **App Store apps with several containers**: a catalog app can run a
+  database or a cache beside it, installed and removed with it, with shared
+  generated passwords. The store page lists what an app installs with, and
+  the app's own settings stay editable in the forms. Two new apps use it:
+  **Paperless-ngx** (with Redis) and **Nextcloud** (with MariaDB).
 - **Telemetry in Settings**: Settings > Telemetry shows whether the daily
   anonymous heartbeat is sent, lets an administrator turn it off, and shows
   the exact data sent, including the installation ID to quote for a deletion

@@ -10,6 +10,8 @@ import uptimeKuma from "../apps/uptime-kuma.json" with { type: "json" }
 import filebrowser from "../apps/filebrowser.json" with { type: "json" }
 import homarr from "../apps/homarr.json" with { type: "json" }
 import itTools from "../apps/it-tools.json" with { type: "json" }
+import paperless from "../apps/paperless-ngx.json" with { type: "json" }
+import nextcloud from "../apps/nextcloud.json" with { type: "json" }
 
 // NOTE on the loader strategy: the backend consumes this package through a
 // plain TypeScript/Node toolchain (tsc + `node`), while the dashboard
@@ -34,6 +36,8 @@ const RAW: { manifest: unknown; icon: string }[] = [
   { manifest: filebrowser, icon: ICONS.filebrowser },
   { manifest: homarr, icon: ICONS.homarr },
   { manifest: itTools, icon: ICONS["it-tools"] },
+  { manifest: paperless, icon: ICONS["paperless-ngx"] },
+  { manifest: nextcloud, icon: ICONS.nextcloud },
 ]
 
 export const CATALOG: AppManifest[] = RAW.map(({ manifest, icon }) => ({
@@ -41,4 +45,4 @@ export const CATALOG: AppManifest[] = RAW.map(({ manifest, icon }) => ({
   icon,
 }))
 
-export { zAppManifest, type AppManifest } from "./manifest"
+export { zAppManifest, resolveSettingRefs, type AppManifest } from "./manifest"
