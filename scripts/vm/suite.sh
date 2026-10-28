@@ -29,7 +29,8 @@ install_build() {
 # Health, version and services, as the installer's own gate sees them.
 expect_running() {
   local want="$1" health
-  health=$(vm_ssh 'for i in $(seq 1 90); do curl -sfk https://127.0.0.1/health && exit 0; sleep 2; done; exit 1') \
+  # A fresh install serves HTTPS on the backend port; older installs may use 443.
+  health=$(vm_ssh 'for i in $(seq 1 90); do for p in 9001 443; do curl -sfk "https://127.0.0.1:$p/health" && exit 0; done; sleep 2; done; exit 1') \
     || fail "health endpoint never answered (expected $want)"
   python3 -c 'import json,sys; h=json.loads(sys.argv[1]); assert h["status"]=="ok" and h["db"] and h["nats"], h; assert h["version"]==sys.argv[2], (h["version"], sys.argv[2])' "$health" "$want" \
     || fail "unexpected health: $health"
