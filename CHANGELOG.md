@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accent color picker are kept; a dialog opened in a desktop window still only
   blocks that window.
 
+### Fixed
+- **Update refused with "unrecognized SQLite schema"**: installations that went
+  through v1.35.0 still carry the old names of a few constraints and indexes
+  from the Role to Group rename. The update check now reads them as the
+  current names, so these installations update like any other.
+
 ## [1.68.2] - 2026-10-28
 
 ### Security

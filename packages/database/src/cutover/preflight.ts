@@ -19,9 +19,37 @@ function sha256(value: Buffer | string): string {
   return createHash("sha256").update(value).digest("hex")
 }
 
+// The Users+Groups transform of v1.35.0 renamed the Role tables with ALTER TABLE,
+// which keeps the names of their constraints and indexes. An installation that
+// went through it still carries them on the renamed tables, while the published
+// states were built fresh. These names change nothing for SQLite or Prisma: on
+// the renamed tables only, read them as the current ones (before v1.35.0 they
+// are the right names of the Role tables). inventory.py does the same.
+const LEGACY_NAMES = new Map([
+  ["RolePlacePermission_roleId_fkey", "GroupPlacePermission_groupId_fkey"],
+  ["RolePlacePermission_placeId_fkey", "GroupPlacePermission_placeId_fkey"],
+  ["RolePlacePermission_roleId_placeId_key", "GroupPlacePermission_groupId_placeId_key"],
+  ["UserRole_userId_fkey", "UserGroup_userId_fkey"],
+  ["UserRole_roleId_fkey", "UserGroup_groupId_fkey"],
+  ["Role_name_key", "Group_name_key"],
+])
+const LEGACY_SQL_NAMES = new Map([...LEGACY_NAMES].map(([legacy, current]) => [legacy.toLowerCase(), current.toLowerCase()]))
+const RENAMED_TABLES = new Set(["Group", "GroupPlacePermission", "UserGroup"])
+
 function canonicalSchema(db: Database.Database): string {
-  const rows = db.prepare("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name != '_prisma_migrations' AND sql IS NOT NULL").all() as Array<{ type: string; name: string; sql: string }>
-  const entries = rows.map(({ type, name, sql }) => [type, name, sql.replace(/\s+/g, "").toLowerCase()])
+  const rows = db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name != '_prisma_migrations' AND sql IS NOT NULL").all() as Array<{ type: string; name: string; tbl_name: string; sql: string }>
+  const entries = rows.map(({ type, name, tbl_name, sql }) => {
+    const canonical = sql.replace(/\s+/g, "").toLowerCase()
+    if (!RENAMED_TABLES.has(tbl_name)) return [type, name, canonical]
+    return [
+      type,
+      LEGACY_NAMES.get(name) ?? name,
+      canonical.replace(/"([a-z_]+)"/g, (quoted, n: string) => {
+        const current = LEGACY_SQL_NAMES.get(n)
+        return current ? `"${current}"` : quoted
+      }),
+    ]
+  })
   entries.sort((left, right) => {
     for (let i = 0; i < 3; i++) {
       if (left[i]! < right[i]!) return -1
