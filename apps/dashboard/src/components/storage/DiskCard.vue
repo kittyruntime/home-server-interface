@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
 import { memberOwner } from './device-state'
 import { LOADING } from '../../lib/loading'
@@ -224,34 +225,34 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <div v-if="sc.attributes.length > 0" class="px-4 pb-4 pt-3">
             <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">ATA Attributes</div>
             <div class="rounded-lg overflow-hidden border border-border">
-              <table class="w-full text-2xs border-collapse">
-                <thead>
-                  <tr class="bg-muted text-muted-foreground">
-                    <th class="text-left px-2.5 py-1.5 font-medium w-8">ID</th>
-                    <th class="text-left px-2.5 py-1.5 font-medium">Attribute</th>
-                    <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Value</th>
-                    <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Worst</th>
-                    <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Thresh</th>
-                    <th class="text-right px-2.5 py-1.5 font-medium tabular-nums">Raw</th>
-                    <th class="text-center px-2.5 py-1.5 font-medium w-8"></th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-border">
-                  <tr v-for="attr in sc.attributes" :key="attr.id"
+              <Table class="w-full text-2xs border-collapse">
+                <TableHeader>
+                  <TableRow class="bg-muted text-muted-foreground">
+                    <TableHead class="text-left px-2.5 py-1.5 font-medium w-8">ID</TableHead>
+                    <TableHead class="text-left px-2.5 py-1.5 font-medium">Attribute</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Value</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Worst</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Thresh</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Raw</TableHead>
+                    <TableHead class="text-center px-2.5 py-1.5 font-medium w-8"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody class="divide-y divide-border">
+                  <TableRow v-for="attr in sc.attributes" :key="attr.id"
                     :class="['transition-colors', attr.failed ? 'bg-destructive/8' : attr.isCritical && attr.raw > 0 ? 'bg-warning/6' : '']">
-                    <td class="px-2.5 py-1.5 font-mono text-muted-foreground">{{ attr.id }}</td>
-                    <td class="px-2.5 py-1.5 font-mono"
+                    <TableCell class="px-2.5 py-1.5 font-mono text-muted-foreground">{{ attr.id }}</TableCell>
+                    <TableCell class="px-2.5 py-1.5 font-mono"
                       :class="attr.failed ? 'text-destructive font-semibold' : attr.isCritical ? 'text-foreground' : 'text-foreground/80'">
                       {{ attr.name.replace(/_/g, ' ') }}
-                    </td>
-                    <td class="px-2.5 py-1.5 tabular-nums text-right text-foreground/80">{{ attr.value }}</td>
-                    <td class="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{{ attr.worst }}</td>
-                    <td class="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{{ attr.thresh }}</td>
-                    <td class="px-2.5 py-1.5 tabular-nums text-right font-mono"
+                    </TableCell>
+                    <TableCell class="px-2.5 py-1.5 tabular-nums text-right text-foreground/80">{{ attr.value }}</TableCell>
+                    <TableCell class="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{{ attr.worst }}</TableCell>
+                    <TableCell class="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{{ attr.thresh }}</TableCell>
+                    <TableCell class="px-2.5 py-1.5 tabular-nums text-right font-mono"
                       :class="attr.failed ? 'text-destructive font-semibold' : attr.isCritical && attr.raw > 0 ? 'text-warning font-semibold' : 'text-foreground/80'">
                       {{ attr.raw.toLocaleString() }}
-                    </td>
-                    <td class="px-2.5 py-1.5 text-center">
+                    </TableCell>
+                    <TableCell class="px-2.5 py-1.5 text-center">
                       <svg v-if="attr.failed" class="w-3 h-3 text-destructive mx-auto" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                       </svg>
@@ -261,10 +262,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
                       <svg v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                       </svg>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </template>

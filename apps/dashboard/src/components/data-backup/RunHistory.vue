@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { onMounted, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { formatDateTime } from '../../lib/format-date'
@@ -47,38 +48,38 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
       <ErrorState v-else-if="error" :message="error" retry-label="Retry" compact @retry="load" />
       <EmptyState v-else-if="!runs.length" message="No run yet." />
       <div v-else class="overflow-x-auto rounded-xl border border-border">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <th class="text-left px-3 py-2 font-medium">Started</th>
-              <th class="text-left px-3 py-2 font-medium">Duration</th>
-              <th class="text-left px-3 py-2 font-medium">Status</th>
-              <th v-if="kind === 'runs'" class="text-right px-3 py-2 font-medium">Added</th>
-              <th v-if="kind === 'runs'" class="text-left px-3 py-2 font-medium">Snapshot</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
+        <Table class="w-full text-sm border-collapse">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+              <TableHead class="text-left px-3 py-2 font-medium">Started</TableHead>
+              <TableHead class="text-left px-3 py-2 font-medium">Duration</TableHead>
+              <TableHead class="text-left px-3 py-2 font-medium">Status</TableHead>
+              <TableHead v-if="kind === 'runs'" class="text-right px-3 py-2 font-medium">Added</TableHead>
+              <TableHead v-if="kind === 'runs'" class="text-left px-3 py-2 font-medium">Snapshot</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
             <template v-for="(r, i) in runs" :key="r.runId ?? i">
-              <tr>
-                <td class="px-3 py-2 text-xs text-foreground/80 whitespace-nowrap">{{ formatDateTime(r.start) }}</td>
-                <td class="px-3 py-2 text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</td>
-                <td class="px-3 py-2 text-xs whitespace-nowrap">
+              <TableRow>
+                <TableCell class="px-3 py-2 text-xs text-foreground/80 whitespace-nowrap">{{ formatDateTime(r.start) }}</TableCell>
+                <TableCell class="px-3 py-2 text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</TableCell>
+                <TableCell class="px-3 py-2 text-xs whitespace-nowrap">
                   <span :class="TONE_CLASS[runLabel(r).tone]">{{ STATUS[r.status] ?? r.status }}</span>
                   <Badge variant="secondary" v-if="r.consistent === true" class="ml-2" title="The apps were stopped during the run">Consistent</Badge>
                   <Badge variant="outline" v-else-if="r.consistent === false" class="bg-warning/10 text-warning ml-2" title="An app could not be stopped during the run">Not consistent</Badge>
-                </td>
-                <td v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</td>
-                <td v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-muted-foreground">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</td>
-              </tr>
-              <tr v-if="r.error || r.warnings?.length">
-                <td :colspan="kind === 'runs' ? 5 : 3" class="px-3 pb-2 pt-0">
+                </TableCell>
+                <TableCell v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</TableCell>
+                <TableCell v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-muted-foreground">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</TableCell>
+              </TableRow>
+              <TableRow v-if="r.error || r.warnings?.length">
+                <TableCell :colspan="kind === 'runs' ? 5 : 3" class="px-3 pb-2 pt-0">
                   <p v-if="r.error" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ r.error }}</p>
                   <p v-for="w in r.warnings ?? []" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             </template>
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   </Modal>

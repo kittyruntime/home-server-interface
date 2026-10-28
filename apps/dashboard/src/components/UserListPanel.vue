@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
@@ -243,27 +244,27 @@ onMounted(load)
       <template v-else>
         <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">Clear search</Button></template></EmptyState></div>
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden hidden sm:block">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-muted border-b border-border">
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+          <Table class="w-full text-sm">
+            <TableHeader>
+              <TableRow class="bg-muted border-b border-border">
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
                   <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">User</SortableHeader>
-                </th>
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Groups</th>
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
+                </TableHead>
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Groups</TableHead>
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
                   <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
-                </th>
-                <th v-if="isUserManager" class="px-4 py-3 w-16"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              <tr
+                </TableHead>
+                <TableHead v-if="isUserManager" class="px-4 py-3 w-16"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody class="divide-y divide-border">
+              <TableRow
                 v-for="user in paged"
                 :key="user.id"
                 class="bg-background hover:bg-card transition-colors"
               >
                 <!-- User -->
-                <td class="px-5 py-3.5">
+                <TableCell class="px-5 py-3.5">
                   <div class="flex items-center gap-3">
                     <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', avatarGradient(user.username)]">
                       {{ user.username.slice(0, 2).toUpperCase() }}
@@ -280,25 +281,25 @@ onMounted(load)
                       <div v-if="user.displayName" class="text-xs text-muted-foreground truncate mt-0.5">{{ user.displayName }}</div>
                     </div>
                   </div>
-                </td>
+                </TableCell>
 
                 <!-- Groups -->
-                <td class="px-5 py-3.5">
+                <TableCell class="px-5 py-3.5">
                   <div class="flex flex-wrap gap-1">
                     <Badge variant="secondary" v-for="g in groups.filter(g => g.members.some(m => m.userId === user.id))" :key="g.id">
                       {{ g.name }}
                     </Badge>
                     <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-muted-foreground text-xs">-</span>
                   </div>
-                </td>
+                </TableCell>
 
                 <!-- Created -->
-                <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+                <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                   {{ formatDay(user.createdAt) }}
-                </td>
+                </TableCell>
 
                 <!-- Actions -->
-                <td v-if="isUserManager" class="px-4 py-3.5 text-right">
+                <TableCell v-if="isUserManager" class="px-4 py-3.5 text-right">
                   <button
                     @click="openDetail(user)"
                     title="Edit user"
@@ -308,18 +309,18 @@ onMounted(load)
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>
                   </button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
 
               <!-- Empty state -->
-              <tr v-if="filteredUsers.length === 0">
-                <td :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-muted-foreground">
+              <TableRow v-if="filteredUsers.length === 0">
+                <TableCell :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-muted-foreground">
                   <span>{{ users.length === 0 ? 'No users yet.' : 'No users match your search.' }}</span>
                   <Button variant="outline" size="xs" v-if="users.length && search" class="ml-2" @click="search = ''">Clear search</Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
 
         <!-- Pagination -->

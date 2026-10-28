@@ -364,10 +364,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <NativeSelectOption value="all">Any health</NativeSelectOption>
             <NativeSelectOption v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</NativeSelectOption>
           </NativeSelect>
-          <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
-            :class="['ui-input w-auto px-2 py-1.5 text-xs', view === 'table' && '@4xl/content:hidden']">
-            <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
-          </select>
+          <NativeSelect :model-value="prefs.sortKey" @update:model-value="key => prefs.sortKey = key as SortKey" aria-label="Sort by"
+            :wrapper-class="['w-auto', view === 'table' && '@4xl/content:hidden']" class="px-2 py-1.5 text-xs">
+            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</NativeSelectOption>
+          </NativeSelect>
           <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
             <Checkbox v-model="prefs.grouped" /> Group by role
           </label>

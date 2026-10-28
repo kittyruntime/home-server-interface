@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDateTime } from '../../lib/format-date'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -100,14 +101,15 @@ onMounted(load)
           Active ({{ filteredAlerts.length }})
         </span>
         <div class="flex items-center gap-3">
-          <select
-            v-if="sourcePrefixes.length > 1"
-            v-model="sourceFilter"
-            class="bg-transparent text-xs text-foreground/80 focus:outline-none"
-          >
-            <option value="all">All sources</option>
-            <option v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</option>
-          </select>
+          <Select v-if="sourcePrefixes.length > 1" v-model="sourceFilter">
+            <SelectTrigger size="sm" class="h-7 text-xs" aria-label="Filter by source">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              <SelectItem v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="ghost" size="xs" v-if="alerts.length" type="button" :disabled="clearing" @click="clearAll">
             {{ clearing ? 'Clearing…' : 'Clear all' }}
           </Button>

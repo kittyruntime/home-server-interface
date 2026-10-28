@@ -76,7 +76,7 @@ function download() {
       </form>
 
       <template v-else>
-        <Input :value="shown" readonly class="w-full font-mono text-sm" aria-label="Repository password" @focus="($event.target as HTMLInputElement).select()" />
+        <Input :model-value="shown" readonly class="w-full font-mono text-sm" aria-label="Repository password" @focus="($event.target as HTMLInputElement).select()" />
         <div class="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" type="button" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</Button>
           <Button variant="outline" size="sm" type="button" @click="download">Download</Button>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, watch, computed } from 'vue'
@@ -108,24 +109,24 @@ async function save() {
             </div>
 
             <!-- Permission grid -->
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-xs text-muted-foreground uppercase tracking-caps">
-                  <th class="text-left font-medium pb-2 w-20"></th>
-                  <th class="text-center font-medium pb-2 w-16">Read</th>
-                  <th class="text-center font-medium pb-2 w-16">Write</th>
-                  <th class="text-center font-medium pb-2 w-16">Execute</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border">
-                <tr v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
-                  <td class="py-2.5 text-muted-foreground text-xs">{{ label }}</td>
-                  <td v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
+            <Table class="w-full text-sm">
+              <TableHeader>
+                <TableRow class="text-xs text-muted-foreground uppercase tracking-caps">
+                  <TableHead class="text-left font-medium pb-2 w-20"></TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Read</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Write</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Execute</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody class="divide-y divide-border">
+                <TableRow v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
+                  <TableCell class="py-2.5 text-muted-foreground text-xs">{{ label }}</TableCell>
+                  <TableCell v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
                     <Checkbox v-model="(bits[key as keyof typeof bits] as any)[bit]" :disabled="!isAdmin" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
 
             <!-- Owner / Group (admin only) -->
             <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">

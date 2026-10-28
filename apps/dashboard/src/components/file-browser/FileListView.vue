@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -133,10 +134,10 @@ function fileExt(name: string): string {
   </div>
 
   <!-- Desktop / tablet: sortable table -->
-  <table class="hidden w-full text-sm sm:table">
-    <thead class="sticky top-0 bg-background border-b border-border z-10">
-      <tr class="text-left text-xs uppercase tracking-caps text-muted-foreground">
-        <th class="pl-3 pr-1 py-2.5 w-7">
+  <Table container-class="hidden sm:block overflow-visible" class="w-full text-sm">
+    <TableHeader class="sticky top-0 bg-background border-b border-border z-10">
+      <TableRow class="text-left text-xs uppercase tracking-caps text-muted-foreground">
+        <TableHead class="pl-3 pr-1 py-2.5 w-7">
           <Checkbox
             :model-value="selected.size > 0 && selected.size < entries.length ? 'indeterminate' : selected.size === entries.length && entries.length > 0"
             aria-label="Select all"
@@ -144,8 +145,8 @@ function fileExt(name: string): string {
             @click.stop
             @update:model-value="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
           />
-        </th>
-        <th class="px-3 py-2.5 font-medium">
+        </TableHead>
+        <TableHead class="px-3 py-2.5 font-medium">
           <button @click="emit('setSort', 'name')" class="flex items-center gap-1 hover:text-foreground transition-colors">
             Name
             <span class="w-3 inline-flex justify-center">
@@ -154,8 +155,8 @@ function fileExt(name: string): string {
               </svg>
             </span>
           </button>
-        </th>
-        <th class="px-3 py-2.5 font-medium text-right">
+        </TableHead>
+        <TableHead class="px-3 py-2.5 font-medium text-right">
           <button @click="emit('setSort', 'size')" class="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
             <span class="w-3 inline-flex justify-center">
               <svg v-if="sortField === 'size'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -164,8 +165,8 @@ function fileExt(name: string): string {
             </span>
             Size
           </button>
-        </th>
-        <th class="px-3 py-2.5 font-medium text-right">
+        </TableHead>
+        <TableHead class="px-3 py-2.5 font-medium text-right">
           <button @click="emit('setSort', 'date')" class="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
             <span class="w-3 inline-flex justify-center">
               <svg v-if="sortField === 'date'" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -174,14 +175,14 @@ function fileExt(name: string): string {
             </span>
             Modified
           </button>
-        </th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-border">
+        </TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody class="divide-y divide-border">
       <!-- Upload rows (progress lives in the Transfers tray; this is a placeholder) -->
-      <tr v-for="t in uploadTasks" :key="t.id" class="group">
-        <td class="pl-3 pr-1 py-2.5 w-7" />
-        <td class="px-3 py-2.5" colspan="3">
+      <TableRow v-for="t in uploadTasks" :key="t.id" class="group">
+        <TableCell class="pl-3 pr-1 py-2.5 w-7" />
+        <TableCell class="px-3 py-2.5" colspan="3">
           <div class="flex items-center gap-2.5 min-w-0">
             <svg class="w-4 h-4 shrink-0"
               :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'"
@@ -196,13 +197,13 @@ function fileExt(name: string): string {
             <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">Paused</span>
             <LoadingSpinner v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="text-sm text-muted-foreground shrink-0" />
           </div>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
 
       <!-- Ghost row while creating a folder -->
-      <tr v-if="creatingFolder" class="opacity-60">
-        <td class="pl-3 pr-1 py-2.5 w-7" />
-        <td class="px-3 py-2.5">
+      <TableRow v-if="creatingFolder" class="opacity-60">
+        <TableCell class="pl-3 pr-1 py-2.5 w-7" />
+        <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <svg class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
@@ -210,14 +211,14 @@ function fileExt(name: string): string {
             <span class="text-muted-foreground text-sm italic select-none">New Folder…</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
-        </td>
-        <td /><td />
-      </tr>
+        </TableCell>
+        <TableCell /><TableCell />
+      </TableRow>
 
       <!-- Ghost row while creating a file -->
-      <tr v-if="creatingFile" class="opacity-60">
-        <td class="pl-3 pr-1 py-2.5 w-7" />
-        <td class="px-3 py-2.5">
+      <TableRow v-if="creatingFile" class="opacity-60">
+        <TableCell class="pl-3 pr-1 py-2.5 w-7" />
+        <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <svg class="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -225,11 +226,11 @@ function fileExt(name: string): string {
             <span class="text-muted-foreground text-sm italic select-none">New File…</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
-        </td>
-        <td /><td />
-      </tr>
+        </TableCell>
+        <TableCell /><TableCell />
+      </TableRow>
 
-      <tr
+      <TableRow
         v-for="entry in entries"
         :key="entry.path"
         @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
@@ -243,7 +244,7 @@ function fileExt(name: string): string {
           selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '']"
       >
         <!-- Checkbox -->
-        <td class="pl-3 pr-1 py-2.5 w-7" @click.stop>
+        <TableCell class="pl-3 pr-1 py-2.5 w-7" @click.stop>
           <div
             @click="emit('selectEntry', entry, $event)"
             :class="['w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer',
@@ -254,10 +255,10 @@ function fileExt(name: string): string {
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
           </div>
-        </td>
+        </TableCell>
 
         <!-- Name -->
-        <td class="px-3 py-2.5">
+        <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <svg v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
@@ -305,14 +306,14 @@ function fileExt(name: string): string {
               </button>
             </template>
           </div>
-        </td>
+        </TableCell>
 
-        <td class="px-3 py-2.5 text-right text-muted-foreground font-mono text-xs tabular-nums">
+        <TableCell class="px-3 py-2.5 text-right text-muted-foreground font-mono text-xs tabular-nums">
           <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm ml-auto text-muted-foreground" />
           <template v-else>{{ formatSize(entry.size) }}</template>
-        </td>
-        <td class="px-3 py-2.5 text-right text-muted-foreground text-xs tabular-nums">{{ formatDay(entry.mtime) }}</td>
-      </tr>
-    </tbody>
-  </table>
+        </TableCell>
+        <TableCell class="px-3 py-2.5 text-right text-muted-foreground text-xs tabular-nums">{{ formatDay(entry.mtime) }}</TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
 </template>

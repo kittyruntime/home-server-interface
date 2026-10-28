@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -167,42 +168,42 @@ onMounted(load)
 
       <!-- Table -->
       <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-muted border-b border-border">
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+        <Table class="w-full text-sm">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border">
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
                 <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Group</SortableHeader>
-              </th>
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">Members</th>
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
+              </TableHead>
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">Members</TableHead>
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
-              </th>
-              <th class="px-4 py-3 w-16"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            <tr
+              </TableHead>
+              <TableHead class="px-4 py-3 w-16"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
+            <TableRow
               v-for="group in paged"
               :key="group.id"
               class="bg-background hover:bg-card transition-colors"
             >
               <!-- Group -->
-              <td class="px-5 py-3.5">
+              <TableCell class="px-5 py-3.5">
                 <span class="font-medium text-foreground">{{ group.name }}</span>
-              </td>
+              </TableCell>
 
               <!-- Members -->
-              <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                 {{ group.members.length }}
-              </td>
+              </TableCell>
 
               <!-- Created -->
-              <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                 {{ formatDay(group.createdAt) }}
-              </td>
+              </TableCell>
 
               <!-- Actions -->
-              <td class="px-4 py-3.5 text-right">
+              <TableCell class="px-4 py-3.5 text-right">
                 <button
                   @click="openEditor(group)"
                   title="Edit group"
@@ -212,18 +213,18 @@ onMounted(load)
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                   </svg>
                 </button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
 
             <!-- Empty state -->
-            <tr v-if="filteredGroups.length === 0">
-              <td colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
+            <TableRow v-if="filteredGroups.length === 0">
+              <TableCell colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
                 <span>{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
                 <Button variant="outline" size="xs" v-if="groups.length && search" class="ml-2" @click="search = ''">Clear search</Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
       <!-- Pagination -->

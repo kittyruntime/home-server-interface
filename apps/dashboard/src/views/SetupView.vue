@@ -12,6 +12,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import LoadingState from '../components/ui/LoadingState.vue'
 import RestoreForm from '../components/backup/RestoreForm.vue'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
@@ -246,10 +247,12 @@ const NEXT = [
 
         <!-- Start: a new server, or restore a configuration backup -->
         <div v-else-if="screen === 'admin'" class="space-y-4">
-          <div class="flex gap-2" role="tablist" aria-label="How to start">
-            <Button type="button" role="tab" size="sm" :aria-selected="startMode === 'admin'" :variant="startMode === 'admin' ? 'default' : 'outline'" class="flex-1" @click="startMode = 'admin'">New server</Button>
-            <Button type="button" role="tab" size="sm" :aria-selected="startMode === 'restore'" :variant="startMode === 'restore' ? 'default' : 'outline'" class="flex-1" @click="startMode = 'restore'">Restore a backup</Button>
-          </div>
+          <Tabs v-model="startMode">
+            <TabsList aria-label="How to start" class="w-full">
+              <TabsTrigger value="admin">New server</TabsTrigger>
+              <TabsTrigger value="restore">Restore a backup</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div v-if="startMode === 'restore'" class="space-y-2">
             <p class="text-sm text-foreground/80">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>
             <RestoreForm :auth-token="setupSession" :after-restart="afterRestore" :show-follow-ups="false" />

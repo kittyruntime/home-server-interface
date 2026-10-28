@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -227,29 +228,29 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
       <div v-else class="mb-8">
         <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><button @click="emit('navigate',e.target)" class="text-xs text-muted-foreground">{{e.sourceLabel}} →</button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">Unmount</Button></div></article></div>
         <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <th class="text-left px-4 py-3 font-medium">Mount point</th>
-              <th class="text-left px-4 py-3 font-medium">Device</th>
-              <th class="text-left px-4 py-3 font-medium w-28">Source</th>
-              <th class="text-left px-4 py-3 font-medium w-16">FS</th>
-              <th class="text-left px-4 py-3 font-medium w-44">Used / Total</th>
-              <th class="text-right px-4 py-3 font-medium w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            <tr v-for="e in mounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
-              <td class="px-4 py-2.5 font-mono text-xs text-foreground">{{ e.mountpoint }}</td>
-              <td class="px-4 py-2.5 font-mono text-xs text-muted-foreground truncate max-w-0 w-40">{{ e.device }}</td>
-              <td class="px-4 py-2.5">
+        <Table class="w-full text-sm border-collapse">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+              <TableHead class="text-left px-4 py-3 font-medium">Mount point</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-44">Used / Total</TableHead>
+              <TableHead class="text-right px-4 py-3 font-medium w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
+            <TableRow v-for="e in mounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+              <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground">{{ e.mountpoint }}</TableCell>
+              <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground truncate max-w-0 w-40">{{ e.device }}</TableCell>
+              <TableCell class="px-4 py-2.5">
                 <button @click="emit('navigate', e.target)"
                   :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                   {{ e.sourceLabel }} →
                 </button>
-              </td>
-              <td class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</td>
-              <td class="px-4 py-2.5">
+              </TableCell>
+              <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
+              <TableCell class="px-4 py-2.5">
                 <div v-if="e.usageTotal > 0">
                   <div class="flex justify-between text-2xs text-muted-foreground mb-1">
                     <span>{{ fmtBytes(e.usageUsed) }}</span>
@@ -261,16 +262,16 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   <div class="text-2xs text-muted-foreground mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
                 </div>
                 <span v-else class="text-2xs text-muted-foreground">-</span>
-              </td>
-              <td class="px-4 py-2.5 text-right">
+              </TableCell>
+              <TableCell class="px-4 py-2.5 text-right">
                 <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
                   class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-warning/50 hover:text-warning transition-colors">
                   Unmount
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
         </div>
       </div>
 
@@ -279,28 +280,28 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <h3 class="text-sm font-medium text-foreground/80 mb-3">Not mounted</h3>
         <div class="space-y-2 @3xl/content:hidden"><article v-for="e in unmounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground">{{e.device}}</strong><p class="mt-1 text-2xs text-muted-foreground">{{e.fstype}} · {{fmtBytes(e.size)}}</p></div><Badge variant="secondary">{{e.sourceLabel}}</Badge></div><div class="mt-3 flex justify-end gap-2"><Button variant="outline" size="xs" @click="openFormat(e.bd)">Format</Button><Button size="xs" @click="openMount(e.bd)">Mount</Button></div></article></div>
         <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-                <th class="text-left px-4 py-3 font-medium">Device</th>
-                <th class="text-left px-4 py-3 font-medium w-28">Source</th>
-                <th class="text-left px-4 py-3 font-medium w-16">FS</th>
-                <th class="text-left px-4 py-3 font-medium w-24">Taille</th>
-                <th class="text-right px-4 py-3 font-medium w-32">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              <tr v-for="e in unmounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
-                <td class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ e.device }}</td>
-                <td class="px-4 py-2.5">
+          <Table class="w-full text-sm border-collapse">
+            <TableHeader>
+              <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+                <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-24">Taille</TableHead>
+                <TableHead class="text-right px-4 py-3 font-medium w-32">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody class="divide-y divide-border">
+              <TableRow v-for="e in unmounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+                <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ e.device }}</TableCell>
+                <TableCell class="px-4 py-2.5">
                   <button @click="emit('navigate', e.target)"
                     :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                     {{ e.sourceLabel }} →
                   </button>
-                </td>
-                <td class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</td>
-                <td class="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{{ fmtBytes(e.size) }}</td>
-                <td class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
+                <TableCell class="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{{ fmtBytes(e.size) }}</TableCell>
+                <TableCell class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
                   <button @click="openFormat(e.bd)"
                     class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
                     Format
@@ -309,10 +310,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-success/50 hover:text-success transition-colors">
                     Mount
                   </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </template>
     </template>

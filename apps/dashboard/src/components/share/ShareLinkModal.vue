@@ -84,7 +84,7 @@ async function copy() {
       <template v-else>
         <p class="text-xs text-muted-foreground">Anyone with this link can access it.</p>
         <div class="flex gap-2">
-          <Input :value="url" readonly class="font-mono text-xs" />
+          <Input :model-value="url" readonly class="font-mono text-xs" />
           <Button variant="outline" size="sm" @click="copy" class="shrink-0">{{ copied ? 'Copied' : 'Copy' }}</Button>
         </div>
         <Button variant="ghost" size="sm" @click="emit('close')">Done</Button>

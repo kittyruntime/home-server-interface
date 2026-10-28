@@ -1,14 +1,20 @@
 <script setup lang="ts">
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+
 defineProps<{ message: string; description?: string }>()
 </script>
 
 <template>
-  <div class="flex flex-col items-center text-center py-8" role="status">
-    <slot name="icon" />
-    <p class="text-sm font-semibold text-foreground/80 mt-3">{{ message }}</p>
-    <p v-if="description" class="text-xs text-muted-foreground max-w-xs mt-1">{{ description }}</p>
-    <div v-if="$slots.action" class="mt-4">
+  <Empty role="status" class="gap-4 p-6 md:p-8">
+    <EmptyHeader>
+      <EmptyMedia v-if="$slots.icon" variant="icon">
+        <slot name="icon" />
+      </EmptyMedia>
+      <EmptyTitle class="text-sm">{{ message }}</EmptyTitle>
+      <EmptyDescription v-if="description" class="text-xs">{{ description }}</EmptyDescription>
+    </EmptyHeader>
+    <EmptyContent v-if="$slots.action">
       <slot name="action" />
-    </div>
-  </div>
+    </EmptyContent>
+  </Empty>
 </template>

@@ -61,13 +61,13 @@ watch(() => props.modelValue, () => {
       >
         <template #row="{ item, update }">
           <Input
-            :value="item.key" placeholder="KEY"
+            :model-value="item.key" placeholder="KEY"
             @input="update({ key: ($event.target as HTMLInputElement).value })"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
           <span class="text-muted-foreground text-sm">=</span>
           <Input
-            :value="item.value" placeholder="value"
+            :model-value="item.value" placeholder="value"
             @input="update({ value: ($event.target as HTMLInputElement).value })"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />

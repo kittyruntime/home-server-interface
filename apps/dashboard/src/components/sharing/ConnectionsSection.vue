@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
@@ -49,28 +50,28 @@ onUnmounted(() => {
     <div v-else class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
       <div class="divide-y divide-border sm:hidden"><article v-for="(c,i) in connections" :key="i" class="space-y-2 p-4"><div class="flex items-center justify-between gap-2"><strong class="truncate text-sm text-foreground">{{c.user||'guest'}}</strong><Badge variant="secondary">{{c.share}}</Badge></div><dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs"><dt class="text-muted-foreground">Client</dt><dd class="truncate font-mono text-foreground/80" :title="c.client">{{c.client}}</dd><dt class="text-muted-foreground">Connected</dt><dd class="font-mono text-foreground/80">{{c.connectedAt}}</dd></dl></article></div>
       <div class="hidden sm:block">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border">
-            <th class="eyebrow text-left px-4 py-3">User</th>
-            <th class="eyebrow text-left px-4 py-3">Share</th>
-            <th class="eyebrow text-left px-4 py-3">Client</th>
-            <th class="eyebrow text-left px-4 py-3">Connected</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
+      <Table class="w-full text-sm">
+        <TableHeader>
+          <TableRow class="border-b border-border">
+            <TableHead class="eyebrow text-left px-4 py-3">User</TableHead>
+            <TableHead class="eyebrow text-left px-4 py-3">Share</TableHead>
+            <TableHead class="eyebrow text-left px-4 py-3">Client</TableHead>
+            <TableHead class="eyebrow text-left px-4 py-3">Connected</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
             v-for="(c, i) in connections"
             :key="i"
             class="border-b border-border last:border-b-0"
           >
-            <td class="px-4 py-2.5 text-foreground">{{ c.user || 'guest' }}</td>
-            <td class="px-4 py-2.5 text-foreground/80">{{ c.share }}</td>
-            <td class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ c.client }}</td>
-            <td class="px-4 py-2.5 font-mono text-xs text-muted-foreground">{{ c.connectedAt }}</td>
-          </tr>
-        </tbody>
-      </table>
+            <TableCell class="px-4 py-2.5 text-foreground">{{ c.user || 'guest' }}</TableCell>
+            <TableCell class="px-4 py-2.5 text-foreground/80">{{ c.share }}</TableCell>
+            <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ c.client }}</TableCell>
+            <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground">{{ c.connectedAt }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
       </div>
     </div>
   </div>

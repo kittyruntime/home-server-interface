@@ -224,7 +224,7 @@ function removeExtraHost(h: string) {
     <div class="space-y-1.5">
       <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Restart Policy</label>
       <NativeSelect wrapper-class="w-full"
-        :value="modelValue.restartPolicy"
+        :model-value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
         class="px-2 py-1.5 text-sm"
       >
@@ -240,7 +240,7 @@ function removeExtraHost(h: string) {
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Hostname</label>
         <Input
-          :value="modelValue.hostname ?? ''" placeholder="my-container"
+          :model-value="modelValue.hostname ?? ''" placeholder="my-container"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
           class="w-full px-2 py-1.5 text-sm"
         />
@@ -248,7 +248,7 @@ function removeExtraHost(h: string) {
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">User</label>
         <Input
-          :value="modelValue.user ?? ''" placeholder="1000:1000"
+          :model-value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
           class="w-full px-2 py-1.5 text-sm"
         />
@@ -257,7 +257,7 @@ function removeExtraHost(h: string) {
     <div class="space-y-1.5">
       <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Command override</label>
       <Input
-        :value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
+        :model-value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
         class="w-full px-2 py-1.5 text-sm font-mono"
       />
@@ -269,7 +269,7 @@ function removeExtraHost(h: string) {
         <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">CPU Limit</label>
         <Input
           type="number" min="0" max="64" step="0.1"
-          :value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
+          :model-value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
           @input="update('cpuLimit', ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : null)"
           class="w-full px-2 py-1.5 text-sm"
         />
@@ -277,7 +277,7 @@ function removeExtraHost(h: string) {
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Memory Limit</label>
         <Input
-          :value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
+          :model-value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"
           class="w-full px-2 py-1.5 text-sm"
         />

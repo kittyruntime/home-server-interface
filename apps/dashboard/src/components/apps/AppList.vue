@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -310,24 +311,24 @@ async function unpin(app: App) {
 
         <!-- Desktop table -->
         <div class="hidden overflow-x-auto sm:block">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border">
-              <th class="text-left px-6 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Container</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden sm:table-cell">Image</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden md:table-cell">Ports</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Status</th>
-              <th class="px-6 py-2.5 text-right"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            <tr
+        <Table class="w-full text-sm">
+          <TableHeader>
+            <TableRow class="border-b border-border">
+              <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Container</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden sm:table-cell">Image</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden md:table-cell">Ports</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Status</TableHead>
+              <TableHead class="px-6 py-2.5 text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
+            <TableRow
               v-for="app in apps" :key="app.id"
               :data-app-name="app.name"
               :class="['group transition-colors', focusedName === app.name ? 'bg-primary/10' : 'hover:bg-accent']"
             >
               <!-- Name -->
-              <td class="px-6 py-3.5">
+              <TableCell class="px-6 py-3.5">
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-foreground/80 text-sm font-medium">{{ app.name }}</span>
                   <Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</Badge>
@@ -348,28 +349,28 @@ async function unpin(app: App) {
                     <span class="font-mono text-2xs text-muted-foreground">{{ svc.name }}</span>
                   </div>
                 </div>
-              </td>
+              </TableCell>
 
               <!-- Image -->
-              <td class="px-3 py-3.5 hidden sm:table-cell">
+              <TableCell class="px-3 py-3.5 hidden sm:table-cell">
                 <span class="font-mono text-muted-foreground text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
-              </td>
+              </TableCell>
 
               <!-- Ports -->
-              <td class="px-3 py-3.5 hidden md:table-cell">
+              <TableCell class="px-3 py-3.5 hidden md:table-cell">
                 <span class="font-mono text-muted-foreground text-xs">{{ portsSummary(app) }}</span>
-              </td>
+              </TableCell>
 
               <!-- Status -->
-              <td class="px-3 py-3.5">
+              <TableCell class="px-3 py-3.5">
                 <span class="flex items-center gap-1.5">
                   <span :class="['w-1.5 h-1.5 rounded-full', statusDot(app.status)]" />
                   <span :class="['text-xs', statusText(app.status).cls]">{{ statusText(app.status).label }}</span>
                 </span>
-              </td>
+              </TableCell>
 
               <!-- Actions -->
-              <td class="px-6 py-3.5">
+              <TableCell class="px-6 py-3.5">
                 <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 
                   <!-- Apply -->
@@ -467,10 +468,10 @@ async function unpin(app: App) {
                     </svg>
                   </button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
         </div>
 
       </div>

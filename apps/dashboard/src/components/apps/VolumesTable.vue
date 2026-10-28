@@ -29,7 +29,7 @@ function placePath(id: string): string | null {
     <template #row="{ item, update }">
       <!-- Type -->
       <NativeSelect wrapper-class="w-auto"
-        :value="item.type"
+        :model-value="item.type"
         @change="update({ type: ($event.target as HTMLSelectElement).value as VolumeMount['type'], source: '' })"
         class="px-2 py-1.5 text-sm"
       >
@@ -42,21 +42,21 @@ function placePath(id: string): string | null {
       <!-- bind: free-form host path -->
       <Input
         v-if="item.type === 'bind'"
-        :value="item.source" placeholder="/host/path"
+        :model-value="item.source" placeholder="/host/path"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
       <!-- named: container volume name -->
       <Input
         v-else-if="item.type === 'named'"
-        :value="item.source" placeholder="my-volume"
+        :model-value="item.source" placeholder="my-volume"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
       <!-- place: select parmi les Places -->
       <NativeSelect wrapper-class="flex-1"
         v-else
-        :value="item.source"
+        :model-value="item.source"
         @change="update({ source: ($event.target as HTMLSelectElement).value })"
         class="px-2 py-1.5 text-sm"
       >
@@ -68,7 +68,7 @@ function placePath(id: string): string | null {
 
       <!-- Target (path inside the container) -->
       <Input
-        :value="item.target" placeholder="/container/path"
+        :model-value="item.target" placeholder="/container/path"
         @input="update({ target: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />

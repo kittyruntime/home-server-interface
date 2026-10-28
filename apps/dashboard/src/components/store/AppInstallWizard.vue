@@ -321,7 +321,7 @@ async function install() {
           </div>
 
           <NativeSelect
-            :value="v.mode"
+            :model-value="v.mode"
             @change="v.mode = ($event.target as HTMLSelectElement).value as VolMode"
           >
             <NativeSelectOption value="place">Existing place</NativeSelectOption>
@@ -332,7 +332,7 @@ async function install() {
 
           <NativeSelect
             v-if="v.mode === 'place'"
-            :value="v.placeId"
+            :model-value="v.placeId"
             @change="v.placeId = ($event.target as HTMLSelectElement).value"
           >
             <NativeSelectOption value="">Select a place</NativeSelectOption>

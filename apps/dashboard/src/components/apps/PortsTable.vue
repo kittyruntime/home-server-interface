@@ -56,19 +56,19 @@ async function runChecks() {
     <template #row="{ item, update }">
       <Input
         type="number" placeholder="Host" min="1" max="65535"
-        :value="item.hostPort"
+        :model-value="item.hostPort"
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
         class="w-24 px-2 py-1.5 text-sm"
       />
       <span class="text-muted-foreground text-sm">:</span>
       <Input
         type="number" placeholder="Container" min="1" max="65535"
-        :value="item.containerPort"
+        :model-value="item.containerPort"
         @input="update({ containerPort: +($event.target as HTMLInputElement).value })"
         class="w-24 px-2 py-1.5 text-sm"
       />
       <NativeSelect wrapper-class="w-auto"
-        :value="item.protocol"
+        :model-value="item.protocol"
         @change="update({ protocol: ($event.target as HTMLSelectElement).value as 'tcp' | 'udp' })"
         class="px-2 py-1.5 text-sm"
       >
@@ -86,7 +86,7 @@ async function runChecks() {
         <span class="text-2xs uppercase tracking-caps text-muted-foreground w-14 shrink-0">Access</span>
         <Input
           type="text" placeholder="domain (optional) e.g. app.example.com"
-          :value="item.domain ?? ''"
+          :model-value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
           class="flex-1 min-w-[12rem] px-2 py-1 text-xs"
         />
@@ -96,7 +96,7 @@ async function runChecks() {
         </label>
         <Input
           type="number" placeholder="443" min="1" max="65535"
-          :value="item.publicPort ?? ''"
+          :model-value="item.publicPort ?? ''"
           @input="update({ publicPort: ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : undefined })"
           class="w-20 px-2 py-1 text-xs"
         />

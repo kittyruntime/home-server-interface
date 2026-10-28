@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import VolumesSection from './VolumesSection.vue'
@@ -84,9 +85,14 @@ const installCommand = computed(() =>
 
     <!-- Mobile picker -->
     <div class="@2xl:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
-      <select v-model="active" class="w-full bg-transparent text-sm text-foreground/80 focus:outline-none">
-        <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
-      </select>
+      <Select v-model="active">
+        <SelectTrigger class="w-full" aria-label="Section">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
 
     <!-- Left nav -->

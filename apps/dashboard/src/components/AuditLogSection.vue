@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDateTime } from '../lib/format-date'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { ref, watch, onMounted } from 'vue'
@@ -109,48 +110,48 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         </article>
       </div>
       <div class="hidden rounded-xl border border-border overflow-hidden sm:block">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <th class="text-left px-4 py-3 font-medium w-44">Time</th>
-              <th class="text-left px-4 py-3 font-medium w-32">User</th>
-              <th class="text-left px-4 py-3 font-medium">Action</th>
-              <th class="text-left px-4 py-3 font-medium max-w-0">Target</th>
-              <th class="text-left px-4 py-3 font-medium w-28">IP</th>
-              <th class="text-center px-4 py-3 font-medium w-16">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
+        <Table class="w-full text-sm border-collapse">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+              <TableHead class="text-left px-4 py-3 font-medium w-44">Time</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-32">User</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">Action</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium max-w-0">Target</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-28">IP</TableHead>
+              <TableHead class="text-center px-4 py-3 font-medium w-16">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
             <template v-for="entry in entries" :key="entry.id">
-              <tr @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
+              <TableRow @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
                 :class="['cursor-pointer transition-colors hover:bg-accent/40',
                   selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
                   !entry.success ? 'bg-destructive/4' : '']">
 
-                <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                <TableCell class="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
                   {{ formatDateTime(entry.createdAt, { seconds: true }) }}
-                </td>
-                <td class="px-4 py-2.5">
+                </TableCell>
+                <TableCell class="px-4 py-2.5">
                   <span v-if="entry.user" class="text-foreground font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
                   </span>
                   <span v-else class="text-muted-foreground text-xs">-</span>
-                </td>
-                <td class="px-4 py-2.5">
+                </TableCell>
+                <TableCell class="px-4 py-2.5">
                   <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
                     {{ actionLabel(entry.action) }}
                   </span>
-                </td>
-                <td class="px-4 py-2.5 max-w-0">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 max-w-0">
                   <span v-if="entry.target" class="font-mono text-xs text-foreground/80 truncate block" :title="entry.target">
                     {{ entry.target }}
                   </span>
                   <span v-else class="text-muted-foreground text-xs">-</span>
-                </td>
-                <td class="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
                   {{ entry.ip ?? '-' }}
-                </td>
-                <td class="px-4 py-2.5 text-center">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
                     <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
@@ -159,12 +160,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
                     <span class="w-1.5 h-1.5 rounded-full bg-destructive"/>Fail
                   </span>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
 
               <!-- Expanded detail row -->
-              <tr v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
-                <td colspan="6" class="px-4 pb-4 pt-2 bg-muted/50">
+              <TableRow v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
+                <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-muted/50">
                   <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">Detail</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
                     <div><span class="text-muted-foreground">ID </span><span class="font-mono text-foreground/80">{{ entry.id }}</span></div>
@@ -179,11 +180,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                     <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">Input</div>
                     <pre class="text-2xs font-mono bg-muted border border-border rounded-lg px-3 py-2 overflow-x-auto text-foreground/80 whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
                   </template>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             </template>
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <!-- Pagination -->
