@@ -72,7 +72,7 @@ export const appsRouter = router({
       return { steps: publicSteps(plan), fingerprint: appFingerprint(plan, input.input) }
     }),
 
-  apply: adminProcedure
+  execute: adminProcedure
     .input(z.object({ op: zOp, input: z.unknown(), fingerprint: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       ctx.audit.meta = { input: appAuditInput(input) }

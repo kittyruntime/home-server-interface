@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: tRPC 11 (#105). tRPC 11 reserves the name `apply`, so the
+  API procedures that run a previewed plan are renamed `execute`
+  (`storage.execute`, `apps.execute`, `sharing.execute`, `user.execute`,
+  `container.app.execute`, `update.execute`). Audit log entries recorded under
+  the former names keep their labels.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed

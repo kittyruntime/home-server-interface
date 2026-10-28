@@ -145,7 +145,7 @@ export const sharingRouter = router({
       return previewShareChange(input.op, name, planDeps(ctx, change, commit, 60_000))
     }),
 
-  apply: adminProcedure
+  execute: adminProcedure
     .input(z.object({ op: z.enum(SHARE_OPS), input: z.unknown(), fingerprint: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const { name, change, commit } = await prepare(ctx, input.op, input.input)
