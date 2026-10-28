@@ -127,22 +127,28 @@ create_mirror() {
 }
 
 expect_mirror() {
-  vm_ssh 'set -e
-    md=$(lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; exit}")
-    test -n "$md"
-    mdadm --detail /dev/$md | grep -q "Raid Level : raid1"
-    mdadm --detail /dev/$md | grep -Eq "Active Devices : 2"
-    grep -q "^ARRAY " /etc/mdadm/mdadm.conf
-    lvs --noheadings -o lv_name vmvg | grep -q vmlv
-    findmnt -no FSTYPE /srv/vm-mirror | grep -q .
-    grep -E "^UUID=[^ ]+ +/srv/vm-mirror " /etc/fstab | grep -q nofail
-    touch /srv/vm-mirror/.write-test && rm /srv/vm-mirror/.write-test' \
-    || fail "the mirrored volume is not as requested on the host"
+  # Each check names itself; a failure shows the state it looked at.
+  vm_ssh 'md=$(lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; exit}")
+    check() { local what=$1; shift; if "$@" >/dev/null 2>&1; then echo "ok   $what"; else echo "FAIL $what"; failed=1; fi; }
+    failed=0
+    check "a RAID 1 array exists" test -n "$md"
+    check "the array has 2 active devices" sh -c "mdadm --detail /dev/$md | grep -Eq \"Active Devices *: *2\""
+    check "mdadm.conf lists the array" grep -q "^ARRAY " /etc/mdadm/mdadm.conf
+    check "the logical volume exists" sh -c "lvs --noheadings -o lv_name vmvg | grep -qw vmlv"
+    check "the volume is mounted" findmnt /srv/vm-mirror
+    check "fstab mounts it by UUID with nofail" sh -c "grep -E \"^UUID=[^[:space:]]+[[:space:]]+/srv/vm-mirror[[:space:]]\" /etc/fstab | grep -q nofail"
+    check "the volume is writable" sh -c "touch /srv/vm-mirror/.w && rm /srv/vm-mirror/.w"
+    if [ "$failed" = 1 ]; then
+      echo "--- lsblk"; lsblk -o NAME,TYPE,SIZE,MOUNTPOINTS
+      echo "--- mdadm"; mdadm --detail /dev/$md 2>&1 | head -30
+      echo "--- mdadm.conf"; grep -v "^#" /etc/mdadm/mdadm.conf 2>&1
+      echo "--- fstab"; cat /etc/fstab
+      exit 1
+    fi' || fail "the mirrored volume is not as requested on the host"
   vm_ssh "python3 -c 'import sqlite3; c=sqlite3.connect(\"file:$DB?mode=ro\",uri=True); assert c.execute(\"select count(*) from Place where path=\\\"/srv/vm-mirror\\\"\").fetchone()[0]==1'" \
     || fail "no Place for the volume"
-  if vm_ssh 'command -v smbd >/dev/null'; then
-    vm_ssh 'testparm -s 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' || fail "no SMB share for the volume"
-  fi
+  vm_ssh 'testparm -s 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' \
+    || { vm_ssh 'testparm -s 2>/dev/null | tail -20'; fail "no SMB share for the volume"; }
   log "Mirror, LVM, mount, fstab, Place and share in place"
 }
 
