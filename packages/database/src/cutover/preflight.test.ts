@@ -47,6 +47,30 @@ test("recognizes an exact v1.68.0 schema without ledger", async () => {
   })
 })
 
+test("recognizes v1.68.0 with the constraint and index names left by the v1.35.0 Role rename", async () => {
+  const legacy: Array<[string, string]> = [
+    ["GroupPlacePermission_groupId_fkey", "RolePlacePermission_roleId_fkey"],
+    ["GroupPlacePermission_placeId_fkey", "RolePlacePermission_placeId_fkey"],
+    ["UserGroup_userId_fkey", "UserRole_userId_fkey"],
+    ["UserGroup_groupId_fkey", "UserRole_roleId_fkey"],
+  ]
+  const indexes: Array<[string, string]> = [
+    ["GroupPlacePermission_groupId_placeId_key", "RolePlacePermission_roleId_placeId_key"],
+    ["Group_name_key", "Role_name_key"],
+  ]
+  for (const names of [legacy, [...legacy, ...indexes]]) {
+    await withDatabase(async filename => {
+      let sql = await readFile(baselineSql, "utf8")
+      for (const [current, old] of names) sql = sql.replaceAll(`"${current}"`, `"${old}"`)
+      const db = new Database(filename)
+      db.exec(sql)
+      db.close()
+      const inspection = inspectDatabase(filename)
+      assert.equal(inspection.kind, "baseline")
+    })
+  }
+})
+
 test("refuses drift without changing the database", async () => {
   await withDatabase(async filename => {
     const db = new Database(filename)
