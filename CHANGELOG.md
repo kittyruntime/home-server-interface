@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: zod 4 (#106). Validation messages written for HSI are
+  unchanged; the generic ones (wrong type, too short, invalid pattern) use the
+  zod 4 wording.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed

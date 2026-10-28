@@ -5,5 +5,5 @@
   "license": "MPL-2.0",
   "type": "module",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "dependencies": { "zod": "^3.25.76" }
+  "dependencies": { "zod": "^4.6.7" }
 }
