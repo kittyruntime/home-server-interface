@@ -271,7 +271,7 @@ const newMenuOpen = ref(false)
 </template>
 
 <style scoped>
-@reference "tailwindcss";
+@reference "../../style.css";
 
 .sel-btn {
   @apply p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors;

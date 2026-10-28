@@ -83,7 +83,7 @@ function fileExt(name: string): string {
       v-for="entry in entries"
       :key="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
-      @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
+      @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors',
         pendingPaths?.includes(entry.path) ? 'opacity-40 pointer-events-none' : '',
         selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-accent']"
@@ -232,7 +232,7 @@ function fileExt(name: string): string {
         :key="entry.path"
         @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
         @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowDblClick', entry)"
-        @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
+        @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
         :class="['group transition-colors',
           pendingPaths?.includes(entry.path)

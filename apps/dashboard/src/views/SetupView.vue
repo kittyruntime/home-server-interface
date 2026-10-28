@@ -247,8 +247,8 @@ const NEXT = [
         <!-- Start: a new server, or restore a configuration backup -->
         <div v-else-if="screen === 'admin'" class="space-y-4">
           <div class="flex gap-2" role="tablist" aria-label="How to start">
-            <button type="button" role="tab" :aria-selected="startMode === 'admin'" :class="['btn btn-sm flex-1 justify-center', startMode === 'admin' ? 'btn-primary' : 'btn-outline']" @click="startMode = 'admin'">New server</button>
-            <button type="button" role="tab" :aria-selected="startMode === 'restore'" :class="['btn btn-sm flex-1 justify-center', startMode === 'restore' ? 'btn-primary' : 'btn-outline']" @click="startMode = 'restore'">Restore a backup</button>
+            <Button type="button" role="tab" size="sm" :aria-selected="startMode === 'admin'" :variant="startMode === 'admin' ? 'default' : 'outline'" class="flex-1" @click="startMode = 'admin'">New server</Button>
+            <Button type="button" role="tab" size="sm" :aria-selected="startMode === 'restore'" :variant="startMode === 'restore' ? 'default' : 'outline'" class="flex-1" @click="startMode = 'restore'">Restore a backup</Button>
           </div>
           <div v-if="startMode === 'restore'" class="space-y-2">
             <p class="text-sm text-foreground/80">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>

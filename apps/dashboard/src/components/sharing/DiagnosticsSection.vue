@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, onMounted } from 'vue'
@@ -55,10 +56,10 @@ function dirWritable(s: ShareDiag): boolean {
             <span class="text-sm font-medium text-foreground">{{ s.name }}</span>
             <span class="block text-xs text-muted-foreground font-mono truncate">{{ s.path }}</span>
           </div>
-          <span
-            :class="['badge shrink-0', dirWritable(s) ? 'badge-muted' : '']"
-            :style="!dirWritable(s) ? 'color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent)' : ''"
-          >{{ dirWritable(s) ? 'Directory OK' : 'Directory not writable' }}</span>
+          <Badge
+            variant="secondary"
+            :class="['shrink-0', !dirWritable(s) && 'bg-warning/15 text-warning']"
+          >{{ dirWritable(s) ? 'Directory OK' : 'Directory not writable' }}</Badge>
         </div>
 
         <!-- Nobody can write -->

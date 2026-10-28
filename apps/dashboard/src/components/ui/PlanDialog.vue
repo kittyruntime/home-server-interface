@@ -283,14 +283,15 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
       <template v-else>
         <Button variant="ghost" size="sm" :disabled="applying" @click="modal?.requestClose()">Back</Button>
         <Button variant="outline" size="sm" v-if="stale" :disabled="loading" @click="load">Review again</Button>
-        <button
+        <Button
           v-else
-          :class="['btn btn-sm', destructiveSteps.length || planRequest.danger ? 'btn-danger' : 'btn-primary']"
+          size="sm"
+          :variant="destructiveSteps.length || planRequest.danger ? 'destructive' : 'default'"
           :disabled="loading || applying || !preview || !confirmed"
           @click="apply"
         >
           <BusyLabel :busy="applying" busy-label="Applying">{{ planRequest.actionLabel || 'Apply' }}</BusyLabel>
-        </button>
+        </Button>
       </template>
     </template>
   </Modal>

@@ -6,7 +6,7 @@ import ErrorState from './ui/ErrorState.vue'
 import ConnectorDialog from './notifications/ConnectorDialog.vue'
 import RuleDialog from './notifications/RuleDialog.vue'
 import { useConfirm } from '../lib/confirm'
-import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -207,7 +207,7 @@ function formatTime(at: string | Date): string {
                 </div>
                 <p class="text-xs text-muted-foreground font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
-              <ToggleSwitch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
+              <Switch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
               <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">Edit</Button>
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">Delete</Button>
             </li>
@@ -246,7 +246,7 @@ function formatTime(at: string | Date): string {
                   >{{ t }}</span>
                 </div>
               </div>
-              <ToggleSwitch :model-value="r.enabled" :title="r.enabled ? 'Disable rule' : 'Enable rule'" @update:model-value="toggleRule(r)" />
+              <Switch :model-value="r.enabled" :title="r.enabled ? 'Disable rule' : 'Enable rule'" @update:model-value="toggleRule(r)" />
               <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">Edit</Button>
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">Delete</Button>
             </li>

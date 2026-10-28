@@ -200,9 +200,9 @@ async function removeShare(s: ShareRow) {
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-sm font-semibold text-foreground">{{ s.effectiveName }}</span>
-              <span :class="['badge', s.enabled ? 'badge-accent' : 'badge-muted']">
+              <Badge :variant="s.enabled ? 'default' : 'secondary'">
                 {{ s.enabled ? 'Active' : 'Disabled' }}
-              </span>
+              </Badge>
               <Badge variant="secondary" v-if="s.readOnly">Read-only</Badge>
               <Badge variant="secondary" v-if="s.guestOk">Guest</Badge>
               <Badge variant="outline" v-if="holdForPath(s.placePath)" class="bg-destructive/10 text-destructive" :title="holdLabel(holdForPath(s.placePath)!)">Unavailable</Badge>

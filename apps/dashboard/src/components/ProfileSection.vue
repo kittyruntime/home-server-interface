@@ -5,7 +5,7 @@ import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { useAdvancedMode } from '../lib/advanced-mode'
-import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -292,7 +292,7 @@ onMounted(async () => {
           <p class="text-xs text-muted-foreground">
             Show extra technical detail where it's available: raw UID/GID on files, for now.
           </p>
-          <ToggleSwitch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
+          <Switch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
         </div>
       </div>
 

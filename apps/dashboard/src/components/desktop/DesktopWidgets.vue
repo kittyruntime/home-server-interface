@@ -40,7 +40,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
     <div
       v-for="w in widgets" :key="w.id"
       :class="['relative bg-muted/90 border border-border rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
-      @contextmenu.prevent.stop="$emit('contextmenu-widget', w, $event)"
+      @contextmenu="$emit('contextmenu-widget', w, $event)"
     >
       <!-- ---- CPU ---- -->
       <template v-if="w.type === 'cpu'">

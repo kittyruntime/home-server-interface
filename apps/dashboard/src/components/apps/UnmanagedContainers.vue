@@ -248,7 +248,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@reference "tailwindcss";
+@reference "../../style.css";
 
 .unmanaged-root {
   --status-running: #22c55e;

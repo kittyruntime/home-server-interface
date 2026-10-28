@@ -94,7 +94,7 @@ function fileExt(name: string): string {
       :key="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardClick', entry, $event)"
       @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardDblClick', entry)"
-      @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
+      @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
         'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl transition-colors select-none',

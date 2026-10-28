@@ -5,7 +5,7 @@ import { applyPlanned } from '../lib/plan'
 import { expiryState, modeLabel, openAfterRestart, TRUST_STEPS, type NextAddress } from '../lib/tls'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
-import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
@@ -204,7 +204,7 @@ function setStandardPorts(enabled: boolean) {
 
         <div v-if="isHttps" class="mt-4 flex items-center justify-between gap-4">
           <span class="text-sm text-foreground/80">Also serve on ports 443 and 80</span>
-          <ToggleSwitch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
+          <Switch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
         </div>
       </div>
 

@@ -20,6 +20,11 @@ import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
+import {
+  ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon,
+  KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, Share2Icon, Trash2Icon, UploadIcon,
+} from '@lucide/vue'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -55,7 +60,6 @@ const activePlaceId   = ref<string | null>(null)
 const dragOver        = ref(false)
 let   dragDepth = 0
 const fileInput = ref<HTMLInputElement | null>(null)
-const ctxMenu     = ref<{ x: number; y: number } | null>(null)
 const sidebarOpen = ref(false)
 const previewEntry = ref<Entry | null>(null)
 
@@ -514,17 +518,14 @@ function handleDrop(e: DragEvent) {
 }
 
 // ── context menu ─────────────────────────────────────────────────────────────
-function openContextMenu(entry: Entry | null, e: MouseEvent) {
-  if (entry && !selected.value.has(entry.path)) {
+// Right-clicking an entry selects it first; the event then bubbles up to the
+// content area, the ContextMenu trigger, which opens the menu at the pointer.
+function selectForContextMenu(entry: Entry) {
+  if (!selected.value.has(entry.path)) {
     selected.value = new Set([entry.path])
     selectionAnchor.value = entry.path
   }
-  const x = Math.min(e.clientX, window.innerWidth  - 200)
-  const y = Math.min(e.clientY, window.innerHeight - 320)
-  ctxMenu.value = { x, y }
 }
-
-function closeContextMenu() { ctxMenu.value = null }
 
 // ── init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -588,13 +589,14 @@ onMounted(async () => {
       />
 
       <!-- Content area -->
+      <ContextMenu>
+      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0">
       <div
         class="flex-1 overflow-auto relative"
         @dragenter="handleDragEnter"
         @dragleave="handleDragLeave"
         @dragover.prevent
         @drop.prevent="handleDrop"
-        @contextmenu.prevent="openContextMenu(null, $event)"
       >
         <!-- Drag overlay -->
         <div v-if="dragOver && currentPath"
@@ -703,7 +705,7 @@ onMounted(async () => {
             @card-click="handleGridCardClick"
             @card-dbl-click="handleGridCardDblClick"
             @select-entry="selectEntry"
-            @contextmenu="openContextMenu"
+            @contextmenu="selectForContextMenu"
             @start-rename="startRename"
             @commit-rename="commitRename"
             @cancel-rename="cancelRename"
@@ -728,7 +730,7 @@ onMounted(async () => {
             @row-click="handleRowClick"
             @row-dbl-click="handleRowDblClick"
             @select-entry="selectEntry"
-            @contextmenu="openContextMenu"
+            @contextmenu="selectForContextMenu"
             @start-rename="startRename"
             @commit-rename="commitRename"
             @cancel-rename="cancelRename"
@@ -739,150 +741,52 @@ onMounted(async () => {
           />
         </template>
       </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent class="min-w-[200px]">
+        <!-- Selection-dependent actions -->
+        <template v-if="selected.size > 0">
+          <ContextMenuItem @select="doCopy()"><CopyIcon /> Copy</ContextMenuItem>
+          <ContextMenuItem @select="doCut()"><ScissorsIcon /> Cut</ContextMenuItem>
+          <template v-if="selected.size === 1">
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="openFile(selectedEntries[0]!)"><EyeIcon /> Open</ContextMenuItem>
+            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> Rename</ContextMenuItem>
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> Download</ContextMenuItem>
+            <ContextMenuItem @select="openShare()"><Share2Icon /> Share</ContextMenuItem>
+            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> Permissions</ContextMenuItem>
+            <ContextMenuItem @select="openProperties()"><InfoIcon /> Properties</ContextMenuItem>
+          </template>
+          <!-- Compress to ZIP: any selection -->
+          <ContextMenuItem @select="doZip()"><ArchiveIcon /> Compress to ZIP</ContextMenuItem>
+          <!-- Extract Here: only for a single .zip file -->
+          <ContextMenuItem
+            v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
+            @select="doUnzip()"
+          ><PackageOpenIcon /> Extract Here</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" @select="doDelete()"><Trash2Icon /> Delete</ContextMenuItem>
+          <ContextMenuSeparator v-if="currentPath" />
+        </template>
+
+        <!-- General actions -->
+        <template v-if="currentPath">
+          <ContextMenuItem @select="createFolder()"><FolderPlusIcon /> New folder</ContextMenuItem>
+          <ContextMenuItem @select="createFile()"><FilePlusIcon /> New file</ContextMenuItem>
+          <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> Upload</ContextMenuItem>
+          <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
+            <ClipboardPasteIcon class="text-current" />
+            Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem @select="refresh()"><RefreshCwIcon /> Refresh</ContextMenuItem>
+        </template>
+      </ContextMenuContent>
+      </ContextMenu>
 
       <TransfersTray />
     </div>
   </div>
 
   <input ref="fileInput" type="file" multiple class="hidden" @change="handleFileInput" />
-
-  <!-- Context menu -->
-  <Teleport to="body">
-    <template v-if="ctxMenu">
-      <div class="fixed inset-0 z-40" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu" />
-      <div
-        @click.stop
-        class="fixed z-50 bg-card border border-input rounded-xl overflow-hidden py-1.5 min-w-[180px]"
-        :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
-      >
-        <!-- Selection-dependent actions -->
-        <template v-if="selected.size > 0">
-          <button @click="doCopy(); closeContextMenu()"
-            class="ctx-item">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-            Copy
-          </button>
-          <button @click="doCut(); closeContextMenu()"
-            class="ctx-item">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"/>
-            </svg>
-            Cut
-          </button>
-          <template v-if="selected.size === 1">
-            <button v-if="selectedEntries[0]?.type === 'file'" @click="openFile(selectedEntries[0]!); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              Open
-            </button>
-            <button @click="startRename(selectedEntries[0]!); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-              </svg>
-              Rename
-            </button>
-            <button v-if="selectedEntries[0]?.type === 'file'" @click="downloadSelected(); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-              Download
-            </button>
-            <button @click="openShare(); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-              </svg>
-              Share
-            </button>
-            <button @click="openPermissions(); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-              </svg>
-              Permissions
-            </button>
-            <button @click="openProperties(); closeContextMenu()"
-              class="ctx-item">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              Properties
-            </button>
-          </template>
-          <!-- Compress to ZIP: any selection -->
-          <button @click="doZip(); closeContextMenu()" class="ctx-item">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-            </svg>
-            Compress to ZIP
-          </button>
-
-          <!-- Extract Here: only for a single .zip file -->
-          <button
-            v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
-            @click="doUnzip(); closeContextMenu()"
-            class="ctx-item"
-          >
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5m0 0l5-5m-5 5V4"/>
-            </svg>
-            Extract Here
-          </button>
-
-          <div class="h-px bg-input mx-2 my-1" />
-          <button @click="doDelete(); closeContextMenu()"
-            class="ctx-item ctx-item-danger">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-            Delete
-          </button>
-          <div class="h-px bg-input mx-2 my-1" />
-        </template>
-
-        <!-- General actions -->
-        <button v-if="currentPath" @click="createFolder(); closeContextMenu()" class="ctx-item">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-          </svg>
-          New folder
-        </button>
-        <button v-if="currentPath" @click="createFile(); closeContextMenu()" class="ctx-item">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          New file
-        </button>
-        <button v-if="currentPath" @click="fileInput?.click(); closeContextMenu()" class="ctx-item">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-          </svg>
-          Upload
-        </button>
-        <button v-if="clipboard && currentPath" @click="doPaste(); closeContextMenu()"
-          :class="['ctx-item', clipboard.mode === 'cut' ? 'text-warning' : 'text-primary']">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-          </svg>
-          Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
-        </button>
-        <div v-if="currentPath" class="h-px bg-input mx-2 my-1" />
-        <button v-if="currentPath" @click="refresh(); closeContextMenu()" class="ctx-item">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          Refresh
-        </button>
-      </div>
-    </template>
-  </Teleport>
 
   <FilePermissionsDialog
     v-if="permDialogPath"
@@ -916,18 +820,3 @@ onMounted(async () => {
     @close="propertiesPlace = null"
   />
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-
-.ctx-item {
-  @apply w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground/80
-         hover:bg-accent transition-colors text-left;
-}
-.ctx-item-danger {
-  color: var(--primary);
-}
-.ctx-item-danger:hover {
-  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
-}
-</style>

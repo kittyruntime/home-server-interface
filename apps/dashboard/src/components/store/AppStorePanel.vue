@@ -161,11 +161,12 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
       <!-- Filters -->
       <div v-if="!loading" class="flex gap-2 mb-4 flex-wrap">
-        <button v-for="c in chips" :key="c.key" @click="category = c.key"
+        <Button v-for="c in chips" :key="c.key" @click="category = c.key" size="xs"
+          :variant="category === c.key ? 'default' : 'outline'"
           :aria-pressed="category === c.key"
-          :class="['btn btn-xs', category === c.key ? 'btn-primary' : 'btn-outline', c.key === 'Updates' && category !== c.key ? 'text-warning' : '']">
+          :class="c.key === 'Updates' && category !== c.key ? 'text-warning' : ''">
           {{ c.label }} <span class="opacity-60 tabular-nums">{{ c.count }}</span>
-        </button>
+        </Button>
       </div>
 
       <LoadingState v-if="loading" />

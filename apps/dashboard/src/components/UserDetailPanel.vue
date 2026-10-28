@@ -374,10 +374,10 @@ async function deleteUser() {
             <p class="text-xs text-muted-foreground mt-0.5">Remove this user from HSI. Their Linux and Samba accounts stay on the server.</p>
           </div>
 
-          <Button size="sm"
+          <Button variant="destructive" size="sm"
             @click="deleteUser"
             :disabled="deleteBusy"
-            class="shrink-0 text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors"
+            class="shrink-0"
           >Delete</Button>
         </div>
         <p v-if="deleteError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>

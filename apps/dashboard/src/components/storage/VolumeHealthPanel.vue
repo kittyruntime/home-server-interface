@@ -25,11 +25,11 @@ onMounted(refresh)
 defineExpose({ refresh })
 
 const STATE: Record<string, { label: string; cls: string }> = {
-  ok:       { label: 'Mounted',      cls: 'bg-success/10 text-success' },
-  missing:  { label: 'Missing',      cls: 'bg-destructive/10 text-destructive' },
-  wrong:    { label: 'Wrong volume', cls: 'bg-destructive/10 text-destructive' },
-  readonly: { label: 'Read-only',    cls: 'bg-warning/10 text-warning' },
-  unmounted: { label: 'Unmounted',   cls: 'badge-muted' },
+  ok:       { label: 'Mounted',      cls: 'border-transparent bg-success/10 text-success' },
+  missing:  { label: 'Missing',      cls: 'border-transparent bg-destructive/10 text-destructive' },
+  wrong:    { label: 'Wrong volume', cls: 'border-transparent bg-destructive/10 text-destructive' },
+  readonly: { label: 'Read-only',    cls: 'border-transparent bg-warning/10 text-warning' },
+  unmounted: { label: 'Unmounted',   cls: '' },
 }
 
 function since(d: string | Date): string {
@@ -57,7 +57,7 @@ async function resume(mp: string) {
       <li v-for="v in volumes" :key="v.mountPoint" class="rounded-xl border border-border bg-card px-4 py-3">
         <div class="flex flex-wrap items-center gap-2">
           <span class="font-mono text-xs text-foreground">{{ v.mountPoint }}</span>
-          <span :class="['badge', STATE[v.state]?.cls ?? 'badge-muted']">{{ STATE[v.state]?.label ?? v.state }}</span>
+          <Badge variant="secondary" :class="STATE[v.state]?.cls">{{ STATE[v.state]?.label ?? v.state }}</Badge>
           <Badge variant="outline" v-if="v.hold?.status === 'blocked'" class="bg-destructive/10 text-destructive">Blocked</Badge>
         </div>
         <p v-if="v.guardError" class="mt-1 text-2xs text-warning">Not protected against writes while unmounted: {{ v.guardError }}</p>

@@ -4,7 +4,7 @@ import { trpc } from '../../lib/trpc'
 import { applyPlanned, previewErrorOf } from '../../lib/plan'
 import { randomId } from '../../lib/uuid'
 import { defaultRepository, emptyPlanForm, planFormOf, planPayload, WEEKDAYS, type PlanStatusLike } from '../../lib/backup'
-import ToggleSwitch from '../ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -184,7 +184,7 @@ async function save() {
 
     <div class="flex items-center justify-between gap-4">
       <span class="text-sm text-foreground/80">Enabled</span>
-      <ToggleSwitch v-model="form.enabled" title="Run on the schedule" />
+      <Switch v-model="form.enabled" title="Run on the schedule" />
     </div>
 
     <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
