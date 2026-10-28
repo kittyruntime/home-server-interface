@@ -6,12 +6,40 @@ import { fileURLToPath } from "node:url"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const RETRY_MS = 60 * 60 * 1000
-const CLIENT_REVISION = 3
+const CLIENT_REVISION = 4
 const TELEMETRY_URL = process.env.HSI_TELEMETRY_URL ?? "https://hsi-telemetry.theo-labs.dev/v1/heartbeat"
 const DATA_DIR = process.env.INSTALL_DIR ? path.join(process.env.INSTALL_DIR, "data") : path.resolve("data")
-const ID_FILE = path.join(DATA_DIR, "telemetry-installation-id")
 const STATE_FILE = path.join(DATA_DIR, "telemetry-last-sent")
 let sending = false
+
+export type TelemetryChannel = "stable" | "beta" | "dev"
+type Env = Record<string, string | undefined>
+
+/** dev heartbeats are answered but not recorded by the telemetry service. */
+export function telemetryChannel(version: string, env: Env = process.env): TelemetryChannel {
+  const override = env.HSI_TELEMETRY_CHANNEL?.trim().toLowerCase()
+  if (override === "stable" || override === "beta" || override === "dev") return override
+  // Installed releases run with NODE_ENV=production; a checkout without a
+  // version falls back to v0.0.0.
+  if (env.NODE_ENV !== "production" || version === "v0.0.0") return "dev"
+  return /^v\d+\.\d+\.\d+-/.test(version) ? "beta" : "stable"
+}
+
+export function telemetryDisabledByEnv(env: Env = process.env) {
+  return /^(0|false|off|no)$/i.test(env.HSI_TELEMETRY_ENABLED ?? "true")
+}
+
+/** Turned off from Settings; HSI_TELEMETRY_ENABLED=false wins over this. */
+export async function telemetryDisabledBySettings(dir = DATA_DIR) {
+  try {
+    return (JSON.parse(await readText(path.join(dir, "telemetry-settings.json"))) as { enabled?: unknown }).enabled === false
+  } catch { return false }
+}
+
+export async function setTelemetryEnabled(enabled: boolean, dir = DATA_DIR) {
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 })
+  await fs.writeFile(path.join(dir, "telemetry-settings.json"), `${JSON.stringify({ enabled })}\n`, { encoding: "utf8", mode: 0o600 })
+}
 
 type DiskType = "hdd" | "ssd" | "nvme" | "unknown"
 
@@ -19,8 +47,9 @@ async function readText(filename: string) {
   return fs.readFile(filename, "utf8")
 }
 
-export async function getInstallationId(): Promise<string> {
-  await fs.mkdir(DATA_DIR, { recursive: true, mode: 0o700 })
+export async function getInstallationId(dir = DATA_DIR): Promise<string> {
+  const ID_FILE = path.join(dir, "telemetry-installation-id")
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 })
   try {
     const id = (await readText(ID_FILE)).trim()
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) return id
@@ -92,27 +121,39 @@ async function getHsiVersion() {
     const version = (await readText(path.join(installRoot, "VERSION"))).trim()
     if (/^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) return version
   } catch { /* Development checkouts may not have a VERSION file. */ }
-  try {
-    const packagePath = path.join(installRoot, "package.json")
-    return `v${JSON.parse(await readText(packagePath)).version}`
-  } catch {
-    // Source-mode fallback when the backend is started from apps/backend.
+  // Source mode: the installed package.json, else the workspace root one when
+  // the backend is started from apps/backend (whose package has no version).
+  const candidates = [
+    path.join(installRoot, "package.json"),
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../package.json"),
+  ]
+  for (const candidate of candidates) {
     try {
-      const rootPackage = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../package.json")
-      return `v${JSON.parse(await readText(rootPackage)).version}`
-    } catch { return "v0.0.0" }
+      const version: unknown = JSON.parse(await readText(candidate)).version
+      if (typeof version === "string" && /^\d+\.\d+\.\d+/.test(version)) return `v${version}`
+    } catch { /* try the next one */ }
+  }
+  return "v0.0.0"
+}
+
+export async function getTelemetryPayload(dir = DATA_DIR, env: Env = process.env) {
+  const [installation_id, version, distro, cpu, disks] = await Promise.all([
+    getInstallationId(dir), getHsiVersion(), getDistroInformation(), getCpuInformation(), getDiskInformation(),
+  ])
+  return {
+    schema_version: 2 as const, channel: telemetryChannel(version, env), installation_id, hsi: { version },
+    system: { os: "linux" as const, arch: os.arch(), distro, cpu, memory: getMemoryInformation(), disks },
   }
 }
 
-export async function getTelemetryPayload() {
-  const [installation_id, version, distro, cpu, disks] = await Promise.all([
-    getInstallationId(), getHsiVersion(), getDistroInformation(), getCpuInformation(), getDiskInformation(),
-  ])
-  return { schema_version: 1 as const, installation_id, hsi: { version }, system: { os: "linux" as const, arch: os.arch(), distro, cpu, memory: getMemoryInformation(), disks } }
+/** What Settings shows: whether heartbeats are sent, and exactly what. */
+export async function getTelemetryStatus(dir = DATA_DIR, env: Env = process.env) {
+  const disabledBy = telemetryDisabledByEnv(env) ? "environment" as const : await telemetryDisabledBySettings(dir) ? "settings" as const : null
+  return { enabled: disabledBy === null, disabledBy, payload: await getTelemetryPayload(dir, env) }
 }
 
 export async function shouldSendTelemetry() {
-  if (/^(0|false|off|no)$/i.test(process.env.HSI_TELEMETRY_ENABLED ?? "true")) return false
+  if (telemetryDisabledByEnv() || await telemetryDisabledBySettings()) return false
   try {
     const raw = (await readText(STATE_FILE)).trim()
     const state = raw.startsWith("{") ? JSON.parse(raw) as { sentAt?: unknown; clientRevision?: unknown } : { sentAt: Number.parseInt(raw, 10), clientRevision: 0 }
@@ -137,6 +178,11 @@ export async function sendTelemetry() {
   } catch { return false } finally { sending = false }
 }
 
+// Installations restarted together (after an update) do not all report at once.
+export function firstHeartbeatDelay(random = Math.random) {
+  return Math.floor(random() * RETRY_MS)
+}
+
 export function startTelemetry(log?: { warn: (message: string) => void }) {
   let timer: NodeJS.Timeout | undefined
   const schedule = (delay: number) => {
@@ -152,5 +198,5 @@ export function startTelemetry(log?: { warn: (message: string) => void }) {
     }
     schedule(DAY_MS)
   }
-  void run()
+  schedule(firstHeartbeatDelay())
 }

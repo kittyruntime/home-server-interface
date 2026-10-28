@@ -2846,4 +2846,39 @@ async function testBackupFinalFixes() {
 
 await testBackupFinalFixes()
 
+
+async function testTelemetryChannelOptOutAndPayload() {
+  const { telemetryChannel, getTelemetryStatus, setTelemetryEnabled, firstHeartbeatDelay } = await import("../services/telemetry")
+  const prod = { NODE_ENV: "production" }
+  assert.equal(telemetryChannel("v1.71.0", prod), "stable")
+  assert.equal(telemetryChannel("v1.72.0-rc.1", prod), "beta")
+  assert.equal(telemetryChannel("v1.71.0", {}), "dev", "not production")
+  assert.equal(telemetryChannel("v0.0.0", prod), "dev", "source checkout without a version")
+  assert.equal(telemetryChannel("v1.71.0", { ...prod, HSI_TELEMETRY_CHANNEL: "Beta" }), "beta")
+  assert.equal(telemetryChannel("v1.71.0", { HSI_TELEMETRY_CHANNEL: "stable" }), "stable")
+  assert.equal(telemetryChannel("v1.71.0", { ...prod, HSI_TELEMETRY_CHANNEL: "nightly" }), "stable", "unknown override ignored")
+
+  const dir = await mkdtemp(join(tmpdir(), "hsi-telemetry-test-"))
+  try {
+    const on = await getTelemetryStatus(dir, prod)
+    assert.equal(on.enabled, true)
+    assert.equal(on.payload.schema_version, 2)
+    assert.equal(on.payload.channel, "stable")
+    assert.match(on.payload.installation_id, /^[0-9a-f-]{36}$/)
+    assert.deepEqual(Object.keys(on.payload).sort(), ["channel", "hsi", "installation_id", "schema_version", "system"])
+    assert.equal((await getTelemetryStatus(dir, prod)).payload.installation_id, on.payload.installation_id, "stable id")
+
+    await setTelemetryEnabled(false, dir)
+    assert.deepEqual([(await getTelemetryStatus(dir, prod)).enabled, (await getTelemetryStatus(dir, prod)).disabledBy], [false, "settings"])
+    await setTelemetryEnabled(true, dir)
+    const envOff = await getTelemetryStatus(dir, { ...prod, HSI_TELEMETRY_ENABLED: "false" })
+    assert.deepEqual([envOff.enabled, envOff.disabledBy], [false, "environment"], "the environment wins over Settings")
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+
+  assert.equal(firstHeartbeatDelay(() => 0), 0)
+  assert.ok(firstHeartbeatDelay(() => 0.999) < 60 * 60 * 1000)
+}
+await testTelemetryChannelOptOutAndPayload()
 console.log("Backend security tests passed")
