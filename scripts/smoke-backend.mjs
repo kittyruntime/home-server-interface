@@ -1,4 +1,10 @@
 import { spawn } from "node:child_process"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+const dbDir = mkdtempSync(join(tmpdir(), "hsi-smoke-"))
+process.on("exit", () => rmSync(dbDir, { recursive: true, force: true }))
 
 const child = spawn(process.execPath, ["apps/backend/dist/server.js"], {
   cwd: process.cwd(),
@@ -7,6 +13,7 @@ const child = spawn(process.execPath, ["apps/backend/dist/server.js"], {
     NODE_ENV: "production",
     JWT_SECRET: "backend-smoke-test-secret-at-least-32-characters",
     HSI_SMOKE_TEST: "1",
+    DATABASE_URL: `file:${join(dbDir, "smoke.db")}`,
   },
   stdio: ["ignore", "pipe", "pipe"],
 })

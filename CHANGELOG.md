@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Update to 1.68.1 refused or rolled back**: the 1.68.1 installer refused
+  its own archive because it still required the Prisma query engine, which
+  Prisma 7 no longer has. Past that check, the 1.68.1 server stopped at
+  startup because the SQLite driver had been bundled into it. Both are fixed,
+  and the build smoke test now runs a database query.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
