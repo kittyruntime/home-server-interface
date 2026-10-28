@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependencies**: zod 4.6.7, where validating an oversized list or set with
+  size limits no longer exhausts memory (high severity, in the backend, the
+  Compose and catalog packages and the release runtime).
+
 ### Changed
 - **Dependencies**: bcryptjs 3 and @fastify/rate-limit 11 (#110). New
   password hashes use the `$2b$` prefix; existing hashes still verify.
