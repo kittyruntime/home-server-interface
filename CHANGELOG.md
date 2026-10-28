@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.68.2] - 2026-10-28
+
 ### Security
 - **Dependencies**: zod 4.6.7, where validating an oversized list or set with
   size limits no longer exhausts memory (high severity, in the backend, the
@@ -1490,7 +1492,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...HEAD
+[1.68.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...v1.68.2
 [1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
 [1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0
 [1.67.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...v1.67.0
