@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.70.0] - 2026-10-28
+
 ### Changed
 - **Dashboard fully on shadcn-vue**: the last hand-made controls move to the
   shared components. Icon buttons show a styled tooltip instead of the
@@ -1520,7 +1522,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.69.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.70.0...HEAD
+[1.70.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.69.0...v1.70.0
 [1.69.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...v1.69.0
 [1.68.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...v1.68.2
 [1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
