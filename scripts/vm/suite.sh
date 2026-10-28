@@ -5,6 +5,8 @@
 #           refuse a broken update and check the rollback kept everything
 #   update  install the latest published release, add data, update to the
 #           built archive, roll back to the published release, update again
+#   storage create a mirrored volume through the API, check mdadm, LVM, the
+#           mount, fstab, the Place and the share on the host, then reboot
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -81,6 +83,69 @@ broken_update() {
   grep -q 'Rolled back' "$VM_DIR/install-$bad.log" || { tail -30 "$VM_DIR/install-$bad.log"; fail "no rollback reported"; }
 }
 
+# Calls the API as an administrator, from inside the VM (the health and API
+# answer local callers). The session token is signed with the installation's
+# JWT secret for an administrator row added for the test.
+api_setup() {
+  vm_ssh "python3 - <<'PY'
+import base64, hashlib, hmac, json, sqlite3, time, uuid
+c = sqlite3.connect('$DB')
+c.execute(\"INSERT OR IGNORE INTO User (id, username, password, isAdmin, updatedAt) VALUES ('vm-admin', 'vmadmin', 'x', 1, CURRENT_TIMESTAMP)\")
+c.commit()
+secret = next(l.split('=', 1)[1].strip() for l in open('/opt/hsi/.env') if l.startswith('JWT_SECRET='))
+b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=')
+head = b64(json.dumps({'alg': 'HS256', 'typ': 'JWT'}).encode())
+body = b64(json.dumps({'userId': 'vm-admin', 'isAdmin': True, 'isUserManager': True, 'capabilities': [], 'mustChangePassword': False,
+                       'jti': str(uuid.uuid4()), 'iat': int(time.time()), 'exp': int(time.time()) + 7200}).encode())
+sig = b64(hmac.new(secret.encode(), head + b'.' + body, hashlib.sha256).digest())
+open('/root/token', 'w').write((head + b'.' + body + b'.' + sig).decode())
+PY"
+}
+
+# api <procedure> <json input>: the tRPC result data, or a failure.
+api() {
+  local out
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+    || fail "API $1 unreachable"
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
+    || fail "API $1 failed: $out"
+}
+
+# The blank data disks, by the serial QEMU gives them.
+data_disk() { vm_ssh "basename \$(readlink -f /dev/disk/by-id/virtio-HSI-DATA-$1)"; }
+
+create_mirror() {
+  local a b input plan fp result
+  a=$(data_disk 1); b=$(data_disk 2)
+  log "Creating a mirrored volume on $a and $b through the API"
+  input="{\"disks\":[\"$a\",\"$b\"],\"redundancy\":\"raid1\",\"vg\":\"vmvg\",\"lv\":\"vmlv\",\"lvPercent\":100,\"label\":\"vmdata\",\"mountpoint\":\"/srv/vm-mirror\",\"access\":\"shared\"}"
+  input="{\"volume\":$input,\"place\":{\"name\":\"Mirror\"},\"share\":{\"smbName\":\"mirror\"}}"
+  plan=$(api storage.volumePlan "{\"input\":$input}")
+  fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
+  result=$(api storage.volumeApply "{\"input\":$input,\"fingerprint\":\"$fp\"}")
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["ok"], r' "$result" || fail "volume creation failed: $result"
+}
+
+expect_mirror() {
+  vm_ssh 'set -e
+    md=$(lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; exit}")
+    test -n "$md"
+    mdadm --detail /dev/$md | grep -q "Raid Level : raid1"
+    mdadm --detail /dev/$md | grep -Eq "Active Devices : 2"
+    grep -q "^ARRAY " /etc/mdadm/mdadm.conf
+    lvs --noheadings -o lv_name vmvg | grep -q vmlv
+    findmnt -no FSTYPE /srv/vm-mirror | grep -q .
+    grep -E "^UUID=[^ ]+ +/srv/vm-mirror " /etc/fstab | grep -q nofail
+    touch /srv/vm-mirror/.write-test && rm /srv/vm-mirror/.write-test' \
+    || fail "the mirrored volume is not as requested on the host"
+  vm_ssh "python3 -c 'import sqlite3; c=sqlite3.connect(\"file:$DB?mode=ro\",uri=True); assert c.execute(\"select count(*) from Place where path=\\\"/srv/vm-mirror\\\"\").fetchone()[0]==1'" \
+    || fail "no Place for the volume"
+  if vm_ssh 'command -v smbd >/dev/null'; then
+    vm_ssh 'testparm -s 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' || fail "no SMB share for the volume"
+  fi
+  log "Mirror, LVM, mount, fstab, Place and share in place"
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -106,6 +171,15 @@ case "$scenario" in
     expect_running "$published"; expect_data
     install_build
     expect_running "$version"; expect_ledger; expect_data
+    ;;
+  storage)
+    install_build
+    expect_running "$version"
+    api_setup
+    create_mirror
+    expect_mirror
+    vm_reboot
+    expect_running "$version"; expect_mirror
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac

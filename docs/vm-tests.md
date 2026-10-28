@@ -8,6 +8,7 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | Scenario | What it checks |
 | --- | --- |
 | `fresh` | Install of the built archive, services and health, migration ledger, data kept across a reboot, a broken update (a server that exits at once) refused and rolled back with the data intact |
+| `storage` | A mirrored volume (RAID 1, LVM, filesystem, Place, SMB share) created through the API as an administrator, then checked on the host (`mdadm`, `mdadm.conf`, `lvs`, `findmnt`, `/etc/fstab`, `testparm`) before and after a reboot |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
