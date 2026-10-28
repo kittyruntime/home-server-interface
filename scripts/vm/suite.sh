@@ -147,8 +147,10 @@ expect_mirror() {
     fi' || fail "the mirrored volume is not as requested on the host"
   vm_ssh "python3 -c 'import sqlite3; c=sqlite3.connect(\"file:$DB?mode=ro\",uri=True); assert c.execute(\"select count(*) from Place where path=\\\"/srv/vm-mirror\\\"\").fetchone()[0]==1'" \
     || fail "no Place for the volume"
-  vm_ssh 'testparm -s 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' \
-    || { vm_ssh 'testparm -s 2>/dev/null | tail -20'; fail "no SMB share for the volume"; }
+  # HSI keeps its own smb.conf and points smbd at it (systemd drop-in).
+  vm_ssh 'conf=$(systemctl show -p ExecStart smbd | grep -o -- "--configfile=[^ ;]*" | cut -d= -f2)
+    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' \
+    || { vm_ssh 'systemctl show -p ExecStart smbd; ls -l /etc/systemd/system/smbd.service.d/ 2>&1'; fail "no SMB share for the volume"; }
   log "Mirror, LVM, mount, fstab, Place and share in place"
 }
 
