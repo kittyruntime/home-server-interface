@@ -2770,6 +2770,20 @@ async function testBackupReviewFixes() {
 
 await testBackupReviewFixes()
 
+async function testBcryptjs2HashesStillVerify() {
+  const bcrypt = (await import("bcryptjs")).default
+  // Made by bcryptjs 2.4.3: user and share link passwords stored before the upgrade.
+  const v2 = "$2a$04$5n6u70nGqMd78LNkw1KklOq8DVrmIeXUSw2vSTrjZxsqTS/4WxavK"
+  assert.equal(await bcrypt.compare("hsi-v2-password", v2), true)
+  assert.equal(await bcrypt.compare("wrong", v2), false)
+  // New hashes use the $2b$ prefix and verify the same way.
+  const v3 = await bcrypt.hash("hsi-v2-password", 4)
+  assert.ok(v3.startsWith("$2b$04$"))
+  assert.equal(await bcrypt.compare("hsi-v2-password", v3), true)
+}
+
+await testBcryptjs2HashesStillVerify()
+
 async function testBackupFinalFixes() {
   const { backupFindings, backupTargets } = await import("../services/backup-status")
   const base = { configExists: true, engine: { installed: true, version: "0.19.1" }, repositories: [], plans: [], migrationSkipped: [] }

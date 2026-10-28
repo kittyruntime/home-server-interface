@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: bcryptjs 3 and @fastify/rate-limit 11 (#110). New
+  password hashes use the `$2b$` prefix; existing hashes still verify.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
