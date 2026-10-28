@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { BellIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref, computed, watch } from 'vue'
 import { useAuth } from '../lib/auth'
@@ -113,49 +114,27 @@ defineExpose({ focusOn })
             ]"
           >
             <!-- Profile icon -->
-            <svg v-if="item.id === 'profile'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
+            <UserIcon v-if="item.id === 'profile'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Shared links icon -->
-            <svg v-else-if="item.id === 'shares'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
-            </svg>
+            <LinkIcon v-else-if="item.id === 'shares'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Users icon -->
-            <svg v-else-if="item.id === 'users'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5.916-3.5M9 20H4v-2a4 4 0 015.916-3.5M15 7a3 3 0 11-6 0 3 3 0 016 0zM21 10a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
+            <UsersIcon v-else-if="item.id === 'users'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Places icon -->
-            <svg v-else-if="item.id === 'places'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-            </svg>
+            <FolderIcon v-else-if="item.id === 'places'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Permissions icon -->
-            <svg v-else-if="item.id === 'permissions'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-            </svg>
+            <LockIcon v-else-if="item.id === 'permissions'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Groups icon -->
-            <svg v-else-if="item.id === 'groups'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
+            <ShieldCheckIcon v-else-if="item.id === 'groups'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Secure access icon -->
-            <svg v-else-if="item.id === 'secure'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-            </svg>
+            <LockIcon v-else-if="item.id === 'secure'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Updates icon -->
-            <svg v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
+            <UploadIcon v-else-if="item.id === 'updates'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Alerting icon -->
-            <svg v-else-if="item.id === 'alerting'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-            </svg>
+            <TriangleAlertIcon v-else-if="item.id === 'alerting'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Notifications icon -->
-            <svg v-else-if="item.id === 'notifications'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-            </svg>
+            <BellIcon v-else-if="item.id === 'notifications'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             <!-- Backup icon -->
-            <svg v-else-if="item.id === 'backups' || item.id === 'data-backups'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5v9a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-9zM8 5v5h8V5m-6 10h4"/>
-            </svg>
+            <SaveIcon v-else-if="item.id === 'backups' || item.id === 'data-backups'" class="w-4 h-4 shrink-0" aria-hidden="true" />
             {{ item.label }}
           </button>
         </div>

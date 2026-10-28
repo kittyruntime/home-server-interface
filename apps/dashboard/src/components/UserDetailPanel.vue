@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, ChevronLeftIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
@@ -187,15 +188,13 @@ async function deleteUser() {
 
     <!-- ── Header ─────────────────────────────────────────────────────────── -->
     <div class="flex items-center gap-3">
-      <button
+      <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
-        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+        class="text-muted-foreground hover:text-foreground shrink-0"
         title="Back to users"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
+        <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
 
       <div :class="['w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0', avatarGradient(user.username)]">
         {{ user.username.slice(0, 2).toUpperCase() }}
@@ -240,9 +239,7 @@ async function deleteUser() {
         </Button>
         <transition name="fade">
           <span v-if="saveSuccess" class="text-xs text-success flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <CheckIcon class="w-3.5 h-3.5" aria-hidden="true" />
             Saved
           </span>
         </transition>

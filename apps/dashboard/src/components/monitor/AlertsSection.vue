@@ -89,7 +89,7 @@ onMounted(load)
     <h2 class="text-lg font-semibold text-foreground mb-1">Alerts</h2>
     <p class="text-sm text-muted-foreground mb-6">
       Background health checks, sampled every 5 minutes. Thresholds live in
-      <button @click="openApp('settings', 'alerting')" class="underline decoration-dotted underline-offset-2 hover:text-foreground">Settings &gt; Alert thresholds</button>.
+      <Button variant="link" @click="openApp('settings', 'alerting')" class="h-auto p-0 hover:text-foreground">Settings &gt; Alert thresholds</Button>.
     </p>
 
     <LoadingState v-if="loading" />

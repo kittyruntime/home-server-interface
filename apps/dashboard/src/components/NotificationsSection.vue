@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDownIcon, PlusIcon } from '@lucide/vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
@@ -191,9 +192,7 @@ function formatTime(at: string | Date): string {
           <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
             <p class="eyebrow">Connectors</p>
             <Button size="xs" @click="openConnectorDialog(null)">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
+              <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
               Add connector
             </Button>
           </div>
@@ -222,9 +221,7 @@ function formatTime(at: string | Date): string {
           <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
             <p class="eyebrow">Rules</p>
             <Button size="xs" @click="openRuleDialog(null)">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
+              <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
               Add rule
             </Button>
           </div>
@@ -264,12 +261,7 @@ function formatTime(at: string | Date): string {
             @click="deliveriesExpanded = !deliveriesExpanded"
           >
             <span class="eyebrow">Recent deliveries</span>
-            <svg
-              :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-            </svg>
+            <ChevronDownIcon :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
           </button>
           <ul v-if="deliveriesExpanded && deliveries.length > 0" class="divide-y divide-border">
             <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">

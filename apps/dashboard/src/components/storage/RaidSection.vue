@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon, ZapIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -322,15 +323,13 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       <div class="flex items-center gap-2">
         <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')"
           :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Create RAID…
         </Button>
-        <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
-          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-        </button>
+          <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+        </Button>
       </div>
     </div>
 
@@ -365,7 +364,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'">
               {{ raidLevelLabel(r.level) }}
             </span>
-            <button v-if="!only" class="font-mono text-sm text-foreground hover:underline underline-offset-2" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</button>
+            <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-foreground" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
             <span v-else class="font-mono text-sm text-foreground">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
               <span class="text-2xs text-muted-foreground">{{ r.active }}/{{ r.total }} drives</span>
@@ -374,10 +373,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
-              <button v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
-                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+              <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
+                class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
                 LVM {{ raidPvVg(r.name) }} →
-              </button>
+              </Button>
               <!-- ⋯ menu -->
               <div class="relative z-30">
                 <button @click.stop="openMenu = openMenu === r.name ? null : r.name"
@@ -393,9 +392,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   </div>
                   <button @click="openDestroy(r); openMenu = null"
                     class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                    </svg>
+                    <Trash2Icon class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     Destroy array…
                   </button>
                 </div>
@@ -430,20 +427,16 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                       <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--muted-foreground)" opacity="0.25"/>
                     </svg>
                   </div>
-                  <button @click="emit('navigate', { kind: 'disk', name: dev })"
-                    class="text-2xs font-mono hover:underline transition-colors"
+                  <Button variant="link" @click="emit('navigate', { kind: 'disk', name: dev })"
+                    class="h-auto p-0 text-2xs font-mono"
                     :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-muted-foreground hover:text-foreground' : 'text-destructive'">
                     /dev/{{ dev }}
-                  </button>
+                  </Button>
                 </div>
-                <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-muted-foreground self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-muted-foreground self-center mb-5 shrink-0" aria-hidden="true" />
               </template>
               <div class="flex items-center self-center mb-5 gap-2 ml-1">
-                <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
+                <ZapIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <div>
                   <div class="text-2xs font-semibold text-foreground/80">{{ raidLevelLabel(r.level) }}</div>
                   <div class="text-2xs text-muted-foreground font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : 'not mounted') }}</div>
@@ -524,18 +517,18 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <div v-else class="text-2xs text-muted-foreground">No filesystem: format before mounting</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
-                <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-primary/50 hover:text-primary transition-colors">
+                <Button variant="outline" size="xs" v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
+                  class="text-foreground/80 hover:border-primary/50 hover:text-primary">
                   Format
-                </button>
-                <button v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-success/50 hover:text-success transition-colors">
+                </Button>
+                <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
+                  class="text-foreground/80 hover:border-success/50 hover:text-success">
                   Mount
-                </button>
-                <button v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-warning/50 hover:text-warning transition-colors">
+                </Button>
+                <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
+                  class="text-foreground/80 hover:border-warning/50 hover:text-warning">
                   Unmount
-                </button>
+                </Button>
               </div>
             </div>
           </template>
@@ -597,9 +590,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
             <!-- Selected level danger notice -->
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>{{ selectedRaidLevel.danger }}</span>
             </div>
 
@@ -645,9 +636,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               >
                 <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
                   raidWiz.devs.includes(dev.name) ? 'border-primary bg-primary' : 'border-input']">
-                  <svg v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                  </svg>
+                  <CheckIcon v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="text-sm font-mono text-foreground">/dev/{{ dev.name }}</span>
@@ -685,9 +674,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
           <!-- Step 3: Confirm -->
           <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
             <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
-              <svg class="w-5 h-5 text-destructive mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-destructive text-sm mb-1">All data on selected drives will be erased</div>
                 <div class="text-xs text-destructive/80">

@@ -205,7 +205,7 @@ onUnmounted(() => {
         <nav aria-label="Folder" class="flex flex-wrap items-center gap-1 text-xs">
           <template v-for="(c, i) in crumbs" :key="c.path">
             <span v-if="i" class="text-muted-foreground">/</span>
-            <button class="break-all text-primary hover:underline" :disabled="c.path === dir" @click="open(c.path)">{{ c.name }}</button>
+            <Button variant="link" class="h-auto p-0 break-all text-primary" :disabled="c.path === dir" @click="open(c.path)">{{ c.name }}</Button>
           </template>
         </nav>
 
@@ -217,7 +217,7 @@ onUnmounted(() => {
           <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-border" :class="{ 'opacity-60': listing }">
             <li v-for="e in entries" :key="e.path" class="flex min-w-0 items-center gap-2 px-3 py-2">
               <RadioGroupItem :value="e.path" :aria-label="`Select ${e.name}`" class="shrink-0" />
-              <button v-if="e.type === 'dir'" class="min-w-0 break-all text-left text-sm text-foreground hover:underline" @click="open(e.path)">{{ e.name }}/</button>
+              <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 min-w-0 break-all text-left text-foreground" @click="open(e.path)">{{ e.name }}/</Button>
               <span v-else class="min-w-0 break-all text-sm text-foreground">{{ e.name }}</span>
               <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-muted-foreground">{{ bytesLabel(e.size) }}</span>
             </li>

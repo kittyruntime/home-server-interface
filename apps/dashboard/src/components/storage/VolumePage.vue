@@ -199,7 +199,7 @@ async function afterChange() { await refreshDevices(); await load() }
         </div>
         <div v-if="volume.state === 'missing'" class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
           HSI mounts this volume at <span class="font-mono">{{ volume.mountPoint }}</span>, but its disk was not found at boot. Apps and shares using it are stopped so nothing writes to the system disk in its place.
-          <button class="ml-1 underline underline-offset-2" @click="emit('navigate', 'mounts')">Open Mounts</button>
+          <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">Open Mounts</Button>
         </div>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
           <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-destructive' : 'text-warning'">

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { LayoutGridIcon, PlusIcon, XIcon } from '@lucide/vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import SegmentedBar from '../ui/SegmentedBar.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
@@ -59,9 +61,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
           @click.stop="addOpen = !addOpen"
           class="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-input text-foreground/80 text-sm rounded-lg hover:bg-accent transition-colors"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Add
         </button>
 
@@ -89,9 +89,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
     <!-- Widget grid -->
     <div class="flex-1 overflow-y-auto p-4 sm:p-6">
       <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
-        <svg class="w-10 h-10 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-        </svg>
+        <LayoutGridIcon class="w-10 h-10 opacity-20" aria-hidden="true" />
         <p class="text-sm">No widgets. Click <strong class="text-foreground/80">Add</strong> to get started.</p>
       </div>
 
@@ -112,15 +110,13 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 8l-4 4 4 4M15 8l4 4-4 4" v-else/>
               </svg>
             </button>
-            <button
+            <Button variant="ghost" size="icon-xs"
               @click="removeWidget(w.id)"
               title="Remove"
-              class="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+              class="text-muted-foreground hover:text-primary hover:bg-primary/10"
             >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+              <XIcon class="w-3 h-3" aria-hidden="true" />
+            </Button>
           </div>
 
           <!-- ---- CPU ---- -->

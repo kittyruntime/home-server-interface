@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronLeftIcon, UploadIcon } from '@lucide/vue'
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
@@ -339,15 +340,13 @@ async function applyNow() {
 
     <!-- Header -->
     <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-border shrink-0">
-      <button
+      <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
-        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        class="text-muted-foreground hover:text-foreground"
         title="Back"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
+        <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
       <h2 class="text-sm font-semibold text-foreground flex-1">
         {{ editName ? `Edit ${editName}` : 'New App' }}
       </h2>
@@ -362,9 +361,7 @@ async function applyNow() {
             : 'text-muted-foreground hover:text-foreground/80 hover:bg-accent',
         ]"
       >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
+        <UploadIcon class="w-3.5 h-3.5" aria-hidden="true" />
         <span class="hidden sm:inline">Import Compose</span><span class="sm:hidden">Compose</span>
       </button>
     </div>
@@ -490,10 +487,10 @@ async function applyNow() {
             @keydown.enter.prevent="addNetwork"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
-          <button
+          <Button variant="secondary" size="sm"
             @click="addNetwork"
-            class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:opacity-80 transition-colors"
-          >Add</button>
+            class="bg-primary/10 text-primary"
+          >Add</Button>
         </div>
         <div class="flex flex-wrap gap-1.5">
           <span

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ArrowDownIcon, XIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
 
@@ -164,9 +166,7 @@ onUnmounted(() => controller?.abort())
                   ? 'bg-primary/20 border-primary/50 text-primary'
                   : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58]']"
             >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-              </svg>
+              <ArrowDownIcon class="w-3 h-3" aria-hidden="true" />
               Follow
             </button>
             <!-- Clear -->
@@ -175,21 +175,17 @@ onUnmounted(() => controller?.abort())
               title="Clear"
               class="flex items-center gap-1.5 px-2.5 py-1 text-2xs border border-[#30363d] text-[#7d8590] rounded-md hover:border-[#484f58] hover:text-[#e6edf3] transition-colors"
             >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+              <XIcon class="w-3 h-3" aria-hidden="true" />
               Clear
             </button>
             <!-- Close -->
-            <button
+            <Button variant="ghost" size="icon-sm"
               @click="emit('close')"
               title="Close"
-              class="w-7 h-7 flex items-center justify-center rounded-md text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+              class="text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d]"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+              <XIcon class="w-4 h-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
 

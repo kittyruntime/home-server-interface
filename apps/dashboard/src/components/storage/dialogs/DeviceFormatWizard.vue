@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TriangleAlertIcon } from '@lucide/vue'
 import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
 import { fmtBytes, type BlockDev } from '../store'
@@ -80,9 +81,7 @@ defineExpose({ open })
     <!-- Step 1: Warning -->
     <div v-if="wiz.step === 1" class="p-6 space-y-4">
       <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
-        <svg class="w-5 h-5 text-destructive mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-        </svg>
+        <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
         <div>
           <div class="font-semibold text-destructive text-sm mb-1">All data will be permanently erased</div>
           <div class="text-xs text-destructive/80">

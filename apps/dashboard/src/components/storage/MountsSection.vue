@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RefreshCwIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -207,12 +208,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <h2 class="text-lg font-semibold text-foreground">Mounts</h2>
         <p class="text-sm text-muted-foreground mt-0.5">All mounted filesystems, across all sources.</p>
       </div>
-      <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+        <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+      </Button>
     </div>
 
     <LoadingState v-if="loading && !mounted.length && !unmounted.length" variant="block" />
@@ -226,7 +225,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         No filesystems currently mounted.
       </div>
       <div v-else class="mb-8">
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><button @click="emit('navigate',e.target)" class="text-xs text-muted-foreground">{{e.sourceLabel}} →</button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">Unmount</Button></div></article></div>
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><Button variant="link" @click="emit('navigate',e.target)" class="h-auto p-0 text-muted-foreground">{{e.sourceLabel}} →</Button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">Unmount</Button></div></article></div>
         <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
@@ -264,10 +263,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <span v-else class="text-2xs text-muted-foreground">-</span>
               </TableCell>
               <TableCell class="px-4 py-2.5 text-right">
-                <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-warning/50 hover:text-warning transition-colors">
+                <Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
+                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">
                   Unmount
-                </button>
+                </Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -302,14 +301,14 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
                 <TableCell class="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{{ fmtBytes(e.size) }}</TableCell>
                 <TableCell class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
-                  <button @click="openFormat(e.bd)"
-                    class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+                  <Button variant="outline" size="xs" @click="openFormat(e.bd)"
+                    class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">
                     Format
-                  </button>
-                  <button @click="openMount(e.bd)"
-                    class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-success/50 hover:text-success transition-colors">
+                  </Button>
+                  <Button variant="outline" size="xs" @click="openMount(e.bd)"
+                    class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">
                     Mount
-                  </button>
+                  </Button>
                 </TableCell>
               </TableRow>
             </TableBody>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDownIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref, onMounted } from 'vue'
@@ -95,12 +96,7 @@ onMounted(load)
             <span class="text-sm font-medium text-foreground">{{ place.name }}</span>
             <span class="ml-2 text-xs text-muted-foreground font-mono">{{ place.path }}</span>
           </div>
-          <svg
-            :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-          </svg>
+          <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
         </button>
 
         <!-- Permission matrix -->

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref } from 'vue'
 import Modal from '../ui/Modal.vue'
 import { useWallpaper } from '../../lib/wallpaper'
@@ -71,12 +72,12 @@ async function reset() {
 
       <div>
         <p class="eyebrow mb-2">Image</p>
-        <button
-          class="w-full px-3 py-2 bg-muted border border-input text-foreground/80 text-sm rounded-lg hover:bg-accent transition-colors"
+        <Button variant="outline" size="sm"
+          class="w-full bg-muted text-foreground/80"
           @click="fileInput?.click()"
         >
           Upload image...
-        </button>
+        </Button>
         <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onFileChange" />
       </div>
 
@@ -84,12 +85,12 @@ async function reset() {
     </div>
 
     <template #footer>
-      <button
-        class="px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent rounded-lg transition-colors"
+      <Button variant="ghost" size="sm"
+        class="text-foreground/80"
         @click="reset"
       >
         Reset to default
-      </button>
+      </Button>
     </template>
   </Modal>
 </template>

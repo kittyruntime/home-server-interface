@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { usePageRefresh } from './page-refresh'
@@ -108,7 +109,7 @@ function manageInDevices() { emit('navigate', 'disks') }
     @back="emit('navigate', 'disks')"
   >
     <template v-if="disk && row" #chips>
-      <button v-if="row.role === 'raid' || row.role === 'lvm'" class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80 hover:text-foreground" @click="openOwner">{{ roleText }} →</button>
+      <Button variant="outline" size="xs" v-if="row.role === 'raid' || row.role === 'lvm'" class="text-2xs bg-muted text-foreground/80 hover:text-foreground" @click="openOwner">{{ roleText }} →</Button>
       <span v-else class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ roleText }}</span>
       <Badge variant="secondary" v-if="row.kind">{{ row.kind }}</Badge>
       <span class="inline-flex items-center gap-1.5 text-xs" :class="health.cls">
@@ -145,9 +146,9 @@ function manageInDevices() { emit('navigate', 'disks') }
             <ul v-if="criticalAttrs.length" class="space-y-1">
               <li v-for="a in criticalAttrs" :key="a.id" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ a.name }}: {{ a.raw }}</li>
             </ul>
-            <button class="text-xs text-muted-foreground hover:text-foreground" @click="smartOpen = true; tab = 'structure'">
+            <Button variant="link" class="h-auto p-0 text-muted-foreground hover:text-foreground" @click="smartOpen = true; tab = 'structure'">
               Show SMART details
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -171,7 +172,7 @@ function manageInDevices() { emit('navigate', 'disks') }
         @navigate="s => emit('navigate', s)" @toggle-smart="smartOpen = !smartOpen"
         @format="(d: BlockDev) => formatWiz?.open(d)" @mount="(d: BlockDev) => mountDlg?.open(d)" @umount="(d: BlockDev) => umountDlg?.open(d)"
         @part-init="manageInDevices" @part-create="manageInDevices" @part-delete="manageInDevices" />
-      <p class="mt-2 text-xs text-muted-foreground">Partition tables and partitions are managed from <button class="underline underline-offset-2 hover:text-foreground" @click="manageInDevices">Disks</button>.</p>
+      <p class="mt-2 text-xs text-muted-foreground">Partition tables and partitions are managed from <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="manageInDevices">Disks</Button>.</p>
     </template>
 
     <template v-if="disk" #activity>

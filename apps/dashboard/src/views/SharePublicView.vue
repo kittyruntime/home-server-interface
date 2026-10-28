@@ -115,18 +115,18 @@ onMounted(async () => {
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'dir'" class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-1 text-xs text-muted-foreground flex-wrap min-w-0">
-            <button class="hover:text-foreground" @click="loadDir('')">{{ info.name }}</button>
+            <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="loadDir('')">{{ info.name }}</Button>
             <template v-for="(c, i) in crumbs" :key="i">
               <span>/</span>
-              <button class="hover:text-foreground" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button>
+              <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</Button>
             </template>
           </div>
           <Button as="a" variant="outline" size="xs" :href="zipUrl()" class="shrink-0">Download all as .zip</Button>
         </div>
         <ul class="divide-y divide-border">
           <li v-for="e in entries" :key="e.name" class="flex items-center justify-between py-2 text-sm">
-            <button v-if="e.type === 'dir'" class="text-left text-foreground hover:text-primary"
-              @click="loadDir((subPath ? subPath + '/' : '') + e.name)">📁 {{ e.name }}</button>
+            <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 text-left text-foreground hover:text-primary"
+              @click="loadDir((subPath ? subPath + '/' : '') + e.name)">📁 {{ e.name }}</Button>
             <span v-else class="text-foreground/80 truncate">{{ e.name }}</span>
             <Button as="a" variant="outline" size="xs" v-if="e.type === 'file'" :href="downloadUrl((subPath ? subPath + '/' : '') + e.name)"
               class="shrink-0">Download</Button>

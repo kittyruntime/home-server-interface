@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RefreshCwIcon, SearchIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDateTime } from '../lib/format-date'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
@@ -68,18 +69,14 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <!-- Filter -->
     <div class="flex gap-3 mb-5 min-w-0">
       <div class="relative flex-1 min-w-0">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
+        <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
         <Input v-model="filterAction" placeholder="Filter by action…"
           class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
       <button @click="load" :disabled="loading"
         class="px-3 py-2 rounded-lg border border-border text-sm text-foreground/80 hover:bg-accent transition-colors disabled:opacity-50">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
+        <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
       </button>
     </div>
 
@@ -191,15 +188,15 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       <div class="flex items-center justify-between mt-4 text-sm text-muted-foreground">
         <span>{{ total.toLocaleString() }} entr{{ total === 1 ? 'y' : 'ies' }}</span>
         <div class="flex items-center gap-1">
-          <button @click="page--" :disabled="page === 0 || loading"
-            class="px-3 py-1.5 rounded-lg border border-border text-xs disabled:opacity-30 enabled:hover:bg-accent transition-colors">
+          <Button variant="outline" size="xs" @click="page--" :disabled="page === 0 || loading"
+            >
             ← Prev
-          </button>
+          </Button>
           <span class="px-3 py-1.5 text-xs">{{ page + 1 }} / {{ pages }}</span>
-          <button @click="page++" :disabled="page >= pages - 1 || loading"
-            class="px-3 py-1.5 rounded-lg border border-border text-xs disabled:opacity-30 enabled:hover:bg-accent transition-colors">
+          <Button variant="outline" size="xs" @click="page++" :disabled="page >= pages - 1 || loading"
+            >
             Next →
-          </button>
+          </Button>
         </div>
       </div>
     </template>

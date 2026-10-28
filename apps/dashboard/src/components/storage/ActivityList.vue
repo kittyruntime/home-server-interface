@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
@@ -61,9 +62,9 @@ function toggle(id: string) {
           <span class="flex-1 min-w-0 truncate text-foreground">{{ label(e) }}</span>
           <span class="text-xs text-muted-foreground shrink-0">{{ e.user ?? 'system' }} · {{ when(e.at) }}</span>
         </div>
-        <button v-if="e.steps?.length" class="mt-1 ml-4.5 text-xs text-muted-foreground hover:text-foreground" :aria-expanded="open.has(e.id)" @click="toggle(e.id)">
+        <Button variant="link" v-if="e.steps?.length" class="h-auto p-0 mt-1 ml-4.5 text-muted-foreground hover:text-foreground" :aria-expanded="open.has(e.id)" @click="toggle(e.id)">
           {{ open.has(e.id) ? 'Hide steps' : `${e.steps.length} ${e.steps.length === 1 ? 'step' : 'steps'}` }}
-        </button>
+        </Button>
         <ol v-if="open.has(e.id)" class="mt-1.5 ml-4.5 space-y-1">
           <li v-for="(s, i) in e.steps" :key="i" class="flex items-start gap-2 text-xs">
             <span class="font-mono tabular-nums text-muted-foreground w-4 text-right shrink-0">{{ i + 1 }}</span>

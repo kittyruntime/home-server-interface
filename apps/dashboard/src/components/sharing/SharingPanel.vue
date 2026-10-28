@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CircleCheckIcon, FolderIcon, WifiIcon } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref } from 'vue'
 import SharesSection from './SharesSection.vue'
@@ -50,17 +51,11 @@ const active = ref<SectionId>('shares')
           ]"
         >
           <!-- Shares -->
-          <svg v-if="item.id === 'shares'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L11 7h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-          </svg>
+          <FolderIcon v-if="item.id === 'shares'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Connections -->
-          <svg v-else-if="item.id === 'connections'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/>
-          </svg>
+          <WifiIcon v-else-if="item.id === 'connections'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Diagnostics -->
-          <svg v-else-if="item.id === 'diagnostics'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M12 3a9 9 0 100 18 9 9 0 000-18z"/>
-          </svg>
+          <CircleCheckIcon v-else-if="item.id === 'diagnostics'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ item.label }}
         </button>
       </div>

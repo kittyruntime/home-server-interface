@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -43,11 +44,7 @@ function fileExt(name: string): string {
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
-        <svg class="w-9 h-11 shrink-0"
-          :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-        </svg>
+        <FileIcon class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
           <LoadingSpinner class="text-xl text-primary drop-shadow" />
@@ -67,9 +64,7 @@ function fileExt(name: string): string {
 
     <!-- Ghost card while creating a folder -->
     <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
-      <svg class="w-11 h-11 text-primary shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z"/>
-      </svg>
+      <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <span class="text-xs text-muted-foreground italic">New Folder…</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
@@ -79,9 +74,7 @@ function fileExt(name: string): string {
 
     <!-- Ghost card while creating a file -->
     <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
-      <svg class="w-11 h-11 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-      </svg>
+      <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <span class="text-xs text-muted-foreground italic">New File…</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
@@ -119,19 +112,13 @@ function fileExt(name: string): string {
           selected.has(entry.path)
             ? 'opacity-100 bg-primary border-primary'
             : 'opacity-0 group-hover:opacity-60 border-input bg-muted']">
-        <svg v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-        </svg>
+        <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
       </div>
 
       <!-- Icon -->
-      <svg v-if="entry.type === 'dir'" class="w-11 h-11 text-primary shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z"/>
-      </svg>
+      <FolderIcon v-if="entry.type === 'dir'" class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
-        <svg class="w-9 h-11 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-        </svg>
+        <FileIcon class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
         <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-muted-foreground bg-background px-1 rounded-sm leading-tight">
           {{ fileExt(entry.name) }}
         </span>
@@ -140,10 +127,7 @@ function fileExt(name: string): string {
           title="Preview"
           class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
+          <EyeIcon class="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, EyeIcon, FileTextIcon, FolderIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
@@ -55,11 +56,7 @@ function fileExt(name: string): string {
   <!-- Mobile: cards instead of a table that has nowhere to shrink to. -->
   <div class="sm:hidden divide-y divide-border">
     <div v-for="t in uploadTasks" :key="t.id" class="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
-      <svg class="w-4 h-4 shrink-0"
-        :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'"
-        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
+      <FileTextIcon class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'">{{ t.name }}</span>
       <span v-if="t.status === 'error'" class="text-2xs text-destructive shrink-0">{{ t.error }}</span>
       <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">Paused</span>
@@ -67,16 +64,12 @@ function fileExt(name: string): string {
     </div>
 
     <div v-if="creatingFolder" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
-      <svg class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-      </svg>
+      <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
       <span class="flex-1 text-sm italic text-muted-foreground select-none">New Folder…</span>
       <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
     </div>
     <div v-if="creatingFile" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
-      <svg class="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
+      <FileTextIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
       <span class="flex-1 text-sm italic text-muted-foreground select-none">New File…</span>
       <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
     </div>
@@ -97,18 +90,12 @@ function fileExt(name: string): string {
       >
         <div :class="['w-4 h-4 rounded border flex items-center justify-center',
           selected.has(entry.path) ? 'bg-primary border-primary' : 'border-input']">
-          <svg v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
+          <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
         </div>
       </div>
 
-      <svg v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-      </svg>
-      <svg v-else class="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
+      <FolderIcon v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+      <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
       <template v-if="renamingPath === entry.path">
         <input
@@ -184,11 +171,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5" colspan="3">
           <div class="flex items-center gap-2.5 min-w-0">
-            <svg class="w-4 h-4 shrink-0"
-              :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+            <FileTextIcon class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
             <span class="text-sm truncate select-none"
               :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'">
               {{ t.name }}
@@ -205,9 +188,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-            </svg>
+            <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
             <span class="text-muted-foreground text-sm italic select-none">New Folder…</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
@@ -220,9 +201,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+            <FileTextIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
             <span class="text-muted-foreground text-sm italic select-none">New File…</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
@@ -251,21 +230,15 @@ function fileExt(name: string): string {
               selected.has(entry.path)
                 ? 'bg-primary border-primary opacity-100'
                 : 'border-input bg-transparent opacity-0 group-hover:opacity-50']">
-            <svg v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
           </div>
         </TableCell>
 
         <!-- Name -->
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
-            <svg v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-            </svg>
-            <svg v-else class="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+            <FolderIcon v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+            <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
             <template v-if="renamingPath === entry.path">
               <input
@@ -299,10 +272,7 @@ function fileExt(name: string): string {
                 title="Preview"
                 class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all shrink-0"
               >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
+                <EyeIcon class="w-4 h-4" aria-hidden="true" />
               </button>
             </template>
           </div>

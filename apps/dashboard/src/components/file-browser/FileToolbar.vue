@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ArrowLeftIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
 import { ref, nextTick } from 'vue'
 import { Input } from '@/components/ui/input'
 
@@ -68,21 +70,17 @@ const newMenuOpen = ref(false)
     <button v-if="newMenuOpen" class="fixed inset-0 z-20" aria-label="Close menu" @click="newMenuOpen = false" />
 
     <!-- Mobile: places sidebar toggle -->
-    <button @click="emit('toggleSidebar')" title="Places" aria-label="Toggle places sidebar"
-      class="sm:hidden p-1.5 rounded-lg flex-shrink-0 transition-colors"
+    <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" title="Places" aria-label="Toggle places sidebar"
+      class="sm:hidden flex-shrink-0"
       :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
-      </svg>
-    </button>
+      <MenuIcon class="w-4 h-4" aria-hidden="true" />
+    </Button>
 
     <!-- Back / Up -->
-    <button v-if="canGoUp" @click="emit('goUp')" title="Go up" aria-label="Go to parent folder"
-      class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-      </svg>
-    </button>
+    <Button variant="ghost" size="icon-sm" v-if="canGoUp" @click="emit('goUp')" title="Go up" aria-label="Go to parent folder"
+      class="text-muted-foreground hover:text-foreground flex-shrink-0">
+      <ArrowLeftIcon class="w-4 h-4" aria-hidden="true" />
+    </Button>
 
     <!-- Breadcrumb -->
     <nav v-if="currentPath" class="flex items-center gap-0.5 text-sm flex-1 min-w-0 overflow-x-auto">
@@ -103,52 +101,36 @@ const newMenuOpen = ref(false)
       <!-- Selection actions -->
       <template v-if="selectedCount > 0">
         <span class="text-xs tabular-nums text-muted-foreground select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
-        <button @click="emit('clearSelection')" title="Clear selection" aria-label="Clear selection"
-          class="p-1 rounded-sm text-muted-foreground hover:text-foreground/80 transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <Button variant="ghost" size="icon-xs" @click="emit('clearSelection')" title="Clear selection" aria-label="Clear selection"
+          class="text-muted-foreground hover:text-foreground/80">
+          <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
         <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
 
         <button @click="emit('copy')" title="Copy" aria-label="Copy selection" class="sel-btn">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-          </svg>
+          <CopyIcon class="w-4 h-4" aria-hidden="true" />
         </button>
         <button @click="emit('cut')" title="Cut" aria-label="Cut selection" class="sel-btn">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"/>
-          </svg>
+          <ScissorsIcon class="w-4 h-4" aria-hidden="true" />
         </button>
 
         <template v-if="selectedCount === 1">
           <button @click="emit('startRename', selectedEntries[0]!)" title="Rename" aria-label="Rename selection" class="sel-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-            </svg>
+            <PencilIcon class="w-4 h-4" aria-hidden="true" />
           </button>
           <button v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" title="Download" aria-label="Download selection" class="sel-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
+            <DownloadIcon class="w-4 h-4" aria-hidden="true" />
           </button>
           <button @click="emit('openPermissions')" title="Permissions" aria-label="Edit permissions" class="sel-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-            </svg>
+            <KeyRoundIcon class="w-4 h-4" aria-hidden="true" />
           </button>
           <button @click="emit('share')" title="Share" aria-label="Share selection" class="sel-btn">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-            </svg>
+            <Share2Icon class="w-4 h-4" aria-hidden="true" />
           </button>
         </template>
 
         <button @click="emit('delete')" title="Delete" aria-label="Delete selection" class="sel-btn sel-btn-danger">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-          </svg>
+          <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </button>
         <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
       </template>
@@ -158,29 +140,21 @@ const newMenuOpen = ref(false)
         <button @click.stop="newMenuOpen = !newMenuOpen" title="New" aria-label="Create new folder or file" :aria-expanded="newMenuOpen"
           :class="['flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-xs',
             newMenuOpen ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
+          <PlusIcon class="w-4 h-4" aria-hidden="true" />
           <span class="hidden sm:inline">New</span>
-          <svg class="hidden sm:block w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-          </svg>
+          <ChevronDownIcon class="hidden sm:block w-3 h-3" aria-hidden="true" />
         </button>
         <Transition name="ui-pop">
           <div v-if="newMenuOpen"
             class="absolute left-0 top-full z-30 mt-1.5 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
             <button @click="emit('createFolder'); newMenuOpen = false"
               class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-              </svg>
+              <FolderPlusIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
               New folder
             </button>
             <button @click="emit('createFile'); newMenuOpen = false"
               class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
-              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
+              <FileTextIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
               New file
             </button>
           </div>
@@ -190,9 +164,7 @@ const newMenuOpen = ref(false)
       <!-- Upload -->
       <button v-if="currentPath" @click="emit('uploadClick')" title="Upload files" aria-label="Upload files"
         class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-xs">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
+        <UploadIcon class="w-4 h-4" aria-hidden="true" />
         <span class="hidden sm:inline">Upload</span>
       </button>
 
@@ -202,9 +174,7 @@ const newMenuOpen = ref(false)
           clipboard.mode === 'cut'
             ? 'bg-warning/15 text-warning hover:bg-warning/25'
             : 'bg-primary/10 text-primary hover:opacity-80']">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-        </svg>
+        <ClipboardPasteIcon class="w-4 h-4" aria-hidden="true" />
         <span class="hidden sm:inline">Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }} {{ clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }}</span>
       </button>
 
@@ -212,26 +182,20 @@ const newMenuOpen = ref(false)
       <div v-if="currentPath" class="w-px h-4 bg-input mx-1" />
 
       <!-- Refresh -->
-      <button v-if="currentPath" @click="emit('refresh')" title="Refresh" aria-label="Refresh folder"
-        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+      <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" title="Refresh" aria-label="Refresh folder"
+        class="text-muted-foreground hover:text-foreground">
+        <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
 
       <!-- View toggle -->
       <div class="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
         <button @click="emit('update:viewMode', 'list')" title="List view" aria-label="List view"
           :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-          </svg>
+          <ListIcon class="w-4 h-4" aria-hidden="true" />
         </button>
         <button @click="emit('update:viewMode', 'grid')" title="Grid view" aria-label="Grid view"
           :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-          </svg>
+          <LayoutGridIcon class="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -239,16 +203,12 @@ const newMenuOpen = ref(false)
            claim ~150px from the breadcrumb (tight in a narrow desktop-mode
            window, tighter still on a phone). -->
       <div v-if="currentPath" class="flex items-center ml-1 border-l border-border pl-2">
-        <button v-if="!searchOpen" @click="openSearch" title="Search" aria-label="Search this folder"
-          class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-        </button>
+        <Button variant="ghost" size="icon-sm" v-if="!searchOpen" @click="openSearch" title="Search" aria-label="Search this folder"
+          class="text-muted-foreground hover:text-foreground">
+          <SearchIcon class="w-4 h-4" aria-hidden="true" />
+        </Button>
         <div v-else class="relative">
-          <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
+          <SearchIcon class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" aria-hidden="true" />
           <Input
             ref="searchInput"
             v-model="searchQuery"
@@ -260,9 +220,7 @@ const newMenuOpen = ref(false)
           />
           <button @click="clearSearch" title="Close search" aria-label="Close search"
             class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+            <XIcon class="w-3 h-3" aria-hidden="true" />
           </button>
         </div>
       </div>

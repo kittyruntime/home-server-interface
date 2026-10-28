@@ -193,10 +193,10 @@ async function mount(v: Volume) {
       <div v-else class="rounded-xl border border-border bg-card overflow-hidden">
         <!-- Header (wide) -->
         <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
-          <button class="text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">Volume</button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">Volume</Button>
           <span>Redundancy</span>
-          <button class="text-left hover:text-foreground" :class="sortKey === 'space' && 'text-foreground'" @click="sortKey = 'space'">Space</button>
-          <button class="text-left hover:text-foreground" :class="sortKey === 'health' && 'text-foreground'" @click="sortKey = 'health'">Health</button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'space' && 'text-foreground'" @click="sortKey = 'space'">Space</Button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'health' && 'text-foreground'" @click="sortKey = 'health'">Health</Button>
           <span>Used by</span>
         </div>
 
@@ -254,7 +254,7 @@ async function mount(v: Volume) {
         <p v-if="overview.freeDisks.length">
           Free disks:
           <span class="font-mono text-foreground/80">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
-          <button class="ml-1.5 text-foreground underline decoration-input underline-offset-2 hover:decoration-foreground" @click="createVolume">Create volume</button>
+          <Button variant="link" class="h-auto p-0 ml-1.5 text-foreground" @click="createVolume">Create volume</Button>
         </p>
         <p v-if="overview.system">
           System: <span class="font-mono text-foreground/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronRightIcon, RefreshCwIcon, TriangleIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
@@ -145,12 +146,7 @@ onUnmounted(() => {
     <!-- Header row -->
     <div class="header-row">
       <button class="toggle-btn" @click="toggle">
-        <svg
-          :class="['chevron', { 'chevron--open': expanded }]"
-          viewBox="0 0 16 16" fill="none"
-        >
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <ChevronRightIcon :class="['chevron', { 'chevron--open': expanded }]" aria-hidden="true" />
         <span class="section-label">Unmanaged</span>
         <span v-if="!loading && containers.length" class="count-badge">
           {{ containers.length }}
@@ -161,9 +157,7 @@ onUnmounted(() => {
       </button>
 
       <button class="refresh-btn" @click="load" :disabled="loading" title="Refresh">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
+        <RefreshCwIcon aria-hidden="true" />
       </button>
     </div>
 
@@ -222,9 +216,7 @@ onUnmounted(() => {
 
             <!-- Compose badge (hidden on small screens) -->
             <span v-if="c.composeProject" class="compose-badge">
-              <svg viewBox="0 0 12 12" fill="none" class="compose-icon">
-                <path d="M6 1.5L10.5 9H1.5L6 1.5Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
-              </svg>
+              <TriangleIcon class="compose-icon" aria-hidden="true" />
               {{ c.composeProject }}
             </span>
 

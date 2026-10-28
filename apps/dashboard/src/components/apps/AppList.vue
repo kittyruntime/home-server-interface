@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { BookmarkIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
@@ -260,18 +261,14 @@ async function unpin(app: App) {
         >
           <template #icon>
             <div class="w-16 h-16 rounded-xl bg-muted border border-border flex items-center justify-center">
-              <svg class="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-              </svg>
+              <PackageIcon class="w-8 h-8 text-muted-foreground" aria-hidden="true" />
             </div>
           </template>
           <template #action>
             <Button
               @click="openNew"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
+              <PlusIcon class="w-4 h-4" aria-hidden="true" />
               New App
             </Button>
           </template>
@@ -294,9 +291,7 @@ async function unpin(app: App) {
                 <p class="text-sm font-semibold text-foreground font-mono leading-none">{{ app.name }}</p>
                 <p class="text-2xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
               </div>
-              <svg class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/80 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-              </svg>
+              <ExternalLinkIcon class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/80 transition-colors flex-shrink-0" aria-hidden="true" />
             </a>
           </TransitionGroup>
         </div>
@@ -305,7 +300,7 @@ async function unpin(app: App) {
         <div class="space-y-2 px-3 pb-3 sm:hidden">
           <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-border p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-card']">
             <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">Blocked</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-muted-foreground" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
-            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-foreground/80 active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-foreground/80 active:bg-accent" @click="openLogs(app)">Logs</button></div>
+            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="link" class="h-auto p-0 touch-target text-success active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</Button><Button variant="link" class="h-auto p-0 touch-target text-warning active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</Button><Button variant="link" class="h-auto p-0 touch-target text-foreground/80 active:bg-accent" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</Button><Button variant="link" class="h-auto p-0 touch-target text-foreground/80 active:bg-accent" @click="openLogs(app)">Logs</Button></div>
           </article>
         </div>
 
@@ -333,13 +328,7 @@ async function unpin(app: App) {
                   <span class="font-mono text-foreground/80 text-sm font-medium">{{ app.name }}</span>
                   <Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</Badge>
                   <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span>
-                  <svg
-                    v-if="app.app?.pinnedUrl"
-                    class="w-3 h-3 text-primary flex-shrink-0"
-                    fill="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                  </svg>
+                  <BookmarkIcon v-if="app.app?.pinnedUrl" class="w-3 h-3 text-primary flex-shrink-0" aria-hidden="true" />
                   <span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span>
                   <span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span>
                 </div>
@@ -374,15 +363,15 @@ async function unpin(app: App) {
                 <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 
                   <!-- Apply -->
-                  <button
+                  <Button variant="outline" size="xs"
                     v-if="app.pendingApply || app.drifted"
                     @click="applyApp(app.id)"
                     :disabled="!!actionLoading[app.id]"
                     title="Apply changes"
-                    class="px-2 py-1 mr-1.5 rounded-lg text-2xs font-medium text-primary border border-primary/40 hover:bg-accent disabled:opacity-30 transition-colors"
+                    class="mr-1.5 text-2xs text-primary border-primary/40"
                   >
                     Apply
-                  </button>
+                  </Button>
 
                   <!-- Start / Stop / Restart -->
                   <div class="flex items-center border border-input rounded-lg overflow-hidden mr-1.5">
@@ -392,9 +381,7 @@ async function unpin(app: App) {
                       title="Start"
                       class="px-2 py-1.5 text-muted-foreground hover:text-success hover:bg-accent disabled:opacity-30 transition-colors"
                     >
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                      </svg>
+                      <PlayIcon class="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                     <span class="w-px h-4 bg-input" />
                     <button
@@ -414,22 +401,18 @@ async function unpin(app: App) {
                       title="Restart"
                       class="px-2 py-1.5 text-muted-foreground hover:text-primary hover:bg-accent disabled:opacity-30 transition-colors"
                     >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                      </svg>
+                      <RefreshCwIcon class="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                   </div>
 
                   <!-- Logs -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="openLogs(app)"
                     title="Logs"
-                    class="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent"
+                    class="text-muted-foreground hover:text-foreground"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h8"/>
-                    </svg>
-                  </button>
+                    <ScrollTextIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
 
                   <!-- Pin -->
                   <button
@@ -446,27 +429,23 @@ async function unpin(app: App) {
                   </button>
 
                   <!-- Edit -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="openEdit(app)"
                     title="Edit"
-                    class="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent"
+                    class="text-muted-foreground hover:text-foreground"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                  </button>
+                    <SquarePenIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
 
                   <!-- Delete -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="runAction(app.id, 'delete')"
                     :disabled="!!actionLoading[app.id]"
                     title="Delete"
-                    class="p-1.5 text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors rounded-lg hover:bg-accent"
+                    class="text-muted-foreground hover:text-primary"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
+                    <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
                 </div>
               </TableCell>
             </TableRow>

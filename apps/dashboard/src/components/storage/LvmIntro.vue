@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ChevronRightIcon, XIcon } from '@lucide/vue'
 import { ref } from 'vue'
 
 const DISMISS_KEY = 'lvm-intro-dismissed'
@@ -28,16 +30,14 @@ const stages = [
 <template>
   <Transition name="ui-fade">
     <div v-if="!dismissed" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mb-4 border-input bg-card p-4">
-      <button
+      <Button variant="ghost" size="icon-xs"
         title="Dismiss"
         aria-label="Dismiss LVM explanation"
-        class="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+        <XIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
 
       <h3 class="text-sm font-semibold text-foreground pr-8">How LVM works</h3>
 
@@ -48,9 +48,7 @@ const stages = [
             <p class="mt-1 text-xs text-muted-foreground leading-snug">{{ s.caption }}</p>
           </div>
           <div v-if="i < stages.length - 1" class="flex items-center justify-center shrink-0 text-muted-foreground">
-            <svg class="w-4 h-4 rotate-90 @2xl:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
+            <ChevronRightIcon class="w-4 h-4 rotate-90 @2xl:rotate-0" aria-hidden="true" />
           </div>
         </template>
       </div>

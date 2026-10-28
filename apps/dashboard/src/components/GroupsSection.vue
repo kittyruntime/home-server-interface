@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PencilIcon, PlusIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
 import { ref, computed, watch, onMounted } from 'vue'
@@ -131,9 +132,7 @@ onMounted(load)
           @click="openAdd"
           class="shrink-0"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Add group
         </Button>
       </div>
@@ -204,15 +203,13 @@ onMounted(load)
 
               <!-- Actions -->
               <TableCell class="px-4 py-3.5 text-right">
-                <button
+                <Button variant="ghost" size="icon-sm"
                   @click="openEditor(group)"
                   title="Edit group"
-                  class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  class="text-muted-foreground hover:text-foreground"
                 >
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                  </svg>
-                </button>
+                  <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                </Button>
               </TableCell>
             </TableRow>
 

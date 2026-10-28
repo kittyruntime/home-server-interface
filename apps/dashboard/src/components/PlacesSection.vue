@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDownIcon, FolderIcon, PlusIcon, XIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref, onMounted, watch } from 'vue'
@@ -136,9 +137,7 @@ onMounted(async () => {
         @click="adding = true"
         class="shrink-0"
       >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
+        <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
         Add place
       </Button>
     </div>
@@ -165,10 +164,10 @@ onMounted(async () => {
         <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
         <div v-if="pathMissing" class="rounded-lg bg-muted border border-border px-3 py-2">
           <p class="text-xs text-foreground/80">This folder doesn't exist yet.</p>
-          <button @click="createDir" :disabled="addLoading"
-            class="text-xs text-primary underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-0.5">
+          <Button variant="link" @click="createDir" :disabled="addLoading"
+            class="h-auto p-0 text-primary mt-0.5">
             {{ addLoading ? 'Creating…' : 'Create it and add the place' }}
-          </button>
+          </Button>
         </div>
         <div class="flex gap-2 pt-1">
           <Button size="sm" @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()">
@@ -183,18 +182,14 @@ onMounted(async () => {
       <!-- Empty state -->
       <div v-if="places.length === 0 && !adding"
         class="rounded-xl border border-dashed border-input bg-card px-6 py-10 text-center">
-        <svg class="w-10 h-10 mx-auto text-muted-foreground opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-        </svg>
+        <FolderIcon class="w-10 h-10 mx-auto text-muted-foreground opacity-60" aria-hidden="true" />
         <h4 class="text-sm font-medium text-foreground mt-3">No places yet</h4>
         <p class="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">
           A place shares a folder on your NAS with users and groups, and you decide exactly who can read,
           write or delete its contents.
         </p>
         <Button size="sm" @click="adding = true" class="mt-4 mx-auto">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Add your first place
         </Button>
       </div>
@@ -209,27 +204,19 @@ onMounted(async () => {
           <!-- Place row -->
           <div class="flex items-center gap-3 px-4 py-3 group">
             <button @click="togglePlace(place.id)" class="flex-1 flex items-center gap-3 text-left min-w-0">
-              <svg class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-              </svg>
+              <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-foreground">{{ place.name }}</span>
                 <span class="text-muted-foreground text-xs font-mono ml-3">{{ place.path }}</span>
               </div>
               <!-- Expand chevron -->
-              <svg :class="['w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-              </svg>
+              <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
             </button>
-            <button @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 p-1 rounded-sm text-muted-foreground hover:text-primary
-                     hover:bg-primary/10 transition-all shrink-0"
+            <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
+              class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
               title="Remove">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+              <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
+            </Button>
           </div>
 
           <!-- Permissions matrix (expanded) -->

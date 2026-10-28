@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { FileIcon, FolderOpenIcon, ServerIcon } from '@lucide/vue'
 import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -115,17 +116,11 @@ onMounted(async () => {
     <template #header>
       <div class="flex items-center gap-3 min-w-0">
         <!-- Place icon -->
-        <svg v-if="isPlace" class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
-        </svg>
+        <ServerIcon v-if="isPlace" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <!-- Folder icon -->
-        <svg v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
-        </svg>
+        <FolderOpenIcon v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <!-- File icon -->
-        <svg v-else class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-        </svg>
+        <FileIcon v-else class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div class="min-w-0">
           <div class="text-sm font-semibold text-foreground truncate">{{ displayName }}</div>
           <div class="text-2xs text-muted-foreground font-mono truncate mt-0.5">{{ targetPath }}</div>
@@ -197,11 +192,11 @@ onMounted(async () => {
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
           <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Permissions</div>
-          <button
+          <Button variant="link"
             v-if="isAdmin"
             @click="emit('close'); emit('openPermissions')"
-            class="text-xs text-primary hover:underline"
-          >Edit…</button>
+            class="h-auto p-0 text-primary"
+          >Edit…</Button>
         </div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">

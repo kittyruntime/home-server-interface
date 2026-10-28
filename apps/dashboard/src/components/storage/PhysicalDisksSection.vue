@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronRightIcon, InfoIcon, RefreshCwIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -308,12 +309,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <h2 class="text-lg font-semibold text-foreground">Disks</h2>
         <p class="text-sm text-muted-foreground mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
       </div>
-      <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+        <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+      </Button>
     </div>
 
     <LoadingState v-if="loading && !devices.length" variant="block" />
@@ -381,7 +380,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
         <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-muted-foreground">
           Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
-          <button @click="clearFilters" class="text-primary hover:underline">Clear filters</button>
+          <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
         </div>
 
         <!-- Selected free disks -->
@@ -390,11 +389,11 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           <Button @click="startCreate('volume')" class="text-xs">Create volume…</Button>
           <Button variant="outline" v-if="selected.size >= 2" @click="startCreate('raid')" class="text-xs">Create RAID…</Button>
           <Button variant="outline" @click="startCreate('lvm')" class="text-xs">Create volume group…</Button>
-          <button @click="selected = new Set()" class="ml-auto text-muted-foreground hover:text-foreground">Clear</button>
+          <Button variant="link" @click="selected = new Set()" class="h-auto p-0 ml-auto text-muted-foreground hover:text-foreground">Clear</Button>
         </div>
 
         <div v-if="!visibleRows.length" class="text-sm text-muted-foreground py-6 text-center">
-          No disk matches these filters. <button @click="clearFilters" class="text-primary hover:underline">Clear filters</button>
+          No disk matches these filters. <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
         </div>
 
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
@@ -440,9 +439,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
                 </span>
                 <span class="text-right tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature ? `${r.temperature}°C` : '-' }}</span>
-                <svg class="w-3.5 h-3.5 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon class="w-3.5 h-3.5 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" aria-hidden="true" />
               </div>
 
               <!-- Row (mobile): role and health first -->
@@ -457,7 +454,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     <span v-if="r.temperature" class="text-2xs tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
                   </div>
                   <div class="mt-1 text-xs">
-                    <button class="font-mono font-semibold text-foreground hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
+                    <Button variant="link" class="h-auto p-0 font-mono font-semibold text-foreground" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</Button>
                     <span class="text-muted-foreground tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
                     <span v-if="r.kind" class="text-muted-foreground"> · {{ r.kind }}</span>
                   </div>
@@ -466,9 +463,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                   </div>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </div>
-                <svg class="w-3.5 h-3.5 mt-1 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon class="w-3.5 h-3.5 mt-1 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" aria-hidden="true" />
               </div>
 
               <div v-if="expanded.has(r.disk.name)" class="px-3 pb-3">
@@ -540,9 +535,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+              <InfoIcon class="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               The partition will use the entire free space (0% → 100%). After creation you can format and mount it.
             </div>
             <div class="space-y-1 text-xs text-muted-foreground">

@@ -249,9 +249,9 @@ function diskLabel(d: BlockDev): string {
             </label>
           </div>
           <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> A volume group named {{ s.vg }} already exists.</p>
-          <button class="mt-4 text-xs text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
+          <Button variant="link" class="h-auto p-0 mt-4 text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
             {{ s.advanced ? 'Hide advanced' : 'Advanced' }}
-          </button>
+          </Button>
           <label v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">Use {{ s.lvPercent }}% of the volume group
             <input type="range" min="10" max="100" step="5" v-model.number="s.lvPercent" class="w-full accent-primary" />
             <span class="block mt-1">The rest stays free in the volume group, for another volume or for snapshots.</span>

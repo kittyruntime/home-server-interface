@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { CheckIcon, CopyIcon, DownloadIcon, MinusIcon, PlusIcon, SquareIcon, XIcon } from '@lucide/vue'
 import { ref, computed, onUnmounted, onMounted, provide, watch, defineAsyncComponent } from 'vue'
 import { useDesktop, APP_LABEL, type DesktopWindow } from '../../lib/desktop'
 import { modalHostKey } from '../../lib/modal-host'
@@ -167,26 +169,22 @@ function onMaximizeClick() {
         <span class="eyebrow truncate">{{ APP_LABEL[win.appId] }}</span>
       </div>
       <div class="flex items-center gap-1 shrink-0" @pointerdown.stop>
-        <button
+        <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
           title="New App"
-          class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          class="text-muted-foreground hover:text-foreground"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-        </button>
-        <button
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'file-preview' && win.dirty"
           @click="filePreviewRef?.save()"
           title="Save"
-          class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          class="text-muted-foreground hover:text-foreground"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
-        </button>
+          <CheckIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
         <a
           v-if="win.appId === 'file-preview'"
           :href="downloadHref ?? undefined"
@@ -194,28 +192,18 @@ function onMaximizeClick() {
           title="Download"
           class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
+          <DownloadIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </a>
-        <button @click="onMinimizeClick" title="Minimize" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
-          </svg>
-        </button>
-        <button @click="onMaximizeClick" :title="win.maximized ? 'Restore' : 'Maximize'" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-          <svg v-if="win.maximized" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V5a1 1 0 011-1h9a1 1 0 011 1v9a1 1 0 01-1 1h-4M5 9h9a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z"/>
-          </svg>
-          <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h14v14H5z"/>
-          </svg>
-        </button>
-        <button @click="onCloseClick" title="Close" class="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" title="Minimize" class="text-muted-foreground hover:text-foreground">
+          <MinusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :title="win.maximized ? 'Restore' : 'Maximize'" class="text-muted-foreground hover:text-foreground">
+          <CopyIcon v-if="win.maximized" class="w-3.5 h-3.5" aria-hidden="true" />
+          <SquareIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" size="icon-xs" @click="onCloseClick" title="Close" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
+          <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </Button>
       </div>
     </div>
 

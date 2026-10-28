@@ -162,10 +162,10 @@ function removeExtraHost(h: string) {
           v-model="capAddInput" placeholder="NET_ADMIN" @keydown.enter.prevent="addCap('capAdd', capAddInput as any)"
           class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
-        <button
+        <Button variant="secondary" size="sm"
           @click="addCap('capAdd', capAddInput as any)"
-          class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:opacity-80 transition-colors"
-        >Add</button>
+          class="bg-primary/10 text-primary"
+        >Add</Button>
       </div>
     </div>
 
@@ -186,10 +186,10 @@ function removeExtraHost(h: string) {
           v-model="capDropInput" placeholder="ALL" @keydown.enter.prevent="addCap('capDrop', capDropInput as any)"
           class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
-        <button
+        <Button variant="secondary" size="sm"
           @click="addCap('capDrop', capDropInput as any)"
-          class="px-3 py-1.5 bg-warning/20 text-warning rounded-lg text-sm hover:bg-warning/30 transition-colors"
-        >Add</button>
+          class="bg-warning/20 text-warning"
+        >Add</Button>
       </div>
     </div>
 
@@ -211,10 +211,10 @@ function removeExtraHost(h: string) {
           @keydown.enter.prevent="addExtraHost"
           class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
-        <button
+        <Button variant="secondary" size="sm"
           @click="addExtraHost"
-          class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:opacity-80 transition-colors"
-        >Add</button>
+          class="bg-primary/10 text-primary"
+        >Add</Button>
       </div>
       <p v-if="extraHostError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
       <p class="text-xs text-muted-foreground">Adds <span class="font-mono">--add-host</span> entries (maps to <span class="font-mono">/etc/hosts</span> inside the container).</p>

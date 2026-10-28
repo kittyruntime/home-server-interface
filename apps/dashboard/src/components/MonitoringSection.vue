@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDownIcon, ChevronUpIcon, LayersIcon, LayoutTemplateIcon, WifiIcon } from '@lucide/vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
@@ -159,9 +160,7 @@ const chartOptions = {
           <!-- ── Processor ────────────────────────────────────────────────── -->
           <div class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
-              <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-              </svg>
+              <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Processor</span>
             </div>
 
@@ -199,9 +198,7 @@ const chartOptions = {
           <!-- ── Memory ────────────────────────────────────────────────────── -->
           <div class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
-              <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-              </svg>
+              <LayersIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Memory</span>
             </div>
 
@@ -235,22 +232,16 @@ const chartOptions = {
           <div class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
-                </svg>
+                <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Network throughput</span>
               </div>
               <div class="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-                  </svg>
+                  <ChevronDownIcon class="w-3 h-3 text-success" aria-hidden="true" />
                   {{ fmtBytes(metrics.network.rx) }}/s
                 </span>
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
-                  </svg>
+                  <ChevronUpIcon class="w-3 h-3 text-info" aria-hidden="true" />
                   {{ fmtBytes(metrics.network.tx) }}/s
                 </span>
               </div>

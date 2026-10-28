@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TriangleAlertIcon } from '@lucide/vue'
 import { computed } from 'vue'
 import { useDockerStatus } from '../../lib/docker'
 import { Button } from '@/components/ui/button'
@@ -26,9 +27,7 @@ const command = computed(() => {
   <div class="flex h-full w-full items-center justify-center p-6">
     <div class="w-full max-w-lg rounded-xl border border-warning/30 bg-card p-6 text-center">
       <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-warning/10 text-warning">
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
-        </svg>
+        <TriangleAlertIcon class="h-5 w-5" aria-hidden="true" />
       </div>
       <h2 class="text-base font-semibold text-foreground">{{ title }}</h2>
       <p class="mt-2 text-sm text-muted-foreground">

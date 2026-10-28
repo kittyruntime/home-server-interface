@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PencilIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
@@ -178,9 +179,7 @@ onMounted(load)
           @click="openAdd"
           class="shrink-0"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Add user
         </Button>
       </div>
@@ -234,9 +233,7 @@ onMounted(load)
 
       <!-- Error -->
       <div v-else-if="loadError" class="flex items-center gap-2 text-primary text-sm py-4">
-        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
+        <TriangleAlertIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
         {{ loadError }}
       </div>
 
@@ -300,15 +297,13 @@ onMounted(load)
 
                 <!-- Actions -->
                 <TableCell v-if="isUserManager" class="px-4 py-3.5 text-right">
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="openDetail(user)"
                     title="Edit user"
-                    class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    class="text-muted-foreground hover:text-foreground"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                    </svg>
-                  </button>
+                    <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
                 </TableCell>
               </TableRow>
 

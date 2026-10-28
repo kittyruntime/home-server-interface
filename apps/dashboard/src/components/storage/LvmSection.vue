@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -204,15 +205,13 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       <div class="flex items-center gap-2">
         <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
           :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Create volume group…
         </Button>
-        <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
-          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-        </button>
+          <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+        </Button>
       </div>
     </div>
 
@@ -245,12 +244,12 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="flex items-center gap-3 px-4 py-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <button v-if="!only" class="font-mono text-sm font-semibold text-foreground hover:underline underline-offset-2" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</button>
+                <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-foreground" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
                 <span v-else class="font-mono text-sm font-semibold text-foreground">{{ vg.name }}</span>
                 <span class="text-2xs text-muted-foreground">{{ fmtBytes(vg.size) }}</span>
                 <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
                 <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
-                  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
                   SYSTEM
                 </span>
               </div>
@@ -263,10 +262,10 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
-              <button v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
-                class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-purple-500/50 hover:text-purple-400 transition-colors">
+              <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
+                class="text-foreground/80 hover:border-purple-500/50 hover:text-purple-400">
                 + Add LV
-              </button>
+              </Button>
               <!-- ⋯ menu for VG -->
               <div v-if="!isSystemVg(vg.name)" class="relative z-30">
                 <button @click.stop="openMenu = openMenu === ('vg:' + vg.name) ? null : ('vg:' + vg.name)"
@@ -282,9 +281,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                   </div>
                   <button @click="removeVgDlg = { vg, busy: false, err: '' }; openMenu = null"
                     class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                    </svg>
+                    <Trash2Icon class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     Remove VG…
                   </button>
                 </div>
@@ -329,21 +326,19 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </div>
               <!-- LV actions: revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
-                <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">Format</button>
-                <button v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-success/50 hover:text-success transition-colors">Mount</button>
-                <button v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+                <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+                <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+                <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-border mx-1"/>
-                <button @click="removeLvDlg = { lv, busy: false, err: '' }"
+                <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
                   title="Delete this logical volume"
-                  class="w-6 h-6 flex items-center justify-center rounded-sm text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors">
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                  </svg>
-                </button>
+                  class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
+                  <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
+                </Button>
               </div>
             </div>
           </div>
@@ -377,9 +372,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
             </p>
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               All data on the selected devices will be permanently destroyed.
             </div>
             <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-muted-foreground">
@@ -395,9 +388,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 @click="toggleLvmDev(dev.name)">
                 <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
                   lvmWiz.pvDevs.includes(dev.name) ? 'border-purple-400 bg-purple-400' : 'border-input']">
-                  <svg v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                  </svg>
+                  <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <span class="text-sm font-mono text-foreground">/dev/{{ dev.name }}</span>
@@ -449,9 +440,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <!-- Step 3: Confirm -->
           <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
             <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-              <svg class="w-5 h-5 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-warning text-sm mb-1">All data on selected devices will be erased</div>
                 <div class="text-xs text-warning/80">LVM will overwrite the beginning of each device to write PV headers.</div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -156,10 +157,10 @@ onMounted(async () => {
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Display name</h4>
-          <button v-if="!editingName" @click="startEditName"
-            class="text-xs text-muted-foreground hover:text-foreground/80 transition-colors">
+          <Button variant="link" v-if="!editingName" @click="startEditName"
+            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
             Edit
-          </button>
+          </Button>
         </div>
 
         <div v-if="!editingName" class="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
@@ -183,10 +184,10 @@ onMounted(async () => {
             <Button size="sm" @click="saveName" :disabled="nameLoading">
               {{ nameLoading ? 'Saving…' : 'Save' }}
             </Button>
-            <button @click="editingName = false"
-              class="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors">
+            <Button variant="ghost" size="sm" @click="editingName = false"
+              class="text-muted-foreground hover:text-foreground">
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -195,10 +196,10 @@ onMounted(async () => {
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Password</h4>
-          <button v-if="!pwOpen" @click="openPassword"
-            class="text-xs text-muted-foreground hover:text-foreground/80 transition-colors">
+          <Button variant="link" v-if="!pwOpen" @click="openPassword"
+            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
             Change
-          </button>
+          </Button>
         </div>
 
         <div v-if="!pwOpen" class="bg-card border border-border rounded-xl px-4 py-3">
@@ -207,9 +208,7 @@ onMounted(async () => {
 
         <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
           <div v-if="pwSuccess" class="flex items-center gap-2 text-success text-sm py-1">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
             Password updated successfully.
           </div>
 
@@ -237,10 +236,10 @@ onMounted(async () => {
               <Button size="sm" @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next">
                 {{ pwLoading ? 'Saving…' : 'Update password' }}
               </Button>
-              <button @click="pwOpen = false"
-                class="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Button variant="ghost" size="sm" @click="pwOpen = false"
+                class="text-muted-foreground hover:text-foreground">
                 Cancel
-              </button>
+              </Button>
             </div>
           </template>
         </div>

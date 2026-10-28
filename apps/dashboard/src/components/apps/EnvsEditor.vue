@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref, watch } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
 import { Input } from '@/components/ui/input'
@@ -42,12 +43,12 @@ watch(() => props.modelValue, () => {
 <template>
   <div class="space-y-2">
     <div class="flex justify-end">
-      <button
+      <Button variant="outline" size="xs"
         @click="toggleMode"
-        class="text-xs text-muted-foreground hover:text-foreground transition-colors border border-input rounded-lg px-2 py-1"
+        class="text-muted-foreground hover:text-foreground"
       >
         {{ mode === 'table' ? 'Raw' : 'Table' }}
-      </button>
+      </Button>
     </div>
 
     <!-- Table mode -->

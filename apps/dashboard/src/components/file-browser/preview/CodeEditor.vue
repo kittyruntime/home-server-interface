@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { WrapTextIcon } from '@lucide/vue'
 import LoadingState from '../../ui/LoadingState.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
@@ -160,18 +162,16 @@ onBeforeUnmount(() => view?.destroy())
     </div>
 
     <div v-show="state === 'ready'" class="relative flex-1 min-h-0">
-      <button
+      <Button variant="ghost" size="icon-sm"
         v-if="formatter"
         type="button"
         title="Format (Shift-Alt-F)"
-        class="absolute top-2 right-4 z-10 p-1.5 rounded-md bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shadow-sm disabled:opacity-50"
+        class="absolute top-2 right-4 z-10 bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm"
         :disabled="formatting"
         @click="format"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h7"/>
-        </svg>
-      </button>
+        <WrapTextIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
       <div ref="editorEl" class="h-full overflow-auto" />
     </div>
   </div>

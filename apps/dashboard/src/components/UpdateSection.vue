@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, RefreshCwIcon } from '@lucide/vue'
 import { formatDateTime, formatDay } from '../lib/format-date'
 import { lastResultText, lastResultIsProblem, previousVersionText, rollbackCommand } from '../lib/update-result'
 import LoadingState from './ui/LoadingState.vue'
@@ -214,9 +215,7 @@ onUnmounted(() => clearInterval(timer))
               ]"
             >
               <!-- Done -->
-              <svg v-if="stepState(step) === 'done'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-              </svg>
+              <CheckIcon v-if="stepState(step) === 'done'" class="w-3.5 h-3.5" aria-hidden="true" />
               <!-- Active spinning -->
               <LoadingSpinner v-else-if="stepState(step) === 'active'" />
               <!-- Pending dot -->
@@ -255,9 +254,7 @@ onUnmounted(() => clearInterval(timer))
           <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
-          <svg class="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-          </svg>
+          <ArrowRightIcon class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div class="text-right">
             <p class="eyebrow mb-1">Available</p>
             <p class="font-figure text-xl text-primary">{{ status.latest }}</p>
@@ -265,9 +262,7 @@ onUnmounted(() => clearInterval(timer))
         </template>
         <template v-else>
           <div class="flex items-center gap-2 text-success">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
             <span class="text-sm">Up to date</span>
           </div>
         </template>
@@ -305,9 +300,7 @@ onUnmounted(() => clearInterval(timer))
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"
           >
             View on GitHub
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5m0 0v5m0-5L10 14M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-3"/>
-            </svg>
+            <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
         <div class="px-4 py-3 max-h-72 overflow-y-auto">
@@ -361,9 +354,7 @@ onUnmounted(() => clearInterval(timer))
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
           >
             View all releases on GitHub
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5m0 0v5m0-5L10 14M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-3"/>
-            </svg>
+            <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
         <Button variant="outline" size="xs"
@@ -371,12 +362,7 @@ onUnmounted(() => clearInterval(timer))
           :disabled="checking || applying || !!status.pending"
         >
           <LoadingSpinner v-if="checking" />
-          <svg
-            v-else class="w-3 h-3"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
+          <RefreshCwIcon v-else class="w-3 h-3" aria-hidden="true" />
           {{ checking ? 'Checking…' : 'Check now' }}
         </Button>
       </div>
@@ -392,9 +378,7 @@ onUnmounted(() => clearInterval(timer))
           class="shrink-0"
         >
           <LoadingSpinner v-if="restarting" />
-          <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4.93 4.93A10 10 0 102 12h3m-3 0V7m0 5h5"/>
-          </svg>
+          <HistoryIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
           {{ restarting ? 'Restarting…' : 'Restart HSI' }}
         </Button>
       </div>
@@ -410,9 +394,7 @@ onUnmounted(() => clearInterval(timer))
           class="shrink-0"
         >
           <LoadingSpinner v-if="rebooting" />
-          <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v9m6.36-6.36a9 9 0 11-12.72 0"/>
-          </svg>
+          <PowerIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
           {{ rebooting ? 'Rebooting…' : 'Reboot server' }}
         </Button>
       </div>

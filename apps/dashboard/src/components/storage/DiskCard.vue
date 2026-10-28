@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ChevronRightIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
 import { memberOwner } from './device-state'
@@ -93,14 +95,14 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <span v-if="disk.model" class="text-2xs text-muted-foreground truncate">{{ disk.model }}</span>
           <span class="text-2xs text-muted-foreground tabular-nums">{{ fmtBytes(disk.size) }}</span>
           <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
-            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
             SYSTEM
           </span>
           <span v-if="disk.isRemovable" class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
           <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
-          <button v-if="roleOf(disk)" @click="openRole(roleOf(disk)!)"
+          <Button variant="outline" size="xs" v-if="roleOf(disk)" @click="openRole(roleOf(disk)!)"
             :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
-            class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">{{ roleLabel(roleOf(disk)!) }} →</button>
+            class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">{{ roleLabel(roleOf(disk)!) }} →</Button>
         </div>
         <div v-if="disk.byId" class="text-2xs font-mono text-muted-foreground mt-0.5 truncate" :title="`/dev/disk/by-id/${disk.byId}: stable name, unlike /dev/${disk.name}`">/dev/disk/by-id/{{ disk.byId }}</div>
         <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
@@ -128,10 +130,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           </template>
         </button>
         <!-- + Partition button (non-system only) -->
-        <button v-if="!disk.isSystem && !diskLocked(disk)" @click="emit('partCreate', disk)"
-          class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-primary/50 hover:text-primary transition-colors">
+        <Button variant="outline" size="xs" v-if="!disk.isSystem && !diskLocked(disk)" @click="emit('partCreate', disk)"
+          class="text-foreground/80 hover:border-primary/50 hover:text-primary">
           + Partition
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -253,15 +255,9 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
                       {{ attr.raw.toLocaleString() }}
                     </TableCell>
                     <TableCell class="px-2.5 py-1.5 text-center">
-                      <svg v-if="attr.failed" class="w-3 h-3 text-destructive mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                      </svg>
-                      <svg v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-warning mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                      </svg>
-                      <svg v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                      </svg>
+                      <CircleXIcon v-if="attr.failed" class="w-3 h-3 text-destructive mx-auto" aria-hidden="true" />
+                      <TriangleAlertIcon v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-warning mx-auto" aria-hidden="true" />
+                      <CircleCheckIcon v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" aria-hidden="true" />
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -287,15 +283,15 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground uppercase border border-border">{{ part.fstype }}</span>
               <span v-else-if="!roleOf(part)" class="text-2xs text-muted-foreground/60">unformatted</span>
               <!-- Role: RAID member -->
-              <button v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
-                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors">
+              <Button variant="outline" size="xs" v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
+                class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">
                 RAID {{ memberOwner(part, 'raid') }} →
-              </button>
+              </Button>
               <!-- Role: LVM PV -->
-              <button v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
-                class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+              <Button variant="outline" size="xs" v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
+                class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
                 LVM {{ memberOwner(part, 'lvm') }} →
-              </button>
+              </Button>
               <!-- Role: member of an array/VG that is not active -->
               <span v-if="roleOf(part) && !roleOf(part)!.owner"
                 class="text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">{{ roleLabel(roleOf(part)!) }}</span>
@@ -319,20 +315,18 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           </div>
           <!-- Actions: revealed on hover, hidden by default -->
           <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
-            <button v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
-              class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">Format</button>
-            <button v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="emit('mount', part)"
-              class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-success/50 hover:text-success transition-colors">Mount</button>
-            <button v-if="part.mountpoint" @click="emit('umount', part)"
-              class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+            <Button variant="outline" size="xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
+              class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+            <Button variant="outline" size="xs" v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="emit('mount', part)"
+              class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+            <Button variant="outline" size="xs" v-if="part.mountpoint" @click="emit('umount', part)"
+              class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
             <div class="w-px h-3 bg-border mx-1"/>
-            <button v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
+            <Button variant="ghost" size="icon-xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
               title="Delete this partition"
-              class="w-6 h-6 flex items-center justify-center rounded-sm text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-              </svg>
-            </button>
+              class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
+              <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
+            </Button>
           </div>
         </div>
       </template>
@@ -348,12 +342,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <div v-if="disk.mountpoint" class="text-2xs font-mono text-muted-foreground mt-0.5">↳ {{ disk.mountpoint }}</div>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          <button v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('format', disk)"
-            class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">Format</button>
-          <button v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('mount', disk)"
-            class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-success/50 hover:text-success transition-colors">Mount</button>
-          <button v-if="disk.mountpoint" @click="emit('umount', disk)"
-            class="text-2xs px-2 py-0.5 rounded-sm border border-border text-muted-foreground hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+          <Button variant="outline" size="xs" v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('format', disk)"
+            class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+          <Button variant="outline" size="xs" v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('mount', disk)"
+            class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+          <Button variant="outline" size="xs" v-if="disk.mountpoint" @click="emit('umount', disk)"
+            class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
         </div>
       </div>
       <!-- Truly blank disk: no partition table, no filesystem -->
@@ -362,10 +356,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
         <div class="flex-1 min-w-0">
           <span class="text-2xs text-muted-foreground">No partition table. Create one to start using this disk.</span>
         </div>
-        <button @click="emit('partInit', disk)"
-          class="shrink-0 text-2xs px-2.5 py-1 rounded-sm border border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+        <Button variant="outline" size="xs" @click="emit('partInit', disk)"
+          class="shrink-0 text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">
           Create partition table…
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -373,23 +367,19 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-border">
       <button @click="danger = !danger"
         class="w-full flex items-center gap-2 px-4 py-2 text-2xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-        <svg class="w-3 h-3 shrink-0 transition-transform" :class="danger ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-        </svg>
+        <ChevronRightIcon class="w-3 h-3 shrink-0 transition-transform" :class="danger ? 'rotate-90' : ''" aria-hidden="true" />
         Advanced
       </button>
       <div v-if="danger" class="px-4 pb-3 pt-0.5">
         <div class="flex items-start gap-3 p-3 rounded-lg border border-destructive/20 bg-destructive/5">
-          <svg class="w-3.5 h-3.5 text-destructive/70 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-          </svg>
+          <TriangleAlertIcon class="w-3.5 h-3.5 text-destructive/70 mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-2xs text-foreground/80 font-medium mb-0.5">Wipe and create a new partition table</p>
             <p class="text-2xs text-muted-foreground">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
-            <button @click="emit('partInit', disk)"
-              class="mt-2 text-2xs px-2.5 py-1 rounded-sm border border-destructive/30 text-destructive/80 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors">
+            <Button variant="outline" size="xs" @click="emit('partInit', disk)"
+              class="mt-2 text-2xs border-destructive/30 text-destructive/80 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10">
               Create partition table…
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { XIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -258,20 +259,18 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
             <label class="block text-xs text-muted-foreground">Headers</label>
-            <button type="button" class="text-xs text-primary hover:opacity-80" @click="addHeaderRow">+ Add header</button>
+            <Button variant="link" type="button" class="h-auto p-0 text-primary" @click="addHeaderRow">+ Add header</Button>
           </div>
           <div v-for="(row, i) in headerRows" :key="i" class="flex items-center gap-1.5">
             <Input v-model="row.key" placeholder="Key" class="flex-1 min-w-0 font-mono text-xs" />
             <Input v-model="row.value" placeholder="Value" class="flex-[2] min-w-0 font-mono text-xs" />
-            <button
+            <Button variant="ghost" size="icon-sm"
               type="button" title="Remove header"
-              class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+              class="text-muted-foreground hover:text-foreground shrink-0"
               @click="removeHeaderRow(i)"
             >
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+              <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
+            </Button>
           </div>
           <p v-if="headerRows.length === 0" class="text-xs text-muted-foreground">No headers.</p>
           <p v-else-if="connector" class="text-xs text-muted-foreground">Header values other than Content-Type are hidden once saved. Leave them unchanged to keep them.</p>

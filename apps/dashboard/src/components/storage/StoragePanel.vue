@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { CalendarIcon, DatabaseIcon, HardDriveIcon, PackageIcon, Rows3Icon } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
@@ -118,27 +120,15 @@ const installCommand = computed(() =>
             <path stroke-linecap="round" d="M7 7.5h.01M7 16.5h.01"/>
           </svg>
           <!-- Disks -->
-          <svg v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M22 12H2"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 16h.01M10 16h.01"/>
-          </svg>
+          <HardDriveIcon v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- RAID -->
-          <svg v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-          </svg>
+          <PackageIcon v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- LVM -->
-          <svg v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/>
-          </svg>
+          <Rows3Icon v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Maintenance -->
-          <svg v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
-          </svg>
+          <CalendarIcon v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Mounts -->
-          <svg v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
-          </svg>
+          <DatabaseIcon v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ item.label }}
         </button>
       </div>
@@ -158,7 +148,7 @@ const installCommand = computed(() =>
         <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <template v-for="(c, i) in crumbs" :key="c.index">
             <span v-if="i > 0" aria-hidden="true">›</span>
-            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-foreground" @click="go(navTo(location, c.index))">{{ c.label }}</button>
+            <Button variant="link" v-if="i < crumbs.length - 1" type="button" class="h-auto p-0 hover:text-foreground" @click="go(navTo(location, c.index))">{{ c.label }}</Button>
             <span v-else class="font-mono text-foreground" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>

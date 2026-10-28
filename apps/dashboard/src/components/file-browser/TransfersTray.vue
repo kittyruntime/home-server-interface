@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, PlayIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { LOADING } from '../../lib/loading'
 import { ref, computed } from 'vue'
 import { useUploads, type Transfer, type TransferStatus } from '../../lib/uploads'
@@ -139,9 +141,7 @@ function handleReselectPick(e: Event) {
         @click="collapsed = !collapsed"
         class="flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors shrink-0"
       >
-        <svg class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-        </svg>
+        <ChevronDownIcon class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
         Transfers · {{ activeCount }} active
       </button>
 
@@ -152,13 +152,13 @@ function handleReselectPick(e: Event) {
       </div>
       <div v-else class="flex-1" />
 
-      <button
+      <Button variant="link"
         v-if="hasTerminal"
         @click="clearFinished"
-        class="text-2xs text-muted-foreground hover:text-foreground/80 transition-colors uppercase tracking-caps shrink-0"
+        class="h-auto p-0 text-2xs text-muted-foreground hover:text-foreground/80 uppercase tracking-caps shrink-0"
       >
         Clear completed
-      </button>
+      </Button>
     </div>
 
     <!-- Body -->
@@ -167,21 +167,11 @@ function handleReselectPick(e: Event) {
         <div class="flex items-center gap-2.5 min-w-0">
           <!-- Icon -->
           <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center" :class="iconClass(t)">
-            <svg v-if="t.status === 'done'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-            <svg v-else-if="t.status === 'error'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-            <svg v-else-if="t.kind === 'copy'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-            <svg v-else-if="t.kind === 'move'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-            </svg>
-            <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
+            <CheckIcon v-if="t.status === 'done'" class="w-3.5 h-3.5" aria-hidden="true" />
+            <XIcon v-else-if="t.status === 'error'" class="w-3.5 h-3.5" aria-hidden="true" />
+            <CopyIcon v-else-if="t.kind === 'copy'" class="w-3.5 h-3.5" aria-hidden="true" />
+            <ArrowRightIcon v-else-if="t.kind === 'move'" class="w-3.5 h-3.5" aria-hidden="true" />
+            <UploadIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
           </div>
 
           <!-- Name + status + progress -->
@@ -226,9 +216,7 @@ function handleReselectPick(e: Event) {
           <div class="flex gap-0.5 shrink-0">
             <button v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
               class="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              <svg v-if="t.status === 'paused'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
+              <PlayIcon v-if="t.status === 'paused'" class="w-3 h-3" aria-hidden="true" />
               <svg v-else class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
               </svg>
@@ -243,12 +231,10 @@ function handleReselectPick(e: Event) {
               class="px-1.5 py-0.5 rounded-sm text-2xs font-medium text-primary hover:bg-primary/10 transition-colors">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </button>
-            <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
-              class="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+            <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
+              class="text-muted-foreground hover:text-foreground">
+              <XIcon class="w-3 h-3" aria-hidden="true" />
+            </Button>
           </div>
         </div>
       </div>
