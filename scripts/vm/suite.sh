@@ -149,8 +149,8 @@ expect_mirror() {
     || fail "no Place for the volume"
   # HSI keeps its own smb.conf and points smbd at it (systemd drop-in).
   vm_ssh 'conf=$(systemctl show -p ExecStart smbd | grep -o -- "--configfile=[^ ;]*" | cut -d= -f2)
-    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | grep -A3 "^\[mirror\]" | grep -q "path = /srv/vm-mirror"' \
-    || { vm_ssh 'systemctl show -p ExecStart smbd; ls -l /etc/systemd/system/smbd.service.d/ 2>&1'; fail "no SMB share for the volume"; }
+    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | awk "/^\[/{s=\$0} s==\"[mirror]\" && /path = \/srv\/vm-mirror\$/{f=1} END{exit !f}"' \
+    || { vm_ssh 'cat /etc/nasui/samba/smb.conf'; fail "no SMB share for the volume"; }
   log "Mirror, LVM, mount, fstab, Place and share in place"
 }
 
