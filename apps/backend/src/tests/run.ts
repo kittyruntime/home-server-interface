@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { TimeoutError } from "@nats-io/transport-node"
 
 // Set the secret before loading auth.ts: it is captured at module evaluation.
 process.env.JWT_SECRET = "backend-tests-only-secret-at-least-32-characters"
@@ -914,7 +915,7 @@ async function testReviewFixes() {
 
   // Live preview must not put form secrets in a GET query string (request logs).
   const { notificationsRouter } = await import("../trpc/routers/notifications")
-  assert.equal((notificationsRouter as any)._def.procedures.renderPreview._def.mutation, true)
+  assert.equal((notificationsRouter as any)._def.procedures.renderPreview._def.type, "mutation")
 
   // URLs with credentials are rejected: fetch refuses them and echoes the URL in its error.
   assert.throws(() => conn.mergeConnectorInput({ type: "webhook", method: "POST", url: "https://u:pw@host.test/x", headers: "{}", bodyTemplate: "" }, null), /credentials/)
@@ -1526,12 +1527,12 @@ await testSharePlans()
   const { activityEntries } = await import("../services/storage-activity")
   const at = new Date("2026-09-30T10:00:00Z")
   const rows = [
-    { id: "a1", action: "storage.apply", target: "sdb1", success: true, createdAt: at, user: { username: "admin" },
+    { id: "a1", action: "storage.execute", target: "sdb1", success: true, createdAt: at, user: { username: "admin" },
       meta: JSON.stringify({ input: {}, plan: { op: "format", steps: [{ kind: "run", target: "/dev/sdb1", summary: "Format", status: "done" }] } }) },
     { id: "a2", action: "storage.mount", target: "sdb1", success: false, createdAt: at, user: null, meta: "{not json" },
   ]
   const out = activityEntries(rows as any)
-  assert.deepEqual(out[0], { id: "a1", action: "storage.apply", target: "sdb1", success: true, at: at.toISOString(), user: "admin", op: "format", steps: [{ summary: "Format", status: "done" }] })
+  assert.deepEqual(out[0], { id: "a1", action: "storage.execute", target: "sdb1", success: true, at: at.toISOString(), user: "admin", op: "format", steps: [{ summary: "Format", status: "done" }] })
   assert.deepEqual(out[1], { id: "a2", action: "storage.mount", target: "sdb1", success: false, at: at.toISOString(), user: null })
 }
 
@@ -1716,7 +1717,7 @@ await testSharePlans()
   await assert.rejects(vp.applyVolume(input as any, pv.fingerprint, deps({
     worker: async (subject: string, payload: any) => {
       if (subject === "root.plan.preview") return previewOk(payload)
-      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+      throw new TimeoutError()
     },
   })), (e: any) => /may still be running/.test(e.message))
 
@@ -1797,7 +1798,7 @@ await testSharePlans()
     worker: async (subject: string, payload: any) => {
       if (subject === "root.plan.preview") return preview(payload)
       if (payload.op === "smb.sync") return { ok: true, steps: [smbStep], results: [{ status: "done" }] }
-      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+      throw new TimeoutError()
     },
   })), (e: any) => /may still be running/.test(e.message))
   assert.ok(calls.includes("resync"))
@@ -2770,6 +2771,20 @@ async function testBackupReviewFixes() {
 
 await testBackupReviewFixes()
 
+async function testBcryptjs2HashesStillVerify() {
+  const bcrypt = (await import("bcryptjs")).default
+  // Made by bcryptjs 2.4.3: user and share link passwords stored before the upgrade.
+  const v2 = "$2a$04$5n6u70nGqMd78LNkw1KklOq8DVrmIeXUSw2vSTrjZxsqTS/4WxavK"
+  assert.equal(await bcrypt.compare("hsi-v2-password", v2), true)
+  assert.equal(await bcrypt.compare("wrong", v2), false)
+  // New hashes use the $2b$ prefix and verify the same way.
+  const v3 = await bcrypt.hash("hsi-v2-password", 4)
+  assert.ok(v3.startsWith("$2b$04$"))
+  assert.equal(await bcrypt.compare("hsi-v2-password", v3), true)
+}
+
+await testBcryptjs2HashesStillVerify()
+
 async function testBackupFinalFixes() {
   const { backupFindings, backupTargets } = await import("../services/backup-status")
   const base = { configExists: true, engine: { installed: true, version: "0.19.1" }, repositories: [], plans: [], migrationSkipped: [] }
@@ -2802,8 +2817,7 @@ async function testBackupFinalFixes() {
   const member = storageRouter.createCaller({ user: { userId: "m", isAdmin: false, capabilities: ["storage"] }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
   for (const op of ["backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore", "tls.enable"] as const) {
     await assert.rejects(() => member.plan({ op, input: {} }), (e: any) => e.code === "FORBIDDEN", op)
-    // The caller proxy reads a trailing ".apply" as Function.prototype.apply: say it twice.
-    await assert.rejects(() => (member.apply as any).apply(null, [{ op, input: {}, fingerprint: "f" }]), (e: any) => e.code === "FORBIDDEN", op)
+    await assert.rejects(() => member.execute({ op, input: {}, fingerprint: "f" }), (e: any) => e.code === "FORBIDDEN", op)
   }
 
   // The worker's refusal code reaches the dashboard in the error data.
@@ -2816,6 +2830,18 @@ async function testBackupFinalFixes() {
   const shape = (r as any)._def._config.errorFormatter({ shape: { message: err.message, code: -32603, data: { code: "INTERNAL_SERVER_ERROR" } }, error: err, type: "mutation", path: "fail", input: undefined, ctx: {} })
   assert.equal(shape.data.workerCode, "ECONFIRM")
   assert.equal(workerErrorCode(new TRPCError({ code: "BAD_REQUEST", cause: Object.assign(new Error("x"), { code: "not a code" }) })), undefined)
+
+  // A mutation is audited with its path, the target read from its raw input and the redacted input.
+  const { adminProcedure } = await import("../trpc/index")
+  const z = (await import("zod")).z
+  const logged: any[] = []
+  const audited = router({ mount: adminProcedure.input(z.object({ device: z.string(), password: z.string() })).mutation(() => "ok") })
+  await audited.createCaller({ user: { userId: "u", isAdmin: true }, prisma: { auditLog: { create: async ({ data }: any) => { logged.push(data); return {} } } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+    .mount({ device: "sdb1", password: "hunter2" })
+  assert.equal(logged.length, 1)
+  assert.equal(logged[0].action, "mount")
+  assert.equal(logged[0].target, "sdb1")
+  assert.ok(logged[0].meta.includes("sdb1") && !logged[0].meta.includes("hunter2"))
 }
 
 await testBackupFinalFixes()

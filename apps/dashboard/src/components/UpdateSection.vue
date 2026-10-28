@@ -71,7 +71,7 @@ async function applyUpdate() {
   error.value = null
   try {
     restartKind.value = 'update'
-    await trpc.update.apply.mutate({ version: status.value.latest })
+    await trpc.update.execute.mutate({ version: status.value.latest })
     restartStep.value = 'scheduled'
     setTimeout(() => {
       restartStep.value = 'restarting'

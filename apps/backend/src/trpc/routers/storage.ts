@@ -328,7 +328,7 @@ export const storageRouter = router({
       return await requestSync<{ steps: PlanStep[]; fingerprint: string }>("root.plan.preview", { op: input.op, input: workerIn }, 60_000)
     }),
 
-  apply: storageProcedure
+  execute: storageProcedure
     .input(z.object({ op: z.enum(PLAN_OPS), input: z.unknown(), fingerprint: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const workerIn = await workerInput(ctx, input.op, input.input)

@@ -230,7 +230,7 @@ export const updateRouter = router({
     return { checks, canApply }
   }),
 
-  apply: adminProcedure
+  execute: adminProcedure
     .input(z.object({ version: z.string().regex(/^v\d+\.\d+\.\d+$/) }))
     .mutation(({ input }) => {
       // Recorded before the marker: update-watch reports the update as failed

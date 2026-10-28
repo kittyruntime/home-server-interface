@@ -18,6 +18,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accent color picker are kept; a dialog opened in a desktop window still only
   blocks that window.
 
+## [1.68.2] - 2026-10-28
+
+### Security
+- **Dependencies**: zod 4.6.7, where validating an oversized list or set with
+  size limits no longer exhausts memory (high severity, in the backend, the
+  Compose and catalog packages and the release runtime).
+
+### Changed
+- **Dependencies**: bcryptjs 3 and @fastify/rate-limit 11 (#110). New
+  password hashes use the `$2b$` prefix; existing hashes still verify.
+- **Dependencies**: the backend moves from the deprecated `nats` package to
+  `@nats-io/transport-node` and `@nats-io/jetstream` (#109).
+- **Dependencies**: vue-router 5 in the dashboard (#108).
+- **Dependencies**: zod 4 (#106). Validation messages written for HSI are
+  unchanged; the generic ones (wrong type, too short, invalid pattern) use the
+  zod 4 wording.
+- **Dependencies**: tRPC 11 (#105). tRPC 11 reserves the name `apply`, so the
+  API procedures that run a previewed plan are renamed `execute`
+  (`storage.execute`, `apps.execute`, `sharing.execute`, `user.execute`,
+  `container.app.execute`, `update.execute`). Audit log entries recorded under
+  the former names keep their labels.
+- **Dependencies**: TypeScript 6, vite 8, vite-node 6 and @vue/tsconfig 0.9
+  for the build and tests (#107).
+
+### Fixed
+- **Update to 1.68.1 refused or rolled back**: the 1.68.1 installer refused
+  its own archive because it still required the Prisma query engine, which
+  Prisma 7 no longer has. Past that check, the 1.68.1 server stopped at
+  startup because the SQLite driver had been bundled into it. Both are fixed,
+  and the build smoke test now runs a database query.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
@@ -1472,7 +1503,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...HEAD
+[1.68.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...v1.68.2
 [1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
 [1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0
 [1.67.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.66.0...v1.67.0

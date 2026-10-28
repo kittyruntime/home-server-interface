@@ -117,12 +117,13 @@ function sanitizeMeta(input: unknown): string | undefined {
 const auditLog = t.middleware(async (opts) => {
   const result = await opts.next()
   if (opts.type === "mutation" && opts.ctx.user) {
+    const rawInput = await opts.getRawInput().catch(() => undefined)
     void opts.ctx.prisma.auditLog.create({
       data: {
         userId:  opts.ctx.user.userId,
         action:  opts.path,
-        target:  auditTarget(opts.rawInput, opts.ctx.audit),
-        meta:    sanitizeMeta(opts.ctx.audit?.meta ? { input: opts.rawInput, ...opts.ctx.audit.meta } : opts.rawInput),
+        target:  auditTarget(rawInput, opts.ctx.audit),
+        meta:    sanitizeMeta(opts.ctx.audit?.meta ? { input: rawInput, ...opts.ctx.audit.meta } : rawInput),
         ip:      opts.ctx.req.ip ?? opts.ctx.req.headers["x-forwarded-for"]?.toString(),
         // A procedure can report a failure it returns as data (e.g. a plan
         // whose step failed).

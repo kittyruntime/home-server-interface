@@ -7,11 +7,11 @@
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.1",
     "@prisma/client": "7.10.1",
-    "bcryptjs": "2.4.3",
+    "bcryptjs": "3.0.3",
     "prisma": "7.10.1",
     "tsx": "4.23.15",
     "yaml": "^2.9.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"

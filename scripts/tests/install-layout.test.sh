@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is resolve_installed; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is resolve_installed release_stage_complete; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -551,6 +551,19 @@ for later in 'install -d -m 0700 "$UPDATE_STATE"' '  migrate_legacy_app_install'
   at=$(line_of "$later")
   check "the release is verified before: $later" '[[ -n "$verify_at" && -n "$at" && $verify_at -lt $at ]]'
 done
+
+# A Prisma 7 release ships the schema engine and no query engine (v1.68.1
+# refused its own archive while it still asked for libquery_engine).
+STAGE="$TMP/stage/hsi-v1.68.1"
+mkdir -p "$STAGE/public" "$STAGE/bin" "$STAGE/database/prisma" "$STAGE/compose/src" \
+  "$STAGE/node_modules/.bin" "$STAGE/node_modules/@prisma/engines" "$STAGE/runtime"
+touch "$STAGE/server.js" "$STAGE/public/index.html" "$STAGE/runtime/package-lock.json"
+for x in bin/hsi-worker node_modules/.bin/prisma node_modules/.bin/tsx node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x; do
+  printf '#!/bin/sh\n' > "$STAGE/$x"; chmod +x "$STAGE/$x"
+done
+check "a Prisma 7 release archive is complete" 'release_stage_complete "$STAGE" hsi-worker'
+rm "$STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"
+check "an archive without the schema engine is incomplete" '! release_stage_complete "$STAGE" hsi-worker'
 
 # Versions and URLs the update relies on.
 first_go=$(sed -n 's/^const firstHealthVersion = "\(v[0-9.]*\)"$/\1/p' "$ROOT/apps/root-worker/update_health.go")

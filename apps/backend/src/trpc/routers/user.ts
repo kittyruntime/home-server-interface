@@ -115,7 +115,7 @@ export const userRouter = router({
       return p.preview()
     }),
 
-  apply: userManagerProcedure
+  execute: userManagerProcedure
     .input(z.object({ op: z.enum(USER_OPS), input: z.unknown(), fingerprint: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const p = await prepareUserPlan(ctx, ctx.user, input.op, input.input, 180_000)

@@ -3,14 +3,16 @@ import assert from 'node:assert/strict'
 import { actionLabel } from '../src/lib/audit-labels.ts'
 
 // Every action the backend logs on a real server reads as words.
-const LOGGED = ['alert.clear', 'apps.apply', 'apps.plan', 'auth.login', 'backup.checkNow', 'backup.dismissMigration', 'backup.password', 'backup.runNow', 'catalog.install', 'container.app.apply', 'container.app.remove',
+const LOGGED = ['alert.clear', 'apps.execute', 'apps.plan', 'auth.login', 'backup.checkNow', 'backup.dismissMigration', 'backup.password', 'backup.runNow', 'catalog.install', 'container.app.execute', 'container.app.remove',
   'container.app.update', 'files.upload', 'fs.chmod', 'fs.chown', 'fs.delete', 'fs.mkdir', 'fs.rename', 'fs.touch',
   'notifications.connectors.create', 'notifications.markAllRead', 'notifications.renderPreview', 'notifications.rules.update',
-  'notifications.testConnector', 'place.create', 'place.delete', 'storage.apply', 'storage.createLv', 'storage.createPartition',
+  'notifications.testConnector', 'place.create', 'place.delete', 'storage.execute', 'storage.createLv', 'storage.createPartition',
   'storage.createPv', 'storage.createRaid', 'storage.createVg', 'storage.deletePartition', 'storage.failRaidMember', 'storage.formatDisk',
   'storage.mountDevice', 'storage.plan', 'storage.removeLv', 'storage.removeVg', 'storage.runMaintenanceNow', 'storage.stopRaid',
   'storage.umountDevice', 'storage.volumeApply', 'storage.volumePlan', 'storage.volumeRemoveApply', 'storage.volumeRemovePlan',
-  'update.apply', 'update.check', 'update.rebootHost', 'user.changePassword', 'user.updatePreferences']
+  'update.execute', 'update.check', 'update.rebootHost', 'user.changePassword', 'user.updatePreferences',
+  // Logged before the rename to execute.
+  'apps.apply', 'container.app.apply', 'storage.apply', 'update.apply']
 
 test('every logged action has a label, not its raw key', () => {
   for (const a of LOGGED) {
