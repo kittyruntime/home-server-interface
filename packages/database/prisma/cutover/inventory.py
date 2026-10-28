@@ -22,10 +22,32 @@ def git(*args):
     return subprocess.check_output(["/usr/bin/git", *args], cwd=ROOT)
 
 
+# Constraint and index names left on the renamed tables by the v1.35.0 Role -> Group
+# rename, read as the current ones; must match packages/database/src/cutover/preflight.ts.
+LEGACY_NAMES = {
+    "RolePlacePermission_roleId_fkey": "GroupPlacePermission_groupId_fkey",
+    "RolePlacePermission_placeId_fkey": "GroupPlacePermission_placeId_fkey",
+    "RolePlacePermission_roleId_placeId_key": "GroupPlacePermission_groupId_placeId_key",
+    "UserRole_userId_fkey": "UserGroup_userId_fkey",
+    "UserRole_roleId_fkey": "UserGroup_groupId_fkey",
+    "Role_name_key": "Group_name_key",
+}
+LEGACY_SQL_NAMES = {legacy.lower(): current.lower() for legacy, current in LEGACY_NAMES.items()}
+RENAMED_TABLES = {"Group", "GroupPlacePermission", "UserGroup"}
+
+
+def canonical_entry(kind, name, table, sql):
+    sql = re.sub(r"\s+", "", sql).lower()
+    if table not in RENAMED_TABLES:
+        return (kind, name, sql)
+    sql = re.sub(r'"([a-z_]+)"', lambda m: f'"{LEGACY_SQL_NAMES.get(m.group(1), m.group(1))}"', sql)
+    return (kind, LEGACY_NAMES.get(name, name), sql)
+
+
 def canonical_schema(db_file):
     with sqlite3.connect(db_file) as db:
-        rows = db.execute("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name != '_prisma_migrations' AND sql IS NOT NULL").fetchall()
-    return sorted((kind, name, re.sub(r"\s+", "", sql).lower()) for kind, name, sql in rows)
+        rows = db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name != '_prisma_migrations' AND sql IS NOT NULL").fetchall()
+    return sorted(canonical_entry(*row) for row in rows)
 
 
 def digest(value):
