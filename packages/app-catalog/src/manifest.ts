@@ -25,6 +25,21 @@ const zPinnedImage = z.string().min(1).refine(
   (img) => /@sha256:[a-f0-9]{64}$/.test(img) || (/:[^/]+$/.test(img) && !/:latest$/.test(img)),
   { message: "image must be pinned to a specific tag (not :latest) or a @sha256 digest" },
 )
+// A service the app needs beside it (database, cache, #26). It is reached by
+// its name on the app's network and never publishes a port. An env value can
+// quote one of the app's settings as {{KEY}}, e.g. a generated password both
+// sides must share.
+export const zCatalogSidecar = z.object({
+  name:    z.string().regex(/^[a-z][a-z0-9-]{0,30}$/),
+  label:   z.string(),
+  image:   zPinnedImage,
+  env:     z.record(z.string(), z.string()).default({}),
+  volumes: z.array(z.object({ name: z.string().regex(/^[a-z0-9-]+$/), target: z.string().startsWith("/") }).strict()).default([]),
+  command: z.array(z.string()).optional(),
+}).strict()
+
+const SETTING_REF = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g
+
 export const zAppManifest = z.object({
   id:            z.string().regex(/^[a-z0-9-]+$/),
   name:          z.string(),
@@ -40,5 +55,21 @@ export const zAppManifest = z.object({
   env:           z.array(zCatalogEnv).default([]),
   volumes:       z.array(zCatalogVolume).default([]),
   restartPolicy: z.enum(["no", "always", "unless-stopped", "on-failure"]).default("unless-stopped"),
-}).strict()
+  services:      z.array(zCatalogSidecar).default([]),
+}).strict().superRefine((m, ctx) => {
+  const keys = new Set(m.env.map(e => e.key))
+  const names = new Set<string>()
+  for (const sc of m.services) {
+    if (sc.name === m.id || names.has(sc.name)) ctx.addIssue({ code: "custom", message: `duplicate service name ${sc.name}` })
+    names.add(sc.name)
+    for (const value of Object.values(sc.env)) for (const [, key] of value.matchAll(SETTING_REF)) {
+      if (!keys.has(key!)) ctx.addIssue({ code: "custom", message: `${sc.name} refers to unknown setting ${key}` })
+    }
+  }
+})
+
+/** A sidecar env value with its {{KEY}} references replaced by the app's settings. */
+export function resolveSettingRefs(value: string, settings: Map<string, string>): string {
+  return value.replace(SETTING_REF, (_m, key: string) => settings.get(key) ?? "")
+}
 export type AppManifest = z.infer<typeof zAppManifest> & { icon: string }

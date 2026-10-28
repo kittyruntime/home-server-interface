@@ -275,7 +275,7 @@ function upStep(deps: AppPlanDeps, name: string, content: string, validate: bool
   let parsed: ReturnType<typeof parseComposeYaml>
   let images: string[]
   try {
-    parsed = parseComposeYaml(content)
+    parsed = parseComposeYaml(content, name)
     images = composeImages(content)
   } catch {
     bad("The compose file is not valid YAML; fix it in the compose editor")
@@ -355,8 +355,8 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
   }
 }
 
-function imageOf(content: string): string | null {
-  try { return parseComposeYaml(content).app?.image ?? null } catch { return null }
+function imageOf(content: string, name: string): string | null {
+  try { return parseComposeYaml(content, name).app?.image ?? null } catch { return null }
 }
 
 // Updating an App Store app (#26): its image line moves to the catalog's tag,
@@ -366,7 +366,7 @@ function imageOf(content: string): string | null {
 async function buildUpdatePlan(name: string, deps: AppPlanDeps): Promise<AppPlan> {
   const content = await existingStack(deps, name)
   let app: ReturnType<typeof parseComposeYaml>["app"] = null
-  try { app = parseComposeYaml(content).app } catch { bad("The compose file is not valid YAML; fix it in the compose editor") }
+  try { app = parseComposeYaml(content, name).app } catch { bad("The compose file is not valid YAML; fix it in the compose editor") }
   const id = app?.labels.find(l => l.key === "hsi.catalog.id")?.value
   const m = id ? deps.catalog(id) : undefined
   if (!app || !m) bad(`${name} was not installed from the App Store`)
@@ -408,13 +408,13 @@ async function buildRollbackPlan(name: string, deps: AppPlanDeps): Promise<AppPl
   const content = await existingStack(deps, name)
   const previous = await deps.readPrevious(name)
   if (previous === null) throw new TRPCError({ code: "NOT_FOUND", message: `${name} has no previous version to roll back to` })
-  const now = imageOf(content), was = imageOf(previous)
+  const now = imageOf(content, name), was = imageOf(previous, name)
   if (!now || !was) bad("The compose file or its previous version cannot be read")
   if (now === was) bad(`${name} already runs the same image as its previous version (${was})`)
   let yaml: string
   try { yaml = replaceImage(content, now, was) } catch (e) { bad(e instanceof Error ? e.message : String(e)) }
   const target = deps.stackPath(name)
-  const id = (() => { try { return parseComposeYaml(content).app?.labels.find(l => l.key === "hsi.catalog.id")?.value } catch { return undefined } })()
+  const id = (() => { try { return parseComposeYaml(content, name).app?.labels.find(l => l.key === "hsi.catalog.id")?.value } catch { return undefined } })()
   const m = id ? deps.catalog(id) : undefined
   const steps: AppStep[] = [{
     kind: "update",

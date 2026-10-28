@@ -2,8 +2,8 @@ import { z } from "zod"
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
-import { CATALOG } from "@app/app-catalog"
-import { portDomainUrl, generateComposeYaml, type AppInput } from "@app/compose"
+import { CATALOG, resolveSettingRefs } from "@app/app-catalog"
+import { portDomainUrl, generateComposeYaml, withSidecars, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
 import { listStacks, readPreviousStack, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
 import { availableUpdate, splitImage } from "../../services/app-update"
@@ -34,7 +34,7 @@ export const catalogRouter = router({
     if (ctx.user.isAdmin) await Promise.all(fromCatalog.map(async (s) => {
       const prev = await readPreviousStack(s.name)
       let image: string | undefined
-      try { image = prev ? parseComposeYaml(prev).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
+      try { image = prev ? parseComposeYaml(prev, s.name).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
       if (image && image !== s.app?.image) previousImage.set(s.name, image)
     }))
     return CATALOG.map((m) => {
@@ -91,6 +91,10 @@ export const catalogRouter = router({
       // Place rows) below.
       if (await stackExists(input.name)) {
         throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      }
+
+      if (m.services.some((sc) => sc.name === input.name)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `${input.name} is the name of one of this app's services; choose another name` })
       }
 
       // Validate the submission only references the manifest's declared items.
@@ -200,7 +204,16 @@ export const catalogRouter = router({
         memoryLimit:   null,
       }
       const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, config.volumes as any[])
-      const yaml = generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] })
+      // Services the app needs beside it (database, cache): their volumes are
+      // named after the app, their settings may quote the app's (#26).
+      const settings = new Map(envs.map((e) => [e.key, e.value]))
+      const yaml = withSidecars(generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] }), input.name, m.services.map((sc) => ({
+        name:        sc.name,
+        image:       sc.image,
+        environment: Object.fromEntries(Object.entries(sc.env).map(([k, v]) => [k, resolveSettingRefs(v, settings)])),
+        volumes:     sc.volumes.map((v) => ({ source: `${input.name}-${v.name}`, target: v.target })),
+        command:     sc.command,
+      })))
       await writeStack(input.name, yaml)
 
       // Wizard UX: validate the freshly written file, then apply immediately:
