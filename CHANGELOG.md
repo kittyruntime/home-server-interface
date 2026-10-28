@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`storage.execute`, `apps.execute`, `sharing.execute`, `user.execute`,
   `container.app.execute`, `update.execute`). Audit log entries recorded under
   the former names keep their labels.
+- **Dependencies**: TypeScript 6, vite 8, vite-node 6 and @vue/tsconfig 0.9
+  for the build and tests (#107).
 
 ### Fixed
 - **Update to 1.68.1 refused or rolled back**: the 1.68.1 installer refused

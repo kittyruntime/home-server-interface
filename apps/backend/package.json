@@ -29,9 +29,9 @@
     "fastify": "^5.12.7",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^10.2.1",
-    "typescript": "~5.9.3",
-    "vite": "^7.3.7",
-    "vite-node": "^5.3.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vite-node": "^6.0.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
