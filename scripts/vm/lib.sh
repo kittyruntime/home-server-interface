@@ -70,6 +70,8 @@ packages: [curl, ca-certificates, python3, openssl]
 USERDATA
   printf 'instance-id: hsi-vm\nlocal-hostname: hsi-vm\n' > "$VM_DIR/meta-data"
   cloud-localds "$VM_DIR/seed.iso" "$VM_DIR/user-data" "$VM_DIR/meta-data"
+  # Data disks are blank: the system disk must be the one the BIOS boots
+  # (bootindex), or it stops on the first data disk.
   local disks=() i
   for ((i = 1; i <= VM_DATA_DISKS; i++)); do
     qemu-img create -q -f qcow2 "$VM_DIR/data$i.qcow2" "$VM_DATA_DISK_SIZE"
@@ -78,8 +80,9 @@ USERDATA
   done
   log "Booting the VM (${VM_DATA_DISKS} data disks of ${VM_DATA_DISK_SIZE})"
   [[ -w /dev/kvm ]] || fail "/dev/kvm is not usable: the VM tests need hardware virtualization"
-  qemu-system-x86_64 -enable-kvm -m "$VM_MEMORY" -smp "$VM_CPUS" -boot order=c \
-    -drive "file=$VM_DIR/system.qcow2,if=virtio,format=qcow2,index=0" \
+  qemu-system-x86_64 -enable-kvm -m "$VM_MEMORY" -smp "$VM_CPUS" \
+    -drive "file=$VM_DIR/system.qcow2,if=none,id=system,format=qcow2" \
+    -device virtio-blk-pci,drive=system,bootindex=0 \
     -drive "file=$VM_DIR/seed.iso,if=virtio,format=raw,readonly=on" \
     "${disks[@]}" \
     -nic "user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:${VM_SSH_PORT}-:22" \
