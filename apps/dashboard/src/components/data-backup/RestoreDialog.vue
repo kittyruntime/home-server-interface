@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned, previewCodeOf, previewErrorOf } from '../../lib/plan'
@@ -212,32 +214,34 @@ onUnmounted(() => {
         <div v-else class="rounded-xl border border-border">
           <button v-if="dir !== root" class="block w-full px-3 py-2 text-left text-xs text-foreground/80 hover:bg-muted" @click="open(parentPath(dir))">..</button>
           <EmptyState v-if="!entries.length" message="This folder is empty." />
-          <ul v-else class="divide-y divide-border" :class="{ 'opacity-60': listing }">
+          <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-border" :class="{ 'opacity-60': listing }">
             <li v-for="e in entries" :key="e.path" class="flex min-w-0 items-center gap-2 px-3 py-2">
-              <input v-model="selected" type="radio" name="restore-entry" :value="e.path" :aria-label="`Select ${e.name}`" class="accent-primary shrink-0" />
+              <RadioGroupItem :value="e.path" :aria-label="`Select ${e.name}`" class="shrink-0" />
               <button v-if="e.type === 'dir'" class="min-w-0 break-all text-left text-sm text-foreground hover:underline" @click="open(e.path)">{{ e.name }}/</button>
               <span v-else class="min-w-0 break-all text-sm text-foreground">{{ e.name }}</span>
               <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-muted-foreground">{{ bytesLabel(e.size) }}</span>
             </li>
-          </ul>
+          </RadioGroup>
         </div>
 
         <fieldset class="space-y-2">
           <legend class="eyebrow mb-1">Restore to</legend>
-          <label class="flex items-start gap-2 text-sm text-foreground">
-            <input type="radio" name="restore-target" class="mt-0.5 accent-primary" :checked="target === 'new'" @change="chooseTarget('new')" />
-            <span>Into a new folder (recommended)</span>
-          </label>
-          <label class="flex items-start gap-2 text-sm text-foreground">
-            <input type="radio" name="restore-target" class="mt-0.5 accent-primary" :checked="target === 'original'" @change="chooseTarget('original')" />
-            <span>Over the original location</span>
-          </label>
+          <RadioGroup :model-value="target" class="gap-2" @update:model-value="value => chooseTarget(value === 'original' ? 'original' : 'new')">
+            <label class="flex items-start gap-2 text-sm text-foreground">
+              <RadioGroupItem value="new" class="mt-0.5" />
+              <span>Into a new folder (recommended)</span>
+            </label>
+            <label class="flex items-start gap-2 text-sm text-foreground">
+              <RadioGroupItem value="original" class="mt-0.5" />
+              <span>Over the original location</span>
+            </label>
+          </RadioGroup>
         </fieldset>
 
         <div v-if="target === 'original'" class="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
           <p class="text-xs text-warning">Files with the same name at the original location are replaced by their saved version. Nothing is deleted.</p>
           <label class="flex items-start gap-2 text-sm text-foreground">
-            <input v-model="confirmOverwrite" type="checkbox" class="mt-0.5 accent-primary" />
+            <Checkbox v-model="confirmOverwrite" class="mt-0.5" />
             <span>Replace the current files</span>
           </label>
           <p v-if="confirmError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>

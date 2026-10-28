@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, watch } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
 import { trpc } from '../../lib/trpc'
@@ -90,11 +91,7 @@ async function runChecks() {
           class="flex-1 min-w-[12rem] px-2 py-1 text-xs"
         />
         <label class="inline-flex items-center gap-1 text-xs text-foreground/80 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            :checked="!!item.tls"
-            @change="update({ tls: ($event.target as HTMLInputElement).checked })"
-          />
+          <Checkbox :model-value="!!item.tls" @update:model-value="update({ tls: $event === true })" />
           HTTPS
         </label>
         <Input

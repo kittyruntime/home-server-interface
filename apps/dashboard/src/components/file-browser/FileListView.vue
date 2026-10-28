@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
@@ -136,11 +137,12 @@ function fileExt(name: string): string {
     <thead class="sticky top-0 bg-background border-b border-border z-10">
       <tr class="text-left text-xs uppercase tracking-caps text-muted-foreground">
         <th class="pl-3 pr-1 py-2.5 w-7">
-          <input type="checkbox"
-            :checked="selected.size === entries.length && entries.length > 0"
-            :indeterminate="selected.size > 0 && selected.size < entries.length"
-            @change="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
-            class="w-3.5 h-3.5 rounded accent-primary cursor-pointer opacity-40 hover:opacity-90 transition-opacity"
+          <Checkbox
+            :model-value="selected.size > 0 && selected.size < entries.length ? 'indeterminate' : selected.size === entries.length && entries.length > 0"
+            aria-label="Select all"
+            class="opacity-60 hover:opacity-100 transition-opacity"
+            @click.stop
+            @update:model-value="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
           />
         </th>
         <th class="px-3 py-2.5 font-medium">

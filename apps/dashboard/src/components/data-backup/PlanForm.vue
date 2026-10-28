@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { computed, onMounted, ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned, previewErrorOf } from '../../lib/plan'
@@ -63,19 +65,21 @@ async function save() {
       <Badge variant="secondary" v-if="plan">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</Badge>
     </div>
 
-    <fieldset v-if="!plan" class="grid gap-2 sm:grid-cols-2">
+    <fieldset v-if="!plan">
       <legend class="sr-only">Plan type</legend>
+      <RadioGroup v-model="form.type" class="grid gap-2 sm:grid-cols-2">
       <label
         v-for="t in ([['versions', 'Versions', 'Encrypted snapshots in a repository: go back to an earlier date.'], ['sync', 'Sync', 'A mirror copy with rsync: a deletion is copied too.']] as const)"
         :key="t[0]"
         :class="['flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5', form.type === t[0] ? 'border-primary' : 'border-border']"
       >
-        <input v-model="form.type" type="radio" :value="t[0]" class="mt-0.5 accent-primary" />
+        <RadioGroupItem :value="t[0]" class="mt-0.5" />
         <span>
           <span class="block text-sm text-foreground">{{ t[1] }}</span>
           <span class="block text-2xs text-muted-foreground">{{ t[2] }}</span>
         </span>
       </label>
+      </RadioGroup>
     </fieldset>
 
     <label class="block text-xs text-foreground/80">Plan name
@@ -101,7 +105,7 @@ async function save() {
         <p class="text-2xs text-muted-foreground">Their files are copied while they are stopped, then they start again.</p>
         <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
           <label v-for="a in appChoices" :key="a" class="flex items-center gap-2 text-xs text-foreground/80">
-            <input v-model="form.versions.stopApps" type="checkbox" :value="a" class="accent-primary" /> {{ a }}
+            <Checkbox :model-value="form.versions.stopApps.includes(a)" @update:model-value="checked => form.versions.stopApps = checked === true ? [...form.versions.stopApps, a] : form.versions.stopApps.filter(x => x !== a)" /> {{ a }}
           </label>
         </div>
       </div>
@@ -123,7 +127,7 @@ async function save() {
           <NativeSelectOption value="pull">Target → NAS</NativeSelectOption>
         </NativeSelect>
       </label>
-      <label class="flex items-center gap-2 text-xs text-foreground/80"><input v-model="form.sync.remote" type="checkbox" class="accent-primary" /> Use a remote SSH target</label>
+      <label class="flex items-center gap-2 text-xs text-foreground/80"><Checkbox v-model="form.sync.remote" /> Use a remote SSH target</label>
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="text-xs text-foreground/80">{{ form.sync.direction === 'push' ? 'NAS source' : 'Target source' }}
           <Input v-model="form.sync.source" required class="mt-1 font-mono" placeholder="/mnt/data" />
@@ -151,8 +155,8 @@ async function save() {
         <Textarea v-model="form.sync.excludes" rows="2" class="mt-1 font-mono" placeholder=".cache/&#10;*.tmp" />
       </label>
       <div class="flex flex-wrap gap-4 text-xs text-foreground/80">
-        <label class="flex items-center gap-2"><input v-model="form.sync.compress" type="checkbox" class="accent-primary" /> Compress transfer</label>
-        <label class="flex items-center gap-2"><input v-model="form.sync.deleteExtra" type="checkbox" class="accent-primary" /> Mirror deletions at destination</label>
+        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.compress" /> Compress transfer</label>
+        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.deleteExtra" /> Mirror deletions at destination</label>
       </div>
       <p v-if="form.sync.deleteExtra" class="status-text text-warning">
         <span class="status-tag">[WARN]</span> Mirror mode deletes destination files that no longer exist at the source. Verify both paths before enabling it.

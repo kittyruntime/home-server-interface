@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { canCloseReveal } from '../../lib/backup'
@@ -81,7 +82,7 @@ function download() {
           <Button variant="outline" size="sm" type="button" @click="download">Download</Button>
         </div>
         <label v-if="mode === 'new'" class="flex items-start gap-2 text-sm text-foreground">
-          <input v-model="stored" type="checkbox" class="mt-0.5 accent-primary" />
+          <Checkbox v-model="stored" class="mt-0.5" />
           <span>I stored this password somewhere safe</span>
         </label>
       </template>

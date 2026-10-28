@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
@@ -52,7 +53,7 @@ async function copy() {
 
       <template v-if="!url">
         <label class="flex items-center gap-2 text-sm text-foreground/80">
-          <input type="checkbox" v-model="usePassword" class="accent-primary" /> Password protect
+          <Checkbox v-model="usePassword" /> Password protect
         </label>
         <Input v-if="usePassword" v-model="password" type="password" placeholder="Password" />
 
@@ -67,7 +68,7 @@ async function copy() {
         </div>
 
         <label class="flex items-center gap-2 text-sm text-foreground/80">
-          <input type="checkbox" v-model="useLimit" class="accent-primary" /> Limit downloads
+          <Checkbox v-model="useLimit" /> Limit downloads
         </label>
         <Input v-if="useLimit" v-model.number="maxDownloads" type="number" min="1" />
 

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
 import { trpc } from '../../../lib/trpc'
@@ -110,7 +112,7 @@ defineExpose({ open })
         />
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
-        <input v-model="dlg.persist" type="checkbox" class="mt-0.5 accent-primary"/>
+        <Checkbox v-model="dlg.persist" class="mt-0.5" />
         <div>
           <div class="text-xs font-medium text-foreground/80">Persist across reboots</div>
           <div class="text-2xs text-muted-foreground">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
@@ -118,15 +120,16 @@ defineExpose({ open })
       </label>
       <fieldset class="space-y-2">
         <legend class="text-xs font-medium text-foreground/80 mb-1.5">Access</legend>
+        <RadioGroup v-model="dlg.access" class="gap-2">
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="shared" class="mt-0.5 accent-primary"/>
+          <RadioGroupItem value="shared" class="mt-0.5" />
           <div>
             <div class="text-xs font-medium text-foreground/80">Writable by you and shared users (recommended)</div>
             <div class="text-2xs text-muted-foreground">On a new, empty volume: owned by your account and the hsi-share group, so you can create files right away. Volumes that already hold data are left unchanged.</div>
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="user" class="mt-0.5 accent-primary"/>
+          <RadioGroupItem value="user" class="mt-0.5" />
           <div class="flex-1">
             <div class="text-xs font-medium text-foreground/80">Owned by another user</div>
             <div class="text-2xs text-muted-foreground">Same as above, owned by the account you pick. To give a group access, create a Place and grant it there.</div>
@@ -140,14 +143,15 @@ defineExpose({ open })
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="keep" class="mt-0.5 accent-primary"/>
+          <RadioGroupItem value="keep" class="mt-0.5" />
           <div>
             <div class="text-xs font-medium text-foreground/80">Keep current permissions</div>
             <div class="text-2xs text-muted-foreground">A new volume stays owned by root: only root can write to it until you change its permissions.</div>
           </div>
         </label>
+        </RadioGroup>
         <label v-if="dlg.access !== 'keep'" class="flex items-start gap-2.5 cursor-pointer pt-1">
-          <input v-model="dlg.force" type="checkbox" class="mt-0.5 accent-primary"/>
+          <Checkbox v-model="dlg.force" class="mt-0.5" />
           <div>
             <div class="text-xs font-medium text-foreground/80">Also apply if the volume already holds data</div>
             <div class="text-2xs text-muted-foreground">Changes the owner and mode of the mount point's top folder only. Existing files and folders inside keep their permissions.</div>
@@ -156,7 +160,7 @@ defineExpose({ open })
       </fieldset>
       <div v-if="isAdmin" class="space-y-2">
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.createPlace" type="checkbox" class="mt-0.5 accent-primary"/>
+          <Checkbox v-model="dlg.createPlace" class="mt-0.5" />
           <div>
             <div class="text-xs font-medium text-foreground/80">Create a Place for this volume</div>
             <div class="text-2xs text-muted-foreground">Shows it in Files and lets you grant access per user or group.</div>

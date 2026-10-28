@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
@@ -206,7 +208,7 @@ function diskLabel(d: BlockDev): string {
             <li v-for="d in freeDisks" :key="d.name">
               <label class="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
                 :class="s.disks.has(d.name) ? 'border-foreground' : 'border-border hover:border-input'">
-                <input type="checkbox" class="accent-primary" :checked="s.disks.has(d.name)" @change="toggleDisk(d.name)" />
+                <Checkbox :model-value="s.disks.has(d.name)" @update:model-value="toggleDisk(d.name)" />
                 <span class="font-mono text-sm text-foreground w-20 shrink-0">/dev/{{ d.name }}</span>
                 <span class="flex-1 min-w-0 text-xs text-foreground/80 truncate">
                   {{ d.model || 'Unknown model' }}<span v-if="d.serial" class="font-mono"> · {{ d.serial }}</span><span v-if="diskLabel(d)"> · {{ diskLabel(d) }}</span>
@@ -221,16 +223,16 @@ function diskLabel(d: BlockDev): string {
         <!-- 2. Redundancy -->
         <template v-else-if="step === 1">
           <h3 class="text-sm font-semibold text-foreground mb-3">How should the data survive a disk failure?</h3>
-          <div role="radiogroup" class="space-y-1.5">
+          <RadioGroup v-model="s.level" class="gap-1.5" @update:model-value="levelPicked = true">
             <label v-for="l in levels" :key="l" class="flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
               :class="s.level === l ? 'border-foreground' : 'border-border hover:border-input'">
-              <input type="radio" class="mt-1 accent-primary" name="level" :value="l" v-model="s.level" @change="levelPicked = true" />
+              <RadioGroupItem :value="l" class="mt-0.5" />
               <span>
                 <span class="block text-sm font-medium" :class="l === 'none' ? 'text-destructive' : 'text-foreground'">{{ LEVEL_TEXT[l].title }}</span>
                 <span class="block text-xs text-muted-foreground">{{ LEVEL_TEXT[l].text }} {{ levelLine(l) }}</span>
               </span>
             </label>
-          </div>
+          </RadioGroup>
           <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-muted-foreground">{{ levelsHint(chosen.length) }}</p>
         </template>
 
@@ -278,24 +280,24 @@ function diskLabel(d: BlockDev): string {
         <!-- 6. Access -->
         <template v-else-if="step === 5">
           <h3 class="text-sm font-semibold text-foreground mb-3">Who can use it?</h3>
-          <div role="radiogroup" class="space-y-1.5 max-w-lg">
-            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="shared" v-model="s.access" />
+          <RadioGroup v-model="s.access" class="gap-1.5 max-w-lg">
+            <label class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="shared" class="mt-0.5" />
               <span class="text-sm text-foreground">You and the shared group<span class="block text-xs text-muted-foreground">Writable by you and by the users given write access through Places.</span></span></label>
-            <label v-if="isAdmin" class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="user" v-model="s.access" />
+            <label v-if="isAdmin" class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="user" class="mt-0.5" />
               <span class="text-sm text-foreground">Another user<span class="block text-xs text-muted-foreground">Owned by the user you choose, with the shared group.</span></span></label>
-            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="keep" v-model="s.access" />
+            <label class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="keep" class="mt-0.5" />
               <span class="text-sm text-foreground">Only root<span class="block text-xs text-muted-foreground">Left as root:root, for system use.</span></span></label>
-          </div>
+          </RadioGroup>
           <NativeSelect wrapper-class="mt-3 max-w-xs" v-if="s.access === 'user'" v-model="s.ownerUserId" aria-label="Owner">
             <NativeSelectOption value="" disabled>Choose a user</NativeSelectOption>
             <NativeSelectOption v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.username }} ({{ u.username }})</NativeSelectOption>
           </NativeSelect>
 
           <div v-if="isAdmin" class="mt-5 space-y-3 max-w-lg">
-            <label class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-primary" v-model="s.createPlace" />
+            <label class="flex items-start gap-3 cursor-pointer"><Checkbox class="mt-1" v-model="s.createPlace" />
               <span class="text-sm text-foreground">Create a Place<span class="block text-xs text-muted-foreground">So users see it in Files. You choose who can read or write in Places.</span></span></label>
             <Input v-if="s.createPlace" v-model="s.placeName" class="max-w-xs" aria-label="Place name" maxlength="64" />
-            <label v-if="s.createPlace" class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-primary" v-model="s.share" />
+            <label v-if="s.createPlace" class="flex items-start gap-3 cursor-pointer"><Checkbox class="mt-1" v-model="s.share" />
               <span class="text-sm text-foreground">Share it over SMB<span class="block text-xs text-muted-foreground">Reachable from other computers on the network.</span></span></label>
             <Input v-if="s.createPlace && s.share" v-model.trim="s.smbName" class="max-w-xs font-mono" aria-label="Share name" maxlength="32" />
           </div>

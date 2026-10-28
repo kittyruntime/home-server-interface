@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
@@ -96,14 +97,14 @@ async function save() {
           v-for="opt in options" :key="opt.id"
           class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer"
         >
-          <input v-model="selectedIds" type="checkbox" :value="opt.id" />
+          <Checkbox :model-value="selectedIds.includes(opt.id)" @update:model-value="checked => selectedIds = checked === true ? [...selectedIds, opt.id] : selectedIds.filter(id => id !== opt.id)" />
           {{ opt.name }}
         </label>
         <p v-if="selectedIds.length === 0" class="text-xs text-destructive">Pick at least one target.</p>
       </div>
 
       <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
-        <input v-model="enabled" type="checkbox" />
+        <Checkbox v-model="enabled" />
         Enabled
       </label>
 

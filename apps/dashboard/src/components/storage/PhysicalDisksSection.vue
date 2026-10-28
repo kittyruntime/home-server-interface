@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -368,7 +369,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
           </select>
           <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
-            <input v-model="prefs.grouped" type="checkbox" class="accent-primary"/> Group by role
+            <Checkbox v-model="prefs.grouped" /> Group by role
           </label>
           <div class="flex rounded-lg border border-border overflow-hidden text-xs" role="group" aria-label="View">
             <button v-for="v in (['table', 'cards'] as View[])" :key="v" @click="prefs.view = v" :aria-pressed="view === v"
@@ -417,8 +418,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <!-- Row (desktop) -->
               <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-accent/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
-                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
-                  :aria-label="`Select /dev/${r.disk.name}`" class="accent-primary"/>
+                <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" />
                 <span v-else/>
                 <span class="min-w-0">
                   <button class="block max-w-full font-mono font-semibold text-foreground truncate hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
@@ -447,8 +447,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
               <!-- Row (mobile): role and health first -->
               <div class="group @4xl/content:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
-                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
-                  :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-primary"/>
+                <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5" />
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <span :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
@@ -492,8 +491,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="flex items-start gap-2">
-              <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @change="toggleSelected(r.disk.name)"
-                :aria-label="`Select /dev/${r.disk.name}`" class="mt-4 accent-primary"/>
+              <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" class="mt-4" />
               <DiskCard class="flex-1 min-w-0" :disk="r.disk" :smart="smartCache[r.disk.name]" :smart-open="smartOpen.has(r.disk.name)"
                 :devices="devices" :lvs="lvmLVs"
                 @navigate="s => emit('navigate', s)" @toggle-smart="toggleSmart(r.disk.name)"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -258,39 +259,21 @@ async function deleteUser() {
             <p class="text-sm text-foreground">Admin</p>
             <p class="text-xs text-muted-foreground mt-0.5">Full access to every place, permission, and settings screen.</p>
           </div>
-          <input
-            type="checkbox"
-            :checked="user.isAdmin"
-            :disabled="isSelf || accountBusy.isAdmin"
-            @change="toggleAccountFlag('isAdmin')"
-            class="shrink-0"
-          />
+          <Checkbox :model-value="user.isAdmin" :disabled="isSelf || accountBusy.isAdmin" @update:model-value="toggleAccountFlag('isAdmin')" class="shrink-0" />
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
             <p class="text-sm text-foreground">User manager</p>
             <p class="text-xs text-muted-foreground mt-0.5">Can create, edit, and delete other user accounts.</p>
           </div>
-          <input
-            type="checkbox"
-            :checked="user.isUserManager"
-            :disabled="isSelf || accountBusy.isUserManager"
-            @change="toggleAccountFlag('isUserManager')"
-            class="shrink-0"
-          />
+          <Checkbox :model-value="user.isUserManager" :disabled="isSelf || accountBusy.isUserManager" @update:model-value="toggleAccountFlag('isUserManager')" class="shrink-0" />
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
             <p class="text-sm text-foreground">Storage admin</p>
             <p class="text-xs text-muted-foreground mt-0.5">Can manage disks, RAID, LVM, and partitions.</p>
           </div>
-          <input
-            type="checkbox"
-            :checked="userHasCapability('storage')"
-            :disabled="isSelf || capabilityBusy.storage"
-            @change="toggleCapability('storage')"
-            class="shrink-0"
-          />
+          <Checkbox :model-value="userHasCapability('storage')" :disabled="isSelf || capabilityBusy.storage" @update:model-value="toggleCapability('storage')" class="shrink-0" />
         </label>
       </div>
 
@@ -339,13 +322,7 @@ async function deleteUser() {
               <span v-else class="text-muted-foreground">No account on the system yet.</span>
             </p>
           </div>
-          <input
-            type="checkbox"
-            :checked="identity.sambaEnabled"
-            :disabled="isSelf || sambaBusy"
-            @change="toggleSamba"
-            class="shrink-0"
-          />
+          <Checkbox :model-value="identity.sambaEnabled" :disabled="isSelf || sambaBusy" @update:model-value="toggleSamba" class="shrink-0" />
         </label>
       </div>
 

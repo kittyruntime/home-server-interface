@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { Badge } from '@/components/ui/badge'
@@ -123,12 +124,7 @@ onMounted(load)
                   </div>
                 </td>
                 <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
-                  <input
-                    type="checkbox"
-                    :checked="getPerm(place.id, 'group', group.id)?.[field] ?? false"
-                    @change="togglePerm(place.id, 'group', group.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
-                  />
+                  <Checkbox :model-value="getPerm(place.id, 'group', group.id)?.[field] ?? false" @update:model-value="togglePerm(place.id, 'group', group.id, field)" />
                 </td>
               </tr>
 
@@ -142,13 +138,7 @@ onMounted(load)
                   </div>
                 </td>
                 <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
-                  <input
-                    type="checkbox"
-                    :checked="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)"
-                    :disabled="user.isAdmin"
-                    @change="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+                  <Checkbox :model-value="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)" :disabled="user.isAdmin" @update:model-value="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)" />
                 </td>
               </tr>
 

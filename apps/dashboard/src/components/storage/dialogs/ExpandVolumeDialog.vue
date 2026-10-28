@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ref, computed } from 'vue'
 import { trpc } from '../../../lib/trpc'
 import { applyPlanned } from '../../../lib/plan'
@@ -84,11 +85,13 @@ defineExpose({ open })
       <p v-if="dlg.loading" class="text-sm text-muted-foreground">Looking at what this volume can use…</p>
       <p v-else-if="!dlg.options.length" class="text-sm text-foreground/80">{{ dlg.reason || 'Nothing to grow into right now.' }}</p>
       <div v-else class="space-y-2">
-        <label v-for="o in dlg.options" :key="o.mode" class="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2 cursor-pointer"
-          :class="dlg.mode === o.mode ? 'border-primary' : ''">
-          <input type="radio" name="expand-mode" class="mt-1 accent-primary" :checked="dlg.mode === o.mode" @change="pick(o.mode as ExpandMode)" />
-          <span class="text-sm text-foreground">{{ optionLabel(o.mode as ExpandMode, o.gain) }}</span>
-        </label>
+        <RadioGroup :model-value="dlg.mode" class="gap-2" @update:model-value="mode => pick(mode as ExpandMode)">
+          <label v-for="o in dlg.options" :key="o.mode" class="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2 cursor-pointer"
+            :class="dlg.mode === o.mode ? 'border-primary' : ''">
+            <RadioGroupItem :value="o.mode" class="mt-0.5" />
+            <span class="text-sm text-foreground">{{ optionLabel(o.mode as ExpandMode, o.gain) }}</span>
+          </label>
+        </RadioGroup>
         <div v-if="chosen?.disks?.length" class="pt-1">
           <label class="text-xs text-foreground/80" for="expand-disk">Disk to add (everything on it is erased)</label>
           <NativeSelect wrapper-class="mt-1 w-full" id="expand-disk" v-model="dlg.disk" class="font-mono">

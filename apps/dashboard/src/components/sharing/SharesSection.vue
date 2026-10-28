@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -257,11 +258,11 @@ async function removeShare(s: ShareRow) {
         </div>
 
         <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
-          <input v-model="editor.readOnly" type="checkbox" />
+          <Checkbox v-model="editor.readOnly" />
           Read-only (ignore write permissions)
         </label>
         <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
-          <input v-model="editor.guestOk" type="checkbox" />
+          <Checkbox v-model="editor.guestOk" />
           Allow guest access (no authentication)
         </label>
 

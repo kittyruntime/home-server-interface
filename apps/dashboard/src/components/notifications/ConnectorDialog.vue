@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
@@ -368,7 +369,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
       </div>
 
       <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
-        <input v-model="enabled" type="checkbox" />
+        <Checkbox v-model="enabled" />
         Enabled
       </label>
 

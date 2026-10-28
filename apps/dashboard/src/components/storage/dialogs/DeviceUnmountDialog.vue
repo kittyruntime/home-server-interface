@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
 import { type BlockDev } from '../store'
@@ -54,7 +55,7 @@ defineExpose({ open })
         <div class="flex gap-2"><span class="w-20 text-foreground/80">Mount point</span><span class="font-mono">{{ dlg.dev.mountpoint }}</span></div>
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
-        <input v-model="dlg.rmFstab" type="checkbox" class="mt-0.5 accent-primary"/>
+        <Checkbox v-model="dlg.rmFstab" class="mt-0.5" />
         <div>
           <div class="text-xs font-medium text-foreground/80">Remove from /etc/fstab</div>
           <div class="text-2xs text-muted-foreground">Also delete the auto-mount entry so the drive stays unmounted after reboots.</div>

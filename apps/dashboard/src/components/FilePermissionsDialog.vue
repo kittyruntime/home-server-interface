@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, watch, computed } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -120,12 +121,7 @@ async function save() {
                 <tr v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
                   <td class="py-2.5 text-muted-foreground text-xs">{{ label }}</td>
                   <td v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      v-model="(bits[key as keyof typeof bits] as any)[bit]"
-                      :disabled="!isAdmin"
-                      class="w-3.5 h-3.5 rounded accent-primary cursor-pointer disabled:cursor-default"
-                    />
+                    <Checkbox v-model="(bits[key as keyof typeof bits] as any)[bit]" :disabled="!isAdmin" />
                   </td>
                 </tr>
               </tbody>

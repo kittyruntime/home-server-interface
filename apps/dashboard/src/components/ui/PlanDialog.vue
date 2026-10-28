@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import BusyLabel from './BusyLabel.vue'
 import { LOADING } from '../../lib/loading'
 import LoadingState from './LoadingState.vue'
@@ -265,7 +266,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
           <span class="status-tag">[ERR]</span> The operation stopped at a failed step; later steps did not run.
         </p>
         <label v-if="planRequest.acknowledge && preview && !done && !failedApply" class="flex items-start gap-2 text-sm text-foreground">
-          <input v-model="acked" type="checkbox" class="mt-0.5 accent-primary" :disabled="applying" />
+          <Checkbox v-model="acked" class="mt-0.5" :disabled="applying" />
           <span>{{ planRequest.acknowledge }}</span>
         </label>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
