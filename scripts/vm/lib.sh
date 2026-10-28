@@ -31,7 +31,12 @@ vm_put() {
 
 vm_wait_ssh() {
   local deadline=$((SECONDS + ${1:-300}))
+  local next=$((SECONDS + 60))
   until vm_ssh true 2>/dev/null; do
+    if (( SECONDS >= next )); then
+      echo "[vm] waiting for SSH: console $(wc -c < "$VM_DIR/console.log" 2>/dev/null || echo 0) bytes"
+      next=$((SECONDS + 60))
+    fi
     if (( SECONDS >= deadline )); then
       tail -c 4000 "$VM_DIR/console.log" 2>/dev/null || true
       fail "SSH did not come up"
@@ -49,6 +54,7 @@ vm_boot() {
     log "Downloading the Debian 13 cloud image"
     curl -fsSL "$VM_IMAGE_URL" -o "$base.part" && mv "$base.part" "$base"
   fi
+  qemu-img info "$base" | grep -E "file format|virtual size|disk size" || fail "the cloud image is unreadable"
   ssh-keygen -q -t ed25519 -N '' -f "$VM_DIR/id_ed25519" <<<y >/dev/null
   qemu-img create -q -f qcow2 -b "$base" -F qcow2 "$VM_DIR/system.qcow2" 20G
   cat > "$VM_DIR/user-data" <<USERDATA
@@ -72,8 +78,8 @@ USERDATA
   done
   log "Booting the VM (${VM_DATA_DISKS} data disks of ${VM_DATA_DISK_SIZE})"
   [[ -w /dev/kvm ]] || fail "/dev/kvm is not usable: the VM tests need hardware virtualization"
-  qemu-system-x86_64 -machine q35,accel=kvm -cpu host -m "$VM_MEMORY" -smp "$VM_CPUS" \
-    -drive "file=$VM_DIR/system.qcow2,if=virtio,format=qcow2" \
+  qemu-system-x86_64 -enable-kvm -m "$VM_MEMORY" -smp "$VM_CPUS" -boot order=c \
+    -drive "file=$VM_DIR/system.qcow2,if=virtio,format=qcow2,index=0" \
     -drive "file=$VM_DIR/seed.iso,if=virtio,format=raw,readonly=on" \
     "${disks[@]}" \
     -nic "user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:${VM_SSH_PORT}-:22" \
