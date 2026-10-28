@@ -7,7 +7,7 @@
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.1",
     "@prisma/client": "7.10.1",
-    "bcryptjs": "2.4.3",
+    "bcryptjs": "3.0.3",
     "prisma": "7.10.1",
     "tsx": "4.23.15",
     "yaml": "^2.9.0",
