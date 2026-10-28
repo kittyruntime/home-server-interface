@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 export interface EnvVar { key: string; value: string }
 
@@ -42,7 +44,7 @@ watch(() => props.modelValue, () => {
     <div class="flex justify-end">
       <button
         @click="toggleMode"
-        class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors border border-[var(--c-border-strong)] rounded-lg px-2 py-1"
+        class="text-xs text-muted-foreground hover:text-foreground transition-colors border border-input rounded-lg px-2 py-1"
       >
         {{ mode === 'table' ? 'Raw' : 'Table' }}
       </button>
@@ -58,16 +60,16 @@ watch(() => props.modelValue, () => {
         :new-item="() => ({ key: '', value: '' })"
       >
         <template #row="{ item, update }">
-          <input
+          <Input
             :value="item.key" placeholder="KEY"
             @input="update({ key: ($event.target as HTMLInputElement).value })"
-            class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+            class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
-          <span class="text-[var(--c-text-3)] text-sm">=</span>
-          <input
+          <span class="text-muted-foreground text-sm">=</span>
+          <Input
             :value="item.value" placeholder="value"
             @input="update({ value: ($event.target as HTMLInputElement).value })"
-            class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+            class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
         </template>
       </RowEditor>
@@ -75,11 +77,11 @@ watch(() => props.modelValue, () => {
 
     <!-- Raw mode -->
     <template v-else>
-      <textarea
+      <Textarea
         v-model="rawText"
         placeholder="KEY=value&#10;OTHER=foo"
         rows="8"
-        class="ui-input w-full px-3 py-2 text-sm font-mono resize-y"
+        class="w-full px-3 py-2 text-sm font-mono resize-y"
       />
     </template>
   </div>

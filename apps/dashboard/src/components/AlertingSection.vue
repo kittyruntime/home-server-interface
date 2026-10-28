@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Thresholds = { diskUsageWarningPercent: number; diskUsageCriticalPercent: number }
 
@@ -57,52 +59,51 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Alert thresholds</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">
+    <h2 class="text-lg font-semibold text-foreground mb-1">Alert thresholds</h2>
+    <p class="text-sm text-muted-foreground mb-6">
       Background health checks, sampled every 5 minutes. Active alerts are listed in Monitor &gt; Alerts.
     </p>
 
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
-    <div v-else class="panel-card p-5 max-w-xl">
+    <div v-else class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 max-w-xl">
       <p class="eyebrow mb-4">Disk usage</p>
-      <p class="text-xs text-[var(--c-text-3)] mb-4">
+      <p class="text-xs text-muted-foreground mb-4">
         Each Place's filesystem is checked against these percentages. Doesn't apply to the
         RAID or S.M.A.R.T. checks, which alert on their own pass/fail state.
       </p>
       <div class="flex flex-wrap gap-6">
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-[var(--c-text-3)]">Warning at</span>
+          <span class="text-xs text-muted-foreground">Warning at</span>
           <div class="flex items-center gap-1.5">
-            <input
+            <Input
               v-model.number="form.diskUsageWarningPercent"
               type="number" min="1" max="99"
-              class="ui-input w-16 px-2 py-1.5 text-sm tabular-nums"
-            >
-            <span class="text-sm text-[var(--c-text-3)]">%</span>
+              class="w-16 px-2 py-1.5 text-sm tabular-nums"
+             />
+            <span class="text-sm text-muted-foreground">%</span>
           </div>
         </label>
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-[var(--c-text-3)]">Critical at</span>
+          <span class="text-xs text-muted-foreground">Critical at</span>
           <div class="flex items-center gap-1.5">
-            <input
+            <Input
               v-model.number="form.diskUsageCriticalPercent"
               type="number" min="1" max="99"
-              class="ui-input w-16 px-2 py-1.5 text-sm tabular-nums"
-            >
-            <span class="text-sm text-[var(--c-text-3)]">%</span>
+              class="w-16 px-2 py-1.5 text-sm tabular-nums"
+             />
+            <span class="text-sm text-muted-foreground">%</span>
           </div>
         </label>
       </div>
-      <p v-if="saveError" role="alert" class="mt-4 status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
-      <p v-else-if="saved && !dirty" class="text-xs text-[var(--c-success)] mt-4">Saved.</p>
+      <p v-if="saveError" role="alert" class="mt-4 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-else-if="saved && !dirty" class="text-xs text-success mt-4">Saved.</p>
       <div class="mt-4">
-        <button
-          class="btn btn-sm btn-primary"
+        <Button size="sm"
           :disabled="!dirty || saving"
           @click="saveThresholds"
-        >{{ saving ? 'Saving…' : 'Save' }}</button>
+        >{{ saving ? 'Saving…' : 'Save' }}</Button>
       </div>
     </div>
   </div>

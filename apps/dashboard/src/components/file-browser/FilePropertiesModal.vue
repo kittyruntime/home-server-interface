@@ -6,6 +6,7 @@ import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useAdvancedMode } from '../../lib/advanced-mode'
 import Modal from '../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
 
 type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string }
@@ -114,20 +115,20 @@ onMounted(async () => {
     <template #header>
       <div class="flex items-center gap-3 min-w-0">
         <!-- Place icon -->
-        <svg v-if="isPlace" class="w-8 h-8 shrink-0 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <svg v-if="isPlace" class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0-10.5a3 3 0 00-3-3H9.75a3 3 0 00-3 3m9.75 0a3 3 0 01-3 3h-3a3 3 0 01-3-3m9.75 0H4.5m15 0h.008v.008H19.5v-.008z"/>
         </svg>
         <!-- Folder icon -->
-        <svg v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <svg v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
         </svg>
         <!-- File icon -->
-        <svg v-else class="w-8 h-8 shrink-0 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <svg v-else class="w-8 h-8 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
         </svg>
         <div class="min-w-0">
-          <div class="text-sm font-semibold text-[var(--c-text-1)] truncate">{{ displayName }}</div>
-          <div class="text-2xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ targetPath }}</div>
+          <div class="text-sm font-semibold text-foreground truncate">{{ displayName }}</div>
+          <div class="text-2xs text-muted-foreground font-mono truncate mt-0.5">{{ targetPath }}</div>
         </div>
       </div>
     </template>
@@ -136,58 +137,58 @@ onMounted(async () => {
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Error -->
-    <p v-else-if="error" role="alert" class="p-6 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-else-if="error" role="alert" class="p-6 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- Content -->
-    <div v-else class="divide-y divide-[var(--c-border)]">
+    <div v-else class="divide-y divide-border">
 
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Storage</div>
-        <div class="w-full h-2 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Storage</div>
+        <div class="w-full h-2 bg-muted rounded-full overflow-hidden">
           <div
             class="h-full rounded-full transition-all"
-            :class="diskUsedPct > 90 ? 'bg-[var(--c-danger)]' : 'bg-[var(--c-accent)]'"
+            :class="diskUsedPct > 90 ? 'bg-destructive' : 'bg-primary'"
             :style="{ width: `${Math.min(diskUsedPct, 100)}%` }"
           />
         </div>
-        <div class="flex justify-between text-xs text-[var(--c-text-3)]">
-          <span><span class="text-[var(--c-text-1)] font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
-          <span><span class="text-[var(--c-text-1)] font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>
+        <div class="flex justify-between text-xs text-muted-foreground">
+          <span><span class="text-foreground font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
+          <span><span class="text-foreground font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>
           <span>{{ fmtBytes(diskInfo.total) }} total</span>
         </div>
       </div>
 
       <!-- General -->
       <div class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">General</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">General</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Kind</dt>
-            <dd class="text-[var(--c-text-1)] text-right truncate">{{ kindLabel }}</dd>
+            <dt class="text-muted-foreground shrink-0">Kind</dt>
+            <dd class="text-foreground text-right truncate">{{ kindLabel }}</dd>
           </div>
           <div v-if="stat?.size != null" class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Size</dt>
-            <dd class="text-[var(--c-text-1)] text-right">{{ fmtBytes(stat.size) }}</dd>
+            <dt class="text-muted-foreground shrink-0">Size</dt>
+            <dd class="text-foreground text-right">{{ fmtBytes(stat.size) }}</dd>
           </div>
           <div v-if="!isPlace" class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Location</dt>
-            <dd class="text-[var(--c-text-2)] text-right font-mono text-xs truncate">{{ location }}</dd>
+            <dt class="text-muted-foreground shrink-0">Location</dt>
+            <dd class="text-foreground/80 text-right font-mono text-xs truncate">{{ location }}</dd>
           </div>
         </dl>
       </div>
 
       <!-- Dates -->
       <div v-if="stat?.mtime" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Dates</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Dates</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Modified</dt>
-            <dd class="text-[var(--c-text-1)] text-right">{{ formatDateTime(stat.mtime) }}</dd>
+            <dt class="text-muted-foreground shrink-0">Modified</dt>
+            <dd class="text-foreground text-right">{{ formatDateTime(stat.mtime) }}</dd>
           </div>
           <div v-if="stat.ctime" class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Changed</dt>
-            <dd class="text-[var(--c-text-1)] text-right">{{ formatDateTime(stat.ctime) }}</dd>
+            <dt class="text-muted-foreground shrink-0">Changed</dt>
+            <dd class="text-foreground text-right">{{ formatDateTime(stat.ctime) }}</dd>
           </div>
         </dl>
       </div>
@@ -195,30 +196,30 @@ onMounted(async () => {
       <!-- Permissions -->
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Permissions</div>
+          <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Permissions</div>
           <button
             v-if="isAdmin"
             @click="emit('close'); emit('openPermissions')"
-            class="text-xs text-[var(--c-accent)] hover:underline"
+            class="text-xs text-primary hover:underline"
           >Edit…</button>
         </div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Mode</dt>
-            <dd class="font-mono text-[var(--c-text-1)]">{{ modeSymbol }} <span class="text-[var(--c-text-3)]">({{ stat.mode }})</span></dd>
+            <dt class="text-muted-foreground shrink-0">Mode</dt>
+            <dd class="font-mono text-foreground">{{ modeSymbol }} <span class="text-muted-foreground">({{ stat.mode }})</span></dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Owner</dt>
-            <dd class="font-mono text-[var(--c-text-1)]">{{ stat.owner }}</dd>
+            <dt class="text-muted-foreground shrink-0">Owner</dt>
+            <dd class="font-mono text-foreground">{{ stat.owner }}</dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-[var(--c-text-3)] shrink-0">Group</dt>
-            <dd class="font-mono text-[var(--c-text-1)]">{{ stat.group }}</dd>
+            <dt class="text-muted-foreground shrink-0">Group</dt>
+            <dd class="font-mono text-foreground">{{ stat.group }}</dd>
           </div>
           <template v-if="advancedMode">
             <div class="flex justify-between gap-4">
-              <dt class="text-[var(--c-text-3)] shrink-0">UID / GID</dt>
-              <dd class="font-mono text-[var(--c-text-1)]">{{ stat.uid }} / {{ stat.gid }}</dd>
+              <dt class="text-muted-foreground shrink-0">UID / GID</dt>
+              <dd class="font-mono text-foreground">{{ stat.uid }} / {{ stat.gid }}</dd>
             </div>
           </template>
         </dl>
@@ -228,7 +229,7 @@ onMounted(async () => {
 
     <template #footer>
       <div class="flex-1" />
-      <button @click="emit('close')" class="btn btn-ghost btn-sm">Close</button>
+      <Button variant="ghost" size="sm" @click="emit('close')">Close</Button>
     </template>
   </Modal>
 </template>

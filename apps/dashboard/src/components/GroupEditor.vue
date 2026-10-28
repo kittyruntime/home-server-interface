@@ -110,7 +110,7 @@ async function toggleMember(userId: string) {
       <!-- Back -->
       <button
         @click="$emit('back')"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
         title="Back to groups"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -120,14 +120,14 @@ async function toggleMember(userId: string) {
 
       <!-- Name -->
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <span class="text-base font-semibold text-[var(--c-text-1)] truncate">{{ group.name }}</span>
+        <span class="text-base font-semibold text-foreground truncate">{{ group.name }}</span>
       </div>
 
       <!-- Delete -->
       <template v-if="!deleteConfirm">
         <button
           @click="deleteConfirm = true"
-          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors shrink-0"
+          class="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
           title="Delete group"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -136,29 +136,29 @@ async function toggleMember(userId: string) {
         </button>
       </template>
       <template v-else>
-        <span class="text-xs text-[var(--c-danger)] shrink-0">Delete?</span>
+        <span class="text-xs text-destructive shrink-0">Delete?</span>
         <button
           @click="deleteGroup"
           :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded-sm bg-[var(--c-danger)]/15 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/25 transition-colors disabled:opacity-40"
+          class="text-xs px-2 py-1 rounded-sm bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors disabled:opacity-40"
         >Yes</button>
         <button
           @click="deleteConfirm = false"
-          class="text-xs px-2 py-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
+          class="text-xs px-2 py-1 rounded-sm text-muted-foreground hover:text-foreground/80 transition-colors"
         >No</button>
       </template>
     </div>
 
-    <p v-if="error" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Members</h4>
-        <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
+        <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Members</h4>
+        <span class="text-xs text-muted-foreground">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <p v-if="users.length === 0" class="text-xs text-[var(--c-text-3)] px-0.5">No users</p>
+      <p v-if="users.length === 0" class="text-xs text-muted-foreground px-0.5">No users</p>
 
       <GroupPicker
         v-else

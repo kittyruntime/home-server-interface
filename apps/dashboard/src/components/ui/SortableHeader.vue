@@ -4,11 +4,11 @@ defineEmits<{ click: [] }>()
 </script>
 
 <template>
-  <button @click="$emit('click')" class="inline-flex items-center gap-1 hover:text-[var(--c-text-1)] transition-colors">
+  <button @click="$emit('click')" class="inline-flex items-center gap-1 hover:text-foreground transition-colors">
     <slot />
     <svg
       class="w-3 h-3 transition-transform shrink-0"
-      :class="active ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)] opacity-40'"
+      :class="active ? 'text-primary' : 'text-muted-foreground opacity-40'"
       :style="{ transform: active && dir === 'desc' ? 'rotate(180deg)' : undefined }"
       fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
     >

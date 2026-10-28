@@ -11,6 +11,9 @@ import PlanDialog from '../components/ui/PlanDialog.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import LoadingState from '../components/ui/LoadingState.vue'
 import RestoreForm from '../components/backup/RestoreForm.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 /* First-run setup assistant (#12): the one-time link from the installer
    creates the administrator, then the server's identity, then next steps. */
@@ -205,40 +208,40 @@ const NEXT = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-[var(--c-bg)] px-4 py-10 flex justify-center">
+  <div class="min-h-screen bg-background px-4 py-10 flex justify-center">
     <div class="w-full max-w-xl">
       <div class="mb-8 text-center">
         <div class="eyebrow mb-1">Home Server Interface</div>
-        <h1 class="text-2xl font-semibold text-[var(--c-text-1)]">Set up your server</h1>
+        <h1 class="text-2xl font-semibold text-foreground">Set up your server</h1>
       </div>
 
       <ol class="mb-6 flex items-center justify-center gap-2 text-xs" aria-label="Setup steps">
         <li v-for="(s, i) in STEPS" :key="s.id" class="flex items-center gap-2">
           <span :class="['grid h-6 w-6 place-items-center rounded-full border text-2xs font-semibold',
-            i < stepIndex ? 'border-success bg-success/10 text-success' : i === stepIndex ? 'border-[var(--c-accent)] text-[var(--c-accent)]' : 'border-[var(--c-border-strong)] text-[var(--c-text-3)]']"
+            i < stepIndex ? 'border-success bg-success/10 text-success' : i === stepIndex ? 'border-primary text-primary' : 'border-input text-muted-foreground']"
             :aria-current="i === stepIndex ? 'step' : undefined">{{ i + 1 }}</span>
-          <span :class="i === stepIndex ? 'text-[var(--c-text-1)]' : 'text-[var(--c-text-3)]'">{{ s.label }}</span>
-          <span v-if="i < STEPS.length - 1" aria-hidden="true" class="mx-1 h-px w-6 bg-[var(--c-border-strong)]" />
+          <span :class="i === stepIndex ? 'text-foreground' : 'text-muted-foreground'">{{ s.label }}</span>
+          <span v-if="i < STEPS.length - 1" aria-hidden="true" class="mx-1 h-px w-6 bg-input" />
         </li>
       </ol>
 
-      <div class="rounded-xl border border-[var(--c-border-strong)] bg-[var(--c-surface)] p-6 space-y-4">
+      <div class="rounded-xl border border-input bg-card p-6 space-y-4">
         <LoadingState v-if="!status && !loadError" variant="compact" />
-        <p v-else-if="loadError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
+        <p v-else-if="loadError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
 
         <!-- Token -->
         <form v-else-if="screen === 'token'" class="space-y-4" @submit.prevent="checkToken">
-          <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Open the setup link</h2>
-          <p class="text-sm text-[var(--c-text-2)]">
+          <h2 class="text-lg font-semibold text-foreground">Open the setup link</h2>
+          <p class="text-sm text-foreground/80">
             The installer printed a link to finish the setup. If you no longer have it, run
             <code class="font-mono text-xs">sudo hsi-worker setup-token</code> on the server for a new one, or read the token with
             <code class="font-mono text-xs">sudo cat /etc/hsi/setup-token</code>.
           </p>
-          <label class="block text-xs text-[var(--c-text-2)]">Setup token
-            <input v-model="tokenInput" class="ui-input mt-1 font-mono" autocomplete="off" spellcheck="false" />
+          <label class="block text-xs text-foreground/80">Setup token
+            <Input v-model="tokenInput" class="mt-1 font-mono" autocomplete="off" spellcheck="false" />
           </label>
-          <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
-          <div class="flex justify-end"><button class="btn btn-primary btn-sm" :disabled="busy || !tokenInput.trim()">Continue</button></div>
+          <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+          <div class="flex justify-end"><Button size="sm" :disabled="busy || !tokenInput.trim()">Continue</Button></div>
         </form>
 
         <!-- Start: a new server, or restore a configuration backup -->
@@ -248,30 +251,30 @@ const NEXT = [
             <button type="button" role="tab" :aria-selected="startMode === 'restore'" :class="['btn btn-sm flex-1 justify-center', startMode === 'restore' ? 'btn-primary' : 'btn-outline']" @click="startMode = 'restore'">Restore a backup</button>
           </div>
           <div v-if="startMode === 'restore'" class="space-y-2">
-            <p class="text-sm text-[var(--c-text-2)]">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>
+            <p class="text-sm text-foreground/80">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>
             <RestoreForm :auth-token="setupSession" :after-restart="afterRestore" :show-follow-ups="false" />
           </div>
         <form v-else class="space-y-4" @submit.prevent="createAdmin">
           <div>
-            <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Create the administrator</h2>
-            <p class="mt-1 text-sm text-[var(--c-text-2)]">This account manages the server. It is also a Linux and SMB account, so it can open the shares.</p>
+            <h2 class="text-lg font-semibold text-foreground">Create the administrator</h2>
+            <p class="mt-1 text-sm text-foreground/80">This account manages the server. It is also a Linux and SMB account, so it can open the shares.</p>
           </div>
-          <label class="block text-xs text-[var(--c-text-2)]">Username
-            <input v-model="username" class="ui-input mt-1" autocomplete="username" placeholder="e.g. alice" spellcheck="false" required />
+          <label class="block text-xs text-foreground/80">Username
+            <Input v-model="username" class="mt-1" autocomplete="username" placeholder="e.g. alice" spellcheck="false" required />
           </label>
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="block text-xs text-[var(--c-text-2)]">Password
-              <input v-model="password" type="password" class="ui-input mt-1" autocomplete="new-password" required />
+            <label class="block text-xs text-foreground/80">Password
+              <Input v-model="password" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
-            <label class="block text-xs text-[var(--c-text-2)]">Confirm the password
-              <input v-model="confirm" type="password" class="ui-input mt-1" autocomplete="new-password" required />
+            <label class="block text-xs text-foreground/80">Confirm the password
+              <Input v-model="confirm" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
           </div>
-          <p v-if="adminError || error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ adminError || error }}</p>
+          <p v-if="adminError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ adminError || error }}</p>
           <div class="flex justify-end">
-            <button class="btn btn-primary btn-sm" :disabled="busy || !!adminError || !username || !password || password !== confirm">
+            <Button size="sm" :disabled="busy || !!adminError || !username || !password || password !== confirm">
               {{ busy ? 'Creating…' : 'Create the administrator' }}
-            </button>
+            </Button>
           </div>
         </form>
         </div>
@@ -279,82 +282,82 @@ const NEXT = [
         <!-- Server identity -->
         <form v-else-if="screen === 'identity'" class="space-y-4" @submit.prevent="applyIdentity">
           <div>
-            <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Name the server</h2>
-            <p class="mt-1 text-sm text-[var(--c-text-2)]">The name devices see on the network, and the time zone used for schedules and logs.</p>
+            <h2 class="text-lg font-semibold text-foreground">Name the server</h2>
+            <p class="mt-1 text-sm text-foreground/80">The name devices see on the network, and the time zone used for schedules and logs.</p>
           </div>
           <LoadingState v-if="!current && !error" variant="compact" />
           <template v-else-if="current">
-            <label class="block text-xs text-[var(--c-text-2)]">Hostname
-              <input v-model="hostname" class="ui-input mt-1 font-mono" spellcheck="false" />
+            <label class="block text-xs text-foreground/80">Hostname
+              <Input v-model="hostname" class="mt-1 font-mono" spellcheck="false" />
             </label>
-            <label class="block text-xs text-[var(--c-text-2)]">Time zone
-              <select v-model="timezone" class="ui-input mt-1">
-                <option v-for="z in timezones" :key="z" :value="z">{{ z }}</option>
-              </select>
+            <label class="block text-xs text-foreground/80">Time zone
+              <NativeSelect wrapper-class="mt-1" v-model="timezone">
+                <NativeSelectOption v-for="z in timezones" :key="z" :value="z">{{ z }}</NativeSelectOption>
+              </NativeSelect>
             </label>
           </template>
-          <p v-if="hostnameError || error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
+          <p v-if="hostnameError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
           <div class="flex justify-between">
-            <button type="button" class="btn btn-ghost btn-sm" @click="goTo('secure', 'identity')">Skip</button>
-            <button class="btn btn-primary btn-sm" :disabled="!current || !!hostnameError">{{ identityChanged ? 'Apply…' : 'Continue' }}</button>
+            <Button variant="ghost" size="sm" type="button" @click="goTo('secure', 'identity')">Skip</Button>
+            <Button size="sm" :disabled="!current || !!hostnameError">{{ identityChanged ? 'Apply…' : 'Continue' }}</Button>
           </div>
         </form>
 
         <!-- Secure access -->
         <div v-else-if="screen === 'secure'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Secure access</h2>
-            <p class="mt-1 text-sm text-[var(--c-text-2)]">HTTPS encrypts passwords and files on your network.</p>
+            <h2 class="text-lg font-semibold text-foreground">Secure access</h2>
+            <p class="mt-1 text-sm text-foreground/80">HTTPS encrypts passwords and files on your network.</p>
           </div>
-          <p v-if="restarting" role="status" class="status-text text-[var(--c-text-2)]">Restarting HSI…</p>
+          <p v-if="restarting" role="status" class="status-text text-foreground/80">Restarting HSI…</p>
           <LoadingState v-else-if="!tls && !tlsError" variant="compact" />
           <template v-else-if="tls">
-            <p class="text-sm text-[var(--c-text-1)]">{{ modeLabel(tls.mode) }}</p>
+            <p class="text-sm text-foreground">{{ modeLabel(tls.mode) }}</p>
             <template v-if="tls.mode === 'local'">
               <div v-if="tls.authorityFingerprint">
-                <span class="text-xs text-[var(--c-text-3)]">Authority fingerprint</span>
-                <p class="font-mono break-all text-xs text-[var(--c-text-2)] mt-1">{{ tls.authorityFingerprint }}</p>
+                <span class="text-xs text-muted-foreground">Authority fingerprint</span>
+                <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ tls.authorityFingerprint }}</p>
               </div>
-              <p class="text-sm text-[var(--c-text-2)]">Install the authority certificate on your devices so browsers trust this server.</p>
-              <a href="/ca.crt" download class="btn btn-outline btn-sm">Download the authority certificate</a>
-              <details class="text-sm text-[var(--c-text-2)]">
-                <summary class="cursor-pointer text-xs text-[var(--c-text-3)]">How to trust it on your devices</summary>
+              <p class="text-sm text-foreground/80">Install the authority certificate on your devices so browsers trust this server.</p>
+              <Button as="a" variant="outline" size="sm" href="/ca.crt" download>Download the authority certificate</Button>
+              <details class="text-sm text-foreground/80">
+                <summary class="cursor-pointer text-xs text-muted-foreground">How to trust it on your devices</summary>
                 <dl class="mt-2 space-y-2">
                   <div v-for="t in TRUST_STEPS" :key="t.os">
-                    <dt class="text-xs font-medium text-[var(--c-text-1)]">{{ t.os }}</dt>
+                    <dt class="text-xs font-medium text-foreground">{{ t.os }}</dt>
                     <dd class="text-xs">{{ t.steps }}</dd>
                   </div>
                 </dl>
               </details>
             </template>
             <div v-else-if="tls.mode === 'off'" class="space-y-2">
-              <p class="text-sm text-[var(--c-text-2)]">HSI is served over plain HTTP. Turn HTTPS on with a local certificate authority.</p>
-              <button type="button" class="btn btn-primary btn-sm" @click="turnOnHttps">Turn HTTPS on</button>
+              <p class="text-sm text-foreground/80">HSI is served over plain HTTP. Turn HTTPS on with a local certificate authority.</p>
+              <Button size="sm" type="button" @click="turnOnHttps">Turn HTTPS on</Button>
             </div>
-            <p class="text-xs text-[var(--c-text-3)]">Import a certificate or use a reverse proxy later in Settings &gt; Secure access.</p>
+            <p class="text-xs text-muted-foreground">Import a certificate or use a reverse proxy later in Settings &gt; Secure access.</p>
           </template>
-          <p v-if="tlsError || error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
+          <p v-if="tlsError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
           <div class="flex justify-between">
-            <button type="button" class="btn btn-ghost btn-sm" :disabled="restarting" @click="goTo('next', 'secure')">Skip</button>
-            <button type="button" class="btn btn-primary btn-sm" :disabled="restarting" @click="goTo('next')">Continue</button>
+            <Button variant="ghost" size="sm" type="button" :disabled="restarting" @click="goTo('next', 'secure')">Skip</Button>
+            <Button size="sm" type="button" :disabled="restarting" @click="goTo('next')">Continue</Button>
           </div>
         </div>
 
         <!-- Next steps -->
         <div v-else-if="screen === 'next'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Your server is ready</h2>
-            <p class="mt-1 text-sm text-[var(--c-text-2)]">A few things worth doing next. Everything stays available later from the dashboard.</p>
+            <h2 class="text-lg font-semibold text-foreground">Your server is ready</h2>
+            <p class="mt-1 text-sm text-foreground/80">A few things worth doing next. Everything stays available later from the dashboard.</p>
           </div>
           <ul class="grid gap-2 sm:grid-cols-2">
             <li v-for="n in NEXT" :key="n.title">
-              <a :href="n.href" class="block h-full rounded-lg border border-[var(--c-border)] px-3 py-2.5 hover:border-[var(--c-border-strong)] transition-colors" @click.prevent="trpc.setup.progress.mutate({ step: 'done' }).finally(() => router.replace(n.href))">
-                <span class="block text-sm font-medium text-[var(--c-text-1)]">{{ n.title }}</span>
-                <span class="mt-0.5 block text-xs text-[var(--c-text-3)]">{{ n.text }}</span>
+              <a :href="n.href" class="block h-full rounded-lg border border-border px-3 py-2.5 hover:border-input transition-colors" @click.prevent="trpc.setup.progress.mutate({ step: 'done' }).finally(() => router.replace(n.href))">
+                <span class="block text-sm font-medium text-foreground">{{ n.title }}</span>
+                <span class="mt-0.5 block text-xs text-muted-foreground">{{ n.text }}</span>
               </a>
             </li>
           </ul>
-          <div class="flex justify-end"><button class="btn btn-primary btn-sm" @click="goTo('done')">Go to the dashboard</button></div>
+          <div class="flex justify-end"><Button size="sm" @click="goTo('done')">Go to the dashboard</Button></div>
         </div>
       </div>
     </div>

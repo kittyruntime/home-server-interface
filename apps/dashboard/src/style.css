@@ -1,22 +1,32 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* ── Nothing-inspired design tokens ──────────────────────────────────────────
-   Monochrome, typographically driven. Light mode default; dark via
-   prefers-color-scheme or explicit data-theme override.
+/* ── Theme ───────────────────────────────────────────────────────────────────
+   shadcn-vue tokens (neutral base). Light by default; dark follows
+   prefers-color-scheme unless data-theme forces one (lib/theme.ts), so the
+   `dark:` variant used by the shadcn components follows the same rule.
    ─────────────────────────────────────────────────────────────────────────── */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
 
-/* Type: Inter speaks to the human; the machine speaks in two monospaces.
-   JetBrains Mono carries dense data (paths, devices, sizes, fields, code);
-   Space Mono carries key figures and status lines. Declared in @theme so
-   `font-sans` / `font-mono` / `font-figure` and var() share one source.
-   Fonts are self-hosted (main.ts): no Google Fonts request, same rendering
-   on a server without Internet access. */
+/* Type: Inter for the interface; JetBrains Mono carries dense data (paths,
+   devices, sizes, code); Space Mono carries key figures. Fonts are
+   self-hosted (main.ts): no Google Fonts request, same rendering on a server
+   without Internet access. */
 @theme {
   --font-sans:   "Inter", system-ui, sans-serif;
   --font-mono:   "JetBrains Mono", "SF Mono", ui-monospace, monospace;
   --font-figure: "Space Mono", "JetBrains Mono", ui-monospace, monospace;
 
-  /* Control step (13px): button labels, code editor, mobile density. */
+  /* Control step (13px): code editor, mobile density. */
   --text-control: 0.8125rem;
   --text-control--line-height: 1.25rem;
 
@@ -24,19 +34,8 @@
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
 
-  /* One tracking for uppercase labels (DESIGN.md "Label" role). */
+  /* One tracking for uppercase labels (.eyebrow). */
   --tracking-caps: 0.08em;
-}
-
-:root {
-  --font-body: var(--font-sans);
-}
-
-/* Elevation: two subtle shadow levels paired with the existing border
-   (never shadow-only, to avoid glassmorphism). */
-:root {
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* Motion: short, functional; no bounces. Components override the default
@@ -55,118 +54,163 @@
   }
 }
 
-/* Accent: signal red by default. User-selectable overrides kept for
-   personalization; treat as the one "interrupt" color, not decoration. */
+/* Primary follows the user's accent picker (Settings > Appearance); the
+   default "orange" choice keeps the signal red. Destructive stays fixed so
+   dangerous actions never depend on the accent. */
 :root {
-  --c-accent:        #d71921;
-  --c-accent-subtle: color-mix(in srgb, var(--c-accent) 13%, transparent);
-  --c-accent-fg:     #ffffff;
+  --brand: #d71921;
+}
+:root[data-accent="orange"] { --brand: #f97316; }
+:root[data-accent="blue"]   { --brand: #3b82f6; }
+:root[data-accent="green"]  { --brand: #22c55e; }
+:root[data-accent="purple"] { --brand: #a855f7; }
 
-  --c-danger:        #d71921;
-  --c-danger-subtle: color-mix(in srgb, var(--c-danger) 13%, transparent);
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 
-  --c-success: #4a9e5c;
-  --c-warning: #d4a843;
-  --c-warning-subtle: color-mix(in srgb, var(--c-warning) 15%, transparent);
-  --c-info:    #007aff;
-  --c-violet:  #a855f7;
+  /* Status colors (not part of shadcn's palette). */
+  --success: #4a9e5c;
+  --warning: #d4a843;
+  --info:    #007aff;
+  --violet:  #a855f7;
 }
 
-:root[data-accent="orange"] { --c-accent: #f97316; }
-:root[data-accent="blue"]   { --c-accent: #3b82f6; }
-:root[data-accent="green"]  { --c-accent: #22c55e; }
-:root[data-accent="purple"] { --c-accent: #a855f7; }
-
-/* Light: "printed technical manual": off-white paper, black ink */
-:root {
-  --c-bg:            #f7f7f8;
-  --c-sidebar:       #ffffff;
-  --c-surface:       #ffffff;
-  --c-surface-alt:   #f0f0f0;
-  --c-surface-deep:  #f0f0f0;
-
-  --c-border:        #e8e8e8;
-  --c-border-strong: #cccccc;
-
-  --c-hover:         rgba(0, 0, 0, 0.04);
-
-  --c-text-1:        #1a1a1a;
-  --c-text-2:        #4d4d4d;
-  --c-text-3:        #666666;
-  --c-text-display:  #000000;
-
-  --c-info: #007aff;
-}
-
-/* Dark: "instrument panel in a dark room": OLED black, glowing data */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-bg:            #0a0a0b;
-    --c-sidebar:       #141416;
-    --c-surface:       #141416;
-    --c-surface-alt:   #1c1c1f;
-    --c-surface-deep:  #1c1c1f;
-
-    --c-border:        #222222;
-    --c-border-strong: #333333;
-
-    --c-hover:         rgba(255, 255, 255, 0.05);
-
-    --c-text-1:        #e8e8e8;
-    --c-text-2:        #999999;
-    --c-text-3:        #666666;
-    --c-text-display:  #ffffff;
-
-    --c-info:   #5b9bf6;
-    --c-violet: #c084fc;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --info:   #5b9bf6;
+    --violet: #c084fc;
   }
 }
 
 :root[data-theme="dark"] {
-  --c-bg:            #0a0a0b;
-  --c-sidebar:       #141416;
-  --c-surface:       #141416;
-  --c-surface-alt:   #1c1c1f;
-  --c-surface-deep:  #1c1c1f;
-
-  --c-border:        #222222;
-  --c-border-strong: #333333;
-
-  --c-hover:         rgba(255, 255, 255, 0.05);
-
-  --c-text-1:        #e8e8e8;
-  --c-text-2:        #999999;
-  --c-text-3:        #666666;
-  --c-text-display:  #ffffff;
-
-  --c-info:   #5b9bf6;
-  --c-violet: #c084fc;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --info:   #5b9bf6;
+  --violet: #c084fc;
 }
 
-/* ── Tailwind utility bridge ─────────────────────────────────────────────────
-   Expose semantic tokens as Tailwind v4 colors so components write
-   `text-danger` / `bg-success/10` instead of raw palette classes or
-   verbose `text-[var(--c-danger)]`. `inline` keeps the var() reference,
-   so utilities follow the light/dark theme and the accent picker.
-   ─────────────────────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-danger:  var(--c-danger);
-  --color-success: var(--c-success);
-  --color-warning: var(--c-warning);
-  --color-info:    var(--c-info);
-  --color-violet:  var(--c-violet);
-  --color-accent:  var(--c-accent);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-violet: var(--violet);
 }
 
-/* Radius scale: token-backed so Tailwind's rounded-* utilities and the
-   var(--radius-*) references in @layer components share one source.
-   Element mapping: sm = inputs/badges/small buttons · md = buttons/controls
-   · lg = cards/panels/rows · xl = modals/desktop windows. */
-@theme {
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1rem;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 *, *::before, *::after {

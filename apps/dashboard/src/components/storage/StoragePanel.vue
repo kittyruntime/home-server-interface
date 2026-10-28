@@ -83,26 +83,26 @@ const installCommand = computed(() =>
   <div class="flex flex-col @2xl:flex-row h-full">
 
     <!-- Mobile picker -->
-    <div class="@2xl:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
-      <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
+    <div class="@2xl:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
+      <select v-model="active" class="w-full bg-transparent text-sm text-foreground/80 focus:outline-none">
         <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
       </select>
     </div>
 
     <!-- Left nav -->
-    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-border bg-sidebar py-5 px-2 flex-col gap-0.5 overflow-y-auto">
       <div v-for="item in nav" :key="item.id" class="relative flex items-center">
         <span
           v-if="active === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[var(--c-accent)] rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
         />
         <button
           @click="active = item.id"
           :class="[
             'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
             active === item.id
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-              : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           <!-- Volumes -->
@@ -143,17 +143,17 @@ const installCommand = computed(() =>
       <div class="p-4 @2xl:p-8 max-w-5xl">
         <div v-if="missingTools.length" role="status"
           class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-          <p class="text-[var(--c-text-1)]">
+          <p class="text-foreground">
             Some storage tools are not installed on the server, so these features are unavailable:
             {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
           </p>
-          <p class="mt-1 text-[var(--c-text-3)]">Install them with <code class="font-mono text-[var(--c-text-2)]">{{ installCommand }}</code></p>
+          <p class="mt-1 text-muted-foreground">Install them with <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
         </div>
-        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-[var(--c-text-3)]">
+        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <template v-for="(c, i) in crumbs" :key="c.index">
             <span v-if="i > 0" aria-hidden="true">›</span>
-            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-[var(--c-text-1)]" @click="go(navTo(location, c.index))">{{ c.label }}</button>
-            <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
+            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-foreground" @click="go(navTo(location, c.index))">{{ c.label }}</button>
+            <span v-else class="font-mono text-foreground" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>
         <VolumePage v-if="location.current.kind === 'volume'" :id="location.current.id"

@@ -20,6 +20,8 @@ import Modal from '../ui/Modal.vue'
 import RaidLevelVisual from './RaidLevelVisual.vue'
 import Hint from '../ui/Hint.vue'
 import ImportFound from './ImportFound.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
@@ -314,17 +316,16 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
   <div>
     <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Arrays</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Manage software RAID arrays (mdadm).</p>
+        <h2 class="text-lg font-semibold text-foreground">Arrays</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openRaidWizard()" :disabled="isMissing('mdadm')"
-          :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined"
-          class="btn btn-outline btn-sm">
+        <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')"
+          :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Create RAID…
-        </button>
-        <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+        </Button>
+        <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
           <LoadingSpinner v-if="loading" class="text-base" />
           <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -336,40 +337,40 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <ImportFound v-if="!only" kind="raid" @imported="refresh" />
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
 
     <!-- RAID arrays list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
+        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
       </div>
     </div>
 
-    <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
+    <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
       No RAID arrays configured. Create one to combine multiple drives for redundancy or performance.
     </div>
 
     <div v-else class="space-y-3">
       <div v-for="r in shown" :key="r.name"
-        class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-        :class="isRaidHealthy(r) ? 'border-[var(--c-border)]' : 'border-danger/20'">
+        class="rounded-xl border bg-card overflow-hidden flex"
+        :class="isRaidHealthy(r) ? 'border-border' : 'border-destructive/20'">
         <!-- Left accent stripe -->
-        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/50' : 'bg-danger'"/>
+        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-destructive'"/>
         <div class="flex-1 min-w-0">
           <!-- Header -->
           <div class="flex items-center gap-3 px-4 pt-3.5 pb-2">
             <span class="text-2xs font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
-              :class="isRaidHealthy(r) ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]' : 'bg-danger/10 text-danger'">
+              :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'">
               {{ raidLevelLabel(r.level) }}
             </span>
-            <button v-if="!only" class="font-mono text-sm text-[var(--c-text-1)] hover:underline underline-offset-2" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</button>
-            <span v-else class="font-mono text-sm text-[var(--c-text-1)]">/dev/{{ r.name }}</span>
+            <button v-if="!only" class="font-mono text-sm text-foreground hover:underline underline-offset-2" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</button>
+            <span v-else class="font-mono text-sm text-foreground">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
-              <span class="text-2xs text-[var(--c-text-3)]">{{ r.active }}/{{ r.total }} drives</span>
-              <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-danger'">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-danger animate-pulse'"/>
+              <span class="text-2xs text-muted-foreground">{{ r.active }}/{{ r.total }} drives</span>
+              <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-destructive'">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-destructive animate-pulse'"/>
                 {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
@@ -380,18 +381,18 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <!-- ⋯ menu -->
               <div class="relative z-30">
                 <button @click.stop="openMenu = openMenu === r.name ? null : r.name"
-                  :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === r.name ? 'bg-[var(--c-hover)] text-[var(--c-text-1)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]']">
+                  :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === r.name ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
                   </svg>
                 </button>
                 <div v-if="openMenu === r.name"
-                  class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden min-w-[176px]">
-                  <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
-                    <p class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Danger zone</p>
+                  class="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[176px]">
+                  <div class="px-3 pt-2.5 pb-1.5 border-b border-border">
+                    <p class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</p>
                   </div>
                   <button @click="openDestroy(r); openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                     </svg>
@@ -401,10 +402,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               </div>
             </div>
           </div>
-          <p v-if="raidDescription(r.level)" class="text-2xs text-[var(--c-text-3)] px-4 pb-1">{{ raidDescription(r.level) }}</p>
-          <p class="text-2xs text-[var(--c-text-2)] px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
+          <p v-if="raidDescription(r.level)" class="text-2xs text-muted-foreground px-4 pb-1">{{ raidDescription(r.level) }}</p>
+          <p class="text-2xs text-foreground/80 px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
           <!-- Built from: member devices, completing the disk → RAID chain started in Devices -->
-          <p class="text-2xs text-[var(--c-text-3)] px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
+          <p class="text-2xs text-muted-foreground px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
 
           <!-- Drive bay -->
           <div class="px-4 pb-4">
@@ -412,40 +413,40 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <template v-for="(dev, idx) in r.devices" :key="dev">
                 <div class="flex flex-col items-center gap-1.5">
                   <div class="relative rounded-lg border transition-colors"
-                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]' : 'border-danger/40 bg-danger/5'">
+                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'border-input bg-muted' : 'border-destructive/40 bg-destructive/5'">
                     <svg viewBox="0 0 52 68" class="w-12 h-16">
                       <rect x="3" y="3" width="46" height="62" rx="5"
-                        :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-surface-deep)' : 'color-mix(in srgb, var(--c-danger) 6%, transparent)'"
-                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-border-strong)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1.5"/>
-                      <circle cx="9" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="43" cy="10" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="9" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="43" cy="58" r="2" fill="var(--c-surface)" opacity="0.8"/>
-                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
-                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-accent)' : 'color-mix(in srgb, var(--c-danger) 70%, transparent)'" opacity="0.8"/>
-                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--c-success)' : 'var(--c-danger)'" opacity="0.9"/>
-                      <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--c-text-3)" opacity="0.25"/>
+                        :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--muted)' : 'color-mix(in srgb, var(--destructive) 6%, transparent)'"
+                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--input)' : 'color-mix(in srgb, var(--destructive) 50%, transparent)'" stroke-width="1.5"/>
+                      <circle cx="9" cy="10" r="2" fill="var(--card)" opacity="0.8"/>
+                      <circle cx="43" cy="10" r="2" fill="var(--card)" opacity="0.8"/>
+                      <circle cx="9" cy="58" r="2" fill="var(--card)" opacity="0.8"/>
+                      <circle cx="43" cy="58" r="2" fill="var(--card)" opacity="0.8"/>
+                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--primary)' : 'color-mix(in srgb, var(--destructive) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--primary)' : 'color-mix(in srgb, var(--destructive) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
+                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--primary)' : 'color-mix(in srgb, var(--destructive) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--primary)' : 'color-mix(in srgb, var(--destructive) 70%, transparent)'" opacity="0.8"/>
+                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--success)' : 'var(--destructive)'" opacity="0.9"/>
+                      <rect x="15" y="60" width="22" height="2.5" rx="1" fill="var(--muted-foreground)" opacity="0.25"/>
                     </svg>
                   </div>
                   <button @click="emit('navigate', { kind: 'disk', name: dev })"
                     class="text-2xs font-mono hover:underline transition-colors"
-                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)]' : 'text-danger'">
+                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-muted-foreground hover:text-foreground' : 'text-destructive'">
                     /dev/{{ dev }}
                   </button>
                 </div>
-                <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-[var(--c-text-3)] self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-muted-foreground self-center mb-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                 </svg>
               </template>
               <div class="flex items-center self-center mb-5 gap-2 ml-1">
-                <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
                 <div>
-                  <div class="text-2xs font-semibold text-[var(--c-text-2)]">{{ raidLevelLabel(r.level) }}</div>
-                  <div class="text-2xs text-[var(--c-text-3)] font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : 'not mounted') }}</div>
+                  <div class="text-2xs font-semibold text-foreground/80">{{ raidLevelLabel(r.level) }}</div>
+                  <div class="text-2xs text-muted-foreground font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : 'not mounted') }}</div>
                 </div>
               </div>
             </div>
@@ -454,85 +455,85 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
           <!-- Disks: identify, fail, remove, add a replacement -->
           <div class="px-4 pb-4">
             <div v-if="r.resyncPercent != null" class="mb-3">
-              <div class="flex justify-between text-2xs text-[var(--c-text-2)] mb-1">
+              <div class="flex justify-between text-2xs text-foreground/80 mb-1">
                 <span>{{ syncLabel(r) }}</span>
-                <span v-if="r.syncAction === 'recovery'" class="text-[var(--c-text-3)]">redundancy returns when it finishes</span>
+                <span v-if="r.syncAction === 'recovery'" class="text-muted-foreground">redundancy returns when it finishes</span>
               </div>
-              <div class="h-1.5 rounded-full bg-[var(--c-surface-deep)] overflow-hidden">
-                <div class="h-full bg-[var(--c-accent)] transition-all" :style="{ width: r.resyncPercent + '%' }"/>
+              <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div class="h-full bg-primary transition-all" :style="{ width: r.resyncPercent + '%' }"/>
               </div>
             </div>
-            <div class="rounded-lg border border-[var(--c-border)] divide-y divide-[var(--c-border)]">
+            <div class="rounded-lg border border-border divide-y divide-border">
               <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
                 <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
-                  :class="m.role === 'faulty' ? 'bg-danger/10 text-danger' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
+                  :class="m.role === 'faulty' ? 'bg-destructive/10 text-destructive' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
                   {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : m.role === 'rebuilding' ? 'Rebuilding' : 'Active' }}
                 </span>
                 <div class="min-w-0 flex-1">
-                  <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ m.name }}</span>
-                  <span v-if="memberSize(m.name)" class="text-2xs text-[var(--c-text-3)] ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
-                  <p v-if="memberIdentity(m.name)" class="text-2xs text-[var(--c-text-3)] truncate">{{ memberIdentity(m.name) }}</p>
+                  <span class="font-mono text-xs text-foreground">/dev/{{ m.name }}</span>
+                  <span v-if="memberSize(m.name)" class="text-2xs text-muted-foreground ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
+                  <p v-if="memberIdentity(m.name)" class="text-2xs text-muted-foreground truncate">{{ memberIdentity(m.name) }}</p>
                 </div>
-                <button v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="btn btn-ghost btn-xs shrink-0"
-                  :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</button>
-                <button v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="btn btn-outline btn-xs shrink-0"
+                <Button variant="ghost" size="xs" v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="shrink-0"
+                  :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</Button>
+                <Button variant="outline" size="xs" v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="shrink-0"
                   :disabled="memberBusy !== null" @click="removeMember(r, m)">
                   {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
-                </button>
+                </Button>
               </div>
-              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-danger">
+              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-destructive">
                 {{ emptySlots(r) }} empty slot{{ emptySlots(r) > 1 ? 's' : '' }}: add a replacement disk to restore redundancy.
               </div>
             </div>
 
             <div class="mt-2">
-              <button v-if="addPicker !== r.name" type="button" class="btn btn-ghost btn-xs" :disabled="memberBusy !== null"
-                @click="addPicker = r.name">+ Add a disk</button>
-              <div v-else class="rounded-lg border border-[var(--c-border)] p-2 space-y-1">
-                <p class="text-2xs text-[var(--c-text-3)] px-1">Free disks at least as large as the smallest member:</p>
-                <p v-if="!replacementCandidates(r).length" class="text-2xs text-[var(--c-text-3)] px-1 py-1">No suitable disk is free.</p>
+              <Button variant="ghost" size="xs" v-if="addPicker !== r.name" type="button" :disabled="memberBusy !== null"
+                @click="addPicker = r.name">+ Add a disk</Button>
+              <div v-else class="rounded-lg border border-border p-2 space-y-1">
+                <p class="text-2xs text-muted-foreground px-1">Free disks at least as large as the smallest member:</p>
+                <p v-if="!replacementCandidates(r).length" class="text-2xs text-muted-foreground px-1 py-1">No suitable disk is free.</p>
                 <button v-for="d in replacementCandidates(r)" :key="d.name" type="button"
-                  class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-[var(--c-hover)]"
+                  class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-accent"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
-                  <span class="font-mono text-xs text-[var(--c-text-1)]">/dev/{{ d.name }}</span>
-                  <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(d.size) }}</span>
-                  <span v-if="memberIdentity(d.name)" class="text-2xs text-[var(--c-text-3)] truncate">{{ memberIdentity(d.name) }}</span>
+                  <span class="font-mono text-xs text-foreground">/dev/{{ d.name }}</span>
+                  <span class="text-2xs text-muted-foreground">{{ fmtBytes(d.size) }}</span>
+                  <span v-if="memberIdentity(d.name)" class="text-2xs text-muted-foreground truncate">{{ memberIdentity(d.name) }}</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-xs" @click="addPicker = null">Cancel</button>
+                <Button variant="ghost" size="xs" type="button" @click="addPicker = null">Cancel</Button>
               </div>
             </div>
           </div>
 
           <!-- Usage & mount actions -->
           <template v-if="raidBlockDev(r.name)">
-            <div class="border-t border-[var(--c-border)] px-4 py-3 flex items-center gap-3">
+            <div class="border-t border-border px-4 py-3 flex items-center gap-3">
               <div class="flex-1 min-w-0">
                 <div v-if="raidBlockDev(r.name)!.mountpoint">
                   <div class="flex justify-between items-baseline mb-1.5">
-                    <span class="text-2xs font-mono text-[var(--c-text-3)]">{{ raidBlockDev(r.name)!.mountpoint }}</span>
-                    <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
+                    <span class="text-2xs font-mono text-muted-foreground">{{ raidBlockDev(r.name)!.mountpoint }}</span>
+                    <span class="text-2xs text-muted-foreground">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
                   </div>
-                  <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                  <div class="h-1 bg-muted rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(raidBlockDev(r.name)!))" :style="{ width: usagePct(raidBlockDev(r.name)!) + '%' }"/>
                   </div>
-                  <div class="text-2xs text-[var(--c-text-3)] mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
+                  <div class="text-2xs text-muted-foreground mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                 </div>
-                <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-[var(--c-text-3)]">
-                  Formatted <span class="font-mono text-[var(--c-text-2)]">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
+                <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-muted-foreground">
+                  Formatted <span class="font-mono text-foreground/80">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
                 </div>
-                <div v-else class="text-2xs text-[var(--c-text-3)]">No filesystem: format before mounting</div>
+                <div v-else class="text-2xs text-muted-foreground">No filesystem: format before mounting</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
                 <button v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-primary/50 hover:text-primary transition-colors">
                   Format
                 </button>
                 <button v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-success/50 hover:text-success transition-colors">
+                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-success/50 hover:text-success transition-colors">
                   Mount
                 </button>
                 <button v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
-                  class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-warning/50 hover:text-warning transition-colors">
+                  class="text-xs px-2.5 py-1 rounded-lg border border-border text-foreground/80 hover:border-warning/50 hover:text-warning transition-colors">
                   Unmount
                 </button>
               </div>
@@ -553,18 +554,18 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <Modal v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
 
           <!-- Step indicator -->
-          <div class="flex items-center gap-0 border-b border-[var(--c-border)]">
+          <div class="flex items-center gap-0 border-b border-border">
             <div v-for="(label, i) in ['RAID Level', 'Select Drives', 'Confirm']" :key="i"
               :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-                raidWiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
-                : raidWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
-                : 'text-[var(--c-text-3)]/50']"
+                raidWiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
+                : raidWiz.step > i + 1  ? 'text-muted-foreground'
+                : 'text-muted-foreground/50']"
             >{{ i + 1 }}. {{ label }}</div>
           </div>
 
           <!-- Step 1: Choose RAID level -->
           <div v-if="raidWiz.step === 1" class="p-5 space-y-3">
-            <p class="flex items-center gap-1.5 text-sm text-[var(--c-text-3)]">
+            <p class="flex items-center gap-1.5 text-sm text-muted-foreground">
               Choose the RAID configuration that matches your needs.
               <Hint text="Each diagram shows how one chunk of data is placed on the drives. Same letter = identical copy. Different letters = split across drives. P = a parity block, used to rebuild data if a drive fails." />
             </p>
@@ -576,21 +577,21 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 @click="raidWiz.level = lvl.level"
                 :class="['text-left p-3 rounded-xl border transition-colors',
                   raidWiz.level === lvl.level
-                    ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-                    : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-input']"
               >
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="text-sm font-bold text-[var(--c-text-1)]">{{ lvl.name }}</span>
-                  <span class="text-2xs text-[var(--c-text-3)]">{{ lvl.sub }}</span>
+                  <span class="text-sm font-bold text-foreground">{{ lvl.name }}</span>
+                  <span class="text-2xs text-muted-foreground">{{ lvl.sub }}</span>
                 </div>
-                <div class="text-2xs text-[var(--c-text-3)] leading-relaxed">{{ lvl.desc }}</div>
+                <div class="text-2xs text-muted-foreground leading-relaxed">{{ lvl.desc }}</div>
                 <div class="flex items-center gap-3 mt-2 text-2xs">
-                  <span class="text-[var(--c-text-3)]">Min: {{ lvl.minDev }} drives</span>
-                  <span :class="lvl.redundancy === 'None' ? 'text-danger' : 'text-success'">
+                  <span class="text-muted-foreground">Min: {{ lvl.minDev }} drives</span>
+                  <span :class="lvl.redundancy === 'None' ? 'text-destructive' : 'text-success'">
                     Redundancy: {{ lvl.redundancy }}
                   </span>
                 </div>
-                <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-[var(--c-border)]" />
+                <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-border" />
               </button>
             </div></div>
 
@@ -603,21 +604,21 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </div>
 
             <div class="flex gap-2 pt-1">
-              <button @click="raidWiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-              <button @click="raidWiz.step = 2" class="btn btn-primary flex-1 justify-center">Next →</button>
+              <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">Cancel</Button>
+              <Button @click="raidWiz.step = 2" class="flex-1 justify-center">Next →</Button>
             </div>
           </div>
 
           <!-- Step 2: Select drives -->
           <div v-else-if="raidWiz.step === 2" class="p-5 space-y-3">
-            <p class="text-sm text-[var(--c-text-2)]">
+            <p class="text-sm text-foreground/80">
               Select drives for <strong>{{ selectedRaidLevel.name }}</strong>.
-              <span class="text-[var(--c-text-3)]">Minimum {{ selectedRaidLevel.minDev }} required.</span>
+              <span class="text-muted-foreground">Minimum {{ selectedRaidLevel.minDev }} required.</span>
             </p>
 
             <!-- Capacity: computed from the selected drives once there are enough -->
             <div class="px-1 space-y-0.5">
-              <div v-if="wizardCapacity?.cap.valid" class="text-xs text-[var(--c-text-1)]">
+              <div v-if="wizardCapacity?.cap.valid" class="text-xs text-foreground">
                 Usable: <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
                 of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)
                 · {{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}
@@ -625,10 +626,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-2xs text-warning">
                 {{ fmtBytes(w.bytes) }} unused on /dev/{{ w.name }} (drives are used at the size of the smallest one)
               </div>
-              <div class="text-2xs text-[var(--c-text-3)]">{{ selectedRaidLevel.capacityHint }}</div>
+              <div class="text-2xs text-muted-foreground">{{ selectedRaidLevel.capacityHint }}</div>
             </div>
 
-            <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
+            <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-muted-foreground">
               No eligible drives available.<br>
               <span class="text-xs">Drives must be unmounted, not already in a RAID or LVM, and not a system disk.</span>
             </div>
@@ -638,21 +639,21 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 v-for="dev in eligibleForRaid" :key="dev.name"
                 :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
                   raidWiz.devs.includes(dev.name)
-                    ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-                    : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-input']"
                 @click="toggleRaidDev(dev.name)"
               >
                 <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  raidWiz.devs.includes(dev.name) ? 'border-[var(--c-accent)] bg-[var(--c-accent)]' : 'border-[var(--c-border-strong)]']">
+                  raidWiz.devs.includes(dev.name) ? 'border-primary bg-primary' : 'border-input']">
                   <svg v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
+                  <span class="text-sm font-mono text-foreground">/dev/{{ dev.name }}</span>
+                  <span v-if="dev.model" class="text-xs text-muted-foreground ml-2">{{ dev.model }}</span>
                 </div>
-                <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
+                <span class="text-xs text-muted-foreground shrink-0">{{ fmtBytes(dev.size) }}</span>
               </label>
             </div>
 
@@ -662,74 +663,74 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
             <!-- Array name -->
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Array name</label>
-              <input
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Array name</label>
+              <Input
                 v-model="raidWiz.name"
                 type="text"
                 placeholder="md0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"
+                class="w-full px-3 py-2 text-sm font-mono"
               />
-              <p class="text-2xs text-[var(--c-text-3)] mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
+              <p class="text-2xs text-muted-foreground mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
             </div>
 
             <div class="flex gap-2 pt-1">
-              <button @click="raidWiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
-              <button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="raidWiz.step = 1" class="flex-1 justify-center">← Back</Button>
+              <Button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
+                class="flex-1 justify-center">
                 Next →
-              </button>
+              </Button>
             </div>
           </div>
 
           <!-- Step 3: Confirm -->
           <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
-              <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+              <svg class="w-5 h-5 text-destructive mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
               </svg>
               <div>
-                <div class="font-semibold text-danger text-sm mb-1">All data on selected drives will be erased</div>
-                <div class="text-xs text-danger/80">
+                <div class="font-semibold text-destructive text-sm mb-1">All data on selected drives will be erased</div>
+                <div class="text-xs text-destructive/80">
                   Creating this RAID array will permanently destroy all existing data on the selected drives. This cannot be undone.
                 </div>
               </div>
             </div>
 
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Array</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Level</span><span>{{ selectedRaidLevel.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Drives</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Capacity</span>
+            <div class="space-y-1 text-xs text-muted-foreground">
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">Array</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">Level</span><span>{{ selectedRaidLevel.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">Drives</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">Capacity</span>
                 <span v-if="wizardCapacity?.cap.valid">{{ fmtBytes(wizardCapacity.cap.usable) }} usable of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)</span>
                 <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
               </div>
-              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Redundancy</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
+              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-foreground/80">Redundancy</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
             </div>
 
             <div>
-              <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-                Type <span class="font-mono font-bold text-[var(--c-text-1)]">CREATE RAID</span> to confirm
+              <label class="block text-xs text-foreground/80 mb-1.5">
+                Type <span class="font-mono font-bold text-foreground">CREATE RAID</span> to confirm
               </label>
-              <input
+              <Input
                 v-model="raidWiz.confirm"
                 type="text"
                 placeholder="CREATE RAID"
-                class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"
+                class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"
               />
             </div>
 
-            <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
+            <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
 
             <div class="flex gap-2">
-              <button @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
-              <button
+              <Button variant="outline" @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 justify-center">← Back</Button>
+              <Button variant="destructive"
                 @click="doCreateRaid"
                 :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
-                class="btn btn-danger flex-1 justify-center"
+                class="flex-1 justify-center"
               >
                 <span v-if="raidWiz.busy">Creating…</span>
                 <span v-else>Create RAID</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -750,9 +751,9 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     >
       <template #warning>All data on <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> will be permanently lost. Make sure you have a backup.</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Array</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Level</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Members</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Array</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Level</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Members</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

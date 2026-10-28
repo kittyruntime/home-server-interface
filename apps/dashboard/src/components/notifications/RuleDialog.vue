@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const props = defineProps<{
   rule: null | { id: string; name: string; sourcePrefix: string; minSeverity: string; connectorIds: string; enabled: boolean }
@@ -61,62 +64,62 @@ async function save() {
 <template>
   <Modal panel-class="w-full max-w-sm" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
+      <h3 class="text-sm font-semibold text-foreground">
         {{ rule ? 'Edit rule' : 'Add rule' }}
       </h3>
     </template>
 
     <div class="p-5 space-y-4">
       <div class="space-y-1.5">
-        <label class="block text-xs text-[var(--c-text-3)]">Name</label>
-        <input v-model="name" placeholder="All alerts" class="ui-input" />
+        <label class="block text-xs text-muted-foreground">Name</label>
+        <Input v-model="name" placeholder="All alerts" />
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-[var(--c-text-3)]">Source prefix</label>
-        <input v-model="sourcePrefix" placeholder="empty = all sources, e.g. storage." class="ui-input font-mono" />
+        <label class="block text-xs text-muted-foreground">Source prefix</label>
+        <Input v-model="sourcePrefix" placeholder="empty = all sources, e.g. storage." class="font-mono" />
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-[var(--c-text-3)]">Min severity</label>
-        <select v-model="minSeverity" class="ui-input">
-          <option value="info">Info</option>
-          <option value="warning">Warning</option>
-          <option value="critical">Critical</option>
-        </select>
-        <p class="text-xs text-[var(--c-text-3)]">Events below this severity are ignored.</p>
+        <label class="block text-xs text-muted-foreground">Min severity</label>
+        <NativeSelect v-model="minSeverity">
+          <NativeSelectOption value="info">Info</NativeSelectOption>
+          <NativeSelectOption value="warning">Warning</NativeSelectOption>
+          <NativeSelectOption value="critical">Critical</NativeSelectOption>
+        </NativeSelect>
+        <p class="text-xs text-muted-foreground">Events below this severity are ignored.</p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-[var(--c-text-3)]">Targets</label>
+        <label class="block text-xs text-muted-foreground">Targets</label>
         <label
           v-for="opt in options" :key="opt.id"
-          class="flex items-center gap-2 text-sm text-[var(--c-text-2)] cursor-pointer"
+          class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer"
         >
           <input v-model="selectedIds" type="checkbox" :value="opt.id" />
           {{ opt.name }}
         </label>
-        <p v-if="selectedIds.length === 0" class="text-xs text-[var(--c-danger)]">Pick at least one target.</p>
+        <p v-if="selectedIds.length === 0" class="text-xs text-destructive">Pick at least one target.</p>
       </div>
 
-      <label class="flex items-center gap-2 text-sm text-[var(--c-text-2)] cursor-pointer">
+      <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
         <input v-model="enabled" type="checkbox" />
         Enabled
       </label>
 
-      <p v-if="saveError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
     </div>
 
     <template #footer>
       <div class="flex-1" />
-      <button type="button" class="btn btn-ghost btn-sm" @click="emit('close')">Cancel</button>
-      <button
-        type="button" class="btn btn-primary btn-sm"
+      <Button variant="ghost" size="sm" type="button" @click="emit('close')">Cancel</Button>
+      <Button size="sm"
+        type="button"
         :disabled="saving || !name.trim() || selectedIds.length === 0"
         @click="save"
       >
         {{ saving ? 'Saving…' : 'Save' }}
-      </button>
+      </Button>
     </template>
   </Modal>
 </template>

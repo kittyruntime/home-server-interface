@@ -6,6 +6,7 @@ import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
 import { trpc } from '../lib/trpc'
 import { jobLogsTarget } from '../lib/jobLogs'
+import { Button } from '@/components/ui/button'
 
 type LogLine = Awaited<ReturnType<typeof trpc.tasks.logs.query>>[number]
 
@@ -39,9 +40,9 @@ function formatValue(v: unknown): string {
 }
 
 function levelClass(level: string): string {
-  if (level === 'error' || level === 'fatal') return 'text-danger'
+  if (level === 'error' || level === 'fatal') return 'text-destructive'
   if (level === 'warn') return 'text-warning'
-  return 'text-[var(--c-text-3)]'
+  return 'text-muted-foreground'
 }
 
 async function copyAll() {
@@ -54,8 +55,8 @@ async function copyAll() {
   <Modal v-if="jobLogsTarget" ref="modal" :key="jobLogsTarget" panel-class="w-full max-w-3xl" @close="jobLogsTarget = null">
     <template #header>
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Operation logs</h3>
-        <p class="text-2xs font-mono text-[var(--c-text-3)] truncate">{{ jobLogsTarget }}</p>
+        <h3 class="text-sm font-semibold text-foreground">Operation logs</h3>
+        <p class="text-2xs font-mono text-muted-foreground truncate">{{ jobLogsTarget }}</p>
       </div>
     </template>
 
@@ -66,17 +67,17 @@ async function copyAll() {
       message="No log lines for this operation"
       description="They may have been rotated away. Set HSI_LOG_LEVEL=debug for more detail."
     />
-    <ol v-else class="divide-y divide-[var(--c-border)] font-mono text-2xs leading-relaxed">
+    <ol v-else class="divide-y divide-border font-mono text-2xs leading-relaxed">
       <li v-for="(l, i) in lines" :key="i" class="px-5 py-2">
         <div class="flex items-baseline gap-2">
-          <span class="shrink-0 tabular-nums text-[var(--c-text-3)]">{{ formatTime(l.time) }}</span>
+          <span class="shrink-0 tabular-nums text-muted-foreground">{{ formatTime(l.time) }}</span>
           <span class="shrink-0 w-12 uppercase" :class="levelClass(l.level)">{{ l.level }}</span>
-          <span class="shrink-0 w-14 text-[var(--c-text-3)]">{{ l.source }}</span>
-          <span class="text-[var(--c-text-1)] break-words min-w-0">{{ l.msg }}</span>
+          <span class="shrink-0 w-14 text-muted-foreground">{{ l.source }}</span>
+          <span class="text-foreground break-words min-w-0">{{ l.msg }}</span>
         </div>
-        <dl v-if="Object.keys(l.fields).length" class="mt-0.5 sm:pl-[8.5rem] grid grid-cols-[auto_1fr] gap-x-2 text-[var(--c-text-2)]">
+        <dl v-if="Object.keys(l.fields).length" class="mt-0.5 sm:pl-[8.5rem] grid grid-cols-[auto_1fr] gap-x-2 text-foreground/80">
           <template v-for="(v, k) in l.fields" :key="k">
-            <dt class="text-[var(--c-text-3)]">{{ k }}</dt>
+            <dt class="text-muted-foreground">{{ k }}</dt>
             <dd class="whitespace-pre-wrap break-all">{{ formatValue(v) }}</dd>
           </template>
         </dl>
@@ -84,10 +85,10 @@ async function copyAll() {
     </ol>
 
     <template #footer>
-      <p class="text-2xs text-[var(--c-text-3)]">From app.log and root-worker.log</p>
+      <p class="text-2xs text-muted-foreground">From app.log and root-worker.log</p>
       <div class="flex-1" />
-      <button v-if="lines.length" @click="copyAll" class="btn btn-ghost btn-sm">Copy</button>
-      <button @click="modal?.requestClose()" class="btn btn-primary btn-sm">Close</button>
+      <Button variant="ghost" size="sm" v-if="lines.length" @click="copyAll">Copy</Button>
+      <Button size="sm" @click="modal?.requestClose()">Close</Button>
     </template>
   </Modal>
 </template>

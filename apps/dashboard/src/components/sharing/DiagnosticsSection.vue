@@ -3,6 +3,7 @@ import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
+import { Button } from '@/components/ui/button'
 
 type Diag = Awaited<ReturnType<typeof trpc.sharing.diagnose.query>>
 type ShareDiag = Diag['shares'][number]
@@ -34,34 +35,34 @@ function dirWritable(s: ShareDiag): boolean {
   <div class="space-y-5">
     <div class="flex items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Share diagnostics</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">
+        <h2 class="text-lg font-semibold text-foreground">Share diagnostics</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">
           Who can actually read/write, who is blocked and why, and the state of the directories.
         </p>
       </div>
-      <button class="btn btn-outline btn-sm shrink-0" :disabled="loading" @click="load">Refresh</button>
+      <Button variant="outline" size="sm" class="shrink-0" :disabled="loading" @click="load">Refresh</Button>
     </div>
 
     <LoadingState v-if="loading" variant="compact" :label="LOADING.analyzing" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
-    <div v-else-if="shares.length === 0" class="text-sm text-[var(--c-text-3)]">No active shares.</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <div v-else-if="shares.length === 0" class="text-sm text-muted-foreground">No active shares.</div>
 
     <div v-else class="space-y-3">
-      <div v-for="s in shares" :key="s.id" class="panel-card p-4 space-y-3">
+      <div v-for="s in shares" :key="s.id" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-4 space-y-3">
         <!-- Header -->
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <span class="text-sm font-medium text-[var(--c-text-1)]">{{ s.name }}</span>
-            <span class="block text-xs text-[var(--c-text-3)] font-mono truncate">{{ s.path }}</span>
+            <span class="text-sm font-medium text-foreground">{{ s.name }}</span>
+            <span class="block text-xs text-muted-foreground font-mono truncate">{{ s.path }}</span>
           </div>
           <span
             :class="['badge shrink-0', dirWritable(s) ? 'badge-muted' : '']"
-            :style="!dirWritable(s) ? 'color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 16%, transparent)' : ''"
+            :style="!dirWritable(s) ? 'color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent)' : ''"
           >{{ dirWritable(s) ? 'Directory OK' : 'Directory not writable' }}</span>
         </div>
 
         <!-- Nobody can write -->
-        <p v-if="s.writers.length === 0 && !s.readOnly" class="text-xs text-[var(--c-warning)]">
+        <p v-if="s.writers.length === 0 && !s.readOnly" class="text-xs text-warning">
           ⚠ No account can write to this share.
         </p>
 
@@ -70,10 +71,10 @@ function dirWritable(s: ShareDiag): boolean {
           <div class="eyebrow">Write</div>
           <div class="flex flex-wrap gap-1.5">
             <span v-for="w in s.writers" :key="w.linuxUsername"
-              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-[var(--c-surface-alt)] border border-[var(--c-border)]">
-              <span class="w-1.5 h-1.5 rounded-full" :class="w.hasSamba ? 'bg-[var(--c-success)]' : 'bg-[var(--c-danger)]'" />
+              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-muted border border-border">
+              <span class="w-1.5 h-1.5 rounded-full" :class="w.hasSamba ? 'bg-success' : 'bg-destructive'" />
               {{ w.linuxUsername }}
-              <span v-if="!w.hasSamba" class="text-[var(--c-danger)]">· no Samba password</span>
+              <span v-if="!w.hasSamba" class="text-destructive">· no Samba password</span>
             </span>
           </div>
         </div>
@@ -83,8 +84,8 @@ function dirWritable(s: ShareDiag): boolean {
           <div class="eyebrow">Read-only</div>
           <div class="flex flex-wrap gap-1.5">
             <span v-for="r in s.readers" :key="r.linuxUsername"
-              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-[var(--c-surface-alt)] border border-[var(--c-border)] text-[var(--c-text-2)]">
-              <span class="w-1.5 h-1.5 rounded-full" :class="r.hasSamba ? 'bg-[var(--c-success)]' : 'bg-[var(--c-danger)]'" />
+              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-muted border border-border text-foreground/80">
+              <span class="w-1.5 h-1.5 rounded-full" :class="r.hasSamba ? 'bg-success' : 'bg-destructive'" />
               {{ r.linuxUsername }}
             </span>
           </div>
@@ -93,16 +94,16 @@ function dirWritable(s: ShareDiag): boolean {
         <!-- Excluded (permitted but unusable) -->
         <div v-if="s.excluded.length" class="space-y-1">
           <div class="eyebrow">Blocked</div>
-          <div v-for="e in s.excluded" :key="e.username" class="text-xs text-[var(--c-warning)]">
+          <div v-for="e in s.excluded" :key="e.username" class="text-xs text-warning">
             <span class="font-medium">{{ e.username }}</span>: {{ e.reason }}
           </div>
         </div>
 
         <!-- Guest note -->
-        <p v-if="s.guestOk" class="text-2xs text-[var(--c-text-3)]">Guest access enabled (read-only for unauthenticated users).</p>
+        <p v-if="s.guestOk" class="text-2xs text-muted-foreground">Guest access enabled (read-only for unauthenticated users).</p>
 
         <!-- Dir detail -->
-        <p v-if="s.dir" class="text-2xs text-[var(--c-text-3)] font-mono">
+        <p v-if="s.dir" class="text-2xs text-muted-foreground font-mono">
           group {{ s.dir.group || '-' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> · not found</span>
         </p>
       </div>

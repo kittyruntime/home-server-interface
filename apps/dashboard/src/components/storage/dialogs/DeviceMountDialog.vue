@@ -6,6 +6,9 @@ import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 import { useToast } from '../../../lib/toast'
 import { useAuth } from '../../../lib/auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 /* Shared mount dialog. Call open(dev) via a template ref; emits `done` after a
    successful mount. */
@@ -79,9 +82,9 @@ defineExpose({ open })
 
 <template>
   <Modal v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
-    <div class="px-5 py-4 border-b border-[var(--c-border)]">
-      <h3 class="font-semibold text-[var(--c-text-1)]">Mount device</h3>
-      <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+    <div class="px-5 py-4 border-b border-border">
+      <h3 class="font-semibold text-foreground">Mount device</h3>
+      <p class="text-xs text-muted-foreground mt-0.5">
         <span class="font-mono">{{ dlg.dev.path }}</span>
         <span v-if="dlg.dev.fstype"> · {{ dlg.dev.fstype }}</span>
         · {{ fmtBytes(dlg.dev.size) }}
@@ -89,87 +92,87 @@ defineExpose({ open })
     </div>
     <div class="p-5 space-y-4">
       <div>
-        <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Mount point</label>
-        <input
+        <label class="block text-xs font-medium text-foreground/80 mb-1.5">Mount point</label>
+        <Input
           v-model="dlg.mp"
           type="text"
-          class="ui-input w-full px-3 py-2 text-sm font-mono"
+          class="w-full px-3 py-2 text-sm font-mono"
         />
-        <p class="text-2xs text-[var(--c-text-3)] mt-1">Directory will be created if it doesn't exist.</p>
+        <p class="text-2xs text-muted-foreground mt-1">Directory will be created if it doesn't exist.</p>
       </div>
       <div>
-        <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Mount options</label>
-        <input
+        <label class="block text-xs font-medium text-foreground/80 mb-1.5">Mount options</label>
+        <Input
           v-model="dlg.options"
           type="text"
           placeholder="defaults"
-          class="ui-input w-full px-3 py-2 text-sm font-mono"
+          class="w-full px-3 py-2 text-sm font-mono"
         />
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
-        <input v-model="dlg.persist" type="checkbox" class="mt-0.5 accent-accent"/>
+        <input v-model="dlg.persist" type="checkbox" class="mt-0.5 accent-primary"/>
         <div>
-          <div class="text-xs font-medium text-[var(--c-text-2)]">Persist across reboots</div>
-          <div class="text-2xs text-[var(--c-text-3)]">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
+          <div class="text-xs font-medium text-foreground/80">Persist across reboots</div>
+          <div class="text-2xs text-muted-foreground">Add a UUID-based entry to /etc/fstab so the drive is auto-mounted on boot.</div>
         </div>
       </label>
       <fieldset class="space-y-2">
-        <legend class="text-xs font-medium text-[var(--c-text-2)] mb-1.5">Access</legend>
+        <legend class="text-xs font-medium text-foreground/80 mb-1.5">Access</legend>
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="shared" class="mt-0.5 accent-accent"/>
+          <input v-model="dlg.access" type="radio" value="shared" class="mt-0.5 accent-primary"/>
           <div>
-            <div class="text-xs font-medium text-[var(--c-text-2)]">Writable by you and shared users (recommended)</div>
-            <div class="text-2xs text-[var(--c-text-3)]">On a new, empty volume: owned by your account and the hsi-share group, so you can create files right away. Volumes that already hold data are left unchanged.</div>
+            <div class="text-xs font-medium text-foreground/80">Writable by you and shared users (recommended)</div>
+            <div class="text-2xs text-muted-foreground">On a new, empty volume: owned by your account and the hsi-share group, so you can create files right away. Volumes that already hold data are left unchanged.</div>
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="user" class="mt-0.5 accent-accent"/>
+          <input v-model="dlg.access" type="radio" value="user" class="mt-0.5 accent-primary"/>
           <div class="flex-1">
-            <div class="text-xs font-medium text-[var(--c-text-2)]">Owned by another user</div>
-            <div class="text-2xs text-[var(--c-text-3)]">Same as above, owned by the account you pick. To give a group access, create a Place and grant it there.</div>
-            <select v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
-              class="ui-input mt-1.5 w-full px-3 py-2 text-sm">
-              <option value="" disabled>Choose a user</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">
+            <div class="text-xs font-medium text-foreground/80">Owned by another user</div>
+            <div class="text-2xs text-muted-foreground">Same as above, owned by the account you pick. To give a group access, create a Place and grant it there.</div>
+            <NativeSelect wrapper-class="mt-1.5 w-full" v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
+              class="px-3 py-2 text-sm">
+              <NativeSelectOption value="" disabled>Choose a user</NativeSelectOption>
+              <NativeSelectOption v-for="u in users" :key="u.id" :value="u.id">
                 {{ u.displayName ? `${u.displayName} (${u.username})` : u.username }}
-              </option>
-            </select>
+              </NativeSelectOption>
+            </NativeSelect>
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.access" type="radio" value="keep" class="mt-0.5 accent-accent"/>
+          <input v-model="dlg.access" type="radio" value="keep" class="mt-0.5 accent-primary"/>
           <div>
-            <div class="text-xs font-medium text-[var(--c-text-2)]">Keep current permissions</div>
-            <div class="text-2xs text-[var(--c-text-3)]">A new volume stays owned by root: only root can write to it until you change its permissions.</div>
+            <div class="text-xs font-medium text-foreground/80">Keep current permissions</div>
+            <div class="text-2xs text-muted-foreground">A new volume stays owned by root: only root can write to it until you change its permissions.</div>
           </div>
         </label>
         <label v-if="dlg.access !== 'keep'" class="flex items-start gap-2.5 cursor-pointer pt-1">
-          <input v-model="dlg.force" type="checkbox" class="mt-0.5 accent-accent"/>
+          <input v-model="dlg.force" type="checkbox" class="mt-0.5 accent-primary"/>
           <div>
-            <div class="text-xs font-medium text-[var(--c-text-2)]">Also apply if the volume already holds data</div>
-            <div class="text-2xs text-[var(--c-text-3)]">Changes the owner and mode of the mount point's top folder only. Existing files and folders inside keep their permissions.</div>
+            <div class="text-xs font-medium text-foreground/80">Also apply if the volume already holds data</div>
+            <div class="text-2xs text-muted-foreground">Changes the owner and mode of the mount point's top folder only. Existing files and folders inside keep their permissions.</div>
           </div>
         </label>
       </fieldset>
       <div v-if="isAdmin" class="space-y-2">
         <label class="flex items-start gap-2.5 cursor-pointer">
-          <input v-model="dlg.createPlace" type="checkbox" class="mt-0.5 accent-accent"/>
+          <input v-model="dlg.createPlace" type="checkbox" class="mt-0.5 accent-primary"/>
           <div>
-            <div class="text-xs font-medium text-[var(--c-text-2)]">Create a Place for this volume</div>
-            <div class="text-2xs text-[var(--c-text-3)]">Shows it in Files and lets you grant access per user or group.</div>
+            <div class="text-xs font-medium text-foreground/80">Create a Place for this volume</div>
+            <div class="text-2xs text-muted-foreground">Shows it in Files and lets you grant access per user or group.</div>
           </div>
         </label>
-        <input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" placeholder="Place name"
-          class="ui-input w-full px-3 py-2 text-sm"/>
+        <Input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" placeholder="Place name"
+          class="w-full px-3 py-2 text-sm"/>
       </div>
-      <p v-if="dlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
+      <p v-if="dlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
-        <button @click="dlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-        <button @click="doMount" :disabled="!dlg.mp || dlg.busy || (dlg.access === 'user' && !dlg.ownerUserId)"
-          class="btn btn-primary flex-1 justify-center">
+        <Button variant="outline" @click="dlg = null" class="flex-1 justify-center">Cancel</Button>
+        <Button @click="doMount" :disabled="!dlg.mp || dlg.busy || (dlg.access === 'user' && !dlg.ownerUserId)"
+          class="flex-1 justify-center">
           <span v-if="dlg.busy">Mounting…</span>
           <span v-else>Mount</span>
-        </button>
+        </Button>
       </div>
     </div>
   </Modal>

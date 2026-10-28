@@ -35,7 +35,7 @@ function onIconClick(id: string) {
     <button
       @click="$emit('openLaunchpad')"
       title="Launchpad"
-      class="relative w-8 h-8 rounded-lg bg-[var(--c-accent)] flex items-center justify-center text-[var(--c-accent-fg)] mb-5 select-none"
+      class="relative w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground mb-5 select-none"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="8" cy="8" r="2.2"/>
@@ -44,16 +44,16 @@ function onIconClick(id: string) {
         <circle cx="16" cy="16" r="2.2"/>
       </svg>
       <span v-if="hasAlerts('storage.')"
-        class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
+        class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
     </button>
 
-    <div class="w-8 border-t border-[var(--c-border)] mb-3" />
+    <div class="w-8 border-t border-border mb-3" />
 
     <nav class="flex flex-col items-stretch gap-1 flex-1 w-full overflow-y-auto">
       <div v-for="w in windows" :key="w.id" class="relative flex justify-center py-0.5">
         <span
           v-if="isFocused(w.id)"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[var(--c-accent)] rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r-full"
         />
         <button
           @click="onIconClick(w.id)"
@@ -62,8 +62,8 @@ function onIconClick(id: string) {
             'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
             w.minimized ? 'opacity-40' : '',
             isFocused(w.id)
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-              : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           <AppIcon :app="w.appId" class="w-5 h-5" />

@@ -7,6 +7,7 @@ import { useConfirm } from '../../lib/confirm'
 import { useAlerts } from '../../composables/useAlerts'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
+import { Button } from '@/components/ui/button'
 
 type Alert = { id: string; source: string; target: string; message: string; lastSeenAt: string | Date }
 
@@ -84,51 +85,51 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Alerts</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">
+    <h2 class="text-lg font-semibold text-foreground mb-1">Alerts</h2>
+    <p class="text-sm text-muted-foreground mb-6">
       Background health checks, sampled every 5 minutes. Thresholds live in
-      <button @click="openApp('settings', 'alerting')" class="underline decoration-dotted underline-offset-2 hover:text-[var(--c-text-1)]">Settings &gt; Alert thresholds</button>.
+      <button @click="openApp('settings', 'alerting')" class="underline decoration-dotted underline-offset-2 hover:text-foreground">Settings &gt; Alert thresholds</button>.
     </p>
 
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
-    <div v-else class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
-      <div class="px-4 py-3 border-b border-[var(--c-border)] flex items-center justify-between gap-3">
-        <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
+    <div v-else class="rounded-xl border border-border bg-card overflow-hidden">
+      <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+        <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
           Active ({{ filteredAlerts.length }})
         </span>
         <div class="flex items-center gap-3">
           <select
             v-if="sourcePrefixes.length > 1"
             v-model="sourceFilter"
-            class="bg-transparent text-xs text-[var(--c-text-2)] focus:outline-none"
+            class="bg-transparent text-xs text-foreground/80 focus:outline-none"
           >
             <option value="all">All sources</option>
             <option v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</option>
           </select>
-          <button v-if="alerts.length" type="button" class="btn btn-ghost btn-xs" :disabled="clearing" @click="clearAll">
+          <Button variant="ghost" size="xs" v-if="alerts.length" type="button" :disabled="clearing" @click="clearAll">
             {{ clearing ? 'Clearing…' : 'Clear all' }}
-          </button>
+          </Button>
         </div>
       </div>
-      <p v-if="clearError" role="alert" class="px-4 py-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ clearError }}</p>
-      <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-[var(--c-text-3)] text-center">
+      <p v-if="clearError" role="alert" class="px-4 py-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ clearError }}</p>
+      <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-muted-foreground text-center">
         No active alerts.
       </div>
-      <div v-else class="divide-y divide-[var(--c-border)]">
+      <div v-else class="divide-y divide-border">
         <div v-for="a in filteredAlerts" :key="a.id" class="px-4 py-3 flex items-start gap-3">
           <span
             class="mt-1 w-1.5 h-1.5 rounded-full shrink-0"
-            :class="isCritical(a) ? 'bg-[var(--c-danger)]' : 'bg-[var(--c-warning)]'"
+            :class="isCritical(a) ? 'bg-destructive' : 'bg-warning'"
           />
           <div class="min-w-0 flex-1">
-            <div class="text-sm text-[var(--c-text-1)] font-mono truncate">{{ a.target }}</div>
-            <div class="text-xs text-[var(--c-text-3)] mt-0.5">{{ a.message }}</div>
+            <div class="text-sm text-foreground font-mono truncate">{{ a.target }}</div>
+            <div class="text-xs text-muted-foreground mt-0.5">{{ a.message }}</div>
           </div>
-          <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
-          <div class="text-2xs text-[var(--c-text-3)] shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
-          <button type="button" class="btn btn-ghost btn-xs shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</button>
+          <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
+          <div class="text-2xs text-muted-foreground shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
+          <Button variant="ghost" size="xs" type="button" class="shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</Button>
         </div>
       </div>
     </div>

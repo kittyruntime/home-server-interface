@@ -7,6 +7,8 @@ import ConnectorDialog from './notifications/ConnectorDialog.vue'
 import RuleDialog from './notifications/RuleDialog.vue'
 import { useConfirm } from '../lib/confirm'
 import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 const { confirm } = useConfirm()
 
@@ -64,7 +66,7 @@ function ruleTargets(rule: Rule): string[] {
 }
 
 function severityClass(severity: string): string {
-  if (severity === 'critical') return 'bg-danger/10 text-danger'
+  if (severity === 'critical') return 'bg-destructive/10 text-destructive'
   if (severity === 'warning') return 'bg-warning/10 text-warning'
   return 'bg-info/10 text-info'
 }
@@ -150,9 +152,9 @@ function connectorTarget(c: Connector): string {
 }
 
 function deliveryDot(d: Delivery): string {
-  if (d.status === 'sent') return 'bg-[var(--c-success)]'
-  if (d.status === 'failed') return 'bg-[var(--c-danger)]'
-  return 'bg-[var(--c-warning)]'
+  if (d.status === 'sent') return 'bg-success'
+  if (d.status === 'failed') return 'bg-destructive'
+  return 'bg-warning'
 }
 
 function deliveryText(d: Delivery): string {
@@ -171,8 +173,8 @@ function formatTime(at: string | Date): string {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Notifications</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">
+    <h2 class="text-lg font-semibold text-foreground mb-1">Notifications</h2>
+    <p class="text-sm text-muted-foreground mb-6">
       Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.
     </p>
 
@@ -180,105 +182,105 @@ function formatTime(at: string | Date): string {
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
     <template v-else>
-      <p v-if="actionError" class="status-text text-[var(--c-danger)] mb-4">[ERR] {{ actionError }}</p>
+      <p v-if="actionError" class="status-text text-destructive mb-4">[ERR] {{ actionError }}</p>
 
       <div class="space-y-6">
 
         <!-- Connectors -->
-        <section class="panel-card bg-[var(--c-surface)]">
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--c-border)]">
+        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
             <p class="eyebrow">Connectors</p>
-            <button class="btn btn-primary btn-xs" @click="openConnectorDialog(null)">
+            <Button size="xs" @click="openConnectorDialog(null)">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
               </svg>
               Add connector
-            </button>
+            </Button>
           </div>
-          <ul v-if="connectors.length > 0" class="divide-y divide-[var(--c-border)]">
+          <ul v-if="connectors.length > 0" class="divide-y divide-border">
             <li v-for="c in connectors" :key="c.id" class="flex items-center gap-3 px-5 py-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ c.name }}</span>
-                  <span class="badge badge-muted">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</span>
-                  <span v-if="c.secretsUnreadable" class="badge bg-danger/10 text-danger">secrets unreadable</span>
+                  <span class="text-sm font-medium text-foreground truncate">{{ c.name }}</span>
+                  <Badge variant="secondary">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</Badge>
+                  <Badge variant="outline" v-if="c.secretsUnreadable" class="bg-destructive/10 text-destructive">secrets unreadable</Badge>
                 </div>
-                <p class="text-xs text-[var(--c-text-3)] font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
+                <p class="text-xs text-muted-foreground font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
               <ToggleSwitch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
-              <button type="button" class="btn btn-ghost btn-xs shrink-0" @click="openConnectorDialog(c)">Edit</button>
-              <button type="button" class="btn btn-danger btn-xs shrink-0" @click="deleteConnector(c)">Delete</button>
+              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">Edit</Button>
+              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">Delete</Button>
             </li>
           </ul>
-          <p v-else class="px-5 py-6 text-sm text-[var(--c-text-3)]">
+          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
             No connectors yet. Add one to send alerts by email or to Discord, Slack, ntfy or any webhook.
           </p>
         </section>
 
         <!-- Rules -->
-        <section class="panel-card bg-[var(--c-surface)]">
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--c-border)]">
+        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
             <p class="eyebrow">Rules</p>
-            <button class="btn btn-primary btn-xs" @click="openRuleDialog(null)">
+            <Button size="xs" @click="openRuleDialog(null)">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
               </svg>
               Add rule
-            </button>
+            </Button>
           </div>
-          <ul v-if="rules.length > 0" class="divide-y divide-[var(--c-border)]">
+          <ul v-if="rules.length > 0" class="divide-y divide-border">
             <li v-for="r in rules" :key="r.id" class="flex items-center gap-3 px-5 py-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-[var(--c-text-1)]">{{ r.name }}</span>
-                  <span class="badge" :class="severityClass(r.minSeverity)">{{ r.minSeverity }}</span>
+                  <span class="text-sm font-medium text-foreground">{{ r.name }}</span>
+                  <Badge variant="outline" :class="severityClass(r.minSeverity)">{{ r.minSeverity }}</Badge>
                 </div>
-                <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+                <p class="text-xs text-muted-foreground mt-0.5">
                   <span v-if="r.sourcePrefix" class="font-mono">{{ r.sourcePrefix }}</span>
                   <span v-else>All sources</span>
                 </p>
                 <div class="flex flex-wrap gap-1.5 mt-1.5">
                   <span
                     v-for="t in ruleTargets(r)" :key="t"
-                    class="inline-flex items-center text-2xs font-mono bg-[var(--c-surface-deep)] text-[var(--c-text-2)] border border-[var(--c-border)] rounded-sm px-1.5 py-0.5"
+                    class="inline-flex items-center text-2xs font-mono bg-muted text-foreground/80 border border-border rounded-sm px-1.5 py-0.5"
                   >{{ t }}</span>
                 </div>
               </div>
               <ToggleSwitch :model-value="r.enabled" :title="r.enabled ? 'Disable rule' : 'Enable rule'" @update:model-value="toggleRule(r)" />
-              <button type="button" class="btn btn-ghost btn-xs shrink-0" @click="openRuleDialog(r)">Edit</button>
-              <button type="button" class="btn btn-danger btn-xs shrink-0" @click="deleteRule(r)">Delete</button>
+              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">Edit</Button>
+              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">Delete</Button>
             </li>
           </ul>
-          <p v-else class="px-5 py-6 text-sm text-[var(--c-text-3)]">
+          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
             No rules yet. Add a rule to route alerts to a target.
           </p>
         </section>
 
         <!-- Recent deliveries -->
-        <section class="panel-card bg-[var(--c-surface)]">
+        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
           <button
             type="button"
-            :class="['w-full flex items-center justify-between gap-3 px-5 py-3', deliveriesExpanded ? 'border-b border-[var(--c-border)]' : '']"
+            :class="['w-full flex items-center justify-between gap-3 px-5 py-3', deliveriesExpanded ? 'border-b border-border' : '']"
             @click="deliveriesExpanded = !deliveriesExpanded"
           >
             <span class="eyebrow">Recent deliveries</span>
             <svg
-              :class="['w-4 h-4 text-[var(--c-text-3)] transition-transform', deliveriesExpanded ? 'rotate-180' : '']"
+              :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']"
               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"
             >
               <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          <ul v-if="deliveriesExpanded && deliveries.length > 0" class="divide-y divide-[var(--c-border)]">
+          <ul v-if="deliveriesExpanded && deliveries.length > 0" class="divide-y divide-border">
             <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
-              <span class="font-medium text-[var(--c-text-2)] shrink-0">{{ d.connectorName }}</span>
-              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-3)]'">{{ deliveryText(d) }}</span>
-              <span v-if="d.test" class="badge badge-muted shrink-0">Test</span>
-              <span class="text-[var(--c-text-3)] tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
+              <span class="font-medium text-foreground/80 shrink-0">{{ d.connectorName }}</span>
+              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'">{{ deliveryText(d) }}</span>
+              <Badge variant="secondary" v-if="d.test" class="shrink-0">Test</Badge>
+              <span class="text-muted-foreground tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
             </li>
           </ul>
-          <p v-else-if="deliveriesExpanded" class="px-5 py-6 text-sm text-[var(--c-text-3)]">
+          <p v-else-if="deliveriesExpanded" class="px-5 py-6 text-sm text-muted-foreground">
             No deliveries yet. Send test deliveries from a connector dialog.
           </p>
         </section>

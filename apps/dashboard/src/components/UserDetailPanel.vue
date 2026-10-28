@@ -4,6 +4,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
 import { useAuth } from '../lib/auth'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type User = {
   id: string
@@ -185,7 +188,7 @@ async function deleteUser() {
     <div class="flex items-center gap-3">
       <button
         @click="$emit('back')"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
         title="Back to users"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -199,44 +202,43 @@ async function deleteUser() {
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-base font-semibold text-[var(--c-text-1)]">{{ user.username }}</span>
+          <span class="text-base font-semibold text-foreground">{{ user.username }}</span>
           <span v-if="isSelf"
-            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-input text-muted-foreground">you</span>
           <span v-if="user.isAdmin"
-            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
-          <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
+          <Badge variant="secondary" v-if="user.isUserManager">manager</Badge>
         </div>
-        <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] mt-0.5">{{ user.displayName }}</div>
+        <div v-if="user.displayName" class="text-xs text-muted-foreground mt-0.5">{{ user.displayName }}</div>
       </div>
     </div>
 
     <!-- ── Profile fields ──────────────────────────────────────────────────── -->
     <div class="space-y-4">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Profile</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Profile</h4>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1.5">
-          <label class="block text-xs text-[var(--c-text-3)]">Display name</label>
-          <input
+          <label class="block text-xs text-muted-foreground">Display name</label>
+          <Input
             v-model="form.displayName"
             placeholder="Full name"
-            class="ui-input"
           />
         </div>
       </div>
 
-      <p v-if="saveError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
 
       <div class="flex items-center gap-3">
-        <button
+        <Button size="sm"
           @click="save"
           :disabled="saveLoading"
-          class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          class="disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {{ saveLoading ? 'Saving…' : 'Save changes' }}
-        </button>
+        </Button>
         <transition name="fade">
-          <span v-if="saveSuccess" class="text-xs text-[var(--c-success)] flex items-center gap-1">
+          <span v-if="saveSuccess" class="text-xs text-success flex items-center gap-1">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
@@ -248,13 +250,13 @@ async function deleteUser() {
 
     <!-- ── Account (admin only) ──────────────────────────────────────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Account</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Account</h4>
 
-      <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
+      <div class="bg-card border border-border rounded-xl divide-y divide-border">
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-[var(--c-text-1)]">Admin</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Full access to every place, permission, and settings screen.</p>
+            <p class="text-sm text-foreground">Admin</p>
+            <p class="text-xs text-muted-foreground mt-0.5">Full access to every place, permission, and settings screen.</p>
           </div>
           <input
             type="checkbox"
@@ -266,8 +268,8 @@ async function deleteUser() {
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-[var(--c-text-1)]">User manager</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Can create, edit, and delete other user accounts.</p>
+            <p class="text-sm text-foreground">User manager</p>
+            <p class="text-xs text-muted-foreground mt-0.5">Can create, edit, and delete other user accounts.</p>
           </div>
           <input
             type="checkbox"
@@ -279,8 +281,8 @@ async function deleteUser() {
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-[var(--c-text-1)]">Storage admin</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Can manage disks, RAID, LVM, and partitions.</p>
+            <p class="text-sm text-foreground">Storage admin</p>
+            <p class="text-xs text-muted-foreground mt-0.5">Can manage disks, RAID, LVM, and partitions.</p>
           </div>
           <input
             type="checkbox"
@@ -292,49 +294,49 @@ async function deleteUser() {
         </label>
       </div>
 
-      <p class="text-xs text-[var(--c-text-3)] px-0.5">Access changes apply immediately, but menus update after the account's next sign-in.</p>
-      <p v-if="isSelf" class="text-xs text-[var(--c-text-3)] px-0.5">You can't change your own access.</p>
-      <p v-if="accountError" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ accountError }}</p>
-      <p v-if="capabilityError" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ capabilityError }}</p>
+      <p class="text-xs text-muted-foreground px-0.5">Access changes apply immediately, but menus update after the account's next sign-in.</p>
+      <p v-if="isSelf" class="text-xs text-muted-foreground px-0.5">You can't change your own access.</p>
+      <p v-if="accountError" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ accountError }}</p>
+      <p v-if="capabilityError" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ capabilityError }}</p>
     </div>
 
     <!-- ── Identity (Linux + Samba, as the OS actually sees it) ─────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Identity</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Identity</h4>
 
       <LoadingState v-if="identityLoading" variant="inline" class="text-xs" />
-      <p v-else-if="identityError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
+      <p v-else-if="identityError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
 
-      <div v-else-if="identity" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl divide-y divide-[var(--c-border)]">
+      <div v-else-if="identity" class="bg-card border border-border rounded-xl divide-y divide-border">
         <!-- HSI identity -->
         <div class="flex items-center justify-between gap-4 px-4 py-3">
-          <p class="text-sm text-[var(--c-text-1)]">HSI identity</p>
-          <span class="text-xs font-mono text-[var(--c-text-2)]">{{ user.username }}</span>
+          <p class="text-sm text-foreground">HSI identity</p>
+          <span class="text-xs font-mono text-foreground/80">{{ user.username }}</span>
         </div>
 
         <!-- Linux identity -->
         <div class="flex items-start justify-between gap-4 px-4 py-3">
           <div>
-            <p class="text-sm text-[var(--c-text-1)]">Linux identity</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Backs filesystem ownership for this account's uploads and edits.</p>
+            <p class="text-sm text-foreground">Linux identity</p>
+            <p class="text-xs text-muted-foreground mt-0.5">Backs filesystem ownership for this account's uploads and edits.</p>
           </div>
           <div class="text-right shrink-0">
             <template v-if="identity.linuxExists">
-              <div class="text-xs font-mono text-[var(--c-text-2)]">uid={{ identity.uid }} gid={{ identity.gid }}</div>
-              <div v-if="identity.groups?.length" class="text-2xs text-[var(--c-text-3)] mt-0.5">{{ identity.groups.join(', ') }}</div>
+              <div class="text-xs font-mono text-foreground/80">uid={{ identity.uid }} gid={{ identity.gid }}</div>
+              <div v-if="identity.groups?.length" class="text-2xs text-muted-foreground mt-0.5">{{ identity.groups.join(', ') }}</div>
             </template>
-            <span v-else class="text-xs text-[var(--c-danger)]">Missing</span>
+            <span v-else class="text-xs text-destructive">Missing</span>
           </div>
         </div>
 
         <!-- Samba identity -->
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-[var(--c-text-1)]">Samba identity</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+            <p class="text-sm text-foreground">Samba identity</p>
+            <p class="text-xs text-muted-foreground mt-0.5">
               Whether this account should be reachable over SMB at all.
-              <span v-if="identity.sambaExists" class="text-[var(--c-success)]">Account exists.</span>
-              <span v-else class="text-[var(--c-text-3)]">No account on the system yet.</span>
+              <span v-if="identity.sambaExists" class="text-success">Account exists.</span>
+              <span v-else class="text-muted-foreground">No account on the system yet.</span>
             </p>
           </div>
           <input
@@ -347,38 +349,38 @@ async function deleteUser() {
         </label>
       </div>
 
-      <p v-if="identity?.issue" class="text-xs text-[var(--c-warning)] px-0.5">{{ identity.issue }}</p>
+      <p v-if="identity?.issue" class="text-xs text-warning px-0.5">{{ identity.issue }}</p>
     </div>
 
     <!-- ── Groups (read-only) ───────────────────────────────────────────────── -->
     <div class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Groups</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Groups</h4>
 
       <div class="flex flex-wrap gap-1.5">
-        <span v-for="g in memberGroups" :key="g.id" class="badge badge-violet">{{ g.name }}</span>
-        <span v-if="memberGroups.length === 0" class="text-[var(--c-text-3)] text-xs">No groups.</span>
+        <Badge variant="secondary" v-for="g in memberGroups" :key="g.id">{{ g.name }}</Badge>
+        <span v-if="memberGroups.length === 0" class="text-muted-foreground text-xs">No groups.</span>
       </div>
-      <p class="text-xs text-[var(--c-text-3)]">Group membership is managed from the Groups tab.</p>
+      <p class="text-xs text-muted-foreground">Group membership is managed from the Groups tab.</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-danger)]/70">Danger zone</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-destructive/70">Danger zone</h4>
 
-      <div class="border border-[var(--c-danger)]/20 rounded-xl p-4 bg-[var(--c-danger)]/5">
+      <div class="border border-destructive/20 rounded-xl p-4 bg-destructive/5">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="text-sm font-medium text-[var(--c-text-1)]">Delete account</p>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Remove this user from HSI. Their Linux and Samba accounts stay on the server.</p>
+            <p class="text-sm font-medium text-foreground">Delete account</p>
+            <p class="text-xs text-muted-foreground mt-0.5">Remove this user from HSI. Their Linux and Samba accounts stay on the server.</p>
           </div>
 
-          <button
+          <Button size="sm"
             @click="deleteUser"
             :disabled="deleteBusy"
-            class="btn btn-sm shrink-0 text-[var(--c-danger)] border border-[var(--c-danger)]/30 hover:bg-[var(--c-danger-subtle)] transition-colors"
-          >Delete</button>
+            class="shrink-0 text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors"
+          >Delete</Button>
         </div>
-        <p v-if="deleteError" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
+        <p v-if="deleteError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
       </div>
     </div>
 

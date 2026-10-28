@@ -7,6 +7,9 @@ import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { isFreeDisk } from './device-state'
 import { possibleLevels, usableBytes, tolerance, proposeName, mountFor, levelsHint, type Level } from './volume-wizard'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 // Create volume (#40): free disks to a mounted, owned, optionally shared
 // volume, through one reviewed plan. The step on the left, the volume as it
@@ -178,16 +181,16 @@ function diskLabel(d: BlockDev): string {
 <template>
   <div class="max-w-4xl">
     <div class="flex items-center justify-between gap-3 mb-2">
-      <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Create volume</h2>
-      <span class="text-xs text-[var(--c-text-3)]">Step {{ step + 1 }} of {{ STEPS.length }} · {{ STEPS[step] }}</span>
+      <h2 class="text-lg font-semibold text-foreground">Create volume</h2>
+      <span class="text-xs text-muted-foreground">Step {{ step + 1 }} of {{ STEPS.length }} · {{ STEPS[step] }}</span>
     </div>
-    <div class="h-0.5 rounded-full bg-[var(--c-hover)] mb-5" role="progressbar" :aria-valuenow="step + 1" aria-valuemin="1" :aria-valuemax="STEPS.length">
-      <div class="h-full rounded-full bg-[var(--c-accent)] transition-[width]" :style="{ width: `${((step + 1) / STEPS.length) * 100}%` }" />
+    <div class="h-0.5 rounded-full bg-accent mb-5" role="progressbar" :aria-valuenow="step + 1" aria-valuemin="1" :aria-valuemax="STEPS.length">
+      <div class="h-full rounded-full bg-primary transition-[width]" :style="{ width: `${((step + 1) / STEPS.length) * 100}%` }" />
     </div>
 
     <!-- Narrow: the volume so far as one line -->
-    <p class="@3xl/content:hidden mb-4 text-xs text-[var(--c-text-3)]">
-      <span class="font-figure font-bold text-sm text-[var(--c-text-1)]">{{ fmtBytes(usable) }}</span> usable ·
+    <p class="@3xl/content:hidden mb-4 text-xs text-muted-foreground">
+      <span class="font-figure font-bold text-sm text-foreground">{{ fmtBytes(usable) }}</span> usable ·
       {{ LEVEL_TEXT[s.level].title }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
       <span class="font-mono">{{ s.mountpoint }}</span>
     </p>
@@ -197,18 +200,18 @@ function diskLabel(d: BlockDev): string {
       <section class="min-w-0">
         <!-- 1. Disks -->
         <template v-if="step === 0">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-3">Which disks?</h3>
-          <p v-if="!freeDisks.length" class="text-sm text-[var(--c-text-3)]">No free disk. Connect a disk, or free one in Disks, to create a volume.</p>
+          <h3 class="text-sm font-semibold text-foreground mb-3">Which disks?</h3>
+          <p v-if="!freeDisks.length" class="text-sm text-muted-foreground">No free disk. Connect a disk, or free one in Disks, to create a volume.</p>
           <ul v-else class="space-y-1.5">
             <li v-for="d in freeDisks" :key="d.name">
               <label class="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
-                :class="s.disks.has(d.name) ? 'border-[var(--c-text-1)]' : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]'">
-                <input type="checkbox" class="accent-accent" :checked="s.disks.has(d.name)" @change="toggleDisk(d.name)" />
-                <span class="font-mono text-sm text-[var(--c-text-1)] w-20 shrink-0">/dev/{{ d.name }}</span>
-                <span class="flex-1 min-w-0 text-xs text-[var(--c-text-2)] truncate">
+                :class="s.disks.has(d.name) ? 'border-foreground' : 'border-border hover:border-input'">
+                <input type="checkbox" class="accent-primary" :checked="s.disks.has(d.name)" @change="toggleDisk(d.name)" />
+                <span class="font-mono text-sm text-foreground w-20 shrink-0">/dev/{{ d.name }}</span>
+                <span class="flex-1 min-w-0 text-xs text-foreground/80 truncate">
                   {{ d.model || 'Unknown model' }}<span v-if="d.serial" class="font-mono"> · {{ d.serial }}</span><span v-if="diskLabel(d)"> · {{ diskLabel(d) }}</span>
                 </span>
-                <span class="font-mono tabular-nums text-xs text-[var(--c-text-2)] shrink-0">{{ fmtBytes(d.size) }}</span>
+                <span class="font-mono tabular-nums text-xs text-foreground/80 shrink-0">{{ fmtBytes(d.size) }}</span>
               </label>
             </li>
           </ul>
@@ -217,122 +220,122 @@ function diskLabel(d: BlockDev): string {
 
         <!-- 2. Redundancy -->
         <template v-else-if="step === 1">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-3">How should the data survive a disk failure?</h3>
+          <h3 class="text-sm font-semibold text-foreground mb-3">How should the data survive a disk failure?</h3>
           <div role="radiogroup" class="space-y-1.5">
             <label v-for="l in levels" :key="l" class="flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
-              :class="s.level === l ? 'border-[var(--c-text-1)]' : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]'">
-              <input type="radio" class="mt-1 accent-accent" name="level" :value="l" v-model="s.level" @change="levelPicked = true" />
+              :class="s.level === l ? 'border-foreground' : 'border-border hover:border-input'">
+              <input type="radio" class="mt-1 accent-primary" name="level" :value="l" v-model="s.level" @change="levelPicked = true" />
               <span>
-                <span class="block text-sm font-medium" :class="l === 'none' ? 'text-danger' : 'text-[var(--c-text-1)]'">{{ LEVEL_TEXT[l].title }}</span>
-                <span class="block text-xs text-[var(--c-text-3)]">{{ LEVEL_TEXT[l].text }} {{ levelLine(l) }}</span>
+                <span class="block text-sm font-medium" :class="l === 'none' ? 'text-destructive' : 'text-foreground'">{{ LEVEL_TEXT[l].title }}</span>
+                <span class="block text-xs text-muted-foreground">{{ LEVEL_TEXT[l].text }} {{ levelLine(l) }}</span>
               </span>
             </label>
           </div>
-          <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-[var(--c-text-3)]">{{ levelsHint(chosen.length) }}</p>
+          <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-muted-foreground">{{ levelsHint(chosen.length) }}</p>
         </template>
 
         <!-- 3. Layout -->
         <template v-else-if="step === 2">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-1">Layout</h3>
-          <p class="text-xs text-[var(--c-text-3)] mb-3">The volume is a logical volume in an LVM volume group, so it can be expanded later without reformatting.</p>
+          <h3 class="text-sm font-semibold text-foreground mb-1">Layout</h3>
+          <p class="text-xs text-muted-foreground mb-3">The volume is a logical volume in an LVM volume group, so it can be expanded later without reformatting.</p>
           <div class="grid grid-cols-2 gap-3 max-w-md">
-            <label class="text-xs text-[var(--c-text-3)]">Volume group
-              <input v-model.trim="s.vg" class="ui-input mt-1 font-mono" maxlength="31" />
+            <label class="text-xs text-muted-foreground">Volume group
+              <Input v-model.trim="s.vg" class="mt-1 font-mono" maxlength="31" />
             </label>
-            <label class="text-xs text-[var(--c-text-3)]">Logical volume
-              <input v-model.trim="s.lv" class="ui-input mt-1 font-mono" maxlength="31" />
+            <label class="text-xs text-muted-foreground">Logical volume
+              <Input v-model.trim="s.lv" class="mt-1 font-mono" maxlength="31" />
             </label>
           </div>
-          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> A volume group named {{ s.vg }} already exists.</p>
-          <button class="mt-4 text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
+          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> A volume group named {{ s.vg }} already exists.</p>
+          <button class="mt-4 text-xs text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
             {{ s.advanced ? 'Hide advanced' : 'Advanced' }}
           </button>
-          <label v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-[var(--c-text-3)]">Use {{ s.lvPercent }}% of the volume group
-            <input type="range" min="10" max="100" step="5" v-model.number="s.lvPercent" class="w-full accent-accent" />
+          <label v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">Use {{ s.lvPercent }}% of the volume group
+            <input type="range" min="10" max="100" step="5" v-model.number="s.lvPercent" class="w-full accent-primary" />
             <span class="block mt-1">The rest stays free in the volume group, for another volume or for snapshots.</span>
           </label>
         </template>
 
         <!-- 4. Filesystem -->
         <template v-else-if="step === 3">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-1">Filesystem</h3>
-          <p class="text-xs text-[var(--c-text-3)] mb-3">ext4, the standard Linux filesystem.</p>
-          <label class="block max-w-xs text-xs text-[var(--c-text-3)]">Label
-            <input v-model.trim="s.label" class="ui-input mt-1 font-mono" maxlength="16" />
+          <h3 class="text-sm font-semibold text-foreground mb-1">Filesystem</h3>
+          <p class="text-xs text-muted-foreground mb-3">ext4, the standard Linux filesystem.</p>
+          <label class="block max-w-xs text-xs text-muted-foreground">Label
+            <Input v-model.trim="s.label" class="mt-1 font-mono" maxlength="16" />
           </label>
         </template>
 
         <!-- 5. Mount -->
         <template v-else-if="step === 4">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-1">Where should it appear?</h3>
-          <p class="text-xs text-[var(--c-text-3)] mb-3">The folder the volume is mounted on, at every boot.</p>
-          <label class="block max-w-md text-xs text-[var(--c-text-3)]">Folder
-            <input v-model.trim="s.mountpoint" class="ui-input mt-1 font-mono" @input="s.mountEdited = true" />
+          <h3 class="text-sm font-semibold text-foreground mb-1">Where should it appear?</h3>
+          <p class="text-xs text-muted-foreground mb-3">The folder the volume is mounted on, at every boot.</p>
+          <label class="block max-w-md text-xs text-muted-foreground">Folder
+            <Input v-model.trim="s.mountpoint" class="mt-1 font-mono" @input="s.mountEdited = true" />
           </label>
-          <p v-if="mountError" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ mountError }}</p>
+          <p v-if="mountError" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ mountError }}</p>
         </template>
 
         <!-- 6. Access -->
         <template v-else-if="step === 5">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-3">Who can use it?</h3>
+          <h3 class="text-sm font-semibold text-foreground mb-3">Who can use it?</h3>
           <div role="radiogroup" class="space-y-1.5 max-w-lg">
-            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-accent" value="shared" v-model="s.access" />
-              <span class="text-sm text-[var(--c-text-1)]">You and the shared group<span class="block text-xs text-[var(--c-text-3)]">Writable by you and by the users given write access through Places.</span></span></label>
-            <label v-if="isAdmin" class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-accent" value="user" v-model="s.access" />
-              <span class="text-sm text-[var(--c-text-1)]">Another user<span class="block text-xs text-[var(--c-text-3)]">Owned by the user you choose, with the shared group.</span></span></label>
-            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-accent" value="keep" v-model="s.access" />
-              <span class="text-sm text-[var(--c-text-1)]">Only root<span class="block text-xs text-[var(--c-text-3)]">Left as root:root, for system use.</span></span></label>
+            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="shared" v-model="s.access" />
+              <span class="text-sm text-foreground">You and the shared group<span class="block text-xs text-muted-foreground">Writable by you and by the users given write access through Places.</span></span></label>
+            <label v-if="isAdmin" class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="user" v-model="s.access" />
+              <span class="text-sm text-foreground">Another user<span class="block text-xs text-muted-foreground">Owned by the user you choose, with the shared group.</span></span></label>
+            <label class="flex items-start gap-3 cursor-pointer"><input type="radio" class="mt-1 accent-primary" value="keep" v-model="s.access" />
+              <span class="text-sm text-foreground">Only root<span class="block text-xs text-muted-foreground">Left as root:root, for system use.</span></span></label>
           </div>
-          <select v-if="s.access === 'user'" v-model="s.ownerUserId" class="ui-input mt-3 max-w-xs" aria-label="Owner">
-            <option value="" disabled>Choose a user</option>
-            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.username }} ({{ u.username }})</option>
-          </select>
+          <NativeSelect wrapper-class="mt-3 max-w-xs" v-if="s.access === 'user'" v-model="s.ownerUserId" aria-label="Owner">
+            <NativeSelectOption value="" disabled>Choose a user</NativeSelectOption>
+            <NativeSelectOption v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.username }} ({{ u.username }})</NativeSelectOption>
+          </NativeSelect>
 
           <div v-if="isAdmin" class="mt-5 space-y-3 max-w-lg">
-            <label class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-accent" v-model="s.createPlace" />
-              <span class="text-sm text-[var(--c-text-1)]">Create a Place<span class="block text-xs text-[var(--c-text-3)]">So users see it in Files. You choose who can read or write in Places.</span></span></label>
-            <input v-if="s.createPlace" v-model="s.placeName" class="ui-input max-w-xs" aria-label="Place name" maxlength="64" />
-            <label v-if="s.createPlace" class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-accent" v-model="s.share" />
-              <span class="text-sm text-[var(--c-text-1)]">Share it over SMB<span class="block text-xs text-[var(--c-text-3)]">Reachable from other computers on the network.</span></span></label>
-            <input v-if="s.createPlace && s.share" v-model.trim="s.smbName" class="ui-input max-w-xs font-mono" aria-label="Share name" maxlength="32" />
+            <label class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-primary" v-model="s.createPlace" />
+              <span class="text-sm text-foreground">Create a Place<span class="block text-xs text-muted-foreground">So users see it in Files. You choose who can read or write in Places.</span></span></label>
+            <Input v-if="s.createPlace" v-model="s.placeName" class="max-w-xs" aria-label="Place name" maxlength="64" />
+            <label v-if="s.createPlace" class="flex items-start gap-3 cursor-pointer"><input type="checkbox" class="mt-1 accent-primary" v-model="s.share" />
+              <span class="text-sm text-foreground">Share it over SMB<span class="block text-xs text-muted-foreground">Reachable from other computers on the network.</span></span></label>
+            <Input v-if="s.createPlace && s.share" v-model.trim="s.smbName" class="max-w-xs font-mono" aria-label="Share name" maxlength="32" />
           </div>
         </template>
 
         <!-- 7. Review -->
         <template v-else>
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-3">Review</h3>
-          <dl class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] divide-y divide-[var(--c-border)] text-sm max-w-lg">
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">Disks</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">Redundancy</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">Filesystem</dt><dd class="font-mono text-xs self-center">ext4 · {{ s.label }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">Folder</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
-            <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-[var(--c-text-3)]">Place</dt><dd>{{ s.placeName }}<template v-if="s.share"> · shared as <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
+          <h3 class="text-sm font-semibold text-foreground mb-3">Review</h3>
+          <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm max-w-lg">
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">Disks</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">Redundancy</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">Filesystem</dt><dd class="font-mono text-xs self-center">ext4 · {{ s.label }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">Folder</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
+            <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">Place</dt><dd>{{ s.placeName }}<template v-if="s.share"> · shared as <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
           </dl>
-          <p class="mt-3 text-xs text-[var(--c-text-3)]">Next, HSI shows every command and file change, and names the disks it erases, before anything runs.</p>
-          <p v-if="error" role="alert" class="mt-3 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+          <p class="mt-3 text-xs text-muted-foreground">Next, HSI shows every command and file change, and names the disks it erases, before anything runs.</p>
+          <p v-if="error" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
         </template>
       </section>
 
       <!-- The volume as it will be -->
-      <aside class="hidden @3xl/content:block self-start rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 space-y-2">
+      <aside class="hidden @3xl/content:block self-start rounded-xl border border-border bg-card p-4 space-y-2">
         <p class="eyebrow">Your volume</p>
-        <p><span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(usable) }}</span> <span class="text-xs text-[var(--c-text-3)]">usable</span></p>
-        <p class="text-xs" :class="s.level === 'none' ? 'text-danger' : 'text-[var(--c-text-2)]'">
+        <p><span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(usable) }}</span> <span class="text-xs text-muted-foreground">usable</span></p>
+        <p class="text-xs" :class="s.level === 'none' ? 'text-destructive' : 'text-foreground/80'">
           {{ LEVEL_TEXT[s.level].title }}<template v-if="tolerates"> · survives {{ tolerates }} failed {{ tolerates === 1 ? 'disk' : 'disks' }}</template>
         </p>
-        <p class="text-xs text-[var(--c-text-3)]">{{ chosen.length ? chosen.map(d => d.name).join(', ') : 'No disk chosen' }}</p>
-        <p class="font-mono text-xs text-[var(--c-text-2)]">{{ s.mountpoint }}</p>
-        <p v-if="isAdmin && s.createPlace" class="text-xs text-[var(--c-text-3)]">Place "{{ s.placeName }}"<template v-if="s.share"> · SMB share</template></p>
+        <p class="text-xs text-muted-foreground">{{ chosen.length ? chosen.map(d => d.name).join(', ') : 'No disk chosen' }}</p>
+        <p class="font-mono text-xs text-foreground/80">{{ s.mountpoint }}</p>
+        <p v-if="isAdmin && s.createPlace" class="text-xs text-muted-foreground">Place "{{ s.placeName }}"<template v-if="s.share"> · SMB share</template></p>
       </aside>
     </div>
 
-    <div class="mt-6 flex items-center justify-between gap-3 border-t border-[var(--c-border)] pt-4">
-      <button v-if="step > 0" class="btn btn-ghost btn-sm" @click="step--">Back</button>
-      <button v-else class="btn btn-ghost btn-sm" @click="emit('navigate', 'volumes')">Cancel</button>
-      <button v-if="step < STEPS.length - 1" class="btn btn-primary btn-sm" :disabled="!canNext" @click="step++">Next: {{ STEPS[step + 1] }}</button>
-      <button v-else-if="done" class="btn btn-primary btn-sm" @click="emit('navigate', 'volumes')">Go to Volumes</button>
-      <button v-else class="btn btn-danger btn-sm" :disabled="!chosen.length" @click="create">Create volume</button>
+    <div class="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
+      <Button variant="ghost" size="sm" v-if="step > 0" @click="step--">Back</Button>
+      <Button variant="ghost" size="sm" v-else @click="emit('navigate', 'volumes')">Cancel</Button>
+      <Button size="sm" v-if="step < STEPS.length - 1" :disabled="!canNext" @click="step++">Next: {{ STEPS[step + 1] }}</Button>
+      <Button size="sm" v-else-if="done" @click="emit('navigate', 'volumes')">Go to Volumes</Button>
+      <Button variant="destructive" size="sm" v-else :disabled="!chosen.length" @click="create">Create volume</Button>
     </div>
   </div>
 </template>

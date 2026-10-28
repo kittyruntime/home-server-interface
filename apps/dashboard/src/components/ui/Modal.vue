@@ -70,8 +70,8 @@ defineExpose({ requestClose })
           <!-- v-if mirrors the backdrop's so the panel plays its own leave pop
                (unmounting via the parent alone would skip it). -->
           <!-- max-h is a % so it tracks the host (window body or viewport). -->
-          <div ref="panel" v-if="visible" role="dialog" aria-modal="true" tabindex="-1" @keydown="onKeydown" :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-t-2xl sm:rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[92dvh] sm:max-h-[90%] outline-none', panelClass]">
-            <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
+          <div ref="panel" v-if="visible" role="dialog" aria-modal="true" tabindex="-1" @keydown="onKeydown" :class="['bg-card border border-input rounded-t-2xl sm:rounded-xl shadow-lg flex flex-col max-h-[92dvh] sm:max-h-[90%] outline-none', panelClass]">
+            <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-border shrink-0">
               <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
                 <slot name="header" />
               </div>
@@ -80,7 +80,7 @@ defineExpose({ requestClose })
                 @click="requestClose"
                 title="Close"
                 aria-label="Close dialog"
-                class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+                class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -97,7 +97,7 @@ defineExpose({ requestClose })
               <slot />
             </div>
 
-            <div v-if="$slots.footer" class="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--c-border)] flex flex-wrap items-center gap-2 shrink-0">
+            <div v-if="$slots.footer" class="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border flex flex-wrap items-center gap-2 shrink-0">
               <slot name="footer" />
             </div>
           </div>

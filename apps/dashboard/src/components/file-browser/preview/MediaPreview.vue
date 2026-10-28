@@ -17,8 +17,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full flex items-center justify-center bg-[var(--c-surface-deep)]">
-    <div v-if="failed" class="text-center text-[var(--c-text-3)] text-sm space-y-1">
+  <div class="h-full flex items-center justify-center bg-muted">
+    <div v-if="failed" class="text-center text-muted-foreground text-sm space-y-1">
       <p>Couldn't load this file.</p>
       <p class="status-text">[ERR] {{ path.split('/').pop() }}</p>
     </div>

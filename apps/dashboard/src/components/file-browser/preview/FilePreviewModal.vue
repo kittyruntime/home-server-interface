@@ -4,6 +4,8 @@ import Modal from '../../ui/Modal.vue'
 import FilePreviewBody from './FilePreviewBody.vue'
 import { detectKind } from '../../../lib/file-kind'
 import { downloadUrl } from '../../../lib/file-url'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type Entry = { name: string; path: string; size: number | null }
 
@@ -33,15 +35,15 @@ function tryClose() {
   <Modal panel-class="w-[92vw] h-[88vh] max-w-6xl flex flex-col" @close="tryClose">
     <template #header>
       <div class="flex items-center gap-2.5 min-w-0">
-        <span class="text-sm font-medium text-[var(--c-text-1)] truncate" :title="entry.name">{{ entry.name }}</span>
-        <span v-if="ext" class="badge badge-muted shrink-0">{{ ext }}</span>
-        <span v-if="dirty" class="status-text text-[var(--c-warning)] shrink-0">[UNSAVED]</span>
+        <span class="text-sm font-medium text-foreground truncate" :title="entry.name">{{ entry.name }}</span>
+        <Badge variant="secondary" v-if="ext" class="shrink-0">{{ ext }}</Badge>
+        <span v-if="dirty" class="status-text text-warning shrink-0">[UNSAVED]</span>
       </div>
       <a
         :href="downloadHref ?? undefined"
         :download="entry.name"
         title="Download"
-        class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+        class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -53,8 +55,8 @@ function tryClose() {
 
     <template v-if="kind === 'text'" #footer>
       <div class="flex-1" />
-      <button class="btn btn-ghost btn-sm" @click="tryClose">Close</button>
-      <button class="btn btn-primary btn-sm" :disabled="!dirty" @click="bodyRef?.save()">Save</button>
+      <Button variant="ghost" size="sm" @click="tryClose">Close</Button>
+      <Button size="sm" :disabled="!dirty" @click="bodyRef?.save()">Save</Button>
     </template>
   </Modal>
 </template>

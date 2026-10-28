@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { applyPlanned } from '../../lib/plan'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Textarea } from '@/components/ui/textarea'
 
 export interface AdvancedConfig {
   capAdd:        string[]
@@ -103,180 +107,179 @@ function removeExtraHost(h: string) {
     <!-- Raw compose file (always visible in the advanced tab) -->
     <div class="space-y-2">
       <div class="flex items-center justify-between gap-2">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Compose file (raw)</label>
-        <span v-if="yamlDirty" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Unsaved</span>
-        <span v-else-if="yamlSavedAt" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-success)] border-[var(--c-success)]/40">Saved</span>
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Compose file (raw)</label>
+        <span v-if="yamlDirty" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Unsaved</span>
+        <span v-else-if="yamlSavedAt" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-success border-success/40">Saved</span>
       </div>
-      <p class="text-xs text-[var(--c-text-3)]">
+      <p class="text-xs text-muted-foreground">
         Edit the file directly. Fields HSI does not manage are preserved on save; changes apply on the next <strong>Apply</strong>.
       </p>
-      <textarea
+      <Textarea
         v-model="yamlDraft"
         @input="yamlDirty = true; yamlSavedAt = false; yamlError = ''"
         spellcheck="false"
         rows="16"
-        class="ui-input w-full px-3 py-2 text-xs font-mono font-mono resize-y"
+        class="w-full px-3 py-2 text-xs font-mono font-mono resize-y"
       />
       <div class="flex items-center gap-3">
-        <p v-if="yamlError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ yamlError }}</p>
+        <p v-if="yamlError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ yamlError }}</p>
         <div v-else class="flex-1" />
-        <button
+        <Button size="sm"
           @click="saveRawYaml"
           :disabled="yamlSaving || !appName || !yamlDirty"
-          class="btn btn-primary btn-sm"
         >
           {{ yamlSaving ? 'Saving…' : 'Save file' }}
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Fields HSI does not manage -->
     <div v-if="unknownFields && unknownFields.length" class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Fields HSI does not manage</label>
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Fields HSI does not manage</label>
       <div class="flex flex-wrap gap-1.5">
         <span
           v-for="f in unknownFields" :key="f"
-          class="inline-flex items-center text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
+          class="inline-flex items-center text-xs bg-muted text-foreground/80 border border-input rounded-sm px-2 py-0.5 font-mono"
         >{{ f }}</span>
       </div>
-      <p class="text-xs text-[var(--c-text-3)]">Preserved on save - edit them in the file above.</p>
+      <p class="text-xs text-muted-foreground">Preserved on save - edit them in the file above.</p>
     </div>
 
     <!-- Cap Add -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Cap Add</label>
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Cap Add</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capAdd" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5"
+          class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5"
         >
           {{ cap }}
           <button @click="removeCap('capAdd', cap)" class="hover:opacity-60 transition-colors">×</button>
         </span>
       </div>
       <div class="flex gap-2">
-        <input
+        <Input
           v-model="capAddInput" placeholder="NET_ADMIN" @keydown.enter.prevent="addCap('capAdd', capAddInput as any)"
-          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+          class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addCap('capAdd', capAddInput as any)"
-          class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
+          class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:opacity-80 transition-colors"
         >Add</button>
       </div>
     </div>
 
     <!-- Cap Drop -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Cap Drop</label>
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Cap Drop</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="cap in modelValue.capDrop" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-warning)]/15 text-[var(--c-warning)] border border-[var(--c-warning)]/20 rounded-sm px-2 py-0.5"
+          class="inline-flex items-center gap-1 text-xs bg-warning/15 text-warning border border-warning/20 rounded-sm px-2 py-0.5"
         >
           {{ cap }}
           <button @click="removeCap('capDrop', cap)" class="hover:opacity-70 transition-colors">×</button>
         </span>
       </div>
       <div class="flex gap-2">
-        <input
+        <Input
           v-model="capDropInput" placeholder="ALL" @keydown.enter.prevent="addCap('capDrop', capDropInput as any)"
-          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+          class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addCap('capDrop', capDropInput as any)"
-          class="px-3 py-1.5 bg-[var(--c-warning)]/20 text-[var(--c-warning)] rounded-lg text-sm hover:bg-[var(--c-warning)]/30 transition-colors"
+          class="px-3 py-1.5 bg-warning/20 text-warning rounded-lg text-sm hover:bg-warning/30 transition-colors"
         >Add</button>
       </div>
     </div>
 
     <!-- Extra Hosts -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Extra Hosts</label>
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Extra Hosts</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <span
           v-for="h in modelValue.extraHosts" :key="h"
-          class="inline-flex items-center gap-1 text-xs bg-[var(--c-surface-alt)] text-[var(--c-text-2)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
+          class="inline-flex items-center gap-1 text-xs bg-muted text-foreground/80 border border-input rounded-sm px-2 py-0.5 font-mono"
         >
           {{ h }}
           <button @click="removeExtraHost(h)" class="hover:opacity-60 transition-colors">×</button>
         </span>
       </div>
       <div class="flex gap-2">
-        <input
+        <Input
           v-model="extraHostInput" placeholder="myhost:192.168.1.10"
           @keydown.enter.prevent="addExtraHost"
-          class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+          class="flex-1 px-2 py-1.5 text-sm font-mono"
         />
         <button
           @click="addExtraHost"
-          class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
+          class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:opacity-80 transition-colors"
         >Add</button>
       </div>
-      <p v-if="extraHostError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
-      <p class="text-xs text-[var(--c-text-3)]">Adds <span class="font-mono">--add-host</span> entries (maps to <span class="font-mono">/etc/hosts</span> inside the container).</p>
+      <p v-if="extraHostError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
+      <p class="text-xs text-muted-foreground">Adds <span class="font-mono">--add-host</span> entries (maps to <span class="font-mono">/etc/hosts</span> inside the container).</p>
     </div>
 
     <!-- Restart policy -->
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Restart Policy</label>
-      <select
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Restart Policy</label>
+      <NativeSelect wrapper-class="w-full"
         :value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
-        class="ui-input w-full px-2 py-1.5 text-sm"
+        class="px-2 py-1.5 text-sm"
       >
-        <option value="no">No</option>
-        <option value="always">Always</option>
-        <option value="unless-stopped">Unless Stopped</option>
-        <option value="on-failure">On Failure</option>
-      </select>
+        <NativeSelectOption value="no">No</NativeSelectOption>
+        <NativeSelectOption value="always">Always</NativeSelectOption>
+        <NativeSelectOption value="unless-stopped">Unless Stopped</NativeSelectOption>
+        <NativeSelectOption value="on-failure">On Failure</NativeSelectOption>
+      </NativeSelect>
     </div>
 
     <!-- Hostname / User / Command -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Hostname</label>
-        <input
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Hostname</label>
+        <Input
           :value="modelValue.hostname ?? ''" placeholder="my-container"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
-          class="ui-input w-full px-2 py-1.5 text-sm"
+          class="w-full px-2 py-1.5 text-sm"
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">User</label>
-        <input
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">User</label>
+        <Input
           :value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
-          class="ui-input w-full px-2 py-1.5 text-sm"
+          class="w-full px-2 py-1.5 text-sm"
         />
       </div>
     </div>
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Command override</label>
-      <input
+      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Command override</label>
+      <Input
         :value="modelValue.command ?? ''" placeholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
-        class="ui-input w-full px-2 py-1.5 text-sm font-mono"
+        class="w-full px-2 py-1.5 text-sm font-mono"
       />
     </div>
 
     <!-- CPU / Memory -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">CPU Limit</label>
-        <input
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">CPU Limit</label>
+        <Input
           type="number" min="0" max="64" step="0.1"
           :value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
           @input="update('cpuLimit', ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : null)"
-          class="ui-input w-full px-2 py-1.5 text-sm"
+          class="w-full px-2 py-1.5 text-sm"
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Memory Limit</label>
-        <input
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Memory Limit</label>
+        <Input
           :value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"
-          class="ui-input w-full px-2 py-1.5 text-sm"
+          class="w-full px-2 py-1.5 text-sm"
         />
       </div>
     </div>

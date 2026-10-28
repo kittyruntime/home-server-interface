@@ -14,7 +14,7 @@ defineEmits<{ 'update:modelValue': [value: boolean] }>()
     :title="title"
     :class="[
       'relative shrink-0 w-9 h-5 rounded-full transition-colors',
-      modelValue ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)]',
+      modelValue ? 'bg-primary' : 'bg-muted border border-input',
     ]"
     @click="$emit('update:modelValue', !modelValue)"
   >

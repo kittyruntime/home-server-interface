@@ -2,6 +2,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Place = { id: string; name: string; path: string }
 type Group = { id: string; name: string }
@@ -120,22 +123,22 @@ onMounted(async () => {
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Places</h2>
-        <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-md leading-relaxed">
+        <h2 class="text-lg font-semibold text-foreground">Places</h2>
+        <p class="text-xs text-muted-foreground mt-1 max-w-md leading-relaxed">
           Folders on your NAS that you share with people. Each place maps a friendly name to a path on
           the server, then grants read, write or delete access per user or group.
         </p>
       </div>
-      <button
+      <Button size="xs"
         v-if="!adding"
         @click="adding = true"
-        class="btn btn-primary btn-xs shrink-0"
+        class="shrink-0"
       >
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Add place
-      </button>
+      </Button>
     </div>
 
     <!-- Loading -->
@@ -143,57 +146,55 @@ onMounted(async () => {
 
     <template v-else>
       <!-- Add form -->
-      <div v-if="adding" class="rounded-xl border border-[var(--c-border-strong)] bg-[var(--c-surface)] p-4 space-y-3">
+      <div v-if="adding" class="rounded-xl border border-input bg-card p-4 space-y-3">
         <h4 class="eyebrow">New place</h4>
         <div class="flex gap-3">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--c-text-2)] mb-1">Name</label>
-            <input v-model="newName" type="text" placeholder="Media" class="ui-input"/>
-            <p class="text-2xs text-[var(--c-text-3)] mt-1 leading-relaxed">Shown to users in the file browser.</p>
+            <label class="block text-xs text-foreground/80 mb-1">Name</label>
+            <Input v-model="newName" type="text" placeholder="Media"/>
+            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">Shown to users in the file browser.</p>
           </div>
           <div class="flex-[2]">
-            <label class="block text-xs text-[var(--c-text-2)] mb-1">Path</label>
-            <input v-model="newPath" type="text" placeholder="/mnt/data" class="ui-input font-mono"/>
-            <p class="text-2xs text-[var(--c-text-3)] mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
+            <label class="block text-xs text-foreground/80 mb-1">Path</label>
+            <Input v-model="newPath" type="text" placeholder="/mnt/data" class="font-mono"/>
+            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
           </div>
         </div>
-        <p v-if="addError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ addError }}</p>
-        <div v-if="pathMissing" class="rounded-lg bg-[var(--c-surface-alt)] border border-[var(--c-border)] px-3 py-2">
-          <p class="text-xs text-[var(--c-text-2)]">This folder doesn't exist yet.</p>
+        <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
+        <div v-if="pathMissing" class="rounded-lg bg-muted border border-border px-3 py-2">
+          <p class="text-xs text-foreground/80">This folder doesn't exist yet.</p>
           <button @click="createDir" :disabled="addLoading"
-            class="text-xs text-[var(--c-accent)] underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-0.5">
+            class="text-xs text-primary underline underline-offset-2 hover:opacity-75 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity mt-0.5">
             {{ addLoading ? 'Creating…' : 'Create it and add the place' }}
           </button>
         </div>
         <div class="flex gap-2 pt-1">
-          <button @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()"
-            class="btn btn-primary btn-sm">
+          <Button size="sm" @click="addPlace" :disabled="addLoading || !newName.trim() || !newPath.trim()">
             {{ addLoading ? 'Adding…' : 'Add place' }}
-          </button>
-          <button @click="adding = false; addError = ''; pathMissing = false"
-            class="btn btn-ghost btn-sm">
+          </Button>
+          <Button variant="ghost" size="sm" @click="adding = false; addError = ''; pathMissing = false">
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
 
       <!-- Empty state -->
       <div v-if="places.length === 0 && !adding"
-        class="rounded-xl border border-dashed border-[var(--c-border-strong)] bg-[var(--c-surface)] px-6 py-10 text-center">
-        <svg class="w-10 h-10 mx-auto text-[var(--c-text-3)] opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        class="rounded-xl border border-dashed border-input bg-card px-6 py-10 text-center">
+        <svg class="w-10 h-10 mx-auto text-muted-foreground opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
         </svg>
-        <h4 class="text-sm font-medium text-[var(--c-text-1)] mt-3">No places yet</h4>
-        <p class="text-xs text-[var(--c-text-3)] mt-1 max-w-xs mx-auto leading-relaxed">
+        <h4 class="text-sm font-medium text-foreground mt-3">No places yet</h4>
+        <p class="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">
           A place shares a folder on your NAS with users and groups, and you decide exactly who can read,
           write or delete its contents.
         </p>
-        <button @click="adding = true" class="btn btn-primary btn-sm mt-4 mx-auto">
+        <Button size="sm" @click="adding = true" class="mt-4 mx-auto">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
           Add your first place
-        </button>
+        </Button>
       </div>
 
       <!-- Places list -->
@@ -201,27 +202,27 @@ onMounted(async () => {
         <div
           v-for="place in places"
           :key="place.id"
-          class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl overflow-hidden"
+          class="bg-card border border-border rounded-xl overflow-hidden"
         >
           <!-- Place row -->
           <div class="flex items-center gap-3 px-4 py-3 group">
             <button @click="togglePlace(place.id)" class="flex-1 flex items-center gap-3 text-left min-w-0">
-              <svg class="w-4 h-4 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <svg class="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
               </svg>
               <div class="flex-1 min-w-0">
-                <span class="text-sm text-[var(--c-text-1)]">{{ place.name }}</span>
-                <span class="text-[var(--c-text-3)] text-xs font-mono ml-3">{{ place.path }}</span>
+                <span class="text-sm text-foreground">{{ place.name }}</span>
+                <span class="text-muted-foreground text-xs font-mono ml-3">{{ place.path }}</span>
               </div>
               <!-- Expand chevron -->
-              <svg :class="['w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
+              <svg :class="['w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
             <button @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-accent)]
-                     hover:bg-[var(--c-accent-subtle)] transition-all shrink-0"
+              class="opacity-0 group-hover:opacity-100 p-1 rounded-sm text-muted-foreground hover:text-primary
+                     hover:bg-primary/10 transition-all shrink-0"
               title="Remove">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -230,16 +231,16 @@ onMounted(async () => {
           </div>
 
           <!-- Permissions matrix (expanded) -->
-          <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
-            <div class="px-4 py-2.5 bg-[var(--c-surface-alt)]">
+          <div v-if="expandedPlace === place.id" class="border-t border-border">
+            <div class="px-4 py-2.5 bg-muted">
               <span class="eyebrow">Permissions</span>
-              <p class="text-2xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">
+              <p class="text-2xs text-muted-foreground mt-0.5 leading-relaxed">
                 Choose what each user or group can do in this folder. Admins always have full access.
               </p>
             </div>
             <table class="w-full text-xs">
               <thead>
-                <tr class="text-[var(--c-text-3)] uppercase tracking-caps border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]">
+                <tr class="text-muted-foreground uppercase tracking-caps border-b border-border bg-muted">
                   <th class="px-4 py-2 text-left font-medium">Subject</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="List and download files">Read</th>
                   <th class="px-3 py-2 text-center font-medium w-16" title="Upload, rename and modify files">Write</th>
@@ -247,20 +248,20 @@ onMounted(async () => {
                   <th class="px-3 py-2 text-center font-medium w-16" title="Create public share links for this folder">Share</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-[var(--c-border)]">
+              <tbody class="divide-y divide-border">
                 <!-- Groups -->
                 <tr v-for="group in groups" :key="'group-' + group.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="badge badge-violet">group</span>
-                      <span class="text-[var(--c-text-2)]">{{ group.name }}</span>
+                      <Badge variant="secondary">group</Badge>
+                      <span class="text-foreground/80">{{ group.name }}</span>
                     </div>
                   </td>
                   <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
                     <input type="checkbox"
                       :checked="getPerm(place.id, 'group', group.id)?.[field] ?? false"
                       @change="togglePerm(place.id, 'group', group.id, field)"
-                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"/>
+                      class="w-3.5 h-3.5 rounded accent-primary cursor-pointer"/>
                   </td>
                 </tr>
 
@@ -268,9 +269,9 @@ onMounted(async () => {
                 <tr v-for="user in users" :key="'user-' + user.id">
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
-                      <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
-                      <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-muted text-muted-foreground">user</span>
+                      <span class="text-foreground/80">{{ user.username }}</span>
+                      <Badge v-if="user.isAdmin">admin</Badge>
                     </div>
                   </td>
                   <td v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
@@ -278,12 +279,12 @@ onMounted(async () => {
                       :checked="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)"
                       :disabled="user.isAdmin"
                       @change="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)"
-                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"/>
+                      class="w-3.5 h-3.5 rounded accent-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"/>
                   </td>
                 </tr>
 
                 <tr v-if="groups.length === 0 && users.length === 0">
-                  <td colspan="5" class="px-4 py-3 text-[var(--c-text-3)]">No groups or users to assign.</td>
+                  <td colspan="5" class="px-4 py-3 text-muted-foreground">No groups or users to assign.</td>
                 </tr>
               </tbody>
             </table>

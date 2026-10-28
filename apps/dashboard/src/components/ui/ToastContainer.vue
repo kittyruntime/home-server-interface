@@ -12,15 +12,15 @@ const { toasts, dismiss } = useToast()
           v-for="t in toasts"
           :key="t.id"
           class="flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border pointer-events-auto"
-          :class="t.type === 'error'   ? 'bg-[var(--c-surface-alt)] border-[var(--c-danger)]/40 text-[var(--c-text-1)]'
-                : t.type === 'success' ? 'bg-[var(--c-surface-alt)] border-success/30 text-[var(--c-text-1)]'
-                :                        'bg-[var(--c-surface-alt)] border-[var(--c-border-strong)] text-[var(--c-text-1)]'"
+          :class="t.type === 'error'   ? 'bg-muted border-destructive/40 text-foreground'
+                : t.type === 'success' ? 'bg-muted border-success/30 text-foreground'
+                :                        'bg-muted border-input text-foreground'"
         >
           <!-- Icon -->
           <div class="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center"
-            :class="t.type === 'error'   ? 'bg-[var(--c-danger)]/15 text-[var(--c-danger)]'
+            :class="t.type === 'error'   ? 'bg-destructive/15 text-destructive'
                   : t.type === 'success' ? 'bg-success/15 text-success'
-                  :                        'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'">
+                  :                        'bg-primary/10 text-primary'">
             <svg v-if="t.type === 'error'" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -36,11 +36,11 @@ const { toasts, dismiss } = useToast()
           <div class="flex-1 min-w-0">
             <span class="block text-sm leading-snug">{{ t.message }}</span>
             <button v-if="t.action" @click="t.action.run(); dismiss(t.id)"
-              class="mt-1 text-xs font-medium text-[var(--c-accent)] hover:underline">{{ t.action.label }}</button>
+              class="mt-1 text-xs font-medium text-primary hover:underline">{{ t.action.label }}</button>
           </div>
 
           <!-- Dismiss -->
-          <button @click="dismiss(t.id)" aria-label="Dismiss notification" class="shrink-0 p-0.5 -mr-1 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-sm">
+          <button @click="dismiss(t.id)" aria-label="Dismiss notification" class="shrink-0 p-0.5 -mr-1 text-muted-foreground hover:text-foreground transition-colors rounded-sm">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>

@@ -98,9 +98,9 @@ export function fmtMem(b: number): string {
 }
 
 export function memColor(percent: number): string {
-  if (percent > 85) return 'var(--c-accent)'
-  if (percent > 65) return 'var(--c-warning)'
-  return 'var(--c-success)'
+  if (percent > 85) return 'var(--primary)'
+  if (percent > 65) return 'var(--warning)'
+  return 'var(--success)'
 }
 
 export function fmtGB(b: number): string {
@@ -109,9 +109,9 @@ export function fmtGB(b: number): string {
   return (b / 1_048_576).toFixed(0) + ' MB'
 }
 export function diskColor(percent: number): string {
-  if (percent >= 90) return 'var(--c-accent)'
-  if (percent >= 75) return 'var(--c-warning)'
-  return 'var(--c-success)'
+  if (percent >= 90) return 'var(--primary)'
+  if (percent >= 75) return 'var(--warning)'
+  return 'var(--success)'
 }
 
 export function useDashboardWidgets() {

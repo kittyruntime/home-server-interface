@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { pushEscLayer } from '../../lib/escLayer'
+import { Input } from '@/components/ui/input'
 
 export type PickerItem = {
   id: string
@@ -78,17 +79,17 @@ onUnmounted(() => {
       <div
         v-for="item in assigned"
         :key="item.id"
-        class="group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-[var(--c-hover)] transition-colors"
+        class="group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
       >
         <span
           v-if="item.avatarText"
           :class="['w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
         >{{ item.avatarText }}</span>
-        <span v-else class="w-1.5 h-1.5 rounded-full bg-[var(--c-accent)] shrink-0" />
+        <span v-else class="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
 
         <span class="flex-1 min-w-0 flex items-baseline gap-2">
-          <span class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ item.label }}</span>
-          <span v-if="item.sublabel" class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
+          <span class="text-sm font-medium text-foreground truncate">{{ item.label }}</span>
+          <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </span>
 
         <button
@@ -98,8 +99,8 @@ onUnmounted(() => {
           :class="[
             'p-1 rounded-sm transition-all shrink-0',
             item.disabled
-              ? 'opacity-30 cursor-not-allowed text-[var(--c-text-3)]'
-              : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] disabled:opacity-30 disabled:cursor-not-allowed',
+              ? 'opacity-30 cursor-not-allowed text-muted-foreground'
+              : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed',
           ]"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -108,12 +109,12 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-    <p v-else class="text-xs text-[var(--c-text-3)] px-3">None assigned.</p>
+    <p v-else class="text-xs text-muted-foreground px-3">None assigned.</p>
 
     <button
       v-if="available.length > 0"
       @click="togglePicker"
-      class="flex items-center gap-1 text-xs text-[var(--c-accent)] hover:opacity-80 transition-colors px-3"
+      class="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-colors px-3"
     >
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -123,14 +124,14 @@ onUnmounted(() => {
 
     <div
       v-if="open"
-      class="absolute z-20 left-0 top-full mt-1 w-64 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl shadow-lg overflow-hidden"
+      class="absolute z-20 left-0 top-full mt-1 w-64 bg-card border border-input rounded-xl shadow-lg overflow-hidden"
     >
-      <div class="p-2 border-b border-[var(--c-border)]">
+      <div class="p-2 border-b border-border">
         <div class="relative">
-          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-text-3)] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
           </svg>
-          <input v-model="search" autofocus placeholder="Search…" class="ui-input pl-8"/>
+          <Input v-model="search" autofocus placeholder="Search…" class="pl-8"/>
         </div>
       </div>
       <div class="max-h-48 overflow-y-auto py-1">
@@ -138,16 +139,16 @@ onUnmounted(() => {
           v-for="item in filteredAvailable"
           :key="item.id"
           @click="pick(item.id)"
-          class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--c-hover)] transition-colors"
+          class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-accent transition-colors"
         >
           <span
             v-if="item.avatarText"
             :class="['w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
           >{{ item.avatarText }}</span>
-          <span class="text-sm text-[var(--c-text-2)] truncate flex-1">{{ item.label }}</span>
-          <span v-if="item.sublabel" class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
+          <span class="text-sm text-foreground/80 truncate flex-1">{{ item.label }}</span>
+          <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </button>
-        <p v-if="filteredAvailable.length === 0" class="px-3 py-2 text-xs text-[var(--c-text-3)]">No matches</p>
+        <p v-if="filteredAvailable.length === 0" class="px-3 py-2 text-xs text-muted-foreground">No matches</p>
       </div>
     </div>
   </div>

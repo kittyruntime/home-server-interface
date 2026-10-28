@@ -7,6 +7,8 @@ import Pagination from './ui/Pagination.vue'
 import SortableHeader from './ui/SortableHeader.vue'
 import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Group = {
   id: string
@@ -118,46 +120,45 @@ onMounted(load)
 
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Groups</h2>
-          <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+          <h2 class="text-lg font-semibold text-foreground">Groups</h2>
+          <p class="text-xs text-muted-foreground mt-0.5">
             {{ filteredGroups.length }} of {{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}
           </p>
         </div>
-        <button
+        <Button size="xs"
           v-if="!addingGroup"
           @click="openAdd"
-          class="btn btn-primary btn-xs shrink-0"
+          class="shrink-0"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
           Add group
-        </button>
+        </Button>
       </div>
 
       <!-- Add group form -->
-      <div v-if="addingGroup" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-        <h4 class="text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">New group</h4>
+      <div v-if="addingGroup" class="border border-input bg-muted rounded-xl p-4 space-y-3">
+        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">New group</h4>
         <div>
-          <label class="block text-xs text-[var(--c-text-3)] mb-1">Name <span class="text-[var(--c-accent)]">*</span></label>
-          <input
+          <label class="block text-xs text-muted-foreground mb-1">Name <span class="text-primary">*</span></label>
+          <Input
             v-model="newGroupName"
             placeholder="e.g. editors"
             autofocus
             @keydown.enter.prevent="createGroup"
-            class="ui-input"
           />
         </div>
-        <p v-if="createError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ createError }}</p>
+        <p v-if="createError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ createError }}</p>
         <div class="flex items-center gap-2 pt-1">
-          <button
+          <Button size="sm"
             @click="createGroup"
             :disabled="createLoading || !newGroupName.trim()"
-            class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            class="disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {{ createLoading ? 'Creating…' : 'Create' }}
-          </button>
-          <button @click="cancelAdd" class="btn btn-ghost btn-sm">Cancel</button>
+          </Button>
+          <Button variant="ghost" size="sm" @click="cancelAdd">Cancel</Button>
         </div>
       </div>
 
@@ -165,38 +166,38 @@ onMounted(load)
       <SearchInput v-model="search" placeholder="Search groups by name…" class="max-w-sm" />
 
       <!-- Table -->
-      <div class="panel-card">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
         <table class="w-full text-sm">
           <thead>
-            <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
+            <tr class="bg-muted border-b border-border">
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
                 <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Group</SortableHeader>
               </th>
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">Members</th>
-              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">Members</th>
+              <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
               </th>
               <th class="px-4 py-3 w-16"></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-[var(--c-border)]">
+          <tbody class="divide-y divide-border">
             <tr
               v-for="group in paged"
               :key="group.id"
-              class="bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
+              class="bg-background hover:bg-card transition-colors"
             >
               <!-- Group -->
               <td class="px-5 py-3.5">
-                <span class="font-medium text-[var(--c-text-1)]">{{ group.name }}</span>
+                <span class="font-medium text-foreground">{{ group.name }}</span>
               </td>
 
               <!-- Members -->
-              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+              <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                 {{ group.members.length }}
               </td>
 
               <!-- Created -->
-              <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+              <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                 {{ formatDay(group.createdAt) }}
               </td>
 
@@ -205,7 +206,7 @@ onMounted(load)
                 <button
                   @click="openEditor(group)"
                   title="Edit group"
-                  class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+                  class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
@@ -216,9 +217,9 @@ onMounted(load)
 
             <!-- Empty state -->
             <tr v-if="filteredGroups.length === 0">
-              <td colspan="4" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)]">
+              <td colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
                 <span>{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
-                <button v-if="groups.length && search" class="btn btn-outline btn-xs ml-2" @click="search = ''">Clear search</button>
+                <Button variant="outline" size="xs" v-if="groups.length && search" class="ml-2" @click="search = ''">Clear search</Button>
               </td>
             </tr>
           </tbody>

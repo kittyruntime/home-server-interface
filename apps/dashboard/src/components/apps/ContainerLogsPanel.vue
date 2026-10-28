@@ -144,13 +144,13 @@ onUnmounted(() => controller?.abort())
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Container logs" @click.self="emit('close')">
-      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-[var(--c-border-strong)] rounded-xl overflow-hidden shadow-[var(--shadow-md)]">
+      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-input rounded-xl overflow-hidden shadow-lg">
 
         <!-- Header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
           <div class="flex items-center gap-2 flex-1 min-w-0">
             <!-- Status dot -->
-            <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-[var(--c-text-3)]']" />
+            <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-muted-foreground']" />
             <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
             <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
           </div>
@@ -161,7 +161,7 @@ onUnmounted(() => controller?.abort())
               :title="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
               :class="['flex items-center gap-1.5 px-2.5 py-1 text-2xs rounded-md border transition-colors',
                 follow
-                  ? 'bg-[var(--c-accent)]/20 border-[var(--c-accent)]/50 text-[var(--c-accent)]'
+                  ? 'bg-primary/20 border-primary/50 text-primary'
                   : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58]']"
             >
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -201,7 +201,7 @@ onUnmounted(() => controller?.abort())
           style="color: #e6edf3"
         >
           <!-- Error -->
-          <p v-if="error" role="alert" class="mb-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+          <p v-if="error" role="alert" class="mb-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
           <!-- Empty -->
           <div v-if="lines.length === 0 && !error && connected"

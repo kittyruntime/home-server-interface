@@ -40,26 +40,26 @@ async function onKey(e: KeyboardEvent) {
 <template>
   <div>
     <LoadingState v-if="loading" />
-    <p v-else-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
-    <div v-else-if="gone" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-8 text-center text-sm text-[var(--c-text-2)]">
+    <p v-else-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-else-if="gone" class="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-foreground/80">
       {{ gone.text }}
-      <button class="ml-1 text-[var(--c-text-1)] underline decoration-[var(--c-border-strong)] underline-offset-2 hover:decoration-[var(--c-text-1)]" @click="emit('back')">{{ gone.back }}</button>
+      <button class="ml-1 text-foreground underline decoration-input underline-offset-2 hover:decoration-foreground" @click="emit('back')">{{ gone.back }}</button>
     </div>
 
     <template v-else>
       <header class="flex flex-col @2xl/content:flex-row @2xl/content:items-start @2xl/content:justify-between gap-3 mb-4">
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="text-lg font-semibold text-[var(--c-text-1)] truncate">{{ title }}</h2>
+            <h2 class="text-lg font-semibold text-foreground truncate">{{ title }}</h2>
             <slot name="chips" />
           </div>
-          <p v-if="subtitle" class="mt-0.5 font-mono text-xs text-[var(--c-text-3)] truncate">{{ subtitle }}</p>
+          <p v-if="subtitle" class="mt-0.5 font-mono text-xs text-muted-foreground truncate">{{ subtitle }}</p>
           <div class="mt-3"><slot name="figure" /></div>
         </div>
         <div class="flex items-center gap-2 shrink-0"><slot name="actions" /></div>
       </header>
 
-      <div role="tablist" aria-label="Sections of this page" class="flex gap-5 border-b border-[var(--c-border)] mb-4 overflow-x-auto" @keydown="onKey">
+      <div role="tablist" aria-label="Sections of this page" class="flex gap-5 border-b border-border mb-4 overflow-x-auto" @keydown="onKey">
         <button
           v-for="t in TABS" :key="t.id"
           :ref="el => { if (el) tabEls[TABS.indexOf(t)] = el as HTMLButtonElement }"
@@ -69,7 +69,7 @@ async function onKey(e: KeyboardEvent) {
           :aria-controls="tab === t.id ? `${uid}-panel-${t.id}` : undefined"
           :tabindex="tab === t.id ? 0 : -1"
           :class="['pb-2 -mb-px text-sm whitespace-nowrap border-b-2 transition-colors',
-            tab === t.id ? 'border-[var(--c-accent)] text-[var(--c-text-1)] font-medium' : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-1)]']"
+            tab === t.id ? 'border-primary text-foreground font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']"
           @click="tab = t.id"
         >{{ t.label }}</button>
       </div>

@@ -37,7 +37,7 @@ onUnmounted(() => releaseEsc?.())
   <span class="relative inline-flex" @mouseenter="show" @mouseleave="hide">
     <button
       type="button"
-      class="grid h-4 w-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-[var(--c-text-3)] ring-1 ring-inset ring-[var(--c-border-strong)] hover:text-[var(--c-text-1)] hover:ring-[var(--c-text-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--c-accent)]"
+      class="grid h-4 w-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-muted-foreground ring-1 ring-inset ring-input hover:text-foreground hover:ring-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       :aria-describedby="id"
       aria-label="More info"
       @click.stop="open = !open"
@@ -49,7 +49,7 @@ onUnmounted(() => releaseEsc?.())
         v-if="open"
         :id="id"
         role="tooltip"
-        class="absolute top-full left-1/2 z-20 mt-1.5 w-56 -translate-x-1/2 rounded-lg border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] p-2.5 text-xs leading-snug text-[var(--c-text-2)] shadow-lg"
+        class="absolute top-full left-1/2 z-20 mt-1.5 w-56 -translate-x-1/2 rounded-lg border border-input bg-muted p-2.5 text-xs leading-snug text-foreground/80 shadow-lg"
       >{{ text }}</div>
     </Transition>
   </span>

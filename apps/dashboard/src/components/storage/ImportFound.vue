@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import { useConfirm } from '../../lib/confirm'
+import { Button } from '@/components/ui/button'
 
 /* Existing storage found on the disks but not in use yet (after a reinstall,
    or disks moved from another machine). Import never formats anything: arrays
@@ -65,38 +66,38 @@ defineExpose({ load })
 
 <template>
   <div v-if="kind === 'raid' && scan?.arrays.length" class="mb-5 rounded-xl border border-info/30 bg-info/5 p-4">
-    <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Arrays found on disks</h3>
-    <p class="text-xs text-[var(--c-text-3)] mt-0.5 mb-3">These arrays exist on the disks but are not running. Assembling one keeps its data; nothing is formatted.</p>
-    <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-[var(--c-border)] first:border-t-0">
+    <h3 class="text-sm font-semibold text-foreground">Arrays found on disks</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These arrays exist on the disks but are not running. Assembling one keeps its data; nothing is formatted.</p>
+    <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
-        <div class="text-sm text-[var(--c-text-1)]">
+        <div class="text-sm text-foreground">
           <span class="font-mono">{{ a.name || a.device }}</span>
-          <span class="text-xs text-[var(--c-text-3)] ml-2 uppercase">{{ a.level }}</span>
+          <span class="text-xs text-muted-foreground ml-2 uppercase">{{ a.level }}</span>
         </div>
-        <div class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ a.members.join(' + ') }}</div>
+        <div class="text-2xs text-muted-foreground font-mono break-all">{{ a.members.join(' + ') }}</div>
         <div v-if="a.missing > 0" class="text-2xs text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
-        <div v-if="a.extra > 0" class="text-2xs text-danger">
+        <div v-if="a.extra > 0" class="text-2xs text-destructive">
           {{ a.members.length }} disks carry this array, which has {{ a.expected + a.spares }}: one is probably a copy of another, such as a cloned disk.
           Disconnect the disk that should not be there, then scan again.
         </div>
       </div>
-      <button v-if="!(a.extra > 0)" type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="assemble(a)">
+      <Button size="xs" v-if="!(a.extra > 0)" type="button" :disabled="busy !== null" @click="assemble(a)">
         {{ busy === a.uuid ? 'Assembling…' : a.missing > 0 ? 'Start degraded…' : 'Assemble' }}
-      </button>
+      </Button>
     </div>
   </div>
 
   <div v-if="kind === 'lvm' && scan?.vgs.length" class="mb-5 rounded-xl border border-info/30 bg-info/5 p-4">
-    <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Inactive volume groups</h3>
-    <p class="text-xs text-[var(--c-text-3)] mt-0.5 mb-3">These volume groups exist on the disks but none of their volumes is active. Activating keeps their data; nothing is formatted.</p>
-    <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-[var(--c-border)] first:border-t-0">
+    <h3 class="text-sm font-semibold text-foreground">Inactive volume groups</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These volume groups exist on the disks but none of their volumes is active. Activating keeps their data; nothing is formatted.</p>
+    <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
-        <div class="text-sm font-mono text-[var(--c-text-1)]">{{ vg.name }}</div>
-        <div class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ vg.lvs.join(', ') }}</div>
+        <div class="text-sm font-mono text-foreground">{{ vg.name }}</div>
+        <div class="text-2xs text-muted-foreground font-mono break-all">{{ vg.lvs.join(', ') }}</div>
       </div>
-      <button type="button" class="btn btn-primary btn-xs" :disabled="busy !== null" @click="activate(vg)">
+      <Button size="xs" type="button" :disabled="busy !== null" @click="activate(vg)">
         {{ busy === vg.name ? 'Activating…' : 'Activate' }}
-      </button>
+      </Button>
     </div>
   </div>
 </template>

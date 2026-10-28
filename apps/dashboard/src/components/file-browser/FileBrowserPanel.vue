@@ -598,18 +598,18 @@ onMounted(async () => {
       >
         <!-- Drag overlay -->
         <div v-if="dragOver && currentPath"
-          class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-[var(--c-accent-subtle)] border-2 border-dashed border-[var(--c-accent)] rounded-sm pointer-events-none select-none">
-          <svg class="w-10 h-10 text-[var(--c-accent)] opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-primary/10 border-2 border-dashed border-primary rounded-sm pointer-events-none select-none">
+          <svg class="w-10 h-10 text-primary opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
-          <span class="text-sm text-[var(--c-accent)] font-medium">Drop to upload</span>
+          <span class="text-sm text-primary font-medium">Drop to upload</span>
         </div>
 
         <!-- Loading -->
         <LoadingState v-if="loading" variant="block" />
 
         <!-- Error -->
-        <div v-else-if="error" class="flex items-center gap-2 text-[var(--c-accent)] text-sm p-6">
+        <div v-else-if="error" class="flex items-center gap-2 text-primary text-sm p-6">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
           </svg>
@@ -617,7 +617,7 @@ onMounted(async () => {
         </div>
 
         <!-- No place selected -->
-        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
+        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-muted-foreground select-none">
           <div class="text-center space-y-2">
             <svg class="w-10 h-10 mx-auto opacity-20" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
@@ -629,49 +629,49 @@ onMounted(async () => {
         <!-- Search results -->
         <div v-else-if="isSearchMode" class="p-4">
           <div class="flex items-center justify-between mb-3">
-            <span class="text-sm text-[var(--c-text-2)]">
+            <span class="text-sm text-foreground/80">
               <span v-if="searchLoading">Searching…</span>
-              <span v-else>{{ searchResults.length }} result{{ searchResults.length === 1 ? '' : 's' }} for "<span class="font-medium text-[var(--c-text-1)]">{{ searchQuery }}</span>"</span>
+              <span v-else>{{ searchResults.length }} result{{ searchResults.length === 1 ? '' : 's' }} for "<span class="font-medium text-foreground">{{ searchQuery }}</span>"</span>
             </span>
           </div>
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
-          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-[var(--c-text-3)]">No results found.</div>
-          <div v-else class="divide-y divide-[var(--c-border)] rounded-xl border border-[var(--c-border)] overflow-hidden">
+          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-muted-foreground">No results found.</div>
+          <div v-else class="divide-y divide-border rounded-xl border border-border overflow-hidden">
             <button v-for="r in searchResults" :key="r.path"
               @click="navigateToSearchResult(r)"
-              class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)] transition-colors text-left">
+              class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent transition-colors text-left">
               <!-- directory icon -->
-              <svg v-if="r.isDir" class="w-4 h-4 shrink-0 text-[var(--c-accent)]/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <svg v-if="r.isDir" class="w-4 h-4 shrink-0 text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
               </svg>
               <!-- file icon -->
-              <svg v-else class="w-4 h-4 shrink-0 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <svg v-else class="w-4 h-4 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
               </svg>
               <div class="flex-1 min-w-0">
-                <div class="text-sm text-[var(--c-text-1)] font-medium truncate">{{ r.name }}</div>
-                <div class="text-xs text-[var(--c-text-3)] font-mono truncate">{{ r.relativePath }}</div>
+                <div class="text-sm text-foreground font-medium truncate">{{ r.name }}</div>
+                <div class="text-xs text-muted-foreground font-mono truncate">{{ r.relativePath }}</div>
               </div>
             </button>
           </div>
         </div>
 
         <!-- Empty directory (and no uploads in progress) -->
-        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-[var(--c-text-3)] select-none">
+        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-muted-foreground select-none">
           <div class="text-center space-y-2">
             <svg class="w-10 h-10 mx-auto opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
             <p class="text-sm">This folder is empty.</p>
-            <p class="text-xs">Drag files here, or use <strong class="text-[var(--c-text-2)]">Upload</strong> / <strong class="text-[var(--c-text-2)]">New folder</strong> above.</p>
+            <p class="text-xs">Drag files here, or use <strong class="text-foreground/80">Upload</strong> / <strong class="text-foreground/80">New folder</strong> above.</p>
           </div>
         </div>
 
         <!-- Has entries (or uploads in progress) -->
         <template v-else>
           <!-- Filter bar (Cmd/Ctrl+K) -->
-          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-[var(--c-bg)] border-b border-[var(--c-border)] flex items-center gap-2">
-            <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-background border-b border-border flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
             </svg>
             <input
@@ -679,10 +679,10 @@ onMounted(async () => {
               v-model="filterQuery"
               placeholder="Filter by name…"
               @keydown.escape="closeFilter"
-              class="flex-1 bg-transparent text-sm text-[var(--c-text-1)] placeholder:text-[var(--c-text-3)] outline-none"
+              class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
-            <span v-if="filterQuery" class="text-2xs text-[var(--c-text-3)]">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
-            <button @click="closeFilter" class="text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors p-0.5">
+            <span v-if="filterQuery" class="text-2xs text-muted-foreground">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+            <button @click="closeFilter" class="text-muted-foreground hover:text-foreground transition-colors p-0.5">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -752,7 +752,7 @@ onMounted(async () => {
       <div class="fixed inset-0 z-40" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu" />
       <div
         @click.stop
-        class="fixed z-50 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl overflow-hidden py-1.5 min-w-[180px]"
+        class="fixed z-50 bg-card border border-input rounded-xl overflow-hidden py-1.5 min-w-[180px]"
         :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
       >
         <!-- Selection-dependent actions -->
@@ -836,7 +836,7 @@ onMounted(async () => {
             Extract Here
           </button>
 
-          <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
+          <div class="h-px bg-input mx-2 my-1" />
           <button @click="doDelete(); closeContextMenu()"
             class="ctx-item ctx-item-danger">
             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -844,7 +844,7 @@ onMounted(async () => {
             </svg>
             Delete
           </button>
-          <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
+          <div class="h-px bg-input mx-2 my-1" />
         </template>
 
         <!-- General actions -->
@@ -867,13 +867,13 @@ onMounted(async () => {
           Upload
         </button>
         <button v-if="clipboard && currentPath" @click="doPaste(); closeContextMenu()"
-          :class="['ctx-item', clipboard.mode === 'cut' ? 'text-[var(--c-warning)]' : 'text-[var(--c-accent)]']">
+          :class="['ctx-item', clipboard.mode === 'cut' ? 'text-warning' : 'text-primary']">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
           Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
         </button>
-        <div v-if="currentPath" class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
+        <div v-if="currentPath" class="h-px bg-input mx-2 my-1" />
         <button v-if="currentPath" @click="refresh(); closeContextMenu()" class="ctx-item">
           <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -921,13 +921,13 @@ onMounted(async () => {
 @reference "tailwindcss";
 
 .ctx-item {
-  @apply w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[var(--c-text-2)]
-         hover:bg-[var(--c-hover)] transition-colors text-left;
+  @apply w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground/80
+         hover:bg-accent transition-colors text-left;
 }
 .ctx-item-danger {
-  color: var(--c-accent);
+  color: var(--primary);
 }
 .ctx-item-danger:hover {
-  background-color: var(--c-accent-subtle);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 </style>

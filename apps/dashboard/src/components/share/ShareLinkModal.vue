@@ -2,6 +2,9 @@
 import { ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import Modal from '../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const props = defineProps<{ path: string; name: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -45,45 +48,45 @@ async function copy() {
 <template>
   <Modal panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
     <div class="p-6 space-y-4">
-      <h3 class="text-base font-semibold text-[var(--c-text-1)]">Share "{{ name }}"</h3>
+      <h3 class="text-base font-semibold text-foreground">Share "{{ name }}"</h3>
 
       <template v-if="!url">
-        <label class="flex items-center gap-2 text-sm text-[var(--c-text-2)]">
-          <input type="checkbox" v-model="usePassword" class="accent-accent" /> Password protect
+        <label class="flex items-center gap-2 text-sm text-foreground/80">
+          <input type="checkbox" v-model="usePassword" class="accent-primary" /> Password protect
         </label>
-        <input v-if="usePassword" v-model="password" type="password" class="ui-input" placeholder="Password" />
+        <Input v-if="usePassword" v-model="password" type="password" placeholder="Password" />
 
         <div>
-          <label class="block text-xs text-[var(--c-text-2)] mb-1">Expires</label>
-          <select v-model.number="expiresInDays" class="ui-input">
-            <option :value="1">24 hours</option>
-            <option :value="7">7 days</option>
-            <option :value="30">30 days</option>
-            <option :value="null">Never</option>
-          </select>
+          <label class="block text-xs text-foreground/80 mb-1">Expires</label>
+          <NativeSelect v-model.number="expiresInDays">
+            <NativeSelectOption :value="1">24 hours</NativeSelectOption>
+            <NativeSelectOption :value="7">7 days</NativeSelectOption>
+            <NativeSelectOption :value="30">30 days</NativeSelectOption>
+            <NativeSelectOption :value="null">Never</NativeSelectOption>
+          </NativeSelect>
         </div>
 
-        <label class="flex items-center gap-2 text-sm text-[var(--c-text-2)]">
-          <input type="checkbox" v-model="useLimit" class="accent-accent" /> Limit downloads
+        <label class="flex items-center gap-2 text-sm text-foreground/80">
+          <input type="checkbox" v-model="useLimit" class="accent-primary" /> Limit downloads
         </label>
-        <input v-if="useLimit" v-model.number="maxDownloads" type="number" min="1" class="ui-input" />
+        <Input v-if="useLimit" v-model.number="maxDownloads" type="number" min="1" />
 
-        <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+        <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
         <div class="flex gap-2 pt-1">
-          <button @click="create" :disabled="busy" class="btn btn-primary btn-sm">
+          <Button size="sm" @click="create" :disabled="busy">
             {{ busy ? 'Creating…' : 'Create link' }}
-          </button>
-          <button @click="emit('close')" class="btn btn-ghost btn-sm">Cancel</button>
+          </Button>
+          <Button variant="ghost" size="sm" @click="emit('close')">Cancel</Button>
         </div>
       </template>
 
       <template v-else>
-        <p class="text-xs text-[var(--c-text-3)]">Anyone with this link can access it.</p>
+        <p class="text-xs text-muted-foreground">Anyone with this link can access it.</p>
         <div class="flex gap-2">
-          <input :value="url" readonly class="ui-input font-mono text-xs" />
-          <button @click="copy" class="btn btn-outline btn-sm shrink-0">{{ copied ? 'Copied' : 'Copy' }}</button>
+          <Input :value="url" readonly class="font-mono text-xs" />
+          <Button variant="outline" size="sm" @click="copy" class="shrink-0">{{ copied ? 'Copied' : 'Copy' }}</Button>
         </div>
-        <button @click="emit('close')" class="btn btn-ghost btn-sm">Done</button>
+        <Button variant="ghost" size="sm" @click="emit('close')">Done</Button>
       </template>
     </div>
   </Modal>

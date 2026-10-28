@@ -7,6 +7,7 @@ import { trpc } from '../lib/trpc'
 import ReleaseNotes from './ReleaseNotes.vue'
 import { useConfirm } from '../lib/confirm'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+import { Button } from '@/components/ui/button'
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 type Preflight = Awaited<ReturnType<typeof trpc.update.preflight.query>>
@@ -194,12 +195,12 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Updates</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">Manage software updates for this server.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">Updates</h2>
+    <p class="text-sm text-muted-foreground mb-6">Manage software updates for this server.</p>
 
     <!-- ── Restart timeline ─────────────────────────────────────────────── -->
     <div v-if="restartStep" class="space-y-6">
-      <div class="panel-card p-6">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-6">
         <p class="eyebrow mb-6">{{ restartKind === 'update' ? 'Installing update' : restartKind === 'host' ? 'Rebooting server' : 'Restarting HSI' }}</p>
         <div class="space-y-5">
           <div v-for="step in STEPS" :key="step" class="flex items-center gap-3">
@@ -207,9 +208,9 @@ onUnmounted(() => clearInterval(timer))
             <div
               :class="[
                 'w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors',
-                stepState(step) === 'done'   ? 'bg-[var(--c-success)]/15 text-[var(--c-success)]' :
-                stepState(step) === 'active' ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]'   :
-                'bg-[var(--c-hover)] text-[var(--c-text-3)]'
+                stepState(step) === 'done'   ? 'bg-success/15 text-success' :
+                stepState(step) === 'active' ? 'bg-primary/10 text-primary'   :
+                'bg-accent text-muted-foreground'
               ]"
             >
               <!-- Done -->
@@ -225,13 +226,13 @@ onUnmounted(() => clearInterval(timer))
             <span
               :class="[
                 'text-sm transition-colors',
-                stepState(step) === 'done'   ? 'text-[var(--c-text-2)]' :
-                stepState(step) === 'active' ? 'text-[var(--c-text-1)] font-medium' :
-                'text-[var(--c-text-3)]'
+                stepState(step) === 'done'   ? 'text-foreground/80' :
+                stepState(step) === 'active' ? 'text-foreground font-medium' :
+                'text-muted-foreground'
               ]"
             >{{ stepLabel(step) }}</span>
             <!-- Countdown on done -->
-            <span v-if="step === 'done' && restartStep === 'done'" class="ml-auto text-xs text-[var(--c-text-3)] font-mono">
+            <span v-if="step === 'done' && restartStep === 'done'" class="ml-auto text-xs text-muted-foreground font-mono">
               reloading in {{ reloadCountdown }}…
             </span>
           </div>
@@ -242,28 +243,28 @@ onUnmounted(() => clearInterval(timer))
     <LoadingState v-else-if="loading" variant="compact" />
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <!-- ── Main content ─────────────────────────────────────────────────── -->
     <div v-else-if="status" class="space-y-5">
 
       <!-- Version row -->
-      <div class="panel-card p-5 flex items-center justify-between gap-6">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 flex items-center justify-between gap-6">
         <div>
           <p class="eyebrow mb-1">Current version</p>
-          <p class="font-figure text-xl text-[var(--c-text-1)]">{{ status.current }}</p>
+          <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
-          <svg class="w-4 h-4 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <svg class="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
           </svg>
           <div class="text-right">
             <p class="eyebrow mb-1">Available</p>
-            <p class="font-figure text-xl text-[var(--c-accent)]">{{ status.latest }}</p>
+            <p class="font-figure text-xl text-primary">{{ status.latest }}</p>
           </div>
         </template>
         <template v-else>
-          <div class="flex items-center gap-2 text-[var(--c-success)]">
+          <div class="flex items-center gap-2 text-success">
             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
@@ -273,11 +274,11 @@ onUnmounted(() => clearInterval(timer))
       </div>
 
       <!-- Last update result and the version it left behind -->
-      <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="panel-card p-5 space-y-2">
+      <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
-           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-danger' : 'text-[var(--c-text-2)]']">
+           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-destructive' : 'text-foreground/80']">
           {{ lastResultText(status.lastResult) }}
-          <span class="text-xs text-[var(--c-text-3)]">{{ formatDateTime(status.lastResult.at) }}</span>
+          <span class="text-xs text-muted-foreground">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
         <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-warning">
           <p>The update is complete. These application settings were not carried over, so the applications may not behave as before. Fix each one, then restart the application. Running the update again will not restore them.</p>
@@ -288,20 +289,20 @@ onUnmounted(() => clearInterval(timer))
             </li>
           </ul>
         </div>
-        <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-[var(--c-text-2)]">
+        <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-foreground/80">
           {{ previousVersionText(status.rollbackTarget, status.current, formatDay) }}
-          <code class="font-mono text-xs text-[var(--c-text-1)]">{{ rollbackCommand(status.rollbackCommand) }}</code>
+          <code class="font-mono text-xs text-foreground">{{ rollbackCommand(status.rollbackCommand) }}</code>
         </p>
       </div>
 
       <!-- Release notes -->
-      <div v-if="status.hasUpdate && status.releaseNotes" class="panel-card overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--c-border)] flex items-center justify-between gap-3">
+      <div v-if="status.hasUpdate && status.releaseNotes" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden overflow-hidden">
+        <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
           <p class="eyebrow">What's new in {{ status.latest }}</p>
           <a
             :href="`${status.repoUrl}/releases/tag/${status.latest}`"
             target="_blank" rel="noopener noreferrer"
-            class="text-xs text-[var(--c-accent)] hover:underline inline-flex items-center gap-1 shrink-0"
+            class="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"
           >
             View on GitHub
             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -315,49 +316,49 @@ onUnmounted(() => clearInterval(timer))
       </div>
 
       <!-- Pre-flight checks -->
-      <div v-if="status.hasUpdate && preflight" class="panel-card overflow-hidden">
-        <div class="px-4 py-3 border-b border-[var(--c-border)]">
+      <div v-if="status.hasUpdate && preflight" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden overflow-hidden">
+        <div class="px-4 py-3 border-b border-border">
           <p class="eyebrow">Pre-flight checks</p>
         </div>
-        <ul class="divide-y divide-[var(--c-border)]">
+        <ul class="divide-y divide-border">
           <li v-for="c in preflight.checks" :key="c.id" class="px-4 py-2.5 flex items-center gap-3">
             <span
               class="w-2 h-2 rounded-full shrink-0"
-              :class="c.status === 'ok' ? 'bg-[var(--c-success)]' : c.status === 'warn' ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-danger)]'"
+              :class="c.status === 'ok' ? 'bg-success' : c.status === 'warn' ? 'bg-warning' : 'bg-destructive'"
             />
-            <span class="text-sm text-[var(--c-text-1)] flex-1 min-w-0">{{ c.label }}</span>
-            <span v-if="c.detail" class="text-xs text-[var(--c-text-3)] truncate">{{ c.detail }}</span>
+            <span class="text-sm text-foreground flex-1 min-w-0">{{ c.label }}</span>
+            <span v-if="c.detail" class="text-xs text-muted-foreground truncate">{{ c.detail }}</span>
           </li>
         </ul>
       </div>
 
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
-        <p class="text-xs text-[var(--c-text-3)]">
+        <p class="text-xs text-muted-foreground">
           <template v-if="preflight && !preflight.canApply">A pre-flight check is failing: resolve it before installing.</template>
           <template v-else>The server will restart after installation (~30s downtime).</template>
         </p>
-        <button
+        <Button size="sm"
           @click="applyUpdate"
           :disabled="applying || status.pending || (preflight ? !preflight.canApply : false)"
-          class="btn btn-primary btn-sm shrink-0"
+          class="shrink-0"
         >
           <LoadingSpinner v-if="applying || status.pending" />
           {{ applying || status.pending ? 'Scheduling…' : 'Install update' }}
-        </button>
+        </Button>
       </div>
 
       <!-- Footer: last checked + manual check -->
-      <div class="flex items-center justify-between pt-1 border-t border-[var(--c-border)]">
+      <div class="flex items-center justify-between pt-1 border-t border-border">
         <div>
-          <p class="text-xs text-[var(--c-text-3)]">
+          <p class="text-xs text-muted-foreground">
             <template v-if="status.checkedAt">Last checked {{ formatDateTime(status.checkedAt) }}</template>
             <template v-else>Never checked (runs daily via systemd timer)</template>
           </p>
           <a
             :href="`${status.repoUrl}/releases`"
             target="_blank" rel="noopener noreferrer"
-            class="text-xs text-[var(--c-accent)] hover:underline inline-flex items-center gap-1 mt-0.5"
+            class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
           >
             View all releases on GitHub
             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -365,10 +366,9 @@ onUnmounted(() => clearInterval(timer))
             </svg>
           </a>
         </div>
-        <button
+        <Button variant="outline" size="xs"
           @click="checkNow"
           :disabled="checking || applying || !!status.pending"
-          class="btn btn-outline btn-xs"
         >
           <LoadingSpinner v-if="checking" />
           <svg
@@ -378,43 +378,43 @@ onUnmounted(() => clearInterval(timer))
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
           {{ checking ? 'Checking…' : 'Check now' }}
-        </button>
+        </Button>
       </div>
 
-      <div class="panel-card p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-[var(--c-text-1)]">Restart HSI</p>
-          <p class="mt-1 text-xs leading-5 text-[var(--c-text-3)]">Restart the application backend without rebooting the host server.</p>
+          <p class="text-sm font-medium text-foreground">Restart HSI</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the application backend without rebooting the host server.</p>
         </div>
-        <button
+        <Button variant="outline" size="sm"
           @click="restartSoftware"
           :disabled="restarting || applying || !!status.pending"
-          class="btn btn-outline btn-sm shrink-0"
+          class="shrink-0"
         >
           <LoadingSpinner v-if="restarting" />
           <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.93 4.93A10 10 0 102 12h3m-3 0V7m0 5h5"/>
           </svg>
           {{ restarting ? 'Restarting…' : 'Restart HSI' }}
-        </button>
+        </Button>
       </div>
 
-      <div class="panel-card p-5 border-[var(--c-danger)]/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 border-destructive/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-[var(--c-text-1)]">Reboot server</p>
-          <p class="mt-1 text-xs leading-5 text-[var(--c-text-3)]">Restart the physical host and every service running on it.</p>
+          <p class="text-sm font-medium text-foreground">Reboot server</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the physical host and every service running on it.</p>
         </div>
-        <button
+        <Button variant="destructive" size="sm"
           @click="rebootHost"
           :disabled="rebooting || restarting || applying || !!status.pending"
-          class="btn btn-danger btn-sm shrink-0"
+          class="shrink-0"
         >
           <LoadingSpinner v-if="rebooting" />
           <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v9m6.36-6.36a9 9 0 11-12.72 0"/>
           </svg>
           {{ rebooting ? 'Rebooting…' : 'Reboot server' }}
-        </button>
+        </Button>
       </div>
 
     </div>

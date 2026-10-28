@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
+import { Input } from '@/components/ui/input'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Crumb = { label: string; path: string; clickable: boolean }
@@ -38,7 +39,7 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 const searchOpen  = ref(false)
-const searchInput = ref<HTMLInputElement | null>(null)
+const searchInput = ref<InstanceType<typeof Input> | null>(null)
 
 function submitSearch() {
   if (searchQuery.value.trim()) emit('search', searchQuery.value.trim())
@@ -61,7 +62,7 @@ const newMenuOpen = ref(false)
 
 <template>
   <div
-    class="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)] flex-shrink-0 h-11"
+    class="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-muted flex-shrink-0 h-11"
     @click.stop
   >
     <button v-if="newMenuOpen" class="fixed inset-0 z-20" aria-label="Close menu" @click="newMenuOpen = false" />
@@ -69,7 +70,7 @@ const newMenuOpen = ref(false)
     <!-- Mobile: places sidebar toggle -->
     <button @click="emit('toggleSidebar')" title="Places" aria-label="Toggle places sidebar"
       class="sm:hidden p-1.5 rounded-lg flex-shrink-0 transition-colors"
-      :class="sidebarOpen ? 'text-[var(--c-accent)] bg-[var(--c-accent-subtle)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]'">
+      :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
@@ -77,7 +78,7 @@ const newMenuOpen = ref(false)
 
     <!-- Back / Up -->
     <button v-if="canGoUp" @click="emit('goUp')" title="Go up" aria-label="Go to parent folder"
-      class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors flex-shrink-0">
+      class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex-shrink-0">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
       </svg>
@@ -86,12 +87,12 @@ const newMenuOpen = ref(false)
     <!-- Breadcrumb -->
     <nav v-if="currentPath" class="flex items-center gap-0.5 text-sm flex-1 min-w-0 overflow-x-auto">
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
-        <span v-if="i > 0" class="text-[var(--c-text-3)] select-none mx-0.5 flex-shrink-0">›</span>
+        <span v-if="i > 0" class="text-muted-foreground select-none mx-0.5 flex-shrink-0">›</span>
         <button v-if="crumb.clickable" @click="emit('navigate', crumb.path)"
-          class="px-1 py-0.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] rounded-sm hover:bg-[var(--c-hover)] transition-colors whitespace-nowrap flex-shrink-0">
+          class="px-1 py-0.5 text-muted-foreground hover:text-foreground rounded-sm hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
           {{ crumb.label }}
         </button>
-        <span v-else class="px-1 text-[var(--c-text-1)] whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>
+        <span v-else class="px-1 text-foreground whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>
       </template>
     </nav>
     <div v-else class="flex-1" />
@@ -101,14 +102,14 @@ const newMenuOpen = ref(false)
 
       <!-- Selection actions -->
       <template v-if="selectedCount > 0">
-        <span class="text-xs tabular-nums text-[var(--c-text-3)] select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
+        <span class="text-xs tabular-nums text-muted-foreground select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
         <button @click="emit('clearSelection')" title="Clear selection" aria-label="Clear selection"
-          class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+          class="p-1 rounded-sm text-muted-foreground hover:text-foreground/80 transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
-        <div class="w-px h-3.5 bg-[var(--c-border-strong)] mx-0.5 flex-shrink-0" />
+        <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
 
         <button @click="emit('copy')" title="Copy" aria-label="Copy selection" class="sel-btn">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -149,14 +150,14 @@ const newMenuOpen = ref(false)
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
         </button>
-        <div class="w-px h-3.5 bg-[var(--c-border-strong)] mx-0.5 flex-shrink-0" />
+        <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
       </template>
 
       <!-- New (folder / file) -->
       <div v-if="currentPath" class="relative">
         <button @click.stop="newMenuOpen = !newMenuOpen" title="New" aria-label="Create new folder or file" :aria-expanded="newMenuOpen"
           :class="['flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-xs',
-            newMenuOpen ? 'bg-[var(--c-hover)] text-[var(--c-text-1)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]']">
+            newMenuOpen ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent']">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
@@ -167,16 +168,16 @@ const newMenuOpen = ref(false)
         </button>
         <Transition name="ui-pop">
           <div v-if="newMenuOpen"
-            class="absolute left-0 top-full z-30 mt-1.5 min-w-[160px] overflow-hidden rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] shadow-[var(--shadow-md)]">
+            class="absolute left-0 top-full z-30 mt-1.5 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
             <button @click="emit('createFolder'); newMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-[var(--c-text-2)] transition-colors hover:bg-[var(--c-hover)]">
+              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
               <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
               </svg>
               New folder
             </button>
             <button @click="emit('createFile'); newMenuOpen = false"
-              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-[var(--c-text-2)] transition-colors hover:bg-[var(--c-hover)]">
+              class="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-accent">
               <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
@@ -188,7 +189,7 @@ const newMenuOpen = ref(false)
 
       <!-- Upload -->
       <button v-if="currentPath" @click="emit('uploadClick')" title="Upload files" aria-label="Upload files"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors text-xs">
+        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-xs">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
@@ -199,8 +200,8 @@ const newMenuOpen = ref(false)
       <button v-if="clipboard && currentPath" @click.stop="emit('paste')" title="Paste" aria-label="Paste files"
         :class="['flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors',
           clipboard.mode === 'cut'
-            ? 'bg-[var(--c-warning)]/15 text-[var(--c-warning)] hover:bg-[var(--c-warning)]/25'
-            : 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)] hover:opacity-80']">
+            ? 'bg-warning/15 text-warning hover:bg-warning/25'
+            : 'bg-primary/10 text-primary hover:opacity-80']">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
@@ -208,26 +209,26 @@ const newMenuOpen = ref(false)
       </button>
 
       <!-- Divider -->
-      <div v-if="currentPath" class="w-px h-4 bg-[var(--c-border-strong)] mx-1" />
+      <div v-if="currentPath" class="w-px h-4 bg-input mx-1" />
 
       <!-- Refresh -->
       <button v-if="currentPath" @click="emit('refresh')" title="Refresh" aria-label="Refresh folder"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+        class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
       </button>
 
       <!-- View toggle -->
-      <div class="flex items-center gap-0.5 bg-[var(--c-surface-deep)] rounded-lg p-0.5">
+      <div class="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
         <button @click="emit('update:viewMode', 'list')" title="List view" aria-label="List view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-[var(--c-surface)] text-[var(--c-text-2)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
+          :class="['p-1.5 rounded-md transition-colors', viewMode === 'list' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
           </svg>
         </button>
         <button @click="emit('update:viewMode', 'grid')" title="Grid view" aria-label="Grid view"
-          :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-[var(--c-surface)] text-[var(--c-text-2)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
+          :class="['p-1.5 rounded-md transition-colors', viewMode === 'grid' ? 'bg-card text-foreground/80 shadow-sm' : 'text-muted-foreground hover:text-foreground/80']">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
           </svg>
@@ -237,28 +238,28 @@ const newMenuOpen = ref(false)
       <!-- Search: collapsed to an icon until opened, so it doesn't permanently
            claim ~150px from the breadcrumb (tight in a narrow desktop-mode
            window, tighter still on a phone). -->
-      <div v-if="currentPath" class="flex items-center ml-1 border-l border-[var(--c-border)] pl-2">
+      <div v-if="currentPath" class="flex items-center ml-1 border-l border-border pl-2">
         <button v-if="!searchOpen" @click="openSearch" title="Search" aria-label="Search this folder"
-          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+          class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
         </button>
         <div v-else class="relative">
-          <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
-          <input
+          <Input
             ref="searchInput"
             v-model="searchQuery"
             @keydown.enter="submitSearch"
             @keydown.escape="clearSearch"
             type="text"
             placeholder="Search…"
-            class="ui-input pl-6 pr-6 py-1 text-xs w-28 sm:w-36"
+            class="pl-6 pr-6 py-1 text-xs w-28 sm:w-36"
           />
           <button @click="clearSearch" title="Close search" aria-label="Close search"
-            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -273,10 +274,10 @@ const newMenuOpen = ref(false)
 @reference "tailwindcss";
 
 .sel-btn {
-  @apply p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors;
+  @apply p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors;
 }
 .sel-btn-danger:hover {
-  background-color: var(--c-accent-subtle);
-  color: var(--c-accent);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
 }
 </style>

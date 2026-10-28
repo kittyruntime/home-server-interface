@@ -10,6 +10,8 @@ import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
 import { catalogVersion, filterChips, keptFilter, visibleApps } from '../../lib/store'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -47,11 +49,11 @@ function cardState(a: Entry): CardState {
   }
 }
 const STATE_META: Record<CardState, { label: string; dot: string; text: string }> = {
-  none:       { label: 'Not installed', dot: '',                                      text: 'text-[var(--c-text-3)]' },
-  installing: { label: 'Installing…',   dot: 'bg-[var(--c-warning)] animate-pulse',   text: 'text-[var(--c-warning)]' },
-  running:    { label: 'Running',       dot: 'bg-[var(--c-success)]',                 text: 'text-[var(--c-success)]' },
-  stopped:    { label: 'Stopped',       dot: 'bg-[var(--c-text-3)]',                  text: 'text-[var(--c-text-3)]' },
-  error:      { label: 'Error',         dot: 'bg-[var(--c-accent)]',                  text: 'text-[var(--c-accent)]' },
+  none:       { label: 'Not installed', dot: '',                                      text: 'text-muted-foreground' },
+  installing: { label: 'Installing…',   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
+  running:    { label: 'Running',       dot: 'bg-success',                 text: 'text-success' },
+  stopped:    { label: 'Stopped',       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
+  error:      { label: 'Error',         dot: 'bg-primary',                  text: 'text-primary' },
 }
 
 function openWizard(a: Entry) { selected.value = a }
@@ -129,7 +131,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
   <DockerUnavailable v-if="!dockerReady()" />
   <div v-else ref="scroller" class="h-full overflow-y-auto p-4 sm:p-6">
     <div v-if="selected">
-      <button class="btn btn-ghost btn-sm mb-3" @click="selected = null">← Back</button>
+      <Button variant="ghost" size="sm" class="mb-3" @click="selected = null">← Back</Button>
       <AppInstallWizard :app-id="selected.id" @installed="selected = null; load()" @close="selected = null" />
     </div>
 
@@ -149,11 +151,11 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
     <template v-else>
       <!-- Header -->
       <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">App Store</h2>
-        <input v-model="search" placeholder="Search apps…" aria-label="Search apps" class="ui-input max-w-xs" />
+        <h2 class="text-lg font-semibold text-foreground">App Store</h2>
+        <Input v-model="search" placeholder="Search apps…" aria-label="Search apps" class="max-w-xs" />
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
-      <p v-if="!loading" class="text-xs text-[var(--c-text-3)] mb-4">
+      <p v-if="!loading" class="text-xs text-muted-foreground mb-4">
         {{ apps.length }} apps · {{ installedCount }} installed
       </p>
 
@@ -161,7 +163,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       <div v-if="!loading" class="flex gap-2 mb-4 flex-wrap">
         <button v-for="c in chips" :key="c.key" @click="category = c.key"
           :aria-pressed="category === c.key"
-          :class="['btn btn-xs', category === c.key ? 'btn-primary' : 'btn-outline', c.key === 'Updates' && category !== c.key ? 'text-[var(--c-warning)]' : '']">
+          :class="['btn btn-xs', category === c.key ? 'btn-primary' : 'btn-outline', c.key === 'Updates' && category !== c.key ? 'text-warning' : '']">
           {{ c.label }} <span class="opacity-60 tabular-nums">{{ c.count }}</span>
         </button>
       </div>
@@ -169,9 +171,9 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       <LoadingState v-if="loading" />
 
       <!-- No results -->
-      <div v-else-if="filtered.length === 0" class="text-center py-16 text-[var(--c-text-3)]">
+      <div v-else-if="filtered.length === 0" class="text-center py-16 text-muted-foreground">
         <p class="text-sm">No apps match “{{ search }}”.</p>
-        <button class="btn btn-ghost btn-sm mt-2" @click="search = ''; category = 'All'">Clear filters</button>
+        <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">Clear filters</Button>
       </div>
 
       <!-- Grid -->
@@ -180,7 +182,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
              over the card; the action button sits above it. -->
         <div
           v-for="a in filtered" :key="a.id"
-          class="panel-card relative p-4 flex flex-col gap-3 transition-colors hover:border-[var(--c-border-strong)] has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-[var(--c-accent)]"
+          class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative p-4 flex flex-col gap-3 transition-colors hover:border-input has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-primary"
         >
           <!-- Identity -->
           <div class="flex gap-3 items-start min-w-0">
@@ -190,30 +192,30 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               <div class="flex items-center gap-2">
                 <button
                   type="button" :data-card="a.id"
-                  class="text-sm font-medium text-[var(--c-text-1)] truncate text-left cursor-pointer focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
+                  class="text-sm font-medium text-foreground truncate text-left cursor-pointer focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
                   @click="openDetail(a)"
                 >{{ a.name }}</button>
-                <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] shrink-0">{{ a.category }}</span>
+                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ a.category }}</span>
               </div>
-              <p class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
+              <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>
           </div>
 
           <!-- Update available (#26) -->
-          <p v-if="a.installedApp?.update" class="text-xs text-[var(--c-warning)]">{{ updateText(a.installedApp.update) }}</p>
-          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
+          <p v-if="a.installedApp?.update" class="text-xs text-warning">{{ updateText(a.installedApp.update) }}</p>
+          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
 
           <!-- State + one action -->
           <div class="flex items-center justify-between gap-2 mt-auto pt-1">
             <span class="inline-flex items-center gap-1.5 text-xs min-w-0" :class="STATE_META[cardState(a)].text">
               <span v-if="STATE_META[cardState(a)].dot" class="w-1.5 h-1.5 rounded-full shrink-0" :class="STATE_META[cardState(a)].dot" />
               {{ STATE_META[cardState(a)].label }}
-              <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-[var(--c-text-3)] font-mono truncate">· {{ catalogVersion(a.image) }}</span>
+              <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-muted-foreground font-mono truncate">· {{ catalogVersion(a.image) }}</span>
             </span>
 
-            <button v-if="cardState(a) === 'none'" class="btn btn-primary btn-xs relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">Install</button>
-            <button v-else-if="a.installedApp?.update" class="btn btn-primary btn-xs relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">Update…</button>
-            <button v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="btn btn-outline btn-xs relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">Open ↗</button>
+            <Button size="xs" v-if="cardState(a) === 'none'" class="relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">Install</Button>
+            <Button size="xs" v-else-if="a.installedApp?.update" class="relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">Update…</Button>
+            <Button variant="outline" size="xs" v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">Open ↗</Button>
           </div>
         </div>
       </div>

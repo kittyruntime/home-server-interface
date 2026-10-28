@@ -69,20 +69,20 @@ function statusLabel(t: Transfer): string {
 function statusTextClass(t: Transfer): string {
   switch (t.status) {
     case 'done':      return 'text-success'
-    case 'error':     return 'text-danger'
-    case 'cancelled': return 'text-[var(--c-text-3)]'
-    case 'paused':    return 'text-[var(--c-warning)]'
-    default:          return 'text-[var(--c-text-3)]'
+    case 'error':     return 'text-destructive'
+    case 'cancelled': return 'text-muted-foreground'
+    case 'paused':    return 'text-warning'
+    default:          return 'text-muted-foreground'
   }
 }
 
 function iconClass(t: Transfer): string {
   switch (t.status) {
     case 'done':      return 'bg-success/10 text-success'
-    case 'error':     return 'bg-danger/10 text-danger'
-    case 'cancelled': return 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'
-    case 'paused':    return 'bg-[var(--c-warning)]/10 text-[var(--c-warning)]'
-    default:          return 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
+    case 'error':     return 'bg-destructive/10 text-destructive'
+    case 'cancelled': return 'bg-muted text-muted-foreground'
+    case 'paused':    return 'bg-warning/10 text-warning'
+    default:          return 'bg-primary/10 text-primary'
   }
 }
 
@@ -131,13 +131,13 @@ function handleReselectPick(e: Event) {
 <template>
   <div
     v-if="uploads.tasks.value.length > 0"
-    class="shrink-0 border-t border-[var(--c-border)] bg-[var(--c-surface-alt)]"
+    class="shrink-0 border-t border-border bg-muted"
   >
     <!-- Header -->
     <div class="flex items-center gap-3 px-3.5 py-2">
       <button
         @click="collapsed = !collapsed"
-        class="flex items-center gap-1.5 text-xs font-medium text-[var(--c-text-2)] hover:text-[var(--c-text-1)] transition-colors shrink-0"
+        class="flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors shrink-0"
       >
         <svg class="w-3 h-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
@@ -146,23 +146,23 @@ function handleReselectPick(e: Event) {
       </button>
 
       <!-- Mini overall progress bar -->
-      <div v-if="activeCount > 0" class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-        <div v-if="overallPct !== null" class="h-full bg-[var(--c-accent)] rounded-full transition-all" :style="{ width: overallPct + '%' }" />
-        <div v-else class="h-full w-1/3 bg-[var(--c-accent)] rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
+      <div v-if="activeCount > 0" class="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+        <div v-if="overallPct !== null" class="h-full bg-primary rounded-full transition-all" :style="{ width: overallPct + '%' }" />
+        <div v-else class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
       </div>
       <div v-else class="flex-1" />
 
       <button
         v-if="hasTerminal"
         @click="clearFinished"
-        class="text-2xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors uppercase tracking-caps shrink-0"
+        class="text-2xs text-muted-foreground hover:text-foreground/80 transition-colors uppercase tracking-caps shrink-0"
       >
         Clear completed
       </button>
     </div>
 
     <!-- Body -->
-    <div v-if="!collapsed" class="max-h-56 overflow-y-auto border-t border-[var(--c-border)] divide-y divide-[var(--c-border)]">
+    <div v-if="!collapsed" class="max-h-56 overflow-y-auto border-t border-border divide-y divide-border">
       <div v-for="t in reversedTasks" :key="t.id" class="px-3.5 py-2.5">
         <div class="flex items-center gap-2.5 min-w-0">
           <!-- Icon -->
@@ -187,15 +187,15 @@ function handleReselectPick(e: Event) {
           <!-- Name + status + progress -->
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2">
-              <span class="text-xs text-[var(--c-text-1)] truncate" :title="t.name">{{ t.name }}</span>
+              <span class="text-xs text-foreground truncate" :title="t.name">{{ t.name }}</span>
               <span class="text-2xs tabular-nums shrink-0" :class="statusTextClass(t)">{{ statusLabel(t) }}</span>
             </div>
 
             <!-- Determinate bar (uploads: sentBytes/totalBytes) -->
             <div v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
-              class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+              class="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all"
-                :class="t.status === 'paused' ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-accent)]'"
+                :class="t.status === 'paused' ? 'bg-warning' : 'bg-primary'"
                 :style="{ width: pct(t) + '%' }" />
             </div>
 
@@ -206,18 +206,18 @@ function handleReselectPick(e: Event) {
 
             <!-- Indeterminate bar (copy/move in progress) -->
             <div v-else-if="t.kind !== 'upload' && t.status === 'running'"
-              class="mt-1.5 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
-              <div class="h-full w-1/3 bg-[var(--c-accent)] rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
+              class="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+              <div class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
             </div>
 
             <!-- Speed (uploads only) -->
             <div v-if="t.kind === 'upload' && t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0"
-              class="text-2xs text-[var(--c-text-3)] mt-0.5 tabular-nums">
+              class="text-2xs text-muted-foreground mt-0.5 tabular-nums">
               {{ speed(t.bytesPerSec ?? 0) }}
             </div>
 
             <!-- Full error, never truncated -->
-            <div v-if="t.status === 'error' && t.error" class="text-2xs text-danger mt-1 whitespace-pre-wrap break-words">
+            <div v-if="t.status === 'error' && t.error" class="text-2xs text-destructive mt-1 whitespace-pre-wrap break-words">
               {{ t.error }}
             </div>
           </div>
@@ -225,7 +225,7 @@ function handleReselectPick(e: Event) {
           <!-- Actions -->
           <div class="flex gap-0.5 shrink-0">
             <button v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
-              class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+              class="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
               <svg v-if="t.status === 'paused'" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>
@@ -234,17 +234,17 @@ function handleReselectPick(e: Event) {
               </svg>
             </button>
             <button v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Cancel"
-              class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-danger hover:bg-danger/10 transition-colors">
+              class="p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="4" y="4" width="16" height="16" rx="2"/>
               </svg>
             </button>
             <button v-if="canRetry(t)" @click="retryOrReselect(t)"
-              class="px-1.5 py-0.5 rounded-sm text-2xs font-medium text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors">
+              class="px-1.5 py-0.5 rounded-sm text-2xs font-medium text-primary hover:bg-primary/10 transition-colors">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </button>
             <button v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
-              class="p-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+              class="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>

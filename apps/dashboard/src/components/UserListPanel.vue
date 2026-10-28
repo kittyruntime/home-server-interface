@@ -12,6 +12,9 @@ import SortableHeader from './ui/SortableHeader.vue'
 import SearchInput from './ui/SearchInput.vue'
 import EmptyState from './ui/EmptyState.vue'
 import { usePagination } from '../lib/usePagination'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type User = {
   id: string
@@ -164,64 +167,64 @@ onMounted(load)
       <!-- Header -->
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Users</h2>
-          <p v-if="!loading && !loadError" class="text-xs text-[var(--c-text-3)] mt-0.5">
+          <h2 class="text-lg font-semibold text-foreground">Users</h2>
+          <p v-if="!loading && !loadError" class="text-xs text-muted-foreground mt-0.5">
             {{ filteredUsers.length }} of {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
           </p>
         </div>
-        <button
+        <Button size="xs"
           v-if="isUserManager && !addingUser"
           @click="openAdd"
-          class="btn btn-primary btn-xs shrink-0"
+          class="shrink-0"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
           Add user
-        </button>
+        </Button>
       </div>
 
       <!-- Search -->
       <SearchInput v-if="!loading && !loadError" v-model="search" placeholder="Search by username or display name…" class="max-w-sm" />
 
       <!-- Add user form -->
-      <div v-if="addingUser" class="border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] rounded-xl p-4 space-y-3">
-        <h4 class="text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">New user</h4>
+      <div v-if="addingUser" class="border border-input bg-muted rounded-xl p-4 space-y-3">
+        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">New user</h4>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Username <span class="text-[var(--c-accent)]">*</span></label>
-            <input v-model="newUser.username" placeholder="johndoe" autofocus class="ui-input"/>
+            <label class="block text-xs text-muted-foreground mb-1">Username <span class="text-primary">*</span></label>
+            <Input v-model="newUser.username" placeholder="johndoe" autofocus/>
             <p class="text-2xs mt-1 leading-relaxed"
-              :class="newUser.username && !usernameValid ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-3)]'">
+              :class="newUser.username && !usernameValid ? 'text-destructive' : 'text-muted-foreground'">
               Lowercase letters, digits, - or _ (start with a letter or _). Also used for the Linux / SMB account.
             </p>
           </div>
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Display name</label>
-            <input v-model="newUser.displayName" placeholder="John Doe" class="ui-input"/>
+            <label class="block text-xs text-muted-foreground mb-1">Display name</label>
+            <Input v-model="newUser.displayName" placeholder="John Doe"/>
           </div>
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Password <span class="text-[var(--c-accent)]">*</span></label>
-            <input v-model="newUser.password" type="password" placeholder="Min. 6 chars" class="ui-input"/>
+            <label class="block text-xs text-muted-foreground mb-1">Password <span class="text-primary">*</span></label>
+            <Input v-model="newUser.password" type="password" placeholder="Min. 6 chars"/>
           </div>
           <div>
-            <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm password <span class="text-[var(--c-accent)]">*</span></label>
-            <input v-model="newUser.confirmPassword" type="password" placeholder="Repeat" class="ui-input"/>
+            <label class="block text-xs text-muted-foreground mb-1">Confirm password <span class="text-primary">*</span></label>
+            <Input v-model="newUser.confirmPassword" type="password" placeholder="Repeat"/>
           </div>
         </div>
 
-        <p v-if="addError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ addError }}</p>
+        <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
 
         <div class="flex items-center gap-2 pt-1">
-          <button
+          <Button size="sm"
             @click="submitAdd"
             :disabled="addLoading || !usernameValid || !newUser.password"
-            class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            class="disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {{ addLoading ? 'Creating…' : 'Create' }}
-          </button>
-          <button @click="cancelAdd" class="btn btn-ghost btn-sm">Cancel</button>
+          </Button>
+          <Button variant="ghost" size="sm" @click="cancelAdd">Cancel</Button>
         </div>
       </div>
 
@@ -229,7 +232,7 @@ onMounted(load)
       <LoadingState v-if="loading && !users.length" variant="block" />
 
       <!-- Error -->
-      <div v-else-if="loadError" class="flex items-center gap-2 text-[var(--c-accent)] text-sm py-4">
+      <div v-else-if="loadError" class="flex items-center gap-2 text-primary text-sm py-4">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
         </svg>
@@ -238,26 +241,26 @@ onMounted(load)
 
       <!-- Table -->
       <template v-else>
-        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-[var(--c-text-1)]">{{user.username}}</strong><span v-if="user.isAdmin" class="badge badge-admin">admin</span><span v-if="user.isUserManager" class="badge badge-violet">manager</span></div><p v-if="user.displayName" class="truncate text-xs text-[var(--c-text-3)]">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-[var(--c-text-3)]">›</span></div><div class="mt-2 flex flex-wrap gap-1"><span v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id" class="badge badge-muted">{{g.name}}</span></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><button class="btn btn-outline btn-sm" @click="search=''">Clear search</button></template></EmptyState></div>
-        <div class="panel-card hidden sm:block">
+        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">Clear search</Button></template></EmptyState></div>
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden hidden sm:block">
           <table class="w-full text-sm">
             <thead>
-              <tr class="bg-[var(--c-surface-alt)] border-b border-[var(--c-border)]">
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
+              <tr class="bg-muted border-b border-border">
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
                   <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">User</SortableHeader>
                 </th>
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Groups</th>
-                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] hidden sm:table-cell">
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Groups</th>
+                <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
                   <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
                 </th>
                 <th v-if="isUserManager" class="px-4 py-3 w-16"></th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-[var(--c-border)]">
+            <tbody class="divide-y divide-border">
               <tr
                 v-for="user in paged"
                 :key="user.id"
-                class="bg-[var(--c-bg)] hover:bg-[var(--c-surface)] transition-colors"
+                class="bg-background hover:bg-card transition-colors"
               >
                 <!-- User -->
                 <td class="px-5 py-3.5">
@@ -267,14 +270,14 @@ onMounted(load)
                     </div>
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="font-medium text-[var(--c-text-1)]">{{ user.username }}</span>
+                        <span class="font-medium text-foreground">{{ user.username }}</span>
                         <span v-if="user.id === currentUserId"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-[var(--c-border-strong)] text-[var(--c-text-3)]">you</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-input text-muted-foreground">you</span>
                         <span v-if="user.isAdmin"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
-                        <span v-if="user.isUserManager" class="badge badge-violet">manager</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
+                        <Badge variant="secondary" v-if="user.isUserManager">manager</Badge>
                       </div>
-                      <div v-if="user.displayName" class="text-xs text-[var(--c-text-3)] truncate mt-0.5">{{ user.displayName }}</div>
+                      <div v-if="user.displayName" class="text-xs text-muted-foreground truncate mt-0.5">{{ user.displayName }}</div>
                     </div>
                   </div>
                 </td>
@@ -282,16 +285,15 @@ onMounted(load)
                 <!-- Groups -->
                 <td class="px-5 py-3.5">
                   <div class="flex flex-wrap gap-1">
-                    <span v-for="g in groups.filter(g => g.members.some(m => m.userId === user.id))" :key="g.id"
-                      class="badge badge-violet">
+                    <Badge variant="secondary" v-for="g in groups.filter(g => g.members.some(m => m.userId === user.id))" :key="g.id">
                       {{ g.name }}
-                    </span>
-                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-[var(--c-text-3)] text-xs">-</span>
+                    </Badge>
+                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-muted-foreground text-xs">-</span>
                   </div>
                 </td>
 
                 <!-- Created -->
-                <td class="px-5 py-3.5 hidden sm:table-cell text-[var(--c-text-3)] text-xs tabular-nums">
+                <td class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
                   {{ formatDay(user.createdAt) }}
                 </td>
 
@@ -300,7 +302,7 @@ onMounted(load)
                   <button
                     @click="openDetail(user)"
                     title="Edit user"
-                    class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+                    class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
@@ -311,9 +313,9 @@ onMounted(load)
 
               <!-- Empty state -->
               <tr v-if="filteredUsers.length === 0">
-                <td :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-[var(--c-text-3)]">
+                <td :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-muted-foreground">
                   <span>{{ users.length === 0 ? 'No users yet.' : 'No users match your search.' }}</span>
-                  <button v-if="users.length && search" class="btn btn-outline btn-xs ml-2" @click="search = ''">Clear search</button>
+                  <Button variant="outline" size="xs" v-if="users.length && search" class="ml-2" @click="search = ''">Clear search</Button>
                 </td>
               </tr>
             </tbody>

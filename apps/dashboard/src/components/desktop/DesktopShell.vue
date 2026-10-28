@@ -87,7 +87,7 @@ function isFocused(id: string): boolean {
 <template>
   <div
     ref="rootRef"
-    class="relative w-full h-full overflow-hidden bg-[var(--c-bg)]"
+    class="relative w-full h-full overflow-hidden bg-background"
     :style="backgroundStyle"
     @contextmenu.prevent="onContextmenuEmpty"
   >
@@ -110,14 +110,14 @@ function isFocused(id: string): boolean {
       <template v-if="ctxMenu">
         <div class="fixed inset-0 z-40" @click="closeCtx" @contextmenu.prevent="closeCtx" />
         <div
-          class="fixed z-50 bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-xl overflow-hidden py-1.5 min-w-[180px]"
+          class="fixed z-50 bg-card border border-input rounded-xl overflow-hidden py-1.5 min-w-[180px]"
           :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
           @click.stop
         >
           <template v-if="ctxMenu.kind === 'empty'">
             <button class="ctx-item" @click="openWallpaperPicker">Change wallpaper…</button>
-            <div class="h-px bg-[var(--c-border-strong)] mx-2 my-1" />
-            <p class="px-3 py-1 text-2xs uppercase tracking-caps text-[var(--c-text-3)]">Add widget</p>
+            <div class="h-px bg-input mx-2 my-1" />
+            <p class="px-3 py-1 text-2xs uppercase tracking-caps text-muted-foreground">Add widget</p>
             <button
               v-for="cat in widgetsRef?.addableTypes ?? []" :key="cat.type"
               class="ctx-item"
@@ -144,13 +144,13 @@ function isFocused(id: string): boolean {
 @reference "tailwindcss";
 
 .ctx-item {
-  @apply w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[var(--c-text-2)]
-         hover:bg-[var(--c-hover)] transition-colors text-left;
+  @apply w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground/80
+         hover:bg-accent transition-colors text-left;
 }
 .ctx-item-danger {
-  color: var(--c-accent);
+  color: var(--primary);
 }
 .ctx-item-danger:hover {
-  background-color: var(--c-accent-subtle);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 </style>

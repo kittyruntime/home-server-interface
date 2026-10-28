@@ -25,26 +25,26 @@ const active = ref<SectionId>('overview')
   <div class="flex flex-col sm:flex-row h-full">
 
     <!-- Mobile picker -->
-    <div class="sm:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
-      <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
+    <div class="sm:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
+      <select v-model="active" class="w-full bg-transparent text-sm text-foreground/80 focus:outline-none">
         <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
       </select>
     </div>
 
     <!-- Left nav -->
-    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-border bg-sidebar py-5 px-2 flex-col gap-0.5 overflow-y-auto">
       <div v-for="item in nav" :key="item.id" class="relative flex items-center">
         <span
           v-if="active === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[var(--c-accent)] rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
         />
         <button
           @click="active = item.id"
           :class="[
             'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
             active === item.id
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-              : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           <!-- Overview -->

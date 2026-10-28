@@ -252,9 +252,9 @@ onUnmounted(() => {
 
 .unmanaged-root {
   --status-running: #22c55e;
-  --status-stopped: color-mix(in srgb, var(--c-text-3) 60%, transparent);
+  --status-stopped: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
   --status-other:   #f59e0b;
-  border-top: 1px solid var(--c-border);
+  border-top: 1px solid var(--border);
 }
 
 /* ── Header ── */
@@ -275,12 +275,12 @@ onUnmounted(() => {
   cursor: pointer;
   text-align: left;
 }
-.toggle-btn:hover .section-label { color: var(--c-text-2); }
+.toggle-btn:hover .section-label { color: var(--muted-foreground); }
 
 .chevron {
   width: 12px;
   height: 12px;
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   flex-shrink: 0;
   transition: transform 0.18s ease;
 }
@@ -291,7 +291,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   transition: color 0.15s;
   user-select: none;
 }
@@ -306,15 +306,15 @@ onUnmounted(() => {
   font-size: var(--text-2xs);
   font-weight: 700;
   line-height: 1;
-  color: var(--c-text-3);
-  background: color-mix(in srgb, var(--c-text-3) 12%, transparent);
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
   border-radius: 999px;
 }
 
 .spin-icon {
   width: 12px;
   height: 12px;
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   animation: spin 0.8s linear infinite;
 }
 
@@ -327,14 +327,14 @@ onUnmounted(() => {
   border-radius: 6px;
   background: none;
   border: none;
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
   flex-shrink: 0;
 }
 .refresh-btn:hover:not(:disabled) {
-  color: var(--c-text-2);
-  background: var(--c-hover);
+  color: var(--muted-foreground);
+  background: var(--accent);
 }
 .refresh-btn:disabled { opacity: 0.4; cursor: default; }
 .refresh-btn svg { width: 13px; height: 13px; }
@@ -347,7 +347,7 @@ onUnmounted(() => {
 .compose-import {
   margin: 0 0.5rem 0.75rem;
   padding: 0.75rem;
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .compose-import-header {
@@ -358,7 +358,7 @@ onUnmounted(() => {
 }
 .compose-import-title {
   font-size: var(--text-xs, 0.75rem);
-  color: var(--c-text-2);
+  color: var(--muted-foreground);
 }
 .compose-import-form {
   display: grid;
@@ -368,10 +368,10 @@ onUnmounted(() => {
 .compose-name,
 .compose-textarea {
   width: 100%;
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--c-bg-2);
-  color: var(--c-text-1);
+  background: var(--muted);
+  color: var(--foreground);
   padding: 0.5rem;
   font-size: var(--text-xs, 0.75rem);
 }
@@ -381,10 +381,10 @@ onUnmounted(() => {
 }
 .file-btn {
   width: fit-content;
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.35rem 0.5rem;
-  color: var(--c-text-2);
+  color: var(--muted-foreground);
   background: transparent;
   font-size: var(--text-2xs, 0.7rem);
   cursor: pointer;
@@ -392,7 +392,7 @@ onUnmounted(() => {
 
 .state-msg {
   font-size: var(--text-xs, 0.75rem);
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   padding: 0.25rem 0.5rem 0.5rem;
 }
 .state-msg--error {
@@ -418,13 +418,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.875rem;
   padding: 0.625rem 0.875rem;
-  background: var(--c-surface-alt);
-  border: 1px solid var(--c-border);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 10px;
   transition: border-color 0.15s;
   min-width: 0;
 }
-.card:hover { border-color: color-mix(in srgb, var(--c-border) 60%, var(--c-accent) 40%); }
+.card:hover { border-color: color-mix(in srgb, var(--border) 60%, var(--primary) 40%); }
 
 /* Status + identity */
 .card-identity {
@@ -453,7 +453,7 @@ onUnmounted(() => {
   font-family: var(--font-mono);
   font-size: var(--text-sm, 0.875rem);
   font-weight: 500;
-  color: var(--c-text-2);
+  color: var(--muted-foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -462,7 +462,7 @@ onUnmounted(() => {
 .container-image {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -472,7 +472,7 @@ onUnmounted(() => {
 .ports-label {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
-  color: var(--c-text-3);
+  color: var(--muted-foreground);
   white-space: nowrap;
   flex-shrink: 0;
   display: none;
@@ -504,9 +504,9 @@ onUnmounted(() => {
   padding: 0.3125rem 0.75rem;
   font-size: var(--text-2xs);
   font-weight: 600;
-  color: var(--c-accent);
-  background: var(--c-accent-subtle);
-  border: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-radius: 7px;
   cursor: pointer;
   flex-shrink: 0;
@@ -514,7 +514,7 @@ onUnmounted(() => {
   transition: background 0.15s, opacity 0.15s;
 }
 .import-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--c-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 .import-btn:disabled { opacity: 0.4; cursor: default; }
 

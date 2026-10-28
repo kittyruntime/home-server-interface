@@ -3,6 +3,8 @@ import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
 import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 /* Shared 3-step format wizard used by every storage section. Call open(dev)
    via a template ref; it emits `done` after a successful format so the parent
@@ -66,138 +68,138 @@ defineExpose({ open })
   <Modal v-if="wiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!wiz.busy" @close="wiz = null">
 
     <!-- Step indicator -->
-    <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-[var(--c-border)]">
+    <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-border">
       <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
         :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-          wiz.step === i + 1 ? 'text-[var(--c-accent)] border-b-2 border-[var(--c-accent)]'
-          : wiz.step > i + 1  ? 'text-[var(--c-text-3)]'
-          : 'text-[var(--c-text-3)]/50']"
+          wiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
+          : wiz.step > i + 1  ? 'text-muted-foreground'
+          : 'text-muted-foreground/50']"
       >{{ i + 1 }}. {{ label }}</div>
     </div>
 
     <!-- Step 1: Warning -->
     <div v-if="wiz.step === 1" class="p-6 space-y-4">
-      <div class="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/30">
-        <svg class="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+        <svg class="w-5 h-5 text-destructive mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
         </svg>
         <div>
-          <div class="font-semibold text-danger text-sm mb-1">All data will be permanently erased</div>
-          <div class="text-xs text-danger/80">
+          <div class="font-semibold text-destructive text-sm mb-1">All data will be permanently erased</div>
+          <div class="text-xs text-destructive/80">
             Formatting <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
           </div>
         </div>
       </div>
 
-      <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Current FS</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
-        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ wiz.dev.model }}</span></div>
+      <div class="space-y-1 text-xs text-muted-foreground">
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-foreground/80">Current FS</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
+        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-foreground/80">Model</span><span>{{ wiz.dev.model }}</span></div>
       </div>
 
       <div class="flex gap-2 pt-2">
-        <button @click="wiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-        <button @click="wiz.step = 2" class="btn btn-primary flex-1 justify-center">I understand, continue →</button>
+        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">Cancel</Button>
+        <Button @click="wiz.step = 2" class="flex-1 justify-center">I understand, continue →</Button>
       </div>
     </div>
 
     <!-- Step 2: Choose filesystem -->
     <div v-else-if="wiz.step === 2" class="p-6 space-y-3">
-      <p class="text-sm text-[var(--c-text-2)] font-medium mb-2">Choose a filesystem for <span class="font-mono text-[var(--c-text-1)]">/dev/{{ wiz.dev.name }}</span></p>
+      <p class="text-sm text-foreground/80 font-medium mb-2">Choose a filesystem for <span class="font-mono text-foreground">/dev/{{ wiz.dev.name }}</span></p>
 
       <div class="space-y-2">
         <label
           v-for="fs in FS_OPTIONS" :key="fs.id"
           :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
             wiz.fstype === fs.id
-              ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-              : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-input']"
           @click="wiz.fstype = fs.id"
         >
           <div class="mt-0.5">
             <div :class="['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
-              wiz.fstype === fs.id ? 'border-[var(--c-accent)]' : 'border-[var(--c-border-strong)]']">
-              <div v-if="wiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-[var(--c-accent)]"/>
+              wiz.fstype === fs.id ? 'border-primary' : 'border-input']">
+              <div v-if="wiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-primary"/>
             </div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ fs.name }}</span>
+              <span class="text-sm font-semibold text-foreground">{{ fs.name }}</span>
               <span class="text-2xs px-1.5 py-0.5 rounded-sm"
-                :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)]'"
+                :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'"
               >{{ fs.tag }}</span>
             </div>
-            <div class="text-xs text-[var(--c-text-3)] mt-0.5 leading-relaxed">{{ fs.desc }}</div>
+            <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ fs.desc }}</div>
           </div>
         </label>
       </div>
 
       <div class="pt-1">
-        <label class="block text-xs text-[var(--c-text-2)] mb-1">Volume label <span class="text-[var(--c-text-3)]">(optional)</span></label>
-        <input
+        <label class="block text-xs text-foreground/80 mb-1">Volume label <span class="text-muted-foreground">(optional)</span></label>
+        <Input
           v-model="wiz.label"
           type="text"
           placeholder="e.g. Data, Backup, Media"
           maxlength="64"
-          class="ui-input w-full px-3 py-2 text-sm placeholder-[var(--c-text-3)]"
+          class="w-full px-3 py-2 text-sm placeholder-muted-foreground"
         />
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button @click="wiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
-        <button @click="wiz.step = 3" class="btn btn-primary flex-1 justify-center">Next →</button>
+        <Button variant="outline" @click="wiz.step = 1" class="flex-1 justify-center">← Back</Button>
+        <Button @click="wiz.step = 3" class="flex-1 justify-center">Next →</Button>
       </div>
     </div>
 
     <!-- Step 3: Confirm -->
     <div v-else-if="wiz.step === 3" class="p-6 space-y-4">
-      <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ wiz.fstype }}</span></div>
-        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Label</span><span>{{ wiz.label }}</span></div>
+      <div class="space-y-1 text-xs text-muted-foreground">
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Filesystem</span><span class="font-mono">{{ wiz.fstype }}</span></div>
+        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-foreground/80">Label</span><span>{{ wiz.label }}</span></div>
       </div>
 
       <div>
-        <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-          Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ wiz.dev.name }}</span> to confirm
+        <label class="block text-xs text-foreground/80 mb-1.5">
+          Type <span class="font-mono font-bold text-foreground">{{ wiz.dev.name }}</span> to confirm
         </label>
-        <input
+        <Input
           v-model="wiz.confirm"
           type="text"
           :placeholder="wiz.dev.name"
-          class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"
+          class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"
         />
       </div>
 
-      <p v-if="wiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
+      <p v-if="wiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
 
       <div class="flex gap-2">
-        <button @click="wiz.step = 2" :disabled="wiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
-        <button
+        <Button variant="outline" @click="wiz.step = 2" :disabled="wiz.busy" class="flex-1 justify-center">← Back</Button>
+        <Button variant="destructive"
           @click="doFormat"
           :disabled="wiz.confirm !== wiz.dev.name || wiz.busy"
-          class="btn btn-danger flex-1 justify-center"
+          class="flex-1 justify-center"
         >
           <span v-if="wiz.busy">Formatting…</span>
           <span v-else>Format now</span>
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Done: a new filesystem is root-owned until it is mounted with access set up -->
     <div v-else class="p-6 space-y-4">
       <div>
-        <div class="font-semibold text-sm text-[var(--c-text-1)]">Formatted</div>
-        <p class="text-xs text-[var(--c-text-3)] mt-1">
+        <div class="font-semibold text-sm text-foreground">Formatted</div>
+        <p class="text-xs text-muted-foreground mt-1">
           <span class="font-mono">/dev/{{ wiz.dev.name }}</span> now holds an empty {{ wiz.fstype }} filesystem.
           Mount it to choose who can write to it and to create a Place for it.
         </p>
       </div>
       <div class="flex gap-2">
-        <button @click="wiz = null" class="btn btn-outline flex-1 justify-center">Later</button>
-        <button @click="mountNow" class="btn btn-primary flex-1 justify-center">Mount now…</button>
+        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">Later</Button>
+        <Button @click="mountNow" class="flex-1 justify-center">Mount now…</Button>
       </div>
     </div>
 

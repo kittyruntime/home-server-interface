@@ -10,7 +10,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   segments: 24,
   height: 'compact',
-  color: 'var(--c-text-display)',
+  color: 'var(--foreground)',
 })
 
 const filled = computed(() => Math.round((Math.max(0, Math.min(100, props.percent)) / 100) * props.segments))
@@ -30,7 +30,7 @@ const heightClass = computed(() => ({
       class="flex-1 rounded-none"
       :class="indeterminate ? 'segbar-pulse' : ''"
       :style="{
-        backgroundColor: indeterminate ? 'var(--c-border-strong)' : (i <= filled ? color : 'var(--c-border-strong)'),
+        backgroundColor: indeterminate ? 'var(--input)' : (i <= filled ? color : 'var(--input)'),
         animationDelay: indeterminate ? `${i * 40}ms` : undefined,
       }"
     />

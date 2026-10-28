@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import Modal from './Modal.vue'
 import { confirmState } from '../../lib/confirm'
+import { Button } from '@/components/ui/button'
 
 const modal = ref<InstanceType<typeof Modal> | null>(null)
 
@@ -22,14 +23,14 @@ function onClose() {
 <template>
   <Modal v-if="confirmState" ref="modal" :key="confirmState.id" panel-class="w-full max-w-sm" @close="onClose">
     <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ confirmState.title ?? 'Confirm' }}</h3>
+      <h3 class="text-sm font-semibold text-foreground">{{ confirmState.title ?? 'Confirm' }}</h3>
     </template>
 
-    <p class="px-5 py-4 text-sm text-[var(--c-text-2)]">{{ confirmState.message }}</p>
+    <p class="px-5 py-4 text-sm text-foreground/80">{{ confirmState.message }}</p>
 
     <template #footer>
       <div class="flex-1" />
-      <button @click="choose(false)" class="btn btn-ghost btn-sm">Cancel</button>
+      <Button variant="ghost" size="sm" @click="choose(false)">Cancel</Button>
       <button
         @click="choose(true)"
         :class="['btn btn-sm', confirmState.danger ? 'btn-danger' : 'btn-primary']"

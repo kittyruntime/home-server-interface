@@ -5,6 +5,8 @@ import { applyPlanned } from '../../lib/plan'
 import { runLabel, scheduleLabel, untilLabel, TONE_CLASS, type Schedule } from '../../lib/backup'
 import BusyLabel from '../ui/BusyLabel.vue'
 import RunHistory from './RunHistory.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 type Plan = Status['plans'][number]
@@ -64,38 +66,38 @@ async function remove() {
 </script>
 
 <template>
-  <article class="panel-card p-5 bg-[var(--c-surface)]">
+  <article class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
     <!-- Full width: long source paths wrap at the card's width, never in a squeezed column. -->
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
-        <h3 class="min-w-0 break-words text-sm font-medium text-[var(--c-text-1)]">{{ plan.name }}</h3>
-        <span class="badge badge-muted">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</span>
-        <span v-if="!plan.enabled" class="badge badge-muted">Paused</span>
+        <h3 class="min-w-0 break-words text-sm font-medium text-foreground">{{ plan.name }}</h3>
+        <Badge variant="secondary">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</Badge>
+        <Badge variant="secondary" v-if="!plan.enabled">Paused</Badge>
       </div>
-      <p class="mt-1 font-mono text-2xs text-[var(--c-text-3)] [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
+      <p class="mt-1 font-mono text-2xs text-muted-foreground [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
     </div>
 
     <div v-if="plan.progress" class="mt-3 flex items-center gap-3">
-      <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--c-surface-deep)]" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
-        <div class="h-full rounded-full bg-[var(--c-accent)] transition-all duration-700" :style="{ width: percent + '%' }" />
+      <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
+        <div class="h-full rounded-full bg-primary transition-all duration-700" :style="{ width: percent + '%' }" />
       </div>
-      <span class="text-2xs tabular-nums text-[var(--c-text-2)]">{{ percent }}%</span>
+      <span class="text-2xs tabular-nums text-foreground/80">{{ percent }}%</span>
     </div>
 
-    <div class="mt-3 grid gap-2 text-2xs text-[var(--c-text-3)] sm:grid-cols-3">
+    <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
       <span>{{ scheduleLabel(plan.schedule as Schedule) }}</span>
       <span>Next run: {{ plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }}</span>
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
     </div>
-    <p v-if="error" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <div class="mt-4 flex flex-wrap gap-1">
-      <button class="btn btn-primary btn-xs" :disabled="running || starting" @click="runNow">
+      <Button size="xs" :disabled="running || starting" @click="runNow">
         <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">Run now</BusyLabel>
-      </button>
-      <button class="btn btn-ghost btn-xs" @click="emit('edit')">Edit</button>
-      <button class="btn btn-ghost btn-xs" @click="history = true">History</button>
-      <button class="btn btn-ghost btn-xs text-danger" @click="remove">Remove…</button>
+      </Button>
+      <Button variant="ghost" size="xs" @click="emit('edit')">Edit</Button>
+      <Button variant="ghost" size="xs" @click="history = true">History</Button>
+      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">Remove…</Button>
     </div>
 
     <RunHistory v-if="history" kind="runs" :id="plan.id" :title="`History of ${plan.name}`" @close="history = false" />

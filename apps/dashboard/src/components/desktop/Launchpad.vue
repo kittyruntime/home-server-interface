@@ -43,7 +43,7 @@ useEscLayer(requestClose)
     <Transition name="ui-pop" appear @after-leave="emit('close')">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 bg-[var(--c-bg)] flex items-center justify-center"
+        class="fixed inset-0 z-50 bg-background flex items-center justify-center"
         style="--ui-dur: var(--dur-slow)"
         @click.self="requestClose"
       >
@@ -52,14 +52,14 @@ useEscLayer(requestClose)
           v-for="id in visibleApps"
           :key="id"
           @click="launch(id)"
-          class="flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-[var(--c-hover)] transition-colors"
+          class="flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-accent transition-colors"
         >
-          <div class="relative w-16 h-16 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border-strong)] flex items-center justify-center text-[var(--c-text-2)]">
+          <div class="relative w-16 h-16 rounded-xl bg-card border border-input flex items-center justify-center text-foreground/80">
             <AppIcon :app="id" :stroke-width="1.5" class="w-7 h-7" />
             <span v-if="id === 'storage' && hasAlerts('storage.')"
-              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
+              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
             <span v-else-if="id === 'monitor' && alerts.length"
-              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
+              class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
           </div>
           <span class="eyebrow">{{ APP_LABEL[id] }}</span>
         </button>

@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { trpc } from '../lib/trpc'
 import LoadingState from '../components/ui/LoadingState.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const route = useRoute()
 const token = route.params.token as string
@@ -77,16 +79,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-[var(--c-bg)] p-4">
-    <div class="w-full max-w-lg panel-card p-6 bg-[var(--c-surface)]">
-      <p v-if="loadError && !loading" class="text-sm text-[var(--c-accent)] mb-3">{{ loadError }}</p>
+  <div class="min-h-screen flex items-center justify-center bg-background p-4">
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden w-full max-w-lg p-6 bg-card">
+      <p v-if="loadError && !loading" class="text-sm text-primary mb-3">{{ loadError }}</p>
 
       <LoadingState v-if="loading" variant="compact" />
 
       <!-- Unavailable states -->
       <div v-else-if="info && info.state !== 'ok'" class="text-center py-8">
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Link unavailable</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-1">
+        <h2 class="text-base font-semibold text-foreground">Link unavailable</h2>
+        <p class="text-sm text-muted-foreground mt-1">
           {{ info.state === 'expired' ? 'This link has expired.'
             : info.state === 'exhausted' ? 'This link has reached its download limit.'
             : info.state === 'disabled' ? 'This link has been revoked.'
@@ -96,38 +98,38 @@ onMounted(async () => {
 
       <!-- Password gate -->
       <form v-else-if="info?.needsPassword" @submit.prevent="submitPassword" class="space-y-3">
-        <h2 class="text-base font-semibold text-[var(--c-text-1)]">Password required</h2>
-        <input v-model="password" type="password" class="ui-input" placeholder="Enter password" autofocus />
-        <p v-if="unlockError" class="text-[var(--c-accent)] text-xs">{{ unlockError }}</p>
-        <button type="submit" class="btn btn-primary btn-sm">Unlock</button>
+        <h2 class="text-base font-semibold text-foreground">Password required</h2>
+        <Input v-model="password" type="password" placeholder="Enter password" autofocus />
+        <p v-if="unlockError" class="text-primary text-xs">{{ unlockError }}</p>
+        <Button size="sm" type="submit">Unlock</Button>
       </form>
 
       <!-- File -->
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'file'" class="text-center space-y-4">
-        <h2 class="text-base font-semibold text-[var(--c-text-1)] break-all">{{ info.name }}</h2>
-        <p class="text-xs text-[var(--c-text-3)]">{{ fmtBytes(info.size) }}</p>
-        <a :href="downloadUrl('')" class="btn btn-primary btn-sm mx-auto">Download</a>
+        <h2 class="text-base font-semibold text-foreground break-all">{{ info.name }}</h2>
+        <p class="text-xs text-muted-foreground">{{ fmtBytes(info.size) }}</p>
+        <Button as="a" size="sm" :href="downloadUrl('')" class="mx-auto">Download</Button>
       </div>
 
       <!-- Folder -->
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'dir'" class="space-y-3">
         <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-1 text-xs text-[var(--c-text-3)] flex-wrap min-w-0">
-            <button class="hover:text-[var(--c-text-1)]" @click="loadDir('')">{{ info.name }}</button>
+          <div class="flex items-center gap-1 text-xs text-muted-foreground flex-wrap min-w-0">
+            <button class="hover:text-foreground" @click="loadDir('')">{{ info.name }}</button>
             <template v-for="(c, i) in crumbs" :key="i">
               <span>/</span>
-              <button class="hover:text-[var(--c-text-1)]" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button>
+              <button class="hover:text-foreground" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button>
             </template>
           </div>
-          <a :href="zipUrl()" class="btn btn-outline btn-xs shrink-0">Download all as .zip</a>
+          <Button as="a" variant="outline" size="xs" :href="zipUrl()" class="shrink-0">Download all as .zip</Button>
         </div>
-        <ul class="divide-y divide-[var(--c-border)]">
+        <ul class="divide-y divide-border">
           <li v-for="e in entries" :key="e.name" class="flex items-center justify-between py-2 text-sm">
-            <button v-if="e.type === 'dir'" class="text-left text-[var(--c-text-1)] hover:text-[var(--c-accent)]"
+            <button v-if="e.type === 'dir'" class="text-left text-foreground hover:text-primary"
               @click="loadDir((subPath ? subPath + '/' : '') + e.name)">📁 {{ e.name }}</button>
-            <span v-else class="text-[var(--c-text-2)] truncate">{{ e.name }}</span>
-            <a v-if="e.type === 'file'" :href="downloadUrl((subPath ? subPath + '/' : '') + e.name)"
-              class="btn btn-outline btn-xs shrink-0">Download</a>
+            <span v-else class="text-foreground/80 truncate">{{ e.name }}</span>
+            <Button as="a" variant="outline" size="xs" v-if="e.type === 'file'" :href="downloadUrl((subPath ? subPath + '/' : '') + e.name)"
+              class="shrink-0">Download</Button>
           </li>
         </ul>
       </div>
