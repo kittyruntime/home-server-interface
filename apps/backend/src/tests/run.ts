@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { TimeoutError } from "@nats-io/transport-node"
 
 // Set the secret before loading auth.ts: it is captured at module evaluation.
 process.env.JWT_SECRET = "backend-tests-only-secret-at-least-32-characters"
@@ -1716,7 +1717,7 @@ await testSharePlans()
   await assert.rejects(vp.applyVolume(input as any, pv.fingerprint, deps({
     worker: async (subject: string, payload: any) => {
       if (subject === "root.plan.preview") return previewOk(payload)
-      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+      throw new TimeoutError()
     },
   })), (e: any) => /may still be running/.test(e.message))
 
@@ -1797,7 +1798,7 @@ await testSharePlans()
     worker: async (subject: string, payload: any) => {
       if (subject === "root.plan.preview") return preview(payload)
       if (payload.op === "smb.sync") return { ok: true, steps: [smbStep], results: [{ status: "done" }] }
-      throw Object.assign(new Error("request timed out"), { code: "TIMEOUT" })
+      throw new TimeoutError()
     },
   })), (e: any) => /may still be running/.test(e.message))
   assert.ok(calls.includes("resync"))

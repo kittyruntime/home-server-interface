@@ -1,10 +1,10 @@
-import { connect, StringCodec, NatsError } from "nats"
-import type { NatsConnection, JetStreamClient, JetStreamManager, Subscription } from "nats"
+import { connect, headers } from "@nats-io/transport-node"
+import type { NatsConnection, Subscription } from "@nats-io/transport-node"
+import { jetstream, jetstreamManager, JetStreamApiError } from "@nats-io/jetstream"
+import type { JetStreamClient, JetStreamManager } from "@nats-io/jetstream"
 import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
-
-const sc = StringCodec()
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -51,14 +51,14 @@ export async function connectNats(): Promise<void> {
       await new Promise<void>(r => setTimeout(r, 2_000))
     }
   }
-  js = nc.jetstream()
+  js = jetstream(nc)
 
   // Ensure the task stream exists (idempotent: the worker does the same).
-  const jsm: JetStreamManager = await nc.jetstreamManager()
+  const jsm: JetStreamManager = await jetstreamManager(nc)
   try {
     await jsm.streams.add(TASK_STREAM as any)
   } catch (e: any) {
-    if (e instanceof NatsError && e.message.includes("stream name already in use")) {
+    if (e instanceof JetStreamApiError && e.message.includes("stream name already in use")) {
       await jsm.streams.update("TASKS", TASK_STREAM as any)
     } else {
       throw e
@@ -93,7 +93,7 @@ export async function publishJob(
   })
 
   const subject = `root.${action}`
-  await js.publish(subject, sc.encode(JSON.stringify({ jobId, ...payload })))
+  await js.publish(subject, JSON.stringify({ jobId, ...payload }))
 
   return jobId
 }
@@ -109,10 +109,10 @@ export async function requestSync<T>(
   payload: Record<string, unknown>,
   timeout = 10_000,
 ): Promise<T> {
-  const msg = await nc.request(subject, sc.encode(JSON.stringify(payload)), { timeout })
+  const msg = await nc.request(subject, JSON.stringify(payload), { timeout })
   let resp: WorkerResponse<T>
   try {
-    resp = JSON.parse(sc.decode(msg.data)) as WorkerResponse<T>
+    resp = JSON.parse(msg.string()) as WorkerResponse<T>
   } catch {
     throw new Error("Invalid worker response")
   }
@@ -156,7 +156,7 @@ export async function requestRead(
 ): Promise<Buffer> {
   const msg = await nc.request(
     "root.fs.read",
-    sc.encode(JSON.stringify({ path, linuxUsername, allowedRoot })),
+    JSON.stringify({ path, linuxUsername, allowedRoot }),
     { timeout },
   )
   return Buffer.from(msg.data)
@@ -178,13 +178,13 @@ export async function requestReadChunk(
 ): Promise<Buffer> {
   const msg = await nc.request(
     "root.fs.read-chunk",
-    sc.encode(JSON.stringify({ path, offset, length, linuxUsername, allowedRoot })),
+    JSON.stringify({ path, offset, length, linuxUsername, allowedRoot }),
     { timeout },
   )
   if (msg.headers?.get("X-Chunk-Error")) {
     let resp: { error?: string; code?: string }
     try {
-      resp = JSON.parse(sc.decode(msg.data)) as { error?: string; code?: string }
+      resp = JSON.parse(msg.string()) as { error?: string; code?: string }
     } catch {
       throw new Error("Invalid worker error response")
     }
@@ -203,7 +203,6 @@ export async function writeChunk(opts: {
   allowedRoot:   string
   data:          Buffer
 }, timeout = 30_000): Promise<void> {
-  const { headers } = await import("nats")
   const h = headers()
   h.set("X-Meta", JSON.stringify({
     uploadId:      opts.uploadId,
@@ -219,7 +218,7 @@ export async function writeChunk(opts: {
   )
   let resp: { ok: boolean; error?: string; code?: string }
   try {
-    resp = JSON.parse(sc.decode(msg.data)) as { ok: boolean; error?: string; code?: string }
+    resp = JSON.parse(msg.string()) as { ok: boolean; error?: string; code?: string }
   } catch {
     throw new Error("Invalid worker response")
   }
@@ -250,7 +249,7 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
     try {
       let event: JobEvent
       try {
-        event = JSON.parse(sc.decode(msg.data)) as JobEvent
+        event = JSON.parse(msg.string()) as JobEvent
       } catch {
         log.warn("nats: event subscriber received invalid JSON, skipping message")
         continue

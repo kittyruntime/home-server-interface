@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: the backend moves from the deprecated `nats` package to
+  `@nats-io/transport-node` and `@nats-io/jetstream` (#109).
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
