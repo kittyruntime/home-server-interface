@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependencies**: the backend moves from the deprecated `nats` package to
   `@nats-io/transport-node` and `@nats-io/jetstream` (#109).
 - **Dependencies**: vue-router 5 in the dashboard (#108).
+- **Dependencies**: zod 4 (#106). Validation messages written for HSI are
+  unchanged; the generic ones (wrong type, too short, invalid pattern) use the
+  zod 4 wording.
 
 ### Fixed
 - **Update to 1.68.1 refused or rolled back**: the 1.68.1 installer refused
