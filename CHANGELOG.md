@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.69.0] - 2026-10-28
+
+### Changed
+- **Dashboard on shadcn-vue**: the whole dashboard interface moves to
+  shadcn-vue components (Reka UI, Tailwind CSS v4) and Lucide icons, in one
+  release. Buttons, fields, selects, checkboxes, radios, switches, tabs,
+  tables, badges, dialogs, menus, context menus, popovers, tooltips and toasts
+  now share one look and one keyboard behavior: `Escape` and outside clicks
+  close only the topmost layer, and focus returns to what opened it. The
+  sidebar, the desktop (windowed) mode, the light and dark themes and the
+  accent color picker are kept; a dialog opened in a desktop window still only
+  blocks that window.
+
 ### Fixed
 - **Update refused with "unrecognized SQLite schema"**: installations that went
   through v1.35.0 still carry the old names of a few constraints and indexes
@@ -1498,7 +1511,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.69.0...HEAD
+[1.69.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...v1.69.0
 [1.68.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.1...v1.68.2
 [1.68.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.0...v1.68.1
 [1.68.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.67.0...v1.68.0

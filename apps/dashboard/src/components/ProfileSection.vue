@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { CheckIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { useAdvancedMode } from '../lib/advanced-mode'
-import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Me = {
   id: string
@@ -139,12 +145,12 @@ onMounted(async () => {
         <!-- Name + badges -->
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-[var(--c-text-1)] text-lg font-semibold leading-tight">
+            <span class="text-foreground text-lg font-semibold leading-tight">
               {{ me.displayName || me.username }}
             </span>
-            <span v-if="me.displayName" class="text-[var(--c-text-3)] text-sm">{{ me.username }}</span>
-            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-accent-subtle)] text-[var(--c-accent)]">admin</span>
-            <span v-if="!meIsAdmin && meCanManage" class="badge badge-violet">manager</span>
+            <span v-if="me.displayName" class="text-muted-foreground text-sm">{{ me.username }}</span>
+            <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
+            <Badge variant="secondary" v-if="!meIsAdmin && meCanManage">manager</Badge>
           </div>
         </div>
       </div>
@@ -152,39 +158,38 @@ onMounted(async () => {
       <!-- ── Display name ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Display name</h4>
-          <button v-if="!editingName" @click="startEditName"
-            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Display name</h4>
+          <Button variant="link" v-if="!editingName" @click="startEditName"
+            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
             Edit
-          </button>
+          </Button>
         </div>
 
-        <div v-if="!editingName" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between">
-          <span :class="me.displayName ? 'text-[var(--c-text-1)] text-sm' : 'text-[var(--c-text-3)] text-sm'">
+        <div v-if="!editingName" class="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+          <span :class="me.displayName ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'">
             {{ me.displayName || 'Not set' }}
           </span>
-          <span v-if="nameSuccess" class="text-xs text-[var(--c-success)]">Saved</span>
+          <span v-if="nameSuccess" class="text-xs text-success">Saved</span>
         </div>
 
-        <div v-else class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl p-4 space-y-3">
-          <input
+        <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
+          <Input
             v-model="nameValue"
             placeholder="Your full name"
             autofocus
             @keydown.enter="saveName"
             @keydown.escape="editingName = false"
-            class="ui-input w-full px-3 py-1.5 text-sm"
+            class="w-full px-3 py-1.5 text-sm"
           />
-          <p v-if="nameError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ nameError }}</p>
+          <p v-if="nameError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ nameError }}</p>
           <div class="flex gap-2">
-            <button @click="saveName" :disabled="nameLoading"
-              class="btn btn-primary btn-sm">
+            <Button size="sm" @click="saveName" :disabled="nameLoading">
               {{ nameLoading ? 'Saving…' : 'Save' }}
-            </button>
-            <button @click="editingName = false"
-              class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
+            </Button>
+            <Button variant="ghost" size="sm" @click="editingName = false"
+              class="text-muted-foreground hover:text-foreground">
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -192,54 +197,51 @@ onMounted(async () => {
       <!-- ── Change password ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Password</h4>
-          <button v-if="!pwOpen" @click="openPassword"
-            class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors">
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Password</h4>
+          <Button variant="link" v-if="!pwOpen" @click="openPassword"
+            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
             Change
-          </button>
+          </Button>
         </div>
 
-        <div v-if="!pwOpen" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3">
-          <span class="text-[var(--c-text-3)] text-sm tracking-widest select-none">••••••••</span>
+        <div v-if="!pwOpen" class="bg-card border border-border rounded-xl px-4 py-3">
+          <span class="text-muted-foreground text-sm tracking-widest select-none">••••••••</span>
         </div>
 
-        <div v-else class="bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl p-4 space-y-3">
-          <div v-if="pwSuccess" class="flex items-center gap-2 text-[var(--c-success)] text-sm py-1">
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+        <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
+          <div v-if="pwSuccess" class="flex items-center gap-2 text-success text-sm py-1">
+            <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
             Password updated successfully.
           </div>
 
           <template v-else>
             <div>
-              <label class="block text-xs text-[var(--c-text-3)] mb-1">Current password</label>
-              <input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
-                class="ui-input w-full px-3 py-1.5 text-sm"/>
+              <label class="block text-xs text-muted-foreground mb-1">Current password</label>
+              <Input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
+                class="w-full px-3 py-1.5 text-sm"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label class="block text-xs text-[var(--c-text-3)] mb-1">New password</label>
-                <input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"
-                  class="ui-input w-full px-3 py-1.5 text-sm"/>
+                <label class="block text-xs text-muted-foreground mb-1">New password</label>
+                <Input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"
+                  class="w-full px-3 py-1.5 text-sm"/>
               </div>
               <div>
-                <label class="block text-xs text-[var(--c-text-3)] mb-1">Confirm</label>
-                <input v-model="pwForm.confirm" type="password" placeholder="Repeat"
+                <label class="block text-xs text-muted-foreground mb-1">Confirm</label>
+                <Input v-model="pwForm.confirm" type="password" placeholder="Repeat"
                   @keydown.enter="submitPassword"
-                  class="ui-input w-full px-3 py-1.5 text-sm"/>
+                  class="w-full px-3 py-1.5 text-sm"/>
               </div>
             </div>
-            <p v-if="pwError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ pwError }}</p>
+            <p v-if="pwError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ pwError }}</p>
             <div class="flex gap-2">
-              <button @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next"
-                class="btn btn-primary btn-sm">
+              <Button size="sm" @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next">
                 {{ pwLoading ? 'Saving…' : 'Update password' }}
-              </button>
-              <button @click="pwOpen = false"
-                class="px-3 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] text-sm transition-colors">
+              </Button>
+              <Button variant="ghost" size="sm" @click="pwOpen = false"
+                class="text-muted-foreground hover:text-foreground">
                 Cancel
-              </button>
+              </Button>
             </div>
           </template>
         </div>
@@ -247,51 +249,51 @@ onMounted(async () => {
 
       <!-- ── Theme ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Theme</h4>
-        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-2">
-          <button
-            v-for="opt in THEME_OPTIONS"
-            :key="opt.value"
-            @click="setTheme(opt.value)"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              theme === opt.value
-                ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-                : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
-            ]"
-          >{{ opt.label }}</button>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Theme</h4>
+        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-2">
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="theme"
+            aria-label="Theme"
+            @update:model-value="v => { const opt = THEME_OPTIONS.find(o => o.value === v); if (opt) setTheme(opt.value) }"
+          >
+            <ToggleGroupItem v-for="opt in THEME_OPTIONS" :key="opt.value" :value="opt.value" class="px-3 text-xs">{{ opt.label }}</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
       <!-- ── Accent color ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Accent color</h4>
-        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center gap-3">
-          <button
-            v-for="opt in ACCENT_OPTIONS"
-            :key="opt.value"
-            @click="setAccent(opt.value)"
-            :title="opt.label"
-            :style="{ backgroundColor: opt.color }"
-            :class="[
-              'w-6 h-6 rounded-full transition-all',
-              accent === opt.value
-                ? 'ring-2 ring-offset-2 ring-offset-[var(--c-surface)] ring-[var(--c-accent)] scale-110'
-                : 'opacity-60 hover:opacity-100',
-            ]"
-          />
-          <span class="text-xs text-[var(--c-text-3)] ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Accent color</h4>
+        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+          <RadioGroupRoot
+            :model-value="accent"
+            aria-label="Accent color"
+            class="flex items-center gap-3"
+            @update:model-value="v => { const opt = ACCENT_OPTIONS.find(o => o.value === v); if (opt) setAccent(opt.value) }"
+          >
+            <RadioGroupItem
+              v-for="opt in ACCENT_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+              :title="opt.label"
+              :aria-label="opt.label"
+              :style="{ backgroundColor: opt.color }"
+              class="size-6 rounded-full outline-none transition-all opacity-60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=checked]:opacity-100 data-[state=checked]:scale-110 data-[state=checked]:ring-2 data-[state=checked]:ring-primary data-[state=checked]:ring-offset-2 data-[state=checked]:ring-offset-card"
+            />
+          </RadioGroupRoot>
+          <span class="text-xs text-muted-foreground ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
         </div>
       </div>
 
       <!-- ── Advanced mode ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Advanced mode</h4>
-        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-          <p class="text-xs text-[var(--c-text-3)]">
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Advanced mode</h4>
+        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+          <p class="text-xs text-muted-foreground">
             Show extra technical detail where it's available: raw UID/GID on files, for now.
           </p>
-          <ToggleSwitch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
+          <Switch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
         </div>
       </div>
 

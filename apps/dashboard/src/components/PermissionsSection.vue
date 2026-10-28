@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ChevronDownIcon } from '@lucide/vue'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
+import { Badge } from '@/components/ui/badge'
 
 type Place = { id: string; name: string; path: string }
 type Group = { id: string; name: string }
@@ -73,91 +78,76 @@ onMounted(load)
 
 <template>
   <section>
-    <h3 class="text-xs font-medium uppercase tracking-caps text-[var(--c-text-3)] mb-3 px-1">Permissions</h3>
+    <h3 class="text-xs font-medium uppercase tracking-caps text-muted-foreground mb-3 px-1">Permissions</h3>
 
-    <div v-if="places.length === 0" class="text-sm text-[var(--c-text-3)] px-1">No places yet. Add one in the Places tab, then grant users or groups access here.</div>
+    <div v-if="places.length === 0" class="text-sm text-muted-foreground px-1">No places yet. Add one in the Places tab, then grant users or groups access here.</div>
 
     <div class="space-y-2">
-      <div
+      <Collapsible
         v-for="place in places"
         :key="place.id"
-        class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl overflow-hidden"
+        class="bg-card border border-border rounded-xl overflow-hidden"
+        :open="expandedPlace === place.id"
+        @update:open="togglePlace(place.id)"
       >
         <!-- Place header (accordion) -->
-        <button
-          @click="togglePlace(place.id)"
-          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--c-hover)] transition-colors"
+        <CollapsibleTrigger
+          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div>
-            <span class="text-sm font-medium text-[var(--c-text-1)]">{{ place.name }}</span>
-            <span class="ml-2 text-xs text-[var(--c-text-3)] font-mono">{{ place.path }}</span>
+            <span class="text-sm font-medium text-foreground">{{ place.name }}</span>
+            <span class="ml-2 text-xs text-muted-foreground font-mono">{{ place.path }}</span>
           </div>
-          <svg
-            :class="['w-3.5 h-3.5 text-[var(--c-text-3)] transition-transform', expandedPlace === place.id ? 'rotate-180' : '']"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
+          <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
+        </CollapsibleTrigger>
 
         <!-- Permission matrix -->
-        <div v-if="expandedPlace === place.id" class="border-t border-[var(--c-border)]">
-          <p class="px-4 py-1.5 text-2xs text-[var(--c-text-3)] leading-relaxed">Admins always have full access.</p>
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="text-[var(--c-text-3)] uppercase tracking-caps border-b border-[var(--c-border)]">
-                <th class="px-4 py-2 text-left font-medium">Subject</th>
-                <th class="px-3 py-2 text-center font-medium w-16">Read</th>
-                <th class="px-3 py-2 text-center font-medium w-16">Write</th>
-                <th class="px-3 py-2 text-center font-medium w-16">Delete</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--c-border)]">
+        <CollapsibleContent class="border-t border-border">
+          <p class="px-4 py-1.5 text-2xs text-muted-foreground leading-relaxed">Admins always have full access.</p>
+          <Table class="w-full text-xs">
+            <TableHeader>
+              <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border">
+                <TableHead class="px-4 py-2 text-left font-medium">Subject</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">Read</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">Write</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">Delete</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody class="divide-y divide-border">
               <!-- Groups -->
-              <tr v-for="group in groups" :key="'group-' + group.id">
-                <td class="px-4 py-2.5">
+              <TableRow v-for="group in groups" :key="'group-' + group.id">
+                <TableCell class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="badge badge-violet">group</span>
-                    <span class="text-[var(--c-text-2)]">{{ group.name }}</span>
+                    <Badge variant="secondary">group</Badge>
+                    <span class="text-foreground/80">{{ group.name }}</span>
                   </div>
-                </td>
-                <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
-                  <input
-                    type="checkbox"
-                    :checked="getPerm(place.id, 'group', group.id)?.[field] ?? false"
-                    @change="togglePerm(place.id, 'group', group.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer"
-                  />
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
+                  <Checkbox :model-value="getPerm(place.id, 'group', group.id)?.[field] ?? false" @update:model-value="togglePerm(place.id, 'group', group.id, field)" />
+                </TableCell>
+              </TableRow>
 
               <!-- Users (admins always have full access) -->
-              <tr v-for="user in users" :key="'user-' + user.id">
-                <td class="px-4 py-2.5">
+              <TableRow v-for="user in users" :key="'user-' + user.id">
+                <TableCell class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-[var(--c-surface-deep)] text-[var(--c-text-3)]">user</span>
-                    <span class="text-[var(--c-text-2)]">{{ user.username }}</span>
-                    <span v-if="user.isAdmin" class="badge badge-admin">admin</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-muted text-muted-foreground">user</span>
+                    <span class="text-foreground/80">{{ user.username }}</span>
+                    <Badge v-if="user.isAdmin">admin</Badge>
                   </div>
-                </td>
-                <td v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
-                  <input
-                    type="checkbox"
-                    :checked="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)"
-                    :disabled="user.isAdmin"
-                    @change="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)"
-                    class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
+                  <Checkbox :model-value="user.isAdmin ? true : (getPerm(place.id, 'user', user.id)?.[field] ?? false)" :disabled="user.isAdmin" @update:model-value="!user.isAdmin && togglePerm(place.id, 'user', user.id, field)" />
+                </TableCell>
+              </TableRow>
 
-              <tr v-if="groups.length === 0 && users.length === 0">
-                <td colspan="4" class="px-4 py-3 text-[var(--c-text-3)]">No groups or users to assign.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <TableRow v-if="groups.length === 0 && users.length === 0">
+                <TableCell colspan="4" class="px-4 py-3 text-muted-foreground">No groups or users to assign.</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   </section>
 </template>

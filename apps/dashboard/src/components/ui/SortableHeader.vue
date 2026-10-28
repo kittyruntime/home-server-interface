@@ -1,18 +1,19 @@
 <script setup lang="ts">
+import { ChevronUpIcon } from '@lucide/vue'
+
 defineProps<{ active: boolean; dir: 'asc' | 'desc' }>()
 defineEmits<{ click: [] }>()
 </script>
 
 <template>
-  <button @click="$emit('click')" class="inline-flex items-center gap-1 hover:text-[var(--c-text-1)] transition-colors">
+  <button
+    class="inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 transition-colors"
+    @click="$emit('click')"
+  >
     <slot />
-    <svg
-      class="w-3 h-3 transition-transform shrink-0"
-      :class="active ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)] opacity-40'"
-      :style="{ transform: active && dir === 'desc' ? 'rotate(180deg)' : undefined }"
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
-    </svg>
+    <ChevronUpIcon
+      :class="['size-3 shrink-0 transition-transform', active ? 'text-primary' : 'text-muted-foreground opacity-40', active && dir === 'desc' ? 'rotate-180' : '']"
+      :stroke-width="2.5"
+    />
   </button>
 </template>

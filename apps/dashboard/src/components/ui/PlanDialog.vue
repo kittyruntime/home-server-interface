@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import BusyLabel from './BusyLabel.vue'
 import { LOADING } from '../../lib/loading'
 import LoadingState from './LoadingState.vue'
@@ -7,6 +8,8 @@ import Modal from './Modal.vue'
 import { trpc } from '../../lib/trpc'
 import { confirmMatches } from '../../lib/confirm-text'
 import { planRequest, workerCodeOf, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // Review then apply an operation plan (#36): the exact files, commands and
 // devices HSI is about to touch, and the result of each step.
@@ -153,19 +156,19 @@ function deviceLine(d: NonNullable<PlanStep['device']>): string[] {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   'done':    { label: 'Done',    cls: 'text-success' },
-  'started': { label: 'Started in the background', cls: 'text-[var(--c-info)]' },
+  'started': { label: 'Started in the background', cls: 'text-info' },
   'warning': { label: 'Warning', cls: 'text-warning' },
-  'skipped': { label: 'Skipped', cls: 'text-[var(--c-text-3)]' },
-  'failed':  { label: 'Failed',  cls: 'text-danger' },
-  'not-run': { label: 'Not run', cls: 'text-[var(--c-text-3)]' },
+  'skipped': { label: 'Skipped', cls: 'text-muted-foreground' },
+  'failed':  { label: 'Failed',  cls: 'text-destructive' },
+  'not-run': { label: 'Not run', cls: 'text-muted-foreground' },
 }
 
 function diffLineClass(line: string): string {
-  if (line.startsWith('+++') || line.startsWith('---')) return 'text-[var(--c-text-3)]'
-  if (line.startsWith('@@')) return 'text-[var(--c-text-3)]'
+  if (line.startsWith('+++') || line.startsWith('---')) return 'text-muted-foreground'
+  if (line.startsWith('@@')) return 'text-muted-foreground'
   if (line.startsWith('+')) return 'text-success'
-  if (line.startsWith('-')) return 'text-danger'
-  return 'text-[var(--c-text-2)]'
+  if (line.startsWith('-')) return 'text-destructive'
+  return 'text-foreground/80'
 }
 
 const kindLabel: Record<string, string> = {
@@ -187,8 +190,8 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
   >
     <template #header>
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ planRequest.title }}</h3>
-        <p class="text-xs text-[var(--c-text-3)] mt-0.5">
+        <h3 class="text-sm font-semibold text-foreground">{{ planRequest.title }}</h3>
+        <p class="text-xs text-muted-foreground mt-0.5">
           {{ done ? 'What HSI did' : 'Review exactly what HSI will do on the server' }}
         </p>
       </div>
@@ -197,36 +200,36 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
     <div class="px-5 py-4 space-y-4">
       <LoadingState v-if="loading" variant="inline" :label="LOADING.preparingPlan" />
 
-      <p v-else-if="loadError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
+      <p v-else-if="loadError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
 
       <template v-else-if="steps.length">
         <!-- What will be erased: named, not hinted at. -->
-        <p v-if="planRequest.notice && !done" class="text-sm font-medium text-danger">{{ planRequest.notice }}</p>
-        <section v-if="destructiveSteps.length && !done" class="rounded-lg border border-[var(--c-danger)]/40 px-4 py-3">
-          <p class="text-sm font-medium text-danger">
+        <p v-if="planRequest.notice && !done" class="text-sm font-medium text-destructive">{{ planRequest.notice }}</p>
+        <section v-if="destructiveSteps.length && !done" class="rounded-lg border border-destructive/40 px-4 py-3">
+          <p class="text-sm font-medium text-destructive">
             {{ destructiveSteps.length === 1 ? '1 step erases data' : `${destructiveSteps.length} steps erase data` }}
           </p>
           <ul class="mt-2 space-y-1">
-            <li v-for="d in destructiveDevices" :key="d.path" class="text-xs text-[var(--c-text-2)]">
-              <span class="font-mono text-[var(--c-text-1)]">{{ d.path }}</span>
+            <li v-for="d in destructiveDevices" :key="d.path" class="text-xs text-foreground/80">
+              <span class="font-mono text-foreground">{{ d.path }}</span>
               <span v-for="(part, i) in deviceLine(d)" :key="i"> · <span :class="i === 1 ? 'font-mono' : ''">{{ part }}</span></span>
             </li>
           </ul>
         </section>
 
-        <ol class="divide-y divide-[var(--c-border)] rounded-lg border border-[var(--c-border)]">
+        <ol class="divide-y divide-border rounded-lg border border-border">
           <li v-for="(s, i) in steps" :key="i" class="px-4 py-3">
             <div class="flex items-start gap-3">
-              <span class="mt-0.5 w-5 shrink-0 text-right font-mono text-2xs tabular-nums text-[var(--c-text-3)]">{{ i + 1 }}</span>
+              <span class="mt-0.5 w-5 shrink-0 text-right font-mono text-2xs tabular-nums text-muted-foreground">{{ i + 1 }}</span>
               <div class="min-w-0 flex-1">
-                <p class="text-sm text-[var(--c-text-1)]" :class="s.destructive ? 'text-danger' : ''">{{ s.summary }}</p>
-                <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-[var(--c-text-2)]">
-                  <span class="font-mono text-[var(--c-text-1)]">{{ s.device.path }}</span>
+                <p class="text-sm text-foreground" :class="s.destructive ? 'text-destructive' : ''">{{ s.summary }}</p>
+                <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-foreground/80">
+                  <span class="font-mono text-foreground">{{ s.device.path }}</span>
                   <template v-if="s.device.model"> · <span class="font-mono">{{ s.device.model }}</span></template>
                   <template v-if="s.device.serial"> · <span class="font-mono">{{ s.device.serial }}</span></template>
                   <template v-if="s.device.size"> · {{ fmtSize(s.device.size) }}</template>
                 </p>
-                <p class="mt-0.5 text-2xs text-[var(--c-text-3)]">
+                <p class="mt-0.5 text-2xs text-muted-foreground">
                   <span class="uppercase tracking-caps">{{ kindLabel[s.kind] ?? s.kind }}</span>
                   <span class="font-mono"> · {{ s.target }}</span>
                   <span v-if="s.onFailure === 'warn'"> · a failure here is reported, not fatal</span>
@@ -234,17 +237,17 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                 </p>
 
                 <details v-if="s.command?.length" class="mt-2">
-                  <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Command</summary>
-                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-2xs text-[var(--c-text-1)]">{{ s.command.join(' ') }}</pre>
+                  <summary class="cursor-pointer text-xs text-muted-foreground hover:text-foreground">Command</summary>
+                  <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground">{{ s.command.join(' ') }}</pre>
                 </details>
                 <details v-if="s.diff" class="mt-2" :open="s.kind === 'update' && !done">
-                  <summary class="cursor-pointer text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">{{ s.kind === 'create' ? 'Content of' : 'Changes to' }} {{ s.target }}</summary>
-                  <pre class="mt-1 overflow-x-auto rounded-md bg-[var(--c-surface-deep)] px-3 py-2 font-mono text-2xs leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
+                  <summary class="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{{ s.kind === 'create' ? 'Content of' : 'Changes to' }} {{ s.target }}</summary>
+                  <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
 </span></pre>
                 </details>
-                <p v-else-if="s.deferred && s.kind !== 'later'" class="mt-1 text-2xs text-[var(--c-text-3)]">The exact change is computed when the step runs and shown here afterwards.</p>
+                <p v-else-if="s.deferred && s.kind !== 'later'" class="mt-1 text-2xs text-muted-foreground">The exact change is computed when the step runs and shown here afterwards.</p>
 
-                <p v-if="resultOf(i)?.error" class="status-text mt-2" :class="resultOf(i)?.status === 'failed' ? 'text-danger' : 'text-warning'">
+                <p v-if="resultOf(i)?.error" class="status-text mt-2" :class="resultOf(i)?.status === 'failed' ? 'text-destructive' : 'text-warning'">
                   <span class="status-tag">{{ resultOf(i)?.status === 'failed' ? '[ERR]' : '[WARN]' }}</span> {{ resultOf(i)?.error }}
                 </p>
               </div>
@@ -258,17 +261,17 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         <p v-if="stale" role="alert" class="status-text text-warning">
           <span class="status-tag">[WARN]</span> {{ staleReason || 'The server changed since this preview. Review the new plan before applying it.' }}
         </p>
-        <p v-if="applyError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ applyError }}</p>
-        <p v-if="failedApply" role="alert" class="status-text text-danger">
+        <p v-if="applyError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ applyError }}</p>
+        <p v-if="failedApply" role="alert" class="status-text text-destructive">
           <span class="status-tag">[ERR]</span> The operation stopped at a failed step; later steps did not run.
         </p>
-        <label v-if="planRequest.acknowledge && preview && !done && !failedApply" class="flex items-start gap-2 text-sm text-[var(--c-text-1)]">
-          <input v-model="acked" type="checkbox" class="mt-0.5 accent-accent" :disabled="applying" />
+        <label v-if="planRequest.acknowledge && preview && !done && !failedApply" class="flex items-start gap-2 text-sm text-foreground">
+          <Checkbox v-model="acked" class="mt-0.5" :disabled="applying" />
           <span>{{ planRequest.acknowledge }}</span>
         </label>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
-          <span class="text-xs text-[var(--c-text-2)]">Type <span class="font-mono text-[var(--c-text-1)]">{{ planRequest.confirmText }}</span> to confirm</span>
-          <input v-model="typed" class="ui-input mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
+          <span class="text-xs text-foreground/80">Type <span class="font-mono text-foreground">{{ planRequest.confirmText }}</span> to confirm</span>
+          <Input v-model="typed" class="mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
         </label>
       </template>
     </div>
@@ -276,19 +279,20 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
     <template #footer>
       <div class="flex-1" />
       <template v-if="failedApply || done || (loadError && !loading)">
-        <button class="btn btn-primary btn-sm" @click="modal?.requestClose()">Close</button>
+        <Button size="sm" @click="modal?.requestClose()">Close</Button>
       </template>
       <template v-else>
-        <button class="btn btn-ghost btn-sm" :disabled="applying" @click="modal?.requestClose()">Back</button>
-        <button v-if="stale" class="btn btn-outline btn-sm" :disabled="loading" @click="load">Review again</button>
-        <button
+        <Button variant="ghost" size="sm" :disabled="applying" @click="modal?.requestClose()">Back</Button>
+        <Button variant="outline" size="sm" v-if="stale" :disabled="loading" @click="load">Review again</Button>
+        <Button
           v-else
-          :class="['btn btn-sm', destructiveSteps.length || planRequest.danger ? 'btn-danger' : 'btn-primary']"
+          size="sm"
+          :variant="destructiveSteps.length || planRequest.danger ? 'destructive' : 'default'"
           :disabled="loading || applying || !preview || !confirmed"
           @click="apply"
         >
           <BusyLabel :busy="applying" busy-label="Applying">{{ planRequest.actionLabel || 'Apply' }}</BusyLabel>
-        </button>
+        </Button>
       </template>
     </template>
   </Modal>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RefreshCwIcon } from '@lucide/vue'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -8,6 +10,8 @@ import DeviceFormatWizard from './dialogs/DeviceFormatWizard.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import VolumeHealthPanel from './VolumeHealthPanel.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 const emit = defineEmits<{ navigate: [target: StorageLocation] }>()
 
@@ -180,7 +184,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
 })
 
 const sourceBadgeClass: Record<MountSource, string> = {
-  disk:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)] hover:border-[var(--c-border-strong)]',
+  disk:  'bg-muted text-muted-foreground border-border hover:border-input',
   raid:  'bg-info/10 text-info border-info/20 hover:bg-info/20',
   lvm:   'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20',
 }
@@ -201,116 +205,114 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Mounts</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">All mounted filesystems, across all sources.</p>
+        <h2 class="text-lg font-semibold text-foreground">Mounts</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">All mounted filesystems, across all sources.</p>
       </div>
-      <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+        <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+      </Button>
     </div>
 
     <LoadingState v-if="loading && !mounted.length && !unmounted.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <template v-else>
       <VolumeHealthPanel ref="volumePanel" />
 
       <!-- Mounted filesystems -->
-      <div v-if="mounted.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)] mb-6">
+      <div v-if="mounted.length === 0" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground mb-6">
         No filesystems currently mounted.
       </div>
       <div v-else class="mb-8">
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-[var(--c-text-1)]" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-[var(--c-text-3)]" :title="e.device">{{e.device}}</p></div><span class="badge badge-muted">{{e.fstype}}</span></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-[var(--c-text-3)]"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-[var(--c-surface-deep)]"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><button @click="emit('navigate',e.target)" class="text-xs text-[var(--c-text-3)]">{{e.sourceLabel}} →</button><button v-if="!e.bd.isSystem" class="btn btn-outline btn-xs" @click="openUmount(e.bd)">Unmount</button></div></article></div>
-        <div class="hidden rounded-xl border border-[var(--c-border)] overflow-hidden @3xl/content:block">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-caps">
-              <th class="text-left px-4 py-3 font-medium">Mount point</th>
-              <th class="text-left px-4 py-3 font-medium">Device</th>
-              <th class="text-left px-4 py-3 font-medium w-28">Source</th>
-              <th class="text-left px-4 py-3 font-medium w-16">FS</th>
-              <th class="text-left px-4 py-3 font-medium w-44">Used / Total</th>
-              <th class="text-right px-4 py-3 font-medium w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--c-border)]">
-            <tr v-for="e in mounted" :key="e.key" class="hover:bg-[var(--c-hover)]/30 transition-colors">
-              <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-1)]">{{ e.mountpoint }}</td>
-              <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-3)] truncate max-w-0 w-40">{{ e.device }}</td>
-              <td class="px-4 py-2.5">
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><Button variant="link" @click="emit('navigate',e.target)" class="h-auto p-0 text-muted-foreground">{{e.sourceLabel}} →</Button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">Unmount</Button></div></article></div>
+        <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
+        <Table class="w-full text-sm border-collapse">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+              <TableHead class="text-left px-4 py-3 font-medium">Mount point</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-44">Used / Total</TableHead>
+              <TableHead class="text-right px-4 py-3 font-medium w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
+            <TableRow v-for="e in mounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+              <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground">{{ e.mountpoint }}</TableCell>
+              <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground truncate max-w-0 w-40">{{ e.device }}</TableCell>
+              <TableCell class="px-4 py-2.5">
                 <button @click="emit('navigate', e.target)"
                   :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                   {{ e.sourceLabel }} →
                 </button>
-              </td>
-              <td class="px-4 py-2.5 font-mono text-2xs text-[var(--c-text-3)] uppercase">{{ e.fstype }}</td>
-              <td class="px-4 py-2.5">
+              </TableCell>
+              <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
+              <TableCell class="px-4 py-2.5">
                 <div v-if="e.usageTotal > 0">
-                  <div class="flex justify-between text-2xs text-[var(--c-text-3)] mb-1">
+                  <div class="flex justify-between text-2xs text-muted-foreground mb-1">
                     <span>{{ fmtBytes(e.usageUsed) }}</span>
                     <span>{{ fmtBytes(e.usageTotal) }}</span>
                   </div>
-                  <div class="h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                  <div class="h-1 bg-muted rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{ width: usagePct(e.bd) + '%' }"/>
                   </div>
-                  <div class="text-2xs text-[var(--c-text-3)] mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
+                  <div class="text-2xs text-muted-foreground mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
                 </div>
-                <span v-else class="text-2xs text-[var(--c-text-3)]">-</span>
-              </td>
-              <td class="px-4 py-2.5 text-right">
-                <button v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">
+                <span v-else class="text-2xs text-muted-foreground">-</span>
+              </TableCell>
+              <TableCell class="px-4 py-2.5 text-right">
+                <Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
+                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">
                   Unmount
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
         </div>
       </div>
 
       <!-- Unmounted with filesystem -->
       <template v-if="unmounted.length > 0">
-        <h3 class="text-sm font-medium text-[var(--c-text-2)] mb-3">Not mounted</h3>
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in unmounted" :key="e.key" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-[var(--c-text-1)]">{{e.device}}</strong><p class="mt-1 text-2xs text-[var(--c-text-3)]">{{e.fstype}} · {{fmtBytes(e.size)}}</p></div><span class="badge badge-muted">{{e.sourceLabel}}</span></div><div class="mt-3 flex justify-end gap-2"><button class="btn btn-outline btn-xs" @click="openFormat(e.bd)">Format</button><button class="btn btn-primary btn-xs" @click="openMount(e.bd)">Mount</button></div></article></div>
-        <div class="hidden rounded-xl border border-[var(--c-border)] overflow-hidden @3xl/content:block">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-caps">
-                <th class="text-left px-4 py-3 font-medium">Device</th>
-                <th class="text-left px-4 py-3 font-medium w-28">Source</th>
-                <th class="text-left px-4 py-3 font-medium w-16">FS</th>
-                <th class="text-left px-4 py-3 font-medium w-24">Taille</th>
-                <th class="text-right px-4 py-3 font-medium w-32">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--c-border)]">
-              <tr v-for="e in unmounted" :key="e.key" class="hover:bg-[var(--c-hover)]/30 transition-colors">
-                <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-2)]">{{ e.device }}</td>
-                <td class="px-4 py-2.5">
+        <h3 class="text-sm font-medium text-foreground/80 mb-3">Not mounted</h3>
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in unmounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground">{{e.device}}</strong><p class="mt-1 text-2xs text-muted-foreground">{{e.fstype}} · {{fmtBytes(e.size)}}</p></div><Badge variant="secondary">{{e.sourceLabel}}</Badge></div><div class="mt-3 flex justify-end gap-2"><Button variant="outline" size="xs" @click="openFormat(e.bd)">Format</Button><Button size="xs" @click="openMount(e.bd)">Mount</Button></div></article></div>
+        <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
+          <Table class="w-full text-sm border-collapse">
+            <TableHeader>
+              <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+                <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-24">Taille</TableHead>
+                <TableHead class="text-right px-4 py-3 font-medium w-32">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody class="divide-y divide-border">
+              <TableRow v-for="e in unmounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+                <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ e.device }}</TableCell>
+                <TableCell class="px-4 py-2.5">
                   <button @click="emit('navigate', e.target)"
                     :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
                     {{ e.sourceLabel }} →
                   </button>
-                </td>
-                <td class="px-4 py-2.5 font-mono text-2xs text-[var(--c-text-3)] uppercase">{{ e.fstype }}</td>
-                <td class="px-4 py-2.5 text-xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(e.size) }}</td>
-                <td class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
-                  <button @click="openFormat(e.bd)"
-                    class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
+                <TableCell class="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{{ fmtBytes(e.size) }}</TableCell>
+                <TableCell class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
+                  <Button variant="outline" size="xs" @click="openFormat(e.bd)"
+                    class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">
                     Format
-                  </button>
-                  <button @click="openMount(e.bd)"
-                    class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">
+                  </Button>
+                  <Button variant="outline" size="xs" @click="openMount(e.bd)"
+                    class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">
                     Mount
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </template>
     </template>

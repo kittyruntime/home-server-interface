@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { CheckIcon, EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -39,53 +42,45 @@ function fileExt(name: string): string {
     <div
       v-for="t in uploadTasks"
       :key="t.id"
-      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] select-none pointer-events-none overflow-hidden"
+      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent select-none pointer-events-none overflow-hidden"
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
-        <svg class="w-9 h-11 shrink-0"
-          :class="t.status === 'error' ? 'text-[var(--c-danger)]' : t.status === 'paused' ? 'text-[var(--c-warning)]' : 'text-[var(--c-accent)]'"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-        </svg>
+        <FileIcon class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
-          <LoadingSpinner class="text-xl text-[var(--c-accent)] drop-shadow" />
+          <LoadingSpinner class="text-xl text-primary drop-shadow" />
         </div>
       </div>
 
       <!-- Name -->
       <span class="text-xs leading-tight w-full text-center truncate px-1"
-        :class="t.status === 'error' ? 'text-[var(--c-danger)]' : 'text-[var(--c-text-2)]'"
+        :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'"
         :title="t.name">
         {{ t.name }}
       </span>
 
-      <span v-if="t.status === 'paused'" class="text-2xs text-[var(--c-warning)]">Paused</span>
-      <span v-else-if="t.status === 'error'" class="text-2xs text-[var(--c-danger)]">Failed</span>
+      <span v-if="t.status === 'paused'" class="text-2xs text-warning">Paused</span>
+      <span v-else-if="t.status === 'error'" class="text-2xs text-destructive">Failed</span>
     </div>
 
     <!-- Ghost card while creating a folder -->
-    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] opacity-60 select-none pointer-events-none">
-      <svg class="w-11 h-11 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z"/>
-      </svg>
-      <span class="text-xs text-[var(--c-text-3)] italic">New Folder…</span>
+    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
+      <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+      <span class="text-xs text-muted-foreground italic">New Folder…</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/30">
-        <LoadingSpinner class="text-xl text-[var(--c-accent)]" />
+      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
+        <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
 
     <!-- Ghost card while creating a file -->
-    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-[var(--c-hover)] opacity-60 select-none pointer-events-none">
-      <svg class="w-11 h-11 text-[var(--c-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-      </svg>
-      <span class="text-xs text-[var(--c-text-3)] italic">New File…</span>
+    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
+      <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+      <span class="text-xs text-muted-foreground italic">New File…</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/30">
-        <LoadingSpinner class="text-xl text-[var(--c-accent)]" />
+      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
+        <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
 
@@ -94,7 +89,7 @@ function fileExt(name: string): string {
       :key="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardClick', entry, $event)"
       @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardDblClick', entry)"
-      @contextmenu.prevent.stop="pendingPaths?.includes(entry.path) ? undefined : emit('contextmenu', entry, $event)"
+      @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
         'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl transition-colors select-none',
@@ -102,14 +97,14 @@ function fileExt(name: string): string {
           ? 'cursor-default pointer-events-none'
           : 'cursor-pointer',
         selected.has(entry.path) && !pendingPaths?.includes(entry.path)
-          ? 'bg-[var(--c-accent-subtle)] ring-1 ring-[var(--c-accent)]'
-          : 'hover:bg-[var(--c-hover)]',
+          ? 'bg-primary/10 ring-1 ring-primary'
+          : 'hover:bg-accent',
       ]"
     >
       <!-- Pending overlay -->
       <div v-if="pendingPaths?.includes(entry.path)"
-        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[var(--c-bg)]/60">
-        <LoadingSpinner class="text-xl text-[var(--c-text-3)]" />
+        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60">
+        <LoadingSpinner class="text-xl text-muted-foreground" />
       </div>
 
       <!-- Checkbox -->
@@ -117,54 +112,47 @@ function fileExt(name: string): string {
         @click.stop="emit('selectEntry', entry, $event)"
         :class="['absolute top-1.5 left-1.5 w-4 h-4 rounded border flex items-center justify-center transition-all',
           selected.has(entry.path)
-            ? 'opacity-100 bg-[var(--c-accent)] border-[var(--c-accent)]'
-            : 'opacity-0 group-hover:opacity-60 border-[var(--c-border-strong)] bg-[var(--c-surface-deep)]']">
-        <svg v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-        </svg>
+            ? 'opacity-100 bg-primary border-primary'
+            : 'opacity-0 group-hover:opacity-60 border-input bg-muted']">
+        <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
       </div>
 
       <!-- Icon -->
-      <svg v-if="entry.type === 'dir'" class="w-11 h-11 text-[var(--c-accent)] shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z"/>
-      </svg>
+      <FolderIcon v-if="entry.type === 'dir'" class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
-        <svg class="w-9 h-11 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-        </svg>
-        <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-[var(--c-text-3)] bg-[var(--c-bg)] px-1 rounded-sm leading-tight">
+        <FileIcon class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
+        <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-muted-foreground bg-background px-1 rounded-sm leading-tight">
           {{ fileExt(entry.name) }}
         </span>
-        <button
+        <Button
+          variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"
           title="Preview"
-          class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-[var(--c-text-3)] hover:text-[var(--c-accent)] transition-all"
+          :aria-label="`Preview ${entry.name}`"
+          class="absolute -top-1 -right-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-        </button>
+          <EyeIcon class="size-4" aria-hidden="true" />
+        </Button>
       </div>
 
       <!-- Name / Rename -->
       <template v-if="renamingPath === entry.path">
-        <input
-          :value="renameValue"
-          @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+        <Input
+          :model-value="renameValue"
+          @update:model-value="v => emit('update:renameValue', String(v))"
           @click.stop
           @keydown.enter="emit('commitRename')"
           @keydown.escape="emit('cancelRename')"
           @blur="emit('cancelRename')"
           @focus="($event.target as HTMLInputElement).select()"
           autofocus
-          class="text-xs bg-[var(--c-bg)] border border-[var(--c-accent)] rounded-sm px-1.5 py-0.5 text-[var(--c-text-1)] focus:outline-none w-full text-center"
+          class="h-6 w-full border-primary px-1.5 py-0.5 text-center text-xs md:text-xs"
         />
       </template>
       <template v-else>
         <span
           @dblclick.stop="emit('startRename', entry)"
-          class="text-xs leading-tight text-[var(--c-text-2)] w-full text-center truncate px-1 hover:text-[var(--c-text-1)] transition-colors"
+          class="text-xs leading-tight text-foreground/80 w-full text-center truncate px-1 hover:text-foreground transition-colors"
           :title="entry.name">
           {{ entry.name }}
         </span>

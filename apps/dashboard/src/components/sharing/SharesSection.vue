@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import Modal from '../ui/Modal.vue'
 import { applyPlanned } from '../../lib/plan'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 
 type ShareRow = {
@@ -158,67 +163,66 @@ async function removeShare(s: ShareRow) {
     <div class="flex items-center justify-between mb-6">
       <div>
         <p class="eyebrow mb-1">Network sharing</p>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">SMB shares</h2>
+        <h2 class="text-lg font-semibold text-foreground">SMB shares</h2>
       </div>
-      <button
+      <Button size="sm"
         v-if="prereq?.smbdInstalled && availablePlaces.length > 0"
-        class="btn btn-primary btn-sm"
         @click="openCreate"
       >
         New share
-      </button>
+      </Button>
     </div>
 
-    <p v-if="error" class="status-text text-[var(--c-danger)] mb-4">[ERR] {{ error }}</p>
+    <p v-if="error" class="status-text text-destructive mb-4">[ERR] {{ error }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Samba missing: guide, never a cryptic error -->
-    <div v-else-if="prereq && !prereq.smbdInstalled" class="panel-card bg-[var(--c-surface)] p-6">
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)] mb-2">Samba is not installed</h3>
-      <p class="text-sm text-[var(--c-text-2)] mb-4">
+    <div v-else-if="prereq && !prereq.smbdInstalled" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-6">
+      <h3 class="text-sm font-semibold text-foreground mb-2">Samba is not installed</h3>
+      <p class="text-sm text-foreground/80 mb-4">
         SMB sharing needs the Samba server on the host. Install it, then come back here; nothing else to configure.
       </p>
-      <code class="inline-block px-3 py-2 rounded-lg bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] text-sm font-mono text-[var(--c-text-1)]">
+      <code class="inline-block px-3 py-2 rounded-lg bg-muted border border-input text-sm font-mono text-foreground">
         sudo apt install samba
       </code>
       <div class="mt-4">
-        <button class="btn btn-outline btn-sm" @click="refresh">Check again</button>
+        <Button variant="outline" size="sm" @click="refresh">Check again</Button>
       </div>
     </div>
 
-    <div v-else-if="shares.length === 0" class="panel-card bg-[var(--c-surface)] p-6 text-sm text-[var(--c-text-3)]">
+    <div v-else-if="shares.length === 0" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-6 text-sm text-muted-foreground">
       No shares yet. Share an existing place to make it reachable from Windows Explorer, Finder, or any SMB client.
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="s in shares" :key="s.id" class="panel-card bg-[var(--c-surface)] p-4">
+      <div v-for="s in shares" :key="s.id" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-4">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-semibold text-[var(--c-text-1)]">{{ s.effectiveName }}</span>
-              <span :class="['badge', s.enabled ? 'badge-accent' : 'badge-muted']">
+              <span class="text-sm font-semibold text-foreground">{{ s.effectiveName }}</span>
+              <Badge :variant="s.enabled ? 'default' : 'secondary'">
                 {{ s.enabled ? 'Active' : 'Disabled' }}
-              </span>
-              <span v-if="s.readOnly" class="badge badge-muted">Read-only</span>
-              <span v-if="s.guestOk" class="badge badge-muted">Guest</span>
-              <span v-if="holdForPath(s.placePath)" class="badge bg-danger/10 text-danger" :title="holdLabel(holdForPath(s.placePath)!)">Unavailable</span>
+              </Badge>
+              <Badge variant="secondary" v-if="s.readOnly">Read-only</Badge>
+              <Badge variant="secondary" v-if="s.guestOk">Guest</Badge>
+              <Badge variant="outline" v-if="holdForPath(s.placePath)" class="bg-destructive/10 text-destructive" :title="holdLabel(holdForPath(s.placePath)!)">Unavailable</Badge>
             </div>
-            <p class="text-xs text-[var(--c-text-3)] mt-1">
+            <p class="text-xs text-muted-foreground mt-1">
               {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> · {{ s.userCount }} user{{ s.userCount === 1 ? '' : 's' }}
             </p>
-            <p v-if="s.excludedUsernames.length > 0" class="status-text text-[var(--c-warning)] mt-2">
+            <p v-if="s.excludedUsernames.length > 0" class="status-text text-warning mt-2">
               [WARN] No Linux account for {{ s.excludedUsernames.join(', ') }}: excluded from this share
             </p>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
-            <button class="btn btn-ghost btn-xs" @click="toggleEnabled(s)">
+            <Button variant="ghost" size="xs" @click="toggleEnabled(s)">
               {{ s.enabled ? 'Disable' : 'Enable' }}
-            </button>
-            <button class="btn btn-ghost btn-xs" @click="openEdit(s)">Edit</button>
-            <button class="btn btn-danger btn-xs" :disabled="deleting === s.id" @click="removeShare(s)">
+            </Button>
+            <Button variant="ghost" size="xs" @click="openEdit(s)">Edit</Button>
+            <Button variant="destructive" size="xs" :disabled="deleting === s.id" @click="removeShare(s)">
               Delete
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -227,7 +231,7 @@ async function removeShare(s: ShareRow) {
     <!-- Create / edit modal -->
     <Modal v-if="editor" panel-class="w-full max-w-sm" @close="editor = null">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
+        <h3 class="text-sm font-semibold text-foreground">
           {{ editor.id === null ? 'New share' : 'Edit share' }}
         </h3>
       </template>
@@ -235,46 +239,45 @@ async function removeShare(s: ShareRow) {
       <div class="p-6 space-y-4">
         <div v-if="editor.id === null">
           <p class="eyebrow mb-2">Place</p>
-          <select v-model="editor.placeId" class="ui-input w-full">
-            <option v-for="p in availablePlaces" :key="p.id" :value="p.id">
+          <NativeSelect wrapper-class="w-full" v-model="editor.placeId">
+            <NativeSelectOption v-for="p in availablePlaces" :key="p.id" :value="p.id">
               {{ p.name }} · {{ p.path }}
-            </option>
-          </select>
+            </NativeSelectOption>
+          </NativeSelect>
         </div>
 
         <div>
           <p class="eyebrow mb-2">Share name</p>
-          <input
+          <Input
             v-model="editor.smbName"
             type="text"
             placeholder="Defaults to the place name"
-            class="ui-input w-full font-mono"
+            class="w-full font-mono"
           />
-          <p class="text-xs text-[var(--c-text-3)] mt-1">Letters, digits, dots, dashes, underscores. Max 32 characters.</p>
+          <p class="text-xs text-muted-foreground mt-1">Letters, digits, dots, dashes, underscores. Max 32 characters.</p>
         </div>
 
-        <label class="flex items-center gap-2 text-sm text-[var(--c-text-2)] cursor-pointer">
-          <input v-model="editor.readOnly" type="checkbox" />
+        <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+          <Checkbox v-model="editor.readOnly" />
           Read-only (ignore write permissions)
         </label>
-        <label class="flex items-center gap-2 text-sm text-[var(--c-text-2)] cursor-pointer">
-          <input v-model="editor.guestOk" type="checkbox" />
+        <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+          <Checkbox v-model="editor.guestOk" />
           Allow guest access (no authentication)
         </label>
 
-        <p v-if="editorError" class="status-text text-[var(--c-danger)]">[ERR] {{ editorError }}</p>
+        <p v-if="editorError" class="status-text text-destructive">[ERR] {{ editorError }}</p>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-2">
-          <button class="btn btn-ghost btn-sm" @click="editor = null">Cancel</button>
-          <button
-            class="btn btn-primary btn-sm"
+          <Button variant="ghost" size="sm" @click="editor = null">Cancel</Button>
+          <Button size="sm"
             :disabled="saving || (editor.id === null && !editor.placeId)"
             @click="save"
           >
             {{ saving ? 'Saving…' : editor.id === null ? 'Create share' : 'Save' }}
-          </button>
+          </Button>
         </div>
       </template>
     </Modal>

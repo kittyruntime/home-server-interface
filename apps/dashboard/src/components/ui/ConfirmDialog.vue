@@ -1,39 +1,55 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import Modal from './Modal.vue'
+import { ref, watch } from 'vue'
 import { confirmState } from '../../lib/confirm'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { buttonVariants } from '@/components/ui/button'
 
-const modal = ref<InstanceType<typeof Modal> | null>(null)
+/* The dialog stays open while it animates out; the state is cleared once the
+   content has unmounted (close-auto-focus), and a request that replaced this
+   one re-mounts the content through :key. */
+const open = ref(false)
+watch(() => confirmState.value?.id, id => { open.value = id !== undefined }, { immediate: true })
 
-/* Settle the promise right away so the caller proceeds, then let the Modal
-   play its leave animation; @close clears the state (its resolve is a no-op
-   by then, and a request that replaced this one is protected by :key). */
+/* Settle the promise right away so the caller proceeds. */
 function choose(v: boolean) {
   confirmState.value?.resolve(v)
-  modal.value?.requestClose()
+  open.value = false
 }
 
-function onClose() {
+function onOpenChange(value: boolean) {
+  if (!value) choose(false)
+}
+
+function onClosed() {
+  if (open.value) return
   confirmState.value?.resolve(false)
   confirmState.value = null
 }
 </script>
 
 <template>
-  <Modal v-if="confirmState" ref="modal" :key="confirmState.id" panel-class="w-full max-w-sm" @close="onClose">
-    <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ confirmState.title ?? 'Confirm' }}</h3>
-    </template>
-
-    <p class="px-5 py-4 text-sm text-[var(--c-text-2)]">{{ confirmState.message }}</p>
-
-    <template #footer>
-      <div class="flex-1" />
-      <button @click="choose(false)" class="btn btn-ghost btn-sm">Cancel</button>
-      <button
-        @click="choose(true)"
-        :class="['btn btn-sm', confirmState.danger ? 'btn-danger' : 'btn-primary']"
-      >{{ confirmState.confirmLabel ?? 'Confirm' }}</button>
-    </template>
-  </Modal>
+  <AlertDialog :open="open" @update:open="onOpenChange">
+    <AlertDialogContent v-if="confirmState" :key="confirmState.id" class="sm:max-w-sm" @close-auto-focus="onClosed">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ confirmState.title ?? 'Confirm' }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ confirmState.message }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="choose(false)">Cancel</AlertDialogCancel>
+        <AlertDialogAction
+          :class="confirmState.danger ? buttonVariants({ variant: 'destructive' }) : undefined"
+          @click="choose(true)"
+        >{{ confirmState.confirmLabel ?? 'Confirm' }}</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

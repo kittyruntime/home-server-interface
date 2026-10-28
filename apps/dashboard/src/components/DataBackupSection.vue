@@ -9,6 +9,7 @@ import PlanCard from './data-backup/PlanCard.vue'
 import PlanForm from './data-backup/PlanForm.vue'
 import RepositoryCard from './data-backup/RepositoryCard.vue'
 import RepositoryForm from './data-backup/RepositoryForm.vue'
+import { Button } from '@/components/ui/button'
 
 // Data backups (#15): sync plans (rsync mirrors) and versioned plans (restic
 // snapshots in a repository). The worker holds the state; every change goes
@@ -78,8 +79,8 @@ onUnmounted(() => polling.stop())
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Data backups</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">Sync keeps a mirror: a deletion is copied too. Versions keep history: you can go back to an earlier date.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">Data backups</h2>
+    <p class="text-sm text-muted-foreground mb-6">Sync keeps a mirror: a deletion is copied too. Versions keep history: you can go back to an earlier date.</p>
 
     <LoadingState v-if="loading" variant="compact" />
     <ErrorState v-else-if="loadError" :message="loadError" retry-label="Retry" compact @retry="retry" />
@@ -89,20 +90,20 @@ onUnmounted(() => polling.stop())
         <span class="status-tag">[WARN]</span> The backup engine is not installed. Run the installer again to enable versioned backups.
       </p>
 
-      <div v-if="status.migrationSkipped?.length" role="alert" class="mb-4 panel-card p-4 bg-[var(--c-surface)] space-y-2">
+      <div v-if="status.migrationSkipped?.length" role="alert" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden mb-4 p-4 bg-card space-y-2">
         <p class="status-text text-warning"><span class="status-tag">[WARN]</span> These former backup plans could not be moved to the new backups. Create them again below.</p>
-        <ul class="text-xs text-[var(--c-text-2)] space-y-1">
-          <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-[var(--c-text-1)]">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
+        <ul class="text-xs text-foreground/80 space-y-1">
+          <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-foreground">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
         </ul>
-        <p v-if="dismissError" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
-        <button class="btn btn-ghost btn-xs" :disabled="dismissing" @click="dismissSkipped">Dismiss</button>
+        <p v-if="dismissError" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
+        <Button variant="ghost" size="xs" :disabled="dismissing" @click="dismissSkipped">Dismiss</Button>
       </div>
 
       <!-- Plans -->
       <section class="mb-6">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div class="eyebrow">Plans</div>
-          <button v-if="!planEdit" class="btn btn-primary btn-xs" @click="planEdit = 'new'">New plan…</button>
+          <Button size="xs" v-if="!planEdit" @click="planEdit = 'new'">New plan…</Button>
         </div>
         <PlanForm
           v-if="planEdit"
@@ -113,7 +114,7 @@ onUnmounted(() => polling.stop())
           @saved="planSaved"
           @cancel="planEdit = null"
         />
-        <div v-if="!status.plans.length && !planEdit" class="panel-card bg-[var(--c-surface)]">
+        <div v-if="!status.plans.length && !planEdit" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
           <EmptyState message="No backup plan yet." description="A plan copies folders on a schedule, as a mirror or as versions." />
         </div>
         <div v-else class="space-y-3">
@@ -132,9 +133,9 @@ onUnmounted(() => polling.stop())
       <section>
         <div class="mb-3 flex items-center justify-between gap-3">
           <div class="eyebrow">Repositories</div>
-          <button v-if="!repoEdit" class="btn btn-outline btn-xs" @click="repoEdit = 'new'">Add repository…</button>
+          <Button variant="outline" size="xs" v-if="!repoEdit" @click="repoEdit = 'new'">Add repository…</Button>
         </div>
-        <p class="mb-3 text-xs text-[var(--c-text-3)]">A repository stores the encrypted versions of one or more plans: a disk, an SFTP server, an S3 bucket or a REST server.</p>
+        <p class="mb-3 text-xs text-muted-foreground">A repository stores the encrypted versions of one or more plans: a disk, an SFTP server, an S3 bucket or a REST server.</p>
         <RepositoryForm
           v-if="repoEdit"
           :key="repoEdit === 'new' ? 'new' : repoEdit.id"
@@ -143,7 +144,7 @@ onUnmounted(() => polling.stop())
           @saved="repoSaved"
           @cancel="repoEdit = null"
         />
-        <div v-if="!status.repositories.length && !repoEdit" class="panel-card bg-[var(--c-surface)]">
+        <div v-if="!status.repositories.length && !repoEdit" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
           <EmptyState message="No repository yet." description="Add one before creating a versions plan." />
         </div>
         <div v-else class="space-y-3">

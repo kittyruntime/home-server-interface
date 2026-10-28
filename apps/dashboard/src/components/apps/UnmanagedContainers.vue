@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { ChevronRightIcon, CircleAlertIcon, RefreshCwIcon, TriangleIcon } from '@lucide/vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
@@ -116,10 +122,10 @@ async function importCompose() {
 
 function statusColor(status: string) {
   switch (status) {
-    case 'running': return 'var(--status-running)'
+    case 'running': return 'bg-success'
     case 'exited':
-    case 'stopped': return 'var(--status-stopped)'
-    default:        return 'var(--status-other)'
+    case 'stopped': return 'bg-muted-foreground/60'
+    default:        return 'bg-warning'
   }
 }
 
@@ -140,105 +146,94 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="unmanaged-root">
+  <div class="border-t border-border">
 
     <!-- Header row -->
-    <div class="header-row">
-      <button class="toggle-btn" @click="toggle">
-        <svg
-          :class="['chevron', { 'chevron--open': expanded }]"
-          viewBox="0 0 16 16" fill="none"
-        >
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="section-label">Unmanaged</span>
-        <span v-if="!loading && containers.length" class="count-badge">
+    <div class="flex items-center pl-5 pr-4">
+      <button
+        class="group flex flex-1 items-center gap-2 px-1 py-2.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded-sm"
+        :aria-expanded="expanded"
+        @click="toggle"
+      >
+        <ChevronRightIcon :class="['size-3 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
+        <span class="select-none text-2xs font-bold uppercase tracking-caps text-muted-foreground transition-colors group-hover:text-foreground">Unmanaged</span>
+        <Badge v-if="!loading && containers.length" variant="secondary" class="h-4 min-w-[18px] rounded-full px-1.5 text-2xs tabular-nums">
           {{ containers.length }}
-        </span>
-        <svg v-if="loading" class="spin-icon" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 20" />
-        </svg>
+        </Badge>
+        <LoadingSpinner v-if="loading" class="text-xs text-muted-foreground" />
       </button>
 
-      <button class="refresh-btn" @click="load" :disabled="loading" title="Refresh">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" title="Refresh" aria-label="Refresh unmanaged containers" @click="load">
+        <RefreshCwIcon class="size-3.5" aria-hidden="true" />
+      </Button>
     </div>
 
     <!-- Expanded content -->
-    <Transition name="slide">
-      <div v-if="expanded" class="content">
+    <Transition name="ui-fade">
+      <div v-if="expanded" class="px-3 pb-3">
 
-        <div class="compose-import">
-          <div class="compose-import-header">
-            <span class="compose-import-title">Import compose file</span>
-            <button class="import-btn" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</button>
+        <div class="mx-2 mb-3 rounded-lg border border-border p-3">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-xs text-muted-foreground">Import compose file</span>
+            <Button variant="outline" size="xs" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</Button>
           </div>
-          <div v-if="composeOpen" class="compose-import-form">
-            <input v-model="composeName" class="compose-name" placeholder="App name, for example media" maxlength="64" />
+          <div v-if="composeOpen" class="mt-3 grid gap-2">
+            <Input v-model="composeName" class="h-8 text-xs" placeholder="App name, for example media" maxlength="64" aria-label="App name" />
             <input ref="composeFile" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readComposeFile" />
-            <button class="file-btn" type="button" @click="openComposeFile">Choose YAML file</button>
-            <textarea v-model="composeContent" class="compose-textarea" rows="8" spellcheck="false" placeholder="services:\n  web:\n    image: nginx"></textarea>
-            <p v-if="composeError" class="state-msg state-msg--error" role="alert">{{ composeError }}</p>
-            <button class="import-btn" :disabled="composeImporting" @click="importCompose">
+            <Button variant="outline" size="xs" class="w-fit" type="button" @click="openComposeFile">Choose YAML file</Button>
+            <Textarea v-model="composeContent" class="font-mono text-xs" rows="8" spellcheck="false" placeholder="services:\n  web:\n    image: nginx" aria-label="Compose file" />
+            <p v-if="composeError" class="text-xs text-destructive" role="alert">{{ composeError }}</p>
+            <Button size="sm" class="w-fit" :disabled="composeImporting" @click="importCompose">
               {{ composeImporting ? 'Importing…' : 'Import app' }}
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div v-if="error" class="state-msg state-msg--error">
-          <svg viewBox="0 0 16 16" fill="none" class="state-icon">
-            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.25"/>
-            <path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
+        <div v-if="error" role="alert" class="flex items-center gap-1.5 px-2 pb-2 pt-1 text-xs text-destructive">
+          <CircleAlertIcon class="size-3.5 shrink-0" aria-hidden="true" />
           {{ error }}
         </div>
 
-        <div v-else-if="!loading && containers.length === 0" class="state-msg">
+        <div v-else-if="!loading && containers.length === 0" class="px-2 pb-2 pt-1 text-xs text-muted-foreground">
           No unmanaged containers.
         </div>
 
-        <ul v-else class="card-list">
+        <ul v-else class="flex flex-col gap-1.5">
           <li
             v-for="c in containers"
             :key="c.name"
-            class="card"
+            class="flex min-w-0 items-center gap-3.5 rounded-lg border border-border bg-muted px-3.5 py-2.5 transition-colors hover:border-primary/40"
           >
             <!-- Left: status + identity -->
-            <div class="card-identity">
-              <span class="status-pip" :style="{ background: statusColor(c.status) }" />
-              <div class="identity-text">
-                <span class="container-name">{{ c.name }}</span>
-                <span class="container-image">{{ c.image }}</span>
+            <div class="flex min-w-0 flex-1 items-center gap-2.5">
+              <span :class="['size-[7px] shrink-0 rounded-full', statusColor(c.status)]" />
+              <div class="flex min-w-0 flex-col gap-px">
+                <span class="truncate font-mono text-sm font-medium text-foreground/80">{{ c.name }}</span>
+                <span class="truncate font-mono text-2xs text-muted-foreground">{{ c.image }}</span>
               </div>
             </div>
 
             <!-- Ports (hidden on small screens) -->
-            <span v-if="portsSummary(c)" class="ports-label">
+            <span v-if="portsSummary(c)" class="hidden shrink-0 whitespace-nowrap font-mono text-2xs text-muted-foreground md:block">
               {{ portsSummary(c) }}
             </span>
 
             <!-- Compose badge (hidden on small screens) -->
-            <span v-if="c.composeProject" class="compose-badge">
-              <svg viewBox="0 0 12 12" fill="none" class="compose-icon">
-                <path d="M6 1.5L10.5 9H1.5L6 1.5Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
-              </svg>
+            <span v-if="c.composeProject" class="hidden max-w-[120px] shrink-0 items-center gap-1 truncate text-2xs font-semibold text-warning lg:flex">
+              <TriangleIcon class="size-2.5 shrink-0" aria-hidden="true" />
               {{ c.composeProject }}
             </span>
 
-            <!-- Import button -->
-            <button
-              class="import-btn"
-              @click="importContainer(c)"
+            <Button
+              variant="outline"
+              size="xs"
+              class="shrink-0 border-primary/35 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
               :disabled="importing.has(c.name)"
+              @click="importContainer(c)"
             >
-              <svg v-if="importing.has(c.name)" class="btn-spin" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="2" stroke-dasharray="24 12" />
-              </svg>
+              <LoadingSpinner v-if="importing.has(c.name)" class="text-xs" />
               {{ importing.has(c.name) ? 'Importing…' : 'Import' }}
-            </button>
+            </Button>
           </li>
         </ul>
 
@@ -246,291 +241,3 @@ onUnmounted(() => {
     </Transition>
   </div>
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-
-.unmanaged-root {
-  --status-running: #22c55e;
-  --status-stopped: color-mix(in srgb, var(--c-text-3) 60%, transparent);
-  --status-other:   #f59e0b;
-  border-top: 1px solid var(--c-border);
-}
-
-/* ── Header ── */
-.header-row {
-  display: flex;
-  align-items: center;
-  padding: 0 1rem 0 1.25rem;
-}
-
-.toggle-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.25rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-.toggle-btn:hover .section-label { color: var(--c-text-2); }
-
-.chevron {
-  width: 12px;
-  height: 12px;
-  color: var(--c-text-3);
-  flex-shrink: 0;
-  transition: transform 0.18s ease;
-}
-.chevron--open { transform: rotate(90deg); }
-
-.section-label {
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--c-text-3);
-  transition: color 0.15s;
-  user-select: none;
-}
-
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 16px;
-  padding: 0 5px;
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--c-text-3);
-  background: color-mix(in srgb, var(--c-text-3) 12%, transparent);
-  border-radius: 999px;
-}
-
-.spin-icon {
-  width: 12px;
-  height: 12px;
-  color: var(--c-text-3);
-  animation: spin 0.8s linear infinite;
-}
-
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: none;
-  border: none;
-  color: var(--c-text-3);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-  flex-shrink: 0;
-}
-.refresh-btn:hover:not(:disabled) {
-  color: var(--c-text-2);
-  background: var(--c-hover);
-}
-.refresh-btn:disabled { opacity: 0.4; cursor: default; }
-.refresh-btn svg { width: 13px; height: 13px; }
-
-/* ── Content ── */
-.content {
-  padding: 0 0.75rem 0.75rem;
-}
-
-.compose-import {
-  margin: 0 0.5rem 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-}
-.compose-import-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-.compose-import-title {
-  font-size: var(--text-xs, 0.75rem);
-  color: var(--c-text-2);
-}
-.compose-import-form {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-.compose-name,
-.compose-textarea {
-  width: 100%;
-  border: 1px solid var(--c-border);
-  border-radius: 6px;
-  background: var(--c-bg-2);
-  color: var(--c-text-1);
-  padding: 0.5rem;
-  font-size: var(--text-xs, 0.75rem);
-}
-.compose-textarea {
-  resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.file-btn {
-  width: fit-content;
-  border: 1px solid var(--c-border);
-  border-radius: 6px;
-  padding: 0.35rem 0.5rem;
-  color: var(--c-text-2);
-  background: transparent;
-  font-size: var(--text-2xs, 0.7rem);
-  cursor: pointer;
-}
-
-.state-msg {
-  font-size: var(--text-xs, 0.75rem);
-  color: var(--c-text-3);
-  padding: 0.25rem 0.5rem 0.5rem;
-}
-.state-msg--error {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: #f87171;
-}
-.state-icon { width: 13px; height: 13px; flex-shrink: 0; }
-
-/* ── Card list ── */
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.card {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 0.625rem 0.875rem;
-  background: var(--c-surface-alt);
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  transition: border-color 0.15s;
-  min-width: 0;
-}
-.card:hover { border-color: color-mix(in srgb, var(--c-border) 60%, var(--c-accent) 40%); }
-
-/* Status + identity */
-.card-identity {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.status-pip {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.identity-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 1px;
-}
-
-.container-name {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm, 0.875rem);
-  font-weight: 500;
-  color: var(--c-text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.container-image {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--c-text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Ports */
-.ports-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--c-text-3);
-  white-space: nowrap;
-  flex-shrink: 0;
-  display: none;
-}
-@media (min-width: 768px) { .ports-label { display: block; } }
-
-/* Compose badge */
-.compose-badge {
-  display: none;
-  align-items: center;
-  gap: 3px;
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: #f59e0b;
-  white-space: nowrap;
-  flex-shrink: 0;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-@media (min-width: 1024px) { .compose-badge { display: flex; } }
-.compose-icon { width: 10px; height: 10px; flex-shrink: 0; }
-
-/* Import button */
-.import-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.3125rem 0.75rem;
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--c-accent);
-  background: var(--c-accent-subtle);
-  border: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent);
-  border-radius: 7px;
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-  transition: background 0.15s, opacity 0.15s;
-}
-.import-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--c-accent) 20%, transparent);
-}
-.import-btn:disabled { opacity: 0.4; cursor: default; }
-
-.btn-spin {
-  width: 11px;
-  height: 11px;
-  animation: spin 0.7s linear infinite;
-}
-
-/* ── Transitions ── */
-.slide-enter-active { transition: opacity 0.18s ease, transform 0.18s ease; }
-.slide-leave-active { transition: opacity 0.14s ease, transform 0.12s ease; }
-.slide-enter-from   { opacity: 0; transform: translateY(-4px); }
-.slide-leave-to     { opacity: 0; transform: translateY(-4px); }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-</style>

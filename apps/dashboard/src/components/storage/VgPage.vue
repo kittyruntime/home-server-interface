@@ -8,6 +8,7 @@ import LvmSection from './LvmSection.vue'
 import { useStorageData, fmtBytes } from './store'
 import { vgTargets } from './object-targets'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { Button } from '@/components/ui/button'
 
 // The page of one LVM volume group (#40): its space, its logical volumes and
 // what they carry, its physical volumes, and what was done to it. The
@@ -82,18 +83,18 @@ const targets = computed(() => vgTargets({
     @back="emit('navigate', 'lvm')"
   >
     <template v-if="vg" #chips>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ vg.lvCount }} {{ vg.lvCount === 1 ? 'logical volume' : 'logical volumes' }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ vg.lvCount }} {{ vg.lvCount === 1 ? 'logical volume' : 'logical volumes' }}</span>
     </template>
     <template v-if="vg" #figure>
       <div class="flex items-baseline gap-2">
-        <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(vg.size) }}</span>
-        <span class="text-xs text-[var(--c-text-3)]">{{ vg.free > 0 ? `${fmtBytes(vg.free)} free` : "no free space" }}</span>
+        <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(vg.size) }}</span>
+        <span class="text-xs text-muted-foreground">{{ vg.free > 0 ? `${fmtBytes(vg.free)} free` : "no free space" }}</span>
       </div>
     </template>
 
     <template #actions>
-      <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refresh">Refresh</button>
+      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">Refresh</Button>
     </template>
 
     <template v-if="vg" #overview>
@@ -104,16 +105,16 @@ const targets = computed(() => vgTargets({
       <div class="space-y-4 max-w-lg">
         <div>
           <h3 class="eyebrow mb-2">Logical volumes</h3>
-          <p v-if="!lvs.length" class="text-sm text-[var(--c-text-3)]">None yet.</p>
+          <p v-if="!lvs.length" class="text-sm text-muted-foreground">None yet.</p>
           <ul class="space-y-1.5">
             <li v-for="lv in lvs" :key="lv.name">
               <component :is="volumeOf[lv.name] ? 'button' : 'div'"
-                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm text-left', volumeOf[lv.name] && 'hover:border-[var(--c-border-strong)] transition-colors']"
+                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-left', volumeOf[lv.name] && 'hover:border-input transition-colors']"
                 @click="volumeOf[lv.name] && emit('navigate', { kind: 'volume', id: volumeOf[lv.name]!.id })">
                 <span class="font-mono text-xs w-28 shrink-0 truncate">{{ lv.name }}</span>
-                <span class="flex-1 min-w-0 truncate text-[var(--c-text-2)]">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="font-mono text-xs text-[var(--c-text-3)]">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
-                <span class="tabular-nums text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(lv.size) }}</span>
-                <span v-if="volumeOf[lv.name]" aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+                <span class="flex-1 min-w-0 truncate text-foreground/80">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="font-mono text-xs text-muted-foreground">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
+                <span class="tabular-nums text-xs text-muted-foreground shrink-0">{{ fmtBytes(lv.size) }}</span>
+                <span v-if="volumeOf[lv.name]" aria-hidden="true" class="text-muted-foreground">→</span>
               </component>
             </li>
           </ul>
@@ -123,11 +124,11 @@ const targets = computed(() => vgTargets({
           <ul class="space-y-1.5">
             <li v-for="pv in pvs" :key="pv.name">
               <component :is="pvTarget(pv.name) ? 'button' : 'div'"
-                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-[var(--c-border-strong)] transition-colors']"
+                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-input transition-colors']"
                 @click="pvTarget(pv.name) && emit('navigate', pvTarget(pv.name)!)">
                 <span class="font-mono text-xs flex-1 text-left">{{ pv.name }}</span>
-                <span class="tabular-nums text-xs text-[var(--c-text-3)]">{{ fmtBytes(pv.size) }}</span>
-                <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+                <span class="tabular-nums text-xs text-muted-foreground">{{ fmtBytes(pv.size) }}</span>
+                <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-muted-foreground">→</span>
               </component>
             </li>
           </ul>

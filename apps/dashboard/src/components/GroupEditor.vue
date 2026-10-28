@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ChevronLeftIcon, Trash2Icon } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import GroupPicker, { type PickerItem } from './ui/GroupPicker.vue'
@@ -108,57 +110,46 @@ async function toggleMember(userId: string) {
     <div class="flex items-center gap-2.5">
 
       <!-- Back -->
-      <button
+      <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
+        class="text-muted-foreground hover:text-foreground shrink-0"
         title="Back to groups"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
+        <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
 
       <!-- Name -->
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <span class="text-base font-semibold text-[var(--c-text-1)] truncate">{{ group.name }}</span>
+        <span class="text-base font-semibold text-foreground truncate">{{ group.name }}</span>
       </div>
 
       <!-- Delete -->
       <template v-if="!deleteConfirm">
-        <button
+        <Button variant="ghost" size="icon-sm"
           @click="deleteConfirm = true"
-          class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-accent-subtle)] transition-colors shrink-0"
+          class="text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
           title="Delete group"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-          </svg>
-        </button>
+          <Trash2Icon class="w-4 h-4" aria-hidden="true" />
+        </Button>
       </template>
       <template v-else>
-        <span class="text-xs text-[var(--c-danger)] shrink-0">Delete?</span>
-        <button
-          @click="deleteGroup"
-          :disabled="deleteBusy"
-          class="text-xs px-2 py-1 rounded-sm bg-[var(--c-danger)]/15 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/25 transition-colors disabled:opacity-40"
-        >Yes</button>
-        <button
-          @click="deleteConfirm = false"
-          class="text-xs px-2 py-1 rounded-sm text-[var(--c-text-3)] hover:text-[var(--c-text-2)] transition-colors"
-        >No</button>
+        <span class="text-xs text-destructive shrink-0">Delete?</span>
+        <Button variant="destructive" size="xs" :disabled="deleteBusy" @click="deleteGroup">Yes</Button>
+        <Button variant="ghost" size="xs" @click="deleteConfirm = false">No</Button>
       </template>
     </div>
 
-    <p v-if="error" role="alert" class="px-0.5 status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Members</h4>
-        <span class="text-xs text-[var(--c-text-3)]">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
+        <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Members</h4>
+        <span class="text-xs text-muted-foreground">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <p v-if="users.length === 0" class="text-xs text-[var(--c-text-3)] px-0.5">No users</p>
+      <p v-if="users.length === 0" class="text-xs text-muted-foreground px-0.5">No users</p>
 
       <GroupPicker
         v-else

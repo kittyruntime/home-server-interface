@@ -1,37 +1,57 @@
 ---
 title: Design system
-description: Design tokens, shared UI components and frontend conventions.
+description: Design tokens, shadcn-vue components and frontend conventions.
 ---
 
-The dashboard's look is driven by a small set of **design tokens** and shared
-utility classes defined in `apps/dashboard/src/style.css`. Components reference
-tokens rather than hard-coded values, so themes and the accent picker stay
-consistent everywhere.
+The dashboard is built on [shadcn-vue](https://www.shadcn-vue.com/) (style
+`new-york`) on top of [Reka UI](https://reka-ui.com/), Tailwind CSS v4 and
+[Lucide](https://lucide.dev/) icons. The components are copied into the
+repository under `apps/dashboard/src/components/ui/<name>/`, so they are ours to
+read and adjust. The theme lives in `apps/dashboard/src/style.css`.
+
+## Adding a component
+
+`apps/dashboard/components.json` holds the shadcn-vue configuration (aliases
+`@/components/ui` and `@/lib/utils`, icon library `lucide`). To add a component,
+copy it from the shadcn-vue registry into `src/components/ui/<name>/` and
+import it through its `index.ts`:
+
+```ts
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+```
+
+`cn()` in `src/lib/utils.ts` merges classes with `tailwind-merge`, extended so
+the custom `text-2xs` and `text-control` sizes are not mistaken for colors.
 
 ## Themes & accent
 
 - Light and dark themes via `prefers-color-scheme`, overridable with
-  `data-theme="light|dark"` on `:root`.
-- A user-selectable **accent** color (`data-accent`), kept distinct from the
-  fixed **danger** color so destructive UI never depends on the accent choice.
+  `data-theme="light|dark"` on `:root`. The Tailwind `dark:` variant follows the
+  same rule.
+- A user-selectable **accent** color (`data-accent`) drives `--brand`, which is
+  shadcn's `--primary` (and `--ring`, `--sidebar-primary`). It stays distinct
+  from `--destructive`, so destructive UI never depends on the accent choice.
 
 ## Tokens
 
-**Semantic colors** (`--c-*`) are exposed as Tailwind utilities through an
-`@theme inline` bridge, so components write `text-danger`, `bg-success/10`,
-`accent-accent`, `text-violet`, etc., not raw palette classes.
+The shadcn tokens (`--background`, `--foreground`, `--card`, `--popover`,
+`--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`,
+`--input`, `--ring`, `--sidebar-*`, `--chart-*`) are defined for both themes
+and exposed as Tailwind utilities through `@theme inline`: `bg-background`,
+`text-muted-foreground`, `border-input`, `bg-primary/10`, and so on.
 
 | Token | Utility | Use |
 |---|---|---|
-| `--c-accent` | `*-accent` | Primary/interactive accent (user-selectable) |
-| `--c-danger` | `*-danger` | Destructive actions (fixed, not the accent) |
-| `--c-success` / `--c-warning` / `--c-info` | `*-success` / `*-warning` / `*-info` | Status |
-| `--c-violet` | `*-violet` | Filesystem category accent |
-| `--c-text-1/2/3`, `--c-surface*`, `--c-border*` | via `var()` | Text, surfaces, borders |
+| `--primary` | `*-primary` | Primary/interactive accent (user-selectable) |
+| `--destructive` | `*-destructive` | Destructive actions (fixed, not the accent) |
+| `--success` / `--warning` / `--info` | `*-success` / `*-warning` / `*-info` | Status |
+| `--violet` | `*-violet` | Filesystem category accent |
+| `--foreground`, `--muted-foreground` | `text-*` | Text, from strongest to quietest |
+| `--card`, `--muted`, `--accent` | `bg-*` | Surfaces, quiet fills, hover fills |
 
-**Radius scale** (`@theme`) remaps Tailwind's `rounded-*` utilities to a shared
-scale: `sm` inputs/badges · `md` buttons/controls · `lg` cards/panels ·
-`xl` modals/windows.
+**Radius** comes from `--radius` (0.625rem) as in shadcn: `rounded-sm` to
+`rounded-xl`.
 
 **Typography** (`@theme`):
 
@@ -41,7 +61,7 @@ scale: `sm` inputs/badges · `md` buttons/controls · `lg` cards/panels ·
 | `--font-mono` (JetBrains Mono) | `font-mono` | Machine data: paths, devices, commands, identifiers, sizes, form values, code |
 | `--font-figure` (Space Mono) | `font-figure` | Key figures (tiles, widgets, versions) and status lines (`.status-text`) |
 | `--text-2xs` (11px) | `text-2xs` | Labels, badges, meta, dense data; the floor of the scale |
-| `--text-control` (13px) | `text-control` | Button labels, code editor, mobile density |
+| `--text-control` (13px) | `text-control` | Code editor, mobile density |
 | `--tracking-caps` (0.08em) | `tracking-caps` | Every uppercase label |
 
 Sizes come from the scale (`text-2xs`, `text-xs`, `text-control`, `text-sm` and
@@ -51,7 +71,8 @@ dashboard renders the same without Internet access.
 
 **Motion tokens**: `--dur-fast` (120ms), `--dur-base` (180ms), `--dur-slow`
 (260ms) and `--ease-out`. Under `prefers-reduced-motion: reduce` all durations
-collapse to ~1ms, so every animation degrades to instant.
+collapse to ~1ms, so every animation degrades to instant. The shadcn components
+animate with `tw-animate-css`.
 
 ## Named transitions
 
@@ -64,36 +85,58 @@ Three plain-CSS Vue transitions are available anywhere as
 > transitions. Scope duration with a **class** (e.g. `.route-fade`) instead of an
 > inline style when the transitioned element has animated children.
 
+## Overlays and the desktop mode
+
+Dialogs, menus, popovers, tooltips and context menus are the shadcn-vue ones.
+Reka UI stacks them, so `Escape` and outside clicks only close the topmost
+layer, and focus returns to the trigger.
+
+- **`ui/Modal.vue`**: the app dialog shell on top of the Reka dialog, with the
+  same contract for every caller (mount with `v-if`, listen to `@close`, which
+  fires after the leave animation). Inside a desktop-mode window it teleports
+  to the window's **modal host** (`lib/modal-host.ts`) and is non-modal, so it
+  only blocks its own window: it draws its own backdrop and keeps `Tab` inside
+  the panel. Elsewhere it is a regular modal dialog. Props: `panelClass`,
+  `closeOnBackdrop`, `showClose`, `preventClose` (blocks Escape/backdrop
+  during a busy operation).
+- The desktop shell root has `isolation: isolate`, so window z-indexes never
+  cover the menus and popovers portaled to `<body>`.
+- A Reka context menu trigger ignores an event whose default was prevented:
+  children inside a `ContextMenuTrigger` must not call `preventDefault()` or
+  `stopPropagation()` on `contextmenu` unless they mean to opt out.
+
 ## Shared components
 
-- **`ui/Modal.vue`**: the one modal used across the app. Handles enter/leave
-  animation, teleports to a **host window** when opened inside desktop mode
-  (via `provide`/`inject` of `modal-host`) and otherwise to `<body>`, and joins
-  the layered **Escape** stack. Props: `panelClass`, `closeOnBackdrop`,
-  `showClose`, `preventClose` (blocks Escape/backdrop during a busy operation).
-- **`lib/escLayer.ts`**: a shared Escape-key stack so only the topmost overlay
-  closes on `Escape` (used by Modal, Launchpad and dropdowns).
 - **`lib/confirm.ts` + `ui/ConfirmDialog.vue`**: promise-based `useConfirm()`
-  styled like the rest of the app; prefer it over `window.confirm`.
+  on the shadcn alert dialog; prefer it over `window.confirm`.
+- **`lib/toast.ts`**: `useToast()` over `vue-sonner` (the shadcn toaster),
+  mounted once in `DashboardLayout`.
+- **`ui/` helpers** built from shadcn parts: `EmptyState`, `ErrorState`,
+  `LoadingSpinner`, `LoadingState`, `Pagination`, `SearchInput`,
+  `SortableHeader`, `SegmentedBar` (Reka progress), `Hint` (popover),
+  `GroupPicker` (popover + command).
 - **`components/storage/dialogs/`**: device dialogs (`DeviceFormatWizard`,
   `DeviceMountDialog`, `DeviceUnmountDialog`) and a generic
   `ConfirmDestroyDialog` (optional "type NAME to confirm" gate), reused by all
   four storage sections instead of duplicating markup.
-- **`components/desktop/AppIcon.vue`**: the custom monochrome app-glyph family
-  (24px grid, consistent stroke, filled-dot details), keyed by `AppId`.
+- **`components/desktop/AppIcon.vue`**: maps each `AppId` to its Lucide icon.
 
 ## Shared utility classes
 
-Defined under `@layer components` in `style.css` so Tailwind utilities still win
-the cascade: `.btn` (+ `.btn-primary/-outline/-ghost/-danger`, `.btn-sm/-xs`),
-`.ui-input`, `.badge` (+ variants), `.panel-card`, `.eyebrow`, `.ui-divider`,
-`.status-text`. Reuse these instead of repeating Tailwind strings.
+Only a few typographic helpers remain under `@layer components` in
+`style.css`: `.eyebrow` (uppercase section label), `.status-text` and
+`.status-tag` (inline status lines), `.loading-appear` (loaders that show after
+200ms). Anything else is a shadcn component or plain Tailwind utilities.
 
 ## Conventions
 
-- Reference tokens, not raw hex or default-palette classes.
-- Use the semantic utilities (`bg-danger/10`, not `bg-[var(--c-danger)]/10`;
-  `accent-accent`, not `accent-[var(--c-accent)]`).
-- Keep destructive UI on `danger`, never the accent.
+- Use a shadcn component when one fits (`Button`, `Input`, `Badge`,
+  `DropdownMenu`, `Tabs`, `ToggleGroup`, `Collapsible`...) rather than styling
+  a raw element.
+- Reference tokens, not raw hex or default-palette classes (`bg-destructive/10`,
+  not `bg-red-500/10`).
+- Keep destructive UI on `destructive`, never the accent.
+- Icons come from `@lucide/vue`; decorative icons get `aria-hidden="true"` and
+  icon-only buttons an `aria-label`.
 - Everything must remain legible and functional under `prefers-reduced-motion`
   and in both themes.

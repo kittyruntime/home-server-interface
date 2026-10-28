@@ -1,54 +1,46 @@
 <script setup lang="ts">
-const props = defineProps<{
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
+
+defineProps<{
   page:      number
   pageCount: number
   total:     number
   pageSize:  number
 }>()
 const emit = defineEmits<{ 'update:page': [n: number] }>()
-
-function goPage(n: number) {
-  emit('update:page', Math.max(1, Math.min(n, props.pageCount)))
-}
 </script>
 
 <template>
-  <div v-if="pageCount > 1" class="flex items-center justify-between px-1">
-    <span class="text-xs text-[var(--c-text-3)]">
+  <div v-if="pageCount > 1" class="flex items-center justify-between gap-2 px-1">
+    <span class="text-xs text-muted-foreground">
       {{ (page - 1) * pageSize + 1 }}–{{ Math.min(page * pageSize, total) }} of {{ total }}
     </span>
-    <div class="flex items-center gap-1">
-      <button
-        @click="goPage(page - 1)"
-        :disabled="page === 1"
-        aria-label="Previous page"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
-      <template v-for="n in pageCount" :key="n">
-        <button
-          @click="goPage(n)"
-          :class="[
-            'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
-            n === page
-              ? 'bg-[var(--c-accent)] text-[var(--c-accent-fg)]'
-              : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]',
-          ]"
-        >{{ n }}</button>
-      </template>
-      <button
-        @click="goPage(page + 1)"
-        :disabled="page === pageCount"
-        aria-label="Next page"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-        </svg>
-      </button>
-    </div>
+    <Pagination
+      v-slot="{ page: current }"
+      :page="page"
+      :total="total"
+      :items-per-page="pageSize"
+      :sibling-count="1"
+      class="mx-0 w-auto"
+      @update:page="emit('update:page', $event)"
+    >
+      <PaginationContent v-slot="{ items }">
+        <PaginationPrevious size="icon-sm" aria-label="Previous page"><span class="sr-only">Previous page</span></PaginationPrevious>
+        <template v-for="(item, index) in items" :key="index">
+          <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === current" size="icon-sm">
+            {{ item.value }}
+          </PaginationItem>
+          <PaginationEllipsis v-else :index="index" />
+        </template>
+        <PaginationNext size="icon-sm" aria-label="Next page"><span class="sr-only">Next page</span></PaginationNext>
+      </PaginationContent>
+    </Pagination>
   </div>
 </template>

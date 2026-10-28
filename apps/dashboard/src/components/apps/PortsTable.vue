@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
 import { ref, watch } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
 import { trpc } from '../../lib/trpc'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 export interface PortMapping {
   hostPort:      number
@@ -51,55 +54,51 @@ async function runChecks() {
     :new-item="(): PortMapping => ({ hostPort: 0, containerPort: 0, protocol: 'tcp' })"
   >
     <template #row="{ item, update }">
-      <input
+      <Input
         type="number" placeholder="Host" min="1" max="65535"
-        :value="item.hostPort"
+        :model-value="item.hostPort"
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
-        class="ui-input w-24 px-2 py-1.5 text-sm"
+        class="w-24 px-2 py-1.5 text-sm"
       />
-      <span class="text-[var(--c-text-3)] text-sm">:</span>
-      <input
+      <span class="text-muted-foreground text-sm">:</span>
+      <Input
         type="number" placeholder="Container" min="1" max="65535"
-        :value="item.containerPort"
+        :model-value="item.containerPort"
         @input="update({ containerPort: +($event.target as HTMLInputElement).value })"
-        class="ui-input w-24 px-2 py-1.5 text-sm"
+        class="w-24 px-2 py-1.5 text-sm"
       />
-      <select
-        :value="item.protocol"
+      <NativeSelect wrapper-class="w-auto"
+        :model-value="item.protocol"
         @change="update({ protocol: ($event.target as HTMLSelectElement).value as 'tcp' | 'udp' })"
-        class="ui-input w-auto px-2 py-1.5 text-sm"
+        class="px-2 py-1.5 text-sm"
       >
-        <option value="tcp">TCP</option>
-        <option value="udp">UDP</option>
-      </select>
+        <NativeSelectOption value="tcp">TCP</NativeSelectOption>
+        <NativeSelectOption value="udp">UDP</NativeSelectOption>
+      </NativeSelect>
     </template>
 
     <template #extra="{ item, index, update }">
       <!-- Conflict warning (non-blocking) -->
-      <p v-if="warnings[index]" class="text-xs text-[var(--c-warning)] pl-1">{{ warnings[index] }}</p>
+      <p v-if="warnings[index]" class="text-xs text-warning pl-1">{{ warnings[index] }}</p>
 
       <!-- Optional access binding: where this port is reached publicly. -->
       <div class="flex items-center gap-2 flex-wrap pl-1">
-        <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)] w-14 shrink-0">Access</span>
-        <input
+        <span class="text-2xs uppercase tracking-caps text-muted-foreground w-14 shrink-0">Access</span>
+        <Input
           type="text" placeholder="domain (optional) e.g. app.example.com"
-          :value="item.domain ?? ''"
+          :model-value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
-          class="ui-input flex-1 min-w-[12rem] px-2 py-1 text-xs"
+          class="flex-1 min-w-[12rem] px-2 py-1 text-xs"
         />
-        <label class="inline-flex items-center gap-1 text-xs text-[var(--c-text-2)] cursor-pointer select-none">
-          <input
-            type="checkbox"
-            :checked="!!item.tls"
-            @change="update({ tls: ($event.target as HTMLInputElement).checked })"
-          />
+        <label class="inline-flex items-center gap-1 text-xs text-foreground/80 cursor-pointer select-none">
+          <Checkbox :model-value="!!item.tls" @update:model-value="update({ tls: $event === true })" />
           HTTPS
         </label>
-        <input
+        <Input
           type="number" placeholder="443" min="1" max="65535"
-          :value="item.publicPort ?? ''"
+          :model-value="item.publicPort ?? ''"
           @input="update({ publicPort: ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : undefined })"
-          class="ui-input w-20 px-2 py-1 text-xs"
+          class="w-20 px-2 py-1 text-xs"
         />
       </div>
     </template>

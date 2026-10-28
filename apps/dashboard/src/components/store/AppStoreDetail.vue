@@ -4,6 +4,7 @@ import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
 import { appPermissions } from '../../lib/app-permissions'
 import { versionLabel } from '../../lib/store'
+import { Button } from '@/components/ui/button'
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -21,60 +22,60 @@ const canOpen = computed(() => !!inst.value && (inst.value.webUrl != null || ins
 const permissions = computed(() => appPermissions(props.app))
 
 // The grid card that opened this page is gone: keyboard focus starts here.
-const backButton = ref<HTMLButtonElement | null>(null)
-onMounted(() => backButton.value?.focus())
+const backButton = ref<InstanceType<typeof Button> | null>(null)
+onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
 </script>
 
 <template>
   <div class="max-w-3xl space-y-4">
-    <button ref="backButton" class="btn btn-ghost btn-sm" @click="emit('back')" @keydown.esc="emit('back')">← Back</button>
+    <Button variant="ghost" size="sm" ref="backButton" @click="emit('back')" @keydown.esc="emit('back')">← Back</Button>
 
-    <div class="panel-card p-5 space-y-5">
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-5">
       <!-- Identity + main action -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
         <!-- eslint-disable-next-line vue/no-v-html -- `app.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
         <span class="w-14 h-14 shrink-0 grid place-items-center" v-html="app.icon" />
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
-            <h3 class="text-base font-semibold text-[var(--c-text-1)]">{{ app.name }}</h3>
-            <span class="text-2xs uppercase tracking-caps text-[var(--c-text-3)]">{{ app.category }}</span>
+            <h3 class="text-base font-semibold text-foreground">{{ app.name }}</h3>
+            <span class="text-2xs uppercase tracking-caps text-muted-foreground">{{ app.category }}</span>
           </div>
-          <p class="text-sm text-[var(--c-text-2)] mt-0.5">{{ app.tagline }}</p>
+          <p class="text-sm text-foreground/80 mt-0.5">{{ app.tagline }}</p>
           <p class="text-xs mt-2 flex items-center gap-3 flex-wrap">
             <span class="inline-flex items-center gap-1.5" :class="state.text">
               <span v-if="state.dot" class="w-1.5 h-1.5 rounded-full" :class="state.dot" />
               {{ state.label }}
             </span>
-            <span v-if="version" class="text-[var(--c-text-3)] font-mono">{{ version }}</span>
+            <span v-if="version" class="text-muted-foreground font-mono">{{ version }}</span>
           </p>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap shrink-0">
-          <button v-if="!inst" class="btn btn-primary btn-sm" @click="emit('install')">Install</button>
-          <button v-if="inst?.update" class="btn btn-primary btn-sm" :disabled="busy" @click="emit('update')">Update…</button>
-          <button v-if="canOpen" class="btn btn-outline btn-sm" @click="emit('open')">Open ↗</button>
+          <Button size="sm" v-if="!inst" @click="emit('install')">Install</Button>
+          <Button size="sm" v-if="inst?.update" :disabled="busy" @click="emit('update')">Update…</Button>
+          <Button variant="outline" size="sm" v-if="canOpen" @click="emit('open')">Open ↗</Button>
         </div>
       </div>
 
       <!-- Update / rollback -->
-      <div v-if="inst?.update || inst?.rollbackTo" class="rounded-lg border border-[var(--c-border)] p-3 space-y-2">
-        <p v-if="inst?.update" class="text-xs text-[var(--c-warning)] flex items-center gap-2 flex-wrap">
+      <div v-if="inst?.update || inst?.rollbackTo" class="rounded-lg border border-border p-3 space-y-2">
+        <p v-if="inst?.update" class="text-xs text-warning flex items-center gap-2 flex-wrap">
           <span>{{ updateText(inst.update) }}</span>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-[var(--c-text-1)]">What's new ↗</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">What's new ↗</a>
         </p>
         <div v-if="inst?.rollbackTo" class="flex items-center justify-between gap-2 flex-wrap">
-          <p class="text-xs text-[var(--c-text-3)]">The previous version, {{ inst.rollbackTo }}, is kept to roll back to.</p>
-          <button class="btn btn-outline btn-xs" :disabled="busy" @click="emit('rollback')">Roll back to {{ inst.rollbackTo }}…</button>
+          <p class="text-xs text-muted-foreground">The previous version, {{ inst.rollbackTo }}, is kept to roll back to.</p>
+          <Button variant="outline" size="xs" :disabled="busy" @click="emit('rollback')">Roll back to {{ inst.rollbackTo }}…</Button>
         </div>
       </div>
-      <p v-if="error" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
       <!-- About -->
       <div class="space-y-2">
         <h4 class="eyebrow">About</h4>
-        <p class="text-sm text-[var(--c-text-2)] leading-relaxed">{{ app.description }}</p>
+        <p class="text-sm text-foreground/80 leading-relaxed">{{ app.description }}</p>
         <p class="text-xs flex gap-4 flex-wrap">
-          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Website ↗</a>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Release notes ↗</a>
+          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Website ↗</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Release notes ↗</a>
         </p>
       </div>
 
@@ -82,17 +83,17 @@ onMounted(() => backButton.value?.focus())
         <h4 id="perm-heading" class="eyebrow">Permissions</h4>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
           <template v-for="p in permissions" :key="`${p.kind}-${p.detail}`">
-            <dt class="text-[var(--c-text-3)]">{{ p.kind }}</dt>
-            <dd class="text-[var(--c-text-2)] break-words">
+            <dt class="text-muted-foreground">{{ p.kind }}</dt>
+            <dd class="text-foreground/80 break-words">
               {{ p.title }}
-              <span class="font-mono text-[var(--c-text-3)]">{{ p.detail }}</span>
-              <span v-if="p.note" class="text-2xs uppercase tracking-caps text-[var(--c-text-3)]">{{ p.note }}</span>
+              <span class="font-mono text-muted-foreground">{{ p.detail }}</span>
+              <span v-if="p.note" class="text-2xs uppercase tracking-caps text-muted-foreground">{{ p.note }}</span>
             </dd>
           </template>
         </dl>
       </section>
 
-      <p class="text-2xs text-[var(--c-text-3)] font-mono break-all">{{ app.image }}</p>
+      <p class="text-2xs text-muted-foreground font-mono break-all">{{ app.image }}</p>
     </div>
   </div>
 </template>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ProgressIndicator, ProgressRoot } from 'reka-ui'
 
+// Usage bar (disks, memory, operations): the shadcn-vue progress track with a
+// caller-chosen fill color. `segments` is kept for callers and ignored.
 const props = withDefaults(defineProps<{
   percent: number
   segments?: number
@@ -10,39 +13,38 @@ const props = withDefaults(defineProps<{
 }>(), {
   segments: 24,
   height: 'compact',
-  color: 'var(--c-text-display)',
+  color: 'var(--primary)',
 })
 
-const filled = computed(() => Math.round((Math.max(0, Math.min(100, props.percent)) / 100) * props.segments))
+const value = computed(() => Math.max(0, Math.min(100, props.percent)))
 
 const heightClass = computed(() => ({
   compact: 'h-1',
-  standard: 'h-2.5',
-  hero: 'h-4',
+  standard: 'h-2',
+  hero: 'h-3',
 }[props.height]))
 </script>
 
 <template>
-  <div class="flex gap-[2px] w-full" :class="heightClass">
-    <span
-      v-for="i in segments"
-      :key="i"
-      class="flex-1 rounded-none"
-      :class="indeterminate ? 'segbar-pulse' : ''"
+  <ProgressRoot
+    data-slot="progress"
+    :model-value="indeterminate ? null : value"
+    :class="['relative w-full overflow-hidden rounded-full bg-muted', heightClass]"
+  >
+    <ProgressIndicator
+      data-slot="progress-indicator"
+      :class="['h-full rounded-full transition-all', indeterminate ? 'w-1/3 animate-[progress-slide_1.2s_ease-in-out_infinite]' : 'w-full']"
       :style="{
-        backgroundColor: indeterminate ? 'var(--c-border-strong)' : (i <= filled ? color : 'var(--c-border-strong)'),
-        animationDelay: indeterminate ? `${i * 40}ms` : undefined,
+        backgroundColor: color,
+        transform: indeterminate ? undefined : `translateX(-${100 - value}%)`,
       }"
     />
-  </div>
+  </ProgressRoot>
 </template>
 
-<style scoped>
-.segbar-pulse {
-  animation: segbar-pulse 1.2s ease-in-out infinite;
-}
-@keyframes segbar-pulse {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 1; }
+<style>
+@keyframes progress-slide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
 }
 </style>

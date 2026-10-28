@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { TriangleAlertIcon } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import Modal from '../../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 /* Shared skeleton for the destructive storage confirmations (remove LV/VG,
    destroy RAID, init partition table, delete partition). The parent renders it
@@ -26,35 +29,33 @@ const canConfirm = computed(() =>
 
 <template>
   <Modal panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!busy" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-[var(--c-border)] bg-danger/5">
-      <h3 class="font-semibold text-danger">{{ title }}</h3>
-      <p v-if="subtitle" class="text-xs text-[var(--c-text-3)] mt-0.5">{{ subtitle }}</p>
+    <div class="px-5 py-4 border-b border-border bg-destructive/5">
+      <h3 class="font-semibold text-destructive">{{ title }}</h3>
+      <p v-if="subtitle" class="text-xs text-muted-foreground mt-0.5">{{ subtitle }}</p>
     </div>
     <div class="p-5 space-y-4">
-      <div class="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-        </svg>
+      <div class="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+        <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
         <span><slot name="warning" /></span>
       </div>
-      <div class="space-y-1 text-xs text-[var(--c-text-3)]">
+      <div class="space-y-1 text-xs text-muted-foreground">
         <slot name="details" />
       </div>
       <div v-if="confirmWord != null">
-        <label class="block text-xs text-[var(--c-text-2)] mb-1.5">
-          Type <span class="font-mono font-bold text-[var(--c-text-1)]">{{ confirmWord }}</span> to confirm
+        <label class="block text-xs text-foreground/80 mb-1.5">
+          Type <span class="font-mono font-bold text-foreground">{{ confirmWord }}</span> to confirm
         </label>
-        <input v-model="typed" type="text" :placeholder="confirmWord"
-          class="ui-input w-full px-3 py-2 text-sm font-mono placeholder-[var(--c-text-3)]"/>
+        <Input v-model="typed" type="text" :placeholder="confirmWord"
+          class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"/>
       </div>
-      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div class="flex gap-2">
-        <button @click="emit('close')" class="btn btn-outline flex-1 justify-center">Cancel</button>
-        <button @click="emit('confirm')" :disabled="!canConfirm"
-          class="btn btn-danger flex-1 justify-center">
+        <Button variant="outline" @click="emit('close')" class="flex-1 justify-center">Cancel</Button>
+        <Button variant="destructive" @click="emit('confirm')" :disabled="!canConfirm"
+          class="flex-1 justify-center">
           <span v-if="busy">{{ busyLabel }}</span>
           <span v-else>{{ actionLabel }}</span>
-        </button>
+        </Button>
       </div>
     </div>
   </Modal>

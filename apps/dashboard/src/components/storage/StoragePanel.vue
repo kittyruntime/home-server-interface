@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { CalendarIcon, DatabaseIcon, HardDriveIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref, computed, onMounted, watch } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import VolumesSection from './VolumesSection.vue'
@@ -83,58 +86,49 @@ const installCommand = computed(() =>
   <div class="flex flex-col @2xl:flex-row h-full">
 
     <!-- Mobile picker -->
-    <div class="@2xl:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
-      <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
-        <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
-      </select>
+    <div class="@2xl:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
+      <Select v-model="active">
+        <SelectTrigger class="w-full" aria-label="Section">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
 
     <!-- Left nav -->
-    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-border bg-sidebar py-5 px-2 flex-col gap-0.5 overflow-y-auto">
       <div v-for="item in nav" :key="item.id" class="relative flex items-center">
         <span
           v-if="active === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[var(--c-accent)] rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
         />
-        <button
+        <Button
+          variant="ghost"
+          :aria-current="active === item.id ? 'page' : undefined"
           @click="active = item.id"
           :class="[
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+            'w-full justify-start gap-2.5 px-3 font-normal',
             active === item.id
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-              : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           <!-- Volumes -->
-          <svg v-if="item.id === 'volumes'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <rect x="3" y="4" width="18" height="7" rx="2" stroke-linejoin="round"/>
-            <rect x="3" y="13" width="18" height="7" rx="2" stroke-linejoin="round"/>
-            <path stroke-linecap="round" d="M7 7.5h.01M7 16.5h.01"/>
-          </svg>
+          <ServerIcon v-if="item.id === 'volumes'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Disks -->
-          <svg v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M22 12H2"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 16h.01M10 16h.01"/>
-          </svg>
+          <HardDriveIcon v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- RAID -->
-          <svg v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-          </svg>
+          <PackageIcon v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- LVM -->
-          <svg v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/>
-          </svg>
+          <Rows3Icon v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Maintenance -->
-          <svg v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
-          </svg>
+          <CalendarIcon v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Mounts -->
-          <svg v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
-          </svg>
+          <DatabaseIcon v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ item.label }}
-        </button>
+        </Button>
       </div>
     </nav>
 
@@ -143,17 +137,17 @@ const installCommand = computed(() =>
       <div class="p-4 @2xl:p-8 max-w-5xl">
         <div v-if="missingTools.length" role="status"
           class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-          <p class="text-[var(--c-text-1)]">
+          <p class="text-foreground">
             Some storage tools are not installed on the server, so these features are unavailable:
             {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
           </p>
-          <p class="mt-1 text-[var(--c-text-3)]">Install them with <code class="font-mono text-[var(--c-text-2)]">{{ installCommand }}</code></p>
+          <p class="mt-1 text-muted-foreground">Install them with <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
         </div>
-        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-[var(--c-text-3)]">
+        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <template v-for="(c, i) in crumbs" :key="c.index">
             <span v-if="i > 0" aria-hidden="true">›</span>
-            <button v-if="i < crumbs.length - 1" type="button" class="hover:text-[var(--c-text-1)]" @click="go(navTo(location, c.index))">{{ c.label }}</button>
-            <span v-else class="font-mono text-[var(--c-text-1)]" aria-current="location">{{ c.label }}</span>
+            <Button variant="link" v-if="i < crumbs.length - 1" type="button" class="h-auto p-0 hover:text-foreground" @click="go(navTo(location, c.index))">{{ c.label }}</Button>
+            <span v-else class="font-mono text-foreground" aria-current="location">{{ c.label }}</span>
           </template>
         </nav>
         <VolumePage v-if="location.current.kind === 'volume'" :id="location.current.id"

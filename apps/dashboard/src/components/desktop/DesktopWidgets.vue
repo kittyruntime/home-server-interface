@@ -25,11 +25,11 @@ const addableTypes = computed(() =>
 )
 
 const SMART_DOT: Record<string, string> = {
-  passed:  'bg-[var(--c-success)]',
-  warning: 'bg-[var(--c-warning)]',
-  failed:  'bg-[var(--c-accent)]',
-  loading: 'bg-[var(--c-text-3)] animate-pulse',
-  unknown: 'bg-[var(--c-text-3)]',
+  passed:  'bg-success',
+  warning: 'bg-warning',
+  failed:  'bg-primary',
+  loading: 'bg-muted-foreground animate-pulse',
+  unknown: 'bg-muted-foreground',
 }
 
 defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
@@ -39,8 +39,8 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
     <div
       v-for="w in widgets" :key="w.id"
-      :class="['relative bg-[var(--c-surface-alt)]/90 border border-[var(--c-border)] rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
-      @contextmenu.prevent.stop="$emit('contextmenu-widget', w, $event)"
+      :class="['relative bg-muted/90 border border-border rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
+      @contextmenu="$emit('contextmenu-widget', w, $event)"
     >
       <!-- ---- CPU ---- -->
       <template v-if="w.type === 'cpu'">
@@ -48,9 +48,9 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <div class="flex items-end gap-4 flex-1">
           <div class="flex-shrink-0">
             <span
-              class="text-4xl font-semibold font-figure tabular-nums leading-none text-[var(--c-text-display)]"
+              class="text-4xl font-semibold font-figure tabular-nums leading-none text-foreground"
             >{{ metrics?.cpu ?? '-' }}</span>
-            <span class="text-lg text-[var(--c-text-3)] ml-0.5">%</span>
+            <span class="text-lg text-muted-foreground ml-0.5">%</span>
           </div>
           <div class="flex-1 min-w-0">
             <svg
@@ -59,7 +59,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
               preserveAspectRatio="none"
               class="w-full h-10"
             >
-              <path :d="spark(cpuHist, 0, 100).line" fill="none" stroke="var(--c-accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <path :d="spark(cpuHist, 0, 100).line" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
             </svg>
           </div>
         </div>
@@ -70,10 +70,10 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <p class="eyebrow mb-3">Memory</p>
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-baseline justify-between mb-3">
-            <span class="text-2xl font-bold text-[var(--c-text-3)] font-figure tabular-nums leading-none">
+            <span class="text-2xl font-bold text-muted-foreground font-figure tabular-nums leading-none">
               {{ metrics ? fmtMem(metrics.memory.used) : '-' }}
             </span>
-            <span class="text-xs text-[var(--c-text-3)]">
+            <span class="text-xs text-muted-foreground">
               of {{ metrics ? fmtMem(metrics.memory.total) : '-' }}
             </span>
           </div>
@@ -83,7 +83,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
               :color="memColor(metrics?.memory.percent ?? 0)"
               height="compact"
             />
-            <p class="text-xs text-[var(--c-text-3)] tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
+            <p class="text-xs text-muted-foreground tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
           </div>
         </div>
       </template>
@@ -95,12 +95,12 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
           <div class="flex items-center justify-between">
             <div class="space-y-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-success)]">↓ rx</span>
-                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
+                <span class="text-2xs font-semibold uppercase tracking-caps text-success">↓ rx</span>
+                <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="text-2xs font-semibold text-[var(--c-accent)] uppercase tracking-caps">↑ tx</span>
-                <span class="text-sm font-mono text-[var(--c-text-1)]">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
+                <span class="text-2xs font-semibold text-primary uppercase tracking-caps">↑ tx</span>
+                <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
               </div>
             </div>
             <div class="flex-1 min-w-0 ml-4">
@@ -113,12 +113,12 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
                 <path
                   v-if="rxHist.length >= 2"
                   :d="spark(rxHist).line"
-                  fill="none" stroke="var(--c-success)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
+                  fill="none" stroke="var(--success)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
                 />
                 <path
                   v-if="txHist.length >= 2"
                   :d="spark(txHist).line"
-                  fill="none" stroke="var(--c-accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
+                  fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
                 />
               </svg>
             </div>
@@ -131,16 +131,16 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
         <p class="eyebrow mb-3">Containers</p>
         <div class="flex-1 flex items-center gap-6">
           <div class="text-center">
-            <p class="text-3xl font-bold font-figure tabular-nums leading-none text-[var(--c-success)]">{{ ctrRunning }}</p>
-            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Running</p>
+            <p class="text-3xl font-bold font-figure tabular-nums leading-none text-success">{{ ctrRunning }}</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Running</p>
           </div>
           <div class="text-center">
-            <p class="text-3xl font-bold text-[var(--c-text-3)] font-figure tabular-nums leading-none">{{ ctrStopped }}</p>
-            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Stopped</p>
+            <p class="text-3xl font-bold text-muted-foreground font-figure tabular-nums leading-none">{{ ctrStopped }}</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Stopped</p>
           </div>
           <div class="text-center">
-            <p class="text-3xl font-bold font-figure tabular-nums leading-none" :class="ctrError > 0 ? 'text-[var(--c-accent)]' : 'text-[var(--c-text-3)]'">{{ ctrError }}</p>
-            <p class="text-2xs text-[var(--c-text-3)] uppercase tracking-caps mt-1">Error</p>
+            <p class="text-3xl font-bold font-figure tabular-nums leading-none" :class="ctrError > 0 ? 'text-primary' : 'text-muted-foreground'">{{ ctrError }}</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Error</p>
           </div>
         </div>
       </template>
@@ -148,14 +148,14 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
       <!-- ---- Storage ---- -->
       <template v-else-if="w.type === 'storage'">
         <p class="eyebrow mb-3">Storage</p>
-        <div v-if="disks.length === 0" class="flex-1 flex items-center text-xs text-[var(--c-text-3)]">
+        <div v-if="disks.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
           No filesystems
         </div>
         <div v-else class="flex-1 flex flex-col gap-3 overflow-y-auto">
           <div v-for="d in disks" :key="d.mountPoint">
             <div class="flex items-baseline justify-between mb-1 gap-2">
-              <span class="text-xs font-mono text-[var(--c-text-1)] truncate" :title="d.mountPoint">{{ d.mountPoint }}</span>
-              <span class="text-2xs text-[var(--c-text-3)] tabular-nums shrink-0">
+              <span class="text-xs font-mono text-foreground truncate" :title="d.mountPoint">{{ d.mountPoint }}</span>
+              <span class="text-2xs text-muted-foreground tabular-nums shrink-0">
                 {{ fmtGB(d.used) }} / {{ fmtGB(d.total) }}
               </span>
             </div>
@@ -171,23 +171,23 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
       <!-- ---- System info ---- -->
       <template v-else-if="w.type === 'sysinfo'">
         <p class="eyebrow mb-3">System</p>
-        <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-[var(--c-text-3)]">-</div>
+        <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-muted-foreground">-</div>
         <dl v-else class="flex-1 flex flex-col justify-center gap-2 text-sm">
           <div class="flex justify-between gap-3">
-            <dt class="text-[var(--c-text-3)]">Host</dt>
-            <dd class="font-mono text-[var(--c-text-1)] truncate" :title="sysinfo.hostname">{{ sysinfo.hostname }}</dd>
+            <dt class="text-muted-foreground">Host</dt>
+            <dd class="font-mono text-foreground truncate" :title="sysinfo.hostname">{{ sysinfo.hostname }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-[var(--c-text-3)]">OS</dt>
-            <dd class="text-[var(--c-text-2)] truncate capitalize" :title="`${sysinfo.platform} ${sysinfo.release}`">{{ sysinfo.platform }} {{ sysinfo.release }}</dd>
+            <dt class="text-muted-foreground">OS</dt>
+            <dd class="text-foreground/80 truncate capitalize" :title="`${sysinfo.platform} ${sysinfo.release}`">{{ sysinfo.platform }} {{ sysinfo.release }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-[var(--c-text-3)]">CPUs</dt>
-            <dd class="font-mono text-[var(--c-text-2)]">{{ sysinfo.cpuCount }}</dd>
+            <dt class="text-muted-foreground">CPUs</dt>
+            <dd class="font-mono text-foreground/80">{{ sysinfo.cpuCount }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-[var(--c-text-3)]">Load</dt>
-            <dd class="font-mono text-[var(--c-text-2)] tabular-nums">
+            <dt class="text-muted-foreground">Load</dt>
+            <dd class="font-mono text-foreground/80 tabular-nums">
               {{ sysinfo.loadavg.map(n => n.toFixed(2)).join('  ') }}
             </dd>
           </div>
@@ -197,17 +197,17 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
       <!-- ---- Disk health (SMART) ---- -->
       <template v-else-if="w.type === 'smart'">
         <p class="eyebrow mb-3">Disk Health</p>
-        <div v-if="smartDevices.length === 0" class="flex-1 flex items-center text-xs text-[var(--c-text-3)]">
+        <div v-if="smartDevices.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
           No drives
         </div>
         <div v-else class="flex-1 flex flex-col gap-2.5 overflow-y-auto">
           <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">
             <span :class="['w-2 h-2 rounded-full shrink-0', SMART_DOT[smartStatus(smart[dev])] ?? SMART_DOT.unknown]"></span>
-            <span class="text-xs font-mono text-[var(--c-text-1)]">{{ dev }}</span>
-            <span class="text-2xs text-[var(--c-text-3)] truncate flex-1" :title="smart[dev]?.modelName">
+            <span class="text-xs font-mono text-foreground">{{ dev }}</span>
+            <span class="text-2xs text-muted-foreground truncate flex-1" :title="smart[dev]?.modelName">
               {{ smart[dev]?.modelName ?? '' }}
             </span>
-            <span v-if="smart[dev]?.available && smart[dev]?.temperature" class="text-2xs text-[var(--c-text-2)] tabular-nums shrink-0">
+            <span v-if="smart[dev]?.available && smart[dev]?.temperature" class="text-2xs text-foreground/80 tabular-nums shrink-0">
               {{ smart[dev].temperature }}°C
             </span>
           </div>

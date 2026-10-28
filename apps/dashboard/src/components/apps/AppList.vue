@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -15,6 +18,9 @@ import { useToast } from '../../lib/toast'
 import { applyPlannedJob } from '../../lib/plan'
 import { pendingAppFocus, appToFocus } from '../../lib/app-focus'
 import { updateText } from '../../lib/app-update'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const { push: pushNotif, update: updateNotif, dismiss: dismissNotif } = useNotifications()
 const toast = useToast()
@@ -65,21 +71,21 @@ onUnmounted(() => {
 
 function statusDot(status: string) {
   switch (status) {
-    case 'running':       return 'bg-[var(--c-success)]'
-    case 'stopped':       return 'bg-[var(--c-text-3)]'
-    case 'error':         return 'bg-[var(--c-accent)]'
-    case 'transitioning': return 'bg-[var(--c-warning)] animate-pulse'
-    default:              return 'bg-[var(--c-warning)]'
+    case 'running':       return 'bg-success'
+    case 'stopped':       return 'bg-muted-foreground'
+    case 'error':         return 'bg-primary'
+    case 'transitioning': return 'bg-warning animate-pulse'
+    default:              return 'bg-warning'
   }
 }
 
 function statusText(status: string) {
   switch (status) {
-    case 'running':       return { label: 'Running',  cls: 'text-[var(--c-success)]' }
-    case 'stopped':       return { label: 'Stopped',  cls: 'text-[var(--c-text-3)]'   }
-    case 'error':         return { label: 'Error',    cls: 'text-[var(--c-accent)]'   }
-    case 'transitioning': return { label: 'Updating…',cls: 'text-[var(--c-warning)]'  }
-    default:              return { label: 'Unknown',  cls: 'text-[var(--c-text-3)]'   }
+    case 'running':       return { label: 'Running',  cls: 'text-success' }
+    case 'stopped':       return { label: 'Stopped',  cls: 'text-muted-foreground'   }
+    case 'error':         return { label: 'Error',    cls: 'text-primary'   }
+    case 'transitioning': return { label: 'Updating…',cls: 'text-warning'  }
+    default:              return { label: 'Unknown',  cls: 'text-muted-foreground'   }
   }
 }
 
@@ -255,22 +261,17 @@ async function unpin(app: App) {
           description="Deploy your first container to get started. You can configure ports, volumes, environment variables and more."
         >
           <template #icon>
-            <div class="w-16 h-16 rounded-xl bg-[var(--c-surface-alt)] border border-[var(--c-border)] flex items-center justify-center">
-              <svg class="w-8 h-8 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-              </svg>
+            <div class="w-16 h-16 rounded-xl bg-muted border border-border flex items-center justify-center">
+              <PackageIcon class="w-8 h-8 text-muted-foreground" aria-hidden="true" />
             </div>
           </template>
           <template #action>
-            <button
+            <Button
               @click="openNew"
-              class="btn btn-primary"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
+              <PlusIcon class="w-4 h-4" aria-hidden="true" />
               New App
-            </button>
+            </Button>
           </template>
         </EmptyState>
       </div>
@@ -278,197 +279,156 @@ async function unpin(app: App) {
       <div v-else class="flex flex-col flex-1">
 
         <!-- Quick access -->
-        <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-[var(--c-border)]">
-          <p class="text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps mb-3">Quick access</p>
+        <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-border">
+          <p class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps mb-3">Quick access</p>
           <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="app.app?.pinnedUrl ?? ''" target="_blank" rel="noopener"
-              class="group flex items-center gap-3 px-3.5 py-2.5 bg-[var(--c-surface-alt)] border border-[var(--c-border-strong)] rounded-xl hover:bg-[var(--c-hover)] transition-all no-underline"
+              class="group flex items-center gap-3 px-3.5 py-2.5 bg-muted border border-input rounded-xl hover:bg-accent transition-all no-underline"
             >
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
               <div class="min-w-0">
-                <p class="text-sm font-semibold text-[var(--c-text-1)] font-mono leading-none">{{ app.name }}</p>
-                <p class="text-2xs text-[var(--c-text-3)] mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
+                <p class="text-sm font-semibold text-foreground font-mono leading-none">{{ app.name }}</p>
+                <p class="text-2xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
               </div>
-              <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] group-hover:text-[var(--c-text-2)] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-              </svg>
+              <ExternalLinkIcon class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/80 transition-colors flex-shrink-0" aria-hidden="true" />
             </a>
           </TransitionGroup>
         </div>
 
         <!-- Mobile cards -->
         <div class="space-y-2 px-3 pb-3 sm:hidden">
-          <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-[var(--c-border)] p-3 transition-colors', focusedName === app.name ? 'bg-[var(--c-accent-subtle)]' : 'bg-[var(--c-surface)]']">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-[var(--c-text-1)]">{{app.name}}</strong><span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger">Blocked</span><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-2xs text-[var(--c-text-3)]" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-[var(--c-text-3)]">{{svc.name}}</span></div></div></div><button class="touch-target grid shrink-0 place-items-center rounded-lg text-[var(--c-text-3)]" aria-label="Edit container" @click="openEdit(app)">⋯</button></div>
-            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-[var(--c-border)] pt-2"><button class="touch-target rounded-lg text-xs text-success active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</button><button class="touch-target rounded-lg text-xs text-warning active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</button><button class="touch-target rounded-lg text-xs text-[var(--c-text-2)] active:bg-[var(--c-hover)]" @click="openLogs(app)">Logs</button></div>
+          <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-border p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-card']">
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">Blocked</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-muted-foreground" aria-label="Edit container" @click="openEdit(app)"><EllipsisIcon /></Button></div>
+            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">Start</Button><Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">Stop</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">Restart</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" @click="openLogs(app)">Logs</Button></div>
           </article>
         </div>
 
         <!-- Desktop table -->
         <div class="hidden overflow-x-auto sm:block">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-[var(--c-border)]">
-              <th class="text-left px-6 py-2.5 text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">Container</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps hidden sm:table-cell">Image</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps hidden md:table-cell">Ports</th>
-              <th class="text-left px-3 py-2.5 text-2xs font-semibold text-[var(--c-text-3)] uppercase tracking-caps">Status</th>
-              <th class="px-6 py-2.5 text-right"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--c-border)]">
-            <tr
+        <Table class="w-full text-sm">
+          <TableHeader>
+            <TableRow class="border-b border-border">
+              <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Container</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden sm:table-cell">Image</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden md:table-cell">Ports</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">Status</TableHead>
+              <TableHead class="px-6 py-2.5 text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
+            <TableRow
               v-for="app in apps" :key="app.id"
               :data-app-name="app.name"
-              :class="['group transition-colors', focusedName === app.name ? 'bg-[var(--c-accent-subtle)]' : 'hover:bg-[var(--c-hover)]']"
+              :class="['group transition-colors', focusedName === app.name ? 'bg-primary/10' : 'hover:bg-accent']"
             >
               <!-- Name -->
-              <td class="px-6 py-3.5">
+              <TableCell class="px-6 py-3.5">
                 <div class="flex items-center gap-2">
-                  <span class="font-mono text-[var(--c-text-2)] text-sm font-medium">{{ app.name }}</span>
-                  <span v-if="holdForApp(app.name)" class="badge bg-danger/10 text-danger" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</span>
-                  <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span>
-                  <svg
-                    v-if="app.app?.pinnedUrl"
-                    class="w-3 h-3 text-[var(--c-accent)] flex-shrink-0"
-                    fill="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                  </svg>
-                  <span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-accent)] border-[var(--c-accent)]/40">Changes pending</span>
-                  <span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-[var(--c-warning)] border-[var(--c-warning)]/40">Modified outside HSI</span>
+                  <span class="font-mono text-foreground/80 text-sm font-medium">{{ app.name }}</span>
+                  <Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</Badge>
+                  <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span>
+                  <BookmarkIcon v-if="app.app?.pinnedUrl" class="w-3 h-3 text-primary flex-shrink-0" aria-hidden="true" />
+                  <span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span>
+                  <span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">Modified outside HSI</span>
                 </div>
                 <div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5">
                   <div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5">
                     <span :class="['w-1 h-1 rounded-full', statusDot(svc.status)]" />
-                    <span class="font-mono text-2xs text-[var(--c-text-3)]">{{ svc.name }}</span>
+                    <span class="font-mono text-2xs text-muted-foreground">{{ svc.name }}</span>
                   </div>
                 </div>
-              </td>
+              </TableCell>
 
               <!-- Image -->
-              <td class="px-3 py-3.5 hidden sm:table-cell">
-                <span class="font-mono text-[var(--c-text-3)] text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
-              </td>
+              <TableCell class="px-3 py-3.5 hidden sm:table-cell">
+                <span class="font-mono text-muted-foreground text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
+              </TableCell>
 
               <!-- Ports -->
-              <td class="px-3 py-3.5 hidden md:table-cell">
-                <span class="font-mono text-[var(--c-text-3)] text-xs">{{ portsSummary(app) }}</span>
-              </td>
+              <TableCell class="px-3 py-3.5 hidden md:table-cell">
+                <span class="font-mono text-muted-foreground text-xs">{{ portsSummary(app) }}</span>
+              </TableCell>
 
               <!-- Status -->
-              <td class="px-3 py-3.5">
+              <TableCell class="px-3 py-3.5">
                 <span class="flex items-center gap-1.5">
                   <span :class="['w-1.5 h-1.5 rounded-full', statusDot(app.status)]" />
                   <span :class="['text-xs', statusText(app.status).cls]">{{ statusText(app.status).label }}</span>
                 </span>
-              </td>
+              </TableCell>
 
               <!-- Actions -->
-              <td class="px-6 py-3.5">
+              <TableCell class="px-6 py-3.5">
                 <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 
                   <!-- Apply -->
-                  <button
+                  <Button variant="outline" size="xs"
                     v-if="app.pendingApply || app.drifted"
                     @click="applyApp(app.id)"
                     :disabled="!!actionLoading[app.id]"
                     title="Apply changes"
-                    class="px-2 py-1 mr-1.5 rounded-lg text-2xs font-medium text-[var(--c-accent)] border border-[var(--c-accent)]/40 hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
+                    class="mr-1.5 text-2xs text-primary border-primary/40"
                   >
                     Apply
-                  </button>
+                  </Button>
 
                   <!-- Start / Stop / Restart -->
-                  <div class="flex items-center border border-[var(--c-border-strong)] rounded-lg overflow-hidden mr-1.5">
-                    <button
-                      @click="runAction(app.id, 'start')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Start"
-                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-success)] hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
-                    >
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                      </svg>
-                    </button>
-                    <span class="w-px h-4 bg-[var(--c-border-strong)]" />
-                    <button
-                      @click="runAction(app.id, 'stop')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Stop"
-                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-warning)] hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="6" width="12" height="12" rx="1"/>
-                      </svg>
-                    </button>
-                    <span class="w-px h-4 bg-[var(--c-border-strong)]" />
-                    <button
-                      @click="runAction(app.id, 'restart')"
-                      :disabled="!!actionLoading[app.id]"
-                      title="Restart"
-                      class="px-2 py-1.5 text-[var(--c-text-3)] hover:text-[var(--c-accent)] hover:bg-[var(--c-hover)] disabled:opacity-30 transition-colors"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                      </svg>
-                    </button>
-                  </div>
+                  <ButtonGroup class="mr-1.5" aria-label="Container actions">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Start" aria-label="Start" class="text-muted-foreground hover:text-success" @click="runAction(app.id, 'start')">
+                      <PlayIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Stop" aria-label="Stop" class="text-muted-foreground hover:text-warning" @click="runAction(app.id, 'stop')">
+                      <SquareIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Restart" aria-label="Restart" class="text-muted-foreground hover:text-primary" @click="runAction(app.id, 'restart')">
+                      <RefreshCwIcon class="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </ButtonGroup>
 
                   <!-- Logs -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="openLogs(app)"
                     title="Logs"
-                    class="p-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-lg hover:bg-[var(--c-hover)]"
+                    class="text-muted-foreground hover:text-foreground"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h8"/>
-                    </svg>
-                  </button>
+                    <ScrollTextIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
 
                   <!-- Pin -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
                     :title="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
-                    :class="[
-                      'p-1.5 rounded-lg transition-colors hover:bg-[var(--c-hover)]',
-                      app.app?.pinnedUrl ? 'text-[var(--c-accent)] hover:text-[var(--c-text-2)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
-                    ]"
+                    :aria-pressed="!!app.app?.pinnedUrl"
+                    :class="app.app?.pinnedUrl ? 'text-primary' : 'text-muted-foreground'"
                   >
-                    <svg class="w-3.5 h-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                  </button>
+                    <BookmarkIcon class="size-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" aria-hidden="true" />
+                  </Button>
 
                   <!-- Edit -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="openEdit(app)"
                     title="Edit"
-                    class="p-1.5 text-[var(--c-text-3)] hover:text-[var(--c-text-1)] transition-colors rounded-lg hover:bg-[var(--c-hover)]"
+                    class="text-muted-foreground hover:text-foreground"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                  </button>
+                    <SquarePenIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
 
                   <!-- Delete -->
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     @click="runAction(app.id, 'delete')"
                     :disabled="!!actionLoading[app.id]"
                     title="Delete"
-                    class="p-1.5 text-[var(--c-text-3)] hover:text-[var(--c-accent)] disabled:opacity-30 transition-colors rounded-lg hover:bg-[var(--c-hover)]"
+                    class="text-muted-foreground hover:text-primary"
                   >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
+                    <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
         </div>
 
       </div>
@@ -489,32 +449,31 @@ async function unpin(app: App) {
   <!-- Pin dialog -->
   <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">
     <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">
-        Pin <span class="font-mono text-[var(--c-accent)]">{{ pinDialog.name }}</span> to quick access
+      <h3 class="text-sm font-semibold text-foreground">
+        Pin <span class="font-mono text-primary">{{ pinDialog.name }}</span> to quick access
       </h3>
     </template>
 
     <div class="p-5 space-y-1.5">
-      <label class="text-xs text-[var(--c-text-3)]">URL</label>
-      <input
+      <label class="text-xs text-muted-foreground">URL</label>
+      <Input
         v-model="pinDialogUrl"
         placeholder="http://192.168.1.x:8080"
         @keydown.enter.prevent="savePin"
         @keydown.escape="pinDialog = null"
         autofocus
-        class="ui-input w-full px-3 py-2 text-sm font-mono"
+        class="w-full px-3 py-2 text-sm font-mono"
       />
-      <p v-if="pinDialogErr" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ pinDialogErr }}</p>
+      <p v-if="pinDialogErr" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ pinDialogErr }}</p>
     </div>
 
     <template #footer>
       <div class="flex-1" />
-      <button @click="pinDialog = null" class="btn btn-ghost btn-sm">Cancel</button>
-      <button
+      <Button variant="ghost" size="sm" @click="pinDialog = null">Cancel</Button>
+      <Button size="sm"
         @click="savePin"
         :disabled="pinDialogBusy || !pinDialogUrl.trim()"
-        class="btn btn-primary btn-sm"
-      >{{ pinDialogBusy ? 'Saving…' : 'Pin' }}</button>
+      >{{ pinDialogBusy ? 'Saving…' : 'Pin' }}</Button>
     </template>
   </Modal>
 </template>

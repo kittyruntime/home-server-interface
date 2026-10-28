@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDownIcon, ChevronUpIcon, LayersIcon, LayoutTemplateIcon, WifiIcon } from '@lucide/vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
@@ -7,6 +8,8 @@ import {
 } from 'chart.js'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import ErrorState from './ui/ErrorState.vue'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
@@ -134,50 +137,48 @@ const chartOptions = {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Monitoring</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">Live usage now, and history over time.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">Monitoring</h2>
+    <p class="text-sm text-muted-foreground mb-6">Live usage now, and history over time.</p>
 
     <!-- View toggle -->
-    <div class="flex items-center gap-1 mb-6 p-1 rounded-lg bg-[var(--c-surface-deep)] w-fit">
-      <button @click="viewMode = 'live'"
-        :class="['px-3 py-1.5 text-xs rounded-md transition-colors', viewMode === 'live' ? 'bg-[var(--c-surface)] text-[var(--c-text-1)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
-        Live
-      </button>
-      <button @click="viewMode = 'history'; loadHistory()"
-        :class="['px-3 py-1.5 text-xs rounded-md transition-colors', viewMode === 'history' ? 'bg-[var(--c-surface)] text-[var(--c-text-1)] shadow-sm' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)]']">
-        History
-      </button>
-    </div>
+    <Tabs
+      :model-value="viewMode"
+      class="mb-6"
+      @update:model-value="v => { if (v === 'history') { viewMode = 'history'; loadHistory() } else viewMode = 'live' }"
+    >
+      <TabsList>
+        <TabsTrigger value="live">Live</TabsTrigger>
+        <TabsTrigger value="history">History</TabsTrigger>
+      </TabsList>
+    </Tabs>
 
     <LoadingState v-if="loading" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <div v-else-if="viewMode === 'live'">
       <template v-if="sysinfo && metrics">
         <div class="space-y-4">
 
           <!-- ── Processor ────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
-            <div class="px-4 py-3 flex items-center gap-2 border-b border-[var(--c-border)]">
-              <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-              </svg>
-              <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Processor</span>
+          <div class="rounded-xl border border-border bg-card overflow-hidden">
+            <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Processor</span>
             </div>
 
             <div class="px-4 py-4 space-y-4">
               <!-- Usage bar -->
               <div class="space-y-1.5">
-                <div class="flex justify-between text-xs text-[var(--c-text-3)]">
+                <div class="flex justify-between text-xs text-muted-foreground">
                   <span>Usage</span>
                   <span class="font-medium tabular-nums"
-                    :class="metrics.cpu > 80 ? 'text-danger' : metrics.cpu > 60 ? 'text-warning' : 'text-[var(--c-text-1)]'"
+                    :class="metrics.cpu > 80 ? 'text-destructive' : metrics.cpu > 60 ? 'text-warning' : 'text-foreground'"
                   >{{ metrics.cpu }}%</span>
                 </div>
-                <div class="w-full h-1.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                <div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-700"
-                    :class="metrics.cpu > 80 ? 'bg-danger' : metrics.cpu > 60 ? 'bg-warning' : 'bg-[var(--c-accent)]'"
+                    :class="metrics.cpu > 80 ? 'bg-destructive' : metrics.cpu > 60 ? 'bg-warning' : 'bg-primary'"
                     :style="{ width: metrics.cpu + '%' }"
                   />
                 </div>
@@ -185,11 +186,11 @@ const chartOptions = {
 
               <!-- Load averages -->
               <div class="flex items-center gap-4">
-                <span class="text-xs text-[var(--c-text-3)]">Load avg</span>
+                <span class="text-xs text-muted-foreground">Load avg</span>
                 <div class="flex gap-4">
                   <div v-for="(val, i) in sysinfo.loadavg" :key="i" class="text-center">
-                    <div class="text-sm font-medium text-[var(--c-text-1)] tabular-nums">{{ val.toFixed(2) }}</div>
-                    <div class="text-2xs text-[var(--c-text-3)]">{{ ['1m', '5m', '15m'][i] }}</div>
+                    <div class="text-sm font-medium text-foreground tabular-nums">{{ val.toFixed(2) }}</div>
+                    <div class="text-2xs text-muted-foreground">{{ ['1m', '5m', '15m'][i] }}</div>
                   </div>
                 </div>
               </div>
@@ -197,60 +198,52 @@ const chartOptions = {
           </div>
 
           <!-- ── Memory ────────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
-            <div class="px-4 py-3 flex items-center gap-2 border-b border-[var(--c-border)]">
-              <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-              </svg>
-              <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Memory</span>
+          <div class="rounded-xl border border-border bg-card overflow-hidden">
+            <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <LayersIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Memory</span>
             </div>
 
             <div class="px-4 py-4 space-y-3">
               <div class="flex justify-between items-baseline">
-                <span class="text-sm text-[var(--c-text-2)]">
+                <span class="text-sm text-foreground/80">
                   {{ fmtBytes(metrics.memory.used) }} used
                 </span>
-                <span class="text-xs text-[var(--c-text-3)]">
+                <span class="text-xs text-muted-foreground">
                   {{ fmtBytes(metrics.memory.total) }} total
                 </span>
               </div>
-              <div class="w-full h-2 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+              <div class="w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all duration-700"
-                  :class="metrics.memory.percent > 90 ? 'bg-danger' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-[var(--c-accent)]'"
+                  :class="metrics.memory.percent > 90 ? 'bg-destructive' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-primary'"
                   :style="{ width: metrics.memory.percent + '%' }"
                 />
               </div>
-              <div class="flex justify-between text-2xs text-[var(--c-text-3)]">
+              <div class="flex justify-between text-2xs text-muted-foreground">
                 <span>{{ fmtBytes(metrics.memory.total - metrics.memory.used) }} free</span>
                 <span
                   class="font-medium tabular-nums"
-                  :class="metrics.memory.percent > 90 ? 'text-danger' : metrics.memory.percent > 75 ? 'text-warning' : ''"
+                  :class="metrics.memory.percent > 90 ? 'text-destructive' : metrics.memory.percent > 75 ? 'text-warning' : ''"
                 >{{ metrics.memory.percent }}%</span>
               </div>
             </div>
           </div>
 
           <!-- ── Network ───────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
+          <div class="rounded-xl border border-border bg-card overflow-hidden">
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
-                </svg>
-                <span class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Network throughput</span>
+                <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Network throughput</span>
               </div>
-              <div class="flex items-center gap-3 text-xs tabular-nums text-[var(--c-text-3)]">
+              <div class="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-                  </svg>
+                  <ChevronDownIcon class="w-3 h-3 text-success" aria-hidden="true" />
                   {{ fmtBytes(metrics.network.rx) }}/s
                 </span>
                 <span class="flex items-center gap-1">
-                  <svg class="w-3 h-3 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
-                  </svg>
+                  <ChevronUpIcon class="w-3 h-3 text-info" aria-hidden="true" />
                   {{ fmtBytes(metrics.network.tx) }}/s
                 </span>
               </div>
@@ -263,41 +256,40 @@ const chartOptions = {
 
     <div v-else-if="viewMode === 'history'">
       <!-- Period selector -->
-      <div class="flex gap-1 mb-5">
-        <button v-for="p in (['1h','6h','24h','7d'] as const)" :key="p"
-          @click="period = p; loadHistory()"
-          :class="['px-3 py-1 text-xs rounded-lg border transition-colors',
-            period === p
-              ? 'border-[var(--c-accent)]/50 text-[var(--c-accent)] bg-[var(--c-accent-subtle)]'
-              : 'border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-border-strong)]']">
-          {{ p }}
-        </button>
-      </div>
+      <ToggleGroup
+        type="single" variant="outline" size="sm"
+        class="mb-5"
+        :model-value="period"
+        aria-label="History period"
+        @update:model-value="v => { if (typeof v === 'string' && v) { period = v as Period; loadHistory() } }"
+      >
+        <ToggleGroupItem v-for="p in (['1h','6h','24h','7d'] as const)" :key="p" :value="p" class="px-3 text-xs">{{ p }}</ToggleGroupItem>
+      </ToggleGroup>
 
       <LoadingState v-if="historyLoading" />
       <ErrorState v-else-if="historyError" :message="historyError" retry-label="Retry" @retry="loadHistory" />
-      <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-[var(--c-text-3)]">
+      <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-muted-foreground">
         No data yet: history is recorded every minute.
       </div>
       <template v-else>
         <!-- CPU chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">CPU %</div>
-          <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
+          <div class="h-32 rounded-lg border border-border bg-card p-3">
             <Line :data="cpuChartData" :options="chartOptions" />
           </div>
         </div>
         <!-- RAM chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">RAM (GB)</div>
-          <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
+          <div class="h-32 rounded-lg border border-border bg-card p-3">
             <Line :data="ramChartData" :options="chartOptions" />
           </div>
         </div>
         <!-- Network chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">Network (MB/s)</div>
-          <div class="h-32 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] p-3">
+          <div class="h-32 rounded-lg border border-border bg-card p-3">
             <Line :data="netChartData" :options="chartOptions" />
           </div>
         </div>

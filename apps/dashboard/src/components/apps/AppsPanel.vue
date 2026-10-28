@@ -19,7 +19,7 @@ defineExpose({ openNew })
 </script>
 
 <template>
-  <div v-if="!isAdmin" class="flex items-center justify-center w-full h-full text-[var(--c-text-3)] text-sm">
+  <div v-if="!isAdmin" class="flex items-center justify-center w-full h-full text-muted-foreground text-sm">
     Administrator access required.
   </div>
 

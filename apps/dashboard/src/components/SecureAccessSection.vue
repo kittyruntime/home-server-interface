@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { Textarea } from '@/components/ui/textarea'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { applyPlanned } from '../lib/plan'
 import { expiryState, modeLabel, openAfterRestart, TRUST_STEPS, type NextAddress } from '../lib/tls'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
-import ToggleSwitch from './ui/ToggleSwitch.vue'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
 
@@ -122,105 +124,105 @@ function setStandardPorts(enabled: boolean) {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Secure access</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">Serve HSI over HTTPS so passwords and files are encrypted on your network.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">Secure access</h2>
+    <p class="text-sm text-muted-foreground mb-6">Serve HSI over HTTPS so passwords and files are encrypted on your network.</p>
 
     <LoadingState v-if="loading" variant="compact" />
     <ErrorState v-else-if="loadError" :message="loadError" retry-label="Retry" compact @retry="load" />
-    <p v-else-if="restarting" role="status" class="status-text text-[var(--c-text-2)]">Restarting HSI…</p>
+    <p v-else-if="restarting" role="status" class="status-text text-foreground/80">Restarting HSI…</p>
 
     <template v-else-if="status">
       <!-- Status -->
-      <div class="panel-card p-5 bg-[var(--c-surface)] mb-4">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card mb-4">
         <div class="eyebrow mb-3">Status</div>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-[var(--c-text-3)]">Mode</span>
-            <span class="text-[var(--c-text-1)]">{{ modeLabel(status.mode) }}</span>
+            <span class="text-xs text-muted-foreground">Mode</span>
+            <span class="text-foreground">{{ modeLabel(status.mode) }}</span>
           </div>
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-[var(--c-text-3)]">Port</span>
-            <span class="text-[var(--c-text-1)] tabular-nums">
+            <span class="text-xs text-muted-foreground">Port</span>
+            <span class="text-foreground tabular-nums">
               {{ status.port }}<template v-if="status.standardPorts">, also 443, with 80 redirecting</template>
             </span>
           </div>
           <template v-if="status.certificate">
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-[var(--c-text-3)]">Names</span>
-              <span class="text-[var(--c-text-1)] text-right break-all">{{ status.certificate.names.join(', ') }}</span>
+              <span class="text-xs text-muted-foreground">Names</span>
+              <span class="text-foreground text-right break-all">{{ status.certificate.names.join(', ') }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-[var(--c-text-3)]">Issuer</span>
-              <span class="text-[var(--c-text-1)] text-right break-all">{{ status.certificate.issuer }}</span>
+              <span class="text-xs text-muted-foreground">Issuer</span>
+              <span class="text-foreground text-right break-all">{{ status.certificate.issuer }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-[var(--c-text-3)]">Certificate</span>
-              <span class="text-[var(--c-text-1)] tabular-nums">expires {{ ymd(status.certificate.notAfter) }}</span>
+              <span class="text-xs text-muted-foreground">Certificate</span>
+              <span class="text-foreground tabular-nums">expires {{ ymd(status.certificate.notAfter) }}</span>
             </div>
           </template>
           <div v-if="status.authorityFingerprint">
-            <span class="text-xs text-[var(--c-text-3)]">Authority fingerprint</span>
-            <p class="font-mono break-all text-xs text-[var(--c-text-2)] mt-1">{{ status.authorityFingerprint }}</p>
+            <span class="text-xs text-muted-foreground">Authority fingerprint</span>
+            <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ status.authorityFingerprint }}</p>
           </div>
         </div>
         <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> The certificate expires in {{ expiry.days }} days.</p>
-        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-danger"><span class="status-tag">[ERR]</span> The certificate has expired.</p>
-        <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-[var(--c-text-3)]">
+        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> The certificate has expired.</p>
+        <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-muted-foreground">
           This server still has the nginx site created by older versions. To let HSI serve HTTPS itself, turn HTTPS on here, then remove both /etc/nginx/sites-enabled/hsi and /etc/nginx/sites-available/hsi and reload nginx.
         </p>
       </div>
 
       <!-- Actions -->
-      <div class="panel-card p-5 bg-[var(--c-surface)] mb-4">
+      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card mb-4">
         <div class="eyebrow mb-3">Actions</div>
         <div class="flex flex-wrap gap-2">
-          <button v-if="status.mode === 'off' || status.mode === 'proxy'" class="btn btn-primary btn-sm" @click="turnOn">Turn HTTPS on…</button>
-          <button v-if="status.mode === 'imported'" class="btn btn-outline btn-sm" @click="useLocal">Use the local authority…</button>
-          <button class="btn btn-outline btn-sm" @click="form = form === 'import' ? '' : 'import'">Import a certificate…</button>
-          <button class="btn btn-outline btn-sm" @click="form = form === 'proxy' ? '' : 'proxy'">Behind a reverse proxy…</button>
+          <Button size="sm" v-if="status.mode === 'off' || status.mode === 'proxy'" @click="turnOn">Turn HTTPS on…</Button>
+          <Button variant="outline" size="sm" v-if="status.mode === 'imported'" @click="useLocal">Use the local authority…</Button>
+          <Button variant="outline" size="sm" @click="form = form === 'import' ? '' : 'import'">Import a certificate…</Button>
+          <Button variant="outline" size="sm" @click="form = form === 'proxy' ? '' : 'proxy'">Behind a reverse proxy…</Button>
         </div>
 
         <form v-if="form === 'import'" class="mt-4 space-y-3" @submit.prevent="submitImport">
-          <label class="block text-xs text-[var(--c-text-3)]">Certificate or full chain
-            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-[var(--c-text-2)]" @change="onFile('cert', $event)" />
+          <label class="block text-xs text-muted-foreground">Certificate or full chain
+            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-foreground/80" @change="onFile('cert', $event)" />
           </label>
-          <label class="block text-xs text-[var(--c-text-3)]">Private key (optional when it is in the same file)
-            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-[var(--c-text-2)]" @change="onFile('key', $event)" />
+          <label class="block text-xs text-muted-foreground">Private key (optional when it is in the same file)
+            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-foreground/80" @change="onFile('key', $event)" />
           </label>
-          <button type="submit" class="btn btn-primary btn-sm">Review import</button>
+          <Button size="sm" type="submit">Review import</Button>
         </form>
 
         <form v-if="form === 'proxy'" class="mt-4 space-y-3" @submit.prevent="submitProxy">
-          <label class="block text-xs text-[var(--c-text-3)]">Trusted proxies, one per line
-            <textarea v-model="proxies" rows="3" class="input mt-1 w-full font-mono text-sm" />
+          <label class="block text-xs text-muted-foreground">Trusted proxies, one per line
+            <Textarea v-model="proxies" rows="3" class="mt-1 w-full font-mono text-sm" />
           </label>
-          <p class="text-xs text-[var(--c-text-3)]">Leave empty when the proxy runs on this server</p>
-          <button type="submit" class="btn btn-primary btn-sm">Review change</button>
+          <p class="text-xs text-muted-foreground">Leave empty when the proxy runs on this server</p>
+          <Button size="sm" type="submit">Review change</Button>
         </form>
 
         <p v-for="w in warnings" :key="w" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
-        <p v-if="actionError" role="alert" class="mt-3 status-text text-danger"><span class="status-tag">[ERR]</span> {{ actionError }}</p>
+        <p v-if="actionError" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ actionError }}</p>
 
         <div v-if="isHttps" class="mt-4 flex items-center justify-between gap-4">
-          <span class="text-sm text-[var(--c-text-2)]">Also serve on ports 443 and 80</span>
-          <ToggleSwitch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
+          <span class="text-sm text-foreground/80">Also serve on ports 443 and 80</span>
+          <Switch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
         </div>
       </div>
 
       <!-- Trust the authority -->
-      <div v-if="status.authorityFingerprint" class="panel-card p-5 bg-[var(--c-surface)]">
+      <div v-if="status.authorityFingerprint" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
         <div class="eyebrow mb-3">Trust the authority</div>
-        <p class="text-xs text-[var(--c-text-3)] mb-3">Install the authority certificate on each device so browsers stop showing a warning.</p>
-        <a href="/ca.crt" download class="btn btn-outline btn-sm">Download the authority certificate</a>
+        <p class="text-xs text-muted-foreground mb-3">Install the authority certificate on each device so browsers stop showing a warning.</p>
+        <Button as="a" variant="outline" size="sm" href="/ca.crt" download>Download the authority certificate</Button>
         <details class="mt-3">
-          <summary class="cursor-pointer text-sm text-[var(--c-text-2)]">How to trust it on your device</summary>
+          <summary class="cursor-pointer text-sm text-foreground/80">How to trust it on your device</summary>
           <ul class="mt-2 space-y-2">
-            <li v-for="t in TRUST_STEPS" :key="t.os" class="text-xs text-[var(--c-text-3)]">
-              <span class="font-semibold text-[var(--c-text-1)]">{{ t.os }}.</span> {{ t.steps }}
+            <li v-for="t in TRUST_STEPS" :key="t.os" class="text-xs text-muted-foreground">
+              <span class="font-semibold text-foreground">{{ t.os }}.</span> {{ t.steps }}
             </li>
           </ul>
         </details>
-        <p class="mt-3 text-xs"><a :href="DOCS_URL" target="_blank" rel="noopener" class="text-[var(--c-accent)] hover:underline">Read the full guide</a></p>
+        <p class="mt-3 text-xs"><a :href="DOCS_URL" target="_blank" rel="noopener" class="text-primary hover:underline">Read the full guide</a></p>
       </div>
     </template>
   </div>

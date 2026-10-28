@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RefreshCwIcon, SearchIcon } from '@lucide/vue'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDateTime } from '../lib/format-date'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { ref, watch, onMounted } from 'vue'
@@ -7,6 +9,8 @@ import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type AuditEntry = Awaited<ReturnType<typeof trpc.audit.list.query>>['entries'][number]
 
@@ -59,25 +63,20 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-[var(--c-text-1)] mb-1">Audit log</h2>
-    <p class="text-sm text-[var(--c-text-3)] mb-6">All actions performed by authenticated users.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">Audit log</h2>
+    <p class="text-sm text-muted-foreground mb-6">All actions performed by authenticated users.</p>
 
     <!-- Filter -->
     <div class="flex gap-3 mb-5 min-w-0">
       <div class="relative flex-1 min-w-0">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <input v-model="filterAction" placeholder="Filter by action…"
-          class="ui-input w-full pl-8 pr-3 py-2 text-sm" />
+        <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+        <Input v-model="filterAction" placeholder="Filter by action…"
+          class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
-      <button @click="load" :disabled="loading"
-        class="px-3 py-2 rounded-lg border border-[var(--c-border)] text-sm text-[var(--c-text-2)] hover:bg-[var(--c-hover)] transition-colors disabled:opacity-50">
+      <Button variant="outline" size="icon" :disabled="loading" title="Refresh" aria-label="Refresh audit log" @click="load">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+        <RefreshCwIcon v-else class="size-4" aria-hidden="true" />
+      </Button>
     </div>
 
     <!-- Loading -->
@@ -93,110 +92,110 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       :description="filterAction ? undefined : 'Actions taken by admins and privileged operations will appear here.'"
     >
       <template v-if="filterAction" #action>
-        <button class="btn btn-outline btn-sm" @click="filterAction = ''">Clear filter</button>
+        <Button variant="outline" size="sm" @click="filterAction = ''">Clear filter</Button>
       </template>
     </EmptyState>
 
     <!-- Table -->
     <template v-else>
       <div class="space-y-2 sm:hidden">
-        <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
-          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-[var(--c-text-2)]" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-danger'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-[var(--c-text-3)]"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
-          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-[var(--c-border)] pt-3"><p class="break-all font-mono text-2xs text-[var(--c-text-3)]">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--c-surface-deep)] p-2 text-2xs text-[var(--c-text-2)]">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
+        <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-border bg-card p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
+          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-foreground/80" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-destructive'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted-foreground"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-border pt-3"><p class="break-all font-mono text-2xs text-muted-foreground">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted p-2 text-2xs text-foreground/80">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
-      <div class="hidden rounded-xl border border-[var(--c-border)] overflow-hidden sm:block">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-[var(--c-surface-deep)] border-b border-[var(--c-border)] text-[var(--c-text-3)] text-xs uppercase tracking-caps">
-              <th class="text-left px-4 py-3 font-medium w-44">Time</th>
-              <th class="text-left px-4 py-3 font-medium w-32">User</th>
-              <th class="text-left px-4 py-3 font-medium">Action</th>
-              <th class="text-left px-4 py-3 font-medium max-w-0">Target</th>
-              <th class="text-left px-4 py-3 font-medium w-28">IP</th>
-              <th class="text-center px-4 py-3 font-medium w-16">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--c-border)]">
+      <div class="hidden rounded-xl border border-border overflow-hidden sm:block">
+        <Table class="w-full text-sm border-collapse">
+          <TableHeader>
+            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+              <TableHead class="text-left px-4 py-3 font-medium w-44">Time</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-32">User</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">Action</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium max-w-0">Target</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-28">IP</TableHead>
+              <TableHead class="text-center px-4 py-3 font-medium w-16">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-border">
             <template v-for="entry in entries" :key="entry.id">
-              <tr @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
-                :class="['cursor-pointer transition-colors hover:bg-[var(--c-hover)]/40',
-                  selectedEntry?.id === entry.id ? 'bg-[var(--c-accent)]/5' : '',
-                  !entry.success ? 'bg-danger/4' : '']">
+              <TableRow @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
+                :class="['cursor-pointer transition-colors hover:bg-accent/40',
+                  selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
+                  !entry.success ? 'bg-destructive/4' : '']">
 
-                <td class="px-4 py-2.5 text-xs text-[var(--c-text-3)] font-mono whitespace-nowrap">
+                <TableCell class="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
                   {{ formatDateTime(entry.createdAt, { seconds: true }) }}
-                </td>
-                <td class="px-4 py-2.5">
-                  <span v-if="entry.user" class="text-[var(--c-text-1)] font-medium text-xs">
+                </TableCell>
+                <TableCell class="px-4 py-2.5">
+                  <span v-if="entry.user" class="text-foreground font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
                   </span>
-                  <span v-else class="text-[var(--c-text-3)] text-xs">-</span>
-                </td>
-                <td class="px-4 py-2.5">
+                  <span v-else class="text-muted-foreground text-xs">-</span>
+                </TableCell>
+                <TableCell class="px-4 py-2.5">
                   <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
                     {{ actionLabel(entry.action) }}
                   </span>
-                </td>
-                <td class="px-4 py-2.5 max-w-0">
-                  <span v-if="entry.target" class="font-mono text-xs text-[var(--c-text-2)] truncate block" :title="entry.target">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 max-w-0">
+                  <span v-if="entry.target" class="font-mono text-xs text-foreground/80 truncate block" :title="entry.target">
                     {{ entry.target }}
                   </span>
-                  <span v-else class="text-[var(--c-text-3)] text-xs">-</span>
-                </td>
-                <td class="px-4 py-2.5 font-mono text-xs text-[var(--c-text-3)] whitespace-nowrap">
+                  <span v-else class="text-muted-foreground text-xs">-</span>
+                </TableCell>
+                <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
                   {{ entry.ip ?? '-' }}
-                </td>
-                <td class="px-4 py-2.5 text-center">
+                </TableCell>
+                <TableCell class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
                     <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-danger/10 text-danger">
-                    <span class="w-1.5 h-1.5 rounded-full bg-danger"/>Fail
+                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
+                    <span class="w-1.5 h-1.5 rounded-full bg-destructive"/>Fail
                   </span>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
 
               <!-- Expanded detail row -->
-              <tr v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
-                <td colspan="6" class="px-4 pb-4 pt-2 bg-[var(--c-surface-deep)]/50">
-                  <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-2">Detail</div>
+              <TableRow v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
+                <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-muted/50">
+                  <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">Detail</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
-                    <div><span class="text-[var(--c-text-3)]">ID </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.id }}</span></div>
-                    <div><span class="text-[var(--c-text-3)]">Action </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.action }}</span></div>
+                    <div><span class="text-muted-foreground">ID </span><span class="font-mono text-foreground/80">{{ entry.id }}</span></div>
+                    <div><span class="text-muted-foreground">Action </span><span class="font-mono text-foreground/80">{{ entry.action }}</span></div>
                     <div v-if="entry.user">
-                      <span class="text-[var(--c-text-3)]">User </span>
-                      <span class="text-[var(--c-text-2)]">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
+                      <span class="text-muted-foreground">User </span>
+                      <span class="text-foreground/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
                     </div>
-                    <div v-if="entry.target"><span class="text-[var(--c-text-3)]">Target </span><span class="font-mono text-[var(--c-text-2)]">{{ entry.target }}</span></div>
+                    <div v-if="entry.target"><span class="text-muted-foreground">Target </span><span class="font-mono text-foreground/80">{{ entry.target }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
-                    <div class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] mb-1.5">Input</div>
-                    <pre class="text-2xs font-mono bg-[var(--c-surface-deep)] border border-[var(--c-border)] rounded-lg px-3 py-2 overflow-x-auto text-[var(--c-text-2)] whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
+                    <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">Input</div>
+                    <pre class="text-2xs font-mono bg-muted border border-border rounded-lg px-3 py-2 overflow-x-auto text-foreground/80 whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
                   </template>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             </template>
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between mt-4 text-sm text-[var(--c-text-3)]">
+      <div class="flex items-center justify-between mt-4 text-sm text-muted-foreground">
         <span>{{ total.toLocaleString() }} entr{{ total === 1 ? 'y' : 'ies' }}</span>
         <div class="flex items-center gap-1">
-          <button @click="page--" :disabled="page === 0 || loading"
-            class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs disabled:opacity-30 enabled:hover:bg-[var(--c-hover)] transition-colors">
+          <Button variant="outline" size="xs" @click="page--" :disabled="page === 0 || loading"
+            >
             ← Prev
-          </button>
+          </Button>
           <span class="px-3 py-1.5 text-xs">{{ page + 1 }} / {{ pages }}</span>
-          <button @click="page++" :disabled="page >= pages - 1 || loading"
-            class="px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-xs disabled:opacity-30 enabled:hover:bg-[var(--c-hover)] transition-colors">
+          <Button variant="outline" size="xs" @click="page++" :disabled="page >= pages - 1 || loading"
+            >
             Next →
-          </button>
+          </Button>
         </div>
       </div>
     </template>

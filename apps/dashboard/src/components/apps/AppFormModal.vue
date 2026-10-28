@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { parse as parseYaml } from 'yaml'
 import { trpc } from '../../lib/trpc'
@@ -9,6 +11,10 @@ import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
 import LabelsTable,     { type LabelEntry }     from './LabelsTable.vue'
 import AdvancedSection                          from './AdvancedSection.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Textarea } from '@/components/ui/textarea'
 
 // Stack summary from container.app.get - `app` is null for multi-service files,
 // which the form cannot represent (those are edited via the raw YAML only).
@@ -334,105 +340,90 @@ async function applyNow() {
   <div class="flex flex-col h-full">
 
     <!-- Header -->
-    <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-[var(--c-border)] shrink-0">
-      <button
+    <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-border shrink-0">
+      <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
-        class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors"
+        class="text-muted-foreground hover:text-foreground"
         title="Back"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
-      <h2 class="text-sm font-semibold text-[var(--c-text-1)] flex-1">
+        <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
+      <h2 class="text-sm font-semibold text-foreground flex-1">
         {{ editName ? `Edit ${editName}` : 'New App' }}
       </h2>
-      <button
+      <Button
         v-if="!editName && !multiSvc"
+        variant="ghost" size="sm"
         @click="showCompose = !showCompose"
         :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
-        :class="[
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
-          showCompose
-            ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)] hover:opacity-80'
-            : 'text-[var(--c-text-3)] hover:text-[var(--c-text-2)] hover:bg-[var(--c-hover)]',
-        ]"
+        :aria-pressed="showCompose"
+        :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-muted-foreground']"
       >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
+        <UploadIcon class="size-3.5" aria-hidden="true" />
         <span class="hidden sm:inline">Import Compose</span><span class="sm:hidden">Compose</span>
-      </button>
+      </Button>
     </div>
 
     <!-- Compose import panel -->
-    <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-[var(--c-border)] bg-[var(--c-surface-alt)]/60 space-y-3 shrink-0">
-      <p class="text-xs text-[var(--c-text-3)]">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
-      <textarea
+    <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-border bg-muted/60 space-y-3 shrink-0">
+      <p class="text-xs text-muted-foreground">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
+      <Textarea
         v-model="composeRaw"
         placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
         rows="8"
-        class="ui-input w-full px-3 py-2 text-xs font-mono resize-none"
+        class="w-full px-3 py-2 text-xs font-mono resize-none"
       />
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-          <label class="text-xs text-[var(--c-text-3)] whitespace-nowrap">Service:</label>
-          <select
+          <label class="text-xs text-muted-foreground whitespace-nowrap">Service:</label>
+          <NativeSelect wrapper-class="flex-1"
             v-model="composeSelectedService"
-            class="ui-input flex-1 px-3 py-1.5 text-sm"
+            class="px-3 py-1.5 text-sm"
           >
-            <option v-for="s in composeServices" :key="s" :value="s">{{ s }}</option>
-          </select>
+            <NativeSelectOption v-for="s in composeServices" :key="s" :value="s">{{ s }}</NativeSelectOption>
+          </NativeSelect>
         </div>
-        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-[var(--c-text-3)]">
-          Service: <span class="font-mono text-[var(--c-text-2)]">{{ composeServices[0] }}</span>
+        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-muted-foreground">
+          Service: <span class="font-mono text-foreground/80">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
-        <p v-if="composeError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
-        <button
+        <p v-if="composeError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
+        <Button size="sm"
           @click="importCompose"
           :disabled="!composeRaw.trim()"
-          class="btn btn-primary btn-sm whitespace-nowrap"
+          class="whitespace-nowrap"
         >
           Import &amp; fill form
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Multi-service notice -->
-    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-[var(--c-border)] bg-[var(--c-warning)]/10 shrink-0">
-      <p class="text-xs text-[var(--c-text-2)]">This app has several services - edit the YAML directly.</p>
+    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-border bg-warning/10 shrink-0">
+      <p class="text-xs text-foreground/80">This app has several services - edit the YAML directly.</p>
     </div>
 
     <!-- Saved - apply prompt -->
-    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-[var(--c-border)] bg-[var(--c-accent-subtle)]/40 flex items-center gap-3 shrink-0">
-      <p class="text-xs text-[var(--c-text-2)] flex-1">
+    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-border bg-primary/5 flex items-center gap-3 shrink-0">
+      <p class="text-xs text-foreground/80 flex-1">
         <template v-if="applyState === 'applied'">Changes saved and applied.</template>
-        <template v-else-if="applyState === 'error'">Changes saved, but apply failed: <span class="text-[var(--c-accent)]">{{ applyError }}</span></template>
+        <template v-else-if="applyState === 'error'">Changes saved, but apply failed: <span class="text-primary">{{ applyError }}</span></template>
         <template v-else>Changes saved. Apply now?</template>
       </p>
-      <button
+      <Button size="sm"
         v-if="applyState !== 'applied'"
         @click="applyNow" :disabled="applying"
-        class="btn btn-primary btn-sm"
       >
         {{ applying ? 'Applying…' : 'Apply' }}
-      </button>
+      </Button>
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-[var(--c-border)] px-5 overflow-x-auto shrink-0">
-      <button
-        v-for="tab in visibleTabs" :key="tab.id"
-        @click="activeTab = tab.id"
-        :class="[
-          'px-3 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-          activeTab === tab.id
-            ? 'border-[var(--c-accent)] text-[var(--c-accent)]'
-            : 'border-transparent text-[var(--c-text-3)] hover:text-[var(--c-text-2)]',
-        ]"
-      >{{ tab.label }}</button>
-    </div>
+    <Tabs :model-value="activeTab" class="shrink-0 border-b border-border px-5 py-2 overflow-x-auto" @update:model-value="v => activeTab = v as Tab">
+      <TabsList>
+        <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
+      </TabsList>
+    </Tabs>
 
     <!-- Tab content -->
     <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
@@ -440,26 +431,26 @@ async function applyNow() {
       <!-- Basic -->
       <div v-if="activeTab === 'basic'" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Container name *</label>
-          <input
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Container name *</label>
+          <Input
             v-model="form.name" placeholder="my-app" :disabled="editing"
-            class="ui-input w-full px-3 py-2 text-sm disabled:opacity-50"
+            class="w-full px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">Image *</label>
-          <input
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Image *</label>
+          <Input
             v-model="form.image" placeholder="nginx:alpine"
-            class="ui-input w-full px-3 py-2 text-sm font-mono"
+            class="w-full px-3 py-2 text-sm font-mono"
           />
         </div>
-        <div class="space-y-1.5 pt-3 border-t border-[var(--c-border)]">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">URL sidebar (optional)</label>
-          <input
+        <div class="space-y-1.5 pt-3 border-t border-border">
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">URL sidebar (optional)</label>
+          <Input
             v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
-            class="ui-input w-full px-3 py-2 text-sm font-mono"
+            class="w-full px-3 py-2 text-sm font-mono"
           />
-          <p class="text-xs text-[var(--c-text-3)]">Pins the app in the sidebar if set.</p>
+          <p class="text-xs text-muted-foreground">Pins the app in the sidebar if set.</p>
         </div>
       </div>
 
@@ -480,27 +471,27 @@ async function applyNow() {
 
       <!-- Networks -->
       <div v-else-if="activeTab === 'networks'" class="space-y-3">
-        <p class="text-xs text-[var(--c-text-3)]">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
+        <p class="text-xs text-muted-foreground">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
         <div class="flex gap-2">
-          <input
+          <Input
             v-model="networkInput" placeholder="network-name"
             @keydown.enter.prevent="addNetwork"
-            class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+            class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
-          <button
+          <Button variant="secondary" size="sm"
             @click="addNetwork"
-            class="px-3 py-1.5 bg-[var(--c-accent-subtle)] text-[var(--c-accent)] rounded-lg text-sm hover:opacity-80 transition-colors"
-          >Add</button>
+            class="bg-primary/10 text-primary"
+          >Add</Button>
         </div>
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="n in form.networkNames" :key="n"
-            class="inline-flex items-center gap-1 text-xs bg-[var(--c-accent-subtle)] text-[var(--c-accent)] border border-[var(--c-border-strong)] rounded-sm px-2 py-0.5 font-mono"
+            class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5 font-mono"
           >
             {{ n }}
-            <button @click="form.networkNames = form.networkNames.filter(x => x !== n)" class="hover:opacity-60 ml-1">×</button>
+            <button type="button" :aria-label="`Remove network ${n}`" class="ml-1 rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></button>
           </span>
-          <span v-if="form.networkNames.length === 0" class="text-xs text-[var(--c-text-3)]">No networks attached.</span>
+          <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">No networks attached.</span>
         </div>
       </div>
 
@@ -523,24 +514,22 @@ async function applyNow() {
     </div>
 
     <!-- Footer -->
-    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
-      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-border shrink-0">
+      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
-      <button
+      <Button variant="ghost"
         @click="emit('close')"
-        class="btn btn-ghost"
-      >Cancel</button>
-      <button
+      >Cancel</Button>
+      <Button
         @click="save" :disabled="loading || !form.name || !form.image"
-        class="btn btn-primary"
       >
         {{ loading ? 'Saving…' : 'Save' }}
-      </button>
+      </Button>
     </div>
-    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-[var(--c-border)] shrink-0">
-      <p v-if="error" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-border shrink-0">
+      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
-      <button @click="emit('close')" class="btn btn-ghost">Close</button>
+      <Button variant="ghost" @click="emit('close')">Close</Button>
     </div>
 
   </div>

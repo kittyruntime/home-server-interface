@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RowEditor from '../ui/RowEditor.vue'
+import { Input } from '@/components/ui/input'
 
 export interface LabelEntry { key: string; value: string }
 
@@ -16,16 +17,16 @@ defineEmits<{ 'update:modelValue': [v: LabelEntry[]] }>()
     :new-item="() => ({ key: '', value: '' })"
   >
     <template #row="{ item, update }">
-      <input
-        :value="item.key" placeholder="label.key"
+      <Input
+        :model-value="item.key" placeholder="label.key"
         @input="update({ key: ($event.target as HTMLInputElement).value })"
-        class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
-      <span class="text-[var(--c-text-3)] text-sm">=</span>
-      <input
-        :value="item.value" placeholder="value"
+      <span class="text-muted-foreground text-sm">=</span>
+      <Input
+        :model-value="item.value" placeholder="value"
         @input="update({ value: ($event.target as HTMLInputElement).value })"
-        class="ui-input flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
     </template>
   </RowEditor>

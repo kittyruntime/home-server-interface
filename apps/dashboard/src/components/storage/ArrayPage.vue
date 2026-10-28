@@ -8,6 +8,7 @@ import RaidSection from './RaidSection.vue'
 import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { arrayTargets } from './object-targets'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { Button } from '@/components/ui/button'
 
 // The page of one RAID array (#40): its state and members, what it carries,
 // and what was done to it. The Overview is the RAID section limited to it.
@@ -28,9 +29,9 @@ const state = computed(() => {
   if (!a) return { cls: '', dot: '', text: '' }
   const syncing = a.syncAction && ['recovery', 'resync', 'reshape', 'check'].includes(a.syncAction) && a.resyncPercent != null
   if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `Rebuilding ${Math.round(a.resyncPercent!)}%` }
-  if (a.active < a.total) return { cls: 'text-danger', dot: 'bg-danger', text: `Degraded: ${a.total - a.active} of ${a.total} missing` }
+  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: `Degraded: ${a.total - a.active} of ${a.total} missing` }
   if (syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `${a.syncAction === 'check' ? 'Checking' : 'Resyncing'} ${Math.round(a.resyncPercent!)}%` }
-  return { cls: 'text-[var(--c-text-2)]', dot: 'bg-success', text: 'Healthy' }
+  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
 })
 
 function findDev(list: BlockDev[], name: string): BlockDev | undefined {
@@ -71,15 +72,15 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
     @back="emit('navigate', 'raid')"
   >
     <template v-if="array" #chips>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ LEVEL[array.level] ?? array.level }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ LEVEL[array.level] ?? array.level }}</span>
       <span class="inline-flex items-center gap-1.5 text-xs" :class="state.cls"><span class="w-1.5 h-1.5 rounded-full" :class="state.dot" />{{ state.text }}</span>
     </template>
     <template v-if="array && size" #figure>
-      <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(size) }}</span>
+      <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(size) }}</span>
     </template>
 
     <template #actions>
-      <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refresh">Refresh</button>
+      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">Refresh</Button>
     </template>
 
     <template v-if="array" #overview>
@@ -90,16 +91,16 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
       <div class="space-y-4 max-w-lg">
         <div>
           <h3 class="eyebrow mb-2">On this array</h3>
-          <p v-if="!volumes.length && !vg" class="text-sm text-[var(--c-text-3)]">Nothing yet.</p>
+          <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">Nothing yet.</p>
           <ul class="space-y-1.5">
             <li v-if="vg">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm hover:border-[var(--c-border-strong)] transition-colors" @click="emit('navigate', { kind: 'vg', name: vg })">
-                <span class="text-xs text-[var(--c-text-3)] w-28 shrink-0 text-left">Volume group</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'vg', name: vg })">
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume group</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </button>
             </li>
             <li v-for="v in volumes" :key="v.id">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm hover:border-[var(--c-border-strong)] transition-colors" @click="emit('navigate', { kind: 'volume', id: v.id })">
-                <span class="text-xs text-[var(--c-text-3)] w-28 shrink-0 text-left">Volume</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-[var(--c-text-3)]">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'volume', id: v.id })">
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </button>
             </li>
           </ul>
@@ -108,8 +109,8 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <h3 class="eyebrow mb-2">Members</h3>
           <ul class="space-y-1.5">
             <li v-for="m in members" :key="m">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-sm hover:border-[var(--c-border-strong)] transition-colors" @click="emit('navigate', { kind: 'disk', name: m })">
-                <span class="text-xs text-[var(--c-text-3)] w-28 shrink-0 text-left">Member</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'disk', name: m })">
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Member</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </button>
             </li>
           </ul>

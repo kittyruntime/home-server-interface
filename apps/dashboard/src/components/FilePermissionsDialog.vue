@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, watch, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useNotifications } from '../lib/notifications'
 import Modal from './ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const props = defineProps<{ path: string }>()
 const emit  = defineEmits<{ (e: 'close'): void }>()
@@ -87,8 +91,8 @@ async function save() {
   <Modal panel-class="w-full max-w-[420px]" @close="emit('close')">
     <template #header>
       <div>
-        <div class="text-sm font-medium text-[var(--c-text-1)] truncate">{{ path.split('/').pop() }}</div>
-        <div class="text-xs text-[var(--c-text-3)] font-mono mt-0.5">{{ path }}</div>
+        <div class="text-sm font-medium text-foreground truncate">{{ path.split('/').pop() }}</div>
+        <div class="text-xs text-muted-foreground font-mono mt-0.5">{{ path }}</div>
       </div>
     </template>
 
@@ -100,69 +104,64 @@ async function save() {
 
             <!-- Mode display -->
             <div class="flex items-center gap-3">
-              <span class="font-figure text-lg text-[var(--c-text-1)] tracking-widest">{{ modeDisplay }}</span>
-              <span class="font-mono text-xs text-[var(--c-text-3)] bg-[var(--c-surface-deep)] px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
+              <span class="font-figure text-lg text-foreground tracking-widest">{{ modeDisplay }}</span>
+              <span class="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
             </div>
 
             <!-- Permission grid -->
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-xs text-[var(--c-text-3)] uppercase tracking-caps">
-                  <th class="text-left font-medium pb-2 w-20"></th>
-                  <th class="text-center font-medium pb-2 w-16">Read</th>
-                  <th class="text-center font-medium pb-2 w-16">Write</th>
-                  <th class="text-center font-medium pb-2 w-16">Execute</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[var(--c-border)]">
-                <tr v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
-                  <td class="py-2.5 text-[var(--c-text-3)] text-xs">{{ label }}</td>
-                  <td v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      v-model="(bits[key as keyof typeof bits] as any)[bit]"
-                      :disabled="!isAdmin"
-                      class="w-3.5 h-3.5 rounded accent-accent cursor-pointer disabled:cursor-default"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <Table class="w-full text-sm">
+              <TableHeader>
+                <TableRow class="text-xs text-muted-foreground uppercase tracking-caps">
+                  <TableHead class="text-left font-medium pb-2 w-20"></TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Read</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Write</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">Execute</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody class="divide-y divide-border">
+                <TableRow v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
+                  <TableCell class="py-2.5 text-muted-foreground text-xs">{{ label }}</TableCell>
+                  <TableCell v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
+                    <Checkbox v-model="(bits[key as keyof typeof bits] as any)[bit]" :disabled="!isAdmin" />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
 
             <!-- Owner / Group (admin only) -->
             <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-[var(--c-text-3)] mb-1">Owner</label>
-                <input
+                <label class="block text-xs text-muted-foreground mb-1">Owner</label>
+                <Input
                   v-model="owner"
-                  class="ui-input w-full px-3 py-1.5 text-sm font-mono"
+                  class="w-full px-3 py-1.5 text-sm font-mono"
                 />
               </div>
               <div>
-                <label class="block text-xs text-[var(--c-text-3)] mb-1">Group</label>
-                <input
+                <label class="block text-xs text-muted-foreground mb-1">Group</label>
+                <Input
                   v-model="group"
-                  class="ui-input w-full px-3 py-1.5 text-sm font-mono"
+                  class="w-full px-3 py-1.5 text-sm font-mono"
                 />
               </div>
             </div>
             <div v-else class="flex gap-4 text-sm">
-              <div><span class="text-[var(--c-text-3)] text-xs mr-1">Owner</span><span class="font-mono text-[var(--c-text-2)]">{{ owner }}</span></div>
-              <div><span class="text-[var(--c-text-3)] text-xs mr-1">Group</span><span class="font-mono text-[var(--c-text-2)]">{{ group }}</span></div>
+              <div><span class="text-muted-foreground text-xs mr-1">Owner</span><span class="font-mono text-foreground/80">{{ owner }}</span></div>
+              <div><span class="text-muted-foreground text-xs mr-1">Group</span><span class="font-mono text-foreground/80">{{ group }}</span></div>
             </div>
 
       </div>
     </template>
 
     <template v-if="!loading && isAdmin" #footer>
-      <button @click="emit('close')" class="btn btn-ghost btn-sm">Cancel</button>
-      <button
+      <Button variant="ghost" size="sm" @click="emit('close')">Cancel</Button>
+      <Button size="sm"
         @click="save"
         :disabled="saving"
-        class="btn btn-primary btn-sm disabled:opacity-40 disabled:cursor-not-allowed"
+        class="disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {{ saving ? 'Applying…' : 'Apply' }}
-      </button>
+      </Button>
     </template>
   </Modal>
 </template>

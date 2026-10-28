@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { XIcon } from '@lucide/vue'
 import { ref } from 'vue'
 
 const emit = defineEmits<{ navigate: [target: 'places' | 'store' | 'backups'] }>()
@@ -22,30 +24,28 @@ const steps: Array<{ target: 'places' | 'store' | 'backups'; title: string; desc
   <Transition name="ui-fade">
     <div
       v-if="!dismissed"
-      class="panel-card relative mx-4 mt-4 border-[var(--c-border-strong)] bg-[var(--c-surface)] p-4 sm:mx-6 sm:mt-5"
+      class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mx-4 mt-4 border-input bg-card p-4 sm:mx-6 sm:mt-5"
     >
-      <button
+      <Button variant="ghost" size="icon-xs"
         title="Dismiss"
         aria-label="Dismiss getting started"
-        class="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-md text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)] transition-colors"
+        class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+        <XIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
 
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Getting started</h3>
-      <p class="mt-0.5 text-xs text-[var(--c-text-3)]">A few things worth setting up first.</p>
+      <h3 class="text-sm font-semibold text-foreground">Getting started</h3>
+      <p class="mt-0.5 text-xs text-muted-foreground">A few things worth setting up first.</p>
 
       <div class="mt-3 grid gap-2 sm:grid-cols-3">
         <button
           v-for="s in steps" :key="s.target"
-          class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface-alt)] p-3 text-left transition-colors hover:border-[var(--c-border-strong)] hover:bg-[var(--c-hover)]"
+          class="rounded-xl border border-border bg-muted p-3 text-left transition-colors hover:border-input hover:bg-accent"
           @click="emit('navigate', s.target)"
         >
-          <p class="text-xs font-semibold text-[var(--c-text-1)]">{{ s.title }}</p>
-          <p class="mt-1 text-xs text-[var(--c-text-3)]">{{ s.description }}</p>
+          <p class="text-xs font-semibold text-foreground">{{ s.title }}</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{ s.description }}</p>
         </button>
       </div>
     </div>

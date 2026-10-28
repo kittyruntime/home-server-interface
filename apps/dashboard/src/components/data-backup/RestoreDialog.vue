@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned, previewCodeOf, previewErrorOf } from '../../lib/plan'
@@ -9,6 +11,8 @@ import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 // Browse the snapshots of a repository, pick a file or folder in one, and restore it
 // into a new folder or over its original location.
@@ -168,7 +172,7 @@ onUnmounted(() => {
 <template>
   <Modal panel-class="w-full max-w-3xl" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)] truncate">Restore from {{ repository.name }}</h3>
+      <h3 class="text-sm font-semibold text-foreground truncate">Restore from {{ repository.name }}</h3>
     </template>
 
     <div class="px-5 py-4 space-y-4">
@@ -177,15 +181,15 @@ onUnmounted(() => {
         <LoadingState v-if="loading" variant="compact" />
         <ErrorState v-else-if="error" :message="error" retry-label="Retry" compact @retry="load" />
         <EmptyState v-else-if="!snapshots.length" message="No snapshot yet." />
-        <ul v-else class="divide-y divide-[var(--c-border)] rounded-xl border border-[var(--c-border)]">
+        <ul v-else class="divide-y divide-border rounded-xl border border-border">
           <li v-for="s in snapshots" :key="s.id">
-            <button class="block w-full min-w-0 px-3 py-2 text-left hover:bg-[var(--c-surface-deep)]" @click="pick(s)">
+            <button class="block w-full min-w-0 px-3 py-2 text-left hover:bg-muted" @click="pick(s)">
               <span class="flex flex-wrap items-center gap-2">
-                <span class="text-sm text-[var(--c-text-1)]">{{ formatDateTime(s.time) }}</span>
-                <span class="text-xs text-[var(--c-text-2)]">{{ planName(s) }}</span>
-                <span v-if="!s.consistent" class="badge bg-warning/10 text-warning" title="An app could not be stopped during the run">Inconsistent</span>
+                <span class="text-sm text-foreground">{{ formatDateTime(s.time) }}</span>
+                <span class="text-xs text-foreground/80">{{ planName(s) }}</span>
+                <Badge variant="outline" v-if="!s.consistent" class="bg-warning/10 text-warning" title="An app could not be stopped during the run">Inconsistent</Badge>
               </span>
-              <span class="mt-1 block break-all font-mono text-2xs text-[var(--c-text-3)]">{{ s.paths.join(', ') }}</span>
+              <span class="mt-1 block break-all font-mono text-2xs text-muted-foreground">{{ s.paths.join(', ') }}</span>
             </button>
           </li>
         </ul>
@@ -194,67 +198,69 @@ onUnmounted(() => {
       <!-- Tree and target -->
       <template v-else-if="!running && !result && !unknown">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs text-[var(--c-text-2)]">{{ formatDateTime(snapshot.time) }} · {{ planName(snapshot) }}</p>
-          <button class="btn btn-ghost btn-xs" @click="back">Other snapshot</button>
+          <p class="text-xs text-foreground/80">{{ formatDateTime(snapshot.time) }} · {{ planName(snapshot) }}</p>
+          <Button variant="ghost" size="xs" @click="back">Other snapshot</Button>
         </div>
 
         <nav aria-label="Folder" class="flex flex-wrap items-center gap-1 text-xs">
           <template v-for="(c, i) in crumbs" :key="c.path">
-            <span v-if="i" class="text-[var(--c-text-3)]">/</span>
-            <button class="break-all text-accent hover:underline" :disabled="c.path === dir" @click="open(c.path)">{{ c.name }}</button>
+            <span v-if="i" class="text-muted-foreground">/</span>
+            <Button variant="link" class="h-auto p-0 break-all text-primary" :disabled="c.path === dir" @click="open(c.path)">{{ c.name }}</Button>
           </template>
         </nav>
 
         <ErrorState v-if="listError" :message="listError" retry-label="Retry" compact @retry="open(dir)" />
         <LoadingState v-else-if="listing && !entries.length" variant="compact" />
-        <div v-else class="rounded-xl border border-[var(--c-border)]">
-          <button v-if="dir !== root" class="block w-full px-3 py-2 text-left text-xs text-[var(--c-text-2)] hover:bg-[var(--c-surface-deep)]" @click="open(parentPath(dir))">..</button>
+        <div v-else class="rounded-xl border border-border">
+          <button v-if="dir !== root" class="block w-full px-3 py-2 text-left text-xs text-foreground/80 hover:bg-muted" @click="open(parentPath(dir))">..</button>
           <EmptyState v-if="!entries.length" message="This folder is empty." />
-          <ul v-else class="divide-y divide-[var(--c-border)]" :class="{ 'opacity-60': listing }">
+          <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-border" :class="{ 'opacity-60': listing }">
             <li v-for="e in entries" :key="e.path" class="flex min-w-0 items-center gap-2 px-3 py-2">
-              <input v-model="selected" type="radio" name="restore-entry" :value="e.path" :aria-label="`Select ${e.name}`" class="accent-accent shrink-0" />
-              <button v-if="e.type === 'dir'" class="min-w-0 break-all text-left text-sm text-[var(--c-text-1)] hover:underline" @click="open(e.path)">{{ e.name }}/</button>
-              <span v-else class="min-w-0 break-all text-sm text-[var(--c-text-1)]">{{ e.name }}</span>
-              <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-[var(--c-text-3)]">{{ bytesLabel(e.size) }}</span>
+              <RadioGroupItem :value="e.path" :aria-label="`Select ${e.name}`" class="shrink-0" />
+              <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 min-w-0 break-all text-left text-foreground" @click="open(e.path)">{{ e.name }}/</Button>
+              <span v-else class="min-w-0 break-all text-sm text-foreground">{{ e.name }}</span>
+              <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-muted-foreground">{{ bytesLabel(e.size) }}</span>
             </li>
-          </ul>
+          </RadioGroup>
         </div>
 
         <fieldset class="space-y-2">
           <legend class="eyebrow mb-1">Restore to</legend>
-          <label class="flex items-start gap-2 text-sm text-[var(--c-text-1)]">
-            <input type="radio" name="restore-target" class="mt-0.5 accent-accent" :checked="target === 'new'" @change="chooseTarget('new')" />
-            <span>Into a new folder (recommended)</span>
-          </label>
-          <label class="flex items-start gap-2 text-sm text-[var(--c-text-1)]">
-            <input type="radio" name="restore-target" class="mt-0.5 accent-accent" :checked="target === 'original'" @change="chooseTarget('original')" />
-            <span>Over the original location</span>
-          </label>
+          <RadioGroup :model-value="target" class="gap-2" @update:model-value="value => chooseTarget(value === 'original' ? 'original' : 'new')">
+            <label class="flex items-start gap-2 text-sm text-foreground">
+              <RadioGroupItem value="new" class="mt-0.5" />
+              <span>Into a new folder (recommended)</span>
+            </label>
+            <label class="flex items-start gap-2 text-sm text-foreground">
+              <RadioGroupItem value="original" class="mt-0.5" />
+              <span>Over the original location</span>
+            </label>
+          </RadioGroup>
         </fieldset>
 
         <div v-if="target === 'original'" class="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
           <p class="text-xs text-warning">Files with the same name at the original location are replaced by their saved version. Nothing is deleted.</p>
-          <label class="flex items-start gap-2 text-sm text-[var(--c-text-1)]">
-            <input v-model="confirmOverwrite" type="checkbox" class="mt-0.5 accent-accent" />
+          <label class="flex items-start gap-2 text-sm text-foreground">
+            <Checkbox v-model="confirmOverwrite" class="mt-0.5" />
             <span>Replace the current files</span>
           </label>
-          <p v-if="confirmError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>
+          <p v-if="confirmError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>
         </div>
-        <p v-if="restoreError" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
+        <p v-if="restoreError" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
 
         <div class="flex justify-end gap-2">
-          <button class="btn btn-ghost btn-sm" @click="emit('close')">Close</button>
-          <button class="btn btn-primary btn-sm" :disabled="!selected || starting || (target === 'original' && !confirmOverwrite)" @click="restore">
+          <Button variant="ghost" size="sm" @click="emit('close')">Close</Button>
+          <Button size="sm" :disabled="!selected || starting || (target === 'original' && !confirmOverwrite)" @click="restore">
             <BusyLabel :busy="starting" busy-label="Preparing">{{ selectedEntry ? `Restore ${selectedEntry.name}…` : 'Restore…' }}</BusyLabel>
-          </button>
+          </Button>
         </div>
       </template>
 
       <!-- Progress -->
       <template v-else-if="running">
-        <p class="text-sm text-[var(--c-text-1)]">Restoring{{ progress !== null ? `, ${Math.round(progress * 100)}%` : '' }}</p>
-        <div class="h-2 overflow-hidden rounded-full bg-[var(--c-surface-deep)]" role="progressbar" :aria-valuenow="Math.round((progress ?? 0) * 100)" aria-valuemin="0" aria-valuemax="100">
-          <div class="h-full bg-accent transition-all" :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"></div>
+        <p class="text-sm text-foreground">Restoring{{ progress !== null ? `, ${Math.round(progress * 100)}%` : '' }}</p>
+        <div class="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" :aria-valuenow="Math.round((progress ?? 0) * 100)" aria-valuemin="0" aria-valuemax="100">
+          <div class="h-full bg-primary transition-all" :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"></div>
         </div>
       </template>
 
@@ -262,16 +268,16 @@ onUnmounted(() => {
 
       <!-- Result -->
       <template v-else-if="result">
-        <p v-if="result.status === 'failed'" role="alert" class="status-text text-danger break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
+        <p v-if="result.status === 'failed'" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
         <p v-else class="text-sm text-success">{{ result.files ?? 0 }} files restored</p>
-        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-[var(--c-text-2)]">Restored to <span class="font-mono">{{ result.target }}</span></p>
+        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-foreground/80">Restored to <span class="font-mono">{{ result.target }}</span></p>
         <div v-if="result.warnings?.length">
           <p class="eyebrow mb-1">Not restored as saved on this destination</p>
           <p v-for="w in result.warnings" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>
         </div>
         <div class="flex justify-end gap-2">
-          <button class="btn btn-ghost btn-sm" @click="result = null; confirmOverwrite = false">Restore another</button>
-          <button class="btn btn-primary btn-sm" @click="emit('close')">Close</button>
+          <Button variant="ghost" size="sm" @click="result = null; confirmOverwrite = false">Restore another</Button>
+          <Button size="sm" @click="emit('close')">Close</Button>
         </div>
       </template>
     </div>

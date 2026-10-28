@@ -15,6 +15,8 @@ import ExpandVolumeDialog from './dialogs/ExpandVolumeDialog.vue'
 import DescriptionCard from './DescriptionCard.vue'
 import { expansionLine } from './expand'
 import { useAuth } from '../../lib/auth'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 // The page of one volume (#40): where the data lives, what it is made of,
 // what uses it, and what was done to it.
@@ -102,12 +104,12 @@ const LAYER: Record<string, string> = {
 const health = computed(() => {
   const v = volume.value
   if (!v) return { cls: '', text: '' }
-  if (v.state === 'missing') return { cls: 'text-danger', dot: 'bg-danger', text: 'Missing' }
+  if (v.state === 'missing') return { cls: 'text-destructive', dot: 'bg-destructive', text: 'Missing' }
   const bad = v.issues.find(i => i.kind === 'degraded' || i.kind === 'blocked')
-  if (bad) return { cls: 'text-danger', dot: 'bg-danger', text: bad.text }
+  if (bad) return { cls: 'text-destructive', dot: 'bg-destructive', text: bad.text }
   if (v.issues.length) return { cls: 'text-warning', dot: 'bg-warning', text: v.issues[0]!.text }
-  if (v.state === 'not-mounted') return { cls: 'text-[var(--c-text-3)]', dot: 'bg-[var(--c-text-3)]', text: 'Not mounted' }
-  return { cls: 'text-[var(--c-text-2)]', dot: 'bg-success', text: 'Healthy' }
+  if (v.state === 'not-mounted') return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: 'Not mounted' }
+  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
 })
 const usedPct = computed(() => volume.value?.space ? Math.round((volume.value.space.used / volume.value.space.total) * 100) : 0)
 
@@ -164,7 +166,7 @@ async function afterChange() { await refreshDevices(); await load() }
     @back="emit('navigate', 'volumes')"
   >
     <template v-if="volume" #chips>
-      <span class="badge badge-muted">{{ REDUNDANCY[volume.redundancy] }}</span>
+      <Badge variant="secondary">{{ REDUNDANCY[volume.redundancy] }}</Badge>
       <span class="inline-flex items-center gap-1.5 text-xs" :class="health.cls">
         <span class="w-1.5 h-1.5 rounded-full" :class="health.dot" />{{ health.text }}
       </span>
@@ -173,34 +175,34 @@ async function afterChange() { await refreshDevices(); await load() }
     <template v-if="volume" #figure>
       <div v-if="volume.space" class="max-w-md">
         <div class="flex items-baseline gap-2">
-          <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(volume.space.used) }}</span>
-          <span class="text-xs text-[var(--c-text-3)]">used of {{ fmtBytes(volume.space.total) }} · {{ fmtBytes(volume.space.free) }} free</span>
+          <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(volume.space.used) }}</span>
+          <span class="text-xs text-muted-foreground">used of {{ fmtBytes(volume.space.total) }} · {{ fmtBytes(volume.space.free) }} free</span>
         </div>
-        <div class="mt-2 h-1.5 rounded-full bg-[var(--c-hover)] overflow-hidden">
-          <div class="h-full rounded-full" :class="usedPct > 90 ? 'bg-warning' : 'bg-[var(--c-text-1)]'" :style="{ width: `${usedPct}%` }" />
+        <div class="mt-2 h-1.5 rounded-full bg-accent overflow-hidden">
+          <div class="h-full rounded-full" :class="usedPct > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct}%` }" />
         </div>
       </div>
     </template>
 
     <template v-if="volume" #actions>
-      <button v-if="volume.state === 'not-mounted'" class="btn btn-primary btn-sm" @click="mount">Mount</button>
-      <button v-else-if="volume.state === 'mounted'" class="btn btn-outline btn-sm" @click="unmount">Unmount</button>
-      <button v-if="isAdmin && volume.state !== 'missing' && !pending" class="btn btn-outline btn-sm" @click="expandDlg?.open(volume)">Expand…</button>
+      <Button size="sm" v-if="volume.state === 'not-mounted'" @click="mount">Mount</Button>
+      <Button variant="outline" size="sm" v-else-if="volume.state === 'mounted'" @click="unmount">Unmount</Button>
+      <Button variant="outline" size="sm" v-if="isAdmin && volume.state !== 'missing' && !pending" @click="expandDlg?.open(volume)">Expand…</Button>
     </template>
 
     <template v-if="volume" #overview>
       <div class="space-y-4">
         <div v-if="pending" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm"
-          :class="pending.phase === 'failed' ? 'border-danger/30 bg-danger/5' : 'border-info/30 bg-info/5'">
-          <span class="text-[var(--c-text-1)]">{{ expansionLine(pending, null) }}</span>
-          <button v-if="pending.phase === 'failed' && isAdmin" class="btn btn-outline btn-sm" :disabled="retrying" @click="retryExpansion">Retry</button>
+          :class="pending.phase === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-info/30 bg-info/5'">
+          <span class="text-foreground">{{ expansionLine(pending, null) }}</span>
+          <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">Retry</Button>
         </div>
-        <div v-if="volume.state === 'missing'" class="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-[var(--c-text-1)]">
+        <div v-if="volume.state === 'missing'" class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
           HSI mounts this volume at <span class="font-mono">{{ volume.mountPoint }}</span>, but its disk was not found at boot. Apps and shares using it are stopped so nothing writes to the system disk in its place.
-          <button class="ml-1 underline underline-offset-2" @click="emit('navigate', 'mounts')">Open Mounts</button>
+          <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">Open Mounts</Button>
         </div>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
-          <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-danger' : 'text-warning'">
+          <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-destructive' : 'text-warning'">
             <span class="status-tag">{{ i.kind === 'degraded' || i.kind === 'blocked' ? '[ERR]' : '[WARN]' }}</span> {{ i.text }}
           </li>
         </ul>
@@ -208,49 +210,49 @@ async function afterChange() { await refreshDevices(); await load() }
 
         <div>
           <h3 class="eyebrow mb-2">Used by</h3>
-          <dl class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] divide-y divide-[var(--c-border)] text-sm">
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-[var(--c-text-3)]">Places</dt><dd class="text-[var(--c-text-1)]">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-[var(--c-text-3)]">Shares</dt><dd class="font-mono text-xs text-[var(--c-text-1)] self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-[var(--c-text-3)]">Apps</dt><dd class="text-[var(--c-text-1)]">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
+          <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Places</dt><dd class="text-foreground">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Shares</dt><dd class="font-mono text-xs text-foreground self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Apps</dt><dd class="text-foreground">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
           </dl>
         </div>
 
-        <p class="text-xs text-[var(--c-text-3)]">
+        <p class="text-xs text-muted-foreground">
           <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
           <template v-if="volume.tolerates"> · survives {{ volume.tolerates }} failed {{ volume.tolerates === 1 ? 'disk' : 'disks' }}</template>
           <template v-else-if="volume.state !== 'missing'"> · a failed disk loses this volume</template>
         </p>
 
-        <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-danger/30 px-4 py-3">
-          <h3 class="text-sm font-semibold text-danger">Remove this volume</h3>
-          <p class="mt-1 text-xs text-[var(--c-text-2)]">
+        <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-destructive/30 px-4 py-3">
+          <h3 class="text-sm font-semibold text-destructive">Remove this volume</h3>
+          <p class="mt-1 text-xs text-foreground/80">
             Erases <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds</template><template v-else>its data</template>. Disks used only by this volume become free again; the review lists them.
             <template v-if="volume.usedBy.places.length">Its Places and their shares are deleted.</template>
           </p>
           <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ volume.usedBy.apps.join(', ') }} {{ volume.usedBy.apps.length === 1 ? 'stores' : 'store' }} data here: remove {{ volume.usedBy.apps.length === 1 ? 'it' : 'them' }} first.
           </p>
-          <p v-if="removeError" role="alert" class="mt-2 status-text text-danger"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
-          <button class="btn btn-danger btn-sm mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">Remove volume…</button>
+          <p v-if="removeError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
+          <Button variant="destructive" size="sm" class="mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">Remove volume…</Button>
         </section>
       </div>
     </template>
 
     <template v-if="volume" #structure>
-      <p v-if="!volume.stack.length" class="text-sm text-[var(--c-text-3)]">The devices of this volume are not connected.</p>
+      <p v-if="!volume.stack.length" class="text-sm text-muted-foreground">The devices of this volume are not connected.</p>
       <ol v-else class="space-y-1.5 max-w-lg">
         <li v-for="(layer, i) in volume.stack" :key="`${layer.kind}:${layer.name}`">
           <component
             :is="layer.kind === 'filesystem' ? 'div' : 'button'"
-            :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-2 text-left text-sm',
-              layer.kind !== 'filesystem' && 'hover:border-[var(--c-border-strong)] transition-colors']"
+            :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm',
+              layer.kind !== 'filesystem' && 'hover:border-input transition-colors']"
             @click="layer.kind !== 'filesystem' && openLayer(layer.kind, layer.name)"
           >
-            <span class="text-[var(--c-text-3)] text-xs w-28 shrink-0">{{ LAYER[layer.kind] }}</span>
-            <span class="flex-1 min-w-0 truncate font-mono text-xs text-[var(--c-text-1)]">{{ layer.name }}</span>
-            <span v-if="layer.kind !== 'filesystem'" aria-hidden="true" class="text-[var(--c-text-3)]">→</span>
+            <span class="text-muted-foreground text-xs w-28 shrink-0">{{ LAYER[layer.kind] }}</span>
+            <span class="flex-1 min-w-0 truncate font-mono text-xs text-foreground">{{ layer.name }}</span>
+            <span v-if="layer.kind !== 'filesystem'" aria-hidden="true" class="text-muted-foreground">→</span>
           </component>
-          <div v-if="i < volume.stack.length - 1 && volume.stack[i + 1]!.kind !== layer.kind" aria-hidden="true" class="pl-4 text-xs leading-4 text-[var(--c-text-3)]">↓</div>
+          <div v-if="i < volume.stack.length - 1 && volume.stack[i + 1]!.kind !== layer.kind" aria-hidden="true" class="pl-4 text-xs leading-4 text-muted-foreground">↓</div>
         </li>
       </ol>
     </template>

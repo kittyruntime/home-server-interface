@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref } from 'vue'
 import Modal from '../ui/Modal.vue'
 import { useWallpaper } from '../../lib/wallpaper'
@@ -47,7 +48,7 @@ async function reset() {
 <template>
   <Modal panel-class="w-full max-w-sm" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-[var(--c-text-1)]">Change wallpaper</h3>
+      <h3 class="text-sm font-semibold text-foreground">Change wallpaper</h3>
     </template>
 
     <div class="p-6 space-y-5">
@@ -57,13 +58,13 @@ async function reset() {
           <button
             v-for="c in SWATCHES" :key="c"
             :style="{ backgroundColor: c }"
-            class="w-8 h-8 rounded-lg border border-[var(--c-border-strong)]"
+            class="w-8 h-8 rounded-lg border border-input"
             @click="pickColor(c)"
           />
           <input
             v-model="customColor"
             type="color"
-            class="w-8 h-8 rounded-lg border border-[var(--c-border-strong)] cursor-pointer"
+            class="w-8 h-8 rounded-lg border border-input cursor-pointer"
             @change="pickColor(customColor)"
           />
         </div>
@@ -71,25 +72,25 @@ async function reset() {
 
       <div>
         <p class="eyebrow mb-2">Image</p>
-        <button
-          class="w-full px-3 py-2 bg-[var(--c-surface-deep)] border border-[var(--c-border-strong)] text-[var(--c-text-2)] text-sm rounded-lg hover:bg-[var(--c-hover)] transition-colors"
+        <Button variant="outline" size="sm"
+          class="w-full bg-muted text-foreground/80"
           @click="fileInput?.click()"
         >
           Upload image...
-        </button>
+        </Button>
         <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onFileChange" />
       </div>
 
-      <p v-if="error" class="status-text text-[var(--c-accent)] text-xs">[ERR] {{ error }}</p>
+      <p v-if="error" class="status-text text-primary text-xs">[ERR] {{ error }}</p>
     </div>
 
     <template #footer>
-      <button
-        class="px-3 py-1.5 text-sm text-[var(--c-text-2)] hover:bg-[var(--c-hover)] rounded-lg transition-colors"
+      <Button variant="ghost" size="sm"
+        class="text-foreground/80"
         @click="reset"
       >
         Reset to default
-      </button>
+      </Button>
     </template>
   </Modal>
 </template>

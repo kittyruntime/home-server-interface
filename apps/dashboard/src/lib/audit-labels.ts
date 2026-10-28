@@ -125,6 +125,6 @@ export const categoryClass: Record<AuditCategory, string> = {
   auth:   'bg-info/10 text-info border-info/20',
   fs:     'bg-violet/10 text-violet border-violet/20',
   system: 'bg-warning/10 text-warning border-warning/20',
-  admin:  'bg-accent/10 text-accent border-accent/20',
-  other:  'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
+  admin:  'bg-primary/10 text-primary border-primary/20',
+  other:  'bg-muted text-muted-foreground border-border',
 }

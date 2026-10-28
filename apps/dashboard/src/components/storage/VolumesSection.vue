@@ -8,6 +8,7 @@ import { unlistedDrift } from './description'
 import { useStorageData, fmtBytes } from './store'
 import { smartStatus, sharedSmart, readSmartList } from './smart'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { Button } from '@/components/ui/button'
 
 // The Storage landing page (#40): where the data lives. One row per volume
 // (a data filesystem, mounted, not mounted or missing at boot), with its
@@ -90,8 +91,8 @@ function health(v: Volume): { level: Health; text: string } {
   if (v.state === 'not-mounted') return { level: 'idle', text: 'Not mounted' }
   return { level: 'ok', text: 'Healthy' }
 }
-const HEALTH_DOT: Record<Health, string> = { ok: 'bg-success', idle: 'bg-[var(--c-text-3)]', warning: 'bg-warning', danger: 'bg-danger' }
-const HEALTH_TEXT: Record<Health, string> = { ok: 'text-[var(--c-text-2)]', idle: 'text-[var(--c-text-3)]', warning: 'text-warning', danger: 'text-danger' }
+const HEALTH_DOT: Record<Health, string> = { ok: 'bg-success', idle: 'bg-muted-foreground', warning: 'bg-warning', danger: 'bg-destructive' }
+const HEALTH_TEXT: Record<Health, string> = { ok: 'text-foreground/80', idle: 'text-muted-foreground', warning: 'text-warning', danger: 'text-destructive' }
 
 const REDUNDANCY: Record<string, string> = {
   none: 'No redundancy', raid0: 'Striped, no redundancy', raid1: 'Mirror',
@@ -157,24 +158,24 @@ async function mount(v: Volume) {
   <div>
     <div class="flex items-start justify-between gap-4 mb-5">
       <div class="min-w-0">
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Volumes</h2>
-        <p v-if="overview" class="text-sm text-[var(--c-text-3)] mt-0.5">
+        <h2 class="text-lg font-semibold text-foreground">Volumes</h2>
+        <p v-if="overview" class="text-sm text-muted-foreground mt-0.5">
           {{ overview.volumes.length }} {{ overview.volumes.length === 1 ? 'volume' : 'volumes' }}
           · {{ diskCount }} {{ diskCount === 1 ? 'disk' : 'disks' }}
           <span v-if="warnings" class="text-warning"> · {{ warnings }} {{ warnings === 1 ? 'needs attention' : 'need attention' }}</span>
         </p>
       </div>
-      <button class="btn btn-primary btn-sm shrink-0" :disabled="!overview?.freeDisks.length"
-        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume…</button>
+      <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length"
+        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume…</Button>
     </div>
 
     <div v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3">
-      <p class="text-sm text-[var(--c-text-1)]">
+      <p class="text-sm text-foreground">
         Existing storage was found on the disks:
         <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>.
         Importing keeps its data.
       </p>
-      <button class="btn btn-outline btn-sm shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</button>
+      <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</Button>
     </div>
 
     <div v-for="d in unlisted" :key="d.mountPoint" class="mb-4">
@@ -182,81 +183,81 @@ async function mount(v: Volume) {
     </div>
 
     <LoadingState v-if="loading" />
-    <p v-if="error" role="alert" class="status-text text-danger mb-3"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="status-text text-destructive mb-3"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <template v-if="!loading && overview">
-      <div v-if="!volumes.length" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-8 text-center text-sm text-[var(--c-text-3)]">
+      <div v-if="!volumes.length" class="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
         No data volume yet. Create one from free disks to store files, shares and apps.
       </div>
 
-      <div v-else class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
+      <div v-else class="rounded-xl border border-border bg-card overflow-hidden">
         <!-- Header (wide) -->
-        <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
-          <button class="text-left hover:text-[var(--c-text-1)]" :class="sortKey === 'name' && 'text-[var(--c-text-1)]'" @click="sortKey = 'name'">Volume</button>
+        <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">Volume</Button>
           <span>Redundancy</span>
-          <button class="text-left hover:text-[var(--c-text-1)]" :class="sortKey === 'space' && 'text-[var(--c-text-1)]'" @click="sortKey = 'space'">Space</button>
-          <button class="text-left hover:text-[var(--c-text-1)]" :class="sortKey === 'health' && 'text-[var(--c-text-1)]'" @click="sortKey = 'health'">Health</button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'space' && 'text-foreground'" @click="sortKey = 'space'">Space</Button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'health' && 'text-foreground'" @click="sortKey = 'health'">Health</Button>
           <span>Used by</span>
         </div>
 
-        <div v-for="v in volumes" :key="v.id" class="border-b border-[var(--c-border)] last:border-b-0">
+        <div v-for="v in volumes" :key="v.id" class="border-b border-border last:border-b-0">
           <!-- Row (wide) -->
-          <div class="hidden @3xl/content:grid vol-grid gap-3 items-center px-4 py-3 text-xs cursor-pointer hover:bg-[var(--c-hover)] transition-colors" @click="openVolume(v)">
+          <div class="hidden @3xl/content:grid vol-grid gap-3 items-center px-4 py-3 text-xs cursor-pointer hover:bg-accent transition-colors" @click="openVolume(v)">
             <span class="min-w-0">
-              <span class="block truncate text-sm font-medium text-[var(--c-text-1)]">{{ v.name }}</span>
-              <span class="block truncate font-mono text-2xs text-[var(--c-text-3)]">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
+              <span class="block truncate text-sm font-medium text-foreground">{{ v.name }}</span>
+              <span class="block truncate font-mono text-2xs text-muted-foreground">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
             </span>
-            <span class="text-[var(--c-text-2)]">{{ REDUNDANCY[v.redundancy] }}</span>
+            <span class="text-foreground/80">{{ REDUNDANCY[v.redundancy] }}</span>
             <span class="min-w-0">
               <template v-if="v.space">
-                <span class="block h-1.5 rounded-full bg-[var(--c-hover)] overflow-hidden">
-                  <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-[var(--c-text-1)]'" :style="{ width: `${usedPct(v)}%` }" />
+                <span class="block h-1.5 rounded-full bg-accent overflow-hidden">
+                  <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct(v)}%` }" />
                 </span>
-                <span class="block mt-1 font-mono tabular-nums text-2xs text-[var(--c-text-2)]">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
+                <span class="block mt-1 font-mono tabular-nums text-2xs text-foreground/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               </template>
-              <button v-else-if="v.state === 'not-mounted'" class="btn btn-outline btn-xs" @click.stop="mount(v)">Mount</button>
-              <span v-else class="text-[var(--c-text-3)]">-</span>
+              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">Mount</Button>
+              <span v-else class="text-muted-foreground">-</span>
             </span>
             <span class="flex items-center gap-1.5 min-w-0" :class="HEALTH_TEXT[health(v).level]">
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[health(v).level]" />
               <span class="truncate" :title="health(v).text">{{ health(v).text }}</span>
             </span>
-            <span class="truncate text-[var(--c-text-3)]" :title="usedByText(v)">{{ usedByText(v) }}</span>
+            <span class="truncate text-muted-foreground" :title="usedByText(v)">{{ usedByText(v) }}</span>
           </div>
 
           <!-- Card (narrow) -->
           <div class="@3xl/content:hidden px-4 py-3 cursor-pointer" @click="openVolume(v)">
             <div class="flex items-center justify-between gap-2">
               <span class="min-w-0">
-                <span class="block truncate text-sm font-medium text-[var(--c-text-1)]">{{ v.name }}</span>
-                <span class="block truncate font-mono text-2xs text-[var(--c-text-3)]">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
+                <span class="block truncate text-sm font-medium text-foreground">{{ v.name }}</span>
+                <span class="block truncate font-mono text-2xs text-muted-foreground">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
               </span>
               <span class="flex items-center gap-1.5 text-xs shrink-0" :class="HEALTH_TEXT[health(v).level]">
                 <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[health(v).level]" />{{ health(v).text }}
               </span>
             </div>
             <div v-if="v.space" class="mt-2">
-              <span class="block h-1.5 rounded-full bg-[var(--c-hover)] overflow-hidden">
-                <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-[var(--c-text-1)]'" :style="{ width: `${usedPct(v)}%` }" />
+              <span class="block h-1.5 rounded-full bg-accent overflow-hidden">
+                <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct(v)}%` }" />
               </span>
             </div>
-            <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-[var(--c-text-3)]">
+            <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-muted-foreground">
               <span>{{ REDUNDANCY[v.redundancy] }} · {{ usedByText(v) }}</span>
               <span v-if="v.space" class="font-mono tabular-nums">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
-              <button v-else-if="v.state === 'not-mounted'" class="btn btn-outline btn-xs" @click.stop="mount(v)">Mount</button>
+              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">Mount</Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="mt-4 space-y-1.5 text-xs text-[var(--c-text-3)]">
+      <div class="mt-4 space-y-1.5 text-xs text-muted-foreground">
         <p v-if="overview.freeDisks.length">
           Free disks:
-          <span class="font-mono text-[var(--c-text-2)]">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
-          <button class="ml-1.5 text-[var(--c-text-1)] underline decoration-[var(--c-border-strong)] underline-offset-2 hover:decoration-[var(--c-text-1)]" @click="createVolume">Create volume</button>
+          <span class="font-mono text-foreground/80">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
+          <Button variant="link" class="h-auto p-0 ml-1.5 text-foreground" @click="createVolume">Create volume</Button>
         </p>
         <p v-if="overview.system">
-          System: <span class="font-mono text-[var(--c-text-2)]">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
+          System: <span class="font-mono text-foreground/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
         </p>
       </div>
     </template>

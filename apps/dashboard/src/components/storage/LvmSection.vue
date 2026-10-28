@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckIcon, EllipsisVerticalIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -14,6 +15,9 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
 import ImportFound from './ImportFound.vue'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
@@ -187,7 +191,6 @@ function openFormat(dev: BlockDev) { formatWiz.value?.open(dev) }
 function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
 function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
-const openMenu = ref<string | null>(null)
 
 const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === props.only) : lvmVGs.value)
 </script>
@@ -196,22 +199,19 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
   <div>
     <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Volume groups</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical volumes, volume groups and logical volumes.</p>
+        <h2 class="text-lg font-semibold text-foreground">Volume groups</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">Physical volumes, volume groups and logical volumes.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
-          :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined"
-          class="btn btn-outline btn-sm">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
+          :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined">
+          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
           Create volume group…
-        </button>
-        <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+        </Button>
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
-          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-        </button>
+          <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+        </Button>
       </div>
     </div>
 
@@ -220,23 +220,21 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
-
-    <div v-if="openMenu" class="fixed inset-0 z-20" @click="openMenu = null"/>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <!-- VG list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
-      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
+      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
     </div>
 
-    <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-6 text-center text-sm text-[var(--c-text-3)]">
+    <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
       No LVM volume groups. Create one to get resizable logical volumes from one or more physical drives.
     </div>
 
     <div v-else class="space-y-3">
       <div v-for="vg in shown" :key="vg.name"
-        class="rounded-xl border bg-[var(--c-surface)] overflow-hidden flex"
-        :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-[var(--c-border)]'">
+        class="rounded-xl border bg-card overflow-hidden flex"
+        :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-border'">
         <!-- Left stripe -->
         <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-purple-500/50'"/>
         <div class="flex-1 min-w-0">
@@ -244,105 +242,97 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="flex items-center gap-3 px-4 py-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <button v-if="!only" class="font-mono text-sm font-semibold text-[var(--c-text-1)] hover:underline underline-offset-2" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</button>
-                <span v-else class="font-mono text-sm font-semibold text-[var(--c-text-1)]">{{ vg.name }}</span>
-                <span class="text-2xs text-[var(--c-text-3)]">{{ fmtBytes(vg.size) }}</span>
+                <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-foreground" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
+                <span v-else class="font-mono text-sm font-semibold text-foreground">{{ vg.name }}</span>
+                <span class="text-2xs text-muted-foreground">{{ fmtBytes(vg.size) }}</span>
                 <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
                 <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
-                  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
                   SYSTEM
                 </span>
               </div>
               <!-- Capacity bar -->
               <div class="mt-2 flex items-center gap-2">
-                <div class="flex-1 h-1 bg-[var(--c-surface-deep)] rounded-full overflow-hidden max-w-[200px]">
+                <div class="flex-1 h-1 bg-muted rounded-full overflow-hidden max-w-[200px]">
                   <div class="h-full rounded-full bg-purple-400/70" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
                 </div>
-                <span class="text-2xs text-[var(--c-text-3)] tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
+                <span class="text-2xs text-muted-foreground tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
-              <button v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
-                class="text-xs px-2.5 py-1 rounded-lg border border-[var(--c-border)] text-[var(--c-text-2)] hover:border-purple-500/50 hover:text-purple-400 transition-colors">
+              <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
+                class="text-foreground/80 hover:border-purple-500/50 hover:text-purple-400">
                 + Add LV
-              </button>
+              </Button>
               <!-- ⋯ menu for VG -->
-              <div v-if="!isSystemVg(vg.name)" class="relative z-30">
-                <button @click.stop="openMenu = openMenu === ('vg:' + vg.name) ? null : ('vg:' + vg.name)"
-                  :class="['w-7 h-7 flex items-center justify-center rounded-lg transition-colors', openMenu === ('vg:' + vg.name) ? 'bg-[var(--c-hover)] text-[var(--c-text-1)]' : 'text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)]']">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                  </svg>
-                </button>
-                <div v-if="openMenu === ('vg:' + vg.name)"
-                  class="absolute right-0 top-full mt-1.5 bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[var(--shadow-md)] overflow-hidden min-w-[176px]">
-                  <div class="px-3 pt-2.5 pb-1.5 border-b border-[var(--c-border)]">
-                    <p class="text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">Danger zone</p>
-                  </div>
-                  <button @click="removeVgDlg = { vg, busy: false, err: '' }; openMenu = null"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                    </svg>
+              <DropdownMenu v-if="!isSystemVg(vg.name)">
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Volume group actions">
+                    <EllipsisVerticalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="min-w-[176px]">
+                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" @select="removeVgDlg = { vg, busy: false, err: '' }">
+                    <Trash2Icon />
                     Remove VG…
-                  </button>
-                </div>
-              </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
           <!-- PVs -->
-          <div class="px-4 py-2 border-t border-[var(--c-border)] bg-[var(--c-surface-deep)]/30">
+          <div class="px-4 py-2 border-t border-border bg-muted/30">
             <div class="flex flex-wrap gap-1.5">
               <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
-                class="inline-flex items-center gap-1.5 text-2xs font-mono px-2 py-0.5 rounded-md bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border border-[var(--c-border)]">
-                {{ pv.name }} <span class="text-[var(--c-text-3)]/60">{{ fmtBytes(pv.size) }}</span>
+                class="inline-flex items-center gap-1.5 text-2xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+                {{ pv.name }} <span class="text-muted-foreground/60">{{ fmtBytes(pv.size) }}</span>
               </span>
             </div>
           </div>
 
           <!-- LVs -->
-          <div class="divide-y divide-[var(--c-border)]">
+          <div class="divide-y divide-border">
             <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
-              class="px-4 py-3 text-2xs text-[var(--c-text-3)]">
+              class="px-4 py-3 text-2xs text-muted-foreground">
               No logical volumes. Click "+ Add LV" to create one.
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
-              class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--c-hover)]/30 transition-colors">
+              class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
               <div class="w-1.5 h-1.5 rounded-full shrink-0"
                 :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-purple-400/40'"/>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="font-mono text-xs text-[var(--c-text-2)]">{{ lv.path }}</span>
-                  <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv.size) }}</span>
-                  <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-[var(--c-surface-deep)] text-[var(--c-text-3)] uppercase">{{ lv2bd(lv).fstype }}</span>
-                  <span v-else class="text-2xs text-[var(--c-text-3)]">unformatted</span>
+                  <span class="font-mono text-xs text-foreground/80">{{ lv.path }}</span>
+                  <span class="text-2xs text-muted-foreground tabular-nums">{{ fmtBytes(lv.size) }}</span>
+                  <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground uppercase">{{ lv2bd(lv).fstype }}</span>
+                  <span v-else class="text-2xs text-muted-foreground">unformatted</span>
                 </div>
-                <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-[var(--c-text-3)] mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
+                <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-muted-foreground mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
-                  <div class="w-24 h-0.5 bg-[var(--c-surface-deep)] rounded-full overflow-hidden">
+                  <div class="w-24 h-0.5 bg-muted rounded-full overflow-hidden">
                     <div class="h-full rounded-full" :class="usageBarClass(usagePct(lv2bd(lv)))" :style="{ width: usagePct(lv2bd(lv)) + '%' }"/>
                   </div>
-                  <span class="text-2xs text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
+                  <span class="text-2xs text-muted-foreground tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
                 </div>
               </div>
               <!-- LV actions: revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
-                <button v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-[var(--c-accent)]/50 hover:text-[var(--c-accent)] transition-colors">Format</button>
-                <button v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-success/50 hover:text-success transition-colors">Mount</button>
-                <button v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-2xs px-2 py-0.5 rounded-sm border border-[var(--c-border)] text-[var(--c-text-3)] hover:border-warning/50 hover:text-warning transition-colors">Unmount</button>
+                <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+                <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+                <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
+                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
                 <!-- Thin separator before destructive -->
-                <div class="w-px h-3 bg-[var(--c-border)] mx-1"/>
-                <button @click="removeLvDlg = { lv, busy: false, err: '' }"
+                <div class="w-px h-3 bg-border mx-1"/>
+                <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
                   title="Delete this logical volume"
-                  class="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--c-text-3)]/40 hover:text-danger hover:bg-danger/10 transition-colors">
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                  </svg>
-                </button>
+                  class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
+                  <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
+                </Button>
               </div>
             </div>
           </div>
@@ -361,27 +351,25 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <Modal v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
 
           <!-- Step indicator -->
-          <div class="flex items-center border-b border-[var(--c-border)]">
+          <div class="flex items-center border-b border-border">
             <div v-for="(label, i) in ['Select Devices', 'Configure', 'Confirm']" :key="i"
               :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
                 lvmWiz.step === i + 1 ? 'text-purple-400 border-b-2 border-purple-400'
-                : lvmWiz.step > i + 1  ? 'text-[var(--c-text-3)]'
-                : 'text-[var(--c-text-3)]/50']"
+                : lvmWiz.step > i + 1  ? 'text-muted-foreground'
+                : 'text-muted-foreground/50']"
             >{{ i + 1 }}. {{ label }}</div>
           </div>
 
           <!-- Step 1: Select devices -->
           <div v-if="lvmWiz.step === 1" class="p-5 space-y-3">
-            <p class="text-sm text-[var(--c-text-2)]">
+            <p class="text-sm text-foreground/80">
               Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
             </p>
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               All data on the selected devices will be permanently destroyed.
             </div>
-            <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-[var(--c-text-3)]">
+            <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-muted-foreground">
               No eligible devices available.<br>
               <span class="text-xs">Devices must be unmounted, not already a PV, and not a system disk.</span>
             </div>
@@ -390,86 +378,82 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
                   lvmWiz.pvDevs.includes(dev.name)
                     ? 'border-purple-400 bg-purple-400/5'
-                    : 'border-[var(--c-border)] hover:border-[var(--c-border-strong)]']"
+                    : 'border-border hover:border-input']"
                 @click="toggleLvmDev(dev.name)">
                 <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  lvmWiz.pvDevs.includes(dev.name) ? 'border-purple-400 bg-purple-400' : 'border-[var(--c-border-strong)]']">
-                  <svg v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                  </svg>
+                  lvmWiz.pvDevs.includes(dev.name) ? 'border-purple-400 bg-purple-400' : 'border-input']">
+                  <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <span class="text-sm font-mono text-[var(--c-text-1)]">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-[var(--c-accent)]/10 text-[var(--c-accent)]">RAID</span>
-                  <span v-else-if="dev.model" class="text-xs text-[var(--c-text-3)] ml-2">{{ dev.model }}</span>
+                  <span class="text-sm font-mono text-foreground">/dev/{{ dev.name }}</span>
+                  <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">RAID</span>
+                  <span v-else-if="dev.model" class="text-xs text-muted-foreground ml-2">{{ dev.model }}</span>
                 </div>
-                <span class="text-xs text-[var(--c-text-3)] shrink-0">{{ fmtBytes(dev.size) }}</span>
+                <span class="text-xs text-muted-foreground shrink-0">{{ fmtBytes(dev.size) }}</span>
               </label>
             </div>
             <div class="flex gap-2 pt-1">
-              <button @click="lvmWiz = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="lvmWiz = null" class="flex-1 justify-center">Cancel</Button>
+              <Button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
+                class="flex-1 justify-center">
                 Next →
-              </button>
+              </Button>
             </div>
           </div>
 
           <!-- Step 2: Configure VG + LV -->
           <div v-else-if="lvmWiz.step === 2" class="p-5 space-y-4">
-            <p class="text-sm text-[var(--c-text-2)]">Name the Volume Group and its first Logical Volume.</p>
+            <p class="text-sm text-foreground/80">Name the Volume Group and its first Logical Volume.</p>
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Volume Group name</label>
-              <input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
-              <p class="text-2xs text-[var(--c-text-3)] mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Volume Group name</label>
+              <Input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
+                class="w-full px-3 py-2 text-sm font-mono"/>
+              <p class="text-2xs text-muted-foreground mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
             </div>
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">First Logical Volume name</label>
-              <input v-model="lvmWiz.lvName" type="text" placeholder="lv0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">First Logical Volume name</label>
+              <Input v-model="lvmWiz.lvName" type="text" placeholder="lv0"
+                class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
-                Size (GB) <span class="text-[var(--c-text-3)] font-normal">(leave 0 to use all available space</span>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">
+                Size (GB) <span class="text-muted-foreground font-normal">(leave 0 to use all available space</span>
               </label>
-              <input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
+              <Input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
+                class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div class="flex gap-2 pt-1">
-              <button @click="lvmWiz.step = 1" class="btn btn-outline flex-1 justify-center">← Back</button>
-              <button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="lvmWiz.step = 1" class="flex-1 justify-center">← Back</Button>
+              <Button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
+                class="flex-1 justify-center">
                 Next →
-              </button>
+              </Button>
             </div>
           </div>
 
           <!-- Step 3: Confirm -->
           <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
             <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-              <svg class="w-5 h-5 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-              </svg>
+              <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-warning text-sm mb-1">All data on selected devices will be erased</div>
                 <div class="text-xs text-warning/80">LVM will overwrite the beginning of each device to write PV headers.</div>
               </div>
             </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Devices</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">VG name</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
+            <div class="space-y-1 text-xs text-muted-foreground">
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">Devices</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">VG name</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
             </div>
-            <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-danger"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
+            <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
             <div class="flex gap-2">
-              <button @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="btn btn-outline flex-1 justify-center">← Back</button>
-              <button @click="doCreateLvm" :disabled="lvmWiz.busy"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 justify-center">← Back</Button>
+              <Button @click="doCreateLvm" :disabled="lvmWiz.busy"
+                class="flex-1 justify-center">
                 <span v-if="lvmWiz.busy">Creating…</span>
                 <span v-else>Create volume group</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -479,31 +463,31 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ADD LV DIALOG                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)]">
-            <h3 class="font-semibold text-[var(--c-text-1)]">Add logical volume</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
+          <div class="px-5 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Add logical volume</h3>
+            <p class="text-xs text-muted-foreground mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
           </div>
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">Logical Volume name</label>
-              <input v-model="addLvDlg.lvName" type="text" placeholder="lv0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Logical Volume name</label>
+              <Input v-model="addLvDlg.lvName" type="text" placeholder="lv0"
+                class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
-              <label class="block text-xs font-medium text-[var(--c-text-2)] mb-1.5">
-                Size (GB) <span class="text-[var(--c-text-3)] font-normal">(0 = all remaining free space</span>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">
+                Size (GB) <span class="text-muted-foreground font-normal">(0 = all remaining free space</span>
               </label>
-              <input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
-                class="ui-input w-full px-3 py-2 text-sm font-mono"/>
+              <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
+                class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
-            <p v-if="addLvDlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
+            <p v-if="addLvDlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
             <div class="flex gap-2 pt-1">
-              <button @click="addLvDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-              <button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">Cancel</Button>
+              <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
+                class="flex-1 justify-center">
                 <span v-if="addLvDlg.busy">Creating…</span>
                 <span v-else>Create logical volume</span>
-              </button>
+              </Button>
             </div>
           </div>
     </Modal>
@@ -522,9 +506,9 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     >
       <template #warning>All data on <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> will be permanently destroyed.</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
@@ -543,10 +527,10 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     >
       <template #warning>Removing <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
       </template>
     </ConfirmDestroyDialog>
   </div>

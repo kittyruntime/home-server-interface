@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { ActivityIcon, ClipboardListIcon, LayoutGridIcon, MonitorIcon, TriangleAlertIcon } from '@lucide/vue'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref } from 'vue'
 import OverviewSection from '../OverviewSection.vue'
 import SystemInfoSection from '../SystemInfoSection.vue'
@@ -25,50 +28,47 @@ const active = ref<SectionId>('overview')
   <div class="flex flex-col sm:flex-row h-full">
 
     <!-- Mobile picker -->
-    <div class="sm:hidden flex-shrink-0 border-b border-[var(--c-border)] bg-[var(--c-sidebar)] px-4 py-2.5">
-      <select v-model="active" class="w-full bg-transparent text-sm text-[var(--c-text-2)] focus:outline-none">
-        <option v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</option>
-      </select>
+    <div class="sm:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
+      <Select v-model="active">
+        <SelectTrigger class="w-full" aria-label="Section">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
 
     <!-- Left nav -->
-    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-[var(--c-border)] bg-[var(--c-sidebar)] py-5 px-2 flex-col gap-0.5 overflow-y-auto">
+    <nav class="hidden sm:flex w-48 flex-shrink-0 border-r border-border bg-sidebar py-5 px-2 flex-col gap-0.5 overflow-y-auto">
       <div v-for="item in nav" :key="item.id" class="relative flex items-center">
         <span
           v-if="active === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[var(--c-accent)] rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
         />
-        <button
+        <Button
+          variant="ghost"
+          :aria-current="active === item.id ? 'page' : undefined"
           @click="active = item.id"
           :class="[
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+            'w-full justify-start gap-2.5 px-3 font-normal',
             active === item.id
-              ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]'
-              : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)] hover:text-[var(--c-text-1)]',
+              ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           <!-- Overview -->
-          <svg v-if="item.id === 'overview'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
-          </svg>
+          <LayoutGridIcon v-if="item.id === 'overview'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- System info -->
-          <svg v-else-if="item.id === 'system-info'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
+          <MonitorIcon v-else-if="item.id === 'system-info'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Monitoring -->
-          <svg v-else-if="item.id === 'monitoring'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3 8 4-16 3 8h4"/>
-          </svg>
+          <ActivityIcon v-else-if="item.id === 'monitoring'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Alerts -->
-          <svg v-else-if="item.id === 'alerts'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-          </svg>
+          <TriangleAlertIcon v-else-if="item.id === 'alerts'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           <!-- Audit -->
-          <svg v-else-if="item.id === 'audit'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-          </svg>
+          <ClipboardListIcon v-else-if="item.id === 'audit'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ item.label }}
-        </button>
+        </Button>
       </div>
     </nav>
 

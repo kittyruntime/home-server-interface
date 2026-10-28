@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { ChevronRightIcon, InfoIcon, RefreshCwIcon } from '@lucide/vue'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import LoadingState from '../ui/LoadingState.vue'
@@ -19,6 +22,9 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const emit = defineEmits<{
   open:     [disk: string]
@@ -161,11 +167,11 @@ const ROLE_CLASS: Record<DiskRole, string> = {
   lvm:       'bg-purple-500/10 text-purple-400 border-purple-500/20',
   mounted:   'bg-teal-500/10 text-teal-500 border-teal-500/20',
   free:      'bg-success/10 text-success border-success/20',
-  unmounted: 'bg-[var(--c-surface-deep)] text-[var(--c-text-3)] border-[var(--c-border)]',
+  unmounted: 'bg-muted text-muted-foreground border-border',
 }
 
 const HEALTH_DOT: Record<DiskHealth, string> = {
-  passed: 'bg-success', warning: 'bg-warning', failed: 'bg-danger animate-pulse', unknown: 'bg-[var(--c-text-3)]/40',
+  passed: 'bg-success', warning: 'bg-warning', failed: 'bg-destructive animate-pulse', unknown: 'bg-muted-foreground/40',
 }
 const HEALTH_LABEL: Record<DiskHealth, string> = {
   passed: 'Healthy', warning: 'Warning', failed: 'Failed', unknown: 'Unknown',
@@ -185,7 +191,7 @@ function openRole(r: DiskRow) {
 }
 
 function tempClass(t: number): string {
-  return t >= 55 ? 'text-danger font-semibold' : t >= 40 ? 'text-warning' : 'text-[var(--c-text-2)]'
+  return t >= 55 ? 'text-destructive font-semibold' : t >= 40 ? 'text-warning' : 'text-foreground/80'
 }
 
 const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
@@ -301,44 +307,42 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--c-text-1)]">Disks</h2>
-        <p class="text-sm text-[var(--c-text-3)] mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
+        <h2 class="text-lg font-semibold text-foreground">Disks</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
       </div>
-      <button @click="refresh" :disabled="loading" title="Refresh" class="p-1.5 rounded-lg text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-      </button>
+        <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+      </Button>
     </div>
 
     <LoadingState v-if="loading && !devices.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{{ error }}</div>
+    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
 
     <template v-if="!loading || devices.length">
-      <div v-if="physicalDisks.length === 0" class="text-sm text-[var(--c-text-3)]">No physical drives detected.</div>
+      <div v-if="physicalDisks.length === 0" class="text-sm text-muted-foreground">No physical drives detected.</div>
 
       <template v-else>
         <!-- Summary: each count filters the list -->
-        <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3 mb-3">
+        <div class="rounded-xl border border-border bg-card px-4 py-3 mb-3">
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-            <span class="font-semibold text-[var(--c-text-1)]">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
-            <span class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
-            <span v-if="summary.roles.free" class="text-[var(--c-text-3)] tabular-nums">{{ fmtBytes(summary.freeBytes) }} on free disks</span>
+            <span class="font-semibold text-foreground">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
+            <span class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
+            <span v-if="summary.roles.free" class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.freeBytes) }} on free disks</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
               <button v-if="summary.roles[role]" @click="toggleRole(role)" :aria-pressed="prefs.role === role"
                 :class="['text-2xs px-2 py-1 rounded-lg border transition-colors', ROLE_CLASS[role],
-                  prefs.role === role ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
+                  prefs.role === role ? 'ring-2 ring-primary/40' : 'opacity-80 hover:opacity-100']">
                 {{ ROLE_LABELS[role] }} <span class="font-semibold tabular-nums">{{ summary.roles[role] }}</span>
               </button>
             </template>
             <template v-for="h in (['failed', 'warning'] as DiskHealth[])" :key="h">
               <button v-if="summary.health[h]" @click="toggleHealth(h)" :aria-pressed="prefs.health === h"
                 :class="['inline-flex items-center gap-1.5 text-2xs px-2 py-1 rounded-lg border transition-colors',
-                  h === 'failed' ? 'bg-danger/10 text-danger border-danger/25' : 'bg-warning/10 text-warning border-warning/25',
-                  prefs.health === h ? 'ring-2 ring-[var(--c-accent)]/40' : 'opacity-80 hover:opacity-100']">
+                  h === 'failed' ? 'bg-destructive/10 text-destructive border-destructive/25' : 'bg-warning/10 text-warning border-warning/25',
+                  prefs.health === h ? 'ring-2 ring-primary/40' : 'opacity-80 hover:opacity-100']">
                 <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[h]"/>
                 SMART {{ HEALTH_LABEL[h].toLowerCase() }} <span class="font-semibold tabular-nums">{{ summary.health[h] }}</span>
               </button>
@@ -348,125 +352,123 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
-          <input v-model="search" type="search" placeholder="Search device, model, serial…" aria-label="Search disks"
-            class="ui-input flex-1 min-w-[12rem] px-3 py-1.5 text-sm placeholder-[var(--c-text-3)]"/>
-          <select v-model="prefs.role" aria-label="Filter by role"
-            class="ui-input w-auto px-2 py-1.5 text-xs">
-            <option value="all">All roles</option>
-            <option v-for="(label, role) in ROLE_LABELS" :key="role" :value="role">{{ label }}</option>
-          </select>
-          <select v-model="prefs.health" aria-label="Filter by health"
-            class="ui-input w-auto px-2 py-1.5 text-xs">
-            <option value="all">Any health</option>
-            <option v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</option>
-          </select>
-          <select :value="prefs.sortKey" @change="prefs.sortKey = ($event.target as HTMLSelectElement).value as SortKey" aria-label="Sort by"
-            :class="['ui-input w-auto px-2 py-1.5 text-xs', view === 'table' && '@4xl/content:hidden']">
-            <option v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</option>
-          </select>
-          <label class="flex items-center gap-1.5 text-xs text-[var(--c-text-2)] cursor-pointer">
-            <input v-model="prefs.grouped" type="checkbox" class="accent-accent"/> Group by role
+          <Input v-model="search" type="search" placeholder="Search device, model, serial…" aria-label="Search disks"
+            class="flex-1 min-w-[12rem] px-3 py-1.5 text-sm placeholder-muted-foreground"/>
+          <NativeSelect wrapper-class="w-auto" v-model="prefs.role" aria-label="Filter by role"
+            class="px-2 py-1.5 text-xs">
+            <NativeSelectOption value="all">All roles</NativeSelectOption>
+            <NativeSelectOption v-for="(label, role) in ROLE_LABELS" :key="role" :value="role">{{ label }}</NativeSelectOption>
+          </NativeSelect>
+          <NativeSelect wrapper-class="w-auto" v-model="prefs.health" aria-label="Filter by health"
+            class="px-2 py-1.5 text-xs">
+            <NativeSelectOption value="all">Any health</NativeSelectOption>
+            <NativeSelectOption v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</NativeSelectOption>
+          </NativeSelect>
+          <NativeSelect :model-value="prefs.sortKey" @update:model-value="key => prefs.sortKey = key as SortKey" aria-label="Sort by"
+            :wrapper-class="['w-auto', view === 'table' && '@4xl/content:hidden']" class="px-2 py-1.5 text-xs">
+            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</NativeSelectOption>
+          </NativeSelect>
+          <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
+            <Checkbox v-model="prefs.grouped" /> Group by role
           </label>
-          <div class="flex rounded-lg border border-[var(--c-border)] overflow-hidden text-xs" role="group" aria-label="View">
-            <button v-for="v in (['table', 'cards'] as View[])" :key="v" @click="prefs.view = v" :aria-pressed="view === v"
-              :class="['px-2.5 py-1.5 transition-colors', view === v ? 'bg-[var(--c-accent-subtle)] text-[var(--c-accent)]' : 'text-[var(--c-text-3)] hover:bg-[var(--c-hover)]']">
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="view"
+            aria-label="View"
+            @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
+          >
+            <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v" class="px-2.5 text-xs">
               {{ v === 'table' ? 'Table' : 'Details' }}
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
-        <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-[var(--c-text-3)]">
+        <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-muted-foreground">
           Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
-          <button @click="clearFilters" class="text-[var(--c-accent)] hover:underline">Clear filters</button>
+          <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
         </div>
 
         <!-- Selected free disks -->
-        <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-[var(--c-border-strong)] bg-[var(--c-surface)] text-xs">
-          <span class="text-[var(--c-text-2)]">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
-          <button @click="startCreate('volume')" class="btn btn-primary text-xs">Create volume…</button>
-          <button v-if="selected.size >= 2" @click="startCreate('raid')" class="btn btn-outline text-xs">Create RAID…</button>
-          <button @click="startCreate('lvm')" class="btn btn-outline text-xs">Create volume group…</button>
-          <button @click="selected = new Set()" class="ml-auto text-[var(--c-text-3)] hover:text-[var(--c-text-1)]">Clear</button>
+        <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-input bg-card text-xs">
+          <span class="text-foreground/80">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
+          <Button @click="startCreate('volume')" class="text-xs">Create volume…</Button>
+          <Button variant="outline" v-if="selected.size >= 2" @click="startCreate('raid')" class="text-xs">Create RAID…</Button>
+          <Button variant="outline" @click="startCreate('lvm')" class="text-xs">Create volume group…</Button>
+          <Button variant="link" @click="selected = new Set()" class="h-auto p-0 ml-auto text-muted-foreground hover:text-foreground">Clear</Button>
         </div>
 
-        <div v-if="!visibleRows.length" class="text-sm text-[var(--c-text-3)] py-6 text-center">
-          No disk matches these filters. <button @click="clearFilters" class="text-[var(--c-accent)] hover:underline">Clear filters</button>
+        <div v-if="!visibleRows.length" class="text-sm text-muted-foreground py-6 text-center">
+          No disk matches these filters. <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
         </div>
 
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
-        <div v-else-if="view === 'table'" class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] overflow-hidden">
+        <div v-else-if="view === 'table'" class="rounded-xl border border-border bg-card overflow-hidden">
           <!-- Header (desktop) -->
-          <div class="hidden @4xl/content:grid disk-grid gap-3 px-3 py-2 border-b border-[var(--c-border)] bg-[var(--c-surface-deep)] text-2xs font-medium text-[var(--c-text-3)]">
+          <div class="hidden @4xl/content:grid disk-grid gap-3 px-3 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
             <span/>
             <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
               :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
-              :class="['text-left hover:text-[var(--c-text-1)] transition-colors truncate', c.class, prefs.sortKey === c.key && 'text-[var(--c-text-1)]']">
+              :class="['text-left hover:text-foreground transition-colors truncate', c.class, prefs.sortKey === c.key && 'text-foreground']">
               {{ c.label }}<span v-if="prefs.sortKey === c.key">{{ prefs.sortDir === 'asc' ? ' ↑' : ' ↓' }}</span>
             </button>
             <span/>
           </div>
 
           <template v-for="g in groups" :key="g.key">
-            <div v-if="g.label" class="px-3 py-1.5 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)] bg-[var(--c-surface-deep)]/60 border-b border-[var(--c-border)]">
+            <div v-if="g.label" class="px-3 py-1.5 text-2xs font-semibold uppercase tracking-caps text-muted-foreground bg-muted/60 border-b border-border">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
-            <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-[var(--c-border)] last:border-b-0">
+            <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-border last:border-b-0">
               <!-- Row (desktop) -->
-              <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-[var(--c-hover)]/40 transition-colors"
+              <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-accent/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
-                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
-                  :aria-label="`Select /dev/${r.disk.name}`" class="accent-accent"/>
+                <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" />
                 <span v-else/>
                 <span class="min-w-0">
-                  <button class="block max-w-full font-mono font-semibold text-[var(--c-text-1)] truncate hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
+                  <button class="block max-w-full font-mono font-semibold text-foreground truncate hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </span>
-                <span class="text-[var(--c-text-2)] truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
-                <span class="font-mono text-2xs text-[var(--c-text-3)] min-w-0">
+                <span class="text-foreground/80 truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
+                <span class="font-mono text-2xs text-muted-foreground min-w-0">
                   <span class="block truncate" :title="r.disk.serial">{{ r.disk.serial || '-' }}</span>
                   <span v-if="r.disk.wwn" class="block truncate opacity-70" :title="r.disk.wwn">{{ r.disk.wwn }}</span>
                 </span>
-                <span class="text-right tabular-nums text-[var(--c-text-2)]">{{ fmtBytes(r.disk.size) }}</span>
-                <span class="text-[var(--c-text-3)]">{{ r.kind || '-' }}</span>
+                <span class="text-right tabular-nums text-foreground/80">{{ fmtBytes(r.disk.size) }}</span>
+                <span class="text-muted-foreground">{{ r.kind || '-' }}</span>
                 <span class="min-w-0">
                   <button v-if="r.role === 'raid' || r.role === 'lvm'" @click.stop="openRole(r)"
                     :class="['max-w-full truncate text-2xs px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
                   <span v-else :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
                 </span>
-                <span class="flex items-center gap-1.5 text-[var(--c-text-2)]">
+                <span class="flex items-center gap-1.5 text-foreground/80">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
                 </span>
                 <span class="text-right tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature ? `${r.temperature}°C` : '-' }}</span>
-                <svg class="w-3.5 h-3.5 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon class="w-3.5 h-3.5 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" aria-hidden="true" />
               </div>
 
               <!-- Row (mobile): role and health first -->
               <div class="group @4xl/content:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="toggleExpanded(r.disk.name)">
-                <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @click.stop="toggleSelected(r.disk.name)"
-                  :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5 accent-accent"/>
+                <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" class="mt-0.5" />
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <span :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
-                    <span class="inline-flex items-center gap-1 text-2xs text-[var(--c-text-2)]">
+                    <span class="inline-flex items-center gap-1 text-2xs text-foreground/80">
                       <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[r.health]"/>{{ HEALTH_LABEL[r.health] }}
                     </span>
                     <span v-if="r.temperature" class="text-2xs tabular-nums" :class="tempClass(r.temperature)">{{ r.temperature }}°C</span>
                   </div>
                   <div class="mt-1 text-xs">
-                    <button class="font-mono font-semibold text-[var(--c-text-1)] hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
-                    <span class="text-[var(--c-text-3)] tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
-                    <span v-if="r.kind" class="text-[var(--c-text-3)]"> · {{ r.kind }}</span>
+                    <Button variant="link" class="h-auto p-0 font-mono font-semibold text-foreground" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</Button>
+                    <span class="text-muted-foreground tabular-nums"> · {{ fmtBytes(r.disk.size) }}</span>
+                    <span v-if="r.kind" class="text-muted-foreground"> · {{ r.kind }}</span>
                   </div>
-                  <div class="text-2xs text-[var(--c-text-3)] truncate">
+                  <div class="text-2xs text-muted-foreground truncate">
                     {{ r.disk.model }}<span v-if="r.disk.serial" class="font-mono"> · {{ r.disk.serial }}</span>
                   </div>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </div>
-                <svg class="w-3.5 h-3.5 mt-1 text-[var(--c-text-3)] transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <ChevronRightIcon class="w-3.5 h-3.5 mt-1 text-muted-foreground transition-transform" :class="expanded.has(r.disk.name) && 'rotate-90'" aria-hidden="true" />
               </div>
 
               <div v-if="expanded.has(r.disk.name)" class="px-3 pb-3">
@@ -485,12 +487,11 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- ═══ Detailed view: the full tree of every disk ═══ -->
         <div v-else class="space-y-3">
           <template v-for="g in groups" :key="g.key">
-            <div v-if="g.label" class="pt-2 text-2xs font-semibold uppercase tracking-caps text-[var(--c-text-3)]">
+            <div v-if="g.label" class="pt-2 text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
               {{ g.label }} <span class="font-normal">· {{ g.rows.length }}</span>
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="flex items-start gap-2">
-              <input v-if="isSelectable(r)" type="checkbox" :checked="selected.has(r.disk.name)" @change="toggleSelected(r.disk.name)"
-                :aria-label="`Select /dev/${r.disk.name}`" class="mt-4 accent-accent"/>
+              <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" class="mt-4" />
               <DiskCard class="flex-1 min-w-0" :disk="r.disk" :smart="smartCache[r.disk.name]" :smart-open="smartOpen.has(r.disk.name)"
                 :devices="devices" :lvs="lvmLVs"
                 @navigate="s => emit('navigate', s)" @toggle-smart="toggleSmart(r.disk.name)"
@@ -524,38 +525,36 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     >
       <template #warning>All partitions and data on <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will be permanently destroyed. This cannot be undone.</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
-        <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
-        <div v-if="partInitDlg.disk.serial" class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Serial</span><span class="font-mono">{{ partInitDlg.disk.serial }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
+        <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-foreground/80">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
+        <div v-if="partInitDlg.disk.serial" class="flex gap-2"><span class="w-16 text-foreground/80">Serial</span><span class="font-mono">{{ partInitDlg.disk.serial }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
     <!-- Add partition -->
     <Modal v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
-          <div class="px-5 py-4 border-b border-[var(--c-border)]">
-            <h3 class="font-semibold text-[var(--c-text-1)]">Add partition</h3>
-            <p class="text-xs text-[var(--c-text-3)] mt-0.5">Creates a new partition spanning all available free space on <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
+          <div class="px-5 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Add partition</h3>
+            <p class="text-xs text-muted-foreground mt-0.5">Creates a new partition spanning all available free space on <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
           </div>
           <div class="p-5 space-y-4">
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-[var(--c-surface-deep)] border border-[var(--c-border)] text-xs text-[var(--c-text-3)]">
-              <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--c-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
+              <InfoIcon class="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               The partition will use the entire free space (0% → 100%). After creation you can format and mount it.
             </div>
-            <div class="space-y-1 text-xs text-[var(--c-text-3)]">
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-[var(--c-text-2)]">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
+            <div class="space-y-1 text-xs text-muted-foreground">
+              <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
             </div>
-            <p v-if="partCreateDlg.err" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ partCreateDlg.err }}</p>
+            <p v-if="partCreateDlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ partCreateDlg.err }}</p>
             <div class="flex gap-2 pt-1">
-              <button @click="partCreateDlg = null" class="btn btn-outline flex-1 justify-center">Cancel</button>
-              <button @click="doPartCreate" :disabled="partCreateDlg.busy"
-                class="btn btn-primary flex-1 justify-center">
+              <Button variant="outline" @click="partCreateDlg = null" class="flex-1 justify-center">Cancel</Button>
+              <Button @click="doPartCreate" :disabled="partCreateDlg.busy"
+                class="flex-1 justify-center">
                 <span v-if="partCreateDlg.busy">Creating…</span>
                 <span v-else>Create partition</span>
-              </button>
+              </Button>
             </div>
           </div>
     </Modal>
@@ -573,12 +572,12 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     >
       <template #warning>Deleting <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> will permanently destroy all data in that partition.</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
-        <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-[var(--c-text-3)]">{{ partDeleteDlg.disk.model }}</span></div>
-        <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Serial</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-[var(--c-text-2)]">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
+        <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-foreground/80">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-muted-foreground">{{ partDeleteDlg.disk.model }}</span></div>
+        <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-foreground/80">Serial</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

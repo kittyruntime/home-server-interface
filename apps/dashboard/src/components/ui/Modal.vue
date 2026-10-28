@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { useEscLayer } from '../../lib/escLayer'
+import { computed, inject, ref } from 'vue'
+import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+import { XIcon } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { modalHostKey } from '../../lib/modal-host'
 
+/* App dialog shell on top of the shadcn-vue / Reka UI dialog. Parents keep
+   the same contract as before: mount with v-if, listen to @close, which
+   fires once the leave animation has finished. */
 const props = withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
   panelClass?: string
@@ -19,90 +25,129 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
-/* Owns enter/leave animation: parents keep using v-if + @close, but the
-   leave transition must finish before the parent is told to unmount us. */
-const visible = ref(true)
-const panel = ref<HTMLElement | null>(null)
-let previouslyFocused: HTMLElement | null = null
+const open = ref(true)
+const panel = ref<InstanceType<typeof DialogContent> | null>(null)
+
 function requestClose() {
   if (props.preventClose) return
-  visible.value = false
+  open.value = false
 }
 
-useEscLayer(requestClose)
+/* Inside a desktop window the modal stays within the window frame and only
+   blocks that window: the dialog is non-modal for Reka (other windows stay
+   usable) and draws its own backdrop over the window body. */
+const host = inject(modalHostKey, null)
+const inWindow = computed(() => !!host?.value)
+const teleportTarget = computed(() => host?.value ?? 'body')
 
+function onOutside(event: Event) {
+  if (inWindow.value || !props.closeOnBackdrop || props.preventClose) event.preventDefault()
+}
+
+function onEscape(event: KeyboardEvent) {
+  if (props.preventClose) event.preventDefault()
+}
+
+function panelEl(): HTMLElement | null {
+  return (panel.value?.$el as HTMLElement | undefined) ?? null
+}
+
+/* Focus the first field rather than the header's close button. */
+function onOpenAutoFocus(event: Event) {
+  event.preventDefault()
+  const el = panelEl()
+  const target = el?.querySelector<HTMLElement>('[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [data-slot="dialog-body"] button:not(:disabled), [data-slot="dialog-footer"] button:not(:disabled), [href]')
+  ;(target ?? el)?.focus()
+}
+
+/* A non-modal dialog does not trap focus: keep Tab inside the panel. */
 function onKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Tab' || !panel.value) return
-  const focusable = [...panel.value.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
-  if (!focusable.length) { event.preventDefault(); panel.value.focus(); return }
+  const el = panelEl()
+  if (!inWindow.value || event.key !== 'Tab' || !el) return
+  const focusable = [...el.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+  if (!focusable.length) { event.preventDefault(); el.focus(); return }
   const first = focusable[0]!, last = focusable[focusable.length - 1]!
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
 }
 
-onMounted(() => {
-  previouslyFocused = document.activeElement as HTMLElement | null
-  void nextTick(() => {
-    const target = panel.value?.querySelector<HTMLElement>('[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [href]')
-    ;(target ?? panel.value)?.focus()
-  })
-})
-onUnmounted(() => previouslyFocused?.focus())
+/* Fires when the panel unmounts, after its leave animation. Only a close we
+   asked for is reported: a parent unmounting us directly already knows. */
+function onClosed() {
+  if (!open.value) emit('close')
+}
 
-/* Inside a desktop window the modal stays within the window frame. */
-const host = inject(modalHostKey, null)
-const teleportTarget = computed(() => host?.value ?? 'body')
-
-/* Lets wrappers (ConfirmDialog) close with the leave animation instead of
-   unmounting abruptly via their own v-if. */
+/* Lets wrappers close with the leave animation instead of unmounting
+   abruptly via their own v-if. */
 defineExpose({ requestClose })
 </script>
 
 <template>
-  <Teleport :to="teleportTarget">
-    <Transition name="ui-fade" appear @after-leave="emit('close')">
+  <DialogRoot :open="open" :modal="!inWindow" @update:open="value => { if (!value) requestClose() }">
+    <DialogPortal :to="teleportTarget">
+      <DialogOverlay
+        v-if="!inWindow"
+        class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      />
+      <Transition name="ui-fade" appear>
+        <div v-if="inWindow && open" class="absolute inset-0 z-50 bg-black/50" @click="closeOnBackdrop && requestClose()" />
+      </Transition>
+      <!-- Positioning layer: centers the panel (bottom sheet under 640px in
+           fullscreen mode); clicks fall through to the backdrop. -->
       <div
-        v-if="visible"
-        :class="[host ? 'absolute items-center justify-center p-4' : 'fixed items-end justify-center p-0 sm:items-center sm:p-4', 'inset-0 z-50 bg-black/80 flex']"
-        @click.self="closeOnBackdrop && requestClose()"
+        :class="[
+          inWindow ? 'absolute items-center p-4' : 'fixed items-end p-0 sm:items-center sm:p-4',
+          'pointer-events-none inset-0 z-50 flex justify-center',
+        ]"
       >
-        <Transition name="ui-pop" appear>
-          <!-- v-if mirrors the backdrop's so the panel plays its own leave pop
-               (unmounting via the parent alone would skip it). -->
-          <!-- max-h is a % so it tracks the host (window body or viewport). -->
-          <div ref="panel" v-if="visible" role="dialog" aria-modal="true" tabindex="-1" @keydown="onKeydown" :class="['bg-[var(--c-surface)] border border-[var(--c-border-strong)] rounded-t-2xl sm:rounded-xl shadow-[var(--shadow-md)] flex flex-col max-h-[92dvh] sm:max-h-[90%] outline-none', panelClass]">
-            <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b border-[var(--c-border)] shrink-0">
-              <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
-                <slot name="header" />
-              </div>
-              <button
-                v-if="showClose"
-                @click="requestClose"
-                title="Close"
-                aria-label="Close dialog"
-                class="p-1 rounded-md text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shrink-0"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Non-scrolling region between header and body, e.g. a tab bar. -->
-            <div v-if="$slots.subheader" class="shrink-0">
-              <slot name="subheader" />
-            </div>
-
-            <div class="flex-1 overflow-y-auto min-h-0">
-              <slot />
-            </div>
-
-            <div v-if="$slots.footer" class="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--c-border)] flex flex-wrap items-center gap-2 shrink-0">
-              <slot name="footer" />
-            </div>
+        <DialogContent
+          ref="panel"
+          :aria-describedby="undefined"
+          :class="cn(
+            'pointer-events-auto flex flex-col bg-background text-foreground border shadow-lg outline-none',
+            'rounded-t-xl sm:rounded-xl max-h-[92dvh] sm:max-h-[90%]',
+            'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            panelClass,
+          )"
+          @open-auto-focus="onOpenAutoFocus"
+          @close-auto-focus="onClosed"
+          @escape-key-down="onEscape"
+          @pointer-down-outside="onOutside"
+          @interact-outside="onOutside"
+          @keydown="onKeydown"
+        >
+          <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b shrink-0">
+            <DialogTitle as="div" class="flex-1 min-w-0 flex items-center justify-between gap-3">
+              <slot name="header" />
+            </DialogTitle>
+            <Button
+              v-if="showClose"
+              variant="ghost"
+              size="icon-sm"
+              class="shrink-0 text-muted-foreground"
+              title="Close"
+              aria-label="Close dialog"
+              :disabled="preventClose"
+              @click="requestClose"
+            >
+              <XIcon />
+            </Button>
           </div>
-        </Transition>
+
+          <!-- Non-scrolling region between header and body, e.g. a tab bar. -->
+          <div v-if="$slots.subheader" class="shrink-0">
+            <slot name="subheader" />
+          </div>
+
+          <div data-slot="dialog-body" class="flex-1 overflow-y-auto min-h-0">
+            <slot />
+          </div>
+
+          <div v-if="$slots.footer" data-slot="dialog-footer" class="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t flex flex-wrap items-center gap-2 shrink-0">
+            <slot name="footer" />
+          </div>
+        </DialogContent>
       </div>
-    </Transition>
-  </Teleport>
+    </DialogPortal>
+  </DialogRoot>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onUnmounted, useId } from 'vue'
-import { pushEscLayer } from '../../lib/escLayer'
+import { ref } from 'vue'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 /* Small inline help affordance: a "?" trigger that reveals a short popover
    on hover, focus or click. Use next to controls whose purpose or effect
@@ -10,47 +10,34 @@ import { pushEscLayer } from '../../lib/escLayer'
 defineProps<{ text: string }>()
 
 const open = ref(false)
-const id = useId()
-
-let releaseEsc: (() => void) | null = null
-function show() {
-  open.value = true
-  releaseEsc = pushEscLayer(hide)
-}
-function hide() {
-  open.value = false
-  releaseEsc?.()
-  releaseEsc = null
-}
 
 // Ignore focus that isn't from keyboard navigation: a dialog's initial
 // autofocus can otherwise land here (e.g. when this is the first focusable
-// element) and pop the tooltip open unprompted.
+// element) and pop the hint open unprompted.
 function onFocus(e: FocusEvent) {
-  if ((e.target as HTMLElement).matches(':focus-visible')) show()
+  if ((e.target as HTMLElement).matches(':focus-visible')) open.value = true
 }
-
-onUnmounted(() => releaseEsc?.())
 </script>
 
 <template>
-  <span class="relative inline-flex" @mouseenter="show" @mouseleave="hide">
-    <button
-      type="button"
-      class="grid h-4 w-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-[var(--c-text-3)] ring-1 ring-inset ring-[var(--c-border-strong)] hover:text-[var(--c-text-1)] hover:ring-[var(--c-text-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--c-accent)]"
-      :aria-describedby="id"
-      aria-label="More info"
-      @click.stop="open = !open"
-      @focus="onFocus"
-      @blur="hide"
-    >?</button>
-    <Transition name="ui-fade">
-      <div
-        v-if="open"
-        :id="id"
-        role="tooltip"
-        class="absolute top-full left-1/2 z-20 mt-1.5 w-56 -translate-x-1/2 rounded-lg border border-[var(--c-border-strong)] bg-[var(--c-surface-alt)] p-2.5 text-xs leading-snug text-[var(--c-text-2)] shadow-lg"
-      >{{ text }}</div>
-    </Transition>
-  </span>
+  <Popover v-model:open="open">
+    <span class="relative inline-flex" @mouseenter="open = true" @mouseleave="open = false">
+      <PopoverTrigger
+        type="button"
+        class="grid size-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-muted-foreground ring-1 ring-inset ring-input outline-none hover:text-foreground hover:ring-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label="More info"
+        @click.stop
+        @focus="onFocus"
+        @blur="open = false"
+      >?</PopoverTrigger>
+    </span>
+    <PopoverContent
+      side="bottom"
+      :side-offset="6"
+      class="w-56 p-2.5 text-xs leading-snug text-foreground/80"
+      :trap-focus="false"
+      @open-auto-focus.prevent
+      @close-auto-focus.prevent
+    >{{ text }}</PopoverContent>
+  </Popover>
 </template>

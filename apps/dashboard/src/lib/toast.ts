@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { toast } from 'vue-sonner'
 
 export type ToastType = 'success' | 'error' | 'info'
 
@@ -7,32 +7,17 @@ export interface ToastAction {
   run: () => void
 }
 
-export interface Toast {
-  id: string
-  type: ToastType
-  message: string
-  action?: ToastAction
-}
-
-const toasts = ref<Toast[]>([])
-let seq = 0
-
+/* Facade over vue-sonner (rendered by <Toaster/> in the dashboard shell), so
+   callers keep a three-method API and the durations stay in one place. */
 export function useToast() {
-  function push(type: ToastType, message: string, action?: ToastAction) {
-    const id = String(seq++)
-    toasts.value.push({ id, type, message, action })
-    setTimeout(() => dismiss(id), type === 'error' ? 7000 : 3500)
-  }
-
-  function dismiss(id: string) {
-    toasts.value = toasts.value.filter(t => t.id !== id)
-  }
-
   return {
-    toasts,
-    success: (msg: string) => push('success', msg),
-    error:   (msg: string, action?: ToastAction) => push('error', msg, action),
-    info:    (msg: string) => push('info', msg),
-    dismiss,
+    success: (msg: string) => { toast.success(msg, { duration: 3500 }) },
+    error: (msg: string, action?: ToastAction) => {
+      toast.error(msg, {
+        duration: 7000,
+        action: action ? { label: action.label, onClick: () => action.run() } : undefined,
+      })
+    },
+    info: (msg: string) => { toast.info(msg, { duration: 3500 }) },
   }
 }

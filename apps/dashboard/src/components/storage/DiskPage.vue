@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { usePageRefresh } from './page-refresh'
@@ -13,6 +14,7 @@ import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { type SmartResult, smartStatus, fetchSmartInto } from './smart'
 import { diskRow, ROLE_LABELS } from './disk-list'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
+import { Badge } from '@/components/ui/badge'
 
 // The page of one physical disk (#40): what it is, how healthy it is, what it
 // carries, and what was done to it.
@@ -43,10 +45,10 @@ watch(diskName, n => { void fetchSmartInto(smart, n) }, { immediate: true })
 const sm = computed(() => smart.value[diskName.value])
 const health = computed(() => {
   const st = smartStatus(sm.value)
-  if (st === 'failed')  return { cls: 'text-danger', dot: 'bg-danger', text: 'SMART failed' }
+  if (st === 'failed')  return { cls: 'text-destructive', dot: 'bg-destructive', text: 'SMART failed' }
   if (st === 'warning') return { cls: 'text-warning', dot: 'bg-warning', text: 'SMART warning' }
-  if (st === 'passed')  return { cls: 'text-[var(--c-text-2)]', dot: 'bg-success', text: 'Healthy' }
-  return { cls: 'text-[var(--c-text-3)]', dot: 'bg-[var(--c-text-3)]', text: st === 'loading' ? 'Reading SMART' : 'Health unknown' }
+  if (st === 'passed')  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
+  return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: st === 'loading' ? 'Reading SMART' : 'Health unknown' }
 })
 const criticalAttrs = computed(() => (sm.value?.attributes ?? []).filter(a => a.isCritical && a.raw > 0))
 
@@ -107,9 +109,9 @@ function manageInDevices() { emit('navigate', 'disks') }
     @back="emit('navigate', 'disks')"
   >
     <template v-if="disk && row" #chips>
-      <button v-if="row.role === 'raid' || row.role === 'lvm'" class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)] hover:text-[var(--c-text-1)]" @click="openOwner">{{ roleText }} →</button>
-      <span v-else class="text-2xs px-1.5 py-0.5 rounded-sm border border-[var(--c-border)] bg-[var(--c-surface-deep)] text-[var(--c-text-2)]">{{ roleText }}</span>
-      <span v-if="row.kind" class="badge badge-muted">{{ row.kind }}</span>
+      <Button variant="outline" size="xs" v-if="row.role === 'raid' || row.role === 'lvm'" class="text-2xs bg-muted text-foreground/80 hover:text-foreground" @click="openOwner">{{ roleText }} →</Button>
+      <span v-else class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ roleText }}</span>
+      <Badge variant="secondary" v-if="row.kind">{{ row.kind }}</Badge>
       <span class="inline-flex items-center gap-1.5 text-xs" :class="health.cls">
         <span class="w-1.5 h-1.5 rounded-full" :class="health.dot" />{{ health.text }}
       </span>
@@ -117,7 +119,7 @@ function manageInDevices() { emit('navigate', 'disks') }
 
     <template v-if="disk" #figure>
       <div class="flex items-baseline gap-3">
-        <span class="font-figure font-bold text-2xl tabular-nums text-[var(--c-text-1)]">{{ fmtBytes(disk.size) }}</span>
+        <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(disk.size) }}</span>
         <DiskLabel class="max-w-xs" :serial="disk.serial" :label="label"
           @saved="l => { if (disk?.serial) labels = { ...labels, [disk.serial]: l } }" />
       </div>
@@ -126,38 +128,38 @@ function manageInDevices() { emit('navigate', 'disks') }
     <template v-if="disk" #overview>
       <div class="space-y-4">
         <p v-if="error" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> Could not refresh this disk: {{ error }}. What is shown may be out of date.</p>
-        <dl class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] divide-y divide-[var(--c-border)] text-sm">
-          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">Model</dt><dd class="text-[var(--c-text-1)]">{{ disk.model || '-' }}</dd></div>
-          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">Serial</dt><dd class="font-mono text-xs self-center text-[var(--c-text-1)]">{{ disk.serial || '-' }}</dd></div>
-          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">WWN</dt><dd class="font-mono text-xs self-center text-[var(--c-text-1)]">{{ disk.wwn || '-' }}</dd></div>
-          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-[var(--c-text-3)]">Stable name</dt><dd class="font-mono text-xs self-center text-[var(--c-text-1)] break-all">{{ disk.byId ? `/dev/disk/by-id/${disk.byId}` : '-' }}</dd></div>
+        <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">Model</dt><dd class="text-foreground">{{ disk.model || '-' }}</dd></div>
+          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">Serial</dt><dd class="font-mono text-xs self-center text-foreground">{{ disk.serial || '-' }}</dd></div>
+          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">WWN</dt><dd class="font-mono text-xs self-center text-foreground">{{ disk.wwn || '-' }}</dd></div>
+          <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">Stable name</dt><dd class="font-mono text-xs self-center text-foreground break-all">{{ disk.byId ? `/dev/disk/by-id/${disk.byId}` : '-' }}</dd></div>
         </dl>
 
         <div>
           <h3 class="eyebrow mb-2">Health</h3>
-          <div class="rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] px-4 py-3 text-sm space-y-1.5">
+          <div class="rounded-xl border border-border bg-card px-4 py-3 text-sm space-y-1.5">
             <p :class="health.cls">{{ health.text }}</p>
-            <p v-if="sm && sm.available" class="text-xs text-[var(--c-text-3)]">
+            <p v-if="sm && sm.available" class="text-xs text-muted-foreground">
               <span v-if="sm.temperature" class="tabular-nums">{{ sm.temperature }}°C · </span>
               <span class="tabular-nums">{{ sm.powerOnHours.toLocaleString() }} hours powered on</span>
             </p>
             <ul v-if="criticalAttrs.length" class="space-y-1">
               <li v-for="a in criticalAttrs" :key="a.id" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ a.name }}: {{ a.raw }}</li>
             </ul>
-            <button class="text-xs text-[var(--c-text-3)] hover:text-[var(--c-text-1)]" @click="smartOpen = true; tab = 'structure'">
+            <Button variant="link" class="h-auto p-0 text-muted-foreground hover:text-foreground" @click="smartOpen = true; tab = 'structure'">
               Show SMART details
-            </button>
+            </Button>
           </div>
         </div>
 
         <div>
           <h3 class="eyebrow mb-2">Volumes on this disk</h3>
-          <p v-if="!volumes.length" class="text-sm text-[var(--c-text-3)]">None.</p>
+          <p v-if="!volumes.length" class="text-sm text-muted-foreground">None.</p>
           <ul v-else class="flex flex-wrap gap-2">
             <li v-for="v in volumes" :key="v.id">
-              <button class="rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-1.5 text-sm hover:border-[var(--c-border-strong)] transition-colors"
+              <button class="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:border-input transition-colors"
                 @click="emit('navigate', { kind: 'volume', id: v.id })">
-                {{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-[var(--c-text-3)]">{{ v.mountPoint }}</span> →
+                {{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span> →
               </button>
             </li>
           </ul>
@@ -170,7 +172,7 @@ function manageInDevices() { emit('navigate', 'disks') }
         @navigate="s => emit('navigate', s)" @toggle-smart="smartOpen = !smartOpen"
         @format="(d: BlockDev) => formatWiz?.open(d)" @mount="(d: BlockDev) => mountDlg?.open(d)" @umount="(d: BlockDev) => umountDlg?.open(d)"
         @part-init="manageInDevices" @part-create="manageInDevices" @part-delete="manageInDevices" />
-      <p class="mt-2 text-xs text-[var(--c-text-3)]">Partition tables and partitions are managed from <button class="underline underline-offset-2 hover:text-[var(--c-text-1)]" @click="manageInDevices">Disks</button>.</p>
+      <p class="mt-2 text-xs text-muted-foreground">Partition tables and partitions are managed from <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="manageInDevices">Disks</Button>.</p>
     </template>
 
     <template v-if="disk" #activity>

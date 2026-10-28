@@ -24,9 +24,9 @@ const LAYOUTS: Record<number, Block[][]> = {
 }
 
 const BLOCK_CLASS: Record<Block['kind'], string> = {
-  a:       'bg-[var(--c-accent)]/20 text-[var(--c-accent)] border-[var(--c-accent)]/30',
+  a:       'bg-primary/20 text-primary border-primary/30',
   b:       'bg-violet/20 text-violet border-violet/30',
-  parity:  'bg-[var(--c-warning)]/20 text-[var(--c-warning)] border-[var(--c-warning)]/30',
+  parity:  'bg-warning/20 text-warning border-warning/30',
 }
 </script>
 
@@ -39,7 +39,7 @@ const BLOCK_CLASS: Record<Block['kind'], string> = {
           :class="['flex h-5 w-6 items-center justify-center rounded-sm border text-2xs font-bold', BLOCK_CLASS[b.kind]]"
         >{{ b.label }}</div>
       </div>
-      <div class="h-1 w-7 rounded-full bg-[var(--c-border-strong)]"/>
+      <div class="h-1 w-7 rounded-full bg-input"/>
     </div>
   </div>
 </template>

@@ -7,6 +7,9 @@ import type { Place } from '../apps/VolumesTable.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
 import { generateSecret, portCandidates } from './install-helpers'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 type Manifest     = Awaited<ReturnType<typeof trpc.catalog.get.query>>
 type InstallInput = Parameters<typeof trpc.catalog.install.mutate>[0]
@@ -229,11 +232,11 @@ async function install() {
 </script>
 
 <template>
-  <div class="panel-card p-5 space-y-5">
+  <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-5">
 
     <LoadingState v-if="loading" variant="compact" />
 
-    <div v-else-if="loadError"><ErrorState :message="loadError" /><div class="flex justify-center"><button class="btn btn-outline btn-sm" @click="emit('close')">Back</button></div></div>
+    <div v-else-if="loadError"><ErrorState :message="loadError" /><div class="flex justify-center"><Button variant="outline" size="sm" @click="emit('close')">Back</Button></div></div>
 
     <template v-else-if="manifest">
       <!-- Header -->
@@ -241,16 +244,16 @@ async function install() {
         <!-- eslint-disable-next-line vue/no-v-html -- `manifest.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
         <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="manifest.icon" />
         <div class="min-w-0">
-          <h3 class="text-sm font-semibold text-[var(--c-text-1)]">{{ manifest.name }}</h3>
-          <p class="text-xs text-[var(--c-text-3)]">{{ manifest.tagline }}</p>
+          <h3 class="text-sm font-semibold text-foreground">{{ manifest.name }}</h3>
+          <p class="text-xs text-muted-foreground">{{ manifest.tagline }}</p>
         </div>
       </div>
 
       <!-- Name -->
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">App name</label>
-        <input v-model="name" maxlength="64" placeholder="app-name" class="ui-input" />
-        <p v-if="!nameValid" role="alert" class="status-text text-danger">
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">App name</label>
+        <Input v-model="name" maxlength="64" placeholder="app-name" />
+        <p v-if="!nameValid" role="alert" class="status-text text-destructive">
           <span class="status-tag">[ERR]</span> Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
         </p>
       </div>
@@ -260,19 +263,19 @@ async function install() {
         <h4 class="eyebrow">Ports</h4>
         <div v-for="p in ports" :key="`${p.container}-${p.protocol}`" class="space-y-1">
           <div class="flex items-center gap-3">
-            <span class="text-sm text-[var(--c-text-1)] flex-1">{{ p.label }}</span>
-            <span class="text-xs text-[var(--c-text-3)] font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
-            <input
+            <span class="text-sm text-foreground flex-1">{{ p.label }}</span>
+            <span class="text-xs text-muted-foreground font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
+            <Input
               type="number" min="1" max="65535"
               v-model.number="p.host"
-              class="ui-input w-28 shrink-0"
+              class="w-28 shrink-0"
             />
           </div>
           <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ portWarnings[`${p.container}-${p.protocol}`] }}
-            <button v-if="portSuggestions[`${p.container}-${p.protocol}`]" type="button" class="btn btn-outline btn-xs ml-1" @click="useSuggestedPort(p)">
+            <Button variant="outline" size="xs" v-if="portSuggestions[`${p.container}-${p.protocol}`]" type="button" class="ml-1" @click="useSuggestedPort(p)">
               Use port {{ portSuggestions[`${p.container}-${p.protocol}`] }}
-            </button>
+            </Button>
           </p>
         </div>
       </div>
@@ -281,28 +284,27 @@ async function install() {
       <div v-if="envRows.length" class="space-y-3">
         <h4 class="eyebrow">Settings</h4>
         <div v-for="e in envRows" :key="e.key" class="space-y-1.5">
-          <label class="text-xs font-medium text-[var(--c-text-3)] uppercase tracking-caps">
-            {{ e.label }}<span v-if="e.required" class="text-[var(--c-danger)]"> *</span>
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">
+            {{ e.label }}<span v-if="e.required" class="text-destructive"> *</span>
           </label>
           <div v-if="e.secret" class="flex gap-2">
-            <input
+            <Input
               :type="e.shown ? 'text' : 'password'"
               v-model="e.value"
               :placeholder="e.key"
               autocomplete="off"
-              class="ui-input flex-1 min-w-0 font-mono"
+              class="flex-1 min-w-0 font-mono"
             />
-            <button type="button" class="btn btn-outline btn-sm shrink-0" @click="e.shown = !e.shown">{{ e.shown ? 'Hide' : 'Show' }}</button>
-            <button type="button" class="btn btn-outline btn-sm shrink-0" @click="generate(e)">Generate</button>
+            <Button variant="outline" size="sm" type="button" class="shrink-0" @click="e.shown = !e.shown">{{ e.shown ? 'Hide' : 'Show' }}</Button>
+            <Button variant="outline" size="sm" type="button" class="shrink-0" @click="generate(e)">Generate</Button>
           </div>
-          <input
+          <Input
             v-else
             type="text"
             v-model="e.value"
             :placeholder="e.key"
-            class="ui-input"
           />
-          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-[var(--c-text-3)]">Note it somewhere safe before installing: the app asks for it.</p>
+          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-muted-foreground">Note it somewhere safe before installing: the app asks for it.</p>
         </div>
       </div>
 
@@ -311,56 +313,54 @@ async function install() {
         <h4 class="eyebrow">Storage</h4>
         <div
           v-for="v in volumeRows" :key="v.target"
-          class="space-y-2 pb-4 border-b border-[var(--c-border)] last:border-b-0 last:pb-0"
+          class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0"
         >
           <div class="flex items-center justify-between gap-2">
-            <span class="text-sm text-[var(--c-text-1)]">{{ v.label }}</span>
-            <span class="text-xs text-[var(--c-text-3)] font-mono">{{ v.target }}</span>
+            <span class="text-sm text-foreground">{{ v.label }}</span>
+            <span class="text-xs text-muted-foreground font-mono">{{ v.target }}</span>
           </div>
 
-          <select
-            :value="v.mode"
+          <NativeSelect
+            :model-value="v.mode"
             @change="v.mode = ($event.target as HTMLSelectElement).value as VolMode"
-            class="ui-input"
           >
-            <option value="place">Existing place</option>
-            <option value="newPlace">New place</option>
-            <option value="bind">Host path (bind mount)</option>
-            <option value="named">Named Docker volume</option>
-          </select>
+            <NativeSelectOption value="place">Existing place</NativeSelectOption>
+            <NativeSelectOption value="newPlace">New place</NativeSelectOption>
+            <NativeSelectOption value="bind">Host path (bind mount)</NativeSelectOption>
+            <NativeSelectOption value="named">Named Docker volume</NativeSelectOption>
+          </NativeSelect>
 
-          <select
+          <NativeSelect
             v-if="v.mode === 'place'"
-            :value="v.placeId"
+            :model-value="v.placeId"
             @change="v.placeId = ($event.target as HTMLSelectElement).value"
-            class="ui-input"
           >
-            <option value="">Select a place</option>
-            <option v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }} ({{ pl.path }})</option>
-          </select>
-          <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-[var(--c-text-3)]">
+            <NativeSelectOption value="">Select a place</NativeSelectOption>
+            <NativeSelectOption v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }} ({{ pl.path }})</NativeSelectOption>
+          </NativeSelect>
+          <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-muted-foreground">
             No places yet. Create one from the Places page, or pick another source.
           </p>
 
           <div v-else-if="v.mode === 'newPlace'" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input v-model="v.newPlaceName" placeholder="Place name" class="ui-input" />
-            <input v-model="v.newPlacePath" placeholder="/srv/apps/…" class="ui-input font-mono" />
+            <Input v-model="v.newPlaceName" placeholder="Place name" />
+            <Input v-model="v.newPlacePath" placeholder="/srv/apps/…" class="font-mono" />
           </div>
 
-          <input v-else-if="v.mode === 'bind'" v-model="v.bindPath" placeholder="/host/path" class="ui-input font-mono" />
+          <Input v-else-if="v.mode === 'bind'" v-model="v.bindPath" placeholder="/host/path" class="font-mono" />
 
-          <input v-else-if="v.mode === 'named'" v-model="v.namedName" placeholder="volume-name" class="ui-input font-mono" />
+          <Input v-else-if="v.mode === 'named'" v-model="v.namedName" placeholder="volume-name" class="font-mono" />
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center gap-3 pt-2 border-t border-[var(--c-border)]">
-        <p v-if="installError" role="alert" class="status-text text-danger"><span class="status-tag">[ERR]</span> {{ installError }}</p>
+      <div class="flex items-center gap-3 pt-2 border-t border-border">
+        <p v-if="installError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ installError }}</p>
         <div v-else class="flex-1" />
-        <button class="btn btn-outline btn-sm" @click="emit('close')">Cancel</button>
-        <button class="btn btn-primary btn-sm" :disabled="!canInstall" @click="install">
+        <Button variant="outline" size="sm" @click="emit('close')">Cancel</Button>
+        <Button size="sm" :disabled="!canInstall" @click="install">
           {{ installing ? 'Installing…' : 'Install' }}
-        </button>
+        </Button>
       </div>
     </template>
 

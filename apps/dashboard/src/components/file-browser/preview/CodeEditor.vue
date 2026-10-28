@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { WrapTextIcon } from '@lucide/vue'
 import LoadingState from '../../ui/LoadingState.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
@@ -33,13 +35,13 @@ let view: EditorView | null = null
 const languageConf = new Compartment()
 
 const theme = EditorView.theme({
-  '&': { backgroundColor: 'var(--c-surface)', color: 'var(--c-text-1)', height: '100%', fontSize: 'var(--text-control)' },
-  '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--c-accent)' },
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--c-accent)' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--c-accent-subtle) !important' },
-  '.cm-gutters': { backgroundColor: 'var(--c-surface)', color: 'var(--c-text-3)', border: 'none', borderRight: '1px solid var(--c-border)' },
-  '.cm-activeLine': { backgroundColor: 'var(--c-hover)' },
-  '.cm-activeLineGutter': { backgroundColor: 'var(--c-hover)' },
+  '&': { backgroundColor: 'var(--card)', color: 'var(--foreground)', height: '100%', fontSize: 'var(--text-control)' },
+  '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--primary)' },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--primary)' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent) !important' },
+  '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', border: 'none', borderRight: '1px solid var(--border)' },
+  '.cm-activeLine': { backgroundColor: 'var(--accent)' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--accent)' },
   '&.cm-focused': { outline: 'none' },
 })
 
@@ -141,37 +143,35 @@ onBeforeUnmount(() => view?.destroy())
   <div class="h-full flex flex-col min-h-0">
     <LoadingState v-if="state === 'loading'" class="flex-1" />
 
-    <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
+    <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
         <p>Binary file: preview not available.</p>
         <p class="status-text">{{ name }} · {{ fileSize ?? 0 }} bytes</p>
       </div>
     </div>
 
-    <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-[var(--c-text-3)] text-sm">
+    <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
         <p>File too large to edit here ({{ ((fileSize ?? 0) / 1024 / 1024).toFixed(1) }} MB).</p>
         <p class="status-text">Use Download instead.</p>
       </div>
     </div>
 
-    <div v-else-if="state === 'error'" class="flex-1 flex items-center justify-center text-[var(--c-accent)] text-sm">
+    <div v-else-if="state === 'error'" class="flex-1 flex items-center justify-center text-primary text-sm">
       [ERR] Failed to load file
     </div>
 
     <div v-show="state === 'ready'" class="relative flex-1 min-h-0">
-      <button
+      <Button variant="ghost" size="icon-sm"
         v-if="formatter"
         type="button"
         title="Format (Shift-Alt-F)"
-        class="absolute top-2 right-4 z-10 p-1.5 rounded-md bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text-3)] hover:text-[var(--c-text-1)] hover:bg-[var(--c-hover)] transition-colors shadow-sm disabled:opacity-50"
+        class="absolute top-2 right-4 z-10 bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm"
         :disabled="formatting"
         @click="format"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h7"/>
-        </svg>
-      </button>
+        <WrapTextIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
       <div ref="editorEl" class="h-full overflow-auto" />
     </div>
   </div>
