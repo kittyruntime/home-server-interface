@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Tip from '../ui/Tip.vue'
 import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -327,7 +328,7 @@ async function unpin(app: App) {
               <TableCell class="px-6 py-3.5">
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-foreground/80 text-sm font-medium">{{ app.name }}</span>
-                  <Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive" :title="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`">Blocked</Badge>
+                  <Tip v-if="holdForApp(app.name)" :text="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`"><Badge variant="outline" class="bg-destructive/10 text-destructive">Blocked</Badge></Tip>
                   <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">Update</span>
                   <BookmarkIcon v-if="app.app?.pinnedUrl" class="w-3 h-3 text-primary flex-shrink-0" aria-hidden="true" />
                   <span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">Changes pending</span>
@@ -368,7 +369,7 @@ async function unpin(app: App) {
                     v-if="app.pendingApply || app.drifted"
                     @click="applyApp(app.id)"
                     :disabled="!!actionLoading[app.id]"
-                    title="Apply changes"
+                    tooltip="Apply changes"
                     class="mr-1.5 text-2xs text-primary border-primary/40"
                   >
                     Apply
@@ -376,13 +377,13 @@ async function unpin(app: App) {
 
                   <!-- Start / Stop / Restart -->
                   <ButtonGroup class="mr-1.5" aria-label="Container actions">
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Start" aria-label="Start" class="text-muted-foreground hover:text-success" @click="runAction(app.id, 'start')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" tooltip="Start" aria-label="Start" class="text-muted-foreground hover:text-success" @click="runAction(app.id, 'start')">
                       <PlayIcon class="size-3.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Stop" aria-label="Stop" class="text-muted-foreground hover:text-warning" @click="runAction(app.id, 'stop')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" tooltip="Stop" aria-label="Stop" class="text-muted-foreground hover:text-warning" @click="runAction(app.id, 'stop')">
                       <SquareIcon class="size-3.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" title="Restart" aria-label="Restart" class="text-muted-foreground hover:text-primary" @click="runAction(app.id, 'restart')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" tooltip="Restart" aria-label="Restart" class="text-muted-foreground hover:text-primary" @click="runAction(app.id, 'restart')">
                       <RefreshCwIcon class="size-3.5" aria-hidden="true" />
                     </Button>
                   </ButtonGroup>
@@ -390,7 +391,7 @@ async function unpin(app: App) {
                   <!-- Logs -->
                   <Button variant="ghost" size="icon-sm"
                     @click="openLogs(app)"
-                    title="Logs"
+                    tooltip="Logs" aria-label="Logs"
                     class="text-muted-foreground hover:text-foreground"
                   >
                     <ScrollTextIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -399,7 +400,7 @@ async function unpin(app: App) {
                   <!-- Pin -->
                   <Button variant="ghost" size="icon-sm"
                     @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
-                    :title="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
+                    :tooltip="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'" :aria-label="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
                     :aria-pressed="!!app.app?.pinnedUrl"
                     :class="app.app?.pinnedUrl ? 'text-primary' : 'text-muted-foreground'"
                   >
@@ -409,7 +410,7 @@ async function unpin(app: App) {
                   <!-- Edit -->
                   <Button variant="ghost" size="icon-sm"
                     @click="openEdit(app)"
-                    title="Edit"
+                    tooltip="Edit" aria-label="Edit"
                     class="text-muted-foreground hover:text-foreground"
                   >
                     <SquarePenIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -419,7 +420,7 @@ async function unpin(app: App) {
                   <Button variant="ghost" size="icon-sm"
                     @click="runAction(app.id, 'delete')"
                     :disabled="!!actionLoading[app.id]"
-                    title="Delete"
+                    tooltip="Delete" aria-label="Delete"
                     class="text-muted-foreground hover:text-primary"
                   >
                     <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />

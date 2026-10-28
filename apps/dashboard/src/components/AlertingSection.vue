@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
@@ -67,7 +68,7 @@ onMounted(load)
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
-    <div v-else class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 max-w-xl">
+    <Card v-else class="block gap-0 py-0 overflow-hidden p-5 max-w-xl">
       <p class="eyebrow mb-4">Disk usage</p>
       <p class="text-xs text-muted-foreground mb-4">
         Each Place's filesystem is checked against these percentages. Doesn't apply to the
@@ -105,6 +106,6 @@ onMounted(load)
           @click="saveThresholds"
         >{{ saving ? 'Saving…' : 'Save' }}</Button>
       </div>
-    </div>
+    </Card>
   </div>
 </template>

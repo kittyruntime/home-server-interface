@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
+import Tip from './ui/Tip.vue'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { CheckIcon } from '@lucide/vue'
@@ -165,12 +167,12 @@ onMounted(async () => {
           </Button>
         </div>
 
-        <div v-if="!editingName" class="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+        <Card v-if="!editingName" class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between">
           <span :class="me.displayName ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'">
             {{ me.displayName || 'Not set' }}
           </span>
           <span v-if="nameSuccess" class="text-xs text-success">Saved</span>
-        </div>
+        </Card>
 
         <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
           <Input
@@ -204,9 +206,9 @@ onMounted(async () => {
           </Button>
         </div>
 
-        <div v-if="!pwOpen" class="bg-card border border-border rounded-xl px-4 py-3">
+        <Card v-if="!pwOpen" class="block gap-0 py-0 shadow-none px-4 py-3">
           <span class="text-muted-foreground text-sm tracking-widest select-none">••••••••</span>
-        </div>
+        </Card>
 
         <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
           <div v-if="pwSuccess" class="flex items-center gap-2 text-success text-sm py-1">
@@ -250,7 +252,7 @@ onMounted(async () => {
       <!-- ── Theme ── -->
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Theme</h4>
-        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-2">
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-2">
           <ToggleGroup
             type="single" variant="outline" size="sm"
             :model-value="theme"
@@ -259,42 +261,39 @@ onMounted(async () => {
           >
             <ToggleGroupItem v-for="opt in THEME_OPTIONS" :key="opt.value" :value="opt.value" class="px-3 text-xs">{{ opt.label }}</ToggleGroupItem>
           </ToggleGroup>
-        </div>
+        </Card>
       </div>
 
       <!-- ── Accent color ── -->
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Accent color</h4>
-        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-3">
           <RadioGroupRoot
             :model-value="accent"
             aria-label="Accent color"
             class="flex items-center gap-3"
             @update:model-value="v => { const opt = ACCENT_OPTIONS.find(o => o.value === v); if (opt) setAccent(opt.value) }"
           >
-            <RadioGroupItem
-              v-for="opt in ACCENT_OPTIONS"
-              :key="opt.value"
+            <Tip v-for="opt in ACCENT_OPTIONS" :key="opt.value" :text="opt.label"><RadioGroupItem
               :value="opt.value"
-              :title="opt.label"
               :aria-label="opt.label"
               :style="{ backgroundColor: opt.color }"
               class="size-6 rounded-full outline-none transition-all opacity-60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=checked]:opacity-100 data-[state=checked]:scale-110 data-[state=checked]:ring-2 data-[state=checked]:ring-primary data-[state=checked]:ring-offset-2 data-[state=checked]:ring-offset-card"
-            />
+            /></Tip>
           </RadioGroupRoot>
           <span class="text-xs text-muted-foreground ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
-        </div>
+        </Card>
       </div>
 
       <!-- ── Advanced mode ── -->
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Advanced mode</h4>
-        <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
           <p class="text-xs text-muted-foreground">
             Show extra technical detail where it's available: raw UID/GID on files, for now.
           </p>
-          <Switch :model-value="advancedMode" title="Advanced mode" @update:model-value="setAdvancedMode" />
-        </div>
+          <Tip text="Advanced mode"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>
+        </Card>
       </div>
 
     </template>

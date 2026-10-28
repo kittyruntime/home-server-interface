@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard fully on shadcn-vue**: the last hand-made controls move to the
+  shared components. Icon buttons show a styled tooltip instead of the
+  browser's, disk filters and store categories are toggles, lists of disks,
+  volumes, snapshots and search results use one item style, the panels and
+  cards use the card component, usage bars use the progress component, and the
+  container logs open in a regular dialog (Escape, focus and the desktop window
+  mode behave like every other dialog).
+
 ## [1.69.0] - 2026-10-28
 
 ### Changed

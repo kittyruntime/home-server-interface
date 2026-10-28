@@ -161,7 +161,7 @@ function pollRestoreRestart() {
         </div>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-foreground/80">Backup file</span>
-          <input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border file:border-border file:bg-muted file:px-3 file:py-2 file:text-xs file:text-foreground/80" required @change="selectRestoreFile($event); resetPreview()">
+          <Input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="text-xs" required @change="selectRestoreFile($event); resetPreview()" />
         </label>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-foreground/80">Backup password</span>

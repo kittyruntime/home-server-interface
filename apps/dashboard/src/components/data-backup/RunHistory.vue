@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Tip from '../ui/Tip.vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { onMounted, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -65,8 +66,8 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
                 <TableCell class="px-3 py-2 text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</TableCell>
                 <TableCell class="px-3 py-2 text-xs whitespace-nowrap">
                   <span :class="TONE_CLASS[runLabel(r).tone]">{{ STATUS[r.status] ?? r.status }}</span>
-                  <Badge variant="secondary" v-if="r.consistent === true" class="ml-2" title="The apps were stopped during the run">Consistent</Badge>
-                  <Badge variant="outline" v-else-if="r.consistent === false" class="bg-warning/10 text-warning ml-2" title="An app could not be stopped during the run">Not consistent</Badge>
+                  <Tip v-if="r.consistent === true" text="The apps were stopped during the run"><Badge variant="secondary" class="ml-2">Consistent</Badge></Tip>
+                  <Tip v-else-if="r.consistent === false" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning ml-2">Not consistent</Badge></Tip>
                 </TableCell>
                 <TableCell v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</TableCell>
                 <TableCell v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-muted-foreground">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</TableCell>

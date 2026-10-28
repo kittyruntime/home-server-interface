@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { PencilIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
@@ -240,7 +241,7 @@ onMounted(load)
       <!-- Table -->
       <template v-else>
         <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">Clear search</Button></template></EmptyState></div>
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden hidden sm:block">
+        <Card class="block gap-0 py-0 overflow-hidden hidden sm:block">
           <Table class="w-full text-sm">
             <TableHeader>
               <TableRow class="bg-muted border-b border-border">
@@ -299,7 +300,7 @@ onMounted(load)
                 <TableCell v-if="isUserManager" class="px-4 py-3.5 text-right">
                   <Button variant="ghost" size="icon-sm"
                     @click="openDetail(user)"
-                    title="Edit user"
+                    tooltip="Edit user" aria-label="Edit user"
                     class="text-muted-foreground hover:text-foreground"
                   >
                     <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -316,7 +317,7 @@ onMounted(load)
               </TableRow>
             </TableBody>
           </Table>
-        </div>
+        </Card>
 
         <!-- Pagination -->
         <Pagination :page="page" :page-count="pageCount" :total="filteredUsers.length" :page-size="pageSize" @update:page="page = $event" />

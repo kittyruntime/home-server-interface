@@ -85,7 +85,7 @@ async function remove() {
       </Button>
     </div>
     <div class="mt-1 flex flex-wrap gap-1">
-      <Button variant="ghost" size="xs" :disabled="checking || !!starting" title="Read every stored file back; slow on a large repository" @click="check(true)">
+      <Button variant="ghost" size="xs" :disabled="checking || !!starting" tooltip="Read every stored file back; slow on a large repository" @click="check(true)">
         <BusyLabel :busy="starting === 'full'">Full check</BusyLabel>
       </Button>
       <Button variant="ghost" size="xs" v-if="repository.hasPassword" @click="revealing = true">Show password…</Button>

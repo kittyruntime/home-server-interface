@@ -34,7 +34,7 @@ onMounted(async () => {
       class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mx-4 mt-4 border-input bg-card p-4 pr-12 sm:mx-6 sm:mt-5"
     >
       <Button variant="ghost" size="icon-xs"
-        title="Dismiss"
+        tooltip="Dismiss"
         aria-label="Dismiss the HTTPS notice"
         class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
@@ -49,7 +50,7 @@ function dirWritable(s: ShareDiag): boolean {
     <div v-else-if="shares.length === 0" class="text-sm text-muted-foreground">No active shares.</div>
 
     <div v-else class="space-y-3">
-      <div v-for="s in shares" :key="s.id" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-4 space-y-3">
+      <Card v-for="s in shares" :key="s.id" class="block gap-0 py-0 overflow-hidden p-4 space-y-3">
         <!-- Header -->
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
@@ -107,7 +108,7 @@ function dirWritable(s: ShareDiag): boolean {
         <p v-if="s.dir" class="text-2xs text-muted-foreground font-mono">
           group {{ s.dir.group || '-' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> · not found</span>
         </p>
-      </div>
+      </Card>
     </div>
   </div>
 </template>

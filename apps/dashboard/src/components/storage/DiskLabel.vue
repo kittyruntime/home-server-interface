@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ref, nextTick } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { Input } from '@/components/ui/input'
@@ -51,13 +52,14 @@ async function save() {
       />
       <span v-if="error" role="alert" class="status-text block text-2xs text-destructive">{{ error }}</span>
     </template>
-    <button
+    <Button
       v-else-if="serial"
       type="button"
-      :class="['max-w-full truncate text-left text-2xs rounded-sm hover:text-foreground focus-visible:text-foreground',
+      variant="ghost"
+      :class="['h-auto max-w-full justify-start truncate p-0 text-left text-2xs font-normal rounded-sm hover:bg-transparent hover:text-foreground focus-visible:text-foreground',
         label ? 'text-foreground/80' : 'text-muted-foreground @2xl:opacity-0 @2xl:group-hover:opacity-100 focus-visible:opacity-100']"
-      :title="label ? 'Rename this disk' : 'Name this disk, for example by its bay'"
+      :tooltip="label ? 'Rename this disk' : 'Name this disk, for example by its bay'"
       @click="start"
-    >{{ label || 'Add label' }}</button>
+    >{{ label || 'Add label' }}</Button>
   </span>
 </template>

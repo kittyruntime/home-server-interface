@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
@@ -232,7 +233,7 @@ async function install() {
 </script>
 
 <template>
-  <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-5">
+  <Card class="block gap-0 py-0 overflow-hidden p-5 space-y-5">
 
     <LoadingState v-if="loading" variant="compact" />
 
@@ -364,5 +365,5 @@ async function install() {
       </div>
     </template>
 
-  </div>
+  </Card>
 </template>

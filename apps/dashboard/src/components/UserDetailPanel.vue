@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { CheckIcon, ChevronLeftIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
@@ -191,7 +192,7 @@ async function deleteUser() {
       <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
         class="text-muted-foreground hover:text-foreground shrink-0"
-        title="Back to users"
+        tooltip="Back to users" aria-label="Back to users"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -250,7 +251,7 @@ async function deleteUser() {
     <div v-if="isAdmin" class="space-y-3">
       <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Account</h4>
 
-      <div class="bg-card border border-border rounded-xl divide-y divide-border">
+      <Card class="block gap-0 py-0 shadow-none divide-y divide-border">
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
             <p class="text-sm text-foreground">Admin</p>
@@ -272,7 +273,7 @@ async function deleteUser() {
           </div>
           <Checkbox :model-value="userHasCapability('storage')" :disabled="isSelf || capabilityBusy.storage" @update:model-value="toggleCapability('storage')" class="shrink-0" />
         </label>
-      </div>
+      </Card>
 
       <p class="text-xs text-muted-foreground px-0.5">Access changes apply immediately, but menus update after the account's next sign-in.</p>
       <p v-if="isSelf" class="text-xs text-muted-foreground px-0.5">You can't change your own access.</p>
@@ -287,7 +288,7 @@ async function deleteUser() {
       <LoadingState v-if="identityLoading" variant="inline" class="text-xs" />
       <p v-else-if="identityError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
 
-      <div v-else-if="identity" class="bg-card border border-border rounded-xl divide-y divide-border">
+      <Card v-else-if="identity" class="block gap-0 py-0 shadow-none divide-y divide-border">
         <!-- HSI identity -->
         <div class="flex items-center justify-between gap-4 px-4 py-3">
           <p class="text-sm text-foreground">HSI identity</p>
@@ -321,7 +322,7 @@ async function deleteUser() {
           </div>
           <Checkbox :model-value="identity.sambaEnabled" :disabled="isSelf || sambaBusy" @update:model-value="toggleSamba" class="shrink-0" />
         </label>
-      </div>
+      </Card>
 
       <p v-if="identity?.issue" class="text-xs text-warning px-0.5">{{ identity.issue }}</p>
     </div>

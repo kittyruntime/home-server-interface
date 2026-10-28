@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ref, computed, watch, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -137,7 +138,7 @@ function manageInDevices() { emit('navigate', 'disks') }
 
         <div>
           <h3 class="eyebrow mb-2">Health</h3>
-          <div class="rounded-xl border border-border bg-card px-4 py-3 text-sm space-y-1.5">
+          <Card class="block gap-0 py-0 shadow-none px-4 py-3 text-sm space-y-1.5">
             <p :class="health.cls">{{ health.text }}</p>
             <p v-if="sm && sm.available" class="text-xs text-muted-foreground">
               <span v-if="sm.temperature" class="tabular-nums">{{ sm.temperature }}°C · </span>
@@ -149,7 +150,7 @@ function manageInDevices() { emit('navigate', 'disks') }
             <Button variant="link" class="h-auto p-0 text-muted-foreground hover:text-foreground" @click="smartOpen = true; tab = 'structure'">
               Show SMART details
             </Button>
-          </div>
+          </Card>
         </div>
 
         <div>
@@ -157,10 +158,9 @@ function manageInDevices() { emit('navigate', 'disks') }
           <p v-if="!volumes.length" class="text-sm text-muted-foreground">None.</p>
           <ul v-else class="flex flex-wrap gap-2">
             <li v-for="v in volumes" :key="v.id">
-              <button class="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:border-input transition-colors"
-                @click="emit('navigate', { kind: 'volume', id: v.id })">
+              <Button variant="outline" size="sm" @click="emit('navigate', { kind: 'volume', id: v.id })">
                 {{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span> →
-              </button>
+              </Button>
             </li>
           </ul>
         </div>

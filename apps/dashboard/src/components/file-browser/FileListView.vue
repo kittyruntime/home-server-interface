@@ -252,7 +252,7 @@ function fileExt(name: string): string {
                 v-if="entry.type === 'file'"
                 variant="ghost" size="icon-xs"
                 @click.stop="emit('openFile', entry)"
-                title="Preview"
+                tooltip="Preview"
                 :aria-label="`Preview ${entry.name}`"
                 class="shrink-0 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
               >

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { FolderIcon, InfoIcon, ServerIcon } from '@lucide/vue'
 type Place = { id: string; name: string; path: string }
 
@@ -16,12 +17,13 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
       Places
     </div>
     <nav class="flex flex-col gap-0.5 px-2 pb-3 overflow-y-auto flex-1">
-      <button
+      <Button
         v-for="place in places"
         :key="place.id"
+        variant="ghost"
         @click.stop="$emit('select', place)"
         :class="[
-          'group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left text-sm transition-colors',
+          'group h-auto w-full justify-start gap-2.5 px-2.5 py-2 rounded-lg text-left font-normal',
           activePlaceId === place.id
             ? 'bg-primary/10 text-primary'
             : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -37,7 +39,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
         >
           <InfoIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </span>
-      </button>
+      </Button>
       <p v-if="places.length === 0" class="text-xs text-muted-foreground px-2.5 py-2 leading-snug">
         No places yet. Ask an admin to grant you access to a folder.
       </p>

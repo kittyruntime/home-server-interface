@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
@@ -9,6 +10,7 @@ import { useStorageData, fmtBytes } from './store'
 import { smartStatus, sharedSmart, readSmartList } from './smart'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
+import Tip from '../ui/Tip.vue'
 
 // The Storage landing page (#40): where the data lives. One row per volume
 // (a data filesystem, mounted, not mounted or missing at boot), with its
@@ -165,8 +167,9 @@ async function mount(v: Volume) {
           <span v-if="warnings" class="text-warning"> · {{ warnings }} {{ warnings === 1 ? 'needs attention' : 'need attention' }}</span>
         </p>
       </div>
-      <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length"
-        :title="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" @click="createVolume">Create volume…</Button>
+      <Tip :text="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" wrap>
+        <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length" @click="createVolume">Create volume…</Button>
+      </Tip>
     </div>
 
     <div v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3">
@@ -186,11 +189,11 @@ async function mount(v: Volume) {
     <p v-if="error" role="alert" class="status-text text-destructive mb-3"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <template v-if="!loading && overview">
-      <div v-if="!volumes.length" class="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+      <Card v-if="!volumes.length" class="block gap-0 py-0 shadow-none px-4 py-8 text-center text-sm text-muted-foreground">
         No data volume yet. Create one from free disks to store files, shares and apps.
-      </div>
+      </Card>
 
-      <div v-else class="rounded-xl border border-border bg-card overflow-hidden">
+      <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
         <!-- Header (wide) -->
         <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
           <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">Volume</Button>
@@ -248,7 +251,7 @@ async function mount(v: Volume) {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div class="mt-4 space-y-1.5 text-xs text-muted-foreground">
         <p v-if="overview.freeDisks.length">

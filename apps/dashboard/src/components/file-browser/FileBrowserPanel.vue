@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Item } from '@/components/ui/item'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
@@ -632,9 +633,9 @@ onMounted(async () => {
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
           <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-muted-foreground">No results found.</div>
           <div v-else class="divide-y divide-border rounded-xl border border-border overflow-hidden">
-            <button v-for="r in searchResults" :key="r.path"
+            <Item v-for="r in searchResults" :key="r.path" as="button"
               @click="navigateToSearchResult(r)"
-              class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent transition-colors text-left">
+              class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-accent">
               <!-- directory icon -->
               <FolderOpenIcon v-if="r.isDir" class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
               <!-- file icon -->
@@ -643,7 +644,7 @@ onMounted(async () => {
                 <div class="text-sm text-foreground font-medium truncate">{{ r.name }}</div>
                 <div class="text-xs text-muted-foreground font-mono truncate">{{ r.relativePath }}</div>
               </div>
-            </button>
+            </Item>
           </div>
         </div>
 

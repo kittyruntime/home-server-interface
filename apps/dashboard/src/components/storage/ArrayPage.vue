@@ -9,6 +9,7 @@ import { useStorageData, fmtBytes, type BlockDev } from './store'
 import { arrayTargets } from './object-targets'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
+import { Item } from '@/components/ui/item'
 
 // The page of one RAID array (#40): its state and members, what it carries,
 // and what was done to it. The Overview is the RAID section limited to it.
@@ -94,14 +95,14 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">Nothing yet.</p>
           <ul class="space-y-1.5">
             <li v-if="vg">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'vg', name: vg })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'vg', name: vg })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume group</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
-              </button>
+              </Item>
             </li>
             <li v-for="v in volumes" :key="v.id">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'volume', id: v.id })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
-              </button>
+              </Item>
             </li>
           </ul>
         </div>
@@ -109,9 +110,9 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <h3 class="eyebrow mb-2">Members</h3>
           <ul class="space-y-1.5">
             <li v-for="m in members" :key="m">
-              <button class="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-input transition-colors" @click="emit('navigate', { kind: 'disk', name: m })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'disk', name: m })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Member</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
-              </button>
+              </Item>
             </li>
           </ul>
         </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Tip from '../ui/Tip.vue'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -13,6 +14,7 @@ import EmptyState from '../ui/EmptyState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Item } from '@/components/ui/item'
 
 // Browse the snapshots of a repository, pick a file or folder in one, and restore it
 // into a new folder or over its original location.
@@ -183,14 +185,14 @@ onUnmounted(() => {
         <EmptyState v-else-if="!snapshots.length" message="No snapshot yet." />
         <ul v-else class="divide-y divide-border rounded-xl border border-border">
           <li v-for="s in snapshots" :key="s.id">
-            <button class="block w-full min-w-0 px-3 py-2 text-left hover:bg-muted" @click="pick(s)">
+            <Item as="button" size="sm" class="block w-full min-w-0 rounded-none px-3 py-2 text-left hover:bg-muted" @click="pick(s)">
               <span class="flex flex-wrap items-center gap-2">
                 <span class="text-sm text-foreground">{{ formatDateTime(s.time) }}</span>
                 <span class="text-xs text-foreground/80">{{ planName(s) }}</span>
-                <Badge variant="outline" v-if="!s.consistent" class="bg-warning/10 text-warning" title="An app could not be stopped during the run">Inconsistent</Badge>
+                <Tip v-if="!s.consistent" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning">Inconsistent</Badge></Tip>
               </span>
               <span class="mt-1 block break-all font-mono text-2xs text-muted-foreground">{{ s.paths.join(', ') }}</span>
-            </button>
+            </Item>
           </li>
         </ul>
       </template>
@@ -212,7 +214,7 @@ onUnmounted(() => {
         <ErrorState v-if="listError" :message="listError" retry-label="Retry" compact @retry="open(dir)" />
         <LoadingState v-else-if="listing && !entries.length" variant="compact" />
         <div v-else class="rounded-xl border border-border">
-          <button v-if="dir !== root" class="block w-full px-3 py-2 text-left text-xs text-foreground/80 hover:bg-muted" @click="open(parentPath(dir))">..</button>
+          <Button v-if="dir !== root" variant="ghost" size="sm" class="w-full justify-start rounded-none rounded-t-xl px-3 text-xs font-normal text-foreground/80" @click="open(parentPath(dir))">..</Button>
           <EmptyState v-if="!entries.length" message="This folder is empty." />
           <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-border" :class="{ 'opacity-60': listing }">
             <li v-for="e in entries" :key="e.path" class="flex min-w-0 items-center gap-2 px-3 py-2">

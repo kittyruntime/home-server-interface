@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import LoadingState from './ui/LoadingState.vue'
@@ -38,7 +39,7 @@ onMounted(load)
 
     <LoadingState v-if="loading && !links.length" variant="compact" />
     <div v-else-if="links.length === 0" class="rounded-xl border border-dashed border-input"><EmptyState message="No shared links yet." description="Share a file or folder from the file browser to create one." /></div>
-    <div v-else class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden divide-y divide-border">
+    <Card v-else class="block gap-0 py-0 overflow-hidden divide-y divide-border">
       <div v-for="l in links" :key="l.id" class="flex items-center gap-3 px-4 py-3">
         <div class="flex-1 min-w-0">
           <p class="text-sm text-foreground font-mono truncate">{{ l.path }}</p>
@@ -50,6 +51,6 @@ onMounted(load)
         <Button variant="outline" size="xs" v-if="!l.disabled" @click="revoke(l.id)" class="shrink-0">Revoke</Button>
         <Button variant="destructive" size="xs" @click="remove(l.id)" class="shrink-0">Delete</Button>
       </div>
-    </div>
+    </Card>
   </div>
 </template>

@@ -125,7 +125,7 @@ defineExpose({ requestClose })
               variant="ghost"
               size="icon-sm"
               class="shrink-0 text-muted-foreground"
-              title="Close"
+              tooltip="Close"
               aria-label="Close dialog"
               :disabled="preventClose"
               @click="requestClose"

@@ -3,6 +3,7 @@ import { XIcon } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { applyPlanned } from '../../lib/plan'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
@@ -150,13 +151,13 @@ function removeExtraHost(h: string) {
     <div class="space-y-2">
       <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Cap Add</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
-        <span
+        <Badge variant="outline"
           v-for="cap in modelValue.capAdd" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5"
+          class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-input"
         >
           {{ cap }}
-          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeCap('capAdd', cap)"><XIcon class="size-3" aria-hidden="true" /></button>
-        </span>
+          <Button variant="ghost" size="icon-xs" aria-label="Remove" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="removeCap('capAdd', cap)"><XIcon class="size-3" aria-hidden="true" /></Button>
+        </Badge>
       </div>
       <div class="flex gap-2">
         <Input
@@ -174,13 +175,13 @@ function removeExtraHost(h: string) {
     <div class="space-y-2">
       <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Cap Drop</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
-        <span
+        <Badge variant="outline"
           v-for="cap in modelValue.capDrop" :key="cap"
-          class="inline-flex items-center gap-1 text-xs bg-warning/15 text-warning border border-warning/20 rounded-sm px-2 py-0.5"
+          class="gap-1 rounded-sm text-xs bg-warning/15 text-warning border border-warning/20"
         >
           {{ cap }}
-          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeCap('capDrop', cap)"><XIcon class="size-3" aria-hidden="true" /></button>
-        </span>
+          <Button variant="ghost" size="icon-xs" aria-label="Remove" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="removeCap('capDrop', cap)"><XIcon class="size-3" aria-hidden="true" /></Button>
+        </Badge>
       </div>
       <div class="flex gap-2">
         <Input
@@ -198,13 +199,13 @@ function removeExtraHost(h: string) {
     <div class="space-y-2">
       <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Extra Hosts</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
-        <span
+        <Badge variant="outline"
           v-for="h in modelValue.extraHosts" :key="h"
-          class="inline-flex items-center gap-1 text-xs bg-muted text-foreground/80 border border-input rounded-sm px-2 py-0.5 font-mono"
+          class="gap-1 rounded-sm text-xs bg-muted text-foreground/80 border border-input font-mono"
         >
           {{ h }}
-          <button type="button" aria-label="Remove" class="rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="removeExtraHost(h)"><XIcon class="size-3" aria-hidden="true" /></button>
-        </span>
+          <Button variant="ghost" size="icon-xs" aria-label="Remove" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="removeExtraHost(h)"><XIcon class="size-3" aria-hidden="true" /></Button>
+        </Badge>
       </div>
       <div class="flex gap-2">
         <Input

@@ -73,7 +73,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <Input v-model="filterAction" placeholder="Filter by action…"
           class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
-      <Button variant="outline" size="icon" :disabled="loading" title="Refresh" aria-label="Refresh audit log" @click="load">
+      <Button variant="outline" size="icon" :disabled="loading" tooltip="Refresh" aria-label="Refresh audit log" @click="load">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="size-4" aria-hidden="true" />
       </Button>

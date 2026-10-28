@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
+import Modal from '../ui/Modal.vue'
+import { DialogTitle } from 'reka-ui'
 import { ArrowDownIcon, XIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
@@ -7,10 +9,10 @@ import { useAuth } from '../../lib/auth'
 const props = defineProps<{ name: string }>()
 const emit  = defineEmits<{ close: [] }>()
 
-// Escape closes the logs, like every other dialog.
-function onKeydown(e: KeyboardEvent) { if (e.key === 'Escape') emit('close') }
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+// Closing goes through the dialog so it plays its leave animation, then
+// reports `close` like every other dialog.
+const modal = ref<InstanceType<typeof Modal> | null>(null)
+function close() { modal.value?.requestClose() }
 
 const { token } = useAuth()
 
@@ -144,92 +146,95 @@ onUnmounted(() => controller?.abort())
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Container logs" @click.self="emit('close')">
-      <div class="flex flex-col m-4 sm:m-8 flex-1 min-h-0 bg-[#0d1117] border border-input rounded-xl overflow-hidden shadow-lg">
+  <Modal
+    ref="modal"
+    :show-close="false"
+    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-input bg-[#0d1117]"
+    @close="emit('close')"
+  >
+    <div class="flex h-full flex-col min-h-0">
 
-        <!-- Header -->
-        <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
-          <div class="flex items-center gap-2 flex-1 min-w-0">
-            <!-- Status dot -->
-            <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-muted-foreground']" />
-            <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
-            <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
-          </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <!-- Follow toggle -->
-            <Button
-              variant="outline" size="xs"
-              @click="toggleFollow"
-              :title="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
-              :aria-pressed="follow"
-              :class="['bg-transparent text-2xs dark:bg-transparent',
-                follow
-                  ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary dark:bg-primary/20'
-                  : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:border-[#30363d]']"
-            >
-              <ArrowDownIcon class="size-3" aria-hidden="true" />
-              Follow
-            </Button>
-            <!-- Clear -->
-            <Button
-              variant="outline" size="xs"
-              @click="clear"
-              title="Clear"
-              class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:bg-transparent dark:border-[#30363d]"
-            >
-              <XIcon class="size-3" aria-hidden="true" />
-              Clear
-            </Button>
-            <!-- Close -->
-            <Button variant="ghost" size="icon-sm"
-              @click="emit('close')"
-              title="Close"
-              class="text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d]"
-            >
-              <XIcon class="w-4 h-4" aria-hidden="true" />
-            </Button>
-          </div>
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <!-- Status dot -->
+          <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-muted-foreground']" />
+          <DialogTitle as="span" class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</DialogTitle>
+          <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
         </div>
-
-        <!-- Log area -->
-        <div
-          ref="logEl"
-          @scroll="onScroll"
-          class="flex-1 overflow-y-auto font-mono text-xs leading-relaxed p-4 select-text"
-          style="color: #e6edf3"
-        >
-          <!-- Error -->
-          <p v-if="error" role="alert" class="mb-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
-
-          <!-- Empty -->
-          <div v-if="lines.length === 0 && !error && connected"
-            class="text-[#7d8590] italic">Waiting for logs…</div>
-
-          <!-- Lines -->
-          <div
-            v-for="(line, i) in lines"
-            :key="i"
-            class="flex gap-3 hover:bg-white/5 px-1 rounded-sm leading-6"
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Follow toggle -->
+          <Button
+            variant="outline" size="xs"
+            @click="toggleFollow"
+            :tooltip="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
+            :aria-pressed="follow"
+            :class="['bg-transparent text-2xs dark:bg-transparent',
+              follow
+                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary dark:bg-primary/20'
+                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:border-[#30363d]']"
           >
-            <span v-if="line.ts" class="text-[#484f58] shrink-0 tabular-nums select-none">{{ line.ts }}</span>
-            <span class="break-all whitespace-pre-wrap min-w-0">{{ line.text }}</span>
-          </div>
-
-          <!-- Reconnect hint when not connected -->
-          <div v-if="!connected && !error && lines.length > 0" class="text-[#484f58] mt-2 italic">
-            [stream ended]
-          </div>
-        </div>
-
-        <!-- Bottom status bar -->
-        <div class="flex items-center justify-between px-4 py-1.5 border-t border-[#30363d] bg-[#161b22] flex-shrink-0">
-          <span class="text-2xs text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
-          <span v-if="!follow" class="text-2xs text-[#7d8590]">
-            Scroll to bottom to resume auto-scroll
-          </span>
+            <ArrowDownIcon class="size-3" aria-hidden="true" />
+            Follow
+          </Button>
+          <!-- Clear -->
+          <Button
+            variant="outline" size="xs"
+            @click="clear"
+            tooltip="Clear"
+            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:bg-transparent dark:border-[#30363d]"
+          >
+            <XIcon class="size-3" aria-hidden="true" />
+            Clear
+          </Button>
+          <!-- Close -->
+          <Button variant="ghost" size="icon-sm"
+            @click="close"
+            tooltip="Close" aria-label="Close"
+            class="text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d]"
+          >
+            <XIcon class="w-4 h-4" aria-hidden="true" />
+          </Button>
         </div>
       </div>
+
+      <!-- Log area -->
+      <div
+        ref="logEl"
+        @scroll="onScroll"
+        class="flex-1 overflow-y-auto font-mono text-xs leading-relaxed p-4 select-text"
+        style="color: #e6edf3"
+      >
+        <!-- Error -->
+        <p v-if="error" role="alert" class="mb-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+
+        <!-- Empty -->
+        <div v-if="lines.length === 0 && !error && connected"
+          class="text-[#7d8590] italic">Waiting for logs…</div>
+
+        <!-- Lines -->
+        <div
+          v-for="(line, i) in lines"
+          :key="i"
+          class="flex gap-3 hover:bg-white/5 px-1 rounded-sm leading-6"
+        >
+          <span v-if="line.ts" class="text-[#484f58] shrink-0 tabular-nums select-none">{{ line.ts }}</span>
+          <span class="break-all whitespace-pre-wrap min-w-0">{{ line.text }}</span>
+        </div>
+
+        <!-- Reconnect hint when not connected -->
+        <div v-if="!connected && !error && lines.length > 0" class="text-[#484f58] mt-2 italic">
+          [stream ended]
+        </div>
+      </div>
+
+      <!-- Bottom status bar -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t border-[#30363d] bg-[#161b22] flex-shrink-0">
+        <span class="text-2xs text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
+        <span v-if="!follow" class="text-2xs text-[#7d8590]">
+          Scroll to bottom to resume auto-scroll
+        </span>
+      </div>
     </div>
-  </Teleport>
+  </Modal>
 </template>

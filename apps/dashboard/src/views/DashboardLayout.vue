@@ -297,7 +297,7 @@ onUnmounted(() => {
           variant="ghost"
           size="icon-lg"
           aria-label="Activity"
-          title="Activity"
+          tooltip="Activity"
           class="relative mb-2 rounded-xl text-muted-foreground hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />
@@ -311,13 +311,13 @@ onUnmounted(() => {
       <!-- User avatar -->
       <AccountMenu v-if="!isMobile" side="right" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
         <template #default="{ initials }">
-          <button
-            title="Account"
+          <Button
+            size="icon"
             aria-label="Account"
             class="size-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold select-none transition-all duration-150 opacity-80 hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:ring-2 data-[state=open]:ring-primary data-[state=open]:ring-offset-2 data-[state=open]:ring-offset-sidebar"
           >
             {{ initials }}
-          </button>
+          </Button>
         </template>
       </AccountMenu>
     </aside>
@@ -385,9 +385,9 @@ onUnmounted(() => {
       <div v-for="item in mobilePrimaryItems" :key="item.id" class="relative flex min-w-0 flex-1 justify-center">
         <span v-if="isActive(item.id)"
           class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary rounded-t-full" />
-        <button @click="selectApp(item.id)" :title="item.label" :aria-label="item.label"
+        <Button variant="ghost" @click="selectApp(item.id)" :aria-label="item.label"
           :aria-current="isActive(item.id) ? 'page' : undefined"
-          :class="['relative h-11 w-full max-w-11 rounded-xl flex items-center justify-center transition-all duration-150',
+          :class="['relative h-11 w-full max-w-11 rounded-xl transition-all duration-150 hover:bg-transparent [&_svg:not([class*=size-])]:size-5',
             isActive(item.id) ? 'text-primary' : 'text-muted-foreground']">
           <SidebarNavIcon :id="item.id" />
           <span v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
@@ -396,15 +396,15 @@ onUnmounted(() => {
             class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
           <span v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
             class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
-        </button>
+        </Button>
       </div>
 
       <DropdownMenu v-if="mobileMoreItems.length">
         <DropdownMenuTrigger as-child>
-          <button title="More apps" aria-label="More apps"
-            class="relative flex h-11 min-w-0 flex-1 items-center justify-center rounded-xl text-muted-foreground data-[state=open]:text-primary">
+          <Button variant="ghost" aria-label="More apps"
+            class="relative h-11 min-w-0 flex-1 rounded-xl text-muted-foreground hover:bg-transparent data-[state=open]:text-primary">
             <EllipsisIcon class="size-5" />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="center" :side-offset="8" class="grid w-[calc(100vw-1.5rem)] grid-cols-2 gap-1 p-2">
           <DropdownMenuItem v-for="item in mobileMoreItems" :key="item.id" class="min-w-0 gap-3 px-3 py-3 [&_svg:not([class*=text-])]:text-current" @select="selectApp(item.id)">
@@ -417,24 +417,24 @@ onUnmounted(() => {
       <!-- Notifications bell -->
       <ActivityPopover v-if="isMobile" side="top">
         <template #default="{ open }">
-          <button title="Activity" aria-label="Activity"
-            :class="['relative h-11 min-w-0 flex-1 rounded-xl flex items-center justify-center transition-all duration-150',
+          <Button variant="ghost" aria-label="Activity"
+            :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
               open ? 'text-primary' : 'text-muted-foreground']">
             <BellIcon class="size-5" />
             <span v-if="badgeCount > 0"
               class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-foreground flex items-center justify-center tabular-nums leading-none"
             >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
-          </button>
+          </Button>
         </template>
       </ActivityPopover>
 
       <!-- User avatar -->
       <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
         <template #default="{ initials }">
-          <button title="Account" aria-label="Account"
-            class="group flex h-11 min-w-0 flex-1 items-center justify-center text-xs font-bold select-none">
+          <Button variant="ghost" aria-label="Account"
+            class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
             <span class="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">{{ initials }}</span>
-          </button>
+          </Button>
         </template>
       </AccountMenu>
 

@@ -40,14 +40,18 @@ function tryClose() {
         <Badge variant="secondary" v-if="ext" class="shrink-0">{{ ext }}</Badge>
         <span v-if="dirty" class="status-text text-warning shrink-0">[UNSAVED]</span>
       </div>
-      <a
+      <Button
+        as="a"
+        variant="ghost"
+        size="icon-xs"
         :href="downloadHref ?? undefined"
         :download="entry.name"
-        title="Download"
-        class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+        tooltip="Download"
+        aria-label="Download"
+        class="text-muted-foreground shrink-0"
       >
         <DownloadIcon class="w-4 h-4" aria-hidden="true" />
-      </a>
+      </Button>
     </template>
 
     <FilePreviewBody :entry="entry" ref="bodyRef" @dirty="dirty = $event" />

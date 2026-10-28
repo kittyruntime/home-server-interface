@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
+import Tip from '../ui/Tip.vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -178,7 +180,7 @@ async function removeShare(s: ShareRow) {
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Samba missing: guide, never a cryptic error -->
-    <div v-else-if="prereq && !prereq.smbdInstalled" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-6">
+    <Card v-else-if="prereq && !prereq.smbdInstalled" class="block gap-0 py-0 overflow-hidden p-6">
       <h3 class="text-sm font-semibold text-foreground mb-2">Samba is not installed</h3>
       <p class="text-sm text-foreground/80 mb-4">
         SMB sharing needs the Samba server on the host. Install it, then come back here; nothing else to configure.
@@ -189,14 +191,14 @@ async function removeShare(s: ShareRow) {
       <div class="mt-4">
         <Button variant="outline" size="sm" @click="refresh">Check again</Button>
       </div>
-    </div>
+    </Card>
 
-    <div v-else-if="shares.length === 0" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-6 text-sm text-muted-foreground">
+    <Card v-else-if="shares.length === 0" class="block gap-0 py-0 overflow-hidden p-6 text-sm text-muted-foreground">
       No shares yet. Share an existing place to make it reachable from Windows Explorer, Finder, or any SMB client.
-    </div>
+    </Card>
 
     <div v-else class="space-y-3">
-      <div v-for="s in shares" :key="s.id" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card p-4">
+      <Card v-for="s in shares" :key="s.id" class="block gap-0 py-0 overflow-hidden p-4">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
@@ -206,7 +208,7 @@ async function removeShare(s: ShareRow) {
               </Badge>
               <Badge variant="secondary" v-if="s.readOnly">Read-only</Badge>
               <Badge variant="secondary" v-if="s.guestOk">Guest</Badge>
-              <Badge variant="outline" v-if="holdForPath(s.placePath)" class="bg-destructive/10 text-destructive" :title="holdLabel(holdForPath(s.placePath)!)">Unavailable</Badge>
+              <Tip v-if="holdForPath(s.placePath)" :text="holdLabel(holdForPath(s.placePath)!)"><Badge variant="outline" class="bg-destructive/10 text-destructive">Unavailable</Badge></Tip>
             </div>
             <p class="text-xs text-muted-foreground mt-1">
               {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> · {{ s.userCount }} user{{ s.userCount === 1 ? '' : 's' }}
@@ -225,7 +227,7 @@ async function removeShare(s: ShareRow) {
             </Button>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
 
     <!-- Create / edit modal -->

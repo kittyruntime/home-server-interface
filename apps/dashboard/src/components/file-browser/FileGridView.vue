@@ -127,7 +127,7 @@ function fileExt(name: string): string {
         <Button
           variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"
-          title="Preview"
+          tooltip="Preview"
           :aria-label="`Preview ${entry.name}`"
           class="absolute -top-1 -right-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
         >

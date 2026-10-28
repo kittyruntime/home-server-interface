@@ -12,6 +12,7 @@ import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vu
 import LabelsTable,     { type LabelEntry }     from './LabelsTable.vue'
 import AdvancedSection                          from './AdvancedSection.vue'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
@@ -344,7 +345,7 @@ async function applyNow() {
       <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
         class="text-muted-foreground hover:text-foreground"
-        title="Back"
+        tooltip="Back" aria-label="Back"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -355,7 +356,7 @@ async function applyNow() {
         v-if="!editName && !multiSvc"
         variant="ghost" size="sm"
         @click="showCompose = !showCompose"
-        :title="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
+        :tooltip="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
         :aria-pressed="showCompose"
         :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-muted-foreground']"
       >
@@ -484,13 +485,13 @@ async function applyNow() {
           >Add</Button>
         </div>
         <div class="flex flex-wrap gap-1.5">
-          <span
+          <Badge variant="outline"
             v-for="n in form.networkNames" :key="n"
-            class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-input rounded-sm px-2 py-0.5 font-mono"
+            class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-input font-mono"
           >
             {{ n }}
-            <button type="button" :aria-label="`Remove network ${n}`" class="ml-1 rounded-sm opacity-70 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></button>
-          </span>
+            <Button variant="ghost" size="icon-xs" :aria-label="`Remove network ${n}`" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></Button>
+          </Badge>
           <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">No networks attached.</span>
         </div>
       </div>

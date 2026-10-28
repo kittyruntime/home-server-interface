@@ -150,8 +150,9 @@ onUnmounted(() => {
 
     <!-- Header row -->
     <div class="flex items-center pl-5 pr-4">
-      <button
-        class="group flex flex-1 items-center gap-2 px-1 py-2.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded-sm"
+      <Button
+        variant="ghost"
+        class="group h-auto flex-1 justify-start gap-2 px-1 py-2.5 text-left rounded-sm hover:bg-transparent"
         :aria-expanded="expanded"
         @click="toggle"
       >
@@ -161,9 +162,9 @@ onUnmounted(() => {
           {{ containers.length }}
         </Badge>
         <LoadingSpinner v-if="loading" class="text-xs text-muted-foreground" />
-      </button>
+      </Button>
 
-      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" title="Refresh" aria-label="Refresh unmanaged containers" @click="load">
+      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" tooltip="Refresh" aria-label="Refresh unmanaged containers" @click="load">
         <RefreshCwIcon class="size-3.5" aria-hidden="true" />
       </Button>
     </div>

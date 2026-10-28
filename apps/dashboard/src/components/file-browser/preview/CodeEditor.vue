@@ -165,7 +165,7 @@ onBeforeUnmount(() => view?.destroy())
       <Button variant="ghost" size="icon-sm"
         v-if="formatter"
         type="button"
-        title="Format (Shift-Alt-F)"
+        tooltip="Format (Shift-Alt-F)" aria-label="Format (Shift-Alt-F)"
         class="absolute top-2 right-4 z-10 bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm"
         :disabled="formatting"
         @click="format"

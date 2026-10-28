@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Tip from '../ui/Tip.vue'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -188,7 +189,7 @@ async function save() {
 
     <div class="flex items-center justify-between gap-4">
       <span class="text-sm text-foreground/80">Enabled</span>
-      <Switch v-model="form.enabled" title="Run on the schedule" />
+      <Tip text="Run on the schedule"><Switch v-model="form.enabled" /></Tip>
     </div>
 
     <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { CheckIcon, EllipsisVerticalIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -16,6 +17,7 @@ import Modal from '../ui/Modal.vue'
 import LvmIntro from './LvmIntro.vue'
 import ImportFound from './ImportFound.vue'
 import { Button } from '@/components/ui/button'
+import Tip from '../ui/Tip.vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
@@ -203,12 +205,13 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
         <p class="text-sm text-muted-foreground mt-0.5">Physical volumes, volume groups and logical volumes.</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')"
-          :title="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined">
-          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-          Create volume group…
-        </Button>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
+        <Tip :text="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined" wrap>
+          <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')">
+            <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+            Create volume group…
+          </Button>
+        </Tip>
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
           <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -232,8 +235,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="vg in shown" :key="vg.name"
-        class="rounded-xl border bg-card overflow-hidden flex"
+      <Card v-for="vg in shown" :key="vg.name"
+        class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
         :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-border'">
         <!-- Left stripe -->
         <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-purple-500/50'"/>
@@ -329,7 +332,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 <!-- Thin separator before destructive -->
                 <div class="w-px h-3 bg-border mx-1"/>
                 <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
-                  title="Delete this logical volume"
+                  tooltip="Delete this logical volume" aria-label="Delete this logical volume"
                   class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
                   <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
                 </Button>
@@ -337,7 +340,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->

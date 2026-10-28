@@ -113,7 +113,7 @@ async function toggleMember(userId: string) {
       <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
         class="text-muted-foreground hover:text-foreground shrink-0"
-        title="Back to groups"
+        tooltip="Back to groups" aria-label="Back to groups"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -128,7 +128,7 @@ async function toggleMember(userId: string) {
         <Button variant="ghost" size="icon-sm"
           @click="deleteConfirm = true"
           class="text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-          title="Delete group"
+          tooltip="Delete group" aria-label="Delete group"
         >
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </Button>

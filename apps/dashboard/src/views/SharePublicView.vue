@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { trpc } from '../lib/trpc'
@@ -80,7 +81,7 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-background p-4">
-    <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden w-full max-w-lg p-6 bg-card">
+    <Card class="block gap-0 py-0 overflow-hidden w-full max-w-lg p-6">
       <p v-if="loadError && !loading" class="text-sm text-primary mb-3">{{ loadError }}</p>
 
       <LoadingState v-if="loading" variant="compact" />
@@ -133,6 +134,6 @@ onMounted(async () => {
           </li>
         </ul>
       </div>
-    </div>
+    </Card>
   </div>
 </template>

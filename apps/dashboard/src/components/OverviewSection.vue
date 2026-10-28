@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -107,7 +108,7 @@ function relTime(d: string | Date): string {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         <!-- System card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+        <Card class="block gap-0 py-0 overflow-hidden p-5">
           <div class="eyebrow mb-3">System</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
@@ -140,10 +141,10 @@ function relTime(d: string | Date): string {
               </span>
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- Storage card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+        <Card class="block gap-0 py-0 overflow-hidden p-5">
           <div class="eyebrow mb-3">Storage</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
@@ -166,10 +167,10 @@ function relTime(d: string | Date): string {
             </template>
             <div v-else class="text-xs text-muted-foreground">No RAID arrays</div>
           </div>
-        </div>
+        </Card>
 
         <!-- Containers card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+        <Card class="block gap-0 py-0 overflow-hidden p-5">
           <div class="eyebrow mb-3">Containers</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
@@ -185,10 +186,10 @@ function relTime(d: string | Date): string {
               <div class="text-2xs text-muted-foreground mt-0.5">Stopped</div>
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- LVM card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+        <Card class="block gap-0 py-0 overflow-hidden p-5">
           <div class="eyebrow mb-3">LVM</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
@@ -200,10 +201,10 @@ function relTime(d: string | Date): string {
               <div class="text-2xs text-muted-foreground mt-0.5">Logical Volumes</div>
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- Recent Activity card (full width) -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card lg:col-span-2">
+        <Card class="block gap-0 py-0 overflow-hidden p-5 lg:col-span-2">
           <div class="eyebrow mb-3">Recent Activity</div>
           <div v-if="!recentAudit.length" class="text-xs text-muted-foreground">No recent activity.</div>
           <div v-else class="divide-y divide-border">
@@ -218,7 +219,7 @@ function relTime(d: string | Date): string {
               </span>
             </div>
           </div>
-        </div>
+        </Card>
 
       </div>
     </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -160,14 +161,14 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       </p>
 
       <!-- Filters -->
-      <div v-if="!loading" class="flex gap-2 mb-4 flex-wrap">
-        <Button v-for="c in chips" :key="c.key" @click="category = c.key" size="xs"
-          :variant="category === c.key ? 'default' : 'outline'"
-          :aria-pressed="category === c.key"
-          :class="c.key === 'Updates' && category !== c.key ? 'text-warning' : ''">
+      <ToggleGroup v-if="!loading" type="single" variant="outline" size="sm" :spacing="2" aria-label="Category"
+        :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
+        class="mb-4 flex-wrap">
+        <ToggleGroupItem v-for="c in chips" :key="c.key" :value="c.key"
+          :class="['h-7 px-2.5 text-xs', c.key === 'Updates' && category !== c.key && 'text-warning']">
           {{ c.label }} <span class="opacity-60 tabular-nums">{{ c.count }}</span>
-        </Button>
-      </div>
+        </ToggleGroupItem>
+      </ToggleGroup>
 
       <LoadingState v-if="loading" />
 
@@ -191,11 +192,11 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
             <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="a.icon" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <button
-                  type="button" :data-card="a.id"
-                  class="text-sm font-medium text-foreground truncate text-left cursor-pointer focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
+                <Button
+                  type="button" :data-card="a.id" variant="link"
+                  class="h-auto justify-start p-0 text-sm font-medium text-foreground truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
                   @click="openDetail(a)"
-                >{{ a.name }}</button>
+                >{{ a.name }}</Button>
                 <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ a.category }}</span>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>

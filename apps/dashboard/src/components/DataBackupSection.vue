@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { trpc } from '../lib/trpc'
 import { poller, pollDelay } from '../lib/backup'
@@ -90,14 +91,14 @@ onUnmounted(() => polling.stop())
         <span class="status-tag">[WARN]</span> The backup engine is not installed. Run the installer again to enable versioned backups.
       </p>
 
-      <div v-if="status.migrationSkipped?.length" role="alert" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden mb-4 p-4 bg-card space-y-2">
+      <Card v-if="status.migrationSkipped?.length" role="alert" class="block gap-0 py-0 overflow-hidden mb-4 p-4 space-y-2">
         <p class="status-text text-warning"><span class="status-tag">[WARN]</span> These former backup plans could not be moved to the new backups. Create them again below.</p>
         <ul class="text-xs text-foreground/80 space-y-1">
           <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-foreground">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
         </ul>
         <p v-if="dismissError" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
         <Button variant="ghost" size="xs" :disabled="dismissing" @click="dismissSkipped">Dismiss</Button>
-      </div>
+      </Card>
 
       <!-- Plans -->
       <section class="mb-6">
@@ -114,9 +115,9 @@ onUnmounted(() => polling.stop())
           @saved="planSaved"
           @cancel="planEdit = null"
         />
-        <div v-if="!status.plans.length && !planEdit" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
+        <Card v-if="!status.plans.length && !planEdit" class="block gap-0 py-0 overflow-hidden">
           <EmptyState message="No backup plan yet." description="A plan copies folders on a schedule, as a mirror or as versions." />
-        </div>
+        </Card>
         <div v-else class="space-y-3">
           <PlanCard
             v-for="p in status.plans"
@@ -144,9 +145,9 @@ onUnmounted(() => polling.stop())
           @saved="repoSaved"
           @cancel="repoEdit = null"
         />
-        <div v-if="!status.repositories.length && !repoEdit" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
+        <Card v-if="!status.repositories.length && !repoEdit" class="block gap-0 py-0 overflow-hidden">
           <EmptyState message="No repository yet." description="Add one before creating a versions plan." />
-        </div>
+        </Card>
         <div v-else class="space-y-3">
           <RepositoryCard
             v-for="r in status.repositories"

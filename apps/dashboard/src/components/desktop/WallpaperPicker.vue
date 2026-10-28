@@ -55,10 +55,13 @@ async function reset() {
       <div>
         <p class="eyebrow mb-2">Color</p>
         <div class="flex flex-wrap gap-2">
-          <button
+          <Button
             v-for="c in SWATCHES" :key="c"
+            variant="outline"
+            size="icon"
+            :aria-label="`Color ${c}`"
             :style="{ backgroundColor: c }"
-            class="w-8 h-8 rounded-lg border border-input"
+            class="size-8 rounded-lg hover:opacity-80"
             @click="pickColor(c)"
           />
           <input

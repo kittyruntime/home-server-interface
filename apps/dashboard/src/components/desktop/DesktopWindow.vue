@@ -172,7 +172,7 @@ function onMaximizeClick() {
         <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
-          title="New App"
+          tooltip="New App" aria-label="New App"
           class="text-muted-foreground hover:text-foreground"
         >
           <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -180,28 +180,32 @@ function onMaximizeClick() {
         <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'file-preview' && win.dirty"
           @click="filePreviewRef?.save()"
-          title="Save"
+          tooltip="Save" aria-label="Save"
           class="text-muted-foreground hover:text-foreground"
         >
           <CheckIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <a
+        <Button
+          as="a"
+          variant="ghost"
+          size="icon-xs"
           v-if="win.appId === 'file-preview'"
           :href="downloadHref ?? undefined"
           :download="win.filePreview!.name"
-          title="Download"
-          class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          tooltip="Download"
+          aria-label="Download"
+          class="text-muted-foreground"
         >
           <DownloadIcon class="w-3.5 h-3.5" aria-hidden="true" />
-        </a>
-        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" title="Minimize" class="text-muted-foreground hover:text-foreground">
+        </Button>
+        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" tooltip="Minimize" aria-label="Minimize" class="text-muted-foreground hover:text-foreground">
           <MinusIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :title="win.maximized ? 'Restore' : 'Maximize'" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :tooltip="win.maximized ? 'Restore' : 'Maximize'" :aria-label="win.maximized ? 'Restore' : 'Maximize'" class="text-muted-foreground hover:text-foreground">
           <CopyIcon v-if="win.maximized" class="w-3.5 h-3.5" aria-hidden="true" />
           <SquareIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onCloseClick" title="Close" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
+        <Button variant="ghost" size="icon-xs" @click="onCloseClick" tooltip="Close" aria-label="Close" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
           <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
       </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
@@ -30,7 +31,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
   <div class="max-w-3xl space-y-4">
     <Button variant="ghost" size="sm" ref="backButton" @click="emit('back')" @keydown.esc="emit('back')">← Back</Button>
 
-    <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-5">
+    <Card class="block gap-0 py-0 overflow-hidden p-5 space-y-5">
       <!-- Identity + main action -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
         <!-- eslint-disable-next-line vue/no-v-html -- `app.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
@@ -94,6 +95,6 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
       </section>
 
       <p class="text-2xs text-muted-foreground font-mono break-all">{{ app.image }}</p>
-    </div>
+    </Card>
   </div>
 </template>

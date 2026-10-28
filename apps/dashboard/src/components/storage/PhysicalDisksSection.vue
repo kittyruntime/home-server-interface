@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Toggle } from '@/components/ui/toggle'
+import { Badge } from '@/components/ui/badge'
+import SortableHeader from '../ui/SortableHeader.vue'
 import { ChevronRightIcon, InfoIcon, RefreshCwIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -310,7 +314,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <h2 class="text-lg font-semibold text-foreground">Disks</h2>
         <p class="text-sm text-muted-foreground mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
       </div>
-      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -324,7 +328,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
       <template v-else>
         <!-- Summary: each count filters the list -->
-        <div class="rounded-xl border border-border bg-card px-4 py-3 mb-3">
+        <Card class="block gap-0 py-0 shadow-none px-4 py-3 mb-3">
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
             <span class="font-semibold text-foreground">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
             <span class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
@@ -332,23 +336,22 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
-              <button v-if="summary.roles[role]" @click="toggleRole(role)" :aria-pressed="prefs.role === role"
-                :class="['text-2xs px-2 py-1 rounded-lg border transition-colors', ROLE_CLASS[role],
-                  prefs.role === role ? 'ring-2 ring-primary/40' : 'opacity-80 hover:opacity-100']">
-                {{ ROLE_LABELS[role] }} <span class="font-semibold tabular-nums">{{ summary.roles[role] }}</span>
-              </button>
+              <Toggle v-if="summary.roles[role]" variant="outline" size="sm" class="h-7 text-xs"
+                :model-value="prefs.role === role" @update:model-value="toggleRole(role)">
+                {{ ROLE_LABELS[role] }}
+                <span :class="['rounded-sm border px-1 text-2xs font-semibold tabular-nums', ROLE_CLASS[role]]">{{ summary.roles[role] }}</span>
+              </Toggle>
             </template>
             <template v-for="h in (['failed', 'warning'] as DiskHealth[])" :key="h">
-              <button v-if="summary.health[h]" @click="toggleHealth(h)" :aria-pressed="prefs.health === h"
-                :class="['inline-flex items-center gap-1.5 text-2xs px-2 py-1 rounded-lg border transition-colors',
-                  h === 'failed' ? 'bg-destructive/10 text-destructive border-destructive/25' : 'bg-warning/10 text-warning border-warning/25',
-                  prefs.health === h ? 'ring-2 ring-primary/40' : 'opacity-80 hover:opacity-100']">
+              <Toggle v-if="summary.health[h]" variant="outline" size="sm"
+                :class="['h-7 text-xs', h === 'failed' ? 'text-destructive' : 'text-warning']"
+                :model-value="prefs.health === h" @update:model-value="toggleHealth(h)">
                 <span class="w-1.5 h-1.5 rounded-full" :class="HEALTH_DOT[h]"/>
                 SMART {{ HEALTH_LABEL[h].toLowerCase() }} <span class="font-semibold tabular-nums">{{ summary.health[h] }}</span>
-              </button>
+              </Toggle>
             </template>
           </div>
-        </div>
+        </Card>
 
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -402,15 +405,16 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         </div>
 
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
-        <div v-else-if="view === 'table'" class="rounded-xl border border-border bg-card overflow-hidden">
+        <Card v-else-if="view === 'table'" class="block gap-0 py-0 shadow-none overflow-hidden">
           <!-- Header (desktop) -->
           <div class="hidden @4xl/content:grid disk-grid gap-3 px-3 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
             <span/>
-            <button v-for="c in COLUMNS" :key="c.key" @click="setSort(c.key)"
-              :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
-              :class="['text-left hover:text-foreground transition-colors truncate', c.class, prefs.sortKey === c.key && 'text-foreground']">
-              {{ c.label }}<span v-if="prefs.sortKey === c.key">{{ prefs.sortDir === 'asc' ? ' ↑' : ' ↓' }}</span>
-            </button>
+            <span v-for="c in COLUMNS" :key="c.key" :class="['min-w-0', c.class]"
+              :aria-sort="prefs.sortKey === c.key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+              <SortableHeader :active="prefs.sortKey === c.key" :dir="prefs.sortDir" :class="['max-w-full truncate', prefs.sortKey === c.key && 'text-foreground']" @click="setSort(c.key)">
+                {{ c.label }}
+              </SortableHeader>
+            </span>
             <span/>
           </div>
 
@@ -425,7 +429,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" />
                 <span v-else/>
                 <span class="min-w-0">
-                  <button class="block max-w-full font-mono font-semibold text-foreground truncate hover:underline underline-offset-2" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</button>
+                  <Button variant="link" class="block h-auto max-w-full p-0 font-mono font-semibold text-foreground truncate" @click.stop="emit('open', r.disk.name)">/dev/{{ r.disk.name }}</Button>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </span>
                 <span class="text-foreground/80 truncate" :title="r.disk.model">{{ r.disk.model || '-' }}</span>
@@ -436,8 +440,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <span class="text-right tabular-nums text-foreground/80">{{ fmtBytes(r.disk.size) }}</span>
                 <span class="text-muted-foreground">{{ r.kind || '-' }}</span>
                 <span class="min-w-0">
-                  <button v-if="r.role === 'raid' || r.role === 'lvm'" @click.stop="openRole(r)"
-                    :class="['max-w-full truncate text-2xs px-1.5 py-0.5 rounded-sm border hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</button>
+                  <Badge v-if="r.role === 'raid' || r.role === 'lvm'" as="button" variant="outline" @click.stop="openRole(r)"
+                    :class="['max-w-full truncate rounded-sm hover:opacity-80', ROLE_CLASS[r.role]]">{{ roleText(r) }} →</Badge>
                   <span v-else :class="['text-2xs px-1.5 py-0.5 rounded-sm border', ROLE_CLASS[r.role]]">{{ roleText(r) }}</span>
                 </span>
                 <span class="flex items-center gap-1.5 text-foreground/80">
@@ -482,7 +486,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               </div>
             </div>
           </template>
-        </div>
+        </Card>
 
         <!-- ═══ Detailed view: the full tree of every disk ═══ -->
         <div v-else class="space-y-3">

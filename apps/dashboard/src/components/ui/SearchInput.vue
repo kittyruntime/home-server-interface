@@ -22,7 +22,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
       v-if="modelValue"
       variant="ghost"
       size="icon-xs"
-      title="Clear"
+      tooltip="Clear"
       aria-label="Clear search"
       class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
       @click="$emit('update:modelValue', '')"

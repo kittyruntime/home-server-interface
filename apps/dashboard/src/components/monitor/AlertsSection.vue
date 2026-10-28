@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDateTime } from '../../lib/format-date'
 import { ref, computed, onMounted } from 'vue'
@@ -95,7 +96,7 @@ onMounted(load)
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
 
-    <div v-else class="rounded-xl border border-border bg-card overflow-hidden">
+    <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
       <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
         <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
           Active ({{ filteredAlerts.length }})
@@ -131,9 +132,9 @@ onMounted(load)
           </div>
           <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
           <div class="text-2xs text-muted-foreground shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
-          <Button variant="ghost" size="xs" type="button" class="shrink-0 -my-0.5" title="Clear this alert" @click="clearOne(a)">Clear</Button>
+          <Button variant="ghost" size="xs" type="button" class="shrink-0 -my-0.5" tooltip="Clear this alert" @click="clearOne(a)">Clear</Button>
         </div>
       </div>
-    </div>
+    </Card>
   </div>
 </template>

@@ -265,7 +265,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
             <Input v-model="row.key" placeholder="Key" class="flex-1 min-w-0 font-mono text-xs" />
             <Input v-model="row.value" placeholder="Value" class="flex-[2] min-w-0 font-mono text-xs" />
             <Button variant="ghost" size="icon-sm"
-              type="button" title="Remove header"
+              type="button" tooltip="Remove header" aria-label="Remove header"
               class="text-muted-foreground hover:text-foreground shrink-0"
               @click="removeHeaderRow(i)"
             >

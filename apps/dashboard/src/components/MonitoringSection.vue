@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ChevronDownIcon, ChevronUpIcon, LayersIcon, LayoutTemplateIcon, WifiIcon } from '@lucide/vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs'
@@ -160,7 +161,7 @@ const chartOptions = {
         <div class="space-y-4">
 
           <!-- ── Processor ────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-border bg-card overflow-hidden">
+          <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
               <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Processor</span>
@@ -195,10 +196,10 @@ const chartOptions = {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           <!-- ── Memory ────────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-border bg-card overflow-hidden">
+          <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
               <LayersIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Memory</span>
@@ -228,10 +229,10 @@ const chartOptions = {
                 >{{ metrics.memory.percent }}%</span>
               </div>
             </div>
-          </div>
+          </Card>
 
           <!-- ── Network ───────────────────────────────────────────────────── -->
-          <div class="rounded-xl border border-border bg-card overflow-hidden">
+          <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -248,7 +249,7 @@ const chartOptions = {
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
 
         </div>
       </template>
@@ -275,23 +276,23 @@ const chartOptions = {
         <!-- CPU chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">CPU %</div>
-          <div class="h-32 rounded-lg border border-border bg-card p-3">
+          <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="cpuChartData" :options="chartOptions" />
-          </div>
+          </Card>
         </div>
         <!-- RAM chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">RAM (GB)</div>
-          <div class="h-32 rounded-lg border border-border bg-card p-3">
+          <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="ramChartData" :options="chartOptions" />
-          </div>
+          </Card>
         </div>
         <!-- Network chart -->
         <div class="mb-6">
           <div class="eyebrow mb-2">Network (MB/s)</div>
-          <div class="h-32 rounded-lg border border-border bg-card p-3">
+          <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="netChartData" :options="chartOptions" />
-          </div>
+          </Card>
         </div>
       </template>
     </div>

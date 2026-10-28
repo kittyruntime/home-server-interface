@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Tip from './ui/Tip.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon, PlusIcon } from '@lucide/vue'
 import { ref, onMounted } from 'vue'
@@ -207,7 +208,7 @@ function formatTime(at: string | Date): string {
                 </div>
                 <p class="text-xs text-muted-foreground font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
-              <Switch :model-value="c.enabled" :title="c.enabled ? 'Disable connector' : 'Enable connector'" @update:model-value="toggleConnector(c)" />
+              <Tip :text="c.enabled ? 'Disable connector' : 'Enable connector'"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
               <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">Edit</Button>
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">Delete</Button>
             </li>
@@ -244,7 +245,7 @@ function formatTime(at: string | Date): string {
                   >{{ t }}</span>
                 </div>
               </div>
-              <Switch :model-value="r.enabled" :title="r.enabled ? 'Disable rule' : 'Enable rule'" @update:model-value="toggleRule(r)" />
+              <Tip :text="r.enabled ? 'Disable rule' : 'Enable rule'"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
               <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">Edit</Button>
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">Delete</Button>
             </li>

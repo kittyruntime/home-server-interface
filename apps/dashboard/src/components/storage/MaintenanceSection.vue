@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -111,7 +112,7 @@ const statusClass: Record<string, string> = {
       </div>
 
       <div class="space-y-4">
-        <div v-for="t in TASKS" :key="t.id" class="rounded-xl border border-border bg-card p-4">
+        <Card v-for="t in TASKS" :key="t.id" class="block gap-0 py-0 shadow-none p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <h3 class="text-sm font-semibold text-foreground">{{ t.title }}</h3>
@@ -173,7 +174,7 @@ const statusClass: Record<string, string> = {
           <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-muted-foreground">
             Each disk runs its test on its own: Running shows how much is left, then Passed or Failed. A failed test also raises an alert in Monitor.
           </p>
-        </div>
+        </Card>
       </div>
 
       <div class="mt-4 flex justify-end">

@@ -31,7 +31,7 @@ const stages = [
   <Transition name="ui-fade">
     <div v-if="!dismissed" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mb-4 border-input bg-card p-4">
       <Button variant="ghost" size="icon-xs"
-        title="Dismiss"
+        tooltip="Dismiss"
         aria-label="Dismiss LVM explanation"
         class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"

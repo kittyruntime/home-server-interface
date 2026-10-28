@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
+import Tip from './ui/Tip.vue'
 import { ChevronDownIcon, FolderIcon, PlusIcon, XIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -196,14 +198,14 @@ onMounted(async () => {
 
       <!-- Places list -->
       <div v-else-if="places.length > 0" class="space-y-2">
-        <div
+        <Card
           v-for="place in places"
           :key="place.id"
-          class="bg-card border border-border rounded-xl overflow-hidden"
+          class="block gap-0 py-0 shadow-none overflow-hidden"
         >
           <!-- Place row -->
           <div class="flex items-center gap-3 px-4 py-3 group">
-            <button @click="togglePlace(place.id)" class="flex-1 flex items-center gap-3 text-left min-w-0">
+            <Button variant="ghost" @click="togglePlace(place.id)" :aria-expanded="expandedPlace === place.id" class="h-auto flex-1 justify-start gap-3 px-0 py-0 text-left font-normal min-w-0 hover:bg-transparent">
               <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-foreground">{{ place.name }}</span>
@@ -211,10 +213,10 @@ onMounted(async () => {
               </div>
               <!-- Expand chevron -->
               <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
-            </button>
+            </Button>
             <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
               class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-              title="Remove">
+              tooltip="Remove" aria-label="Remove">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
@@ -231,10 +233,10 @@ onMounted(async () => {
               <TableHeader>
                 <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border bg-muted">
                   <TableHead class="px-4 py-2 text-left font-medium">Subject</TableHead>
-                  <TableHead class="px-3 py-2 text-center font-medium w-16" title="List and download files">Read</TableHead>
-                  <TableHead class="px-3 py-2 text-center font-medium w-16" title="Upload, rename and modify files">Write</TableHead>
-                  <TableHead class="px-3 py-2 text-center font-medium w-16" title="Remove files and folders">Delete</TableHead>
-                  <TableHead class="px-3 py-2 text-center font-medium w-16" title="Create public share links for this folder">Share</TableHead>
+                  <Tip text="List and download files"><TableHead class="px-3 py-2 text-center font-medium w-16">Read</TableHead></Tip>
+                  <Tip text="Upload, rename and modify files"><TableHead class="px-3 py-2 text-center font-medium w-16">Write</TableHead></Tip>
+                  <Tip text="Remove files and folders"><TableHead class="px-3 py-2 text-center font-medium w-16">Delete</TableHead></Tip>
+                  <Tip text="Create public share links for this folder"><TableHead class="px-3 py-2 text-center font-medium w-16">Share</TableHead></Tip>
                 </TableRow>
               </TableHeader>
               <TableBody class="divide-y divide-border">
@@ -271,7 +273,7 @@ onMounted(async () => {
               </TableBody>
             </Table>
           </div>
-        </div>
+        </Card>
       </div>
     </template>
   </section>

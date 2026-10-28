@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { computed, ref } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
@@ -50,11 +51,12 @@ function launch(id: AppId) {
       >
         <DialogTitle class="sr-only">Launchpad</DialogTitle>
         <div class="grid grid-cols-4 gap-8 p-8">
-          <button
+          <Button
             v-for="id in visibleApps"
             :key="id"
+            variant="ghost"
             @click="launch(id)"
-            class="flex flex-col items-center gap-3 p-4 rounded-xl outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 transition-colors"
+            class="h-auto flex-col gap-3 p-4 rounded-xl font-normal whitespace-normal focus-visible:bg-accent"
           >
             <div class="relative size-16 rounded-xl bg-card border shadow-xs flex items-center justify-center text-foreground/80">
               <AppIcon :app="id" :stroke-width="1.5" class="size-7" />
@@ -64,7 +66,7 @@ function launch(id: AppId) {
                 class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
             </div>
             <span class="eyebrow">{{ APP_LABEL[id] }}</span>
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </DialogPortal>

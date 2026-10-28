@@ -80,7 +80,7 @@ const SMART_DOT: Record<string, string> = {
           <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon-xs"
               @click="toggleCols(w)"
-              :title="w.cols === 1 ? 'Expand' : 'Shrink'"
+              :tooltip="w.cols === 1 ? 'Expand' : 'Shrink'"
               :aria-label="w.cols === 1 ? 'Expand widget' : 'Shrink widget'"
               class="text-muted-foreground"
             >
@@ -88,7 +88,7 @@ const SMART_DOT: Record<string, string> = {
             </Button>
             <Button variant="ghost" size="icon-xs"
               @click="removeWidget(w.id)"
-              title="Remove"
+              tooltip="Remove" aria-label="Remove"
               class="text-muted-foreground hover:text-primary hover:bg-primary/10"
             >
               <XIcon class="w-3 h-3" aria-hidden="true" />

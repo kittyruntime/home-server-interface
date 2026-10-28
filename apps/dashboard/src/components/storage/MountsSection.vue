@@ -208,7 +208,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <h2 class="text-lg font-semibold text-foreground">Mounts</h2>
         <p class="text-sm text-muted-foreground mt-0.5">All mounted filesystems, across all sources.</p>
       </div>
-      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -243,10 +243,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground">{{ e.mountpoint }}</TableCell>
               <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground truncate max-w-0 w-40">{{ e.device }}</TableCell>
               <TableCell class="px-4 py-2.5">
-                <button @click="emit('navigate', e.target)"
-                  :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
+                <Badge as="button" variant="outline" @click="emit('navigate', e.target)" :class="['rounded-sm hover:opacity-80', sourceBadgeClass[e.source]]">
                   {{ e.sourceLabel }} →
-                </button>
+                </Badge>
               </TableCell>
               <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
               <TableCell class="px-4 py-2.5">
@@ -293,10 +292,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <TableRow v-for="e in unmounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
                 <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ e.device }}</TableCell>
                 <TableCell class="px-4 py-2.5">
-                  <button @click="emit('navigate', e.target)"
-                    :class="['inline-flex items-center gap-1 text-2xs font-medium px-1.5 py-0.5 rounded-sm border transition-colors', sourceBadgeClass[e.source]]">
+                  <Badge as="button" variant="outline" @click="emit('navigate', e.target)" :class="['rounded-sm hover:opacity-80', sourceBadgeClass[e.source]]">
                     {{ e.sourceLabel }} →
-                  </button>
+                  </Badge>
                 </TableCell>
                 <TableCell class="px-4 py-2.5 font-mono text-2xs text-muted-foreground uppercase">{{ e.fstype }}</TableCell>
                 <TableCell class="px-4 py-2.5 text-xs text-muted-foreground tabular-nums">{{ fmtBytes(e.size) }}</TableCell>

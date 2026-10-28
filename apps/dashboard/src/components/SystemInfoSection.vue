@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { LayoutTemplateIcon, MonitorIcon, WifiIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, onMounted } from 'vue'
@@ -57,7 +58,7 @@ function fmtUptime(sec: number): string {
       <div class="space-y-4">
 
         <!-- ── Overview ─────────────────────────────────────────────────── -->
-        <div class="rounded-xl border border-border bg-card divide-y divide-border">
+        <Card class="block gap-0 py-0 shadow-none divide-y divide-border">
           <div class="px-4 py-3 flex items-center gap-2">
             <MonitorIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Overview</span>
@@ -89,10 +90,10 @@ function fmtUptime(sec: number): string {
               </div>
             </div>
           </dl>
-        </div>
+        </Card>
 
         <!-- ── Processor ────────────────────────────────────────────────── -->
-        <div class="rounded-xl border border-border bg-card overflow-hidden">
+        <Card class="block gap-0 py-0 shadow-none overflow-hidden">
           <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
             <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Processor</span>
@@ -101,10 +102,10 @@ function fmtUptime(sec: number): string {
             <span class="text-sm text-foreground leading-snug">{{ sysinfo.cpuModel }}</span>
             <span class="shrink-0 text-2xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground font-mono">×{{ sysinfo.cpuCount }}</span>
           </div>
-        </div>
+        </Card>
 
         <!-- ── Network interfaces ───────────────────────────────────────── -->
-        <div class="rounded-xl border border-border bg-card overflow-hidden">
+        <Card class="block gap-0 py-0 shadow-none overflow-hidden">
           <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
             <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Network interfaces</span>
@@ -134,7 +135,7 @@ function fmtUptime(sec: number): string {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
       </div>
     </template>

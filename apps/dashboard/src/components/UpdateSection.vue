@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, RefreshCwIcon } from '@lucide/vue'
 import { formatDateTime, formatDay } from '../lib/format-date'
 import { lastResultText, lastResultIsProblem, previousVersionText, rollbackCommand } from '../lib/update-result'
@@ -201,7 +202,7 @@ onUnmounted(() => clearInterval(timer))
 
     <!-- ── Restart timeline ─────────────────────────────────────────────── -->
     <div v-if="restartStep" class="space-y-6">
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-6">
+      <Card class="block gap-0 py-0 overflow-hidden p-6">
         <p class="eyebrow mb-6">{{ restartKind === 'update' ? 'Installing update' : restartKind === 'host' ? 'Rebooting server' : 'Restarting HSI' }}</p>
         <div class="space-y-5">
           <div v-for="step in STEPS" :key="step" class="flex items-center gap-3">
@@ -236,7 +237,7 @@ onUnmounted(() => clearInterval(timer))
             </span>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
 
     <LoadingState v-else-if="loading" variant="compact" />
@@ -248,7 +249,7 @@ onUnmounted(() => clearInterval(timer))
     <div v-else-if="status" class="space-y-5">
 
       <!-- Version row -->
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 flex items-center justify-between gap-6">
+      <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-row items-center justify-between gap-6">
         <div>
           <p class="eyebrow mb-1">Current version</p>
           <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
@@ -266,10 +267,10 @@ onUnmounted(() => clearInterval(timer))
             <span class="text-sm">Up to date</span>
           </div>
         </template>
-      </div>
+      </Card>
 
       <!-- Last update result and the version it left behind -->
-      <div v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 space-y-2">
+      <Card v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="block gap-0 py-0 overflow-hidden p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
            :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-destructive' : 'text-foreground/80']">
           {{ lastResultText(status.lastResult) }}
@@ -288,10 +289,10 @@ onUnmounted(() => clearInterval(timer))
           {{ previousVersionText(status.rollbackTarget, status.current, formatDay) }}
           <code class="font-mono text-xs text-foreground">{{ rollbackCommand(status.rollbackCommand) }}</code>
         </p>
-      </div>
+      </Card>
 
       <!-- Release notes -->
-      <div v-if="status.hasUpdate && status.releaseNotes" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden overflow-hidden">
+      <Card v-if="status.hasUpdate && status.releaseNotes" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
           <p class="eyebrow">What's new in {{ status.latest }}</p>
           <a
@@ -306,10 +307,10 @@ onUnmounted(() => clearInterval(timer))
         <div class="px-4 py-3 max-h-72 overflow-y-auto">
           <ReleaseNotes :source="status.releaseNotes" />
         </div>
-      </div>
+      </Card>
 
       <!-- Pre-flight checks -->
-      <div v-if="status.hasUpdate && preflight" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden overflow-hidden">
+      <Card v-if="status.hasUpdate && preflight" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border">
           <p class="eyebrow">Pre-flight checks</p>
         </div>
@@ -323,7 +324,7 @@ onUnmounted(() => clearInterval(timer))
             <span v-if="c.detail" class="text-xs text-muted-foreground truncate">{{ c.detail }}</span>
           </li>
         </ul>
-      </div>
+      </Card>
 
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
@@ -367,7 +368,7 @@ onUnmounted(() => clearInterval(timer))
         </Button>
       </div>
 
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p class="text-sm font-medium text-foreground">Restart HSI</p>
           <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the application backend without rebooting the host server.</p>
@@ -381,7 +382,7 @@ onUnmounted(() => clearInterval(timer))
           <HistoryIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
           {{ restarting ? 'Restarting…' : 'Restart HSI' }}
         </Button>
-      </div>
+      </Card>
 
       <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 border-destructive/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

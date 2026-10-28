@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { CheckIcon, EllipsisVerticalIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon, ZapIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -22,6 +23,8 @@ import RaidLevelVisual from './RaidLevelVisual.vue'
 import Hint from '../ui/Hint.vue'
 import ImportFound from './ImportFound.vue'
 import { Button } from '@/components/ui/button'
+import { Item } from '@/components/ui/item'
+import Tip from '../ui/Tip.vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
@@ -321,12 +324,13 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
         <p class="text-sm text-muted-foreground mt-0.5">Manage software RAID arrays (mdadm).</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')"
-          :title="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined">
-          <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-          Create RAID…
-        </Button>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" title="Refresh" class="text-muted-foreground hover:text-foreground">
+        <Tip :text="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined" wrap>
+          <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')">
+            <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+            Create RAID…
+          </Button>
+        </Tip>
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
           <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -350,8 +354,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="r in shown" :key="r.name"
-        class="rounded-xl border bg-card overflow-hidden flex"
+      <Card v-for="r in shown" :key="r.name"
+        class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
         :class="isRaidHealthy(r) ? 'border-border' : 'border-destructive/20'">
         <!-- Left accent stripe -->
         <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-destructive'"/>
@@ -479,13 +483,13 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <div v-else class="rounded-lg border border-border p-2 space-y-1">
                 <p class="text-2xs text-muted-foreground px-1">Free disks at least as large as the smallest member:</p>
                 <p v-if="!replacementCandidates(r).length" class="text-2xs text-muted-foreground px-1 py-1">No suitable disk is free.</p>
-                <button v-for="d in replacementCandidates(r)" :key="d.name" type="button"
-                  class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-accent"
+                <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
+                  class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
                   <span class="font-mono text-xs text-foreground">/dev/{{ d.name }}</span>
                   <span class="text-2xs text-muted-foreground">{{ fmtBytes(d.size) }}</span>
                   <span v-if="memberIdentity(d.name)" class="text-2xs text-muted-foreground truncate">{{ memberIdentity(d.name) }}</span>
-                </button>
+                </Item>
                 <Button variant="ghost" size="xs" type="button" @click="addPicker = null">Cancel</Button>
               </div>
             </div>
@@ -527,7 +531,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </div>
           </template>
         </div>
-      </div>
+      </Card>
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
@@ -558,14 +562,15 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </p>
 
             <!-- Own container: the dialog is teleported out of the Storage panel. -->
-            <div class="@container"><div class="grid grid-cols-1 @md:grid-cols-2 gap-2">
-              <button
+            <div class="@container"><div role="radiogroup" aria-label="RAID level" class="grid grid-cols-1 @md:grid-cols-2 gap-2">
+              <Item
                 v-for="lvl in RAID_LEVELS" :key="lvl.level"
+                as="button" type="button" variant="outline" role="radio" :aria-checked="raidWiz.level === lvl.level"
                 @click="raidWiz.level = lvl.level"
-                :class="['text-left p-3 rounded-xl border transition-colors',
+                :class="['block p-3 text-left rounded-xl',
                   raidWiz.level === lvl.level
                     ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-input']"
+                    : 'hover:border-input']"
               >
                 <div class="flex items-center gap-2 mb-1">
                   <span class="text-sm font-bold text-foreground">{{ lvl.name }}</span>
@@ -579,7 +584,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   </span>
                 </div>
                 <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-border" />
-              </button>
+              </Item>
             </div></div>
 
             <!-- Selected level danger notice -->

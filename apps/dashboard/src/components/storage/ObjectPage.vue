@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -30,10 +31,10 @@ const TABS: { id: ObjectTab; label: string }[] = [
   <div>
     <LoadingState v-if="loading" />
     <p v-else-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
-    <div v-else-if="gone" class="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-foreground/80">
+    <Card v-else-if="gone" class="block gap-0 py-0 shadow-none px-4 py-8 text-center text-sm text-foreground/80">
       {{ gone.text }}
       <Button variant="link" class="ml-1 h-auto p-0 text-foreground underline" @click="emit('back')">{{ gone.back }}</Button>
-    </div>
+    </Card>
 
     <template v-else>
       <header class="flex flex-col @2xl/content:flex-row @2xl/content:items-start @2xl/content:justify-between gap-3 mb-4">

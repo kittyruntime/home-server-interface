@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { PencilIcon, PlusIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDay } from '../lib/format-date'
@@ -166,7 +167,7 @@ onMounted(load)
       <SearchInput v-model="search" placeholder="Search groups by name…" class="max-w-sm" />
 
       <!-- Table -->
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+      <Card class="block gap-0 py-0 overflow-hidden">
         <Table class="w-full text-sm">
           <TableHeader>
             <TableRow class="bg-muted border-b border-border">
@@ -205,7 +206,7 @@ onMounted(load)
               <TableCell class="px-4 py-3.5 text-right">
                 <Button variant="ghost" size="icon-sm"
                   @click="openEditor(group)"
-                  title="Edit group"
+                  tooltip="Edit group" aria-label="Edit group"
                   class="text-muted-foreground hover:text-foreground"
                 >
                   <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -222,7 +223,7 @@ onMounted(load)
             </TableRow>
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       <!-- Pagination -->
       <Pagination :page="page" :page-count="pageCount" :total="filteredGroups.length" :page-size="pageSize" @update:page="page = $event" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { useDesktop, APP_LABEL } from '../../lib/desktop'
 import { useAlerts } from '../../composables/useAlerts'
 import AppIcon from './AppIcon.vue'
@@ -32,10 +33,12 @@ function onIconClick(id: string) {
 
 <template>
   <div class="flex flex-col items-center w-16 py-4 h-full">
-    <button
+    <Button
+      size="icon-sm"
+      tooltip="Launchpad"
+      aria-label="Launchpad"
+      class="relative mb-5 rounded-lg select-none"
       @click="$emit('openLaunchpad')"
-      title="Launchpad"
-      class="relative w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground mb-5 select-none"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="8" cy="8" r="2.2"/>
@@ -45,7 +48,7 @@ function onIconClick(id: string) {
       </svg>
       <span v-if="hasAlerts('storage.')"
         class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
-    </button>
+    </Button>
 
     <div class="w-8 border-t border-border mb-3" />
 
@@ -55,11 +58,14 @@ function onIconClick(id: string) {
           v-if="isFocused(w.id)"
           class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r-full"
         />
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           @click="onIconClick(w.id)"
-          :title="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
+          :tooltip="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
+          :aria-label="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
           :class="[
-            'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+            'size-10 rounded-xl transition-all duration-150',
             w.minimized ? 'opacity-40' : '',
             isFocused(w.id)
               ? 'bg-primary/10 text-primary'
@@ -67,7 +73,7 @@ function onIconClick(id: string) {
           ]"
         >
           <AppIcon :app="w.appId" class="w-5 h-5" />
-        </button>
+        </Button>
       </div>
     </nav>
   </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ProgressIndicator, ProgressRoot } from 'reka-ui'
+import { Progress } from '@/components/ui/progress'
 
 // Usage bar (disks, memory, operations): the shadcn-vue progress track with a
 // caller-chosen fill color. `segments` is kept for callers and ignored.
@@ -26,20 +26,12 @@ const heightClass = computed(() => ({
 </script>
 
 <template>
-  <ProgressRoot
-    data-slot="progress"
+  <Progress
     :model-value="indeterminate ? null : value"
-    :class="['relative w-full overflow-hidden rounded-full bg-muted', heightClass]"
-  >
-    <ProgressIndicator
-      data-slot="progress-indicator"
-      :class="['h-full rounded-full transition-all', indeterminate ? 'w-1/3 animate-[progress-slide_1.2s_ease-in-out_infinite]' : 'w-full']"
-      :style="{
-        backgroundColor: color,
-        transform: indeterminate ? undefined : `translateX(-${100 - value}%)`,
-      }"
-    />
-  </ProgressRoot>
+    :class="['rounded-full bg-muted', heightClass]"
+    :indicator-class="['rounded-full', indeterminate && 'w-1/3 animate-[progress-slide_1.2s_ease-in-out_infinite]']"
+    :indicator-style="indeterminate ? { backgroundColor: color, transform: 'none' } : { backgroundColor: color }"
+  />
 </template>
 
 <style>

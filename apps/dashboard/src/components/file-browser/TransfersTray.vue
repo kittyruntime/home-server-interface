@@ -211,19 +211,19 @@ function handleReselectPick(e: Event) {
 
           <!-- Actions -->
           <div class="flex gap-0.5 shrink-0">
-            <Button variant="ghost" size="icon-xs" v-if="canPauseResume(t)" @click="togglePause(t)" :title="t.status === 'paused' ? 'Resume' : 'Pause'"
+            <Button variant="ghost" size="icon-xs" v-if="canPauseResume(t)" @click="togglePause(t)" :tooltip="t.status === 'paused' ? 'Resume' : 'Pause'"
               :aria-label="t.status === 'paused' ? 'Resume' : 'Pause'" class="text-muted-foreground">
               <PlayIcon v-if="t.status === 'paused'" class="size-3" aria-hidden="true" />
               <PauseIcon v-else class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" title="Cancel" aria-label="Cancel"
+            <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" tooltip="Cancel" aria-label="Cancel"
               class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
               <SquareIcon class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="xs" v-if="canRetry(t)" @click="retryOrReselect(t)" class="h-5 px-1.5 text-2xs text-primary hover:text-primary hover:bg-primary/10">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </Button>
-            <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" title="Remove"
+            <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" tooltip="Remove" aria-label="Remove"
               class="text-muted-foreground hover:text-foreground">
               <XIcon class="w-3 h-3" aria-hidden="true" />
             </Button>

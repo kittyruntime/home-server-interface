@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import Tip from '../ui/Tip.vue'
 import { ChevronRightIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -80,8 +83,8 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 </script>
 
 <template>
-<div
-  class="rounded-xl border bg-card overflow-hidden flex"
+<Card
+  class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
   :class="disk.isSystem ? 'border-warning/20' : 'border-border'">
   <!-- Left stripe by type -->
   <div class="w-0.5 shrink-0"
@@ -102,7 +105,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <span v-if="disk.isRemovable" class="text-2xs px-1.5 py-0.5 rounded-sm bg-info/10 text-info border border-info/20">USB</span>
           <!-- Whole-disk RAID/LVM member: read-only, SMART only -->
           <Button variant="outline" size="xs" v-if="roleOf(disk)" @click="openRole(roleOf(disk)!)"
-            :title="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
+            :tooltip="'This disk is used by ' + roleLabel(roleOf(disk)!) + '. Only the SMART check is available.'"
             class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">{{ roleLabel(roleOf(disk)!) }} →</Button>
         </div>
         <div v-if="disk.byId" class="text-2xs font-mono text-muted-foreground mt-0.5 truncate" :title="`/dev/disk/by-id/${disk.byId}: stable name, unlike /dev/${disk.name}`">/dev/disk/by-id/{{ disk.byId }}</div>
@@ -110,26 +113,28 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Health badge -->
-        <button @click="emit('toggleSmart')" title="S.M.A.R.T. health"
-          :class="['inline-flex items-center gap-1.5 text-2xs font-semibold px-2 py-1 rounded-lg border transition-colors',
-            status === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
-            status === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
-            status === 'failed'  ? 'bg-destructive/10 border-destructive/25 text-destructive hover:bg-destructive/20' :
-            status === 'loading' ? 'bg-muted border-border text-muted-foreground' :
-            'bg-muted border-border text-muted-foreground hover:border-input hover:text-foreground/80']">
-          <LoadingSpinner v-if="status === 'loading'" class="text-xs" />
-          <span v-else class="w-1.5 h-1.5 rounded-full"
-            :class="status === 'passed' ? 'bg-success' : status === 'warning' ? 'bg-warning' : status === 'failed' ? 'bg-destructive animate-pulse' : 'bg-muted-foreground/40'"/>
-          <span v-if="status === 'passed'">Healthy</span>
-          <span v-else-if="status === 'warning'">Warning</span>
-          <span v-else-if="status === 'failed'">Failed</span>
-          <span v-else-if="status === 'loading'">…</span>
-          <span v-else>SMART</span>
-          <template v-if="smart?.available && smart?.temperature">
-            <span class="opacity-50">·</span>
-            <span :class="(smart?.temperature ?? 0) >= 55 ? 'text-destructive' : (smart?.temperature ?? 0) >= 40 ? 'text-warning' : ''">{{ smart?.temperature }}°C</span>
-          </template>
-        </button>
+        <Tip text="S.M.A.R.T. health">
+          <Badge as="button" variant="outline" @click="emit('toggleSmart')" :aria-expanded="smartOpen"
+            :class="['gap-1.5 text-2xs font-semibold px-2 py-1 rounded-lg transition-colors',
+              status === 'passed'  ? 'bg-success/10 border-success/25 text-success hover:bg-success/20' :
+              status === 'warning' ? 'bg-warning/10 border-warning/25 text-warning hover:bg-warning/20' :
+              status === 'failed'  ? 'bg-destructive/10 border-destructive/25 text-destructive hover:bg-destructive/20' :
+              status === 'loading' ? 'bg-muted border-border text-muted-foreground' :
+              'bg-muted border-border text-muted-foreground hover:border-input hover:text-foreground/80']">
+            <LoadingSpinner v-if="status === 'loading'" class="text-xs" />
+            <span v-else class="w-1.5 h-1.5 rounded-full"
+              :class="status === 'passed' ? 'bg-success' : status === 'warning' ? 'bg-warning' : status === 'failed' ? 'bg-destructive animate-pulse' : 'bg-muted-foreground/40'"/>
+            <span v-if="status === 'passed'">Healthy</span>
+            <span v-else-if="status === 'warning'">Warning</span>
+            <span v-else-if="status === 'failed'">Failed</span>
+            <span v-else-if="status === 'loading'">…</span>
+            <span v-else>SMART</span>
+            <template v-if="smart?.available && smart?.temperature">
+              <span class="opacity-50">·</span>
+              <span :class="(smart?.temperature ?? 0) >= 55 ? 'text-destructive' : (smart?.temperature ?? 0) >= 40 ? 'text-warning' : ''">{{ smart?.temperature }}°C</span>
+            </template>
+          </Badge>
+        </Tip>
         <!-- + Partition button (non-system only) -->
         <Button variant="outline" size="xs" v-if="!disk.isSystem && !diskLocked(disk)" @click="emit('partCreate', disk)"
           class="text-foreground/80 hover:border-primary/50 hover:text-primary">
@@ -324,7 +329,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
             <div class="w-px h-3 bg-border mx-1"/>
             <Button variant="ghost" size="icon-xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
-              title="Delete this partition"
+              tooltip="Delete this partition" aria-label="Delete this partition"
               class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
               <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
@@ -385,5 +390,5 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       </CollapsibleContent>
     </Collapsible>
   </div>
-</div>
+</Card>
 </template>

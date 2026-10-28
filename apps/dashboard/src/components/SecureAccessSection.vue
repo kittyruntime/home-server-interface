@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -8,6 +9,7 @@ import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
 
@@ -133,7 +135,7 @@ function setStandardPorts(enabled: boolean) {
 
     <template v-else-if="status">
       <!-- Status -->
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card mb-4">
+      <Card class="block gap-0 py-0 overflow-hidden p-5 mb-4">
         <div class="eyebrow mb-3">Status</div>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between gap-4">
@@ -170,10 +172,10 @@ function setStandardPorts(enabled: boolean) {
         <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-muted-foreground">
           This server still has the nginx site created by older versions. To let HSI serve HTTPS itself, turn HTTPS on here, then remove both /etc/nginx/sites-enabled/hsi and /etc/nginx/sites-available/hsi and reload nginx.
         </p>
-      </div>
+      </Card>
 
       <!-- Actions -->
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card mb-4">
+      <Card class="block gap-0 py-0 overflow-hidden p-5 mb-4">
         <div class="eyebrow mb-3">Actions</div>
         <div class="flex flex-wrap gap-2">
           <Button size="sm" v-if="status.mode === 'off' || status.mode === 'proxy'" @click="turnOn">Turn HTTPS on…</Button>
@@ -184,10 +186,10 @@ function setStandardPorts(enabled: boolean) {
 
         <form v-if="form === 'import'" class="mt-4 space-y-3" @submit.prevent="submitImport">
           <label class="block text-xs text-muted-foreground">Certificate or full chain
-            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-foreground/80" @change="onFile('cert', $event)" />
+            <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('cert', $event)" />
           </label>
           <label class="block text-xs text-muted-foreground">Private key (optional when it is in the same file)
-            <input type="file" accept=".pem,.crt,.key" class="block mt-1 text-sm text-foreground/80" @change="onFile('key', $event)" />
+            <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('key', $event)" />
           </label>
           <Button size="sm" type="submit">Review import</Button>
         </form>
@@ -207,10 +209,10 @@ function setStandardPorts(enabled: boolean) {
           <span class="text-sm text-foreground/80">Also serve on ports 443 and 80</span>
           <Switch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
         </div>
-      </div>
+      </Card>
 
       <!-- Trust the authority -->
-      <div v-if="status.authorityFingerprint" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+      <Card v-if="status.authorityFingerprint" class="block gap-0 py-0 overflow-hidden p-5">
         <div class="eyebrow mb-3">Trust the authority</div>
         <p class="text-xs text-muted-foreground mb-3">Install the authority certificate on each device so browsers stop showing a warning.</p>
         <Button as="a" variant="outline" size="sm" href="/ca.crt" download>Download the authority certificate</Button>
@@ -223,7 +225,7 @@ function setStandardPorts(enabled: boolean) {
           </ul>
         </details>
         <p class="mt-3 text-xs"><a :href="DOCS_URL" target="_blank" rel="noopener" class="text-primary hover:underline">Read the full guide</a></p>
-      </div>
+      </Card>
     </template>
   </div>
 </template>

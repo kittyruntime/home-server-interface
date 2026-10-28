@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Card } from '@/components/ui/card'
 import { LOADING } from '../lib/loading'
 import BusyLabel from './ui/BusyLabel.vue'
 import { computed, ref } from 'vue'
@@ -57,7 +58,7 @@ async function downloadBackup() {
     <h2 class="mb-1 text-lg font-semibold text-foreground">Backup & restore</h2>
     <p class="mb-6 text-sm text-muted-foreground">Export or restore an encrypted copy of the HSI configuration.</p>
 
-    <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden overflow-hidden">
+    <Card class="block gap-0 py-0 overflow-hidden">
       <div class="border-b border-border p-5">
         <p class="text-sm font-medium text-foreground">Configuration backup</p>
         <p class="mt-1 text-xs leading-5 text-muted-foreground">Includes accounts, permissions, Places, shares, application definitions, settings, metrics, and audit history. Files stored in Places and Docker volume contents are not included.</p>
@@ -83,7 +84,7 @@ async function downloadBackup() {
           </Button>
         </div>
       </form>
-    </div>
+    </Card>
 
     <RestoreForm :auth-token="token" />
   </div>
