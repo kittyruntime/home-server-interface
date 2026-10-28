@@ -173,6 +173,8 @@ case "$scenario" in
     expect_running "$version"; expect_ledger; expect_data
     ;;
   storage)
+    # Samba is optional for the installer; the volume's share needs it.
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
