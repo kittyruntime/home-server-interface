@@ -1,4 +1,4 @@
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
 import type { AppRouter } from '@app/shared-types'
 
 // When a stored session token is rejected (expired or revoked), tear down the
@@ -17,7 +17,7 @@ function onSessionInvalid() {
   }
 }
 
-export const trpc = createTRPCProxyClient<AppRouter>({
+export const trpc = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: import.meta.env.VITE_API_URL ?? '/trpc',

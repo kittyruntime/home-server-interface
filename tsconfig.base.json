@@ -11,10 +11,9 @@
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
       "@app/*": [
-        "packages/*"
+        "./packages/*"
       ]
     }
   }

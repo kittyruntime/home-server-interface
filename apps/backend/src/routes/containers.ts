@@ -1,10 +1,7 @@
 import type { FastifyInstance } from "fastify"
 import crypto from "node:crypto"
-import { StringCodec } from "nats"
 import { requestSync, natsSubscribe } from "../nats"
 import { authenticateRequest } from "../utils/request-auth"
-
-const sc = StringCodec()
 
 export async function containerRoutes(app: FastifyInstance) {
   // GET /containers/:name/logs
@@ -61,7 +58,7 @@ export async function containerRoutes(app: FastifyInstance) {
     try {
       for await (const msg of sub) {
         if (closed) break
-        const text = sc.decode(msg.data)
+        const text = msg.string()
         try {
           reply.raw.write(`data: ${text}\n\n`)
         } catch {

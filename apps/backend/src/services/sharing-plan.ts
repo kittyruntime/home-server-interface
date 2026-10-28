@@ -42,10 +42,10 @@ function noSambaRemoval(name: string): PlanStep {
 }
 
 /** The worker never answered (timeout, not running): the operation may still
- *  be running on the host. Any other error is the worker's answer. */
+ *  be running on the host. NATS errors carry no code; every answer of the
+ *  worker does (requestSync copies it). */
 export function noAnswer(e: unknown): boolean {
-  const code = (e as { code?: string }).code
-  return code === undefined || code === "TIMEOUT" || code === "503"
+  return (e as { code?: string }).code === undefined
 }
 
 export function workerError(e: unknown): never {

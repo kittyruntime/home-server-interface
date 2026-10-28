@@ -792,6 +792,22 @@ resolve_installed() {
   SAFE_UPDATE=1
 }
 
+# Whether an extracted release holds everything the installer runs. Prisma 7
+# has no query engine: the client queries through its SQLite driver adapter,
+# and only the schema engine (migrate deploy) is a binary.
+release_stage_complete() {
+  local stage="$1" worker_bin="$2"
+  [[ -f "$stage/server.js" \
+     && -f "$stage/public/index.html" \
+     && -x "$stage/bin/$worker_bin" \
+     && -d "$stage/database/prisma" \
+     && -d "$stage/compose/src" \
+     && -x "$stage/node_modules/.bin/prisma" \
+     && -x "$stage/node_modules/.bin/tsx" \
+     && -x "$stage/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
+     && -f "$stage/runtime/package-lock.json" ]]
+}
+
 # END release functions
 
 # ── Host packages ──────────────────────────────────────────────────────────────
@@ -1001,16 +1017,7 @@ if [[ "$FROM_SOURCE" -eq 0 ]]; then
   DL_DIR=$(mktemp -d)
   stage_release
   RELEASE_WORKER_BIN="${RELEASE_APP_NAME}-worker"
-  [[ -f "$RELEASE_STAGE/server.js" \
-     && -f "$RELEASE_STAGE/public/index.html" \
-     && -x "$RELEASE_STAGE/bin/$RELEASE_WORKER_BIN" \
-     && -d "$RELEASE_STAGE/database/prisma" \
-     && -d "$RELEASE_STAGE/compose/src" \
-     && -x "$RELEASE_STAGE/node_modules/.bin/prisma" \
-     && -x "$RELEASE_STAGE/node_modules/.bin/tsx" \
-     && -x "$RELEASE_STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
-     && -s "$RELEASE_STAGE/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node" \
-     && -f "$RELEASE_STAGE/runtime/package-lock.json" ]] \
+  release_stage_complete "$RELEASE_STAGE" "$RELEASE_WORKER_BIN" \
     || die "Release archive is incomplete."
   success "Release downloaded and validated"
 fi

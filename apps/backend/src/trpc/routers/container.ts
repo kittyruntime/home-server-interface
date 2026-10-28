@@ -110,7 +110,7 @@ const appRouter = router({
     return { name: input.name, services: parsed.services }
   }),
 
-  apply: adminProcedure.input(z.object({ name: z.string() }))
+  execute: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
       await assertAppVolumes(input.name) // also 404s early

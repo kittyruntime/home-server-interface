@@ -13,6 +13,7 @@ import { updateStateDir, readCurrentVersion } from "./trpc/routers/update"
 import { log } from "./utils/log"
 import type { Server as HttpsServer } from "node:https"
 import { requestSync } from "./nats"
+import { prisma } from "@app/database"
 import { readTlsConfig, servesHttps, trustProxyFn, tlsDir } from "./services/tls-config"
 import { certificateLostEvent, resolveCertificate, startHttps, watchCertificate, type Certificate, type CertificateLoss } from "./services/tls-server"
 
@@ -39,6 +40,8 @@ const start = async () => {
     const app = buildApp()
     try {
       await app.ready()
+      // Loads the SQLite driver, a native module the bundle must leave external.
+      await prisma.$queryRaw`SELECT 1`
       await app.close()
     } catch (err) {
       app.log.error(err)
