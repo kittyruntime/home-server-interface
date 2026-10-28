@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UserAvatar from './UserAvatar.vue'
+import { Alert } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { CheckIcon, ChevronLeftIcon } from '@lucide/vue'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -88,17 +90,6 @@ const deleteBusy    = ref(false)
 const deleteError   = ref('')
 
 const isSelf = computed(() => props.user.id === currentUserId.value)
-
-const palette = [
-  'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
-  'from-emerald-500 to-emerald-700', 'from-amber-500 to-amber-700',
-  'from-rose-500 to-rose-700', 'from-cyan-500 to-cyan-700',
-]
-function avatarGradient(username: string) {
-  let hash = 0
-  for (const ch of username) hash = (hash * 31 + ch.charCodeAt(0)) % palette.length
-  return palette[hash]
-}
 
 const memberGroups = computed(() =>
   props.groups.filter(g => g.members.some(m => m.userId === props.user.id)),
@@ -197,9 +188,7 @@ async function deleteUser() {
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
 
-      <div :class="['w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0', avatarGradient(user.username)]">
-        {{ user.username.slice(0, 2).toUpperCase() }}
-      </div>
+      <UserAvatar :username="user.username" class="size-9 text-xs" />
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
@@ -342,7 +331,7 @@ async function deleteUser() {
     <div v-if="!isSelf" class="space-y-3 pt-2">
       <h4 class="text-2xs font-semibold uppercase tracking-caps text-destructive/70">Danger zone</h4>
 
-      <div class="border border-destructive/20 rounded-xl p-4 bg-destructive/5">
+      <Alert variant="destructive" class="block p-4 text-foreground" role="note">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-medium text-foreground">Delete account</p>
@@ -356,7 +345,7 @@ async function deleteUser() {
           >Delete</Button>
         </div>
         <p v-if="deleteError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
-      </div>
+      </Alert>
     </div>
 
   </div>

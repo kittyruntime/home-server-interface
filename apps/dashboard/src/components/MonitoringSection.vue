@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { ChevronDownIcon, ChevronUpIcon, LayersIcon, LayoutTemplateIcon, WifiIcon } from '@lucide/vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
@@ -154,7 +156,7 @@ const chartOptions = {
     </Tabs>
 
     <LoadingState v-if="loading" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <div v-else-if="viewMode === 'live'">
       <template v-if="sysinfo && metrics">
@@ -176,13 +178,7 @@ const chartOptions = {
                     :class="metrics.cpu > 80 ? 'text-destructive' : metrics.cpu > 60 ? 'text-warning' : 'text-foreground'"
                   >{{ metrics.cpu }}%</span>
                 </div>
-                <div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    class="h-full rounded-full transition-all duration-700"
-                    :class="metrics.cpu > 80 ? 'bg-destructive' : metrics.cpu > 60 ? 'bg-warning' : 'bg-primary'"
-                    :style="{ width: metrics.cpu + '%' }"
-                  />
-                </div>
+                <Progress class="w-full h-1.5 bg-muted rounded-full" :model-value="metrics.cpu" :indicator-class="['rounded-full transition-all duration-700', metrics.cpu > 80 ? 'bg-destructive' : metrics.cpu > 60 ? 'bg-warning' : 'bg-primary']" />
               </div>
 
               <!-- Load averages -->
@@ -214,13 +210,7 @@ const chartOptions = {
                   {{ fmtBytes(metrics.memory.total) }} total
                 </span>
               </div>
-              <div class="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-700"
-                  :class="metrics.memory.percent > 90 ? 'bg-destructive' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-primary'"
-                  :style="{ width: metrics.memory.percent + '%' }"
-                />
-              </div>
+              <Progress class="w-full h-2 bg-muted rounded-full" :model-value="metrics.memory.percent" :indicator-class="['rounded-full transition-all duration-700', metrics.memory.percent > 90 ? 'bg-destructive' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-primary']" />
               <div class="flex justify-between text-2xs text-muted-foreground">
                 <span>{{ fmtBytes(metrics.memory.total - metrics.memory.used) }} free</span>
                 <span

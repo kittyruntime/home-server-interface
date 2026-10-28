@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { Checkbox } from '@/components/ui/checkbox'
+import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { CheckIcon, EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
+import { EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -30,10 +32,6 @@ const emit = defineEmits<{
   openFile: [entry: Entry]
 }>()
 
-function fileExt(name: string): string {
-  return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
-}
-
 </script>
 
 <template>
@@ -46,7 +44,7 @@ function fileExt(name: string): string {
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
-        <FileIcon class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
+        <FileTypeIcon :name="t.name" class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
           <LoadingSpinner class="text-xl text-primary drop-shadow" />
@@ -108,22 +106,17 @@ function fileExt(name: string): string {
       </div>
 
       <!-- Checkbox -->
-      <div
-        @click.stop="emit('selectEntry', entry, $event)"
-        :class="['absolute top-1.5 left-1.5 w-4 h-4 rounded border flex items-center justify-center transition-all',
-          selected.has(entry.path)
-            ? 'opacity-100 bg-primary border-primary'
-            : 'opacity-0 group-hover:opacity-60 border-input bg-muted']">
-        <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
-      </div>
+      <Checkbox
+        :model-value="selected.has(entry.path)"
+        :aria-label="`Select ${entry.name}`"
+        :class="['absolute top-1.5 left-1.5 bg-background transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 focus-visible:opacity-100']"
+        @click.stop.prevent="emit('selectEntry', entry, $event)"
+      />
 
       <!-- Icon -->
       <FolderIcon v-if="entry.type === 'dir'" class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
-        <FileIcon class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
-        <span v-if="fileExt(entry.name)" class="absolute bottom-0.5 text-2xs font-bold text-muted-foreground bg-background px-1 rounded-sm leading-tight">
-          {{ fileExt(entry.name) }}
-        </span>
+        <FileTypeIcon :name="entry.name" class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
         <Button
           variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"

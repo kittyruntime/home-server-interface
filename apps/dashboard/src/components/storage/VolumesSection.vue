@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -172,14 +174,14 @@ async function mount(v: Volume) {
       </Tip>
     </div>
 
-    <div v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/30 bg-info/5 px-4 py-3">
+    <Alert variant="info" v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3" role="note">
       <p class="text-sm text-foreground">
         Existing storage was found on the disks:
         <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>.
         Importing keeps its data.
       </p>
       <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</Button>
-    </div>
+    </Alert>
 
     <div v-for="d in unlisted" :key="d.mountPoint" class="mb-4">
       <DescriptionCard :mount-point="d.mountPoint" titled @changed="load" />
@@ -213,9 +215,7 @@ async function mount(v: Volume) {
             <span class="text-foreground/80">{{ REDUNDANCY[v.redundancy] }}</span>
             <span class="min-w-0">
               <template v-if="v.space">
-                <span class="block h-1.5 rounded-full bg-accent overflow-hidden">
-                  <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct(v)}%` }" />
-                </span>
+                <Progress class="h-1.5 rounded-full bg-accent" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
                 <span class="block mt-1 font-mono tabular-nums text-2xs text-foreground/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               </template>
               <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">Mount</Button>
@@ -240,9 +240,7 @@ async function mount(v: Volume) {
               </span>
             </div>
             <div v-if="v.space" class="mt-2">
-              <span class="block h-1.5 rounded-full bg-accent overflow-hidden">
-                <span class="block h-full rounded-full" :class="usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct(v)}%` }" />
-              </span>
+              <Progress class="h-1.5 rounded-full bg-accent" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
             </div>
             <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-muted-foreground">
               <span>{{ REDUNDANCY[v.redundancy] }} · {{ usedByText(v) }}</span>

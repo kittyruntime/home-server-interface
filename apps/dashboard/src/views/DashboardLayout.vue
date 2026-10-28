@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
@@ -312,11 +313,14 @@ onUnmounted(() => {
       <AccountMenu v-if="!isMobile" side="right" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
         <template #default="{ initials }">
           <Button
+            variant="ghost"
             size="icon"
             aria-label="Account"
-            class="size-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold select-none transition-all duration-150 opacity-80 hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:ring-2 data-[state=open]:ring-primary data-[state=open]:ring-offset-2 data-[state=open]:ring-offset-sidebar"
+            class="group size-9 rounded-full p-0 select-none hover:bg-transparent"
           >
-            {{ initials }}
+            <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
+              <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+            </Avatar>
           </Button>
         </template>
       </AccountMenu>
@@ -433,7 +437,9 @@ onUnmounted(() => {
         <template #default="{ initials }">
           <Button variant="ghost" aria-label="Account"
             class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
-            <span class="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">{{ initials }}</span>
+            <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
+              <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+            </Avatar>
           </Button>
         </template>
       </AccountMenu>

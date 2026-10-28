@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
@@ -54,7 +55,7 @@ defineExpose({ load })
 </script>
 
 <template>
-  <div v-if="status && status.items.length" class="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm space-y-2">
+  <Alert variant="warning" v-if="status && status.items.length" class="block space-y-2" role="note">
     <h3 class="font-semibold text-foreground"><span v-if="titled" class="font-mono">{{ mountPoint }}</span><template v-if="titled"> differs from its description</template><template v-else>Differs from its description</template></h3>
     <p class="text-foreground/80">{{ driftTitle(status.items) }}</p>
     <ul v-if="status.items.length > 1" class="list-disc pl-5 space-y-0.5 text-foreground/80">
@@ -66,6 +67,6 @@ defineExpose({ load })
       <Button variant="outline" size="sm" v-if="!unreadable" :disabled="busy" @click="run('reapply')">Reapply…</Button>
       <Button variant="outline" size="sm" :disabled="busy" @click="run('accept')">Accept current state…</Button>
     </div>
-  </div>
+  </Alert>
   <p v-else-if="status" class="text-xs text-muted-foreground">Described in <span class="font-mono">{{ status.file }}</span></p>
 </template>

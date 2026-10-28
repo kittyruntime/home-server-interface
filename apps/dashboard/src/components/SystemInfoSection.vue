@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { LayoutTemplateIcon, MonitorIcon, WifiIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
@@ -52,7 +53,7 @@ function fmtUptime(sec: number): string {
     </p>
 
     <LoadingState v-if="loading" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-else-if="sysinfo">
       <div class="space-y-4">

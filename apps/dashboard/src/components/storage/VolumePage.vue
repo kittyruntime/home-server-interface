@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { usePageRefresh } from './page-refresh'
@@ -178,9 +180,7 @@ async function afterChange() { await refreshDevices(); await load() }
           <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(volume.space.used) }}</span>
           <span class="text-xs text-muted-foreground">used of {{ fmtBytes(volume.space.total) }} · {{ fmtBytes(volume.space.free) }} free</span>
         </div>
-        <div class="mt-2 h-1.5 rounded-full bg-accent overflow-hidden">
-          <div class="h-full rounded-full" :class="usedPct > 90 ? 'bg-warning' : 'bg-foreground'" :style="{ width: `${usedPct}%` }" />
-        </div>
+        <Progress class="mt-2 h-1.5 rounded-full bg-accent" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-foreground']" />
       </div>
     </template>
 
@@ -197,10 +197,10 @@ async function afterChange() { await refreshDevices(); await load() }
           <span class="text-foreground">{{ expansionLine(pending, null) }}</span>
           <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">Retry</Button>
         </div>
-        <div v-if="volume.state === 'missing'" class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
+        <Alert variant="destructive" v-if="volume.state === 'missing'" class="block text-foreground" role="note">
           HSI mounts this volume at <span class="font-mono">{{ volume.mountPoint }}</span>, but its disk was not found at boot. Apps and shares using it are stopped so nothing writes to the system disk in its place.
           <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">Open Mounts</Button>
-        </div>
+        </Alert>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
           <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-destructive' : 'text-warning'">
             <span class="status-tag">{{ i.kind === 'degraded' || i.kind === 'blocked' ? '[ERR]' : '[WARN]' }}</span> {{ i.text }}

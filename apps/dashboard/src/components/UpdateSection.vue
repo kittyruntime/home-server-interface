@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, RefreshCwIcon } from '@lucide/vue'
 import { formatDateTime, formatDay } from '../lib/format-date'
@@ -243,7 +244,7 @@ onUnmounted(() => clearInterval(timer))
     <LoadingState v-else-if="loading" variant="compact" />
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <!-- ── Main content ─────────────────────────────────────────────────── -->
     <div v-else-if="status" class="space-y-5">

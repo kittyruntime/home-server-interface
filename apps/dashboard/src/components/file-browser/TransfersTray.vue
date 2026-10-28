@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, PauseIcon, PlayIcon, SquareIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { LOADING } from '../../lib/loading'
@@ -179,12 +180,8 @@ function handleReselectPick(e: Event) {
             </div>
 
             <!-- Determinate bar (uploads: sentBytes/totalBytes) -->
-            <div v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
-              class="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all"
-                :class="t.status === 'paused' ? 'bg-warning' : 'bg-primary'"
-                :style="{ width: pct(t) + '%' }" />
-            </div>
+            <Progress v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
+              class="mt-1.5 h-1 bg-muted rounded-full" :model-value="pct(t)" :indicator-class="['rounded-full transition-all', t.status === 'paused' ? 'bg-warning' : 'bg-primary']" />
 
             <!-- Verifying (server-side checksum before atomic rename) -->
             <div v-else-if="t.status === 'verifying'" class="mt-1">

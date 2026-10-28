@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { CheckIcon, EllipsisVerticalIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon, ZapIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -340,7 +342,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <ImportFound v-if="!only" kind="raid" @imported="refresh" />
 
     <LoadingState v-if="loading && !raids.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <!-- RAID arrays list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
@@ -450,9 +452,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <span>{{ syncLabel(r) }}</span>
                 <span v-if="r.syncAction === 'recovery'" class="text-muted-foreground">redundancy returns when it finishes</span>
               </div>
-              <div class="h-1.5 rounded-full bg-muted overflow-hidden">
-                <div class="h-full bg-primary transition-all" :style="{ width: r.resyncPercent + '%' }"/>
-              </div>
+              <Progress class="h-1.5 rounded-full bg-muted" :model-value="r.resyncPercent" indicator-class="bg-primary transition-all" />
             </div>
             <div class="rounded-lg border border-border divide-y divide-border">
               <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
@@ -504,9 +504,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                     <span class="text-2xs font-mono text-muted-foreground">{{ raidBlockDev(r.name)!.mountpoint }}</span>
                     <span class="text-2xs text-muted-foreground">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
                   </div>
-                  <div class="h-1 bg-muted rounded-full overflow-hidden">
-                    <div class="h-full rounded-full" :class="usageBarClass(usagePct(raidBlockDev(r.name)!))" :style="{ width: usagePct(raidBlockDev(r.name)!) + '%' }"/>
-                  </div>
+                  <Progress class="h-1 bg-muted rounded-full" :model-value="usagePct(raidBlockDev(r.name)!)" :indicator-class="['rounded-full', usageBarClass(usagePct(raidBlockDev(r.name)!))]" />
                   <div class="text-2xs text-muted-foreground mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                 </div>
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-muted-foreground">
@@ -588,10 +586,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </div></div>
 
             <!-- Selected level danger notice -->
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
+            <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
               <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>{{ selectedRaidLevel.danger }}</span>
-            </div>
+            </Alert>
 
             <div class="flex gap-2 pt-1">
               <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">Cancel</Button>
@@ -672,7 +670,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
           <!-- Step 3: Confirm -->
           <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+            <Alert variant="destructive" class="flex items-start gap-3 p-4 text-foreground" role="note">
               <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-destructive text-sm mb-1">All data on selected drives will be erased</div>
@@ -680,7 +678,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   Creating this RAID array will permanently destroy all existing data on the selected drives. This cannot be undone.
                 </div>
               </div>
-            </div>
+            </Alert>
 
             <div class="space-y-1 text-xs text-muted-foreground">
               <div class="flex gap-2"><span class="w-20 text-foreground/80">Array</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import Modal from '../../ui/Modal.vue'
@@ -34,10 +35,10 @@ const canConfirm = computed(() =>
       <p v-if="subtitle" class="text-xs text-muted-foreground mt-0.5">{{ subtitle }}</p>
     </div>
     <div class="p-5 space-y-4">
-      <div class="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+      <Alert variant="destructive" class="flex items-start gap-2 p-3 text-xs" role="note">
         <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
         <span><slot name="warning" /></span>
-      </div>
+      </Alert>
       <div class="space-y-1 text-xs text-muted-foreground">
         <slot name="details" />
       </div>

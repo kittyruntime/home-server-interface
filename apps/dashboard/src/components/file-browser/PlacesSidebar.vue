@@ -1,6 +1,17 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
 import { FolderIcon, InfoIcon, ServerIcon } from '@lucide/vue'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from '@/components/ui/sidebar'
 type Place = { id: string; name: string; path: string }
 
 defineProps<{
@@ -12,37 +23,30 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
 </script>
 
 <template>
-  <aside class="w-44 flex-shrink-0 border-r border-border bg-sidebar flex flex-col">
-    <div class="px-3 pt-3.5 pb-2 text-2xs font-semibold uppercase tracking-caps text-muted-foreground select-none">
-      Places
-    </div>
-    <nav class="flex flex-col gap-0.5 px-2 pb-3 overflow-y-auto flex-1">
-      <Button
-        v-for="place in places"
-        :key="place.id"
-        variant="ghost"
-        @click.stop="$emit('select', place)"
-        :class="[
-          'group h-auto w-full justify-start gap-2.5 px-2.5 py-2 rounded-lg text-left font-normal',
-          activePlaceId === place.id
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-        ]"
-      >
-        <ServerIcon v-if="place.id === '__root__'" class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-        <FolderIcon v-else class="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-        <span class="truncate flex-1">{{ place.name }}</span>
-        <span
-          class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded-sm hover:bg-black/10"
-          @click.stop="$emit('openProperties', place)"
-          title="Properties"
-        >
-          <InfoIcon class="w-3.5 h-3.5" aria-hidden="true" />
-        </span>
-      </Button>
-      <p v-if="places.length === 0" class="text-xs text-muted-foreground px-2.5 py-2 leading-snug">
-        No places yet. Ask an admin to grant you access to a folder.
-      </p>
-    </nav>
-  </aside>
+  <SidebarProvider class="min-h-0 w-auto shrink-0" :style="{ '--sidebar-width': '11rem' }">
+    <Sidebar collapsible="none" class="h-full border-r">
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Places</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu aria-label="Places">
+              <SidebarMenuItem v-for="place in places" :key="place.id">
+                <SidebarMenuButton :is-active="activePlaceId === place.id" @click.stop="$emit('select', place)">
+                  <ServerIcon v-if="place.id === '__root__'" aria-hidden="true" />
+                  <FolderIcon v-else aria-hidden="true" />
+                  <span>{{ place.name }}</span>
+                </SidebarMenuButton>
+                <SidebarMenuAction show-on-hover :aria-label="`Properties of ${place.name}`" @click.stop="$emit('openProperties', place)">
+                  <InfoIcon aria-hidden="true" />
+                </SidebarMenuAction>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <p v-if="places.length === 0" class="text-xs text-muted-foreground px-2 py-2 leading-snug">
+              No places yet. Ask an admin to grant you access to a folder.
+            </p>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  </SidebarProvider>
 </template>

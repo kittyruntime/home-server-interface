@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { computed } from 'vue'
 import { LayoutGridIcon, LogOutIcon, RotateCcwIcon, UserIcon } from '@lucide/vue'
 import { useAuth } from '../lib/auth'
@@ -30,9 +31,9 @@ const initials = computed(() => (currentUsername.value ?? 'U').slice(0, 2).toUpp
     </DropdownMenuTrigger>
     <DropdownMenuContent :side="side ?? 'right'" align="end" :side-offset="8" class="w-56">
       <DropdownMenuLabel class="flex items-center gap-3 py-2 font-normal">
-        <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-          {{ initials }}
-        </span>
+        <Avatar class="size-8 text-xs">
+          <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+        </Avatar>
         <span class="min-w-0">
           <span class="block truncate text-sm font-medium text-foreground">{{ currentUsername }}</span>
           <span class="block text-xs text-muted-foreground">{{ isAdmin ? 'Administrator' : 'User' }}</span>

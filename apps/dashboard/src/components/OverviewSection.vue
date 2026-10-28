@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
 import { ref, computed, onMounted } from 'vue'
@@ -126,13 +127,7 @@ function relTime(d: string | Date): string {
                   :class="metrics.cpu >= 80 ? 'text-destructive' : metrics.cpu >= 60 ? 'text-warning' : 'text-foreground'"
                 >{{ metrics.cpu }}%</span>
               </div>
-              <div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-700"
-                  :class="metrics.cpu >= 80 ? 'bg-destructive' : metrics.cpu >= 60 ? 'bg-warning' : 'bg-primary'"
-                  :style="{ width: metrics.cpu + '%' }"
-                />
-              </div>
+              <Progress class="w-full h-1.5 bg-muted rounded-full" :model-value="metrics.cpu" :indicator-class="['rounded-full transition-all duration-700', metrics.cpu >= 80 ? 'bg-destructive' : metrics.cpu >= 60 ? 'bg-warning' : 'bg-primary']" />
             </div>
             <div v-if="metrics" class="flex justify-between items-center">
               <span class="text-xs text-muted-foreground">RAM</span>

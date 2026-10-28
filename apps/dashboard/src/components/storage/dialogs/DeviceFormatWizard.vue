@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
@@ -80,7 +81,7 @@ defineExpose({ open })
 
     <!-- Step 1: Warning -->
     <div v-if="wiz.step === 1" class="p-6 space-y-4">
-      <div class="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+      <Alert variant="destructive" class="flex items-start gap-3 p-4 text-foreground" role="note">
         <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
         <div>
           <div class="font-semibold text-destructive text-sm mb-1">All data will be permanently erased</div>
@@ -88,7 +89,7 @@ defineExpose({ open })
             Formatting <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
           </div>
         </div>
-      </div>
+      </Alert>
 
       <div class="space-y-1 text-xs text-muted-foreground">
         <div class="flex gap-2"><span class="w-16 text-foreground/80">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>

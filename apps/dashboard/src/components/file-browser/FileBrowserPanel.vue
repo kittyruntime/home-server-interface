@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FileTypeIcon from './FileTypeIcon.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Item } from '@/components/ui/item'
@@ -23,7 +24,7 @@ import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FileIcon, FilePlusIcon, FolderIcon, FolderOpenIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderOpenIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
@@ -639,7 +640,7 @@ onMounted(async () => {
               <!-- directory icon -->
               <FolderOpenIcon v-if="r.isDir" class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
               <!-- file icon -->
-              <FileIcon v-else class="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div class="flex-1 min-w-0">
                 <div class="text-sm text-foreground font-medium truncate">{{ r.name }}</div>
                 <div class="text-xs text-muted-foreground font-mono truncate">{{ r.relativePath }}</div>

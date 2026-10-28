@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LOADING } from '../../lib/loading'
@@ -46,7 +47,7 @@ function dirWritable(s: ShareDiag): boolean {
     </div>
 
     <LoadingState v-if="loading" variant="compact" :label="LOADING.analyzing" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
     <div v-else-if="shares.length === 0" class="text-sm text-muted-foreground">No active shares.</div>
 
     <div v-else class="space-y-3">

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { CheckIcon, EllipsisVerticalIcon, CircleAlertIcon, PlusIcon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -223,7 +226,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 
     <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <!-- VG list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
@@ -256,9 +259,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </div>
               <!-- Capacity bar -->
               <div class="mt-2 flex items-center gap-2">
-                <div class="flex-1 h-1 bg-muted rounded-full overflow-hidden max-w-[200px]">
-                  <div class="h-full rounded-full bg-purple-400/70" :style="{ width: (100 - vgFreePct(vg)) + '%' }"/>
-                </div>
+                <Progress class="flex-1 h-1 bg-muted rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-purple-400/70" />
                 <span class="text-2xs text-muted-foreground tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
               </div>
             </div>
@@ -315,9 +316,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 </div>
                 <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-muted-foreground mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
-                  <div class="w-24 h-0.5 bg-muted rounded-full overflow-hidden">
-                    <div class="h-full rounded-full" :class="usageBarClass(usagePct(lv2bd(lv)))" :style="{ width: usagePct(lv2bd(lv)) + '%' }"/>
-                  </div>
+                  <Progress class="w-24 h-0.5 bg-muted rounded-full" :model-value="usagePct(lv2bd(lv))" :indicator-class="['rounded-full', usageBarClass(usagePct(lv2bd(lv)))]" />
                   <span class="text-2xs text-muted-foreground tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
                 </div>
               </div>
@@ -330,7 +329,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
                   class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
                 <!-- Thin separator before destructive -->
-                <div class="w-px h-3 bg-border mx-1"/>
+                <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
                 <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
                   tooltip="Delete this logical volume" aria-label="Delete this logical volume"
                   class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
@@ -368,10 +367,10 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <p class="text-sm text-foreground/80">
               Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
             </p>
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/5 border border-warning/20 text-2xs text-warning">
+            <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
               <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               All data on the selected devices will be permanently destroyed.
-            </div>
+            </Alert>
             <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-muted-foreground">
               No eligible devices available.<br>
               <span class="text-xs">Devices must be unmounted, not already a PV, and not a system disk.</span>
@@ -436,13 +435,13 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
           <!-- Step 3: Confirm -->
           <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
-            <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+            <Alert variant="warning" class="flex items-start gap-3 p-4" role="note">
               <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-warning text-sm mb-1">All data on selected devices will be erased</div>
                 <div class="text-xs text-warning/80">LVM will overwrite the beginning of each device to write PV headers.</div>
               </div>
-            </div>
+            </Alert>
             <div class="space-y-1 text-xs text-muted-foreground">
               <div class="flex gap-2"><span class="w-20 text-foreground/80">Devices</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-foreground/80">VG name</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>

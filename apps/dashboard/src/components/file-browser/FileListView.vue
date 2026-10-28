@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import SortableHeader from '../ui/SortableHeader.vue'
 import { Input } from '@/components/ui/input'
-import { CheckIcon, EyeIcon, FileTextIcon, FolderIcon } from '@lucide/vue'
+import { EyeIcon, FileTextIcon, FolderIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
@@ -59,7 +60,7 @@ function fileExt(name: string): string {
   <!-- Mobile: cards instead of a table that has nowhere to shrink to. -->
   <div class="sm:hidden divide-y divide-border">
     <div v-for="t in uploadTasks" :key="t.id" class="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
-      <FileTextIcon class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
+      <FileTypeIcon :name="t.name" class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'">{{ t.name }}</span>
       <span v-if="t.status === 'error'" class="text-2xs text-destructive shrink-0">{{ t.error }}</span>
       <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">Paused</span>
@@ -91,14 +92,11 @@ function fileExt(name: string): string {
         :class="['touch-target -m-2 grid shrink-0 place-items-center', selected.has(entry.path) ? '' : 'opacity-50']"
         :aria-label="`Select ${entry.name}`"
       >
-        <div :class="['w-4 h-4 rounded border flex items-center justify-center',
-          selected.has(entry.path) ? 'bg-primary border-primary' : 'border-input']">
-          <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
-        </div>
+        <Checkbox :model-value="selected.has(entry.path)" tabindex="-1" aria-hidden="true" class="pointer-events-none" />
       </div>
 
       <FolderIcon v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-      <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+      <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
       <template v-if="renamingPath === entry.path">
         <Input
@@ -153,7 +151,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5" colspan="3">
           <div class="flex items-center gap-2.5 min-w-0">
-            <FileTextIcon class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
+            <FileTypeIcon :name="t.name" class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
             <span class="text-sm truncate select-none"
               :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'">
               {{ t.name }}
@@ -206,21 +204,19 @@ function fileExt(name: string): string {
       >
         <!-- Checkbox -->
         <TableCell class="pl-3 pr-1 py-2.5 w-7" @click.stop>
-          <div
-            @click="emit('selectEntry', entry, $event)"
-            :class="['w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer',
-              selected.has(entry.path)
-                ? 'bg-primary border-primary opacity-100'
-                : 'border-input bg-transparent opacity-0 group-hover:opacity-50']">
-            <CheckIcon v-if="selected.has(entry.path)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
-          </div>
+          <Checkbox
+            :model-value="selected.has(entry.path)"
+            :aria-label="`Select ${entry.name}`"
+            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-50 focus-visible:opacity-100']"
+            @click.prevent="emit('selectEntry', entry, $event)"
+          />
         </TableCell>
 
         <!-- Name -->
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <FolderIcon v-if="entry.type === 'dir'" class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-            <FileTextIcon v-else class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
             <template v-if="renamingPath === entry.path">
               <Input

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Progress } from '@/components/ui/progress'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
@@ -78,9 +79,7 @@ async function remove() {
     </div>
 
     <div v-if="plan.progress" class="mt-3 flex items-center gap-3">
-      <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
-        <div class="h-full rounded-full bg-primary transition-all duration-700" :style="{ width: percent + '%' }" />
-      </div>
+      <Progress class="h-1.5 flex-1 rounded-full bg-muted" :model-value="percent" indicator-class="rounded-full bg-primary transition-all duration-700" />
       <span class="text-2xs tabular-nums text-foreground/80">{{ percent }}%</span>
     </div>
 

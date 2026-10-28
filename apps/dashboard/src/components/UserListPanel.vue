@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
 import { PencilIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -103,17 +104,6 @@ async function load() {
   }
 }
 
-
-const palette = [
-  'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
-  'from-emerald-500 to-emerald-700', 'from-amber-500 to-amber-700',
-  'from-rose-500 to-rose-700', 'from-cyan-500 to-cyan-700',
-]
-function avatarGradient(username: string) {
-  let hash = 0
-  for (const ch of username) hash = (hash * 31 + ch.charCodeAt(0)) % palette.length
-  return palette[hash]
-}
 
 // ── Add user ──────────────────────────────────────────────────────────────────
 function openAdd() {
@@ -240,7 +230,7 @@ onMounted(load)
 
       <!-- Table -->
       <template v-else>
-        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><div :class="['grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xs font-bold text-white',avatarGradient(user.username)]">{{user.username.slice(0,2).toUpperCase()}}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">Clear search</Button></template></EmptyState></div>
+        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><UserAvatar :username="user.username" class="size-9 text-2xs" /><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">Clear search</Button></template></EmptyState></div>
         <Card class="block gap-0 py-0 overflow-hidden hidden sm:block">
           <Table class="w-full text-sm">
             <TableHeader>
@@ -264,9 +254,7 @@ onMounted(load)
                 <!-- User -->
                 <TableCell class="px-5 py-3.5">
                   <div class="flex items-center gap-3">
-                    <div :class="['w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', avatarGradient(user.username)]">
-                      {{ user.username.slice(0, 2).toUpperCase() }}
-                    </div>
+                    <UserAvatar :username="user.username" class="size-8 text-2xs" />
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="font-medium text-foreground">{{ user.username }}</span>

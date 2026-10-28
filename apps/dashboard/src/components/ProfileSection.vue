@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
@@ -111,17 +112,6 @@ async function submitPassword() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-const palette = [
-  'from-blue-500 to-blue-700', 'from-violet-500 to-violet-700',
-  'from-emerald-500 to-emerald-700', 'from-amber-500 to-amber-700',
-  'from-rose-500 to-rose-700', 'from-cyan-500 to-cyan-700',
-]
-
-function avatarGradient(username: string) {
-  let hash = 0
-  for (const ch of username) hash = (hash * 31 + ch.charCodeAt(0)) % palette.length
-  return palette[hash]
-}
 
 onMounted(async () => {
   try { me.value = (await trpc.user.me.query()) as Me }
@@ -140,9 +130,7 @@ onMounted(async () => {
       <!-- ── Identity card ── -->
       <div class="flex items-center gap-4">
         <!-- Avatar -->
-        <div :class="['w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white text-lg font-bold shrink-0 select-none', avatarGradient(me.username)]">
-          {{ me.username.slice(0, 2).toUpperCase() }}
-        </div>
+        <UserAvatar :username="me.username" class="size-14 rounded-xl text-lg" />
 
         <!-- Name + badges -->
         <div class="min-w-0">

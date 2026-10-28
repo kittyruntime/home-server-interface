@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard sidebars and remaining controls on shadcn-vue**: the section
+  menus of Settings, Storage, Monitor and Sharing and the places list of the
+  file manager use the shadcn-vue sidebar. Breadcrumbs, avatars, notices,
+  progress bars, dividers and the file selection boxes use the matching
+  components too.
+- **File icons by type**: the file manager shows a distinct icon for images,
+  videos, audio, archives, disk images, spreadsheets, presentations, code,
+  configuration, scripts, keys, fonts and documents.
+
 ## [1.70.0] - 2026-10-28
 
 ### Changed

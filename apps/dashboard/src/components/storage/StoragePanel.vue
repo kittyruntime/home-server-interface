@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import { Alert } from '@/components/ui/alert'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
+import SectionNav from '@/components/ui/SectionNav.vue'
 import { CalendarIcon, DatabaseIcon, HardDriveIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref, computed, onMounted, watch } from 'vue'
+import type { Component } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
 import VolumesSection from './VolumesSection.vue'
 import VolumePage from './VolumePage.vue'
@@ -77,6 +79,12 @@ onMounted(() => { void loadTools() })
 const missingTools = computed(() => missingStorageTools())
 const installCommand = computed(() =>
   `sudo apt install ${[...new Set(missingTools.value.map(t => t.package))].join(' ')}`)
+
+const ICONS: Record<SectionId, Component> = {
+  volumes: ServerIcon, disks: HardDriveIcon, raid: PackageIcon, lvm: Rows3Icon,
+  mounts: DatabaseIcon, maintenance: CalendarIcon,
+}
+const navItems = nav.map(n => ({ ...n, icon: ICONS[n.id] }))
 </script>
 
 <template>
@@ -85,71 +93,30 @@ const installCommand = computed(() =>
   <div class="@container h-full">
   <div class="flex flex-col @2xl:flex-row h-full">
 
-    <!-- Mobile picker -->
-    <div class="@2xl:hidden flex-shrink-0 border-b border-border bg-sidebar px-4 py-2.5">
-      <Select v-model="active">
-        <SelectTrigger class="w-full" aria-label="Section">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem v-for="item in nav" :key="item.id" :value="item.id">{{ item.label }}</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-
-    <!-- Left nav -->
-    <nav class="hidden @2xl:flex w-48 flex-shrink-0 border-r border-border bg-sidebar py-5 px-2 flex-col gap-0.5 overflow-y-auto">
-      <div v-for="item in nav" :key="item.id" class="relative flex items-center">
-        <span
-          v-if="active === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
-        />
-        <Button
-          variant="ghost"
-          :aria-current="active === item.id ? 'page' : undefined"
-          @click="active = item.id"
-          :class="[
-            'w-full justify-start gap-2.5 px-3 font-normal',
-            active === item.id
-              ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-          ]"
-        >
-          <!-- Volumes -->
-          <ServerIcon v-if="item.id === 'volumes'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          <!-- Disks -->
-          <HardDriveIcon v-else-if="item.id === 'disks'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          <!-- RAID -->
-          <PackageIcon v-else-if="item.id === 'raid'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          <!-- LVM -->
-          <Rows3Icon v-else-if="item.id === 'lvm'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          <!-- Maintenance -->
-          <CalendarIcon v-if="item.id === 'maintenance'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          <!-- Mounts -->
-          <DatabaseIcon v-else-if="item.id === 'mounts'" class="w-4 h-4 shrink-0" aria-hidden="true" />
-          {{ item.label }}
-        </Button>
-      </div>
-    </nav>
+    <SectionNav v-model="active" :items="navItems" container />
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto @container/content">
       <div class="p-4 @2xl:p-8 max-w-5xl">
-        <div v-if="missingTools.length" role="status"
-          class="mb-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
+        <Alert variant="warning" v-if="missingTools.length" role="status"
+          class="block mb-5">
           <p class="text-foreground">
             Some storage tools are not installed on the server, so these features are unavailable:
             {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
           </p>
           <p class="mt-1 text-muted-foreground">Install them with <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
-        </div>
-        <nav v-if="crumbs.length > 1" aria-label="Breadcrumb" class="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <template v-for="(c, i) in crumbs" :key="c.index">
-            <span v-if="i > 0" aria-hidden="true">›</span>
-            <Button variant="link" v-if="i < crumbs.length - 1" type="button" class="h-auto p-0 hover:text-foreground" @click="go(navTo(location, c.index))">{{ c.label }}</Button>
-            <span v-else class="font-mono text-foreground" aria-current="location">{{ c.label }}</span>
-          </template>
-        </nav>
+        </Alert>
+        <Breadcrumb v-if="crumbs.length > 1" class="mb-4">
+          <BreadcrumbList class="text-xs sm:gap-1.5">
+            <template v-for="(c, i) in crumbs" :key="c.index">
+              <BreadcrumbSeparator v-if="i > 0" />
+              <BreadcrumbItem>
+                <BreadcrumbLink v-if="i < crumbs.length - 1" as="button" type="button" @click="go(navTo(location, c.index))">{{ c.label }}</BreadcrumbLink>
+                <BreadcrumbPage v-else class="font-mono">{{ c.label }}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </template>
+          </BreadcrumbList>
+        </Breadcrumb>
         <VolumePage v-if="location.current.kind === 'volume'" :id="location.current.id"
           @navigate="focusOn" @named="n => { if (location.current.kind === 'volume') names = { ...names, [`volume:${location.current.id}`]: n } }" />
         <CreateVolumeWizard v-else-if="location.current.kind === 'create-volume'" :disks="location.current.disks"

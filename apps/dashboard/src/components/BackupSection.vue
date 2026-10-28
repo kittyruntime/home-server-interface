@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { LOADING } from '../lib/loading'
 import BusyLabel from './ui/BusyLabel.vue'
@@ -64,9 +65,9 @@ async function downloadBackup() {
         <p class="mt-1 text-xs leading-5 text-muted-foreground">Includes accounts, permissions, Places, shares, application definitions, settings, metrics, and audit history. Files stored in Places and Docker volume contents are not included.</p>
       </div>
       <form class="space-y-4 p-5" @submit.prevent="downloadBackup">
-        <div class="rounded-lg border border-warning/25 bg-warning/5 p-3 text-xs leading-5 text-foreground/80">
+        <Alert variant="warning" class="block p-3 text-xs leading-5 text-foreground/80" role="note">
           This export contains password hashes and container secrets. It is encrypted before download. Keep the password safe: HSI does not store it and cannot recover it.
-        </div>
+        </Alert>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-foreground/80">Encryption password</span>
           <Input v-model="password" type="password" autocomplete="new-password" minlength="16" maxlength="1024" placeholder="At least 16 characters" required />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ref } from 'vue'
 import { PlusIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
@@ -41,10 +42,9 @@ function pick(id: string) {
         :key="item.id"
         class="group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
       >
-        <span
-          v-if="item.avatarText"
-          :class="['size-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
-        >{{ item.avatarText }}</span>
+        <Avatar v-if="item.avatarText" class="size-6 text-2xs">
+          <AvatarFallback :class="['bg-gradient-to-br font-bold text-white', item.avatarClass]">{{ item.avatarText }}</AvatarFallback>
+        </Avatar>
         <span v-else class="size-1.5 rounded-full bg-primary shrink-0" />
 
         <span class="flex-1 min-w-0 flex items-baseline gap-2">
@@ -88,10 +88,9 @@ function pick(id: string) {
               :value="item.id"
               @select="pick(item.id)"
             >
-              <span
-                v-if="item.avatarText"
-                :class="['size-5 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xs font-bold shrink-0', item.avatarClass]"
-              >{{ item.avatarText }}</span>
+              <Avatar v-if="item.avatarText" class="size-5 text-2xs">
+                <AvatarFallback :class="['bg-gradient-to-br font-bold text-white', item.avatarClass]">{{ item.avatarText }}</AvatarFallback>
+              </Avatar>
               <span class="truncate flex-1">{{ item.label }}</span>
               <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
             </CommandItem>

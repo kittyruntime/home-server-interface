@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Separator } from '@/components/ui/separator'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import Tip from '../ui/Tip.vue'
 import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
@@ -83,16 +85,17 @@ async function openSearch() {
     </Button>
 
     <!-- Breadcrumb -->
-    <nav v-if="currentPath" class="flex items-center gap-0.5 text-sm flex-1 min-w-0 overflow-x-auto">
-      <template v-for="(crumb, i) in breadcrumbs" :key="i">
-        <span v-if="i > 0" class="text-muted-foreground select-none mx-0.5 flex-shrink-0">›</span>
-        <Button v-if="crumb.clickable" variant="ghost" size="xs" @click="emit('navigate', crumb.path)"
-          class="px-1 font-normal text-muted-foreground whitespace-nowrap flex-shrink-0">
-          {{ crumb.label }}
-        </Button>
-        <span v-else class="px-1 text-foreground whitespace-nowrap flex-shrink-0 truncate">{{ crumb.label }}</span>
-      </template>
-    </nav>
+    <Breadcrumb v-if="currentPath" class="flex-1 min-w-0 overflow-x-auto">
+      <BreadcrumbList class="flex-nowrap gap-1 sm:gap-1">
+        <template v-for="(crumb, i) in breadcrumbs" :key="i">
+          <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
+          <BreadcrumbItem class="shrink-0 whitespace-nowrap">
+            <BreadcrumbLink v-if="crumb.clickable" as="button" type="button" class="rounded-sm px-1" @click="emit('navigate', crumb.path)">{{ crumb.label }}</BreadcrumbLink>
+            <BreadcrumbPage v-else class="truncate px-1">{{ crumb.label }}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </template>
+      </BreadcrumbList>
+    </Breadcrumb>
     <div v-else class="flex-1" />
 
     <!-- Right-side actions -->
@@ -105,7 +108,7 @@ async function openSearch() {
           class="text-muted-foreground hover:text-foreground/80">
           <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
+        <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
 
         <Button variant="ghost" size="icon-sm" @click="emit('copy')" tooltip="Copy" aria-label="Copy selection" class="text-muted-foreground">
           <CopyIcon class="w-4 h-4" aria-hidden="true" />
@@ -132,7 +135,7 @@ async function openSearch() {
         <Button variant="ghost" size="icon-sm" @click="emit('delete')" tooltip="Delete" aria-label="Delete selection" class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </Button>
-        <div class="w-px h-3.5 bg-input mx-0.5 flex-shrink-0" />
+        <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
       </template>
 
       <!-- New (folder / file) -->
@@ -174,7 +177,7 @@ async function openSearch() {
       </Button>
 
       <!-- Divider -->
-      <div v-if="currentPath" class="w-px h-4 bg-input mx-1" />
+      <Separator v-if="currentPath" orientation="vertical" class="data-[orientation=vertical]:h-4 mx-1" />
 
       <!-- Refresh -->
       <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" tooltip="Refresh" aria-label="Refresh folder"

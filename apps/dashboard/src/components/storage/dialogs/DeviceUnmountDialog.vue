@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { applyPlanned } from '../../../lib/plan'
 import { ref } from 'vue'
@@ -47,9 +48,9 @@ defineExpose({ open })
       <h3 class="font-semibold text-foreground">Unmount device</h3>
     </div>
     <div class="p-5 space-y-4">
-      <div class="p-3 rounded-lg bg-warning/5 border border-warning/15 text-xs text-warning">
+      <Alert variant="warning" class="block p-3 text-xs text-warning" role="note">
         Make sure no application is using files on <span class="font-mono font-bold">{{ dlg.dev.mountpoint }}</span> before unmounting, or the operation will fail.
-      </div>
+      </Alert>
       <div class="space-y-1 text-xs text-muted-foreground">
         <div class="flex gap-2"><span class="w-20 text-foreground/80">Device</span><span class="font-mono">/dev/{{ dlg.dev.name }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-foreground/80">Mount point</span><span class="font-mono">{{ dlg.dev.mountpoint }}</span></div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Toggle } from '@/components/ui/toggle'
@@ -321,7 +322,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </div>
 
     <LoadingState v-if="loading && !devices.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-if="!loading || devices.length">
       <div v-if="physicalDisks.length === 0" class="text-sm text-muted-foreground">No physical drives detected.</div>

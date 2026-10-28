@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import Tip from '../ui/Tip.vue'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -204,12 +207,17 @@ onUnmounted(() => {
           <Button variant="ghost" size="xs" @click="back">Other snapshot</Button>
         </div>
 
-        <nav aria-label="Folder" class="flex flex-wrap items-center gap-1 text-xs">
-          <template v-for="(c, i) in crumbs" :key="c.path">
-            <span v-if="i" class="text-muted-foreground">/</span>
-            <Button variant="link" class="h-auto p-0 break-all text-primary" :disabled="c.path === dir" @click="open(c.path)">{{ c.name }}</Button>
-          </template>
-        </nav>
+        <Breadcrumb>
+          <BreadcrumbList class="text-xs sm:gap-1.5">
+            <template v-for="(c, i) in crumbs" :key="c.path">
+              <BreadcrumbSeparator v-if="i" />
+              <BreadcrumbItem class="break-all">
+                <BreadcrumbPage v-if="c.path === dir">{{ c.name }}</BreadcrumbPage>
+                <BreadcrumbLink v-else as="button" type="button" @click="open(c.path)">{{ c.name }}</BreadcrumbLink>
+              </BreadcrumbItem>
+            </template>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <ErrorState v-if="listError" :message="listError" retry-label="Retry" compact @retry="open(dir)" />
         <LoadingState v-else-if="listing && !entries.length" variant="compact" />
@@ -240,14 +248,14 @@ onUnmounted(() => {
           </RadioGroup>
         </fieldset>
 
-        <div v-if="target === 'original'" class="space-y-2 rounded-xl border border-warning/40 bg-warning/10 p-3">
+        <Alert variant="warning" v-if="target === 'original'" class="block space-y-2 p-3" role="note">
           <p class="text-xs text-warning">Files with the same name at the original location are replaced by their saved version. Nothing is deleted.</p>
           <label class="flex items-start gap-2 text-sm text-foreground">
             <Checkbox v-model="confirmOverwrite" class="mt-0.5" />
             <span>Replace the current files</span>
           </label>
           <p v-if="confirmError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>
-        </div>
+        </Alert>
         <p v-if="restoreError" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
 
         <div class="flex justify-end gap-2">
@@ -261,9 +269,7 @@ onUnmounted(() => {
       <!-- Progress -->
       <template v-else-if="running">
         <p class="text-sm text-foreground">Restoring{{ progress !== null ? `, ${Math.round(progress * 100)}%` : '' }}</p>
-        <div class="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" :aria-valuenow="Math.round((progress ?? 0) * 100)" aria-valuemin="0" aria-valuemax="100">
-          <div class="h-full bg-primary transition-all" :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"></div>
-        </div>
+        <Progress class="h-2 rounded-full bg-muted" :model-value="Math.round((progress ?? 0) * 100)" indicator-class="bg-primary transition-all" />
       </template>
 
       <p v-else-if="unknown" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> The status of this restore is unknown. Look for it in the History of this repository.</p>

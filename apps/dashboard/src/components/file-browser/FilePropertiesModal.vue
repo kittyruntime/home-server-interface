@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { FileIcon, FolderOpenIcon, ServerIcon } from '@lucide/vue'
+import { Progress } from '@/components/ui/progress'
+import FileTypeIcon from './FileTypeIcon.vue'
+import { FolderOpenIcon, ServerIcon } from '@lucide/vue'
 import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -120,7 +122,7 @@ onMounted(async () => {
         <!-- Folder icon -->
         <FolderOpenIcon v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <!-- File icon -->
-        <FileIcon v-else class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div class="min-w-0">
           <div class="text-sm font-semibold text-foreground truncate">{{ displayName }}</div>
           <div class="text-2xs text-muted-foreground font-mono truncate mt-0.5">{{ targetPath }}</div>
@@ -140,13 +142,7 @@ onMounted(async () => {
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
         <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Storage</div>
-        <div class="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            class="h-full rounded-full transition-all"
-            :class="diskUsedPct > 90 ? 'bg-destructive' : 'bg-primary'"
-            :style="{ width: `${Math.min(diskUsedPct, 100)}%` }"
-          />
-        </div>
+        <Progress class="w-full h-2 bg-muted rounded-full" :model-value="Math.min(diskUsedPct, 100)" :indicator-class="['rounded-full transition-all', diskUsedPct > 90 ? 'bg-destructive' : 'bg-primary']" />
         <div class="flex justify-between text-xs text-muted-foreground">
           <span><span class="text-foreground font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
           <span><span class="text-foreground font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>

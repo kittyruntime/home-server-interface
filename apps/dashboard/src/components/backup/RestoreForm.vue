@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert } from '@/components/ui/alert'
 import { ref } from 'vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
@@ -156,9 +157,9 @@ function pollRestoreRestart() {
         <div class="flex justify-end"><Button variant="ghost" size="xs" type="button" @click="dismissFollowUps">Done</Button></div>
       </div>
       <form class="space-y-4 p-5" @submit.prevent="preview ? restoreBackup() : checkBackup()">
-        <div class="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-xs leading-5 text-foreground/80">
+        <Alert variant="destructive" class="block p-3 text-xs leading-5 text-foreground/80" role="note">
           Restoring replaces accounts, permissions, shares, application definitions, settings, metrics, and audit history, and restores the Linux accounts with their ids, the apps (stopped) and the volume descriptions. HSI restarts automatically. Disks, volumes, user files and Docker volume contents are not modified, and Samba passwords must be set again.
-        </div>
+        </Alert>
         <label class="block">
           <span class="mb-1.5 block text-xs font-medium text-foreground/80">Backup file</span>
           <Input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="text-xs" required @change="selectRestoreFile($event); resetPreview()" />

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { RefreshCwIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { StorageLocation } from '../../lib/storage-nav'
@@ -215,7 +217,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </div>
 
     <LoadingState v-if="loading && !mounted.length && !unmounted.length" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-else>
       <VolumeHealthPanel ref="volumePanel" />
@@ -254,9 +256,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     <span>{{ fmtBytes(e.usageUsed) }}</span>
                     <span>{{ fmtBytes(e.usageTotal) }}</span>
                   </div>
-                  <div class="h-1 bg-muted rounded-full overflow-hidden">
-                    <div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{ width: usagePct(e.bd) + '%' }"/>
-                  </div>
+                  <Progress class="h-1 bg-muted rounded-full" :model-value="usagePct(e.bd)" :indicator-class="['rounded-full', usageBarClass(usagePct(e.bd))]" />
                   <div class="text-2xs text-muted-foreground mt-0.5">{{ fmtBytes(e.usageFree) }} free</div>
                 </div>
                 <span v-else class="text-2xs text-muted-foreground">-</span>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Separator } from '@/components/ui/separator'
+import { Alert } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
@@ -304,9 +307,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             </div>
             <div v-if="part.mountpoint" class="text-2xs font-mono text-muted-foreground mt-0.5">↳ {{ part.mountpoint }}</div>
             <div v-if="part.usageTotal > 0" class="mt-1.5 flex items-center gap-2">
-              <div class="w-24 h-0.5 bg-muted rounded-full overflow-hidden">
-                <div class="h-full rounded-full" :class="usageBarClass(usagePct(part))" :style="{ width: usagePct(part) + '%' }"/>
-              </div>
+              <Progress class="w-24 h-0.5 bg-muted rounded-full" :model-value="usagePct(part)" :indicator-class="['rounded-full', usageBarClass(usagePct(part))]" />
               <span class="text-2xs text-muted-foreground tabular-nums">{{ fmtBytes(part.usageFree) }} free</span>
             </div>
             <!-- Nested: LVs of the VG this partition is a PV of -->
@@ -327,7 +328,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
             <Button variant="outline" size="xs" v-if="part.mountpoint" @click="emit('umount', part)"
               class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
-            <div class="w-px h-3 bg-border mx-1"/>
+            <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
             <Button variant="ghost" size="icon-xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
               tooltip="Delete this partition" aria-label="Delete this partition"
               class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
@@ -376,7 +377,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
         Advanced
       </CollapsibleTrigger>
       <CollapsibleContent class="px-4 pb-3 pt-0.5">
-        <div class="flex items-start gap-3 p-3 rounded-lg border border-destructive/20 bg-destructive/5">
+        <Alert variant="destructive" class="flex items-start gap-3 p-3 text-foreground" role="note">
           <TriangleAlertIcon class="w-3.5 h-3.5 text-destructive/70 mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-2xs text-foreground/80 font-medium mb-0.5">Wipe and create a new partition table</p>
@@ -386,7 +387,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               Create partition table…
             </Button>
           </div>
-        </div>
+        </Alert>
       </CollapsibleContent>
     </Collapsible>
   </div>

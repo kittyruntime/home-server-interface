@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -104,12 +105,12 @@ const statusClass: Record<string, string> = {
     </div>
 
     <LoadingState v-if="loading && !data" variant="block" />
-    <div v-else-if="error" role="alert" class="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-else-if="data && draft">
-      <div v-if="!data.timerInstalled" class="mb-4 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-foreground">
+      <Alert variant="warning" v-if="!data.timerInstalled" class="block mb-4 text-foreground" role="note">
         The maintenance timer is not installed yet: schedules are saved but only run after the next HSI update installs it.
-      </div>
+      </Alert>
 
       <div class="space-y-4">
         <Card v-for="t in TASKS" :key="t.id" class="block gap-0 py-0 shadow-none p-4">

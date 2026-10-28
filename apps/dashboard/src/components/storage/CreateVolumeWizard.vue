@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
@@ -187,9 +188,7 @@ function diskLabel(d: BlockDev): string {
       <h2 class="text-lg font-semibold text-foreground">Create volume</h2>
       <span class="text-xs text-muted-foreground">Step {{ step + 1 }} of {{ STEPS.length }} · {{ STEPS[step] }}</span>
     </div>
-    <div class="h-0.5 rounded-full bg-accent mb-5" role="progressbar" :aria-valuenow="step + 1" aria-valuemin="1" :aria-valuemax="STEPS.length">
-      <div class="h-full rounded-full bg-primary transition-[width]" :style="{ width: `${((step + 1) / STEPS.length) * 100}%` }" />
-    </div>
+    <Progress class="h-0.5 rounded-full bg-accent mb-5" :model-value="((step + 1) / STEPS.length) * 100" indicator-class="rounded-full bg-primary transition-[width]" />
 
     <!-- Narrow: the volume so far as one line -->
     <p class="@3xl/content:hidden mb-4 text-xs text-muted-foreground">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -115,13 +116,19 @@ onMounted(async () => {
       <!-- Folder -->
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'dir'" class="space-y-3">
         <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-1 text-xs text-muted-foreground flex-wrap min-w-0">
-            <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="loadDir('')">{{ info.name }}</Button>
-            <template v-for="(c, i) in crumbs" :key="i">
-              <span>/</span>
-              <Button variant="link" class="h-auto p-0 hover:text-foreground" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</Button>
-            </template>
-          </div>
+          <Breadcrumb class="min-w-0">
+            <BreadcrumbList class="text-xs sm:gap-1.5">
+              <BreadcrumbItem>
+                <BreadcrumbLink as="button" type="button" @click="loadDir('')">{{ info.name }}</BreadcrumbLink>
+              </BreadcrumbItem>
+              <template v-for="(c, i) in crumbs" :key="i">
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink as="button" type="button" @click="loadDir(crumbs.slice(0, i + 1).join('/'))">{{ c }}</BreadcrumbLink>
+                </BreadcrumbItem>
+              </template>
+            </BreadcrumbList>
+          </Breadcrumb>
           <Button as="a" variant="outline" size="xs" :href="zipUrl()" class="shrink-0">Download all as .zip</Button>
         </div>
         <ul class="divide-y divide-border">
