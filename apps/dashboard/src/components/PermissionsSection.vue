@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -82,25 +83,26 @@ onMounted(load)
     <div v-if="places.length === 0" class="text-sm text-muted-foreground px-1">No places yet. Add one in the Places tab, then grant users or groups access here.</div>
 
     <div class="space-y-2">
-      <div
+      <Collapsible
         v-for="place in places"
         :key="place.id"
         class="bg-card border border-border rounded-xl overflow-hidden"
+        :open="expandedPlace === place.id"
+        @update:open="togglePlace(place.id)"
       >
         <!-- Place header (accordion) -->
-        <button
-          @click="togglePlace(place.id)"
-          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors"
+        <CollapsibleTrigger
+          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div>
             <span class="text-sm font-medium text-foreground">{{ place.name }}</span>
             <span class="ml-2 text-xs text-muted-foreground font-mono">{{ place.path }}</span>
           </div>
           <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
-        </button>
+        </CollapsibleTrigger>
 
         <!-- Permission matrix -->
-        <div v-if="expandedPlace === place.id" class="border-t border-border">
+        <CollapsibleContent class="border-t border-border">
           <p class="px-4 py-1.5 text-2xs text-muted-foreground leading-relaxed">Admins always have full access.</p>
           <Table class="w-full text-xs">
             <TableHeader>
@@ -144,8 +146,8 @@ onMounted(load)
               </TableRow>
             </TableBody>
           </Table>
-        </div>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   </section>
 </template>

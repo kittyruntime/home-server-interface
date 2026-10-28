@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon, PlusIcon } from '@lucide/vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -254,16 +255,15 @@ function formatTime(at: string | Date): string {
         </section>
 
         <!-- Recent deliveries -->
-        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
-          <button
-            type="button"
-            :class="['w-full flex items-center justify-between gap-3 px-5 py-3', deliveriesExpanded ? 'border-b border-border' : '']"
-            @click="deliveriesExpanded = !deliveriesExpanded"
+        <Collapsible class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card" :open="deliveriesExpanded" @update:open="v => deliveriesExpanded = v">
+          <CollapsibleTrigger
+            :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50', deliveriesExpanded ? 'border-b border-border' : '']"
           >
             <span class="eyebrow">Recent deliveries</span>
             <ChevronDownIcon :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
-          </button>
-          <ul v-if="deliveriesExpanded && deliveries.length > 0" class="divide-y divide-border">
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+          <ul v-if="deliveries.length > 0" class="divide-y divide-border">
             <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
               <span class="font-medium text-foreground/80 shrink-0">{{ d.connectorName }}</span>
@@ -272,10 +272,11 @@ function formatTime(at: string | Date): string {
               <span class="text-muted-foreground tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
             </li>
           </ul>
-          <p v-else-if="deliveriesExpanded" class="px-5 py-6 text-sm text-muted-foreground">
+          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
             No deliveries yet. Send test deliveries from a connector dialog.
           </p>
-        </section>
+          </CollapsibleContent>
+        </Collapsible>
 
       </div>
 

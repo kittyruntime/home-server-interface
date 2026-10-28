@@ -241,141 +241,19 @@ select:not(:disabled),
 }
 
 /* ── Shared UI utilities ─────────────────────────────────────────────────────
-   Use these classes in components instead of repeating Tailwind strings.
-   Wrapped in @layer components so Tailwind utility classes (e.g. pl-8 on an
-   input that also has .ui-input) always win the cascade, regardless of
-   source order, otherwise a shorthand like `.ui-input { padding: ... }`
-   silently overrides longhand utilities like `pl-8`/`pr-8`.
+   The few typographic helpers that sit next to the shadcn-vue components in
+   components/ui. Wrapped in @layer components so Tailwind utilities on the
+   same element always win the cascade.
    ─────────────────────────────────────────────────────────────────────────── */
 @layer components {
 
-/* Buttons: Inter, sentence case, moderate radius (--radius-md); hover
-   changes color/border/background rather than scale. */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: var(--text-control);
-  font-weight: 500;
-  transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms, box-shadow 150ms;
-  cursor: pointer;
-  border: 1px solid transparent;
-  outline: none;
-  white-space: nowrap;
-}
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn:active:not(:disabled) { transform: translateY(1px); }
-.btn-xs { padding: 0.25rem 0.625rem; font-size: var(--text-2xs); gap: 0.25rem; }
-.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
-
-/* Primary: solid accent (follows the user's accent picker) */
-.btn-primary {
-  background-color: var(--c-accent);
-  color: var(--c-accent-fg);
-}
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-
-/* Secondary (was btn-outline): transparent, visible border */
-.btn-outline {
-  color: var(--c-text-1);
-  border-color: var(--c-border-strong);
-  background: transparent;
-}
-.btn-outline:hover:not(:disabled) {
-  border-color: var(--c-text-2);
-  color: var(--c-text-1);
-}
-
-/* Ghost: text only, no box */
-.btn-ghost {
-  color: var(--c-text-3);
-  background: transparent;
-  border-radius: var(--radius-sm);
-}
-.btn-ghost:hover:not(:disabled) {
-  color: var(--c-text-1);
-}
-
-/* Destructive: bordered danger color (--c-danger), independent of the accent picker */
-.btn-danger {
-  color: var(--c-danger);
-  border-color: var(--c-danger);
-  background: transparent;
-}
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--c-danger-subtle);
-}
-
-/* Inputs */
-.ui-input {
-  width: 100%;
-  background-color: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--radius-sm);
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  font-family: var(--font-body);
-  color: var(--c-text-1);
-  outline: none;
-  transition: border-color 150ms;
-}
-.ui-input:focus {
-  border-color: var(--c-text-1);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-accent) 10%, transparent);
-}
-
-.btn:focus-visible,
-.ui-input:focus-visible,
-button:focus-visible,
-select:focus-visible,
-[role="button"]:focus-visible {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 2px;
-}
-
-/* Badges / tags: soft tinted backgrounds, moderate radius */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.badge-accent  { background-color: var(--c-accent-subtle); color: var(--c-accent); }
-.badge-muted   { background-color: var(--c-hover); color: var(--c-text-3); }
-.badge-violet  { background-color: var(--c-hover); color: var(--c-text-2); }
-.badge-admin   { background-color: var(--c-accent-subtle); color: var(--c-accent); }
-
-/* Dividers */
-.ui-divider { height: 1px; background-color: var(--c-border-strong); margin: 0.25rem 0.5rem; }
-
 /* Eyebrow / section titles: instrument-panel labels */
 .eyebrow {
-  font-family: var(--font-body);
   font-size: var(--text-2xs);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
-  color: var(--c-text-3);
-}
-
-/* Panel cards: border + subtle resting shadow (--shadow-sm), elevated on hover (--shadow-md) */
-.panel-card {
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: box-shadow 150ms;
-}
-.panel-card:hover {
-  box-shadow: var(--shadow-md);
+  color: var(--muted-foreground);
 }
 
 /* Inline status text: replaces toast popups. Space Mono bracket tags. */
@@ -398,11 +276,18 @@ select:focus-visible,
   to   { opacity: 1; }
 }
 
+/* Plain clickable rows and cards (list items, nav rows) are not shadcn
+   components: give them the same focus ring as the components. */
+button:not([data-slot]):focus-visible,
+[role="button"]:not([data-slot]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
 } /* @layer components */
 
 @media (max-width: 639px) {
   .mobile-density { font-size: var(--text-control); }
-  .mobile-density .panel-card { border-radius: var(--radius-md); }
   .touch-target { min-width: 2.75rem; min-height: 2.75rem; }
 }
 
@@ -446,8 +331,8 @@ html, body, #app {
   padding: 0;
   height: 100%;
   width: 100%;
-  font-family: var(--font-body);
-  background-color: var(--c-bg);
-  color: var(--c-text-1);
+  font-family: var(--font-sans);
   color-scheme: light dark;
 }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }

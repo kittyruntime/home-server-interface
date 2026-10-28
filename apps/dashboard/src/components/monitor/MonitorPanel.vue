@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import { ActivityIcon, ClipboardListIcon, LayoutGridIcon, MonitorIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ref } from 'vue'
@@ -45,12 +46,14 @@ const active = ref<SectionId>('overview')
           v-if="active === item.id"
           class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full"
         />
-        <button
+        <Button
+          variant="ghost"
+          :aria-current="active === item.id ? 'page' : undefined"
           @click="active = item.id"
           :class="[
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+            'w-full justify-start gap-2.5 px-3 font-normal',
             active === item.id
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
@@ -65,7 +68,7 @@ const active = ref<SectionId>('overview')
           <!-- Audit -->
           <ClipboardListIcon v-else-if="item.id === 'audit'" class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ item.label }}
-        </button>
+        </Button>
       </div>
     </nav>
 

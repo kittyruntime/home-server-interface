@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { CheckIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
@@ -249,17 +251,14 @@ onMounted(async () => {
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Theme</h4>
         <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-2">
-          <button
-            v-for="opt in THEME_OPTIONS"
-            :key="opt.value"
-            @click="setTheme(opt.value)"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              theme === opt.value
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-            ]"
-          >{{ opt.label }}</button>
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="theme"
+            aria-label="Theme"
+            @update:model-value="v => { const opt = THEME_OPTIONS.find(o => o.value === v); if (opt) setTheme(opt.value) }"
+          >
+            <ToggleGroupItem v-for="opt in THEME_OPTIONS" :key="opt.value" :value="opt.value" class="px-3 text-xs">{{ opt.label }}</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
@@ -267,19 +266,22 @@ onMounted(async () => {
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Accent color</h4>
         <div class="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
-          <button
-            v-for="opt in ACCENT_OPTIONS"
-            :key="opt.value"
-            @click="setAccent(opt.value)"
-            :title="opt.label"
-            :style="{ backgroundColor: opt.color }"
-            :class="[
-              'w-6 h-6 rounded-full transition-all',
-              accent === opt.value
-                ? 'ring-2 ring-offset-2 ring-offset-card ring-primary scale-110'
-                : 'opacity-60 hover:opacity-100',
-            ]"
-          />
+          <RadioGroupRoot
+            :model-value="accent"
+            aria-label="Accent color"
+            class="flex items-center gap-3"
+            @update:model-value="v => { const opt = ACCENT_OPTIONS.find(o => o.value === v); if (opt) setAccent(opt.value) }"
+          >
+            <RadioGroupItem
+              v-for="opt in ACCENT_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+              :title="opt.label"
+              :aria-label="opt.label"
+              :style="{ backgroundColor: opt.color }"
+              class="size-6 rounded-full outline-none transition-all opacity-60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=checked]:opacity-100 data-[state=checked]:scale-110 data-[state=checked]:ring-2 data-[state=checked]:ring-primary data-[state=checked]:ring-offset-2 data-[state=checked]:ring-offset-card"
+            />
+          </RadioGroupRoot>
           <span class="text-xs text-muted-foreground ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
         </div>
       </div>

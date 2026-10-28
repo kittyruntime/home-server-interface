@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import { ChevronRightIcon, CircleAlertIcon, CircleCheckIcon, CircleXIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -364,13 +365,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     </div>
 
     <!-- Expandable danger zone: only for disks that already have partitions -->
-    <div v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-border">
-      <button @click="danger = !danger"
-        class="w-full flex items-center gap-2 px-4 py-2 text-2xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+    <Collapsible v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-border" :open="danger" @update:open="v => danger = v">
+      <CollapsibleTrigger class="w-full flex items-center gap-2 px-4 py-2 text-2xs text-muted-foreground/60 hover:text-muted-foreground transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <ChevronRightIcon class="w-3 h-3 shrink-0 transition-transform" :class="danger ? 'rotate-90' : ''" aria-hidden="true" />
         Advanced
-      </button>
-      <div v-if="danger" class="px-4 pb-3 pt-0.5">
+      </CollapsibleTrigger>
+      <CollapsibleContent class="px-4 pb-3 pt-0.5">
         <div class="flex items-start gap-3 p-3 rounded-lg border border-destructive/20 bg-destructive/5">
           <TriangleAlertIcon class="w-3.5 h-3.5 text-destructive/70 mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
@@ -382,8 +382,8 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   </div>
 </div>
 </template>
