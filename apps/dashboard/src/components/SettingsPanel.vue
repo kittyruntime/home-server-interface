@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionNav from '@/components/ui/SectionNav.vue'
-import { BellIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
+import { BellIcon, ChartNoAxesColumnIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
 import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
 import { useAuth } from '../lib/auth'
@@ -16,10 +16,11 @@ import DataBackupSection from './DataBackupSection.vue'
 import AlertingSection from './AlertingSection.vue'
 import NotificationsSection from './NotificationsSection.vue'
 import SecureAccessSection from './SecureAccessSection.vue'
+import TelemetrySection from './TelemetrySection.vue'
 
 const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'backups' | 'data-backups' | 'shares'
+type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'telemetry' | 'backups' | 'data-backups' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -53,6 +54,7 @@ const nav: NavItem[] = [
   { id: 'notifications', label: 'Notifications', show: () => isAdmin.value, group: 'system' },
   { id: 'secure',      label: 'Secure access', show: () => isAdmin.value, group: 'system' },
   { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'system' },
+  { id: 'telemetry',   label: 'Telemetry',   show: () => isAdmin.value, group: 'system' },
   { id: 'backups',     label: 'Backup & restore', show: () => isAdmin.value, group: 'backup' },
   { id: 'data-backups', label: 'Data backups', show: () => isAdmin.value, group: 'backup' },
 ]
@@ -72,7 +74,7 @@ defineExpose({ focusOn })
 const ICONS: Record<SectionId, Component> = {
   profile: UserIcon, shares: LinkIcon, users: UsersIcon, places: FolderIcon,
   permissions: LockIcon, groups: ShieldCheckIcon, alerting: TriangleAlertIcon,
-  notifications: BellIcon, secure: LockIcon, updates: UploadIcon,
+  notifications: BellIcon, secure: LockIcon, updates: UploadIcon, telemetry: ChartNoAxesColumnIcon,
   backups: SaveIcon, 'data-backups': SaveIcon,
 }
 const navItems = computed(() => visibleNav.value.map(n => ({
@@ -96,6 +98,7 @@ const navItems = computed(() => visibleNav.value.map(n => ({
         <PermissionsSection v-else-if="active === 'permissions'" />
         <GroupsSection      v-else-if="active === 'groups'" />
         <SecureAccessSection v-else-if="active === 'secure'" />
+        <TelemetrySection v-else-if="active === 'telemetry'" />
         <UpdateSection      v-else-if="active === 'updates'" />
         <AlertingSection    v-else-if="active === 'alerting'" />
         <NotificationsSection v-else-if="active === 'notifications'" />

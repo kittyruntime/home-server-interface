@@ -21,6 +21,7 @@ import { backupRouter } from "./backup"
 import { appsRouter } from "./apps"
 import { setupRouter } from "./setup"
 import { tlsRouter } from "./tls"
+import { telemetryRouter } from "./telemetry"
 
 export const appRouter = router({
   auth: authRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   backup: backupRouter,
   tls: tlsRouter,
+  telemetry: telemetryRouter,
 })
 
 export type AppRouter = typeof appRouter

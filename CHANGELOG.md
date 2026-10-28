@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Telemetry in Settings**: Settings > Telemetry shows whether the daily
+  anonymous heartbeat is sent, lets an administrator turn it off, and shows
+  the exact data sent, including the installation ID to quote for a deletion
+  request. `HSI_TELEMETRY_ENABLED=false` still turns it off for good.
+
+### Changed
+- **Telemetry release channel**: heartbeats report their channel (`stable`,
+  `beta` or `dev`, overridable with `HSI_TELEMETRY_CHANNEL`), so development
+  runs no longer count in the statistics. The first heartbeat after a start
+  waits a random delay of up to an hour.
+
 ## [1.71.0] - 2026-10-28
 
 ### Added

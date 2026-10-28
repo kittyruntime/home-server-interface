@@ -58,6 +58,7 @@ export function actionLabel(action: string): string {
     'place.create':                 'Create place',
     'place.delete':                 'Delete place',
     'place.setIcon':                'Change place icon',
+    'telemetry.setEnabled':         'Turn telemetry on or off',
     'role.create':                  'Create role',
     'role.delete':                  'Delete role',
     'update.trigger':               'Trigger update',

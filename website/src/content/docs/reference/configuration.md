@@ -17,7 +17,8 @@ description: Environment variables, install options, host packages, services, lo
 | `WALLPAPER_DIR` | under `INSTALL_DIR` | Where uploaded desktop wallpapers are stored. |
 | `HSI_TLS_DIR` | `/var/lib/hsi/tls` | Directory of the HTTPS files (see [TLS files](#tls-files)). |
 | `NODE_ENV` | - | Standard Node environment flag. |
-| `HSI_TELEMETRY_ENABLED` | `true` | Set to `false`, `0`, `off` or `no` to disable anonymous daily telemetry. |
+| `HSI_TELEMETRY_ENABLED` | `true` | Set to `false`, `0`, `off` or `no` to disable anonymous daily telemetry. Takes precedence over the switch in Settings > Telemetry. |
+| `HSI_TELEMETRY_CHANNEL` | detected | Release channel reported with each heartbeat: `stable`, `beta` or `dev`. Detected by default: `dev` outside production (`NODE_ENV` not `production`, or a checkout without a version), `beta` for pre-release versions such as `-rc.1`, `stable` otherwise. The telemetry service does not record `dev` heartbeats. |
 | `HSI_TELEMETRY_URL` | `https://hsi-telemetry.theo-labs.dev/v1/heartbeat` | HTTPS heartbeat endpoint used by the best-effort telemetry client. |
 | `HSI_VERSION` | package version | Optional explicit version reported by packaged deployments. |
 

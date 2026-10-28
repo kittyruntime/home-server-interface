@@ -9,7 +9,7 @@ const LOGGED = ['alert.clear', 'apps.execute', 'apps.plan', 'auth.login', 'backu
   'notifications.testConnector', 'place.create', 'place.delete', 'place.setIcon', 'storage.execute', 'storage.createLv', 'storage.createPartition',
   'storage.createPv', 'storage.createRaid', 'storage.createVg', 'storage.deletePartition', 'storage.failRaidMember', 'storage.formatDisk',
   'storage.mountDevice', 'storage.plan', 'storage.removeLv', 'storage.removeVg', 'storage.runMaintenanceNow', 'storage.stopRaid',
-  'storage.umountDevice', 'storage.volumeApply', 'storage.volumePlan', 'storage.volumeRemoveApply', 'storage.volumeRemovePlan',
+  'storage.umountDevice', 'telemetry.setEnabled', 'storage.volumeApply', 'storage.volumePlan', 'storage.volumeRemoveApply', 'storage.volumeRemovePlan',
   'update.execute', 'update.check', 'update.rebootHost', 'user.changePassword', 'user.updatePreferences',
   // Logged before the rename to execute.
   'apps.apply', 'container.app.apply', 'storage.apply', 'update.apply']
