@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: TypeScript 6, vite 8, vite-node 6 and @vue/tsconfig 0.9
+  for the build and tests (#107).
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
