@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: vue-router 5 in the dashboard (#108).
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
