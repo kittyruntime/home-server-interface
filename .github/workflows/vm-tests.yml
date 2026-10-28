@@ -101,6 +101,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qemu-system-x86 qemu-utils cloud-image-utils >/dev/null
+          ls -l /dev/kvm
+          qemu-img info "$(ls ~/.cache/hsi-vm/*.qcow2 2>/dev/null | head -1)" 2>/dev/null || true
 
       - uses: actions/cache@v4
         with:

@@ -32,7 +32,10 @@ vm_put() {
 vm_wait_ssh() {
   local deadline=$((SECONDS + ${1:-300}))
   until vm_ssh true 2>/dev/null; do
-    (( SECONDS < deadline )) || fail "SSH did not come up"
+    if (( SECONDS >= deadline )); then
+      tail -c 4000 "$VM_DIR/console.log" 2>/dev/null || true
+      fail "SSH did not come up"
+    fi
     sleep 3
   done
   # cloud-init installs the test packages after SSH is up.
@@ -68,13 +71,17 @@ USERDATA
             -device "virtio-blk-pci,drive=data$i,serial=HSI-DATA-$i")
   done
   log "Booting the VM (${VM_DATA_DISKS} data disks of ${VM_DATA_DISK_SIZE})"
-  qemu-system-x86_64 -enable-kvm -cpu host -m "$VM_MEMORY" -smp "$VM_CPUS" \
+  [[ -w /dev/kvm ]] || fail "/dev/kvm is not usable: the VM tests need hardware virtualization"
+  qemu-system-x86_64 -machine q35,accel=kvm -cpu host -m "$VM_MEMORY" -smp "$VM_CPUS" \
     -drive "file=$VM_DIR/system.qcow2,if=virtio,format=qcow2" \
     -drive "file=$VM_DIR/seed.iso,if=virtio,format=raw,readonly=on" \
     "${disks[@]}" \
     -nic "user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:${VM_SSH_PORT}-:22" \
     -display none -serial "file:$VM_DIR/console.log" \
-    -daemonize -pidfile "$VM_DIR/qemu.pid"
+    >"$VM_DIR/qemu.log" 2>&1 &
+  echo $! > "$VM_DIR/qemu.pid"
+  sleep 5
+  kill -0 "$(cat "$VM_DIR/qemu.pid")" 2>/dev/null || { cat "$VM_DIR/qemu.log"; fail "QEMU exited"; }
   vm_wait_ssh 600
 }
 
