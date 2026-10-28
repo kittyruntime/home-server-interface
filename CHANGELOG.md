@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard on shadcn-vue**: the whole dashboard interface moves to
+  shadcn-vue components (Reka UI, Tailwind CSS v4) and Lucide icons, in one
+  release. Buttons, fields, selects, checkboxes, radios, switches, tabs,
+  tables, badges, dialogs, menus, context menus, popovers, tooltips and toasts
+  now share one look and one keyboard behavior: `Escape` and outside clicks
+  close only the topmost layer, and focus returns to what opened it. The
+  sidebar, the desktop (windowed) mode, the light and dark themes and the
+  accent color picker are kept; a dialog opened in a desktop window still only
+  blocks that window.
+
 ## [1.68.1] - 2026-10-28
 
 ### Changed
