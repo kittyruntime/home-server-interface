@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -8,7 +8,23 @@ import { test } from "node:test"
 import Database from "better-sqlite3"
 import { inspectDatabase } from "./preflight"
 
-const baselineSql = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../prisma/schema/migrations/0_baseline_v1680/migration.sql")
+const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../prisma/schema/migrations")
+const baselineSql = path.join(migrationsDir, "0_baseline_v1680/migration.sql")
+const shipped = (await readdir(migrationsDir, { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name).sort()
+
+// A database migrated by Prisma up to `count` shipped migrations, with its ledger.
+async function migratedDatabase(filename: string, count: number, ledger = shipped.slice(0, count)) {
+  const db = new Database(filename)
+  for (const name of shipped.slice(0, count)) db.exec(await readFile(path.join(migrationsDir, name, "migration.sql"), "utf8"))
+  db.exec(`CREATE TABLE _prisma_migrations (id TEXT PRIMARY KEY, checksum TEXT NOT NULL, finished_at DATETIME, migration_name TEXT NOT NULL,
+    logs TEXT, rolled_back_at DATETIME, started_at DATETIME NOT NULL DEFAULT current_timestamp, applied_steps_count INTEGER NOT NULL DEFAULT 0)`)
+  const insert = db.prepare("INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count) VALUES (?, ?, current_timestamp, ?, 1)")
+  for (const name of ledger) {
+    const checksum = createHash("sha256").update(await readFile(path.join(migrationsDir, name, "migration.sql"))).digest("hex")
+    insert.run(name, checksum, name)
+  }
+  db.close()
+}
 
 async function withDatabase(run: (filename: string) => Promise<void>) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "hsi-cutover-preflight-"))
@@ -90,6 +106,37 @@ test("refuses a known schema with broken foreign keys", async () => {
     db.exec("PRAGMA foreign_keys=OFF; INSERT INTO UserGroup (userId, groupId) VALUES ('missing-user', 'missing-group')")
     db.close()
     assert.throws(() => inspectDatabase(filename), /foreign key check/i)
+  })
+})
+
+test("recognizes every shipped migration step with its ledger", async () => {
+  assert.ok(shipped.length >= 2)
+  for (let count = 1; count <= shipped.length; count++) {
+    await withDatabase(async filename => {
+      await migratedDatabase(filename, count)
+      assert.equal(inspectDatabase(filename).kind, "migrated")
+    })
+  }
+})
+
+test("refuses a schema that does not match its migration ledger", async () => {
+  await withDatabase(async filename => {
+    await migratedDatabase(filename, shipped.length, shipped.slice(0, 1))
+    assert.throws(() => inspectDatabase(filename), /drifted SQLite schema/)
+  })
+})
+
+test("refuses a ledger that skips or alters a shipped migration", async () => {
+  await withDatabase(async filename => {
+    await migratedDatabase(filename, 1, shipped.slice(1, 2))
+    assert.throws(() => inspectDatabase(filename), /migration ledger/)
+  })
+  await withDatabase(async filename => {
+    await migratedDatabase(filename, 1)
+    const db = new Database(filename)
+    db.exec("UPDATE _prisma_migrations SET checksum = 'stale'")
+    db.close()
+    assert.throws(() => inspectDatabase(filename), /migration ledger/)
   })
 })
 

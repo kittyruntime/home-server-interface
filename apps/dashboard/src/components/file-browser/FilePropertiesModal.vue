@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Progress } from '@/components/ui/progress'
 import FileTypeIcon from './FileTypeIcon.vue'
-import { FolderOpenIcon, ServerIcon } from '@lucide/vue'
+import PlaceIcon from '../PlaceIcon.vue'
 import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -12,7 +12,7 @@ import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 
 type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | null; mtime: string }
-type Place = { id: string; name: string; path: string }
+type Place = { id: string; name: string; path: string; icon?: string | null }
 
 const props = defineProps<{ entry?: Entry; place?: Place }>()
 const emit  = defineEmits<{ close: []; openPermissions: [] }>()
@@ -118,9 +118,9 @@ onMounted(async () => {
     <template #header>
       <div class="flex items-center gap-3 min-w-0">
         <!-- Place icon -->
-        <ServerIcon v-if="isPlace" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <PlaceIcon v-if="isPlace" :icon="place?.icon" :root="place?.id === '__root__'" class="size-8 shrink-0 text-2xl text-muted-foreground" />
         <!-- Folder icon -->
-        <FolderOpenIcon v-else-if="entry?.type === 'dir'" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon v-else-if="entry?.type === 'dir'" :name="displayName" dir open class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <!-- File icon -->
         <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div class="min-w-0">

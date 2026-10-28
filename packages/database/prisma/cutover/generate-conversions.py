@@ -79,10 +79,22 @@ def verify_representative_rows(db_file, had_roles):
             assert db.execute('SELECT "isAdmin", "isUserManager" FROM "User" WHERE "id"=?', ("admin-1",)).fetchone() == (1, 1)
 
 
+def write_schema(tag, schema_dir):
+    schema_dir.mkdir(parents=True)
+    paths = git("ls-tree", "-r", "--name-only", tag, "packages/database/prisma/schema").decode().splitlines()
+    for p in paths:
+        if not p.endswith(".prisma"): continue
+        text = git("show", f"{tag}:{p}").decode()
+        (schema_dir / pathlib.Path(p).name).write_text(re.sub(r"^\s*url\s*=.*\n", "", text, flags=re.MULTILINE))
+
+
 def main():
     conversions = []
     with tempfile.TemporaryDirectory(prefix="hsi-cutover-conversions-") as dirname:
         temp = pathlib.Path(dirname)
+        # Conversions lead to the v1.68.0 baseline; later migrations run after them.
+        baseline_schema = temp / "baseline-schema"
+        write_schema(INVENTORY["states"][0]["releases"][0], baseline_schema)
         for state in INVENTORY["states"]:
             if len(sys.argv) > 1 and sys.argv[1] not in state["releases"]: continue
             source_hash = state["sqliteSha256"]
@@ -90,12 +102,7 @@ def main():
             tag = state["releases"][0]
             state_dir = temp / source_hash
             schema_dir = state_dir / "schema"
-            schema_dir.mkdir(parents=True)
-            paths = git("ls-tree", "-r", "--name-only", tag, "packages/database/prisma/schema").decode().splitlines()
-            for p in paths:
-                if not p.endswith(".prisma"): continue
-                text = git("show", f"{tag}:{p}").decode()
-                (schema_dir / pathlib.Path(p).name).write_text(re.sub(r"^\s*url\s*=.*\n", "", text, flags=re.MULTILINE))
+            write_schema(tag, schema_dir)
             db_file = state_dir / "state.db"
             env = {**os.environ, "DATABASE_URL": f"file:{db_file}"}
             run("pnpm", "--filter", "@app/database", "exec", "prisma", "db", "push", "--schema", str(schema_dir), env=env)
@@ -112,7 +119,7 @@ def main():
                         if "canShare" not in columns:
                             db.execute(f'ALTER TABLE "{table}" ADD COLUMN "canShare" BOOLEAN NOT NULL DEFAULT 0')
                 run("pnpm", "--dir", str(PKG), "exec", "node", "--import", "tsx", "prisma/cutover/permissions-redesign.ts", env=env)
-            sql = run("pnpm", "--filter", "@app/database", "exec", "prisma", "migrate", "diff", "--from-config-datasource", "--to-schema", "prisma/schema", "--script", env=env).rstrip() + "\n"
+            sql = run("pnpm", "--filter", "@app/database", "exec", "prisma", "migrate", "diff", "--from-config-datasource", "--to-schema", str(baseline_schema), "--script", env=env).rstrip() + "\n"
             dest = HERE / "conversions" / source_hash[:16]
             dest.mkdir(parents=True, exist_ok=True)
             (dest / "migration.sql").write_text(sql)
@@ -128,7 +135,7 @@ def main():
             verify_representative_rows(test_file, needs_permissions)
             if actual != BASELINE:
                 baseline_file = temp / "expected.db"
-                run("pnpm", "--filter", "@app/database", "exec", "prisma", "db", "push", env={**os.environ, "DATABASE_URL": f"file:{baseline_file}"})
+                run("pnpm", "--filter", "@app/database", "exec", "prisma", "db", "push", "--schema", str(baseline_schema), env={**os.environ, "DATABASE_URL": f"file:{baseline_file}"})
                 got = {(kind, name): sql for kind, name, sql in canonical(test_file)}
                 want = {(kind, name): sql for kind, name, sql in canonical(baseline_file)}
                 for key in sorted(set(got) | set(want)):

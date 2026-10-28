@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto"
-import { lstatSync, readFileSync } from "node:fs"
+import { lstatSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import Database from "better-sqlite3"
 
 const cutoverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../prisma/cutover")
-const baselinePath = path.resolve(cutoverDir, "../schema/migrations/0_baseline_v1680/migration.sql")
+const migrationsDir = path.resolve(cutoverDir, "../schema/migrations")
 
 type State = { sqliteSha256: string; releases: string[] }
 type Conversion = { representativeRelease: string; source: string; sql: string; sqlSha256: string; needsPermissions: boolean; needsCompose: boolean }
@@ -60,6 +60,30 @@ function canonicalSchema(db: Database.Database): string {
   return sha256(JSON.stringify(entries))
 }
 
+// Migrations shipped with this release, in the order Prisma applies them.
+function shippedMigrations(): string[] {
+  return readdirSync(migrationsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort()
+}
+
+function migrationSql(name: string): Buffer {
+  return readFileSync(path.join(migrationsDir, name, "migration.sql"))
+}
+
+// The schema a database must have after `applied`: replay the migrations on
+// an empty in-memory database, as Prisma did on the real one.
+function expectedFingerprint(applied: string[]): string {
+  const db = new Database(":memory:")
+  try {
+    for (const name of applied) db.exec(migrationSql(name).toString())
+    return canonicalSchema(db)
+  } finally {
+    db.close()
+  }
+}
+
 export function inspectDatabase(filename: string): Inspection {
   if (!path.isAbsolute(filename)) throw new Error("SQLite path must be absolute")
   let stat: ReturnType<typeof lstatSync>
@@ -102,11 +126,14 @@ export function inspectDatabase(filename: string): Inspection {
       } catch {
         throw new Error("unrecognized Prisma migration ledger")
       }
-      const expectedChecksum = sha256(readFileSync(baselinePath))
-      if (rows.length !== 1 || rows[0]?.migration_name !== "0_baseline_v1680" || rows[0]?.checksum !== expectedChecksum || !rows[0]?.finished_at || rows[0]?.rolled_back_at) {
-        throw new Error("unrecognized or partial Prisma migration ledger")
-      }
-      if (fingerprint !== baseline) throw new Error(`drifted SQLite schema with Prisma migration ledger (fingerprint ${fingerprint})`)
+      // The ledger must be the shipped migrations up to some point, each one
+      // finished with the checksum of the SQL this release carries.
+      const shipped = shippedMigrations()
+      const applied = rows.map(row => row.migration_name).sort()
+      const known = rows.length > 0 && rows.length <= shipped.length && applied.every((name, i) => name === shipped[i])
+      const complete = rows.every(row => row.finished_at && !row.rolled_back_at && shipped.includes(row.migration_name) && row.checksum === sha256(migrationSql(row.migration_name)))
+      if (!known || !complete) throw new Error("unrecognized or partial Prisma migration ledger")
+      if (fingerprint !== expectedFingerprint(applied)) throw new Error(`drifted SQLite schema with Prisma migration ledger (fingerprint ${fingerprint})`)
       return { kind: "migrated", fingerprint }
     }
     if (fingerprint === baseline) return { kind: "baseline", fingerprint }

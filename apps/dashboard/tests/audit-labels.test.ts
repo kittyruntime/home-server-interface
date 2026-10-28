@@ -6,7 +6,7 @@ import { actionLabel } from '../src/lib/audit-labels.ts'
 const LOGGED = ['alert.clear', 'apps.execute', 'apps.plan', 'auth.login', 'backup.checkNow', 'backup.dismissMigration', 'backup.password', 'backup.runNow', 'catalog.install', 'container.app.execute', 'container.app.remove',
   'container.app.update', 'files.upload', 'fs.chmod', 'fs.chown', 'fs.delete', 'fs.mkdir', 'fs.rename', 'fs.touch',
   'notifications.connectors.create', 'notifications.markAllRead', 'notifications.renderPreview', 'notifications.rules.update',
-  'notifications.testConnector', 'place.create', 'place.delete', 'storage.execute', 'storage.createLv', 'storage.createPartition',
+  'notifications.testConnector', 'place.create', 'place.delete', 'place.setIcon', 'storage.execute', 'storage.createLv', 'storage.createPartition',
   'storage.createPv', 'storage.createRaid', 'storage.createVg', 'storage.deletePartition', 'storage.failRaidMember', 'storage.formatDisk',
   'storage.mountDevice', 'storage.plan', 'storage.removeLv', 'storage.removeVg', 'storage.runMaintenanceNow', 'storage.stopRaid',
   'storage.umountDevice', 'storage.volumeApply', 'storage.volumePlan', 'storage.volumeRemoveApply', 'storage.volumeRemovePlan',

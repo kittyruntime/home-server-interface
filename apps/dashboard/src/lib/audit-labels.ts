@@ -57,6 +57,7 @@ export function actionLabel(action: string): string {
     'catalog.install':              'Install app from catalog',
     'place.create':                 'Create place',
     'place.delete':                 'Delete place',
+    'place.setIcon':                'Change place icon',
     'role.create':                  'Create role',
     'role.delete':                  'Delete role',
     'update.trigger':               'Trigger update',

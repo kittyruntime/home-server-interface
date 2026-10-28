@@ -34,6 +34,14 @@ async function accessiblePlaceIds(
   ] as string[]
 }
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+// Built at runtime: the v flag is newer than the TypeScript target, not than Node 22.
+const RGI_EMOJI = new RegExp("^\\p{RGI_Emoji}$", "v")
+
+function isSingleEmoji(value: string): boolean {
+  return [...graphemes.segment(value)].length === 1 && RGI_EMOJI.test(value)
+}
+
 export const placeRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.isAdmin) {
@@ -61,6 +69,15 @@ export const placeRouter = router({
 
       return ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
     }),
+
+  // One emoji shown for the place instead of the folder icon; null removes it.
+  setIcon: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      icon: z.string().max(32).refine(isSingleEmoji, "Use a single emoji").nullable(),
+    }))
+    .mutation(({ ctx, input }) =>
+      ctx.prisma.place.update({ where: { id: input.id }, data: { icon: input.icon } })),
 
   mkdir: adminProcedure
     .input(z.object({ path: z.string().min(1) }))

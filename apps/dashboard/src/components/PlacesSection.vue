@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PlaceIconPicker from './PlaceIconPicker.vue'
+import { useToast } from '../lib/toast'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
 import { ChevronDownIcon, FolderIcon, PlusIcon, XIcon } from '@lucide/vue'
@@ -11,11 +13,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-type Place = { id: string; name: string; path: string }
+type Place = { id: string; name: string; path: string; icon?: string | null }
 type Group = { id: string; name: string }
 type User  = { id: string; username: string; isAdmin: boolean }
 type Perm  = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
 
+const toast = useToast()
 const places       = ref<Place[]>([])
 const groups       = ref<Group[]>([])
 const users        = ref<User[]>([])
@@ -73,6 +76,15 @@ async function createDir() {
   }
   addLoading.value = false
   await addPlace()
+}
+
+async function setIcon(place: Place, icon: string | null) {
+  try {
+    await trpc.place.setIcon.mutate({ id: place.id, icon })
+    place.icon = icon
+  } catch (e: any) {
+    toast.error(e?.message ?? 'Failed to change the icon')
+  }
 }
 
 async function deletePlace(id: string) {
@@ -204,9 +216,9 @@ onMounted(async () => {
           class="block gap-0 py-0 shadow-none overflow-hidden"
         >
           <!-- Place row -->
-          <div class="flex items-center gap-3 px-4 py-3 group">
+          <div class="flex items-center gap-2 px-4 py-3 group">
+            <PlaceIconPicker :icon="place.icon" :name="place.name" class="-ml-2" @change="icon => setIcon(place, icon)" />
             <Button variant="ghost" @click="togglePlace(place.id)" :aria-expanded="expandedPlace === place.id" class="h-auto flex-1 justify-start gap-3 px-0 py-0 text-left font-normal min-w-0 hover:bg-transparent">
-              <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-foreground">{{ place.name }}</span>
                 <span class="text-muted-foreground text-xs font-mono ml-3">{{ place.path }}</span>

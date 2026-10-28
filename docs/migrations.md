@@ -35,6 +35,6 @@ When an old application contains invalid JSON settings or a volume refers to a d
 
 The installer restores the previous release and its update snapshot automatically after a failed upgrade. The dashboard shows the failed step and its cause. The terminal reports the database backup path (`hsi.db.bak-*`). Keep that backup and send the error message and any database fingerprint to support. If the automatic rollback fails, run the command printed by the installer; on an installed release this is usually `sudo hsi-worker update rollback --snapshot <path>`. A reinstall of the same version does not create an update snapshot. Its database backup can be used for manual recovery.
 
-## Next migration
+## Migrations after the baseline
 
-The preflight in this release accepts exactly the `0_baseline_v1680` ledger and its baseline schema. A later release that adds migrations must update the accepted ledger and fingerprints before shipping.
+New schema changes ship as Prisma migrations in `prisma/schema/migrations`, generated with `prisma migrate dev --create-only` and never edited after a release. The preflight accepts a ledger made of the shipped migrations up to any point, in order, each finished and with the checksum of the SQL in the release. It then replays those migrations on an empty in-memory database and requires the same schema fingerprint, so a drifted or hand-edited database is still refused. A database at the baseline without a ledger is baselined first, then `prisma migrate deploy` applies the rest.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { FolderIcon, InfoIcon, ServerIcon } from '@lucide/vue'
+import { InfoIcon } from '@lucide/vue'
+import PlaceIcon from '../PlaceIcon.vue'
 import {
   Sidebar,
   SidebarContent,
@@ -12,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar'
-type Place = { id: string; name: string; path: string }
+type Place = { id: string; name: string; path: string; icon?: string | null }
 
 defineProps<{
   places: Place[]
@@ -32,8 +33,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
             <SidebarMenu aria-label="Places">
               <SidebarMenuItem v-for="place in places" :key="place.id">
                 <SidebarMenuButton :is-active="activePlaceId === place.id" @click.stop="$emit('select', place)">
-                  <ServerIcon v-if="place.id === '__root__'" aria-hidden="true" />
-                  <FolderIcon v-else aria-hidden="true" />
+                  <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm" />
                   <span>{{ place.name }}</span>
                 </SidebarMenuButton>
                 <SidebarMenuAction show-on-hover :aria-label="`Properties of ${place.name}`" @click.stop="$emit('openProperties', place)">

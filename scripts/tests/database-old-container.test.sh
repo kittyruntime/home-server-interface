@@ -34,10 +34,13 @@ PY
   test "$(node --import tsx prisma/cutover/cli.ts verify "$db")" = migrated
   node --import tsx prisma/cutover/compose-apply.ts
   test -f "$HSI_CONTAINERS_DIR/sample-app/compose.yaml"
-  python3 - "$db" <<'PY'
+  python3 - "$db" "$root/packages/database/prisma/schema/migrations" <<'PY'
 import sqlite3,sys
+from pathlib import Path
+shipped = sorted(p.name for p in Path(sys.argv[2]).iterdir() if p.is_dir())
 with sqlite3.connect(sys.argv[1]) as conn:
-    assert conn.execute('SELECT COUNT(*) FROM "_prisma_migrations"').fetchone()[0] == 1
+    applied = [row[0] for row in conn.execute('SELECT migration_name FROM "_prisma_migrations" ORDER BY migration_name')]
+assert applied == shipped, applied
 PY
   cp "$tmp/$release-original.db" "$db"
   node --import tsx prisma/cutover/compose-restore-source.ts

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Place icons**: an administrator can give each place an emoji in
+  Settings > Places (a few suggestions, or any emoji). It replaces the folder
+  icon in the file manager, the permissions list and the place properties.
+- A file or folder named `nyan` looks a little different in the file manager.
+
 ### Changed
 - **Dashboard sidebars and remaining controls on shadcn-vue**: the section
   menus of Settings, Storage, Monitor and Sharing and the places list of the

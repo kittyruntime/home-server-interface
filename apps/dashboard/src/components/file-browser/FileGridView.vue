@@ -114,7 +114,7 @@ const emit = defineEmits<{
       />
 
       <!-- Icon -->
-      <FolderIcon v-if="entry.type === 'dir'" class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+      <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
         <FileTypeIcon :name="entry.name" class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
         <Button

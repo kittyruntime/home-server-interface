@@ -24,11 +24,11 @@ import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderOpenIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
-type Place = { id: string; name: string; path: string }
+type Place = { id: string; name: string; path: string; icon?: string | null }
 interface Crumb { label: string; path: string; clickable: boolean }
 
 const props = defineProps<{ desktopWindow?: boolean }>()
@@ -638,7 +638,7 @@ onMounted(async () => {
               @click="navigateToSearchResult(r)"
               class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-accent">
               <!-- directory icon -->
-              <FolderOpenIcon v-if="r.isDir" class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
+              <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
               <!-- file icon -->
               <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div class="flex-1 min-w-0">

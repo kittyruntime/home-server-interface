@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PlaceIcon from './PlaceIcon.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -7,7 +8,7 @@ import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { Badge } from '@/components/ui/badge'
 
-type Place = { id: string; name: string; path: string }
+type Place = { id: string; name: string; path: string; icon?: string | null }
 type Group = { id: string; name: string }
 type User = { id: string; username: string; isAdmin: boolean }
 type Perm = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
@@ -94,7 +95,8 @@ onMounted(load)
         <CollapsibleTrigger
           class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          <div>
+          <div class="flex items-center gap-2">
+            <PlaceIcon :icon="place.icon" class="size-4 text-base text-primary" />
             <span class="text-sm font-medium text-foreground">{{ place.name }}</span>
             <span class="ml-2 text-xs text-muted-foreground font-mono">{{ place.path }}</span>
           </div>

@@ -4,11 +4,14 @@ import { computed } from 'vue'
 import {
   FileArchiveIcon, FileAudioIcon, FileBoxIcon, FileBracesIcon, FileCodeIcon, FileCogIcon, FileIcon,
   FileImageIcon, FileKeyIcon, FileSpreadsheetIcon, FileTerminalIcon, FileTextIcon, FileTypeIcon,
-  FileVideoCameraIcon, PresentationIcon,
+  FileVideoCameraIcon, FolderIcon, FolderOpenIcon, PresentationIcon,
 } from '@lucide/vue'
+import NyanCatIcon from './NyanCatIcon.vue'
+import { isNyan } from './nyan'
 
-// Lucide glyph for a file, picked from its extension.
-const props = defineProps<{ name: string }>()
+// Lucide glyph for a file, picked from its extension, or the folder glyph for
+// a directory. Anything named "nyan" gets the nyan cat instead.
+const props = defineProps<{ name: string; dir?: boolean; open?: boolean }>()
 
 const BY_EXT: [Component, string[]][] = [
   [FileImageIcon, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'bmp', 'svg', 'ico', 'tif', 'tiff', 'heic', 'raw', 'cr2', 'nef', 'dng']],
@@ -29,6 +32,8 @@ const BY_EXT: [Component, string[]][] = [
 const ICONS = new Map(BY_EXT.flatMap(([icon, exts]) => exts.map(e => [e, icon] as const)))
 
 const icon = computed(() => {
+  if (isNyan(props.name)) return NyanCatIcon
+  if (props.dir) return props.open ? FolderOpenIcon : FolderIcon
   const dot = props.name.lastIndexOf('.')
   return (dot > 0 && ICONS.get(props.name.slice(dot + 1).toLowerCase())) || FileIcon
 })
