@@ -75,14 +75,27 @@ func ensureShareGroup() error {
 // setShareGroupMembers replaces the group's member roster with exactly `users`
 // (gpasswd -M). Empty list clears membership.
 func setShareGroupMembers(users []string) error {
+	valid := shareGroupRoster(users, func(u string) bool { _, err := user.Lookup(u); return err == nil })
+	return command("gpasswd", "-M", strings.Join(valid, ","), shareGroup).Run()
+}
+
+// shareGroupRoster keeps the names that can join the share group: never root
+// or an invalid name, and only accounts that exist here. gpasswd -M refuses
+// the whole list over one unknown name, which would take write access away
+// from everyone because one HSI account has no Linux account.
+func shareGroupRoster(users []string, exists func(string) bool) []string {
 	valid := make([]string, 0, len(users))
 	for _, u := range users {
-		// Never add root (or invalid names) to the share group.
-		if u != "root" && reLinuxUsername.MatchString(u) {
-			valid = append(valid, u)
+		if u == "root" || !reLinuxUsername.MatchString(u) {
+			continue
 		}
+		if !exists(u) {
+			log.Printf("sharing: %q has no Linux account here; left out of %s", u, shareGroup)
+			continue
+		}
+		valid = append(valid, u)
 	}
-	return command("gpasswd", "-M", strings.Join(valid, ","), shareGroup).Run()
+	return valid
 }
 
 // prepareShareDir makes a writable share's directory group-owned by shareGroup,

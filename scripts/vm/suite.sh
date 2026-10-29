@@ -13,6 +13,9 @@
 #   recovery grow a mirrored volume into its free space, replace a failed disk
 #           and wait for the rebuild, then boot without the volume's disks
 #           (held, nothing written to the boot disk) and with them again
+#   features each feature checked on the host (#38): an account (Linux and
+#           Samba), the file manager as that account on a volume, SMB from a
+#           client, and an App Store app installed, changed and removed
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -94,24 +97,34 @@ broken_update() {
 # JWT secret for an administrator row added for the test.
 api_setup() {
   vm_ssh "python3 - <<'PY'
-import base64, hashlib, hmac, json, sqlite3, time, uuid
+import sqlite3
 c = sqlite3.connect('$DB')
 c.execute(\"INSERT OR IGNORE INTO User (id, username, password, isAdmin, updatedAt) VALUES ('vm-admin', 'vmadmin', 'x', 1, CURRENT_TIMESTAMP)\")
 c.commit()
+PY"
+  sign_token vm-admin true /root/token
+}
+
+# sign_token <user id> <true|false: administrator> <file>: a session token for
+# that account, for API_TOKEN=<file> api ...
+sign_token() {
+  vm_ssh "python3 - '$1' '$2' '$3' <<'PY'
+import base64, hashlib, hmac, json, sys, time, uuid
+user, admin, path = sys.argv[1], sys.argv[2] == 'true', sys.argv[3]
 secret = next(l.split('=', 1)[1].strip() for l in open('/opt/hsi/.env') if l.startswith('JWT_SECRET='))
 b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=')
 head = b64(json.dumps({'alg': 'HS256', 'typ': 'JWT'}).encode())
-body = b64(json.dumps({'userId': 'vm-admin', 'isAdmin': True, 'isUserManager': True, 'capabilities': [], 'mustChangePassword': False,
+body = b64(json.dumps({'userId': user, 'isAdmin': admin, 'isUserManager': admin, 'capabilities': [], 'mustChangePassword': False,
                        'jti': str(uuid.uuid4()), 'iat': int(time.time()), 'exp': int(time.time()) + 7200}).encode())
 sig = b64(hmac.new(secret.encode(), head + b'.' + body, hashlib.sha256).digest())
-open('/root/token', 'w').write((head + b'.' + body + b'.' + sig).decode())
+open(path, 'w').write((head + b'.' + body + b'.' + sig).decode())
 PY"
 }
 
 # api <procedure> <json input>: the tRPC result data, or a failure.
 api() {
   local out
-  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
     || fail "API $1 unreachable"
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
     || fail "API $1 failed: $out"
@@ -120,27 +133,52 @@ api() {
 # api_query <procedure>: a tRPC query (GET, no input).
 api_query() {
   local out
-  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" https://127.0.0.1:9001/trpc/$1") || fail "API $1 unreachable"
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" https://127.0.0.1:9001/trpc/$1") || fail "API $1 unreachable"
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
     || fail "API $1 failed: $out"
+}
+
+# api_get <procedure> <json input>: a tRPC query that takes an input.
+api_get() {
+  local out
+  out=$(vm_ssh "curl -sk -G -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" --data-urlencode input@- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+    || fail "API $1 unreachable"
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
+    || fail "API $1 failed: $out"
+}
+
+# wait_job <reply with a jobId> <what>: waits for the worker job to complete,
+# and fails with the job's own error otherwise.
+wait_job() {
+  local job status i
+  job=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["jobId"])' "$1")
+  for i in $(seq 1 60); do
+    status=$(api_get tasks.get "{\"jobId\":\"$job\"}")
+    case $(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["status"])' "$status") in
+      completed) return ;;
+      failed) fail "$2: $status" ;;
+    esac
+    sleep 1
+  done
+  fail "$2: the job did not end: $status"
 }
 
 # api_error <procedure> <json input>: the error message of a call that must fail.
 api_error() {
   local out
-  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
     || fail "API $1 unreachable"
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "error" in r, r; print(r["error"]["message"])' "$out" \
     || fail "API $1 was accepted: $out"
 }
 
-# apply_plan <op> <json input>: previews a storage plan, applies exactly it,
-# and prints the worker's reply.
+# apply_plan <op> <json input> [router, storage by default]: previews a plan,
+# applies exactly it, and prints its reply.
 apply_plan() {
-  local plan fp result
-  plan=$(api storage.plan "{\"op\":\"$1\",\"input\":$2}")
+  local plan fp result router="${3:-storage}"
+  plan=$(api "$router.plan" "{\"op\":\"$1\",\"input\":$2}")
   fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
-  result=$(api storage.execute "{\"op\":\"$1\",\"input\":$2,\"fingerprint\":\"$fp\"}")
+  result=$(api "$router.execute" "{\"op\":\"$1\",\"input\":$2,\"fingerprint\":\"$fp\"}")
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["ok"], r; print(json.dumps(r.get("reply")))' "$result" \
     || fail "$1 failed: $result"
 }
@@ -329,6 +367,96 @@ expect_missing() {
   log "Missing volume held; the boot disk was not written"
 }
 
+# vm_until <seconds> <what> <command>: waits for a command in the VM to succeed.
+vm_until() {
+  vm_ssh "for i in \$(seq 1 $1); do ($3) >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1" || fail "$2"
+}
+
+USER_PASSWORD="vm-user-password"
+
+# An account made through HSI: a Linux account, a Samba account, and HSI's
+# own list reads it back.
+account_feature() {
+  local id
+  log "Creating the account vmuser through the API"
+  id=$(api user.create "{\"username\":\"vmuser\",\"password\":\"$USER_PASSWORD\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+  vm_ssh 'id vmuser && getent passwd vmuser | cut -d: -f7 | grep -q nologin' >/dev/null || fail "vmuser has no Linux account, or one with a login shell"
+  vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account"
+  api_query user.list | python3 -c 'import json,sys; assert any(u["username"]=="vmuser" for u in json.load(sys.stdin))' || fail "HSI does not list vmuser"
+  echo "$id" > "$VM_DIR/vmuser.id"
+}
+
+# vmuser may read, write and delete in the mirror's Place, then works in it
+# through the file manager: the files are its own on the host.
+files_feature() {
+  local id place
+  id=$(cat "$VM_DIR/vmuser.id")
+  place=$(api_query place.list | python3 -c 'import json,sys; print(next(p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/vm-mirror"))')
+  api permission.upsert "{\"placeId\":\"$place\",\"subjectType\":\"user\",\"subjectId\":\"$id\",\"canRead\":true,\"canWrite\":true,\"canDelete\":true,\"canShare\":false}" >/dev/null
+  # The grant reaches Linux in the background: vmuser joins the group that
+  # may write in Places.
+  vm_until 60 "vmuser did not join hsi-share after getting write access" 'id -nG vmuser | grep -qw hsi-share'
+  sign_token "$id" false /root/token-vmuser
+  log "File manager as vmuser on the mirror"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"from-ui"}')" "making a folder as vmuser"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"note.txt"}')" "making a file as vmuser"
+  vm_ssh 'test -f /srv/vm-mirror/from-ui/note.txt' || fail "the file made through the file manager is not on the host"
+  [[ $(vm_ssh 'stat -c %U /srv/vm-mirror/from-ui /srv/vm-mirror/from-ui/note.txt | sort -u') == vmuser ]] \
+    || fail "files made by vmuser are not its own: $(vm_ssh 'stat -c "%n %U" /srv/vm-mirror/from-ui /srv/vm-mirror/from-ui/note.txt')"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.rename '{"path":"/srv/vm-mirror/from-ui/note.txt","newName":"renamed.txt"}')" "renaming as vmuser"
+  vm_ssh 'test -f /srv/vm-mirror/from-ui/renamed.txt && ! test -e /srv/vm-mirror/from-ui/note.txt' || fail "the rename is not on the host"
+  API_TOKEN=/root/token-vmuser api_get fs.list '{"path":"/srv/vm-mirror/from-ui"}' | grep -q renamed.txt || fail "the file manager does not list the renamed file"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/renamed.txt"}')" "deleting as vmuser"
+  vm_ssh '! test -e /srv/vm-mirror/from-ui/renamed.txt' || fail "the delete is not on the host"
+  # Outside its Places, vmuser is refused.
+  API_TOKEN=/root/token-vmuser api_error fs.mkdir '{"parentPath":"/root","name":"nope"}' >/dev/null
+  vm_ssh '! test -e /root/nope' || fail "vmuser wrote outside its Places"
+  log "vmuser created, renamed and deleted its files"
+}
+
+# A client connects to the share with vmuser's password and writes in it.
+smb_feature() {
+  log "SMB client on the share as vmuser"
+  vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%$USER_PASSWORD' -c 'mkdir from-smb; put /etc/hostname from-smb/hello.txt; ls from-smb/*'" \
+    > "$VM_DIR/smbclient.log" 2>&1 || { cat "$VM_DIR/smbclient.log"; fail "vmuser could not write on the share"; }
+  [[ $(vm_ssh 'stat -c %U /srv/vm-mirror/from-smb/hello.txt') == vmuser ]] || fail "the file written over SMB is not vmuser's"
+  vm_ssh 'cmp -s /etc/hostname /srv/vm-mirror/from-smb/hello.txt' || fail "the file written over SMB differs"
+  vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%wrong-password' -c ls" >/dev/null 2>&1 && fail "the share took a wrong password"
+  log "SMB: vmuser writes its own files, a wrong password is refused"
+}
+
+stack_state() { vm_ssh "docker compose ls -a --format json" | python3 -c 'import json,sys; s=[x for x in json.load(sys.stdin) if x["Name"]==sys.argv[1]]; print(s[0]["Status"] if s else "absent")' "$1"; }
+
+# An App Store app: installed, its port changed, removed; each step checked
+# with Docker on the host and read back through HSI.
+app_feature() {
+  local reply raw
+  log "Installing IT Tools from the App Store"
+  reply=$(apply_plan app.install '{"id":"it-tools","name":"ittools","ports":[{"container":80,"host":8085}]}' apps)
+  echo "$reply" > "$VM_DIR/app-install.json"
+  vm_until 300 "IT Tools does not answer on port 8085" 'curl -sf http://127.0.0.1:8085/ | grep -qi "it-tools\|IT Tools"'
+  [[ $(stack_state ittools) == running* ]] || fail "the ittools stack is $(stack_state ittools)"
+  vm_ssh 'test -f /opt/containers/ittools/compose.yaml && docker compose -f /opt/containers/ittools/compose.yaml config -q' || fail "no valid compose.yaml for ittools"
+  api_query container.app.list | python3 -c 'import json,sys; a=[x for x in json.load(sys.stdin) if x["name"]=="ittools"]; assert a and a[0]["status"]=="running", a' \
+    || fail "HSI does not read ittools back as running"
+
+  log "Moving IT Tools to port 8086 by editing its compose.yaml"
+  raw=$(vm_ssh 'sed "s/8085:80/8086:80/" /opt/containers/ittools/compose.yaml')
+  grep -q '8086:80' <<<"$raw" || fail "the compose.yaml does not publish 8085:80: $(vm_ssh 'cat /opt/containers/ittools/compose.yaml')"
+  apply_plan app.save "$(python3 -c 'import json,sys; print(json.dumps({"name":"ittools","raw":sys.stdin.read()}))' <<<"$raw")" apps >/dev/null
+  apply_plan app.apply '{"name":"ittools"}' apps >/dev/null
+  vm_until 120 "IT Tools does not answer on port 8086" 'curl -sf http://127.0.0.1:8086/ >/dev/null'
+  vm_ssh 'curl -sf -m 3 http://127.0.0.1:8085/' >/dev/null 2>&1 && fail "IT Tools still answers on port 8085"
+
+  log "Removing IT Tools"
+  apply_plan app.remove '{"name":"ittools"}' apps >/dev/null
+  vm_until 120 "the ittools stack is still there" '! docker compose ls -a | grep -q "^ittools "'
+  vm_until 30 "the ittools folder is still there" '! test -e /opt/containers/ittools'
+  api_query container.app.list | python3 -c 'import json,sys; assert not [x for x in json.load(sys.stdin) if x["name"]=="ittools"]' \
+    || fail "HSI still lists ittools"
+  log "IT Tools installed, moved and removed"
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -400,6 +528,22 @@ case "$scenario" in
     api storage.volumes.resume '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
     expect_hold none
     expect_mirror; expect_mirror_data
+    ;;
+  features)
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient docker.io docker-compose >/dev/null && docker compose version' \
+      || fail "could not install Samba and Docker"
+    install_build
+    expect_running "$version"
+    api_setup
+    create_mirror
+    expect_mirror
+    account_feature
+    files_feature
+    smb_feature
+    app_feature
+    vm_reboot
+    expect_running "$version"; expect_mirror
+    vm_ssh 'id vmuser >/dev/null && test -f /srv/vm-mirror/from-smb/hello.txt' || fail "vmuser or its files are gone after a reboot"
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac

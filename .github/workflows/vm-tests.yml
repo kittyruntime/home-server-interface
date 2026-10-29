@@ -22,6 +22,12 @@ on:
       - "apps/backend/src/trpc/routers/storage.ts"
       - "apps/backend/src/services/volume*.ts"
       - "apps/backend/src/services/storage*.ts"
+      - "apps/backend/src/services/app-*.ts"
+      - "apps/backend/src/services/containerStacks.ts"
+      - "apps/backend/src/services/sharing*.ts"
+      - "apps/backend/src/trpc/routers/fs.ts"
+      - "apps/backend/src/trpc/routers/user.ts"
+      - "packages/compose/**"
       - "apps/backend/src/trpc/routers/network.ts"
       - ".github/workflows/vm-tests.yml"
 
@@ -94,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [fresh, update, storage, network, recovery]
+        scenario: [fresh, update, storage, network, recovery, features]
     steps:
       - uses: actions/checkout@v7
 
