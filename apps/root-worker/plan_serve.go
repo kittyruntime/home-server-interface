@@ -39,6 +39,7 @@ var planBuilders = map[string]func(json.RawMessage) (*opPlan, *fsError){
 	"storage.reapply":   planStorageReapply,
 	"storage.accept":    planStorageAccept,
 	"system.identity":   planSystemIdentity,
+	"network.ipv4":      planNetworkIPv4,
 	"tls.enable":        planTLSEnable,
 	"tls.useLocal":      planTLSUseLocal,
 	"tls.import":        planTLSImport,

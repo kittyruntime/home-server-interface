@@ -7,6 +7,9 @@
 #           built archive, roll back to the published release, update again
 #   storage create a mirrored volume through the API, check mdadm, LVM, the
 #           mount, fstab, the Place and the share on the host, then reboot
+#   network hand the network to NetworkManager, change the addressing through
+#           the API and keep it, then apply a wrong address without keeping it
+#           and check NetworkManager restores the network by itself
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -111,6 +114,14 @@ api() {
     || fail "API $1 failed: $out"
 }
 
+# api_query <procedure>: a tRPC query (GET, no input).
+api_query() {
+  local out
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" https://127.0.0.1:9001/trpc/$1") || fail "API $1 unreachable"
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
+    || fail "API $1 failed: $out"
+}
+
 # The blank data disks, by the serial QEMU gives them.
 data_disk() { vm_ssh "basename \$(readlink -f /dev/disk/by-id/virtio-HSI-DATA-$1)"; }
 
@@ -154,6 +165,66 @@ expect_mirror() {
   log "Mirror, LVM, mount, fstab, Place and share in place"
 }
 
+# The cloud image's network goes to NetworkManager, as on a server where it
+# manages the interface. Run detached: SSH drops while the network switches.
+network_to_networkmanager() {
+  log "Handing the network to NetworkManager"
+  vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq network-manager >/dev/null' || fail "could not install NetworkManager"
+  vm_ssh 'cat > /root/to-nm.sh <<"SH"
+set -x
+nic=$(ip -o -4 route show default | awk "{print \$5; exit}")
+printf "[keyfile]\nunmanaged-devices=none\n[ifupdown]\nmanaged=true\n" > /etc/NetworkManager/conf.d/99-hsi-test.conf
+for f in /etc/netplan/*.yaml; do [ -e "$f" ] && mv "$f" "$f.disabled"; done
+[ -f /etc/network/interfaces ] && sed -i "/$nic/d" /etc/network/interfaces
+rm -f /etc/network/interfaces.d/*
+systemctl disable --now systemd-networkd.service systemd-networkd.socket 2>/dev/null
+systemctl restart NetworkManager
+sleep 2
+nmcli connection add type ethernet ifname "$nic" con-name hsi-test ipv4.method auto ipv6.method ignore
+nmcli connection up hsi-test
+SH
+nohup bash /root/to-nm.sh >/root/to-nm.log 2>&1 &' || true
+  sleep 20
+  vm_wait_ssh 300
+  vm_ssh 'nmcli -t -f DEVICE,STATE,CONNECTION device status' || fail "NetworkManager does not answer"
+}
+
+nic_method() { vm_ssh 'nmcli -t -f ipv4.method connection show hsi-test | cut -d: -f2'; }
+
+network_scenario() {
+  local status nic plan fp reply checkpoint input
+  status=$(api_query network.status)
+  nic=$(python3 -c 'import json,sys; s=json.loads(sys.argv[1]); assert not s.get("unavailable"), s; m=[i for i in s["interfaces"] if i["managed"]]; assert m, s; print(m[0]["device"])' "$status") \
+    || fail "no interface HSI can manage: $status"
+  log "Switching $nic to manual addressing at the same address, then keeping it"
+  input="{\"op\":\"network.ipv4\",\"input\":{\"device\":\"$nic\",\"method\":\"manual\",\"address\":\"10.0.2.15/24\",\"gateway\":\"10.0.2.2\",\"dns\":[\"10.0.2.3\"]}}"
+  plan=$(api storage.plan "$input")
+  fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
+  reply=$(api storage.execute "${input%\}},\"fingerprint\":\"$fp\"}")
+  checkpoint=$(python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["ok"], r; print(r["reply"]["checkpoint"])' "$reply") || fail "network change failed: $reply"
+  [[ $(nic_method) == manual ]] || fail "the connection is not manual after the change"
+  api_query network.status | python3 -c 'import json,sys; s=json.load(sys.stdin); assert sys.argv[1] in s["pending"], s["pending"]' "$checkpoint" || fail "the change is not listed as waiting"
+  api network.confirm "{\"checkpoint\":\"$checkpoint\"}" >/dev/null
+  sleep 5
+  [[ $(nic_method) == manual ]] || fail "the kept change did not stay"
+  log "Kept: $nic is manual"
+
+  log "Applying an address that cuts SSH off, without keeping it"
+  input="{\"op\":\"network.ipv4\",\"input\":{\"device\":\"$nic\",\"method\":\"manual\",\"address\":\"10.0.2.99/24\",\"gateway\":\"10.0.2.2\"}}"
+  plan=$(api storage.plan "$input")
+  fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
+  # The reply may never come back: the address the API answers on changes.
+  vm_ssh "nohup curl -sk -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data-binary '${input%\}},\"fingerprint\":\"$fp\"}' https://127.0.0.1:9001/trpc/storage.execute >/root/cut.json 2>&1 &" || true
+  sleep 30
+  vm_ssh true 2>/dev/null && fail "SSH still answered at the old address: the wrong address was not applied"
+  log "SSH cut off as expected; waiting for NetworkManager to restore the network"
+  vm_wait_ssh 300
+  vm_ssh 'ip -4 -o addr show' | grep -q '10.0.2.15/24' || fail "the previous address is not back"
+  [[ $(nic_method) == manual ]] || fail "the previous settings are not back"
+  vm_ssh "nmcli -t -f ipv4.addresses connection show hsi-test" | grep -q '10.0.2.15/24' || fail "the connection still has the wrong address"
+  log "NetworkManager restored the previous settings by itself"
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -190,6 +261,14 @@ case "$scenario" in
     expect_mirror
     vm_reboot
     expect_running "$version"; expect_mirror
+    ;;
+  network)
+    network_to_networkmanager
+    install_build
+    expect_running "$version"
+    api_setup
+    network_scenario
+    expect_running "$version"
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac
