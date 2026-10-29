@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **An app's address at install**: the App Store install can record where
+  the app's web port is reached behind your own reverse proxy or tunnel, with
+  HTTPS or not, so Open goes there from the start. HSI does not set up the
+  proxy (#26).
 - **Sort the App Store**: installed first, by name, or the latest added
   first. Apps that joined the catalog in the last 60 days are marked New,
   never ranked by popularity (#26).

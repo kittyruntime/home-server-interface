@@ -1,5 +1,9 @@
 export default {
   AppInstallWizard: {
+    reachedAt: 'Accessible à (facultatif)',
+    reachedAtPlaceholder: 'app.example.com',
+    https: 'HTTPS',
+    reachedAtHint: 'L\'adresse de votre propre proxy inverse ou tunnel devant ce port : Ouvrir l\'utilise. HSI ne met en place ni le proxy ni son certificat.',
     back: 'Retour',
     appName: 'Nom de l’application',
     useLowercaseLettersNumbersOr: 'Lettres minuscules, chiffres, « . », « _ » ou « - » (commence par une lettre ou un chiffre).',

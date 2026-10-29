@@ -1167,6 +1167,15 @@ async function testAppPlanBuilders() {
   assert.equal(ap.appFingerprint(p1, inst), ap.appFingerprint(p2, inst), "a random secret must not make the plan stale")
   await assert.rejects(ap.buildAppPlan("app.install", { ...inst, volumes: [{ target: "/data", source: { kind: "newPlace", name: "x", path: "/mnt/taken" } }] }, deps), /Place already exists/)
 
+  // The address the web port is reached at, behind the user's proxy (#26):
+  // recorded in x-hsi for the Open link, without changing the published port.
+  const addressed = await ap.buildAppPlan("app.install", { ...inst, name: "demo2", ports: [{ container: 80, host: 8081, domain: "Demo.Example.com", tls: true }] }, deps)
+  const file = addressed.steps.find(s => s.target.endsWith("demo2/compose.yaml"))!.diff!
+  assert.match(file, /8081:80/)
+  assert.match(file, /domain: demo\.example\.com/)
+  assert.match(file, /tls: true/)
+  await assert.rejects(ap.buildAppPlan("app.install", { ...inst, name: "demo3", ports: [{ container: 80, host: 8081, domain: "https://x.com/" }] }, deps), /host name/)
+
   building = false
   const res = await ap.executeAppPlan(p1)
   assert.equal(res.ok, true)
