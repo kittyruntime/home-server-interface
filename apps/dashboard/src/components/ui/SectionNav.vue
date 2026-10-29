@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends string">
 import type { SectionNavItem } from './section-nav'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Sidebar,
@@ -13,6 +14,8 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar'
+
+const { t } = useI18n()
 
 // Section navigation of a panel (Settings, Storage, Monitor, Sharing): the
 // shadcn-vue sidebar on wide layouts, a select on narrow ones. `container`
@@ -37,7 +40,7 @@ const groups = computed(() => {
 <template>
   <div :class="['shrink-0 border-b bg-sidebar px-4 py-2.5', container ? '@2xl:hidden' : 'sm:hidden']">
     <Select v-model="active">
-      <SelectTrigger class="w-full" aria-label="Section">
+      <SelectTrigger class="w-full" :aria-label="t('common.section')">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -55,7 +58,7 @@ const groups = computed(() => {
         <SidebarGroup v-for="(group, i) in groups" :key="group.label ?? i" class="py-1">
           <SidebarGroupLabel v-if="group.label">{{ group.label }}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu aria-label="Sections">
+            <SidebarMenu :aria-label="t('common.sections')">
               <SidebarMenuItem v-for="item in group.items" :key="item.id">
                 <SidebarMenuButton
                   :is-active="active === item.id"
