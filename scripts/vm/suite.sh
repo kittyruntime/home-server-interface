@@ -393,6 +393,9 @@ files_feature() {
   id=$(cat "$VM_DIR/vmuser.id")
   place=$(api_query place.list | python3 -c 'import json,sys; print(next(p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/vm-mirror"))')
   api permission.upsert "{\"placeId\":\"$place\",\"subjectType\":\"user\",\"subjectId\":\"$id\",\"canRead\":true,\"canWrite\":true,\"canDelete\":true,\"canShare\":false}" >/dev/null
+  # The grant reaches Linux in the background: vmuser joins the group that
+  # may write in Places.
+  vm_until 60 "vmuser did not join hsi-share after getting write access" 'id -nG vmuser | grep -qw hsi-share'
   sign_token "$id" false /root/token-vmuser
   log "File manager as vmuser on the mirror"
   wait_job "$(API_TOKEN=/root/token-vmuser api fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"from-ui"}')" "making a folder as vmuser"
