@@ -10,10 +10,11 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `fresh` | Install of the built archive, services and health, migration ledger, data kept across a reboot, a broken update (a server that exits at once) refused and rolled back with the data intact |
 | `storage` | A mirrored volume (RAID 1, LVM, filesystem, Place, SMB share) created through the API as an administrator, then checked on the host (`mdadm`, `mdadm.conf`, `lvs`, `findmnt`, `/etc/fstab`, `testparm`) before and after a reboot |
 | `network` | NetworkManager takes over the VM's interface; manual addressing applied through the API and kept; then a wrong address applied without keeping it: SSH drops and NetworkManager restores the previous settings by itself |
+| `recovery` | A mirror on 60% of its volume group grown into the free space (`volume.expand`), a member failed, removed and replaced by a blank disk through the API with the rebuild awaited, a reboot, then a boot without the mirror's disks (HSI up, volume held, empty mount point unwritable, file manager refused, share unavailable) and a boot with them again (hold back, Resume). Files, owners and modes are checked at each step |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
-and runs both scenarios in parallel: on demand, every Monday, and on pull requests
+and runs the scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.
 Logs (install, rollback, console, `hsi-server` journal) are kept as artifacts.
 

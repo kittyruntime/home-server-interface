@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: VM_DIR=<scratch> scripts/vm/suite.sh <fresh|update> <archive> <version>
+# Usage: VM_DIR=<scratch> scripts/vm/suite.sh <scenario> <archive> <version>
 #
 #   fresh   install the built archive on a blank VM, add data, reboot, then
 #           refuse a broken update and check the rollback kept everything
@@ -10,6 +10,9 @@
 #   network hand the network to NetworkManager, change the addressing through
 #           the API and keep it, then apply a wrong address without keeping it
 #           and check NetworkManager restores the network by itself
+#   recovery grow a mirrored volume into its free space, replace a failed disk
+#           and wait for the rebuild, then boot without the volume's disks
+#           (held, nothing written to the boot disk) and with them again
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -122,14 +125,35 @@ api_query() {
     || fail "API $1 failed: $out"
 }
 
+# api_error <procedure> <json input>: the error message of a call that must fail.
+api_error() {
+  local out
+  out=$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data-binary @- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+    || fail "API $1 unreachable"
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "error" in r, r; print(r["error"]["message"])' "$out" \
+    || fail "API $1 was accepted: $out"
+}
+
+# apply_plan <op> <json input>: previews a storage plan, applies exactly it,
+# and prints the worker's reply.
+apply_plan() {
+  local plan fp result
+  plan=$(api storage.plan "{\"op\":\"$1\",\"input\":$2}")
+  fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
+  result=$(api storage.execute "{\"op\":\"$1\",\"input\":$2,\"fingerprint\":\"$fp\"}")
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["ok"], r; print(json.dumps(r.get("reply")))' "$result" \
+    || fail "$1 failed: $result"
+}
+
 # The blank data disks, by the serial QEMU gives them.
 data_disk() { vm_ssh "basename \$(readlink -f /dev/disk/by-id/virtio-HSI-DATA-$1)"; }
 
+# create_mirror [percent of the volume group the volume takes, 100 by default]
 create_mirror() {
   local a b input plan fp result
   a=$(data_disk 1); b=$(data_disk 2)
   log "Creating a mirrored volume on $a and $b through the API"
-  input="{\"disks\":[\"$a\",\"$b\"],\"redundancy\":\"raid1\",\"vg\":\"vmvg\",\"lv\":\"vmlv\",\"lvPercent\":100,\"label\":\"vmdata\",\"mountpoint\":\"/srv/vm-mirror\",\"access\":\"shared\"}"
+  input="{\"disks\":[\"$a\",\"$b\"],\"redundancy\":\"raid1\",\"vg\":\"vmvg\",\"lv\":\"vmlv\",\"lvPercent\":${1:-100},\"label\":\"vmdata\",\"mountpoint\":\"/srv/vm-mirror\",\"access\":\"shared\"}"
   input="{\"volume\":$input,\"place\":{\"name\":\"Mirror\"},\"share\":{\"smbName\":\"mirror\"}}"
   plan=$(api storage.volumePlan "{\"input\":$input}")
   fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
@@ -225,6 +249,77 @@ network_scenario() {
   log "NetworkManager restored the previous settings by itself"
 }
 
+# Files on the mirror, owned by a non-root account: their content, owner and
+# mode must come through every step unchanged.
+add_mirror_data() {
+  log "Writing files on the mirror"
+  vm_ssh 'mkdir -p /srv/vm-mirror/data/nested && for i in 1 2 3 4; do head -c 8M /dev/urandom > /srv/vm-mirror/data/nested/file$i.bin; done
+    chown -R 1234:1234 /srv/vm-mirror/data && chmod 0750 /srv/vm-mirror/data/nested
+    cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort > /root/mirror.sum'
+}
+
+expect_mirror_data() {
+  vm_ssh 'cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort | diff /root/mirror.sum -' \
+    || fail "files on the mirror were lost or changed"
+  log "Files on the mirror intact"
+}
+
+mirror_array() { vm_ssh 'lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; exit}"'; }
+
+# expect_hold <blocked|back|none>: the guard's view of the mirror, which it
+# refreshes every minute.
+expect_hold() {
+  local want="$1" got="" deadline=$((SECONDS + 300))
+  while (( SECONDS < deadline )); do
+    got=$(api_query storage.volumes.list | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin) if x["mountPoint"]=="/srv/vm-mirror"]; print(((v[0]["hold"] or {}).get("status") or "none") if v else "unlisted")')
+    [[ $got == "$want" ]] && { log "Hold on the mirror: $want"; return; }
+    sleep 10
+  done
+  fail "the hold on the mirror is $got, expected $want"
+}
+
+expand_mirror() {
+  local uuid before after
+  uuid=$(vm_ssh 'findmnt -no UUID /srv/vm-mirror')
+  before=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
+  log "Growing the mirror into the free space of its volume group"
+  apply_plan volume.expand "{\"uuid\":\"$uuid\",\"mode\":\"vgFree\"}" >/dev/null
+  after=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
+  (( after > before * 3 / 2 )) || fail "the filesystem did not grow: $before -> $after bytes"
+  vm_ssh 'lvs --noheadings -o vg_free --units b --nosuffix vmvg' | awk '{exit !($1 < 64*1024*1024)}' \
+    || fail "the volume group still has free space after the expansion"
+  log "Grown from $before to $after bytes"
+}
+
+replace_disk() {
+  local md old new
+  md=$(mirror_array); old=$(data_disk 2); new=$(data_disk 3)
+  log "Replacing $old with $new in $md"
+  apply_plan raid.fail "{\"name\":\"$md\",\"device\":\"$old\"}" >/dev/null
+  apply_plan raid.remove "{\"name\":\"$md\",\"device\":\"$old\"}" >/dev/null
+  apply_plan raid.add "{\"name\":\"$md\",\"device\":\"$new\"}" >/dev/null
+  vm_ssh "for i in \$(seq 1 120); do d=\$(mdadm --detail /dev/$md); echo \"\$d\" | grep -Eq 'State : (clean|active) *\$' && echo \"\$d\" | grep -Eq 'Active Devices *: *2' && exit 0; sleep 5; done; mdadm --detail /dev/$md; exit 1" \
+    || fail "$md did not rebuild onto $new"
+  vm_ssh "mdadm --detail /dev/$md | grep -q '/dev/$new' && ! mdadm --detail /dev/$md | grep -q '/dev/$old\$'" \
+    || fail "$md does not have $new in place of $old"
+  log "$md rebuilt onto $new"
+}
+
+# Booted without the mirror's disks: HSI runs, holds the volume, and nothing
+# can write into the empty mount point on the boot disk.
+expect_missing() {
+  vm_ssh '! findmnt /srv/vm-mirror >/dev/null' || fail "something is mounted on /srv/vm-mirror"
+  expect_hold blocked
+  vm_ssh 'touch /srv/vm-mirror/stray 2>/dev/null' && fail "root could write into the empty mount point"
+  vm_ssh '[ -z "$(ls -A /srv/vm-mirror)" ]' || fail "the empty mount point is not empty"
+  api_error fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"stray"}' | grep -q 'resume it in Storage first' \
+    || fail "the file manager was not refused on the missing volume"
+  vm_ssh 'conf=$(systemctl show -p ExecStart smbd | grep -o -- "--configfile=[^ ;]*" | cut -d= -f2)
+    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | awk "/^\[/{s=\$0} s==\"[mirror]\" && /available = No/{f=1} END{exit !f}"' \
+    || fail "the share of the missing volume is still offered"
+  log "Missing volume held; the boot disk was not written"
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -269,6 +364,33 @@ case "$scenario" in
     api_setup
     network_scenario
     expect_running "$version"
+    ;;
+  recovery)
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    create_mirror 60
+    expect_mirror
+    add_mirror_data
+    expand_mirror
+    expect_mirror; expect_mirror_data
+    replace_disk
+    expect_mirror; expect_mirror_data
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data
+    # Disk 4 alone: the mirror's disks are unplugged.
+    vm_poweroff
+    vm_start 4
+    expect_running "$version"
+    expect_missing
+    vm_poweroff
+    vm_start 1 3 4
+    expect_running "$version"
+    expect_hold back
+    api storage.volumes.resume '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
+    expect_hold none
+    expect_mirror; expect_mirror_data
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac
