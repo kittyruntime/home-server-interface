@@ -2,6 +2,7 @@
   "id": "filebrowser",
   "name": "File Browser",
   "category": "Utilities",
+  "added": "2026-07-13",
   "tagline": "Web-based file manager for browsing and sharing your files.",
   "description": "File Browser provides a simple, self-hosted web interface for browsing, uploading, and sharing files stored on your NAS.",
   "website": "https://filebrowser.org",

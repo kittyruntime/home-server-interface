@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
 import { appPermissions } from '../../lib/app-permissions'
-import { versionLabel, categoryLabel } from '../../lib/store'
+import { isNew, versionLabel, categoryLabel } from '../../lib/store'
 import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
@@ -43,6 +43,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <div class="flex items-center gap-2 flex-wrap">
             <h3 class="text-base font-semibold text-foreground">{{ app.name }}</h3>
             <span class="text-2xs uppercase tracking-caps text-muted-foreground">{{ categoryLabel(app.category) }}</span>
+            <span v-if="isNew(app)" class="text-2xs uppercase tracking-caps text-primary">{{ t('ui.store.AppStoreDetail.new') }}</span>
           </div>
           <p class="text-sm text-foreground/80 mt-0.5">{{ app.tagline }}</p>
           <p class="text-xs mt-2 flex items-center gap-3 flex-wrap">

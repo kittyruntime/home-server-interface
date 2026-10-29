@@ -2,6 +2,7 @@
   "id": "uptime-kuma",
   "name": "Uptime Kuma",
   "category": "Utilities",
+  "added": "2026-07-13",
   "tagline": "Self-hosted uptime monitoring with a slick status dashboard.",
   "description": "Uptime Kuma monitors your services (HTTP, TCP, DNS, and more) and notifies you the moment something goes down, with a clean status-page dashboard.",
   "website": "https://github.com/louislam/uptime-kuma",

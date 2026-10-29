@@ -2,6 +2,7 @@
   "id": "nextcloud",
   "name": "Nextcloud",
   "category": "Productivity",
+  "added": "2026-10-28",
   "tagline": "Your own cloud: files, calendar, contacts and more.",
   "description": "Nextcloud syncs files across your devices and adds calendars, contacts, notes and hundreds of apps. Runs with its own MariaDB database.",
   "website": "https://nextcloud.com",

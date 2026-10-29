@@ -2,6 +2,7 @@
   "id": "syncthing",
   "name": "Syncthing",
   "category": "Utilities",
+  "added": "2026-07-13",
   "tagline": "Continuous, peer-to-peer file synchronization between your devices.",
   "description": "Syncthing synchronizes files directly between your devices, without a central server, keeping folders in sync while your data stays private.",
   "website": "https://syncthing.net",

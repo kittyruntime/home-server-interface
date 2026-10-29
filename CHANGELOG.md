@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sort the App Store**: installed first, by name, or the latest added
+  first. Apps that joined the catalog in the last 60 days are marked New,
+  never ranked by popularity (#26).
+
 ## [1.73.0] - 2026-10-29
 
 ### Added

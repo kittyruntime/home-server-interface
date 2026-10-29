@@ -11,7 +11,8 @@ import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
-import { catalogVersion, filterChips, keptFilter, visibleApps, categoryLabel } from '../../lib/store'
+import { catalogVersion, filterChips, isNew, keptFilter, visibleApps, categoryLabel, type StoreOrder } from '../../lib/store'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -23,6 +24,7 @@ const apps = ref<Entry[]>([])
 const loading = ref(true)
 const search = ref('')
 const category = ref<string>('All')
+const order = ref<StoreOrder>('default')
 // The install wizard, or the detail page of one app (read from the live list,
 // so its state follows the polling).
 const selected = ref<Entry | null>(null)
@@ -35,7 +37,7 @@ const chips = computed(() => filterChips(apps.value))
 // A filter that no longer has apps (the last update applied) falls back to All
 // for good: it must not come back by itself with the next update.
 watch(chips, c => { category.value = keptFilter(c, category.value) })
-const filtered = computed(() => visibleApps(apps.value, category.value, search.value))
+const filtered = computed(() => visibleApps(apps.value, category.value, search.value, order.value))
 
 const installedCount = computed(() => apps.value.filter(a => a.installed).length)
 
@@ -156,7 +158,19 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       <!-- Header -->
       <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold text-foreground">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
-        <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="max-w-xs" />
+        <div class="flex items-center gap-2 sm:max-w-md sm:flex-1 sm:justify-end">
+          <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="min-w-0 flex-1 sm:max-w-xs" />
+          <Select v-model="order">
+            <SelectTrigger size="sm" class="h-9 shrink-0 text-xs" :aria-label="t('ui.store.AppStorePanel.sortApps')">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">{{ t('ui.store.AppStorePanel.installedFirst') }}</SelectItem>
+              <SelectItem value="name">{{ t('ui.store.AppStorePanel.byName') }}</SelectItem>
+              <SelectItem value="added">{{ t('ui.store.AppStorePanel.recentlyAdded') }}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
       <p v-if="!loading" class="text-xs text-muted-foreground mb-4">
@@ -201,6 +215,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
                   @click="openDetail(a)"
                 >{{ a.name }}</Button>
                 <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ categoryLabel(a.category) }}</span>
+                <span v-if="isNew(a)" class="text-2xs uppercase tracking-caps text-primary shrink-0">{{ t('ui.store.AppStorePanel.new') }}</span>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>

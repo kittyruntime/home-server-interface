@@ -2,6 +2,7 @@
   "id": "qbittorrent",
   "name": "qBittorrent",
   "category": "Downloads",
+  "added": "2026-07-13",
   "tagline": "Feature-rich BitTorrent client with a web interface.",
   "description": "qBittorrent is a free, open-source BitTorrent client with a clean web UI, ideal for managing downloads remotely from your NAS.",
   "website": "https://www.qbittorrent.org",

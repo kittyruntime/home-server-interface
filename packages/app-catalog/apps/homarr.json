@@ -2,6 +2,7 @@
   "id": "homarr",
   "name": "Homarr",
   "category": "Productivity",
+  "added": "2026-07-13",
   "tagline": "Customizable dashboard for organizing all your self-hosted apps.",
   "description": "Homarr is a sleek, highly configurable dashboard that puts links, widgets, and live status for all your self-hosted services on a single homepage.",
   "website": "https://homarr.dev",

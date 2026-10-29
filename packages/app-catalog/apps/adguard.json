@@ -2,6 +2,7 @@
   "id": "adguard",
   "name": "AdGuard Home",
   "category": "Network",
+  "added": "2026-07-13",
   "tagline": "Network-wide DNS server that blocks ads and trackers.",
   "description": "AdGuard Home is a network-wide software for blocking ads and trackers, acting as a DNS server that re-routes tracking domains to a black hole for every device on your network.",
   "website": "https://adguard.com/en/adguard-home/overview.html",
