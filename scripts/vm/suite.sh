@@ -626,8 +626,8 @@ case "$scenario" in
     vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after setting a new password"
     # It has no access to the mirror's Place here: signing in to Samba is
     # what the new password must allow.
-    vm_ssh "smbclient -L //127.0.0.1 -U 'vmuser%vm-user-password-2'" >/dev/null 2>&1 \
-      || fail "Samba refuses vmuser's new password"
+    vm_ssh "smbclient -L //127.0.0.1 -U 'vmuser%vm-user-password-2'" > "$VM_DIR/smb-signin.log" 2>&1 \
+      || { cat "$VM_DIR/smb-signin.log"; vm_ssh 'pdbedit -v vmuser; systemctl is-active smbd; journalctl -u hsi-worker -n 30 --no-pager | grep -i -E "samba|smb|vmuser"'; fail "Samba refuses vmuser's new password"; }
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
