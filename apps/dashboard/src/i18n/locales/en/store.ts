@@ -1,6 +1,10 @@
 // Generated from the templates, then kept by hand.
 export default {
   AppInstallWizard: {
+    reachedAt: 'Reached at (optional)',
+    reachedAtPlaceholder: 'app.example.com',
+    https: 'HTTPS',
+    reachedAtHint: 'The address of your own reverse proxy or tunnel in front of this port: Open uses it. HSI does not set up the proxy or its certificate.',
     back: 'Back',
     appName: 'App name',
     useLowercaseLettersNumbersOr: 'Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).',
@@ -19,6 +23,11 @@ export default {
     cancel: 'Cancel',
   },
   AppStorePanel: {
+    sortApps: 'Sort apps',
+    installedFirst: 'Installed first',
+    byName: 'By name',
+    recentlyAdded: 'Recently added',
+    new: 'New',
     back: '← Back',
     appStore: 'App Store',
     searchApps: 'Search apps…',
@@ -30,6 +39,7 @@ export default {
     open: 'Open ↗',
   },
   AppStoreDetail: {
+    new: 'New',
     back: '← Back',
     install: 'Install',
     update: 'Update…',
@@ -39,6 +49,11 @@ export default {
     installsWith: 'Installs with:',
     website: 'Website ↗',
     releaseNotes: 'Release notes ↗',
+    documentation: 'Documentation ↗',
+    sourceCode: 'Source code ↗',
+    license: 'License',
+    gettingStarted: 'Getting started',
+    afterInstalling: 'After installing',
     permissions: 'Permissions',
   },
 }

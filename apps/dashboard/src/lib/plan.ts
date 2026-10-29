@@ -42,8 +42,12 @@ export interface PlanRequest {
   notice?: string
   /** A statement the admin ticks before the action is enabled ("I have a backup"). */
   acknowledge?: string
+  /** A choice that changes the plan: ticking it sets input[key] and previews again. */
+  option?: PlanOption
   resolve: (r: PlanOutcome) => void
 }
+
+export interface PlanOption { key: string; label: string; hint?: string }
 
 export type PlanOutcome =
   | { status: 'applied'; result: PlanApply }
@@ -66,7 +70,7 @@ let nextId = 0
 export async function applyPlanned(
   op: PlanOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain; confirmText?: string; notice?: string; acknowledge?: string },
+  opts: { title: string; actionLabel: string; danger?: boolean; domain?: PlanDomain; confirmText?: string; notice?: string; acknowledge?: string; option?: PlanOption },
 ): Promise<{ warnings: string[] } & Record<string, unknown>> {
   const outcome = await new Promise<PlanOutcome>(resolve => {
     planRequest.value?.resolve({ status: 'cancelled' })
@@ -104,7 +108,7 @@ export function workerCodeOf(e: unknown): string {
 export async function applyPlannedJob(
   op: AppOp,
   input: Record<string, unknown>,
-  opts: { title: string; actionLabel: string; danger?: boolean },
+  opts: { title: string; actionLabel: string; danger?: boolean; option?: PlanOption },
 ): Promise<string> {
   const reply = await applyPlanned(op, input, { ...opts, domain: 'apps' })
   if (typeof reply.jobId !== 'string') throw new Error('The operation did not start a job')

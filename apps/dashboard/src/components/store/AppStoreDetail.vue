@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
 import { updateText } from '../../lib/app-update'
 import { appPermissions } from '../../lib/app-permissions'
-import { versionLabel, categoryLabel } from '../../lib/store'
+import { isNew, versionLabel, categoryLabel } from '../../lib/store'
 import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
@@ -43,6 +43,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <div class="flex items-center gap-2 flex-wrap">
             <h3 class="text-base font-semibold text-foreground">{{ app.name }}</h3>
             <span class="text-2xs uppercase tracking-caps text-muted-foreground">{{ categoryLabel(app.category) }}</span>
+            <span v-if="isNew(app)" class="text-2xs uppercase tracking-caps text-primary">{{ t('ui.store.AppStoreDetail.new') }}</span>
           </div>
           <p class="text-sm text-foreground/80 mt-0.5">{{ app.tagline }}</p>
           <p class="text-xs mt-2 flex items-center gap-3 flex-wrap">
@@ -87,9 +88,20 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
         </div>
         <p class="text-xs flex gap-4 flex-wrap">
           <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.website') }}</a>
+          <a v-if="app.docs" :href="app.docs" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.documentation') }}</a>
+          <a v-if="app.source" :href="app.source" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.sourceCode') }}</a>
           <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.releaseNotes') }}</a>
+          <span v-if="app.license" class="text-muted-foreground">{{ t('ui.store.AppStoreDetail.license') }} <span class="font-mono text-foreground/80">{{ app.license }}</span></span>
         </p>
       </div>
+
+      <!-- First steps (#26): read before installing, and the page an install lands on. -->
+      <section v-if="app.postInstall?.length" class="space-y-2" aria-labelledby="start-heading">
+        <h4 id="start-heading" class="eyebrow">{{ inst ? t('ui.store.AppStoreDetail.gettingStarted') : t('ui.store.AppStoreDetail.afterInstalling') }}</h4>
+        <ol class="list-decimal pl-5 space-y-1 text-sm text-foreground/80 leading-relaxed">
+          <li v-for="(step, i) in app.postInstall" :key="i">{{ step }}</li>
+        </ol>
+      </section>
 
       <section v-if="permissions.length" class="space-y-2" aria-labelledby="perm-heading">
         <h4 id="perm-heading" class="eyebrow">{{ t('ui.store.AppStoreDetail.permissions') }}</h4>

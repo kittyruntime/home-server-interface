@@ -2,11 +2,19 @@
   "id": "navidrome",
   "name": "Navidrome",
   "category": "Media",
+  "added": "2026-07-13",
   "tagline": "Self-hosted music streaming server compatible with Subsonic clients.",
   "description": "Navidrome is a modern, lightweight music server and streamer that gives you access to your own music collection from any browser or Subsonic-compatible app.",
   "website": "https://www.navidrome.org",
   "image": "deluan/navidrome:0.53.3",
   "changelog": "https://github.com/navidrome/navidrome/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/navidrome/navidrome",
+  "docs": "https://www.navidrome.org/docs/",
+  "postInstall": [
+    "Open it and create the administrator account: the first account created is the administrator.",
+    "Put your music in the Music library folder; Navidrome scans it on its own."
+  ],
   "webUiPort": 4533,
   "ports": [{ "container": 4533, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [

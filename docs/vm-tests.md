@@ -17,6 +17,8 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `interrupted` | `/tmp` on its own `noexec` filesystem throughout. The power is cut during an update from the published release once the new version is switched in: the worker rolls it back at boot, data intact, and the update then goes through. On a new system disk, the power is cut during a configuration restore after the accounts are made and before the database swap: HSI starts again and the restore still goes through, files and owners intact |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
+The release workflow runs every scenario on a pushed tag first and publishes
+only when they all pass (a manual republish of an existing tag skips them).
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
 and runs the scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.

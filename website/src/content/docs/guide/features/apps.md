@@ -13,9 +13,17 @@ admin-only.
 
 - **App Store**: a curated catalog with guided installs and pinned image versions.
   Secret settings can be generated, and a port already in use comes with a free
-  one to switch to. After an install, HSI opens the new app with its logs.
-  Each app has a page with its description, version and what the install asks
-  for; the Installed and Updates filters find the apps already on the server.
+  one to switch to. The web port can be given the address of your own reverse
+  proxy or tunnel (with HTTPS or not), which **Open** then uses; HSI does not
+  set up the proxy. After an install, HSI opens the new app with its logs.
+  Each app has a page with its description, version, license, links to its
+  documentation and source code, what the install asks for, and its first steps
+  (first sign-in, where to put files), which the App Store shows again once the
+  app is installed; the Installed and Updates filters find the apps already on
+  the server.
+- **Finding apps**: search, filter by category, installed apps or updates, and
+  sort installed first, by name or the latest added first. Apps that joined the
+  catalog in the last 60 days are marked New; nothing is ranked by popularity.
 - **App updates**: when a new HSI version ships a newer image for an installed
   App Store app, its card and page say so with a link to the release notes, and the
   Apps page marks it. **Update…** previews the one changed line of
@@ -27,6 +35,10 @@ admin-only.
 - **Containers**: create, edit, start, stop and delete containers, read their
   logs, and manage networks, volumes and mounts. An existing Compose file can be
   imported to prefill a container.
+- **Deleting an app keeps its data**: its containers and `compose.yaml` go, its
+  Docker volumes (databases, caches) stay, and installing it again under the
+  same name uses them. Tick **Also delete its data in Docker volumes** to delete
+  them too; the preview names them. Folders in Places are never deleted.
 - **Previewed changes**: saving, applying, starting, installing and deleting show
   the `compose.yaml` content or its diff and the `docker compose` commands before
   they run. Secret-looking values are masked in the preview and the audit log.
