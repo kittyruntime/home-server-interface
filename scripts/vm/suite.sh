@@ -50,7 +50,7 @@ expect_running() {
   local want="$1" health
   # A fresh install serves HTTPS on the backend port; older installs may use 443.
   health=$(vm_ssh 'for i in $(seq 1 90); do for p in 9001 443; do curl -sfk "https://127.0.0.1:$p/health" && exit 0; done; sleep 2; done; exit 1') \
-    || fail "health endpoint never answered (expected $want)"
+    || { vm_ssh 'systemctl --no-pager status hsi-server hsi-worker hsi-nats | grep -E "^. |Active:"; ss -ltnp | grep -E ":(9001|443) "; journalctl -b -u hsi-server -u hsi-worker -n 80 --no-pager'; fail "health endpoint never answered (expected $want)"; }
   python3 -c 'import json,sys; h=json.loads(sys.argv[1]); assert h["status"]=="ok" and h["db"] and h["nats"], h; assert h["version"]==sys.argv[2], (h["version"], sys.argv[2])' "$health" "$want" \
     || fail "unexpected health: $health"
   vm_ssh 'systemctl is-active --quiet hsi-server hsi-worker hsi-nats' || fail "a service is not active"
