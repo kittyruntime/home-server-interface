@@ -1,7 +1,9 @@
 package main
 
 import (
+	"io/fs"
 	"reflect"
+	"syscall"
 	"testing"
 )
 
@@ -129,5 +131,24 @@ md1 : active raid1 sdd1[1] sdc1[0]
 				t.Errorf("parseMdstat(%q) =\n  %+v\nwant\n  %+v", tc.name, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestMapOsErrNoSpace(t *testing.T) {
+	for _, errno := range []syscall.Errno{syscall.ENOSPC, syscall.EDQUOT} {
+		got := mapOsErr(&fs.PathError{Op: "write", Path: "/srv/v/.upload-x.part", Err: errno})
+		if got.Code != "ENOSPC" {
+			t.Fatalf("%v mapped to %q, want ENOSPC", errno, got.Code)
+		}
+	}
+}
+
+// A chunk write returns the raw error: its errno still reaches the backend.
+func TestToFsErrMapsErrno(t *testing.T) {
+	if got := toFsErr(&fs.PathError{Op: "write", Path: "/x", Err: syscall.ENOSPC}); got.Code != "ENOSPC" {
+		t.Fatalf("got %q, want ENOSPC", got.Code)
+	}
+	if got := toFsErr(&fsError{Code: "EEXIST", Message: "x"}); got.Code != "EEXIST" {
+		t.Fatalf("an fsError was changed to %q", got.Code)
 	}
 }

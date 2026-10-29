@@ -951,7 +951,7 @@ func toFsErr(err error) *fsError {
 	if fe, ok := err.(*fsError); ok {
 		return fe
 	}
-	return &fsError{Code: "ERR", Message: err.Error()}
+	return mapOsErr(err)
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
