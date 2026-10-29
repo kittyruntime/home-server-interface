@@ -16,6 +16,9 @@
 #   features each feature checked on the host (#38): an account (Linux and
 #           Samba), the file manager as that account on a volume, SMB from a
 #           client, and an App Store app installed, changed and removed
+#   restore back up the configuration of a NAS with a mirror and an account,
+#           replace the system disk, install again and restore the backup:
+#           the volume comes back with its files, owners, Place and share
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -457,6 +460,50 @@ app_feature() {
   log "IT Tools installed, moved and removed"
 }
 
+BACKUP_PASSWORD="vm-test-config-backup-password"
+
+# An account made through HSI (Linux and Samba), owning files on the mirror.
+add_account_data() {
+  log "Creating the account vmuser and giving it files on the mirror"
+  api user.create '{"username":"vmuser","password":"vm-user-password"}' >/dev/null
+  vm_ssh 'id vmuser && mkdir -p /srv/vm-mirror/vmuser && head -c 4M /dev/urandom > /srv/vm-mirror/vmuser/own.bin && chown -R vmuser:vmuser /srv/vm-mirror/vmuser' >/dev/null \
+    || fail "the account vmuser has no Linux account"
+  vm_ssh 'stat -c "%u:%g" /srv/vm-mirror/vmuser/own.bin' > "$VM_DIR/vmuser.ids"
+}
+
+expect_account_data() {
+  local ids
+  ids=$(vm_ssh 'stat -c "%U %u:%g" /srv/vm-mirror/vmuser/own.bin')
+  [[ $ids == "vmuser $(cat "$VM_DIR/vmuser.ids")" ]] || fail "the files of vmuser are now owned by $ids, expected vmuser $(cat "$VM_DIR/vmuser.ids")"
+  log "vmuser owns its files with the same ids"
+}
+
+config_backup() {
+  log "Downloading a configuration backup"
+  vm_ssh "curl -sfk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
+    --data '{\"password\":\"$BACKUP_PASSWORD\"}' -o /root/config.hsibak https://127.0.0.1:9001/system/config-backup" \
+    || fail "the configuration backup failed"
+  vm_get /root/config.hsibak "$VM_DIR/config.hsibak"
+  [[ -s $VM_DIR/config.hsibak ]] || fail "the configuration backup is empty"
+}
+
+config_restore() {
+  local preview token
+  log "Restoring the configuration backup"
+  vm_put "$VM_DIR/config.hsibak" /root/config.hsibak
+  preview=$(vm_ssh "curl -sk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/vnd.hsi.config-backup' \
+    -H \"x-hsi-backup-password: $(printf %s "$BACKUP_PASSWORD" | base64 -w0)\" --data-binary @/root/config.hsibak \
+    https://127.0.0.1:9001/system/config-restore/preview")
+  token=$(python3 -c 'import json,sys; p=json.loads(sys.argv[1]); assert not p.get("conflicts"), p; print(p["token"])' "$preview") \
+    || fail "the restore preview was refused: $preview"
+  echo "$preview" > "$VM_DIR/restore-preview.json"
+  vm_ssh "curl -sfk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
+    --data '{\"token\":\"$token\"}' https://127.0.0.1:9001/system/config-restore/apply" >/dev/null \
+    || fail "the restore was refused"
+  # The server restarts on the restored database.
+  sleep 10
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -544,6 +591,35 @@ case "$scenario" in
     vm_reboot
     expect_running "$version"; expect_mirror
     vm_ssh 'id vmuser >/dev/null && test -f /srv/vm-mirror/from-smb/hello.txt' || fail "vmuser or its files are gone after a reboot"
+    ;;
+  restore)
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    create_mirror
+    expect_mirror
+    add_mirror_data
+    add_account_data
+    config_backup
+    vm_poweroff
+    vm_new_system
+    vm_start
+    # An unrelated account first: ids the new system hands out by default no
+    # longer match the old ones, so only a restore that keeps them passes.
+    vm_ssh 'useradd -M -u 1500 squatter' || fail "could not add an account"
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    config_restore
+    expect_running "$version"
+    api_setup
+    apply_plan storage.reapply '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
+    expect_mirror; expect_mirror_data; expect_account_data
+    vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after the restore"
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac
