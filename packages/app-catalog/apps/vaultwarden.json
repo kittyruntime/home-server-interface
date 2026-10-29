@@ -11,7 +11,7 @@
   "source": "https://github.com/dani-garcia/vaultwarden",
   "docs": "https://github.com/dani-garcia/vaultwarden/wiki",
   "postInstall": [
-    "Give it a domain with HTTPS first (Apps, Edit, Ports): the web vault and the Bitwarden apps refuse plain HTTP.",
+    "It needs HTTPS: the web vault and the Bitwarden apps refuse plain HTTP. Put it behind a reverse proxy with a certificate (see its wiki), then enter that address as the port's domain in Apps, Edit, Ports, so Open uses it.",
     "Then open it and create your account.",
     "The admin page is at /admin, opened with the admin token chosen at install."
   ],
