@@ -631,7 +631,7 @@ onMounted(async () => {
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm text-foreground/80">
               <span v-if="searchLoading">{{ t('ui.files.FileBrowserPanel.searching') }}</span>
-              <span v-else>{{ searchResults.length }} result{{ searchResults.length === 1 ? '' : 's' }} for "<span class="font-medium text-foreground">{{ searchQuery }}</span>"</span>
+              <span v-else>{{ t('uip.files.FileBrowserPanel.resultFor', { p0: searchResults.length, p1: searchResults.length === 1 ? '' : 's' }) }}<span class="font-medium text-foreground">{{ searchQuery }}</span>"</span>
             </span>
           </div>
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
@@ -763,7 +763,7 @@ onMounted(async () => {
           <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> {{ t('ui.files.FileBrowserPanel.upload') }}</ContextMenuItem>
           <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
             <ClipboardPasteIcon class="text-current" />
-            Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
+            {{ t('uip.files.FileBrowserPanel.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '' }) }}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem @select="refresh()"><RefreshCwIcon /> {{ t('ui.files.FileBrowserPanel.refresh') }}</ContextMenuItem>

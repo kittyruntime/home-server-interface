@@ -63,20 +63,20 @@ async function resume(mp: string) {
           <Badge variant="secondary" :class="STATE[v.state]?.cls">{{ STATE[v.state]?.label ?? v.state }}</Badge>
           <Badge variant="outline" v-if="v.hold?.status === 'blocked'" class="bg-destructive/10 text-destructive">{{ t('ui.storage.VolumeHealthPanel.blocked') }}</Badge>
         </div>
-        <p v-if="v.guardError" class="mt-1 text-2xs text-warning">Not protected against writes while unmounted: {{ v.guardError }}</p>
+        <p v-if="v.guardError" class="mt-1 text-2xs text-warning">{{ t('uip.storage.VolumeHealthPanel.notProtectedAgainstWritesWhile', { p0: v.guardError }) }}</p>
 
         <p v-if="v.hold?.status === 'blocked'" class="mt-2 text-xs text-foreground/80">
-          Blocked since {{ since(v.hold.since) }}: apps using it are stopped, its shares are unavailable, backups and file writes are refused.
+          {{ t('uip.storage.VolumeHealthPanel.blockedSinceAppsUsingIt', { p0: since(v.hold.since) }) }}
         </p>
 
         <div v-if="v.hold?.status === 'back'" class="mt-2 rounded-lg border border-border bg-muted p-3 space-y-2">
-          <p class="text-xs text-foreground font-medium">Volume {{ v.mountPoint }} is back.</p>
+          <p class="text-xs text-foreground font-medium">{{ t('uip.storage.VolumeHealthPanel.volumeIsBack', { p0: v.mountPoint }) }}</p>
           <p class="text-xs text-foreground/80">
             {{ t('ui.storage.VolumeHealthPanel.checkTheDiskSmartRaid') }}
             <template v-if="v.hold.stoppedApps.length">{{ t('ui.storage.VolumeHealthPanel.appsToRestart') }} <span class="font-mono">{{ v.hold.stoppedApps.join(', ') }}</span>.</template>
           </p>
           <p v-if="v.hold.strayFiles" class="text-xs text-warning">
-            Files were written to the system disk under {{ v.mountPoint }} before it was protected. To reach them, unmount the volume and run <span class="font-mono">chattr -i {{ v.mountPoint }}</span>.
+            {{ t('uip.storage.VolumeHealthPanel.filesWereWrittenToThe', { p0: v.mountPoint }) }} <span class="font-mono">chattr -i {{ v.mountPoint }}</span>.
           </p>
           <Button size="sm" :disabled="resuming === v.mountPoint" @click="resume(v.mountPoint)">
             {{ resuming === v.mountPoint ? 'Resuming…' : 'Resume' }}

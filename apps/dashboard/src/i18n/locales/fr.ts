@@ -1,5 +1,6 @@
 import type en from './en'
 import ui from './fr/index'
+import uip from './fr/params/index'
 
 // Messages en français : mêmes clés que en.ts (un test le vérifie).
 export default {
@@ -70,6 +71,7 @@ export default {
     invalid: 'Nom d’utilisateur ou mot de passe incorrect',
   },
   ui,
+  uip,
   profile: {
     language: 'Langue',
     languageHint: 'La langue de l’interface sur tous les appareils où vous vous connectez.',

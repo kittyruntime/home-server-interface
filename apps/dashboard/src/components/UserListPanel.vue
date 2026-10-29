@@ -165,7 +165,7 @@ onMounted(load)
         <div>
           <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.UserListPanel.users') }}</h2>
           <p v-if="!loading && !loadError" class="text-xs text-muted-foreground mt-0.5">
-            {{ filteredUsers.length }} of {{ users.length }} account{{ users.length !== 1 ? 's' : '' }}
+            {{ t('uip.settings.UserListPanel.ofAccount', { p0: filteredUsers.length, p1: users.length, p2: users.length !== 1 ? 's' : '' }) }}
           </p>
         </div>
         <Button size="xs"

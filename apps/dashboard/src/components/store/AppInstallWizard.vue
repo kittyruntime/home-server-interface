@@ -278,7 +278,7 @@ async function install() {
           <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ portWarnings[`${p.container}-${p.protocol}`] }}
             <Button variant="outline" size="xs" v-if="portSuggestions[`${p.container}-${p.protocol}`]" type="button" class="ml-1" @click="useSuggestedPort(p)">
-              Use port {{ portSuggestions[`${p.container}-${p.protocol}`] }}
+              {{ t('uip.store.AppInstallWizard.usePort', { p0: portSuggestions[`${p.container}-${p.protocol}`] }) }}
             </Button>
           </p>
         </div>

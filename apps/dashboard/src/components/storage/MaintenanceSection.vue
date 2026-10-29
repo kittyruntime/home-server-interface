@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 
+
 /* Scheduled disk checks. The schedule is stored on the server and run hourly by
    a systemd timer (hsi-maintenance.timer), so it keeps running when the
    dashboard or the backend is down. Failed self-tests and RAID mismatches raise
@@ -159,8 +160,7 @@ const statusClass: Record<string, string> = {
             <div>{{ $t('ui.storage.MaintenanceSection.nextRun') }} <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
           <p v-if="data.tasks[t.id].postponed" class="mt-2 status-text text-warning">
-            <span class="status-tag">[WARN]</span> Not run at {{ fmtWhen(data.tasks[t.id].postponed!.at) }}: {{ data.tasks[t.id].postponed!.reason }}.
-            {{ data.tasks[t.id].schedule.every === 'off' ? 'Run it again once that is over.' : 'HSI tries again every hour.' }}
+            <span class="status-tag">[WARN]</span> {{ $t('uip.storage.MaintenanceSection.notRunAt', { p0: fmtWhen(data.tasks[t.id].postponed!.at), p1: data.tasks[t.id].postponed!.reason, p2: data.tasks[t.id].schedule.every === 'off' ? 'Run it again once that is over.' : 'HSI tries again every hour.' }) }}
           </p>
 
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-border divide-y divide-border">

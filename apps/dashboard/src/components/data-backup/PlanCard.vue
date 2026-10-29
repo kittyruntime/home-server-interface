@@ -88,7 +88,7 @@ async function remove() {
 
     <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
       <span>{{ scheduleLabel(plan.schedule as Schedule) }}</span>
-      <span>Next run: {{ plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }}</span>
+      <span>{{ t('uip.backups.PlanCard.nextRun', { p0: plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }) }}</span>
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
     </div>
     <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>

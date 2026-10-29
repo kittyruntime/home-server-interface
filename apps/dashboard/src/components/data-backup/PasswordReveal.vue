@@ -62,7 +62,7 @@ function download() {
 <template>
   <Modal ref="modal" panel-class="w-full max-w-md" :show-close="canClose" :close-on-backdrop="canClose" :prevent-close="!canClose" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground truncate">Password of {{ repository.name }}</h3>
+      <h3 class="text-sm font-semibold text-foreground truncate">{{ t('uip.backups.PasswordReveal.passwordOf', { p0: repository.name }) }}</h3>
     </template>
 
     <div class="px-5 py-4 space-y-4">

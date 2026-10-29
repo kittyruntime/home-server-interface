@@ -9,6 +9,7 @@ import { resumeByReselect } from '../../lib/upload-runner'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
 
+
 const uploads = useUploads()
 const collapsed = ref(false)
 
@@ -141,7 +142,7 @@ function handleReselectPick(e: Event) {
     <div class="flex items-center gap-3 px-3.5 py-2">
       <Button variant="ghost" size="xs" :aria-expanded="!collapsed" class="-ml-2 shrink-0 text-foreground/80" @click="collapsed = !collapsed">
         <ChevronDownIcon class="size-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
-        Transfers · {{ activeCount }} active
+        {{ $t('uip.files.TransfersTray.transfersActive', { p0: activeCount }) }}
       </Button>
 
       <!-- Mini overall progress bar -->

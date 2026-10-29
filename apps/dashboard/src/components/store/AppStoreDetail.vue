@@ -67,8 +67,8 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">{{ t('ui.store.AppStoreDetail.whatSNew') }}</a>
         </p>
         <div v-if="inst?.rollbackTo" class="flex items-center justify-between gap-2 flex-wrap">
-          <p class="text-xs text-muted-foreground">The previous version, {{ inst.rollbackTo }}, is kept to roll back to.</p>
-          <Button variant="outline" size="xs" :disabled="busy" @click="emit('rollback')">Roll back to {{ inst.rollbackTo }}…</Button>
+          <p class="text-xs text-muted-foreground">{{ t('uip.store.AppStoreDetail.thePreviousVersionIsKept', { p0: inst.rollbackTo }) }}</p>
+          <Button variant="outline" size="xs" :disabled="busy" @click="emit('rollback')">{{ t('uip.store.AppStoreDetail.rollBackTo', { p0: inst.rollbackTo }) }}</Button>
         </div>
       </div>
       <p v-if="error" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ error }}</p>

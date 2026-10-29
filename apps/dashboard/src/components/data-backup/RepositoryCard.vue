@@ -76,7 +76,7 @@ async function remove() {
 
     <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-2">
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
-      <span>Next check: {{ repository.check.every === 'off' ? 'Off' : untilLabel(repository.nextCheck) }}</span>
+      <span>{{ t('uip.backups.RepositoryCard.nextCheck', { p0: repository.check.every === 'off' ? 'Off' : untilLabel(repository.nextCheck) }) }}</span>
     </div>
     <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 

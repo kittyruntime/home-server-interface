@@ -86,7 +86,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
               :color="memColor(metrics?.memory.percent ?? 0)"
               height="compact"
             />
-            <p class="text-xs text-muted-foreground tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
+            <p class="text-xs text-muted-foreground tabular-nums">{{ t('uip.desktop.DesktopWidgets.used', { p0: metrics?.memory.percent ?? 0 }) }}</p>
           </div>
         </div>
       </template>

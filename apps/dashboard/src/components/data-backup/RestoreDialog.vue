@@ -180,7 +180,7 @@ onUnmounted(() => {
 <template>
   <Modal panel-class="w-full max-w-3xl" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground truncate">Restore from {{ repository.name }}</h3>
+      <h3 class="text-sm font-semibold text-foreground truncate">{{ t('uip.backups.RestoreDialog.restoreFrom', { p0: repository.name }) }}</h3>
     </template>
 
     <div class="px-5 py-4 space-y-4">
@@ -271,7 +271,7 @@ onUnmounted(() => {
 
       <!-- Progress -->
       <template v-else-if="running">
-        <p class="text-sm text-foreground">Restoring{{ progress !== null ? `, ${Math.round(progress * 100)}%` : '' }}</p>
+        <p class="text-sm text-foreground">{{ t('uip.backups.RestoreDialog.restoring', { p0: progress !== null ? `, ${Math.round(progress * 100)}%` : '' }) }}</p>
         <Progress class="h-2 rounded-full bg-muted" :model-value="Math.round((progress ?? 0) * 100)" indicator-class="bg-primary transition-all" />
       </template>
 
@@ -280,7 +280,7 @@ onUnmounted(() => {
       <!-- Result -->
       <template v-else-if="result">
         <p v-if="result.status === 'failed'" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
-        <p v-else class="text-sm text-success">{{ result.files ?? 0 }} files restored</p>
+        <p v-else class="text-sm text-success">{{ t('uip.backups.RestoreDialog.filesRestored', { p0: result.files ?? 0 }) }}</p>
         <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-foreground/80">{{ t('ui.backups.RestoreDialog.restoredTo') }} <span class="font-mono">{{ result.target }}</span></p>
         <div v-if="result.warnings?.length">
           <p class="eyebrow mb-1">{{ t('ui.backups.RestoreDialog.notRestoredAsSavedOn') }}</p>

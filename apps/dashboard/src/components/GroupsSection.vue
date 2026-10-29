@@ -128,7 +128,7 @@ onMounted(load)
         <div>
           <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.GroupsSection.groups') }}</h2>
           <p class="text-xs text-muted-foreground mt-0.5">
-            {{ filteredGroups.length }} of {{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}
+            {{ t('uip.settings.GroupsSection.ofGroup', { p0: filteredGroups.length, p1: groups.length, p2: groups.length !== 1 ? 's' : '' }) }}
           </p>
         </div>
         <Button size="xs"

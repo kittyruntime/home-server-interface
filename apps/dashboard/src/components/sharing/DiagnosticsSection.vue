@@ -110,7 +110,7 @@ function dirWritable(s: ShareDiag): boolean {
 
         <!-- Dir detail -->
         <p v-if="s.dir" class="text-2xs text-muted-foreground font-mono">
-          group {{ s.dir.group || '-' }} · mode {{ s.dir.mode }}<span v-if="!s.dir.exists"> {{ t('ui.sharing.DiagnosticsSection.notFound') }}</span>
+          {{ t('uip.sharing.DiagnosticsSection.groupMode', { p0: s.dir.group || '-', p1: s.dir.mode }) }}<span v-if="!s.dir.exists"> {{ t('ui.sharing.DiagnosticsSection.notFound') }}</span>
         </p>
       </Card>
     </div>

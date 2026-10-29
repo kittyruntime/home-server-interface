@@ -168,7 +168,7 @@ function setStandardPorts(enabled: boolean) {
             <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ status.authorityFingerprint }}</p>
           </div>
         </div>
-        <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> The certificate expires in {{ expiry.days }} days.</p>
+        <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ $t('uip.settings.SecureAccessSection.theCertificateExpiresInDays', { p0: expiry.days }) }}</p>
         <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ $t('ui.settings.SecureAccessSection.theCertificateHasExpired') }}</p>
         <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-muted-foreground">
           {{ $t('ui.settings.SecureAccessSection.thisServerStillHasThe') }}

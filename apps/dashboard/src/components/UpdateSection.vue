@@ -237,7 +237,7 @@ onUnmounted(() => clearInterval(timer))
             >{{ stepLabel(step) }}</span>
             <!-- Countdown on done -->
             <span v-if="step === 'done' && restartStep === 'done'" class="ml-auto text-xs text-muted-foreground font-mono">
-              reloading in {{ reloadCountdown }}…
+              {{ t('uip.settings.UpdateSection.reloadingIn', { p0: reloadCountdown }) }}
             </span>
           </div>
         </div>
@@ -298,7 +298,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- Release notes -->
       <Card v-if="status.hasUpdate && status.releaseNotes" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
-          <p class="eyebrow">What's new in {{ status.latest }}</p>
+          <p class="eyebrow">{{ t('uip.settings.UpdateSection.whatSNewIn', { p0: status.latest }) }}</p>
           <a
             :href="`${status.repoUrl}/releases/tag/${status.latest}`"
             target="_blank" rel="noopener noreferrer"
@@ -350,7 +350,7 @@ onUnmounted(() => clearInterval(timer))
       <div class="flex items-center justify-between pt-1 border-t border-border">
         <div>
           <p class="text-xs text-muted-foreground">
-            <template v-if="status.checkedAt">Last checked {{ formatDateTime(status.checkedAt) }}</template>
+            <template v-if="status.checkedAt">{{ t('uip.settings.UpdateSection.lastChecked', { p0: formatDateTime(status.checkedAt) }) }}</template>
             <template v-else>{{ t('ui.settings.UpdateSection.neverCheckedRunsDailyVia') }}</template>
           </p>
           <a

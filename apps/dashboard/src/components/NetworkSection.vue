@@ -158,7 +158,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- The change just applied from this page -->
       <Alert v-if="pending" variant="warning" role="status" class="block space-y-2">
         <p class="font-medium">{{ t('ui.settings.NetworkSection.keepTheNewNetworkSettings') }}</p>
-        <p class="text-foreground/80">If you can read this, the dashboard still answers. Without an answer they are undone in {{ secondsLeft }} s.</p>
+        <p class="text-foreground/80">{{ t('uip.settings.NetworkSection.ifYouCanReadThis', { p0: secondsLeft }) }}</p>
         <div class="flex gap-2">
           <Button size="sm" @click="keep(pending.checkpoint)">{{ t('ui.settings.NetworkSection.keep') }}</Button>
           <Button size="sm" variant="outline" @click="undo(pending.checkpoint)">{{ t('ui.settings.NetworkSection.undoNow') }}</Button>
@@ -216,7 +216,7 @@ onUnmounted(() => clearInterval(timer))
             </div>
           </div>
           <div class="space-y-1">
-            <Label :for="`dns-${i.device}`" class="text-xs">DNS servers{{ form.method === 'auto' ? ' (empty: from DHCP)' : '' }}</Label>
+            <Label :for="`dns-${i.device}`" class="text-xs">{{ t('uip.settings.NetworkSection.dnsServers', { p0: form.method === 'auto' ? ' (empty: from DHCP)' : '' }) }}</Label>
             <Input :id="`dns-${i.device}`" v-model="form.dns" placeholder="1.1.1.1, 9.9.9.9" class="font-mono" />
           </div>
           <Alert v-if="newAddress(i)" variant="warning" role="note" class="block text-xs">

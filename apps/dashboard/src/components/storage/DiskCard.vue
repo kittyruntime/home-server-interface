@@ -187,10 +187,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </span>
             </div>
             <div v-if="sc.powerOnHours" class="text-xs text-muted-foreground">
-              {{ fmtHours(sc.powerOnHours) }} powered on
+              {{ t('uip.storage.DiskCard.poweredOn', { p0: fmtHours(sc.powerOnHours) }) }}
             </div>
             <div v-if="sc.powerCycles" class="text-xs text-muted-foreground">
-              {{ sc.powerCycles.toLocaleString() }} power cycles
+              {{ t('uip.storage.DiskCard.powerCycles', { p0: sc.powerCycles.toLocaleString() }) }}
             </div>
             <div class="ml-auto text-2xs px-1.5 py-0.5 rounded-sm bg-muted border border-border text-muted-foreground">
               {{ sc.nvme ? 'NVMe' : sc.rotationRate === 0 ? 'SSD' : `HDD ${sc.rotationRate} RPM` }}
@@ -218,7 +218,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </div>
               <div class="flex justify-between gap-2">
                 <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.availableSpare') }}</span>
-                <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.availableSpare }}% <span class="text-muted-foreground">(min {{ sc.nvme.availableSpareThresh }}%)</span></span>
+                <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.availableSpare }}% <span class="text-muted-foreground">{{ t('uip.storage.DiskCard.min', { p0: sc.nvme.availableSpareThresh }) }}</span></span>
               </div>
               <div class="flex justify-between gap-2">
                 <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.percentageUsed') }}</span>
@@ -297,12 +297,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <!-- Role: RAID member -->
               <Button variant="outline" size="xs" v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
                 class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">
-                RAID {{ memberOwner(part, 'raid') }} →
+                {{ t('uip.storage.DiskCard.raid', { p0: memberOwner(part, 'raid') }) }}
               </Button>
               <!-- Role: LVM PV -->
               <Button variant="outline" size="xs" v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
                 class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
-                LVM {{ memberOwner(part, 'lvm') }} →
+                {{ t('uip.storage.DiskCard.lvm', { p0: memberOwner(part, 'lvm') }) }}
               </Button>
               <!-- Role: member of an array/VG that is not active -->
               <span v-if="roleOf(part) && !roleOf(part)!.owner"

@@ -82,7 +82,7 @@ defineExpose({ open })
 <template>
   <Modal v-if="dlg" panel-class="w-full max-w-md" :show-close="false" :prevent-close="dlg.busy" @close="dlg = null">
     <div class="px-5 py-4 border-b border-border">
-      <h3 class="font-semibold text-foreground">Expand {{ dlg.name }}</h3>
+      <h3 class="font-semibold text-foreground">{{ t('uip.storage.ExpandVolumeDialog.expand', { p0: dlg.name }) }}</h3>
     </div>
     <div class="p-5 space-y-4">
       <p v-if="dlg.loading" class="text-sm text-muted-foreground">{{ t('ui.storage.ExpandVolumeDialog.lookingAtWhatThisVolume') }}</p>

@@ -214,10 +214,10 @@ async function removeShare(s: ShareRow) {
               <Tip v-if="holdForPath(s.placePath)" :text="holdLabel(holdForPath(s.placePath)!)"><Badge variant="outline" class="bg-destructive/10 text-destructive">{{ t('ui.sharing.SharesSection.unavailable') }}</Badge></Tip>
             </div>
             <p class="text-xs text-muted-foreground mt-1">
-              {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> · {{ s.userCount }} user{{ s.userCount === 1 ? '' : 's' }}
+              {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> {{ t('uip.sharing.SharesSection.user', { p0: s.userCount, p1: s.userCount === 1 ? '' : 's' }) }}
             </p>
             <p v-if="s.excludedUsernames.length > 0" class="status-text text-warning mt-2">
-              [WARN] No Linux account for {{ s.excludedUsernames.join(', ') }}: excluded from this share
+              {{ t('uip.sharing.SharesSection.warnNoLinuxAccountFor', { p0: s.excludedUsernames.join(', ') }) }}
             </p>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">

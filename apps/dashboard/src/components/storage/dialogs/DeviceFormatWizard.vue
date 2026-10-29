@@ -196,8 +196,7 @@ defineExpose({ open })
       <div>
         <div class="font-semibold text-sm text-foreground">{{ t('ui.storage.DeviceFormatWizard.formatted') }}</div>
         <p class="text-xs text-muted-foreground mt-1">
-          <span class="font-mono">/dev/{{ wiz.dev.name }}</span> now holds an empty {{ wiz.fstype }} filesystem.
-          Mount it to choose who can write to it and to create a Place for it.
+          <span class="font-mono">/dev/{{ wiz.dev.name }}</span> {{ t('uip.storage.DeviceFormatWizard.nowHoldsAnEmptyFilesystem', { p0: wiz.fstype }) }}
         </p>
       </div>
       <div class="flex gap-2">

@@ -181,7 +181,7 @@ async function afterChange() { await refreshDevices(); await load() }
       <div v-if="volume.space" class="max-w-md">
         <div class="flex items-baseline gap-2">
           <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(volume.space.used) }}</span>
-          <span class="text-xs text-muted-foreground">used of {{ fmtBytes(volume.space.total) }} · {{ fmtBytes(volume.space.free) }} free</span>
+          <span class="text-xs text-muted-foreground">{{ t('uip.storage.VolumePage.usedOfFree', { p0: fmtBytes(volume.space.total), p1: fmtBytes(volume.space.free) }) }}</span>
         </div>
         <Progress class="mt-2 h-1.5 rounded-full bg-accent" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-foreground']" />
       </div>
@@ -222,18 +222,18 @@ async function afterChange() { await refreshDevices(); await load() }
 
         <p class="text-xs text-muted-foreground">
           <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
-          <template v-if="volume.tolerates"> · survives {{ volume.tolerates }} failed {{ volume.tolerates === 1 ? 'disk' : 'disks' }}</template>
+          <template v-if="volume.tolerates"> {{ t('uip.storage.VolumePage.survivesFailed', { p0: volume.tolerates, p1: volume.tolerates === 1 ? 'disk' : 'disks' }) }}</template>
           <template v-else-if="volume.state !== 'missing'"> {{ t('ui.storage.VolumePage.aFailedDiskLosesThis') }}</template>
         </p>
 
         <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-destructive/30 px-4 py-3">
           <h3 class="text-sm font-semibold text-destructive">{{ t('ui.storage.VolumePage.removeThisVolume') }}</h3>
           <p class="mt-1 text-xs text-foreground/80">
-            {{ t('ui.storage.VolumePage.erases') }} <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds</template><template v-else>{{ t('ui.storage.VolumePage.itsData') }}</template>{{ t('ui.storage.VolumePage.disksUsedOnlyByThis') }}
+            {{ t('ui.storage.VolumePage.erases') }} <template v-if="volume.space">{{ t('uip.storage.VolumePage.theItHolds', { p0: fmtBytes(volume.space.used) }) }}</template><template v-else>{{ t('ui.storage.VolumePage.itsData') }}</template>{{ t('ui.storage.VolumePage.disksUsedOnlyByThis') }}
             <template v-if="volume.usedBy.places.length">{{ t('ui.storage.VolumePage.itsPlacesAndTheirShares') }}</template>
           </p>
           <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
-            <span class="status-tag">[WARN]</span> {{ volume.usedBy.apps.join(', ') }} {{ volume.usedBy.apps.length === 1 ? 'stores' : 'store' }} data here: remove {{ volume.usedBy.apps.length === 1 ? 'it' : 'them' }} first.
+            <span class="status-tag">[WARN]</span> {{ t('uip.storage.VolumePage.dataHereRemoveFirst', { p0: volume.usedBy.apps.join(', '), p1: volume.usedBy.apps.length === 1 ? 'stores' : 'store', p2: volume.usedBy.apps.length === 1 ? 'it' : 'them' }) }}
           </p>
           <p v-if="removeError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
           <Button variant="destructive" size="sm" class="mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">{{ t('ui.storage.VolumePage.removeVolume') }}</Button>

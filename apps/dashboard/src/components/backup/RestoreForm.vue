@@ -179,7 +179,7 @@ function pollRestoreRestart() {
           <p class="font-medium text-foreground">{{ backupLine(preview.backup, preview.format) }}</p>
           <p class="text-foreground/80">{{ contentsLine(preview.contents) }}</p>
           <p v-for="c in preview.conflicts" :key="c.kind + c.name" role="alert" class="status-text text-destructive">
-            <span class="status-tag">[ERR]</span> {{ c.detail }}. On the server: <code class="font-mono">{{ c.command }}</code>
+            <span class="status-tag">[ERR]</span> {{ t('uip.backups.RestoreForm.onTheServer', { p0: c.detail }) }} <code class="font-mono">{{ c.command }}</code>
           </p>
           <p v-for="(w, i) in preview.warnings" :key="i" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
           <p v-if="preview.conflicts.length" class="text-muted-foreground">{{ t('ui.backups.RestoreForm.resolveTheConflictsThenCheck') }}</p>

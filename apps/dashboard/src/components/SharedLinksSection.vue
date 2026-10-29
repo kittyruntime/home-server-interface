@@ -46,7 +46,7 @@ onMounted(load)
         <div class="flex-1 min-w-0">
           <p class="text-sm text-foreground font-mono truncate">{{ l.path }}</p>
           <p class="text-xs text-muted-foreground">
-            {{ status(l) }} · {{ l.downloads }}{{ l.maxDownloads != null ? '/' + l.maxDownloads : '' }} downloads
+            {{ t('uip.settings.SharedLinksSection.downloads', { p0: status(l), p1: l.downloads, p2: l.maxDownloads != null ? '/' + l.maxDownloads : '' }) }}
             <template v-if="l.hasPassword"> · 🔒</template>
           </p>
         </div>

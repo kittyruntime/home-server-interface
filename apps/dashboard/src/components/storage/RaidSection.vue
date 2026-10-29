@@ -382,7 +382,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <!-- Cross-nav: RAID used as LVM PV -->
               <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
                 class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
-                LVM {{ raidPvVg(r.name) }} →
+                {{ t('uip.storage.RaidSection.lvm', { p0: raidPvVg(r.name) }) }}
               </Button>
               <!-- ⋯ menu -->
               <DropdownMenu>
@@ -476,7 +476,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 </Button>
               </div>
               <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-destructive">
-                {{ emptySlots(r) }} empty slot{{ emptySlots(r) > 1 ? 's' : '' }}: add a replacement disk to restore redundancy.
+                {{ t('uip.storage.RaidSection.emptySlotAddAReplacement', { p0: emptySlots(r), p1: emptySlots(r) > 1 ? 's' : '' }) }}
               </div>
             </div>
 
@@ -508,7 +508,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                     <span class="text-2xs text-muted-foreground">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
                   </div>
                   <Progress class="h-1 bg-muted rounded-full" :model-value="usagePct(raidBlockDev(r.name)!)" :indicator-class="['rounded-full', usageBarClass(usagePct(raidBlockDev(r.name)!))]" />
-                  <div class="text-2xs text-muted-foreground mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
+                  <div class="text-2xs text-muted-foreground mt-1">{{ t('uip.storage.RaidSection.free', { p0: fmtBytes(raidBlockDev(r.name)!.usageFree), p1: usagePct(raidBlockDev(r.name)!).toFixed(1) }) }}</div>
                 </div>
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-muted-foreground">
                   {{ t('ui.storage.RaidSection.formatted') }} <span class="font-mono text-foreground/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
@@ -579,9 +579,9 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 </div>
                 <div class="text-2xs text-muted-foreground leading-relaxed">{{ lvl.desc }}</div>
                 <div class="flex items-center gap-3 mt-2 text-2xs">
-                  <span class="text-muted-foreground">Min: {{ lvl.minDev }} drives</span>
+                  <span class="text-muted-foreground">{{ t('uip.storage.RaidSection.minDrives', { p0: lvl.minDev }) }}</span>
                   <span :class="lvl.redundancy === 'None' ? 'text-destructive' : 'text-success'">
-                    Redundancy: {{ lvl.redundancy }}
+                    {{ t('uip.storage.RaidSection.redundancy', { p0: lvl.redundancy }) }}
                   </span>
                 </div>
                 <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-border" />
@@ -604,18 +604,17 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
           <div v-else-if="raidWiz.step === 2" class="p-5 space-y-3">
             <p class="text-sm text-foreground/80">
               {{ t('ui.storage.RaidSection.selectDrivesFor') }} <strong>{{ selectedRaidLevel.name }}</strong>.
-              <span class="text-muted-foreground">Minimum {{ selectedRaidLevel.minDev }} required.</span>
+              <span class="text-muted-foreground">{{ t('uip.storage.RaidSection.minimumRequired', { p0: selectedRaidLevel.minDev }) }}</span>
             </p>
 
             <!-- Capacity: computed from the selected drives once there are enough -->
             <div class="px-1 space-y-0.5">
               <div v-if="wizardCapacity?.cap.valid" class="text-xs text-foreground">
                 {{ t('ui.storage.RaidSection.usable') }} <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
-                of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)
-                · {{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}
+                {{ t('uip.storage.RaidSection.ofRaw', { p0: fmtBytes(wizardCapacity.cap.raw), p1: wizardCapacity.cap.efficiency, p2: toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }) }}
               </div>
               <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-2xs text-warning">
-                {{ fmtBytes(w.bytes) }} unused on /dev/{{ w.name }} (drives are used at the size of the smallest one)
+                {{ t('uip.storage.RaidSection.unusedOnDevDrivesAre', { p0: fmtBytes(w.bytes), p1: w.name }) }}
               </div>
               <div class="text-2xs text-muted-foreground">{{ selectedRaidLevel.capacityHint }}</div>
             </div>
@@ -647,7 +646,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </div>
 
             <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-2xs text-warning px-1">
-              {{ selectedRaidLevel.name }} requires at least {{ selectedRaidLevel.minDev }} drives ({{ raidWiz.devs.length }} selected).
+              {{ t('uip.storage.RaidSection.requiresAtLeastDrivesSelected', { p0: selectedRaidLevel.name, p1: selectedRaidLevel.minDev, p2: raidWiz.devs.length }) }}
             </div>
 
             <!-- Array name -->
@@ -688,7 +687,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ selectedRaidLevel.name }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.drives') }}</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.capacity') }}</span>
-                <span v-if="wizardCapacity?.cap.valid">{{ fmtBytes(wizardCapacity.cap.usable) }} usable of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)</span>
+                <span v-if="wizardCapacity?.cap.valid">{{ t('uip.storage.RaidSection.usableOfRaw', { p0: fmtBytes(wizardCapacity.cap.usable), p1: fmtBytes(wizardCapacity.cap.raw), p2: wizardCapacity.cap.efficiency }) }}</span>
                 <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
               </div>
               <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.redundancy') }}</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>

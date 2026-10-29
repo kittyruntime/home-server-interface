@@ -189,14 +189,13 @@ function diskLabel(d: BlockDev): string {
   <div class="max-w-4xl">
     <div class="flex items-center justify-between gap-3 mb-2">
       <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.CreateVolumeWizard.createVolume') }}</h2>
-      <span class="text-xs text-muted-foreground">Step {{ step + 1 }} of {{ STEPS.length }} · {{ STEPS[step] }}</span>
+      <span class="text-xs text-muted-foreground">{{ t('uip.storage.CreateVolumeWizard.stepOf', { p0: step + 1, p1: STEPS.length, p2: STEPS[step] }) }}</span>
     </div>
     <Progress class="h-0.5 rounded-full bg-accent mb-5" :model-value="((step + 1) / STEPS.length) * 100" indicator-class="rounded-full bg-primary transition-[width]" />
 
     <!-- Narrow: the volume so far as one line -->
     <p class="@3xl/content:hidden mb-4 text-xs text-muted-foreground">
-      <span class="font-figure font-bold text-sm text-foreground">{{ fmtBytes(usable) }}</span> usable ·
-      {{ LEVEL_TEXT[s.level].title }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
+      <span class="font-figure font-bold text-sm text-foreground">{{ fmtBytes(usable) }}</span> {{ t('uip.storage.CreateVolumeWizard.usable', { p0: LEVEL_TEXT[s.level].title }) }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
       <span class="font-mono">{{ s.mountpoint }}</span>
     </p>
 
@@ -251,12 +250,12 @@ function diskLabel(d: BlockDev): string {
               <Input v-model.trim="s.lv" class="mt-1 font-mono" maxlength="31" />
             </label>
           </div>
-          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> A volume group named {{ s.vg }} already exists.</p>
+          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ t('uip.storage.CreateVolumeWizard.aVolumeGroupNamedAlready', { p0: s.vg }) }}</p>
           <Button variant="link" class="h-auto p-0 mt-4 text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
             {{ s.advanced ? 'Hide advanced' : 'Advanced' }}
           </Button>
           <div v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">
-            <span id="lv-percent-label">Use {{ s.lvPercent }}% of the volume group</span>
+            <span id="lv-percent-label">{{ t('uip.storage.CreateVolumeWizard.useOfTheVolumeGroup', { p0: s.lvPercent }) }}</span>
             <Slider
               class="mt-2"
               :model-value="[s.lvPercent]"
@@ -320,7 +319,7 @@ function diskLabel(d: BlockDev): string {
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.disks') }}</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.redundancy') }}</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="font-mono text-xs self-center">ext4 · {{ s.label }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="font-mono text-xs self-center">{{ t('uip.storage.CreateVolumeWizard.ext4', { p0: s.label }) }}</dd></div>
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.folder') }}</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
             <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.place') }}</dt><dd>{{ s.placeName }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.sharedAs') }} <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
           </dl>
@@ -334,18 +333,18 @@ function diskLabel(d: BlockDev): string {
         <p class="eyebrow">{{ t('ui.storage.CreateVolumeWizard.yourVolume') }}</p>
         <p><span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(usable) }}</span> <span class="text-xs text-muted-foreground">usable</span></p>
         <p class="text-xs" :class="s.level === 'none' ? 'text-destructive' : 'text-foreground/80'">
-          {{ LEVEL_TEXT[s.level].title }}<template v-if="tolerates"> · survives {{ tolerates }} failed {{ tolerates === 1 ? 'disk' : 'disks' }}</template>
+          {{ LEVEL_TEXT[s.level].title }}<template v-if="tolerates"> {{ t('uip.storage.CreateVolumeWizard.survivesFailed', { p0: tolerates, p1: tolerates === 1 ? 'disk' : 'disks' }) }}</template>
         </p>
         <p class="text-xs text-muted-foreground">{{ chosen.length ? chosen.map(d => d.name).join(', ') : 'No disk chosen' }}</p>
         <p class="font-mono text-xs text-foreground/80">{{ s.mountpoint }}</p>
-        <p v-if="isAdmin && s.createPlace" class="text-xs text-muted-foreground">Place "{{ s.placeName }}"<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.smbShare') }}</template></p>
+        <p v-if="isAdmin && s.createPlace" class="text-xs text-muted-foreground">{{ t('uip.storage.CreateVolumeWizard.place', { p0: s.placeName }) }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.smbShare') }}</template></p>
       </aside>
     </div>
 
     <div class="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
       <Button variant="ghost" size="sm" v-if="step > 0" @click="step--">{{ t('ui.storage.CreateVolumeWizard.back') }}</Button>
       <Button variant="ghost" size="sm" v-else @click="emit('navigate', 'volumes')">{{ t('ui.storage.CreateVolumeWizard.cancel') }}</Button>
-      <Button size="sm" v-if="step < STEPS.length - 1" :disabled="!canNext" @click="step++">Next: {{ STEPS[step + 1] }}</Button>
+      <Button size="sm" v-if="step < STEPS.length - 1" :disabled="!canNext" @click="step++">{{ t('uip.storage.CreateVolumeWizard.next', { p0: STEPS[step + 1] }) }}</Button>
       <Button size="sm" v-else-if="done" @click="emit('navigate', 'volumes')">{{ t('ui.storage.CreateVolumeWizard.goToVolumes') }}</Button>
       <Button variant="destructive" size="sm" v-else :disabled="!chosen.length" @click="create">{{ t('ui.storage.CreateVolumeWizard.createVolume') }}</Button>
     </div>

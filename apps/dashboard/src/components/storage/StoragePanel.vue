@@ -104,8 +104,7 @@ const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id
         <Alert variant="warning" v-if="missingTools.length" role="status"
           class="block mb-5">
           <p class="text-foreground">
-            Some storage tools are not installed on the server, so these features are unavailable:
-            {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
+            {{ t('uip.storage.StoragePanel.someStorageToolsAreNot', { p0: missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }) }}
           </p>
           <p class="mt-1 text-muted-foreground">{{ t('ui.storage.StoragePanel.installThemWith') }} <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
         </Alert>

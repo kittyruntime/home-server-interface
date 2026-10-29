@@ -79,10 +79,9 @@ defineExpose({ load })
           <span class="text-xs text-muted-foreground ml-2 uppercase">{{ a.level }}</span>
         </div>
         <div class="text-2xs text-muted-foreground font-mono break-all">{{ a.members.join(' + ') }}</div>
-        <div v-if="a.missing > 0" class="text-2xs text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
+        <div v-if="a.missing > 0" class="text-2xs text-warning">{{ t('uip.storage.ImportFound.ofMembersNotFound', { p0: a.missing, p1: a.expected }) }}</div>
         <div v-if="a.extra > 0" class="text-2xs text-destructive">
-          {{ a.members.length }} disks carry this array, which has {{ a.expected + a.spares }}: one is probably a copy of another, such as a cloned disk.
-          Disconnect the disk that should not be there, then scan again.
+          {{ t('uip.storage.ImportFound.disksCarryThisArrayWhich', { p0: a.members.length, p1: a.expected + a.spares }) }}
         </div>
       </div>
       <Button size="xs" v-if="!(a.extra > 0)" type="button" :disabled="busy !== null" @click="assemble(a)">

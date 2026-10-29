@@ -102,7 +102,7 @@ onMounted(load)
     <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
       <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
         <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
-          Active ({{ filteredAlerts.length }})
+          {{ t('uip.monitor.AlertsSection.active', { p0: filteredAlerts.length }) }}
         </span>
         <div class="flex items-center gap-3">
           <Select v-if="sourcePrefixes.length > 1" v-model="sourceFilter">

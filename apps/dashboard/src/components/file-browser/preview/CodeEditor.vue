@@ -149,13 +149,13 @@ onBeforeUnmount(() => view?.destroy())
     <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
         <p>{{ t('ui.files.CodeEditor.binaryFilePreviewNotAvailable') }}</p>
-        <p class="status-text">{{ name }} · {{ fileSize ?? 0 }} bytes</p>
+        <p class="status-text">{{ t('uip.files.CodeEditor.bytes', { p0: name, p1: fileSize ?? 0 }) }}</p>
       </div>
     </div>
 
     <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
-        <p>File too large to edit here ({{ ((fileSize ?? 0) / 1024 / 1024).toFixed(1) }} MB).</p>
+        <p>{{ t('uip.files.CodeEditor.fileTooLargeToEdit', { p0: ((fileSize ?? 0) / 1024 / 1024).toFixed(1) }) }}</p>
         <p class="status-text">{{ t('ui.files.CodeEditor.useDownloadInstead') }}</p>
       </div>
     </div>

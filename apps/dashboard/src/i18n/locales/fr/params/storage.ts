@@ -1,0 +1,70 @@
+export default {
+  MaintenanceSection: { notRunAt: 'Non exécuté à {p0} : {p1}. {p2}' },
+  LvmSection: {
+    volumeGroup: '{p0} groupe{p1} de volumes',
+    free: '· {p0} libres',
+    willDestroyAllLogicalVolume: 'détruira les {p0} volume(s) logique(s) et leurs données.',
+  },
+  VolumePage: {
+    usedOfFree: 'utilisés sur {p0} · {p1} libres',
+    survivesFailed: '· survit à {p0} {p1} en panne',
+    theItHolds: 'les {p0} qu’il contient',
+    dataHereRemoveFirst: '{p0} {p1} des données ici : supprimez d’abord {p2}.',
+  },
+  DiskPage: {
+    couldNotRefreshThisDisk: 'Impossible d’actualiser ce disque : {p0}. L’affichage n’est peut-être plus à jour.',
+    hoursPoweredOn: '{p0} heures sous tension',
+  },
+  ImportFound: {
+    ofMembersNotFound: '{p0} membres sur {p1} introuvables',
+    disksCarryThisArrayWhich: '{p0} disques portent cette grappe, qui en a {p1} : l’un est sans doute la copie d’un autre, comme un disque cloné. Débranchez le disque qui ne devrait pas être là, puis relancez la recherche.',
+  },
+  VolumeHealthPanel: {
+    notProtectedAgainstWritesWhile: 'Non protégé contre les écritures pendant qu’il est démonté : {p0}',
+    blockedSinceAppsUsingIt: 'Bloqué depuis {p0} : les applications qui l’utilisent sont arrêtées, ses partages sont indisponibles, les sauvegardes et les écritures de fichiers sont refusées.',
+    volumeIsBack: 'Le volume {p0} est revenu.',
+    filesWereWrittenToThe: 'Des fichiers ont été écrits sur le disque système sous {p0} avant sa protection. Pour y accéder, démontez le volume et lancez',
+  },
+  PhysicalDisksSection: {
+    onFreeDisks: '{p0} sur des disques libres',
+    sort: 'Tri : {p0}',
+    showingOfDisks: '{p0} disques affichés sur {p1} ·',
+    freeSelected: '{p0} {p1} libre(s) sélectionné(s)',
+  },
+  DiskCard: {
+    poweredOn: '{p0} sous tension',
+    powerCycles: '{p0} mises sous tension',
+    min: '(min {p0} %)',
+    raid: 'RAID {p0} →',
+    lvm: 'LVM {p0} →',
+  },
+  RaidSection: {
+    lvm: 'LVM {p0} →',
+    emptySlotAddAReplacement: '{p0} emplacement{p1} vide : ajoutez un disque de remplacement pour retrouver la redondance.',
+    free: '{p0} libres · {p1} %',
+    minDrives: 'Min. : {p0} disques',
+    redundancy: 'Redondance : {p0}',
+    minimumRequired: 'Au moins {p0} requis.',
+    ofRaw: 'sur {p0} bruts ({p1} %) · {p2}',
+    unusedOnDevDrivesAre: '{p0} inutilisés sur /dev/{p1} (les disques sont utilisés à la taille du plus petit)',
+    requiresAtLeastDrivesSelected: '{p0} demande au moins {p1} disques ({p2} sélectionnés).',
+    usableOfRaw: '{p0} utilisables sur {p1} bruts ({p2} %)',
+  },
+  StoragePanel: {
+    someStorageToolsAreNot: 'Des outils de stockage ne sont pas installés sur le serveur, ces fonctions sont donc indisponibles : {p0}.',
+  },
+  CreateVolumeWizard: {
+    stepOf: 'Étape {p0} sur {p1} · {p2}',
+    usable: 'utilisables · {p0}',
+    aVolumeGroupNamedAlready: 'Un groupe de volumes nommé {p0} existe déjà.',
+    useOfTheVolumeGroup: 'Utiliser {p0} % du groupe de volumes',
+    ext4: 'ext4 · {p0}',
+    survivesFailed: '· survit à {p0} {p1} en panne',
+    place: 'Emplacement « {p0} »',
+    next: 'Suivant : {p0}',
+  },
+  DeviceFormatWizard: {
+    nowHoldsAnEmptyFilesystem: 'contient maintenant un système de fichiers {p0} vide. Montez-le pour choisir qui peut y écrire et lui créer un emplacement.',
+  },
+  ExpandVolumeDialog: { expand: 'Agrandir {p0}' },
+}

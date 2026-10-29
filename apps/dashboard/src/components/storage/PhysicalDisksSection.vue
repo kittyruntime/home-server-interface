@@ -336,7 +336,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
             <span class="font-semibold text-foreground">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
             <span class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
-            <span v-if="summary.roles.free" class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.freeBytes) }} on free disks</span>
+            <span v-if="summary.roles.free" class="text-muted-foreground tabular-nums">{{ t('uip.storage.PhysicalDisksSection.onFreeDisks', { p0: fmtBytes(summary.freeBytes) }) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
@@ -373,7 +373,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           </NativeSelect>
           <NativeSelect :model-value="prefs.sortKey" @update:model-value="key => prefs.sortKey = key as SortKey" :aria-label="t('ui.storage.PhysicalDisksSection.sortBy')"
             :wrapper-class="['w-auto', view === 'table' && '@4xl/content:hidden']" class="px-2 py-1.5 text-xs">
-            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</NativeSelectOption>
+            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">{{ t('uip.storage.PhysicalDisksSection.sort', { p0: c.label }) }}</NativeSelectOption>
           </NativeSelect>
           <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
             <Checkbox v-model="prefs.grouped" /> {{ t('ui.storage.PhysicalDisksSection.groupByRole') }}
@@ -391,13 +391,13 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         </div>
 
         <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-muted-foreground">
-          Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
+          {{ t('uip.storage.PhysicalDisksSection.showingOfDisks', { p0: visibleRows.length, p1: summary.disks }) }}
           <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">{{ t('ui.storage.PhysicalDisksSection.clearFilters') }}</Button>
         </div>
 
         <!-- Selected free disks -->
         <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-input bg-card text-xs">
-          <span class="text-foreground/80">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
+          <span class="text-foreground/80">{{ t('uip.storage.PhysicalDisksSection.freeSelected', { p0: selected.size, p1: selected.size === 1 ? 'disk' : 'disks' }) }}</span>
           <Button @click="startCreate('volume')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createVolume') }}</Button>
           <Button variant="outline" v-if="selected.size >= 2" @click="startCreate('raid')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createRaid') }}</Button>
           <Button variant="outline" @click="startCreate('lvm')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createVolumeGroup') }}</Button>

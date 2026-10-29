@@ -160,7 +160,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
       <p v-if="!loading" class="text-xs text-muted-foreground mb-4">
-        {{ apps.length }} apps · {{ installedCount }} installed
+        {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
       </p>
 
       <!-- Filters -->
@@ -177,7 +177,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
       <!-- No results -->
       <div v-else-if="filtered.length === 0" class="text-center py-16 text-muted-foreground">
-        <p class="text-sm">No apps match “{{ search }}”.</p>
+        <p class="text-sm">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
         <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
       </div>
 

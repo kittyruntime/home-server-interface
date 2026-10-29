@@ -233,7 +233,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
     <!-- VG list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
-      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground tabular-nums">{{ lvmVGs.length }} volume group{{ lvmVGs.length !== 1 ? 's' : '' }}</span>
+      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground tabular-nums">{{ t('uip.storage.LvmSection.volumeGroup', { p0: lvmVGs.length, p1: lvmVGs.length !== 1 ? 's' : '' }) }}</span>
     </div>
 
     <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
@@ -470,7 +470,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <Modal v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-border">
             <h3 class="font-semibold text-foreground">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
-            <p class="text-xs text-muted-foreground mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
+            <p class="text-xs text-muted-foreground mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
           </div>
           <div class="p-5 space-y-4">
             <div>
@@ -530,7 +530,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       @confirm="doRemoveVg"
       @close="removeVgDlg = null"
     >
-      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.</template>
+      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-foreground/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>

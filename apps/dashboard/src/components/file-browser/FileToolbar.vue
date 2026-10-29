@@ -176,7 +176,7 @@ async function openSearch() {
             ? 'bg-warning/15 text-warning hover:bg-warning/25 hover:text-warning'
             : 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary']">
         <ClipboardPasteIcon aria-hidden="true" />
-        <span class="hidden sm:inline">Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }} {{ clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }}</span>
+        <span class="hidden sm:inline">{{ t('uip.files.FileToolbar.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '', p1: clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }) }}</span>
       </Button>
 
       <!-- Divider -->

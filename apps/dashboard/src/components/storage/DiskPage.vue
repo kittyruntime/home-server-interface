@@ -131,7 +131,7 @@ function manageInDevices() { emit('navigate', 'disks') }
 
     <template v-if="disk" #overview>
       <div class="space-y-4">
-        <p v-if="error" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> Could not refresh this disk: {{ error }}. What is shown may be out of date.</p>
+        <p v-if="error" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ t('uip.storage.DiskPage.couldNotRefreshThisDisk', { p0: error }) }}</p>
         <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm">
           <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">{{ t('ui.storage.DiskPage.model') }}</dt><dd class="text-foreground">{{ disk.model || '-' }}</dd></div>
           <div class="flex gap-4 px-4 py-2.5"><dt class="w-24 shrink-0 text-muted-foreground">{{ t('ui.storage.DiskPage.serial') }}</dt><dd class="font-mono text-xs self-center text-foreground">{{ disk.serial || '-' }}</dd></div>
@@ -145,7 +145,7 @@ function manageInDevices() { emit('navigate', 'disks') }
             <p :class="health.cls">{{ health.text }}</p>
             <p v-if="sm && sm.available" class="text-xs text-muted-foreground">
               <span v-if="sm.temperature" class="tabular-nums">{{ sm.temperature }}°C · </span>
-              <span class="tabular-nums">{{ sm.powerOnHours.toLocaleString() }} hours powered on</span>
+              <span class="tabular-nums">{{ t('uip.storage.DiskPage.hoursPoweredOn', { p0: sm.powerOnHours.toLocaleString() }) }}</span>
             </p>
             <ul v-if="criticalAttrs.length" class="space-y-1">
               <li v-for="a in criticalAttrs" :key="a.id" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ a.name }}: {{ a.raw }}</li>
