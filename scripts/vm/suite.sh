@@ -624,8 +624,10 @@ case "$scenario" in
     sign_token "$vmuser_id" false /root/token-vmuser
     API_TOKEN=/root/token-vmuser api user.changePassword '{"currentPassword":"vm-user-password","newPassword":"vm-user-password-2"}' >/dev/null
     vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after setting a new password"
-    vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%vm-user-password-2' -c 'ls vmuser/*'" >/dev/null 2>&1 \
-      || fail "vmuser cannot open the share with its new password"
+    # It has no access to the mirror's Place here: signing in to Samba is
+    # what the new password must allow.
+    vm_ssh "smbclient -L //127.0.0.1 -U 'vmuser%vm-user-password-2'" >/dev/null 2>&1 \
+      || fail "Samba refuses vmuser's new password"
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
