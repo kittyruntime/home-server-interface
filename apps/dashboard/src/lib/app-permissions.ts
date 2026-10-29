@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 export type PermissionKind = 'Storage' | 'Network' | 'Secret' | 'Startup'
 
 export interface Permission {
@@ -19,9 +20,9 @@ export interface PermissionSource {
 export function appPermissions(app: PermissionSource): Permission[] {
   const permissions: Permission[] = app.volumes.map(volume => ({
     kind: 'Storage',
-    title: `${volume.readOnlyDefault ? 'Read' : 'Read and write'} ${volume.label}`,
+    title: `${volume.readOnlyDefault ? tr('lib.app_permissions.read', 'Read') : 'Read and write'} ${volume.label}`,
     detail: volume.target,
-    ...(volume.readOnlyDefault ? { note: 'Read-only' } : {}),
+    ...(volume.readOnlyDefault ? { note: tr('lib.app_permissions.readOnly', 'Read-only') } : {}),
   }))
 
   const ports = new Map<number, { label: string; protocols: string[] }>()
@@ -36,18 +37,18 @@ export function appPermissions(app: PermissionSource): Permission[] {
   for (const [container, port] of ports) {
     permissions.push({
       kind: 'Network',
-      title: `Listens on ${port.label}`,
+      title: tr('lib.app_permissions.listensOn', `Listens on ${port.label}`, { p0: port.label }),
       detail: `${container}/${port.protocols.join('+')}`,
-      ...(container === app.webUiPort ? { note: 'Web interface' } : {}),
+      ...(container === app.webUiPort ? { note: tr('lib.app_permissions.webInterface', 'Web interface') } : {}),
     })
   }
 
   const secrets = app.env.filter(env => env.secret)
   if (secrets.length) {
-    permissions.push({ kind: 'Secret', title: 'Stores a secret', detail: secrets.map(env => env.prompt || env.key).join(', ') })
+    permissions.push({ kind: 'Secret', title: tr('lib.app_permissions.storesASecret', 'Stores a secret'), detail: secrets.map(env => env.prompt || env.key).join(', ') })
   }
   if (app.restartPolicy !== 'no') {
-    permissions.push({ kind: 'Startup', title: 'Starts with your server', detail: app.restartPolicy })
+    permissions.push({ kind: 'Startup', title: tr('lib.app_permissions.startsWithYourServer', 'Starts with your server'), detail: app.restartPolicy })
   }
   return permissions
 }

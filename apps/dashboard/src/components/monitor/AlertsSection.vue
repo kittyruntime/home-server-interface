@@ -35,14 +35,14 @@ async function clearOne(a: Alert) {
     alerts.value = alerts.value.filter(x => x.id !== a.id)
     void refreshBadges()
   } catch (e: any) {
-    clearError.value = e?.message ?? 'Failed to clear the alert'
+    clearError.value = e?.message ?? t('uis.monitor.AlertsSection.failedToClearTheAlert')
   }
 }
 
 async function clearAll() {
   if (!await confirm(
-    `Clear all ${alerts.value.length} alerts? Alerts whose condition is still true come back at the next check (within 5 minutes).`,
-    { confirmLabel: 'Clear all' },
+    t('uis.monitor.AlertsSection.clearAllAlertsAlertsWhose', { p0: alerts.value.length }),
+    { confirmLabel: t('uis.monitor.AlertsSection.clearAll') },
   )) return
   clearing.value = true
   clearError.value = ''
@@ -51,7 +51,7 @@ async function clearAll() {
     alerts.value = []
     void refreshBadges()
   } catch (e: any) {
-    clearError.value = e?.message ?? 'Failed to clear alerts'
+    clearError.value = e?.message ?? t('uis.monitor.AlertsSection.failedToClearAlerts')
   } finally {
     clearing.value = false
   }
@@ -78,7 +78,7 @@ async function load() {
   try {
     alerts.value = await trpc.alert.list.query() as Alert[]
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load alerts'
+    error.value = e?.message ?? t('uis.monitor.AlertsSection.failedToLoadAlerts')
   } finally {
     loading.value = false
   }

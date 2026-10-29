@@ -97,7 +97,7 @@ async function createGroup() {
     sortKey.value = 'createdAt'
     sortDir.value = 'desc'
   } catch (e: any) {
-    createError.value = e?.message ?? 'Failed to create group'
+    createError.value = e?.message ?? t('uis.settings.GroupsSection.failedToCreateGroup')
   } finally {
     createLoading.value = false
   }

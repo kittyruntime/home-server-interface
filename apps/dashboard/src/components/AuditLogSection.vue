@@ -43,7 +43,7 @@ async function load() {
   } catch (e: unknown) {
     // Surface the failure instead of falling through to the empty state, which
     // would misrepresent a load error as "no activity".
-    error.value = (e as { message?: string })?.message ?? 'Failed to load the audit log'
+    error.value = (e as { message?: string })?.message ?? t('uis.settings.AuditLogSection.failedToLoadTheAudit')
   } finally {
     loading.value = false
   }

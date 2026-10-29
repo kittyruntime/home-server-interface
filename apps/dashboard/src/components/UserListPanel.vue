@@ -101,7 +101,7 @@ async function load() {
     }
     clampPage()
   } catch {
-    loadError.value = 'Failed to load users'
+    loadError.value = t('uis.settings.UserListPanel.failedToLoadUsers')
   } finally {
     loading.value = false
   }
@@ -118,22 +118,22 @@ function cancelAdd() { addingUser.value = false }
 
 async function submitAdd() {
   addError.value = ''
-  if (newUser.password !== newUser.confirmPassword) { addError.value = 'Passwords do not match'; return }
+  if (newUser.password !== newUser.confirmPassword) { addError.value = t('uis.settings.UserListPanel.passwordsDoNotMatch'); return }
   addLoading.value = true
   try {
     await applyPlanned('user.create', {
       username:    newUser.username.trim(),
       password:    newUser.password,
       displayName: newUser.displayName.trim() || undefined,
-    }, { domain: 'users', title: `Create ${newUser.username.trim()}`, actionLabel: 'Create user' })
+    }, { domain: 'users', title: t('uis.settings.UserListPanel.create', { p0: newUser.username.trim() }), actionLabel: t('uis.settings.UserListPanel.createUser') })
     addingUser.value = false
-    toast.success(`User "${newUser.username.trim()}" created`)
+    toast.success(t('uis.settings.UserListPanel.userCreated', { p0: newUser.username.trim() }))
     await load()
     page.value = pageCount.value
   } catch (e: any) {
     if (e?.message === '') return // cancelled in the plan dialog
-    addError.value = e?.message ?? 'Failed to create user'
-    toast.error(e?.message ?? 'Failed to create user')
+    addError.value = e?.message ?? t('uis.settings.UserListPanel.failedToCreateUser')
+    toast.error(e?.message ?? t('uis.settings.UserListPanel.failedToCreateUser'))
   } finally {
     addLoading.value = false
   }

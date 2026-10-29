@@ -82,10 +82,10 @@ async function checkBackup() {
       body: restoreFile.value,
     })
     const body = await response.json().catch(() => null) as (Preview & { error?: string }) | null
-    if (!response.ok || !body) throw new Error(body?.error ?? `Check failed (${response.status})`)
+    if (!response.ok || !body) throw new Error(body?.error ?? t('uis.backups.RestoreForm.checkFailed', { p0: response.status }))
     preview.value = body
   } catch (cause: unknown) {
-    restoreError.value = (cause as { message?: string })?.message ?? 'The backup could not be read'
+    restoreError.value = (cause as { message?: string })?.message ?? t('uis.backups.RestoreForm.theBackupCouldNotBe')
   } finally {
     restoreStep.value = null
     restoring.value = false
@@ -96,8 +96,8 @@ async function restoreBackup() {
   const p = preview.value
   if (!p || p.conflicts.length || !token.value) return
   const confirmed = await confirm(
-    'Replace the current HSI configuration with this backup and restart HSI? Volumes stay as they are, and apps come back stopped.',
-    { title: 'Restore configuration', confirmLabel: 'Restore and restart', danger: true },
+    t('uis.backups.RestoreForm.replaceTheCurrentHsiConfiguration'),
+    { title: t('uis.backups.RestoreForm.restoreConfiguration'), confirmLabel: t('uis.backups.RestoreForm.restoreAndRestart'), danger: true },
   )
   if (!confirmed) return
 
@@ -112,14 +112,14 @@ async function restoreBackup() {
     })
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string } | null
-      throw new Error(body?.error ?? `Restore failed (${response.status})`)
+      throw new Error(body?.error ?? t('uis.backups.RestoreForm.restoreFailed', { p0: response.status }))
     }
     restorePassword.value = ''
     if (p.format === 2) { try { localStorage.setItem(FOLLOW_UPS_KEY, '1') } catch { /* private mode */ } }
     restoreStep.value = 'restarting'
     pollRestoreRestart()
   } catch (cause: unknown) {
-    restoreError.value = (cause as { message?: string })?.message ?? 'Configuration restore failed'
+    restoreError.value = (cause as { message?: string })?.message ?? t('uis.backups.RestoreForm.configurationRestoreFailed')
     preview.value = null
     restoreStep.value = null
     restoring.value = false
@@ -131,7 +131,7 @@ function pollRestoreRestart() {
   const interval = window.setInterval(async () => {
     try {
       const response = await fetch('/health', { signal: AbortSignal.timeout(1500) })
-      if (!response.ok) throw new Error('not ready')
+      if (!response.ok) throw new Error(t('uis.backups.RestoreForm.notReady'))
       if (wentDown) {
         window.clearInterval(interval)
         props.afterRestart()

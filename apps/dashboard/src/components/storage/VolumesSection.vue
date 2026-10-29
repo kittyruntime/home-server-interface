@@ -79,15 +79,15 @@ async function loadSmart() {
 function smartIssue(v: Volume): string | null {
   for (const d of v.disks) {
     const st = smartStatus(smart.value[d.name])
-    if (st === 'failed')  return `SMART failed on ${d.name}`
-    if (st === 'warning') return `SMART warning on ${d.name}`
+    if (st === 'failed')  return t('uis.storage.VolumesSection.smartFailedOn', { p0: d.name })
+    if (st === 'warning') return t('uis.storage.VolumesSection.smartWarningOn', { p0: d.name })
   }
   return null
 }
 
 type Health = 'ok' | 'idle' | 'warning' | 'danger'
 function health(v: Volume): { level: Health; text: string } {
-  if (v.state === 'missing') return { level: 'danger', text: v.issues[0]?.text ?? 'Missing' }
+  if (v.state === 'missing') return { level: 'danger', text: v.issues[0]?.text ?? t('uis.storage.VolumesSection.missing') }
   const bad = v.issues.find(i => i.kind === 'degraded' || i.kind === 'blocked')
   if (bad) return { level: 'danger', text: bad.text }
   const smartText = smartIssue(v)
@@ -95,8 +95,8 @@ function health(v: Volume): { level: Health; text: string } {
   const warn = v.issues[0]
   if (warn) return { level: 'warning', text: warn.text }
   if (smartText) return { level: 'warning', text: smartText }
-  if (v.state === 'not-mounted') return { level: 'idle', text: 'Not mounted' }
-  return { level: 'ok', text: 'Healthy' }
+  if (v.state === 'not-mounted') return { level: 'idle', text: t('uis.storage.VolumesSection.notMounted') }
+  return { level: 'ok', text: t('uis.storage.VolumesSection.healthy') }
 }
 const HEALTH_DOT: Record<Health, string> = { ok: 'bg-success', idle: 'bg-muted-foreground', warning: 'bg-warning', danger: 'bg-destructive' }
 const HEALTH_TEXT: Record<Health, string> = { ok: 'text-foreground/80', idle: 'text-muted-foreground', warning: 'text-warning', danger: 'text-destructive' }

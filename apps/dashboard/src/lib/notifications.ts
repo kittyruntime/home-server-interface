@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 import { ref } from 'vue'
 import { useToast } from './toast'
 import { viewableJobId, viewLogsAction } from './jobLogs'
@@ -46,7 +47,7 @@ export function useNotifications() {
       setTimeout(() => dismiss(id), 3000)
       return result
     } catch (e: any) {
-      const detail = e?.message ?? 'Unknown error'
+      const detail = e?.message ?? tr('lib.notifications.unknownError', 'Unknown error')
       update(id, { type: 'error', detail, progress: undefined, jobId: viewableJobId(e) })
       // Errors must be seen without opening the bell menu.
       toast.error(`${title} failed: ${detail}`, viewLogsAction(e))

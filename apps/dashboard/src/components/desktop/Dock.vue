@@ -26,7 +26,7 @@ function onIconClick(id: string) {
   if (w.minimized) {
     focusWindow(id)
   } else if (isFocused(id)) {
-    if (w.dirty && !confirm('Discard unsaved changes?')) return
+    if (w.dirty && !confirm(t('uis.desktop.Dock.discardUnsavedChanges'))) return
     toggleMinimize(id)
   } else {
     focusWindow(id)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+
+const { t } = useI18n()
 
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
@@ -40,7 +43,7 @@ watch(() => props.repositories, repos => {
   form.value.versions.repository = defaultRepository(form.value.versions.repository, repos)
 })
 const RETENTION: Array<{ key: keyof typeof form.value.versions.retention; label: string }> = [
-  { key: 'keepLast', label: 'Latest' }, { key: 'keepDaily', label: 'Daily' }, { key: 'keepWeekly', label: 'Weekly' }, { key: 'keepMonthly', label: 'Monthly' },
+  { key: 'keepLast', label: t('uis.backups.PlanForm.latest') }, { key: 'keepDaily', label: t('uis.backups.PlanForm.daily') }, { key: 'keepWeekly', label: t('uis.backups.PlanForm.weekly') }, { key: 'keepMonthly', label: t('uis.backups.PlanForm.monthly') },
 ]
 
 async function save() {
@@ -48,7 +51,7 @@ async function save() {
   try {
     await applyPlanned('backup.plan.save', { plan: planPayload(form.value) }, {
       title: props.plan ? `Edit the plan ${form.value.name.trim()}` : `Create the plan ${form.value.name.trim()}`,
-      actionLabel: 'Save plan',
+      actionLabel: t('uis.backups.PlanForm.savePlan'),
     })
     emit('saved')
   } catch (e) {

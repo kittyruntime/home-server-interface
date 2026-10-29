@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 import { ref } from 'vue'
 import { useAuth } from './auth'
 import { JobError } from './jobs'
@@ -19,5 +20,5 @@ export function viewableJobId(e: unknown): string | undefined {
 /** "View logs" toast action for a failed job error, for admins only. */
 export function viewLogsAction(e: unknown): ToastAction | undefined {
   const jobId = viewableJobId(e)
-  return jobId ? { label: 'View logs', run: () => openJobLogs(jobId) } : undefined
+  return jobId ? { label: tr('lib.jobLogs.viewLogs', 'View logs'), run: () => openJobLogs(jobId) } : undefined
 }

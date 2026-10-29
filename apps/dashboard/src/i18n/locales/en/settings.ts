@@ -170,6 +170,7 @@ export default {
     noGroupsOrUsersTo: 'No groups or users to assign.',
   },
   ProfileSection: {
+    notSet: 'Not set',
     displayName: 'Display name',
     edit: 'Edit',
     saved: 'Saved',

@@ -91,7 +91,7 @@ async function runMemberOp(r: RaidArray, device: string, op: 'fail' | 'remove' |
     await refresh()
   } catch (e: any) {
     // An empty message means the plan was cancelled: nothing to report.
-    if (e?.message !== '') toast.error(e?.message ?? `Could not ${op} /dev/${device}`)
+    if (e?.message !== '') toast.error(e?.message ?? t('uis.storage.RaidSection.couldNotDev', { p0: op, p1: device }))
   } finally {
     memberBusy.value = null
   }
@@ -238,7 +238,7 @@ const wizardCapacity = computed(() => {
 })
 
 function toleranceText(n: number, max: number): string {
-  if (n === 0) return 'no drive failure tolerated'
+  if (n === 0) return t('uis.storage.RaidSection.noDriveFailureTolerated')
   const base = `survives ${n} drive failure${n > 1 ? 's' : ''}`
   return max > n ? `${base} (up to ${max} if they hit different mirrors)` : base
 }
@@ -275,11 +275,11 @@ async function doCreateRaid() {
   w.err  = ''
   try {
     await applyPlanned('raid.create', { name: w.name, level: w.level, devices: w.devs },
-      { title: `Create RAID ${w.level} /dev/${w.name}`, actionLabel: `Create /dev/${w.name}` })
+      { title: t('uis.storage.RaidSection.createRaidDev', { p0: w.level, p1: w.name }), actionLabel: t('uis.storage.RaidSection.createDev', { p0: w.name }) })
     raidWiz.value = null
     await refresh()
   } catch (e: any) {
-    w.err = e?.message ?? 'RAID creation failed'
+    w.err = e?.message ?? t('uis.storage.RaidSection.raidCreationFailed')
   } finally {
     if (raidWiz.value) w.busy = false
   }
@@ -304,14 +304,14 @@ async function doDestroyRaid() {
   d.err  = ''
   try {
     const res = await applyPlanned('raid.stop', { name: d.raid.name },
-      { title: `Delete RAID /dev/${d.raid.name}`, actionLabel: `Delete /dev/${d.raid.name}` })
+      { title: t('uis.storage.RaidSection.deleteRaidDev', { p0: d.raid.name }), actionLabel: t('uis.storage.RaidSection.deleteDev', { p0: d.raid.name }) })
     // The array is gone; anything left behind (a signature that could not be
     // wiped, a config file that could not be updated) is reported, not fatal.
     for (const w of res.warnings ?? []) toast.error(w)
     destroyDlg.value = null
     await refresh()
   } catch (e: any) {
-    d.err = e?.message ?? 'Failed to destroy RAID'
+    d.err = e?.message ?? t('uis.storage.RaidSection.failedToDestroyRaid')
   } finally {
     if (destroyDlg.value) d.busy = false
   }

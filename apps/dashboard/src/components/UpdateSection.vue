@@ -40,7 +40,7 @@ async function fetchStatus() {
     error.value = null
     if (status.value.hasUpdate) fetchPreflight()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to fetch update status'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToFetchUpdateStatus')
   } finally {
     loading.value = false
   }
@@ -64,7 +64,7 @@ async function checkNow() {
     await trpc.update.check.mutate()
     await fetchStatus()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to check for updates'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToCheckForUpdates')
   } finally {
     checking.value = false
   }
@@ -83,15 +83,15 @@ async function applyUpdate() {
       pollRestart()
     }, 1000)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to schedule update'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToScheduleUpdate')
     applying.value = false
   }
 }
 
 async function restartSoftware() {
   const accepted = await confirm(
-    'Restart HSI now? The interface will be unavailable for a few seconds. Running file transfers and in-progress tasks may be interrupted.',
-    { title: 'Restart HSI', confirmLabel: 'Restart now', danger: true },
+    t('uis.settings.UpdateSection.restartHsiNowTheInterface'),
+    { title: t('uis.settings.UpdateSection.restartHsi'), confirmLabel: t('uis.settings.UpdateSection.restartNow'), danger: true },
   )
   if (!accepted) return
   restarting.value = true
@@ -105,20 +105,20 @@ async function restartSoftware() {
       pollRestart()
     }, 500)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to restart HSI'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRestartHsi')
     restarting.value = false
   }
 }
 
 async function rebootHost() {
   const accepted = await confirm(
-    'Reboot the entire server? HSI, containers, file shares, and every service on this machine will be temporarily unavailable. Running tasks may be interrupted.',
-    { title: 'Reboot server', confirmLabel: 'Continue', danger: true },
+    t('uis.settings.UpdateSection.rebootTheEntireServerHsi'),
+    { title: t('uis.settings.UpdateSection.rebootServer'), confirmLabel: t('uis.settings.UpdateSection.continue'), danger: true },
   )
   if (!accepted) return
   const confirmed = await confirm(
-    'Final confirmation: reboot the physical host now?',
-    { title: 'Confirm server reboot', confirmLabel: 'Reboot server', danger: true },
+    t('uis.settings.UpdateSection.finalConfirmationRebootThePhysical'),
+    { title: t('uis.settings.UpdateSection.confirmServerReboot'), confirmLabel: t('uis.settings.UpdateSection.rebootServer'), danger: true },
   )
   if (!confirmed) return
   rebooting.value = true
@@ -132,7 +132,7 @@ async function rebootHost() {
       pollRestart()
     }, 500)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to reboot the server'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRebootTheServer')
     rebooting.value = false
   }
 }
@@ -142,7 +142,7 @@ function pollRestart() {
   const interval = setInterval(async () => {
     try {
       const res = await fetch('/health', { signal: AbortSignal.timeout(1500) })
-      if (!res.ok) throw new Error('not ok')
+      if (!res.ok) throw new Error(t('uis.settings.UpdateSection.notOk'))
       if (serverWentDown) {
         clearInterval(interval)
         restartStep.value = 'done'
@@ -172,8 +172,8 @@ function startReloadCountdown() {
 function stepLabel(key: RestartStep) {
   if (key === 'scheduled') return restartKind.value === 'update' ? 'Update scheduled' : restartKind.value === 'host' ? 'Server reboot requested' : 'Restart requested'
   if (key === 'restarting') return restartKind.value === 'update' ? 'Installing and restarting' : restartKind.value === 'host' ? 'Server rebooting' : 'HSI restarting'
-  if (key === 'reconnecting') return 'Reconnecting'
-  return 'Ready'
+  if (key === 'reconnecting') return t('uis.settings.UpdateSection.reconnecting')
+  return t('uis.settings.UpdateSection.ready')
 }
 
 const STEPS: RestartStep[] = ['scheduled', 'restarting', 'reconnecting', 'done']

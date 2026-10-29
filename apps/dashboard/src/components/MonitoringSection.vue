@@ -48,7 +48,7 @@ onMounted(async () => {
     sysinfo.value  = s
     metrics.value  = m
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load metrics'
+    error.value = e?.message ?? t('uis.settings.MonitoringSection.failedToLoadMetrics')
   } finally {
     loading.value = false
   }
@@ -85,7 +85,7 @@ async function loadHistory() {
   } catch (e: unknown) {
     // Distinguish a failed fetch from the genuine "no data recorded yet" case
     // below, which otherwise looks identical to the user.
-    historyError.value = (e as { message?: string })?.message ?? 'Failed to load metrics history'
+    historyError.value = (e as { message?: string })?.message ?? t('uis.settings.MonitoringSection.failedToLoadMetricsHistory')
   } finally {
     historyLoading.value = false
   }

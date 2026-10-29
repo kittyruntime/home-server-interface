@@ -130,14 +130,14 @@ async function apply() {
     // CONFLICT is a stale plan or a check that now fails (the name got taken):
     // show the server's reason either way.
     if (err.data?.code === 'CONFLICT') { stale.value = true; staleReason.value = err.message ?? '' }
-    else applyError.value = err.message ?? 'The operation failed'
+    else applyError.value = err.message ?? t('uis.shared.PlanDialog.theOperationFailed')
   } finally {
     applying.value = false
   }
 }
 
 function onClose() {
-  if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? 'A step failed' })
+  if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? t('uis.shared.PlanDialog.aStepFailed') })
   else if (applyError.value) settle({ status: 'failed', error: applyError.value })
   else settle({ status: 'cancelled', previewError: loadError.value || undefined, previewCode: loadErrorCode.value || undefined })
   planRequest.value = null
@@ -158,12 +158,12 @@ function deviceLine(d: NonNullable<PlanStep['device']>): string[] {
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  'done':    { label: 'Done',    cls: 'text-success' },
-  'started': { label: 'Started in the background', cls: 'text-info' },
-  'warning': { label: 'Warning', cls: 'text-warning' },
-  'skipped': { label: 'Skipped', cls: 'text-muted-foreground' },
-  'failed':  { label: 'Failed',  cls: 'text-destructive' },
-  'not-run': { label: 'Not run', cls: 'text-muted-foreground' },
+  'done':    { label: t('uis.shared.PlanDialog.done'),    cls: 'text-success' },
+  'started': { label: t('uis.shared.PlanDialog.startedInTheBackground'), cls: 'text-info' },
+  'warning': { label: t('uis.shared.PlanDialog.warning'), cls: 'text-warning' },
+  'skipped': { label: t('uis.shared.PlanDialog.skipped'), cls: 'text-muted-foreground' },
+  'failed':  { label: t('uis.shared.PlanDialog.failed'),  cls: 'text-destructive' },
+  'not-run': { label: t('uis.shared.PlanDialog.notRun'), cls: 'text-muted-foreground' },
 }
 
 function diffLineClass(line: string): string {

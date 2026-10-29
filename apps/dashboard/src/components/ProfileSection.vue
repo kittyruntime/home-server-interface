@@ -37,16 +37,16 @@ const { accent, setAccent } = useAccent()
 const { advancedMode, setAdvancedMode } = useAdvancedMode()
 
 const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; label: string }[] = [
-  { value: 'auto',  label: 'Auto'  },
-  { value: 'light', label: 'Light' },
-  { value: 'dark',  label: 'Dark'  },
+  { value: 'auto',  label: t('uis.settings.ProfileSection.auto')  },
+  { value: 'light', label: t('uis.settings.ProfileSection.light') },
+  { value: 'dark',  label: t('uis.settings.ProfileSection.dark')  },
 ]
 
 const ACCENT_OPTIONS: { value: Accent; color: string; label: string }[] = [
-  { value: 'orange', color: '#f97316', label: 'Orange' },
-  { value: 'blue',   color: '#3b82f6', label: 'Blue'   },
-  { value: 'green',  color: '#22c55e', label: 'Green'  },
-  { value: 'purple', color: '#a855f7', label: 'Purple' },
+  { value: 'orange', color: '#f97316', label: t('uis.settings.ProfileSection.orange') },
+  { value: 'blue',   color: '#3b82f6', label: t('uis.settings.ProfileSection.blue')   },
+  { value: 'green',  color: '#22c55e', label: t('uis.settings.ProfileSection.green')  },
+  { value: 'purple', color: '#a855f7', label: t('uis.settings.ProfileSection.purple') },
 ]
 
 const me      = ref<Me | null>(null)
@@ -76,7 +76,7 @@ async function saveName() {
     nameSuccess.value = true
     setTimeout(() => { nameSuccess.value = false }, 3000)
   } catch (e: any) {
-    nameError.value = e?.message ?? 'Failed to update'
+    nameError.value = e?.message ?? t('uis.settings.ProfileSection.failedToUpdate')
   } finally {
     nameLoading.value = false
   }
@@ -99,8 +99,8 @@ function openPassword() {
 async function submitPassword() {
   pwError.value   = ''
   pwSuccess.value = false
-  if (pwForm.next !== pwForm.confirm) { pwError.value = 'Passwords do not match'; return }
-  if (pwForm.next.length < 6)         { pwError.value = 'New password must be at least 6 characters'; return }
+  if (pwForm.next !== pwForm.confirm) { pwError.value = t('uis.settings.ProfileSection.passwordsDoNotMatch'); return }
+  if (pwForm.next.length < 6)         { pwError.value = t('uis.settings.ProfileSection.newPasswordMustBeAt'); return }
   pwLoading.value = true
   try {
     const result = await trpc.user.changePassword.mutate({ currentPassword: pwForm.current, newPassword: pwForm.next })
@@ -108,7 +108,7 @@ async function submitPassword() {
     pwSuccess.value = true
     Object.assign(pwForm, { current: '', next: '', confirm: '' })
   } catch (e: any) {
-    pwError.value = e?.message ?? 'Failed to change password'
+    pwError.value = e?.message ?? t('uis.settings.ProfileSection.failedToChangePassword')
   } finally {
     pwLoading.value = false
   }
@@ -160,7 +160,7 @@ onMounted(async () => {
 
         <Card v-if="!editingName" class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between">
           <span :class="me.displayName ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'">
-            {{ me.displayName || 'Not set' }}
+            {{ me.displayName || t('ui.settings.ProfileSection.notSet') }}
           </span>
           <span v-if="nameSuccess" class="text-xs text-success">{{ t('ui.settings.ProfileSection.saved') }}</span>
         </Card>

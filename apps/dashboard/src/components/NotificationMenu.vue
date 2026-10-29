@@ -40,12 +40,12 @@ function itemTitle(n: SystemNotification): string {
 }
 
 function formatTime(createdAt: string): string {
-  const t = new Date(createdAt).getTime()
-  if (Number.isNaN(t)) return ''
-  const s = Math.max(0, Math.floor((Date.now() - t) / 1000))
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  const at = new Date(createdAt).getTime()
+  if (Number.isNaN(at)) return ''
+  const s = Math.max(0, Math.floor((Date.now() - at) / 1000))
+  if (s < 60) return t('uis.settings.NotificationMenu.justNow')
+  if (s < 3600) return t('uis.settings.NotificationMenu.mAgo', { p0: Math.floor(s / 60) })
+  if (s < 86400) return t('uis.settings.NotificationMenu.hAgo', { p0: Math.floor(s / 3600) })
   const d = new Date(createdAt)
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }

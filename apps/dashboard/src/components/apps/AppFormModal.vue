@@ -32,13 +32,13 @@ const emit  = defineEmits<{
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'basic',    label: 'Basic' },
-  { id: 'ports',    label: 'Ports' },
-  { id: 'envs',     label: 'Envs' },
-  { id: 'volumes',  label: 'Volumes' },
-  { id: 'networks', label: 'Networks' },
-  { id: 'labels',   label: 'Labels' },
-  { id: 'advanced', label: 'Advanced' },
+  { id: 'basic',    label: t('uis.apps.AppFormModal.basic') },
+  { id: 'ports',    label: t('uis.apps.AppFormModal.ports') },
+  { id: 'envs',     label: t('uis.apps.AppFormModal.envs') },
+  { id: 'volumes',  label: t('uis.apps.AppFormModal.volumes') },
+  { id: 'networks', label: t('uis.apps.AppFormModal.networks') },
+  { id: 'labels',   label: t('uis.apps.AppFormModal.labels') },
+  { id: 'advanced', label: t('uis.apps.AppFormModal.advanced') },
 ]
 const activeTab   = ref<Tab>('basic')
 const showCompose = ref(false)
@@ -92,13 +92,13 @@ watch(composeServices, svcs => {
 
 function importCompose() {
   composeError.value = ''
-  if (!composeRaw.value.trim()) { composeError.value = 'Paste a compose.yml first.'; return }
+  if (!composeRaw.value.trim()) { composeError.value = t('uis.apps.AppFormModal.pasteAComposeYmlFirst'); return }
   let doc: any
-  try { doc = parseYaml(composeRaw.value) } catch (e: any) { composeError.value = `YAML parse error: ${e.message}`; return }
+  try { doc = parseYaml(composeRaw.value) } catch (e: any) { composeError.value = t('uis.apps.AppFormModal.yamlParseError', { p0: e.message }); return }
   const services = doc?.services
-  if (!services || typeof services !== 'object') { composeError.value = 'No services found.'; return }
+  if (!services || typeof services !== 'object') { composeError.value = t('uis.apps.AppFormModal.noServicesFound'); return }
   const svc = services[composeSelectedService.value]
-  if (!svc) { composeError.value = `Service "${composeSelectedService.value}" not found.`; return }
+  if (!svc) { composeError.value = t('uis.apps.AppFormModal.serviceNotFound', { p0: composeSelectedService.value }); return }
 
   if (svc.image) form.image = svc.image
 
@@ -247,7 +247,7 @@ watch(() => props.editName, async (name) => {
         activeTab.value = 'advanced'
       }
     } catch (e: any) {
-      error.value = e?.message ?? 'Failed to load app'
+      error.value = e?.message ?? t('uis.apps.AppFormModal.failedToLoadApp')
     } finally {
       loading.value = false
     }
@@ -302,14 +302,14 @@ async function save() {
     await applyPlanned('app.save', { name: form.name, create: !editing.value, data: payload }, {
       domain: 'apps',
       title: editing.value ? `Save ${form.name}` : `Create ${form.name}`,
-      actionLabel: 'Save',
+      actionLabel: t('uis.apps.AppFormModal.save'),
     })
     const name = form.name
     editing.value = true // a created app can now be applied/updated in place
     savedName.value = name
     emit('saved', name)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to save'
+    error.value = e?.message ?? t('uis.apps.AppFormModal.failedToSave')
   } finally {
     loading.value = false
   }
@@ -322,18 +322,18 @@ async function applyNow() {
   applyError.value = ''
   try {
     const jobId = await applyPlannedJob('app.apply', { name: savedName.value }, {
-      title: `Apply ${savedName.value}`, actionLabel: 'Apply',
+      title: t('uis.apps.AppFormModal.apply', { p0: savedName.value }), actionLabel: t('uis.apps.AppFormModal.apply2'),
     })
     const result = await pollJobResult(jobId)
     // A failed (or timed out) job must report as an error, not as success.
-    if (result.status !== 'completed') throw new Error(result.error ?? 'Apply failed')
+    if (result.status !== 'completed') throw new Error(result.error ?? t('uis.apps.AppFormModal.applyFailed'))
     applyState.value = 'applied'
     emit('saved', savedName.value)
   } catch (e: any) {
     // Cancelled in the plan dialog: nothing happened.
     if (e?.message === '') { applyState.value = 'idle'; return }
     applyState.value = 'error'
-    applyError.value = e?.message ?? 'Apply failed'
+    applyError.value = e?.message ?? t('uis.apps.AppFormModal.applyFailed')
   } finally {
     applying.value = false
   }

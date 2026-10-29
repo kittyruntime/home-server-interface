@@ -169,6 +169,7 @@ export default {
     noGroupsOrUsersTo: 'Aucun groupe ni utilisateur à qui donner l’accès.',
   },
   ProfileSection: {
+    notSet: 'Non défini',
     displayName: 'Nom affiché',
     edit: 'Modifier',
     saved: 'Enregistré',

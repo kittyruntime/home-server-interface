@@ -62,8 +62,8 @@ const KIND: Record<string, string> = {
 
 const kindLabel = computed(() => {
   if (stat.value?.type === 'dir') return isPlace.value ? 'Place' : 'Folder'
-  if (!ext.value) return 'File'
-  return KIND[ext.value] ?? `${ext.value.toUpperCase()} File`
+  if (!ext.value) return t('uis.files.FilePropertiesModal.file2')
+  return KIND[ext.value] ?? t('uis.files.FilePropertiesModal.file', { p0: ext.value.toUpperCase() })
 })
 
 const modeSymbol = computed(() => {
@@ -109,7 +109,7 @@ onMounted(async () => {
     stat.value = s
     diskInfo.value = d
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load properties'
+    error.value = e?.message ?? t('uis.files.FilePropertiesModal.failedToLoadProperties')
   } finally {
     loading.value = false
   }

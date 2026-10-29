@@ -76,7 +76,7 @@ async function load() {
   try {
     m = await trpc.catalog.get.query({ id: props.appId })
   } catch (e: any) {
-    loadError.value = e?.message ?? 'Failed to load this app'
+    loadError.value = e?.message ?? t('uis.store.AppInstallWizard.failedToLoadThisApp')
     loading.value = false
     return
   }
@@ -221,14 +221,14 @@ async function install() {
     }
 
     await applyPlanned('app.install', payload, {
-      domain: 'apps', title: `Install ${name.value}`, actionLabel: 'Install',
+      domain: 'apps', title: t('uis.store.AppInstallWizard.install', { p0: name.value }), actionLabel: t('uis.store.AppInstallWizard.install2'),
     })
     emit('installed')
     // Show the new app in Apps (its start-up logs) rather than opening it
     // before it is up.
     focusNewApp(name.value)
   } catch (e: any) {
-    installError.value = e?.message ?? 'Failed to install this app'
+    installError.value = e?.message ?? t('uis.store.AppInstallWizard.failedToInstallThisApp')
   } finally {
     installing.value = false
   }

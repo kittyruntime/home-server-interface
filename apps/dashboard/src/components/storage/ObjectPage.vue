@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+const { t } = useI18n()
 
 
 // The page of one storage object (#40): a header with the object's name, its
@@ -22,9 +25,9 @@ const emit = defineEmits<{ back: [] }>()
 const tab = defineModel<ObjectTab>('tab', { default: 'overview' })
 
 const TABS: { id: ObjectTab; label: string }[] = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'structure', label: 'Structure' },
-  { id: 'activity',  label: 'Activity' },
+  { id: 'overview',  label: t('uis.storage.ObjectPage.overview') },
+  { id: 'structure', label: t('uis.storage.ObjectPage.structure') },
+  { id: 'activity',  label: t('uis.storage.ObjectPage.activity') },
 ]
 </script>
 

@@ -49,11 +49,11 @@ async function doFormat() {
   try {
     const device = w.dev.path.replace(/^\/dev\//, '')
     await applyPlanned('format', { device, fstype: w.fstype, label: w.label || undefined },
-      { title: `Format ${w.dev.path}`, actionLabel: `Format ${w.dev.path}` })
+      { title: t('uis.storage.DeviceFormatWizard.format', { p0: w.dev.path }), actionLabel: t('uis.storage.DeviceFormatWizard.format', { p0: w.dev.path }) })
     w.step = 4
     emit('done')
   } catch (e: unknown) {
-    w.err = (e as { message?: string })?.message ?? 'Format failed'
+    w.err = (e as { message?: string })?.message ?? t('uis.storage.DeviceFormatWizard.formatFailed')
   } finally {
     if (wiz.value) w.busy = false
   }

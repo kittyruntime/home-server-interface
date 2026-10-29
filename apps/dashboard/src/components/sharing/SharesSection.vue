@@ -68,7 +68,7 @@ async function refresh() {
     shares.value = s
     places.value = pl as PlaceRow[]
   } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? 'Failed to load shares'
+    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToLoadShares')
   } finally {
     loading.value = false
   }
@@ -114,19 +114,19 @@ async function save() {
         smbName: editor.value.smbName.trim() || undefined,
         readOnly: editor.value.readOnly,
         guestOk: editor.value.guestOk,
-      }, { domain: 'sharing', title: 'Create the share', actionLabel: 'Share' })
+      }, { domain: 'sharing', title: t('uis.sharing.SharesSection.createTheShare'), actionLabel: t('uis.sharing.SharesSection.share') })
     } else {
       await applyPlanned('share.update', {
         id: editor.value.id,
         smbName: editor.value.smbName.trim() || null,
         readOnly: editor.value.readOnly,
         guestOk: editor.value.guestOk,
-      }, { domain: 'sharing', title: 'Save the share', actionLabel: 'Save' })
+      }, { domain: 'sharing', title: t('uis.sharing.SharesSection.saveTheShare'), actionLabel: t('uis.sharing.SharesSection.save') })
     }
     editor.value = null
     await refresh()
   } catch (e: unknown) {
-    editorError.value = (e as { message?: string })?.message ?? 'Failed to save share'
+    editorError.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToSaveShare')
   } finally {
     saving.value = false
   }
@@ -137,13 +137,13 @@ async function toggleEnabled(s: ShareRow) {
   try {
     await applyPlanned('share.update', { id: s.id, enabled: !s.enabled }, {
       domain: 'sharing',
-      title: `${s.enabled ? 'Disable' : 'Enable'} the share ${s.effectiveName}`,
-      actionLabel: s.enabled ? 'Disable' : 'Enable',
+      title: s.enabled ? t('uis.sharing.SharesSection.disableTheShare', { p0: s.effectiveName }) : t('uis.sharing.SharesSection.enableTheShare', { p0: s.effectiveName }),
+      actionLabel: s.enabled ? t('uis.sharing.SharesSection.disable') : t('uis.sharing.SharesSection.enable'),
       danger: s.enabled,
     })
     await refresh()
   } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? 'Failed to update share'
+    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToUpdateShare')
   }
 }
 
@@ -152,11 +152,11 @@ async function removeShare(s: ShareRow) {
   error.value = ''
   try {
     await applyPlanned('share.remove', { id: s.id }, {
-      domain: 'sharing', title: `Stop sharing ${s.effectiveName}; clients lose access`, actionLabel: 'Stop sharing', danger: true,
+      domain: 'sharing', title: t('uis.sharing.SharesSection.stopSharingClientsLoseAccess', { p0: s.effectiveName }), actionLabel: t('uis.sharing.SharesSection.stopSharing'), danger: true,
     })
     await refresh()
   } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? 'Failed to delete share'
+    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToDeleteShare')
   } finally {
     deleting.value = null
   }

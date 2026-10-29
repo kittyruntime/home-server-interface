@@ -121,7 +121,7 @@ async function format() {
       const cursorOffset = view!.state.selection.main.head
       const { formatted, cursorOffset: newCursor } = await formatContent(props.name, current, cursorOffset)
       if (view!.state.doc.toString() !== current) {
-        throw new Error('File changed while formatting, try again')
+        throw new Error(t('uis.files.CodeEditor.fileChangedWhileFormattingTry'))
       }
       if (formatted !== current) {
         const clamped = Math.min(Math.max(newCursor, 0), formatted.length)

@@ -29,7 +29,7 @@ onMounted(async () => {
     sysinfo.value = s
     uptime.value  = (m as { uptime: number }).uptime
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load system info'
+    error.value = e?.message ?? t('uis.settings.SystemInfoSection.failedToLoadSystemInfo')
   } finally {
     loading.value = false
   }

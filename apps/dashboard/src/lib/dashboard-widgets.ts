@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { trpc } from './trpc'
 import { type SmartResult, fetchSmartInto } from '../components/storage/smart'
@@ -23,12 +24,12 @@ type CatalogEntry = { type: WidgetType; label: string; adminOnly?: boolean; capa
 
 const CATALOG_ALL: CatalogEntry[] = [
   { type: 'cpu',        label: 'CPU'         },
-  { type: 'memory',     label: 'Memory'      },
-  { type: 'network',    label: 'Network'     },
-  { type: 'containers', label: 'Containers', adminOnly: true },
-  { type: 'storage',    label: 'Storage',    adminOnly: true, capability: 'storage' },
-  { type: 'sysinfo',    label: 'System',     adminOnly: true },
-  { type: 'smart',      label: 'Disk Health', adminOnly: true, capability: 'storage' },
+  { type: 'memory',     label: tr('lib.dashboard_widgets.memory', 'Memory')      },
+  { type: 'network',    label: tr('lib.dashboard_widgets.network', 'Network')     },
+  { type: 'containers', label: tr('lib.dashboard_widgets.containers', 'Containers'), adminOnly: true },
+  { type: 'storage',    label: tr('lib.dashboard_widgets.storage', 'Storage'),    adminOnly: true, capability: 'storage' },
+  { type: 'sysinfo',    label: tr('lib.dashboard_widgets.system', 'System'),     adminOnly: true },
+  { type: 'smart',      label: tr('lib.dashboard_widgets.diskHealth', 'Disk Health'), adminOnly: true, capability: 'storage' },
 ]
 
 /** Widget types selectable given the viewer's role. Admin-only widgets rely on

@@ -60,7 +60,7 @@ async function addPlace() {
     adding.value  = false
   } catch (e: any) {
     if (e?.message === 'Path does not exist') pathMissing.value = true
-    addError.value = e?.message ?? 'Failed to add place'
+    addError.value = e?.message ?? t('uis.settings.PlacesSection.failedToAddPlace')
   } finally {
     addLoading.value = false
   }
@@ -73,7 +73,7 @@ async function createDir() {
     await trpc.place.mkdir.mutate({ path: newPath.value.trim() })
     pathMissing.value = false
   } catch (e: any) {
-    addError.value = e?.message ?? 'Failed to create directory'
+    addError.value = e?.message ?? t('uis.settings.PlacesSection.failedToCreateDirectory')
     addLoading.value = false
     return
   }
@@ -86,7 +86,7 @@ async function setIcon(place: Place, icon: string | null) {
     await trpc.place.setIcon.mutate({ id: place.id, icon })
     place.icon = icon
   } catch (e: any) {
-    toast.error(e?.message ?? 'Failed to change the icon')
+    toast.error(e?.message ?? t('uis.settings.PlacesSection.failedToChangeTheIcon'))
   }
 }
 

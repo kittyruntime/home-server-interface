@@ -22,10 +22,10 @@ async function revoke(id: string) { await trpc.shareLink.revoke.mutate({ id }); 
 async function remove(id: string) { await trpc.shareLink.delete.mutate({ id }); await load() }
 
 function status(l: Link) {
-  if (l.disabled) return 'Revoked'
-  if (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now()) return 'Expired'
-  if (l.maxDownloads != null && l.downloads >= l.maxDownloads) return 'Exhausted'
-  return 'Active'
+  if (l.disabled) return t('uis.settings.SharedLinksSection.revoked')
+  if (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now()) return t('uis.settings.SharedLinksSection.expired')
+  if (l.maxDownloads != null && l.downloads >= l.maxDownloads) return t('uis.settings.SharedLinksSection.exhausted')
+  return t('uis.settings.SharedLinksSection.active')
 }
 onMounted(load)
 </script>

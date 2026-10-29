@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 // Audit log actions in words, shared by the audit log and the activity of
 // storage objects.
 export function actionLabel(action: string): string {
@@ -99,7 +100,8 @@ export function actionLabel(action: string): string {
     'storage.apply':                'Apply storage change',
     'update.apply':                 'Install update',
   }
-  return map[action] ?? humanize(action)
+  const label = map[action]
+  return label ? tr(`lib.audit.${action.replace(/\./g, '_')}`, label) : humanize(action)
 }
 
 // An action without a label yet, in words: "widgets.resetLayout" reads

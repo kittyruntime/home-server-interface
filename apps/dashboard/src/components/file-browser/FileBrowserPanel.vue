@@ -249,7 +249,7 @@ async function navigate(path: string) {
     entries.value = (await trpc.fs.list.query({ path })) as Entry[]
     currentPath.value = path
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to read directory'
+    error.value = e?.message ?? t('uis.files.FileBrowserPanel.failedToReadDirectory')
   } finally {
     loading.value = false
   }

@@ -34,7 +34,7 @@ async function downloadBackup() {
     })
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string } | null
-      throw new Error(body?.error ?? `Export failed (${response.status})`)
+      throw new Error(body?.error ?? t('uis.settings.BackupSection.exportFailed', { p0: response.status }))
     }
     const blob = await response.blob()
     const disposition = response.headers.get('content-disposition') ?? ''
@@ -49,7 +49,7 @@ async function downloadBackup() {
     confirmation.value = ''
     complete.value = true
   } catch (cause: unknown) {
-    error.value = (cause as { message?: string })?.message ?? 'Configuration export failed'
+    error.value = (cause as { message?: string })?.message ?? t('uis.settings.BackupSection.configurationExportFailed')
   } finally {
     exporting.value = false
   }

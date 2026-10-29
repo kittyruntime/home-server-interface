@@ -11,7 +11,7 @@ import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
-import { catalogVersion, filterChips, keptFilter, visibleApps } from '../../lib/store'
+import { catalogVersion, filterChips, keptFilter, visibleApps, categoryLabel } from '../../lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -53,11 +53,11 @@ function cardState(a: Entry): CardState {
   }
 }
 const STATE_META: Record<CardState, { label: string; dot: string; text: string }> = {
-  none:       { label: 'Not installed', dot: '',                                      text: 'text-muted-foreground' },
-  installing: { label: 'Installing…',   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
-  running:    { label: 'Running',       dot: 'bg-success',                 text: 'text-success' },
-  stopped:    { label: 'Stopped',       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
-  error:      { label: 'Error',         dot: 'bg-primary',                  text: 'text-primary' },
+  none:       { label: t('uis.store.AppStorePanel.notInstalled'), dot: '',                                      text: 'text-muted-foreground' },
+  installing: { label: t('uis.store.AppStorePanel.installing'),   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
+  running:    { label: t('uis.store.AppStorePanel.running'),       dot: 'bg-success',                 text: 'text-success' },
+  stopped:    { label: t('uis.store.AppStorePanel.stopped'),       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
+  error:      { label: t('uis.store.AppStorePanel.error'),         dot: 'bg-primary',                  text: 'text-primary' },
 }
 
 function openWizard(a: Entry) { selected.value = a }
@@ -93,7 +93,7 @@ async function runPlan(a: Entry, op: 'app.update' | 'app.rollback') {
       await refresh()
       const result = await pollJobResult(reply.jobId, 10 * 60_000) // a pull can be long
       if (result.status !== 'completed') {
-        actionError.value = { id: a.id, message: `${opts.actionLabel} of ${inst.name} failed: ${result.error ?? 'the app could not be recreated'}` }
+        actionError.value = { id: a.id, message: `${opts.actionLabel} of ${inst.name} failed: ${result.error ?? t('uis.store.AppStorePanel.theAppCouldNotBe')}` }
       }
     }
   } catch (e) {
@@ -200,7 +200,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
                   class="h-auto justify-start p-0 text-sm font-medium text-foreground truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
                   @click="openDetail(a)"
                 >{{ a.name }}</Button>
-                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ a.category }}</span>
+                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ categoryLabel(a.category) }}</span>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>

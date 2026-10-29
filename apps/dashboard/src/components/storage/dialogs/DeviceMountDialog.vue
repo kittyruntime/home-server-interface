@@ -59,7 +59,7 @@ async function doMount() {
       device, mountpoint: d.mp, options: d.options || undefined, persist: d.persist, access: d.access,
       ownerUserId: d.access === 'user' ? d.ownerUserId : undefined,
       force: d.access !== 'keep' && d.force,
-    }, { title: `Mount ${d.dev.path} on ${d.mp}`, actionLabel: 'Mount' })
+    }, { title: t('uis.storage.DeviceMountDialog.mountOn', { p0: d.dev.path, p1: d.mp }), actionLabel: t('uis.storage.DeviceMountDialog.mount') })
     // Mounted: anything left unchanged (existing data, unknown account) is
     // reported without failing the mount.
     for (const w of res.warnings ?? []) toast.info(w)
@@ -68,15 +68,15 @@ async function doMount() {
     if (d.createPlace && d.placeName.trim()) {
       try {
         await trpc.place.create.mutate({ name: d.placeName.trim(), path: d.mp })
-        toast.success(`Place "${d.placeName.trim()}" created`)
+        toast.success(t('uis.storage.DeviceMountDialog.placeCreated', { p0: d.placeName.trim() }))
       } catch (e: unknown) {
-        toast.error(`Mounted, but the Place was not created: ${(e as { message?: string })?.message ?? 'unknown error'}`)
+        toast.error(`Mounted, but the Place was not created: ${(e as { message?: string })?.message ?? t('uis.storage.DeviceMountDialog.unknownError')}`)
       }
     }
     dlg.value = null
     emit('done')
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Mount failed'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.DeviceMountDialog.mountFailed')
   } finally {
     if (dlg.value) d.busy = false
   }

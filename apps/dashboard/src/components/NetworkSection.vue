@@ -30,7 +30,7 @@ async function load() {
   try {
     status.value = await trpc.network.status.query()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to read the network settings'
+    error.value = e?.message ?? t('uis.settings.NetworkSection.failedToReadTheNetwork')
   } finally {
     loading.value = false
   }
@@ -86,8 +86,8 @@ async function apply(i: Iface) {
       ...(form.value.method === 'manual' ? { address: form.value.address.trim(), ...(form.value.gateway.trim() ? { gateway: form.value.gateway.trim() } : {}) } : {}),
       dns: dnsList.value,
     }, {
-      title: `Change the network of ${i.device}`,
-      actionLabel: 'Apply',
+      title: t('uis.settings.NetworkSection.changeTheNetworkOf', { p0: i.device }),
+      actionLabel: t('uis.settings.NetworkSection.apply'),
       notice: moving
         ? `The dashboard moves to ${moving}. Open ${newUrl(moving)} and keep the change there within ${status.value?.confirmSeconds ?? 120} seconds, or the previous settings come back by themselves.`
         : `Keep the change within ${status.value?.confirmSeconds ?? 120} seconds once it is applied, or the previous settings come back by themselves.`,
@@ -105,9 +105,9 @@ async function apply(i: Iface) {
 async function keep(checkpoint: string) {
   try {
     await trpc.network.confirm.mutate({ checkpoint })
-    toast.success('Network settings kept')
+    toast.success(t('uis.settings.NetworkSection.networkSettingsKept'))
   } catch (e: any) {
-    toast.error(e?.message ?? 'The change could not be kept')
+    toast.error(e?.message ?? t('uis.settings.NetworkSection.theChangeCouldNotBe'))
   }
   pending.value = null
   await load()
@@ -116,9 +116,9 @@ async function keep(checkpoint: string) {
 async function undo(checkpoint: string) {
   try {
     await trpc.network.rollback.mutate({ checkpoint })
-    toast.success('Previous network settings restored')
+    toast.success(t('uis.settings.NetworkSection.previousNetworkSettingsRestored'))
   } catch (e: any) {
-    toast.error(e?.message ?? 'The change could not be undone')
+    toast.error(e?.message ?? t('uis.settings.NetworkSection.theChangeCouldNotBe2'))
   }
   pending.value = null
   await load()

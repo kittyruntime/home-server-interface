@@ -31,7 +31,7 @@ const route = computed(() => {
   const p = props.plan
   if (p.type === 'versions' && p.versions) {
     const repo = props.repositories.find(r => r.id === p.versions!.repository)
-    return `${p.versions.sources.join(', ')} → ${repo?.name ?? 'missing repository'}`
+    return `${p.versions.sources.join(', ')} → ${repo?.name ?? t('uis.backups.PlanCard.missingRepository')}`
   }
   const s = (p.sync ?? {}) as { direction?: string; source?: string; destination?: string; remoteHost?: string; remoteUser?: string }
   const remote = s.remoteHost ? `${s.remoteUser}@${s.remoteHost}:` : ''
@@ -57,8 +57,8 @@ async function remove() {
   error.value = ''
   try {
     await applyPlanned('backup.plan.remove', { id: props.plan.id }, {
-      title: `Remove the plan ${props.plan.name}`,
-      actionLabel: 'Remove plan',
+      title: t('uis.backups.PlanCard.removeThePlan', { p0: props.plan.name }),
+      actionLabel: t('uis.backups.PlanCard.removePlan'),
       danger: true,
       notice: props.plan.type === 'versions' ? 'The versions already in the repository are kept.' : 'The files already copied are kept.',
     })

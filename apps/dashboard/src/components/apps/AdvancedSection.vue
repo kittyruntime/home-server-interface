@@ -57,17 +57,17 @@ watch(() => props.rawYaml, (v) => {
 async function saveRawYaml() {
   yamlError.value = ''
   yamlSavedAt.value = false
-  if (!props.appName) { yamlError.value = 'Save the app first to get a name.'; return }
+  if (!props.appName) { yamlError.value = t('uis.apps.AdvancedSection.saveTheAppFirstTo'); return }
   yamlSaving.value = true
   try {
     await applyPlanned('app.save', { name: props.appName, raw: yamlDraft.value }, {
-      domain: 'apps', title: `Save the compose file of ${props.appName}`, actionLabel: 'Save',
+      domain: 'apps', title: t('uis.apps.AdvancedSection.saveTheComposeFileOf', { p0: props.appName }), actionLabel: t('uis.apps.AdvancedSection.save'),
     })
     yamlDirty.value = false
     yamlSavedAt.value = true
     emit('raw-saved', yamlDraft.value)
   } catch (e: any) {
-    yamlError.value = e?.message ?? 'Failed to save the file'
+    yamlError.value = e?.message ?? t('uis.apps.AdvancedSection.failedToSaveTheFile')
   } finally {
     yamlSaving.value = false
   }
@@ -94,7 +94,7 @@ function addExtraHost() {
   extraHostError.value = ''
   const h = extraHostInput.value.trim()
   if (!h) return
-  if (!/^[^:]+:[^:]+$/.test(h)) { extraHostError.value = 'Format: hostname:ip'; return }
+  if (!/^[^:]+:[^:]+$/.test(h)) { extraHostError.value = t('uis.apps.AdvancedSection.formatHostnameIp'); return }
   if (!props.modelValue.extraHosts.includes(h)) {
     update('extraHosts', [...props.modelValue.extraHosts, h])
   }

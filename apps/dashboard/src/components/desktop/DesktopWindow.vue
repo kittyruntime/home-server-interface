@@ -66,7 +66,7 @@ const { confirm } = useConfirm()
 
 // A minimized window is unmounted too: both lose unsaved changes.
 async function discardChanges(): Promise<boolean> {
-  return !props.win.dirty || await confirm('Discard unsaved changes?', { danger: true, confirmLabel: 'Discard' })
+  return !props.win.dirty || await confirm(t('uis.desktop.DesktopWindow.discardUnsavedChanges'), { danger: true, confirmLabel: t('uis.desktop.DesktopWindow.discard') })
 }
 
 async function onCloseClick() {

@@ -28,11 +28,11 @@ onMounted(refresh)
 defineExpose({ refresh })
 
 const STATE: Record<string, { label: string; cls: string }> = {
-  ok:       { label: 'Mounted',      cls: 'border-transparent bg-success/10 text-success' },
-  missing:  { label: 'Missing',      cls: 'border-transparent bg-destructive/10 text-destructive' },
-  wrong:    { label: 'Wrong volume', cls: 'border-transparent bg-destructive/10 text-destructive' },
-  readonly: { label: 'Read-only',    cls: 'border-transparent bg-warning/10 text-warning' },
-  unmounted: { label: 'Unmounted',   cls: '' },
+  ok:       { label: t('uis.storage.VolumeHealthPanel.mounted'),      cls: 'border-transparent bg-success/10 text-success' },
+  missing:  { label: t('uis.storage.VolumeHealthPanel.missing'),      cls: 'border-transparent bg-destructive/10 text-destructive' },
+  wrong:    { label: t('uis.storage.VolumeHealthPanel.wrongVolume'), cls: 'border-transparent bg-destructive/10 text-destructive' },
+  readonly: { label: t('uis.storage.VolumeHealthPanel.readOnly'),    cls: 'border-transparent bg-warning/10 text-warning' },
+  unmounted: { label: t('uis.storage.VolumeHealthPanel.unmounted'),   cls: '' },
 }
 
 function since(d: string | Date): string {

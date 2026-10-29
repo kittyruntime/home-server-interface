@@ -63,12 +63,12 @@ async function startStream() {
       signal: controller.signal,
     })
   } catch (e: any) {
-    if (e.name !== 'AbortError') error.value = e.message ?? 'Connection failed'
+    if (e.name !== 'AbortError') error.value = e.message ?? t('uis.apps.ContainerLogsPanel.connectionFailed')
     return
   }
 
   if (!res.ok) {
-    error.value = `Error ${res.status}: ${await res.text()}`
+    error.value = t('uis.apps.ContainerLogsPanel.error', { p0: res.status, p1: await res.text() })
     return
   }
 
@@ -123,7 +123,7 @@ async function startStream() {
       }
     }
   } catch (e: any) {
-    if (e.name !== 'AbortError') error.value = e.message ?? 'Stream error'
+    if (e.name !== 'AbortError') error.value = e.message ?? t('uis.apps.ContainerLogsPanel.streamError')
   } finally {
     if (flushTimer) clearTimeout(flushTimer)
     flush()

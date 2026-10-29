@@ -89,15 +89,15 @@ watch(pendingAppFocus, name => {
 })
 
 const activeAppLabel = computed(() => {
-  if (activeApp.value === 'dashboard') return 'Overview'
-  if (activeApp.value === 'files') return 'Files'
-  if (activeApp.value === 'settings') return 'Settings'
-  if (activeApp.value === 'apps') return 'Apps'
-  if (activeApp.value === 'storage') return 'Storage'
-  if (activeApp.value === 'store') return 'App Store'
-  if (activeApp.value === 'monitor') return 'Monitor'
-  if (activeApp.value === 'sharing') return 'Sharing'
-  return 'Overview'
+  if (activeApp.value === 'dashboard') return t('uis.views.DashboardLayout.overview')
+  if (activeApp.value === 'files') return t('uis.views.DashboardLayout.files')
+  if (activeApp.value === 'settings') return t('uis.views.DashboardLayout.settings')
+  if (activeApp.value === 'apps') return t('uis.views.DashboardLayout.apps')
+  if (activeApp.value === 'storage') return t('uis.views.DashboardLayout.storage')
+  if (activeApp.value === 'store') return t('uis.views.DashboardLayout.appStore')
+  if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
+  if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
+  return t('uis.views.DashboardLayout.overview')
 })
 
 function selectApp(id: string) {

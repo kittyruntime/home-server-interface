@@ -23,7 +23,7 @@ async function poll() {
     connections.value = res.connections
     error.value = ''
   } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? 'Failed to load connections'
+    error.value = (e as { message?: string })?.message ?? t('uis.sharing.ConnectionsSection.failedToLoadConnections')
   } finally {
     loading.value = false
   }

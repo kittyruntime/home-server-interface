@@ -30,7 +30,7 @@ const bodyRef = ref<{ save: () => void } | null>(null)
 const dirty = ref(false)
 
 function tryClose() {
-  if (dirty.value && !confirm('Discard unsaved changes?')) return
+  if (dirty.value && !confirm(t('uis.files.FilePreviewModal.discardUnsavedChanges'))) return
   emit('close')
 }
 </script>

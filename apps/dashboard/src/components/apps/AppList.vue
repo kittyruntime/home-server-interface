@@ -85,11 +85,11 @@ function statusDot(status: string) {
 
 function statusText(status: string) {
   switch (status) {
-    case 'running':       return { label: 'Running',  cls: 'text-success' }
-    case 'stopped':       return { label: 'Stopped',  cls: 'text-muted-foreground'   }
-    case 'error':         return { label: 'Error',    cls: 'text-primary'   }
-    case 'transitioning': return { label: 'Updating…',cls: 'text-warning'  }
-    default:              return { label: 'Unknown',  cls: 'text-muted-foreground'   }
+    case 'running':       return { label: t('uis.apps.AppList.running'),  cls: 'text-success' }
+    case 'stopped':       return { label: t('uis.apps.AppList.stopped'),  cls: 'text-muted-foreground'   }
+    case 'error':         return { label: t('uis.apps.AppList.error'),    cls: 'text-primary'   }
+    case 'transitioning': return { label: t('uis.apps.AppList.updating'),cls: 'text-warning'  }
+    default:              return { label: t('uis.apps.AppList.unknown'),  cls: 'text-muted-foreground'   }
   }
 }
 
@@ -111,17 +111,17 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
   try {
     if (action === 'delete') {
       const jobId = await applyPlannedJob('app.remove', { name: app?.name ?? id }, {
-        title: `Delete ${app?.name ?? id}`, actionLabel: 'Delete', danger: true,
+        title: t('uis.apps.AppList.delete', { p0: app?.name ?? id }), actionLabel: t('uis.apps.AppList.delete2'), danger: true,
       })
       const result = await pollJobResult(jobId)
       // Only drop the row when the job actually completed; on failure the row
       // stays and the error is surfaced.
-      if (result.status !== 'completed') throw new JobError(result.error ?? 'Delete failed', jobId)
+      if (result.status !== 'completed') throw new JobError(result.error ?? t('uis.apps.AppList.deleteFailed'), jobId)
       apps.value = apps.value.filter(a => a.id !== id)
       return
     }
     const jobId = action === 'start'
-      ? await applyPlannedJob('app.start', { name: app?.name ?? id }, { title: `Start ${app?.name ?? id}`, actionLabel: 'Start' })
+      ? await applyPlannedJob('app.start', { name: app?.name ?? id }, { title: t('uis.apps.AppList.start', { p0: app?.name ?? id }), actionLabel: t('uis.apps.AppList.start2') })
       : (await trpc.container.app[action].mutate({ name: app?.name ?? id })).jobId
     if (app) app.status = 'transitioning'
     const result = await pollJobResult(jobId)
@@ -132,7 +132,7 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     if (planned && e?.message === '') return // cancelled in the plan dialog
     if (app) app.status = 'unknown'
     if (notifId) updateNotif(notifId, { type: 'error', title: `${actionLabel} ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined, jobId: viewableJobId(e) })
-    toast.error(e.message ?? `Failed: ${action}`, viewLogsAction(e))
+    toast.error(e.message ?? t('uis.apps.AppList.failed', { p0: action }), viewLogsAction(e))
   } finally {
     delete actionLoading.value[id]
   }
@@ -144,16 +144,16 @@ async function applyApp(id: string) {
   let notifId: string | null = null
   try {
     const jobId = await applyPlannedJob('app.apply', { name: app?.name ?? id }, {
-      title: `Apply ${app?.name ?? id}`, actionLabel: 'Apply',
+      title: t('uis.apps.AppList.apply', { p0: app?.name ?? id }), actionLabel: t('uis.apps.AppList.apply2'),
     })
-    const nid = pushNotif({ type: 'progress', title: `Applying ${app?.name ?? ''}…`, progress: -1 })
+    const nid = pushNotif({ type: 'progress', title: t('uis.apps.AppList.applying', { p0: app?.name ?? '' }), progress: -1 })
     notifId = nid
     const result = await pollJobResult(jobId)
     if (result.status !== 'completed') {
       // Job failed (or timed out): keep the pending badge and surface the error.
-      const msg = result.error ?? 'Apply failed'
+      const msg = result.error ?? t('uis.apps.AppList.applyFailed')
       const err = new JobError(msg, jobId)
-      updateNotif(nid, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: msg, progress: undefined, jobId: viewableJobId(err) })
+      updateNotif(nid, { type: 'error', title: t('uis.apps.AppList.applyFailed2', { p0: app?.name ?? '' }), detail: msg, progress: undefined, jobId: viewableJobId(err) })
       toast.error(msg, viewLogsAction(err))
       return
     }
@@ -164,8 +164,8 @@ async function applyApp(id: string) {
     if (app) app.pendingApply = false
   } catch (e: any) {
     if (e?.message === '') return // cancelled in the plan dialog
-    if (notifId) updateNotif(notifId, { type: 'error', title: `Apply ${app?.name ?? ''} failed`, detail: e?.message, progress: undefined })
-    toast.error(e?.message ?? 'Failed to apply')
+    if (notifId) updateNotif(notifId, { type: 'error', title: t('uis.apps.AppList.applyFailed2', { p0: app?.name ?? '' }), detail: e?.message, progress: undefined })
+    toast.error(e?.message ?? t('uis.apps.AppList.failedToApply'))
   } finally {
     delete actionLoading.value[id]
   }
@@ -225,7 +225,7 @@ async function savePin() {
     if (app.app) app.app.pinnedUrl = url
     pinDialog.value = null
   } catch (e: any) {
-    pinDialogErr.value = e?.message ?? 'Failed to save'
+    pinDialogErr.value = e?.message ?? t('uis.apps.AppList.failedToSave')
   } finally {
     pinDialogBusy.value = false
   }
@@ -236,7 +236,7 @@ async function unpin(app: App) {
     await trpc.container.app.pin.mutate({ name: app.name, pinnedUrl: null })
     if (app.app) app.app.pinnedUrl = null
   } catch (e: any) {
-    toast.error(e?.message ?? 'Failed to unpin')
+    toast.error(e?.message ?? t('uis.apps.AppList.failedToUnpin'))
   }
 }
 </script>

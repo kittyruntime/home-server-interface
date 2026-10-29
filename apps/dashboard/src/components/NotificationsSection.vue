@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tip from './ui/Tip.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon, PlusIcon } from '@lucide/vue'
@@ -12,6 +13,8 @@ import { useConfirm } from '../lib/confirm'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 
 const { confirm } = useConfirm()
@@ -46,7 +49,7 @@ async function load() {
     rules.value = r
     deliveries.value = d
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load notifications settings'
+    error.value = e?.message ?? t('uis.settings.NotificationsSection.failedToLoadNotificationsSettings')
   } finally {
     loading.value = false
   }
@@ -55,7 +58,7 @@ async function load() {
 onMounted(load)
 
 function connectorLabel(id: string): string {
-  if (id === 'inapp') return 'In-app (bell)'
+  if (id === 'inapp') return t('uis.settings.NotificationsSection.inAppBell')
   return connectors.value.find(c => c.id === id)?.name ?? id
 }
 
@@ -100,18 +103,18 @@ async function toggleConnector(c: Connector) {
     await trpc.notifications.connectors.setEnabled.mutate({ id: c.id, enabled: !c.enabled })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to update connector'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToUpdateConnector')
   }
 }
 
 async function deleteConnector(c: Connector) {
-  if (!await confirm(`Delete connector "${c.name}"? Rules targeting it will drop it.`, { danger: true, confirmLabel: 'Delete' })) return
+  if (!await confirm(t('uis.settings.NotificationsSection.deleteConnectorRulesTargetingIt', { p0: c.name }), { danger: true, confirmLabel: t('uis.settings.NotificationsSection.delete') })) return
   actionError.value = ''
   try {
     await trpc.notifications.connectors.delete.mutate({ id: c.id })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to delete connector'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToDeleteConnector')
   }
 }
 
@@ -135,18 +138,18 @@ async function toggleRule(r: Rule) {
     })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to update rule'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToUpdateRule')
   }
 }
 
 async function deleteRule(r: Rule) {
-  if (!await confirm(`Delete rule "${r.name}"?`, { danger: true, confirmLabel: 'Delete' })) return
+  if (!await confirm(t('uis.settings.NotificationsSection.deleteRule', { p0: r.name }), { danger: true, confirmLabel: t('uis.settings.NotificationsSection.delete') })) return
   actionError.value = ''
   try {
     await trpc.notifications.rules.delete.mutate({ id: r.id })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to delete rule'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToDeleteRule')
   }
 }
 
@@ -162,7 +165,7 @@ function deliveryDot(d: Delivery): string {
 }
 
 function deliveryText(d: Delivery): string {
-  if (d.status === 'sent') return 'Delivered'
+  if (d.status === 'sent') return t('uis.settings.NotificationsSection.delivered')
   if (d.status === 'failed') return d.error || 'Failed'
   return d.attempts > 0 ? `Retrying (attempt ${d.attempts + 1} of 3): ${d.error}` : 'Queued'
 }

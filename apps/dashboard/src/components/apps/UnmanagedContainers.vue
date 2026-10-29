@@ -48,7 +48,7 @@ async function load() {
   try {
     containers.value = (await trpc.container.app.listUnmanaged.query()) as UnmanagedContainer[]
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load'
+    error.value = e?.message ?? t('uis.apps.UnmanagedContainers.failedToLoad')
   } finally {
     loading.value = false
   }
@@ -86,7 +86,7 @@ async function importContainer(c: UnmanagedContainer) {
     containers.value = containers.value.filter(x => x.name !== c.name)
     emit('imported')
   } catch (e: any) {
-    toast.error(e?.message ?? 'Import failed')
+    toast.error(e?.message ?? t('uis.apps.UnmanagedContainers.importFailed'))
   } finally {
     const next = new Set(importing.value)
     next.delete(c.name)
@@ -107,8 +107,8 @@ async function readComposeFile(event: Event) {
 
 async function importCompose() {
   composeError.value = null
-  if (!composeName.value.trim()) { composeError.value = 'Enter an app name.'; return }
-  if (!composeContent.value.trim()) { composeError.value = 'Paste a compose file or choose a file.'; return }
+  if (!composeName.value.trim()) { composeError.value = t('uis.apps.UnmanagedContainers.enterAnAppName'); return }
+  if (!composeContent.value.trim()) { composeError.value = t('uis.apps.UnmanagedContainers.pasteAComposeFileOr'); return }
   composeImporting.value = true
   try {
     await trpc.container.app.importCompose.mutate({ name: composeName.value.trim(), content: composeContent.value })
@@ -117,7 +117,7 @@ async function importCompose() {
     composeContent.value = ''
     emit('imported')
   } catch (e: any) {
-    composeError.value = e?.message ?? 'Import failed'
+    composeError.value = e?.message ?? t('uis.apps.UnmanagedContainers.importFailed')
   } finally {
     composeImporting.value = false
   }

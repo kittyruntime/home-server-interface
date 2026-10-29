@@ -26,7 +26,7 @@ async function load() {
   try {
     status.value = await trpc.telemetry.status.query()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load telemetry settings'
+    error.value = e?.message ?? t('uis.settings.TelemetrySection.failedToLoadTelemetrySettings')
   } finally {
     loading.value = false
   }
@@ -37,7 +37,7 @@ async function setEnabled(enabled: boolean) {
   try {
     status.value = await trpc.telemetry.setEnabled.mutate({ enabled })
   } catch (e: any) {
-    toast.error(e?.message ?? 'Failed to change telemetry')
+    toast.error(e?.message ?? t('uis.settings.TelemetrySection.failedToChangeTelemetry'))
   } finally {
     saving.value = false
   }

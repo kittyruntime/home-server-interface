@@ -67,7 +67,7 @@ async function removeVolume() {
   removeError.value = ''
   try {
     await applyPlanned('volume.remove', { id: v.id }, {
-      domain: 'volume', title: `Remove the volume ${v.name}`, actionLabel: 'Remove volume', danger: true, confirmText: v.name,
+      domain: 'volume', title: t('uis.storage.VolumePage.removeTheVolume', { p0: v.name }), actionLabel: t('uis.storage.VolumePage.removeVolume'), danger: true, confirmText: v.name,
       notice: removeNotice(v.name, v.space ? fmtBytes(v.space.used) : undefined),
     })
     emit('navigate', 'volumes')
@@ -109,12 +109,12 @@ const LAYER: Record<string, string> = {
 const health = computed(() => {
   const v = volume.value
   if (!v) return { cls: '', text: '' }
-  if (v.state === 'missing') return { cls: 'text-destructive', dot: 'bg-destructive', text: 'Missing' }
+  if (v.state === 'missing') return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.VolumePage.missing') }
   const bad = v.issues.find(i => i.kind === 'degraded' || i.kind === 'blocked')
   if (bad) return { cls: 'text-destructive', dot: 'bg-destructive', text: bad.text }
   if (v.issues.length) return { cls: 'text-warning', dot: 'bg-warning', text: v.issues[0]!.text }
-  if (v.state === 'not-mounted') return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: 'Not mounted' }
-  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
+  if (v.state === 'not-mounted') return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: t('uis.storage.VolumePage.notMounted') }
+  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.VolumePage.healthy') }
 })
 const usedPct = computed(() => volume.value?.space ? Math.round((volume.value.space.used / volume.value.space.total) * 100) : 0)
 

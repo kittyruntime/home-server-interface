@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **French interface**: the dashboard is available in English and French.
+  The language follows the browser at first, is chosen in the profile, and
+  follows the account to every device. Translations live in
+  `apps/dashboard/src/i18n/locales`; a missing French text shows in English.
+  The App Store descriptions and messages coming from the server are still in
+  English.
 - **Network settings** (Settings > Network): IPv4 addressing (DHCP or manual
   address and gateway) and DNS servers of each interface, through
   NetworkManager. A change is applied under a NetworkManager checkpoint: it

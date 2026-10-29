@@ -6,9 +6,7 @@ import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 
-withDefaults(defineProps<{ modelValue: string; placeholder?: string }>(), {
-  placeholder: 'Search…',
-})
+defineProps<{ modelValue: string; placeholder?: string }>()
 defineEmits<{ 'update:modelValue': [v: string] }>()
 </script>
 
@@ -17,7 +15,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
     <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
     <Input
       :model-value="modelValue"
-      :placeholder="placeholder"
+      :placeholder="placeholder ?? t('uis.shared.SearchInput.search')"
       class="pl-8 pr-8"
       @update:model-value="$emit('update:modelValue', String($event))"
     />

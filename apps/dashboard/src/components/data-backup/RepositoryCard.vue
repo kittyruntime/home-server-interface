@@ -30,7 +30,7 @@ const restoring = ref(false)
 const checking = computed(() => props.repository.lastCheck?.status === 'running')
 const last = computed(() => {
   const l = runLabel(props.repository.lastCheck)
-  return props.repository.lastCheck ? l : { ...l, text: 'Never checked' }
+  return props.repository.lastCheck ? l : { ...l, text: t('uis.backups.RepositoryCard.neverChecked') }
 })
 
 async function check(full: boolean) {
@@ -50,11 +50,11 @@ async function remove() {
   error.value = ''
   try {
     await applyPlanned('backup.repository.remove', { id: props.repository.id }, {
-      title: `Remove the repository ${props.repository.name}`,
-      actionLabel: 'Remove repository',
+      title: t('uis.backups.RepositoryCard.removeTheRepository', { p0: props.repository.name }),
+      actionLabel: t('uis.backups.RepositoryCard.removeRepository'),
       danger: true,
-      notice: 'HSI forgets the password of this repository. Without it, the backups stored there cannot be read.',
-      acknowledge: 'I kept the password of this repository, or I no longer need these backups',
+      notice: t('uis.backups.RepositoryCard.hsiForgetsThePasswordOf'),
+      acknowledge: t('uis.backups.RepositoryCard.iKeptThePasswordOf'),
     })
     emit('changed')
   } catch (e) {

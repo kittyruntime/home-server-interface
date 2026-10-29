@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ref, computed, onMounted } from 'vue'
@@ -10,6 +11,8 @@ import ErrorState from './ui/ErrorState.vue'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
@@ -35,7 +38,7 @@ async function load() {
     status.value = await trpc.tls.status.query()
     proxies.value = status.value.trustedProxies.join('\n')
   } catch (e: any) {
-    loadError.value = e?.message ?? 'Failed to load the secure access status'
+    loadError.value = e?.message ?? t('uis.settings.SecureAccessSection.failedToLoadTheSecure')
   } finally {
     loading.value = false
   }
@@ -71,14 +74,14 @@ async function run(fn: () => Promise<void>) {
 
 function turnOn() {
   return run(async () => {
-    await applyPlanned('tls.enable', {}, { title: 'Serve HSI over HTTPS', actionLabel: 'Turn on' })
+    await applyPlanned('tls.enable', {}, { title: t('uis.settings.SecureAccessSection.serveHsiOverHttps'), actionLabel: t('uis.settings.SecureAccessSection.turnOn') })
     await afterPlan({ https: true, port: status.value!.port, standardPorts: status.value!.standardPorts })
   })
 }
 
 function useLocal() {
   return run(async () => {
-    await applyPlanned('tls.useLocal', {}, { title: 'Use the local authority', actionLabel: 'Use the local authority' })
+    await applyPlanned('tls.useLocal', {}, { title: t('uis.settings.SecureAccessSection.useTheLocalAuthority'), actionLabel: t('uis.settings.SecureAccessSection.useTheLocalAuthority') })
     await load()
   })
 }
@@ -91,11 +94,11 @@ function onFile(which: 'cert' | 'key', e: Event) {
 
 function submitImport() {
   return run(async () => {
-    if (!certFile.value) { actionError.value = 'Choose a certificate file'; return }
+    if (!certFile.value) { actionError.value = t('uis.settings.SecureAccessSection.chooseACertificateFile'); return }
     const cert = await certFile.value.text()
     const key = keyFile.value ? await keyFile.value.text() : ''
     const wasHttps = isHttps.value
-    const reply = await applyPlanned('tls.import', { cert, key }, { title: 'Serve an imported certificate', actionLabel: 'Import' })
+    const reply = await applyPlanned('tls.import', { cert, key }, { title: t('uis.settings.SecureAccessSection.serveAnImportedCertificate'), actionLabel: t('uis.settings.SecureAccessSection.import') })
     warnings.value = reply.warnings
     form.value = ''
     certFile.value = null
@@ -108,7 +111,7 @@ function submitImport() {
 function submitProxy() {
   return run(async () => {
     const trustedProxies = proxies.value.split('\n').map(s => s.trim()).filter(Boolean)
-    await applyPlanned('tls.proxy', { trustedProxies }, { title: 'Run behind a reverse proxy', actionLabel: 'Apply' })
+    await applyPlanned('tls.proxy', { trustedProxies }, { title: t('uis.settings.SecureAccessSection.runBehindAReverseProxy'), actionLabel: t('uis.settings.SecureAccessSection.apply') })
     form.value = ''
     await afterPlan({ https: false, port: status.value!.port, standardPorts: false })
   })

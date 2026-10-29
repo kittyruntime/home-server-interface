@@ -13,9 +13,9 @@ const { status, checking, check } = useDockerStatus()
 
 const title = computed(() => {
   const s = status.value
-  if (!s?.installed) return 'Docker is not installed'
-  if (!s.running) return 'Docker is not running'
-  return 'Docker Compose is missing'
+  if (!s?.installed) return t('uis.apps.DockerUnavailable.dockerIsNotInstalled')
+  if (!s.running) return t('uis.apps.DockerUnavailable.dockerIsNotRunning')
+  return t('uis.apps.DockerUnavailable.dockerComposeIsMissing')
 })
 
 const command = computed(() => {

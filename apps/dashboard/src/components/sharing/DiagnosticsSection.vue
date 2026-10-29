@@ -25,7 +25,7 @@ async function load() {
     const d = await trpc.sharing.diagnose.query()
     shares.value = d.shares
   } catch (e: any) {
-    error.value = e?.message ?? 'Diagnostics failed'
+    error.value = e?.message ?? t('uis.sharing.DiagnosticsSection.diagnosticsFailed')
   } finally {
     loading.value = false
   }

@@ -51,7 +51,7 @@ const groups = computed(() => {
 
   <SidebarProvider
     :class="['min-h-0 w-auto shrink-0', container ? 'hidden @2xl:flex' : 'hidden sm:flex']"
-    :style="{ '--sidebar-width': '12rem' }"
+    :style="{ '--sidebar-width': '14rem' }"
   >
     <Sidebar collapsible="none" class="h-full border-r">
       <SidebarContent class="py-3">

@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 import { trpc } from './trpc'
 
 // Backend mutations that dispatch work to the root-worker (fs ops, container
@@ -41,7 +42,7 @@ export async function pollJobResult(jobId: string, deadlineMs = 30_000): Promise
   }
   return {
     status: 'timeout',
-    error: `The operation did not finish within ${Math.round(deadlineMs / 1000)} s. It may still be running; refresh to check.`,
+    error: tr('lib.jobs.theOperationDidNotFinish', `The operation did not finish within ${Math.round(deadlineMs / 1000)} s. It may still be running; refresh to check.`, { p0: Math.round(deadlineMs / 1000) }),
   }
 }
 
@@ -58,7 +59,7 @@ export class JobError extends Error {
 
 // Waits for a job and throws a JobError unless it completed, so a `track`
 // notification surfaces the real worker error.
-export async function awaitJob(jobId: string, fallback = 'Operation failed'): Promise<void> {
+export async function awaitJob(jobId: string, fallback = tr('lib.jobs.operationFailed', 'Operation failed')): Promise<void> {
   const result = await pollJobResult(jobId)
   if (result.status !== 'completed') throw new JobError(result.error ?? fallback, jobId)
 }

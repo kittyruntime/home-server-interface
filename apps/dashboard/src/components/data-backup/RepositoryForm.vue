@@ -33,7 +33,7 @@ async function save() {
   try {
     const reply = await applyPlanned('backup.repository.save', repositoryPayload(form.value), {
       title: props.repository ? `Edit the repository ${form.value.name.trim()}` : `Add the repository ${form.value.name.trim()}`,
-      actionLabel: 'Save repository',
+      actionLabel: t('uis.backups.RepositoryForm.saveRepository'),
     })
     if (typeof reply.password === 'string' && reply.password) generated.value = reply.password
     else emit('saved')

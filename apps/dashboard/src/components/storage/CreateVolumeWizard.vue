@@ -74,7 +74,7 @@ watch([loaded, freeDisks], () => {
   const gone = [...s.disks].filter(n => !ok.has(n))
   if (!gone.length) return
   s.disks = new Set([...s.disks].filter(n => ok.has(n)))
-  notice.value = `${gone.join(', ')} ${gone.length === 1 ? 'is' : 'are'} no longer free and left the selection.`
+  notice.value = t('uis.storage.CreateVolumeWizard.noLongerFreeAndLeft', { p0: gone.join(', '), p1: gone.length === 1 ? 'is' : 'are' })
 })
 // Something changed the choices behind the admin's back: say so.
 const notice = ref('')
@@ -101,11 +101,11 @@ const usable = computed(() => Math.floor(usableBytes(s.level, chosen.value.map(d
 const tolerates = computed(() => tolerance(s.level, chosen.value.length))
 
 const LEVEL_TEXT: Record<Level, { title: string; text: string }> = {
-  raid1:  { title: 'Mirror', text: 'Every disk holds a full copy.' },
-  raid5:  { title: 'RAID 5', text: 'Data and parity spread over the disks.' },
-  raid6:  { title: 'RAID 6', text: 'Data and double parity spread over the disks.' },
-  raid10: { title: 'RAID 10', text: 'Mirrored pairs, striped together.' },
-  none:   { title: 'No redundancy', text: 'All the space is usable, but one failing disk loses the whole volume.' },
+  raid1:  { title: t('uis.storage.CreateVolumeWizard.mirror'), text: t('uis.storage.CreateVolumeWizard.everyDiskHoldsAFull') },
+  raid5:  { title: t('uis.storage.CreateVolumeWizard.raid5'), text: t('uis.storage.CreateVolumeWizard.dataAndParitySpreadOver') },
+  raid6:  { title: t('uis.storage.CreateVolumeWizard.raid6'), text: t('uis.storage.CreateVolumeWizard.dataAndDoubleParitySpread') },
+  raid10: { title: t('uis.storage.CreateVolumeWizard.raid10'), text: t('uis.storage.CreateVolumeWizard.mirroredPairsStripedTogether') },
+  none:   { title: t('uis.storage.CreateVolumeWizard.noRedundancy'), text: t('uis.storage.CreateVolumeWizard.allTheSpaceIsUsable') },
 }
 watch(levels, ls => {
   if (levelPicked.value && !ls.includes(s.level)) {
@@ -123,10 +123,10 @@ function levelLine(l: Level): string {
 const SYSTEM = ['/', '/boot', '/boot/efi', '/usr', '/var', '/home', '/tmp', '/etc', '/proc', '/sys', '/dev', '/efi']
 const mountError = computed(() => {
   const mp = s.mountpoint.trim()
-  if (!mp.startsWith('/') || mp.length < 2) return 'An absolute folder, for example /srv/data'
-  if (/[\s#]/.test(mp) || mp.includes('..')) return 'No spaces, # or .. in the folder'
-  if (SYSTEM.includes(mp.replace(/\/$/, ''))) return 'This is a system folder'
-  if (mountPoints.value.includes(mp)) return 'Another volume uses this folder'
+  if (!mp.startsWith('/') || mp.length < 2) return t('uis.storage.CreateVolumeWizard.anAbsoluteFolderForExample')
+  if (/[\s#]/.test(mp) || mp.includes('..')) return t('uis.storage.CreateVolumeWizard.noSpacesOrInThe')
+  if (SYSTEM.includes(mp.replace(/\/$/, ''))) return t('uis.storage.CreateVolumeWizard.thisIsASystemFolder')
+  if (mountPoints.value.includes(mp)) return t('uis.storage.CreateVolumeWizard.anotherVolumeUsesThisFolder')
   return ''
 })
 const NAME = /^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/
@@ -165,7 +165,7 @@ async function create() {
   error.value = ''
   try {
     await applyPlanned('volume.create', input(), {
-      domain: 'volume', title: `Create the volume ${s.name}`, actionLabel: 'Create volume', danger: true,
+      domain: 'volume', title: t('uis.storage.CreateVolumeWizard.createTheVolume', { p0: s.name }), actionLabel: t('uis.storage.CreateVolumeWizard.createVolume'), danger: true,
     })
     done.value = true
     emit('dirty', false)

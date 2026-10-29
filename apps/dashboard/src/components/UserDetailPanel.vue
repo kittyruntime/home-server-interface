@@ -56,7 +56,7 @@ async function loadIdentity() {
     const all = await trpc.user.identityStatus.query()
     identity.value = (all as IdentityStatus[]).find(s => s.userId === props.user.id) ?? null
   } catch (e: any) {
-    identityError.value = e?.message ?? 'Failed to load identity status'
+    identityError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToLoadIdentityStatus')
   } finally {
     identityLoading.value = false
   }
@@ -70,7 +70,7 @@ async function toggleSamba() {
     await loadIdentity()
     emit('reload')
   } catch (e: any) {
-    identityError.value = e?.message ?? 'Failed to update'
+    identityError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToUpdate')
   } finally {
     sambaBusy.value = false
   }
@@ -111,7 +111,7 @@ async function save() {
     emit('reload')
     setTimeout(() => { saveSuccess.value = false }, 2000)
   } catch (e: any) {
-    saveError.value = e?.message ?? 'Failed to save'
+    saveError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToSave')
   } finally {
     saveLoading.value = false
   }
@@ -130,7 +130,7 @@ async function toggleAccountFlag(flag: 'isAdmin' | 'isUserManager') {
     )
     emit('reload')
   } catch (e: any) {
-    accountError.value = e?.message ?? 'Failed to update'
+    accountError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToUpdate')
   } finally {
     accountBusy.value[flag] = false
   }
@@ -155,7 +155,7 @@ async function toggleCapability(capability: 'storage') {
     })
     emit('reload')
   } catch (e: any) {
-    capabilityError.value = e?.message ?? 'Failed to update'
+    capabilityError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToUpdate')
   } finally {
     capabilityBusy.value[capability] = false
   }
@@ -166,12 +166,12 @@ async function deleteUser() {
   deleteError.value = ''
   try {
     await applyPlanned('user.delete', { userId: props.user.id }, {
-      domain: 'users', title: `Delete ${props.user.username}`, actionLabel: 'Delete user', danger: true,
+      domain: 'users', title: t('uis.settings.UserDetailPanel.delete', { p0: props.user.username }), actionLabel: t('uis.settings.UserDetailPanel.deleteUser'), danger: true,
     })
     emit('back')
   } catch (e: any) {
     if (e?.message === '') return // cancelled in the plan dialog
-    deleteError.value = e?.message ?? 'Failed to delete user'
+    deleteError.value = e?.message ?? t('uis.settings.UserDetailPanel.failedToDeleteUser')
   } finally {
     deleteBusy.value = false
   }

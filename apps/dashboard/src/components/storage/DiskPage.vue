@@ -49,9 +49,9 @@ watch(diskName, n => { void fetchSmartInto(smart, n) }, { immediate: true })
 const sm = computed(() => smart.value[diskName.value])
 const health = computed(() => {
   const st = smartStatus(sm.value)
-  if (st === 'failed')  return { cls: 'text-destructive', dot: 'bg-destructive', text: 'SMART failed' }
-  if (st === 'warning') return { cls: 'text-warning', dot: 'bg-warning', text: 'SMART warning' }
-  if (st === 'passed')  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
+  if (st === 'failed')  return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.DiskPage.smartFailed') }
+  if (st === 'warning') return { cls: 'text-warning', dot: 'bg-warning', text: t('uis.storage.DiskPage.smartWarning') }
+  if (st === 'passed')  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.DiskPage.healthy') }
   return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: st === 'loading' ? 'Reading SMART' : 'Health unknown' }
 })
 const criticalAttrs = computed(() => (sm.value?.attributes ?? []).filter(a => a.isCritical && a.raw > 0))

@@ -31,20 +31,20 @@ onMounted(load)
 async function assemble(a: Scan['arrays'][number]) {
   const degraded = a.missing > 0
   if (degraded && !await confirm(
-    `${a.missing} of ${a.expected} members of this array were not found. Starting it degraded leaves no redundancy until the missing disk is replaced. If a disk is only unplugged, plug it in and scan again instead.`,
-    { danger: true, confirmLabel: 'Start degraded' },
+    t('uis.storage.ImportFound.ofMembersOfThisArray', { p0: a.missing, p1: a.expected }),
+    { danger: true, confirmLabel: t('uis.storage.ImportFound.startDegraded') },
   )) return
   busy.value = a.uuid
   try {
     // The server picks the name: it knows the names mdadm.conf keeps.
     const res = await applyPlanned('import.assemble', { uuid: a.uuid, allowDegraded: degraded },
-      { title: `Assemble the existing array ${a.name || a.device}`, actionLabel: degraded ? 'Start degraded' : 'Assemble' })
+      { title: t('uis.storage.ImportFound.assembleTheExistingArray', { p0: a.name || a.device }), actionLabel: degraded ? 'Start degraded' : 'Assemble' })
     for (const w of res.warnings ?? []) toast.error(w)
-    toast.success(`Array assembled as ${res.device}`)
+    toast.success(t('uis.storage.ImportFound.arrayAssembledAs', { p0: res.device }))
     emit('imported')
     await load()
   } catch (e: any) {
-    if (e?.message !== '') toast.error(e?.message ?? 'Could not assemble the array')
+    if (e?.message !== '') toast.error(e?.message ?? t('uis.storage.ImportFound.couldNotAssembleTheArray'))
   } finally {
     busy.value = null
   }
@@ -54,12 +54,12 @@ async function activate(vg: Scan['vgs'][number]) {
   busy.value = vg.name
   try {
     await applyPlanned('import.activate', { name: vg.name },
-      { title: `Activate the volume group ${vg.name}`, actionLabel: 'Activate' })
-    toast.success(`Volume group ${vg.name} activated`)
+      { title: t('uis.storage.ImportFound.activateTheVolumeGroup', { p0: vg.name }), actionLabel: t('uis.storage.ImportFound.activate') })
+    toast.success(t('uis.storage.ImportFound.volumeGroupActivated', { p0: vg.name }))
     emit('imported')
     await load()
   } catch (e: any) {
-    if (e?.message !== '') toast.error(e?.message ?? 'Could not activate the volume group')
+    if (e?.message !== '') toast.error(e?.message ?? t('uis.storage.ImportFound.couldNotActivateTheVolume'))
   } finally {
     busy.value = null
   }

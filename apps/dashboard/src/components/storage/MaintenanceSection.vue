@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
@@ -7,6 +8,8 @@ import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 
 
@@ -20,9 +23,9 @@ type TaskId = 'smartShort' | 'smartLong' | 'raidCheck'
 type Schedule = Data['tasks'][TaskId]['schedule']
 
 const TASKS: Array<{ id: TaskId; title: string; desc: string }> = [
-  { id: 'smartShort', title: 'SMART short self-test', desc: 'A quick electrical and mechanical test run by each disk (about 2 minutes). Disks in standby are not woken up.' },
-  { id: 'smartLong',  title: 'SMART extended self-test', desc: 'A full surface scan run by each disk (hours on large disks). Disks keep working normally meanwhile.' },
-  { id: 'raidCheck',  title: 'RAID consistency check', desc: 'Reads every array and compares the members to find silent corruption. Never started while an array is rebuilding.' },
+  { id: 'smartShort', title: t('uis.storage.MaintenanceSection.smartShortSelfTest'), desc: 'A quick electrical and mechanical test run by each disk (about 2 minutes). Disks in standby are not woken up.' },
+  { id: 'smartLong',  title: t('uis.storage.MaintenanceSection.smartExtendedSelfTest'), desc: 'A full surface scan run by each disk (hours on large disks). Disks keep working normally meanwhile.' },
+  { id: 'raidCheck',  title: t('uis.storage.MaintenanceSection.raidConsistencyCheck'), desc: 'Reads every array and compares the members to find silent corruption. Never started while an array is rebuilding.' },
 ]
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -45,7 +48,7 @@ async function load() {
       raidCheck:  { ...data.value.tasks.raidCheck.schedule },
     }
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load the maintenance schedule'
+    error.value = e?.message ?? t('uis.storage.MaintenanceSection.failedToLoadTheMaintenance')
   } finally {
     loading.value = false
   }
@@ -60,10 +63,10 @@ async function save() {
   saving.value = true
   try {
     await trpc.storage.setMaintenance.mutate(draft.value)
-    toast.success('Maintenance schedule saved')
+    toast.success(t('uis.storage.MaintenanceSection.maintenanceScheduleSaved'))
     await load()
   } catch (e: any) {
-    toast.error(e?.message ?? 'Could not save the schedule')
+    toast.error(e?.message ?? t('uis.storage.MaintenanceSection.couldNotSaveTheSchedule'))
   } finally {
     saving.value = false
   }
@@ -75,7 +78,7 @@ async function runNow(id: TaskId) {
     await trpc.storage.runMaintenanceNow.mutate({ task: id })
     await load()
   } catch (e: any) {
-    toast.error(e?.message ?? 'Could not start the task')
+    toast.error(e?.message ?? t('uis.storage.MaintenanceSection.couldNotStartTheTask'))
   } finally {
     running.value = null
   }

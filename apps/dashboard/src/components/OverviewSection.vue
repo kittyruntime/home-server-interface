@@ -46,7 +46,7 @@ onMounted(async () => {
     containers.value = c as Array<{ id: string; name: string; status: string }>
     recentAudit.value = (a as { entries: typeof recentAudit.value }).entries
   } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? 'Failed to load overview'
+    error.value = (e as { message?: string })?.message ?? t('uis.settings.OverviewSection.failedToLoadOverview')
   } finally {
     loading.value = false
   }
@@ -93,10 +93,10 @@ function relTime(d: string | Date): string {
   const min  = Math.floor(diff / 60000)
   const h    = Math.floor(diff / 3600000)
   const day  = Math.floor(diff / 86400000)
-  if (min < 1)  return 'just now'
-  if (min < 60) return `${min} min ago`
-  if (h < 24)   return `${h}h ago`
-  return `${day}d ago`
+  if (min < 1)  return t('uis.settings.OverviewSection.justNow')
+  if (min < 60) return t('uis.settings.OverviewSection.minAgo', { p0: min })
+  if (h < 24)   return t('uis.settings.OverviewSection.hAgo', { p0: h })
+  return t('uis.settings.OverviewSection.dAgo', { p0: day })
 }
 </script>
 

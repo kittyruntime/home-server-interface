@@ -21,7 +21,7 @@ async function pickColor(value: string) {
   try {
     await setColor(value)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to set color'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToSetColor')
   }
 }
 
@@ -32,7 +32,7 @@ async function onFileChange(e: Event) {
   try {
     await setImage(file)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to upload image'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToUploadImage')
   } finally {
     ;(e.target as HTMLInputElement).value = ''
   }
@@ -43,7 +43,7 @@ async function reset() {
   try {
     await clear()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to reset wallpaper'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToResetWallpaper')
   }
 }
 </script>

@@ -46,7 +46,7 @@ async function deleteGroup() {
     await trpc.group.delete.mutate({ id: props.group.id })
     emit('back')
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to delete'
+    error.value = e?.message ?? t('uis.settings.GroupEditor.failedToDelete')
   } finally {
     deleteBusy.value = false
     deleteConfirm.value = false
@@ -89,7 +89,7 @@ async function toggleMember(userId: string) {
     await trpc.group.setMembers.mutate({ id: props.group.id, userIds: [...ids] })
     emit('reload')
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed'
+    error.value = e?.message ?? t('uis.settings.GroupEditor.failed')
   } finally {
     memberBusy.value[userId] = false
   }

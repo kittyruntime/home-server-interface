@@ -1,11 +1,12 @@
+import { tr } from './tr.ts'
 export type TlsMode = 'local' | 'imported' | 'proxy' | 'off'
 
 export function modeLabel(m: TlsMode): string {
   switch (m) {
-    case 'local': return 'HTTPS, local authority'
-    case 'imported': return 'HTTPS, imported certificate'
-    case 'proxy': return 'Behind a reverse proxy'
-    case 'off': return 'Plain HTTP'
+    case 'local': return tr('lib.tls.httpsLocalAuthority', 'HTTPS, local authority')
+    case 'imported': return tr('lib.tls.httpsImportedCertificate', 'HTTPS, imported certificate')
+    case 'proxy': return tr('lib.tls.behindAReverseProxy', 'Behind a reverse proxy')
+    case 'off': return tr('lib.tls.plainHttp', 'Plain HTTP')
   }
 }
 
@@ -113,9 +114,9 @@ export async function openAfterRestart(loc: PageLocation, next: NextAddress, dep
 }
 
 export const TRUST_STEPS: Array<{ os: string; steps: string }> = [
-  { os: 'Windows', steps: 'Open the downloaded file, choose Install Certificate, pick Local Machine, then place it in Trusted Root Certification Authorities.' },
-  { os: 'macOS', steps: 'Open the file to add it to Keychain Access, then double-click it and set Trust to Always Trust.' },
-  { os: 'Linux', steps: 'Copy the file to /usr/local/share/ca-certificates/ and run sudo update-ca-certificates. Firefox keeps its own list: import it under Settings, Certificates.' },
-  { os: 'Android', steps: 'Open Settings, Security, Encryption and credentials, Install a certificate, CA certificate, and pick the file.' },
-  { os: 'iOS', steps: 'Open the file to install the profile in Settings, then enable it under Settings, General, About, Certificate Trust Settings.' },
+  { os: 'Windows', steps: tr('lib.tls.openTheDownloadedFileChoose', 'Open the downloaded file, choose Install Certificate, pick Local Machine, then place it in Trusted Root Certification Authorities.') },
+  { os: 'macOS', steps: tr('lib.tls.openTheFileToAdd', 'Open the file to add it to Keychain Access, then double-click it and set Trust to Always Trust.') },
+  { os: 'Linux', steps: tr('lib.tls.copyTheFileToUsr', 'Copy the file to /usr/local/share/ca-certificates/ and run sudo update-ca-certificates. Firefox keeps its own list: import it under Settings, Certificates.') },
+  { os: 'Android', steps: tr('lib.tls.openSettingsSecurityEncryptionAnd', 'Open Settings, Security, Encryption and credentials, Install a certificate, CA certificate, and pick the file.') },
+  { os: 'iOS', steps: tr('lib.tls.openTheFileToInstall', 'Open the file to install the profile in Settings, then enable it under Settings, General, About, Certificate Trust Settings.') },
 ]

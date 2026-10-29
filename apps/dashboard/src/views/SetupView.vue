@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, watch } from 'vue'
 import { TRPCClientError } from '@trpc/client'
 import { useRoute, useRouter } from 'vue-router'
@@ -15,6 +16,8 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 
 /* First-run setup assistant (#12): the one-time link from the installer
@@ -42,10 +45,10 @@ const error = ref('')
 
 const screen = computed(() => status.value ? setupScreen(status.value, isAuthenticated.value, !!setupSession.value) : null)
 const STEPS = [
-  { id: 'admin', label: 'Administrator' },
-  { id: 'identity', label: 'Server' },
-  { id: 'secure', label: 'Secure access' },
-  { id: 'next', label: 'Next steps' },
+  { id: 'admin', label: t('uis.views.SetupView.administrator') },
+  { id: 'identity', label: t('uis.views.SetupView.server') },
+  { id: 'secure', label: t('uis.views.SetupView.secureAccess') },
+  { id: 'next', label: t('uis.views.SetupView.nextSteps') },
 ]
 const stepIndex = computed(() => {
   const s = screen.value
@@ -93,8 +96,8 @@ const username = ref('')
 const password = ref('')
 const confirm = ref('')
 const adminError = computed(() => {
-  if (password.value && password.value.length < 6) return 'Use at least 6 characters'
-  if (confirm.value && confirm.value !== password.value) return 'The passwords do not match'
+  if (password.value && password.value.length < 6) return t('uis.views.SetupView.useAtLeast6Characters')
+  if (confirm.value && confirm.value !== password.value) return t('uis.views.SetupView.thePasswordsDoNotMatch')
   return ''
 })
 async function createAdmin() {
@@ -159,7 +162,7 @@ async function applyIdentity() {
     await applyPlanned('system.identity', {
       ...(hostname.value !== current.value?.hostname ? { hostname: hostname.value } : {}),
       ...(timezone.value !== current.value?.timezone ? { timezone: timezone.value } : {}),
-    }, { title: 'Set the server identity', actionLabel: 'Apply' })
+    }, { title: t('uis.views.SetupView.setTheServerIdentity'), actionLabel: t('uis.views.SetupView.apply') })
     await goTo('secure')
   } catch (e) {
     if (e instanceof Error && e.message) error.value = e.message
@@ -191,7 +194,7 @@ async function turnOnHttps() {
   if (!tls.value) return
   error.value = ''
   try {
-    await applyPlanned('tls.enable', {}, { title: 'Serve HSI over HTTPS', actionLabel: 'Turn on' })
+    await applyPlanned('tls.enable', {}, { title: t('uis.views.SetupView.serveHsiOverHttps'), actionLabel: t('uis.views.SetupView.turnOn') })
     restarting.value = true
     await openAfterRestart(location, { from: tls.value.mode, https: true, port: tls.value.port, standardPorts: tls.value.standardPorts })
   } catch (e) {
@@ -202,10 +205,10 @@ async function turnOnHttps() {
 }
 
 const NEXT = [
-  { title: 'Create or import a volume', text: 'Turn free disks into a volume, or bring back the arrays already on them.', href: '/?app=storage' },
-  { title: 'Share a folder', text: 'Create a Place and share it over SMB with your devices.', href: '/?app=sharing' },
-  { title: 'Get alerts', text: 'Send disk and storage alerts to email, Discord, ntfy or a webhook.', href: '/?app=settings' },
-  { title: 'Restore a configuration backup', text: 'Already had HSI? Restore its encrypted configuration backup.', href: '/?app=settings' },
+  { title: t('uis.views.SetupView.createOrImportAVolume'), text: t('uis.views.SetupView.turnFreeDisksIntoA'), href: '/?app=storage' },
+  { title: t('uis.views.SetupView.shareAFolder'), text: t('uis.views.SetupView.createAPlaceAndShare'), href: '/?app=sharing' },
+  { title: t('uis.views.SetupView.getAlerts'), text: t('uis.views.SetupView.sendDiskAndStorageAlerts'), href: '/?app=settings' },
+  { title: t('uis.views.SetupView.restoreAConfigurationBackup'), text: t('uis.views.SetupView.alreadyHadHsiRestoreIts'), href: '/?app=settings' },
 ]
 </script>
 

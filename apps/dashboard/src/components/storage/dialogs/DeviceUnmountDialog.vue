@@ -32,11 +32,11 @@ async function doUmount() {
   d.err  = ''
   try {
     await applyPlanned('umount', { mountpoint: d.dev.mountpoint, removeFromFstab: d.rmFstab },
-      { title: `Unmount ${d.dev.mountpoint}`, actionLabel: 'Unmount' })
+      { title: t('uis.storage.DeviceUnmountDialog.unmount', { p0: d.dev.mountpoint }), actionLabel: t('uis.storage.DeviceUnmountDialog.unmount2') })
     dlg.value = null
     emit('done')
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Unmount failed'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.DeviceUnmountDialog.unmountFailed')
   } finally {
     if (dlg.value) d.busy = false
   }

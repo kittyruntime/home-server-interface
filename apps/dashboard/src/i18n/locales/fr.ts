@@ -1,6 +1,8 @@
 import type en from './en'
 import ui from './fr/index'
 import uip from './fr/params/index'
+import uis from './fr/script/index'
+import lib from './fr/lib'
 
 // Messages en français : mêmes clés que en.ts (un test le vérifie).
 export default {
@@ -72,6 +74,8 @@ export default {
   },
   ui,
   uip,
+  uis,
+  lib,
   profile: {
     language: 'Langue',
     languageHint: 'La langue de l’interface sur tous les appareils où vous vous connectez.',

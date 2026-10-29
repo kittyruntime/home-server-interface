@@ -59,7 +59,7 @@ const crumbs = computed(() => breadcrumbs(dir.value, root.value))
 const selectedEntry = computed(() => entries.value.find(e => e.path === selected.value))
 
 function planName(s: Snapshot): string {
-  return props.plans.find(p => p.id === s.plan)?.name ?? 'Unknown plan'
+  return props.plans.find(p => p.id === s.plan)?.name ?? t('uis.backups.RestoreDialog.unknownPlan')
 }
 
 async function load() {
@@ -151,11 +151,11 @@ async function restore() {
   try {
     const reply = await applyPlanned('backup.restore', restorePayload(props.repository.id, snapshot.value.id, selected.value, target.value, confirmOverwrite.value), {
       domain: 'storage',
-      title: 'Restore',
-      actionLabel: 'Restore',
+      title: t('uis.backups.RestoreDialog.restore'),
+      actionLabel: t('uis.backups.RestoreDialog.restore'),
       danger: target.value === 'original',
     })
-    if (typeof reply.runId !== 'string') throw new Error('The restore did not start')
+    if (typeof reply.runId !== 'string') throw new Error(t('uis.backups.RestoreDialog.theRestoreDidNotStart'))
     progress.value = 0
     unknown.value = false
     running.value = true

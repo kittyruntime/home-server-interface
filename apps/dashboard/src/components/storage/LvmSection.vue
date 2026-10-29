@@ -104,18 +104,18 @@ async function doCreateLvm() {
     let n = 1
     if (toPrepare.length) {
       await applyPlanned('pv.create', { devices: toPrepare },
-        { title: `Prepare disks for LVM (${n++} of ${total})`, actionLabel: 'Prepare disks' })
+        { title: t('uis.storage.LvmSection.prepareDisksForLvmOf', { p0: n++, p1: total }), actionLabel: t('uis.storage.LvmSection.prepareDisks') })
       await refresh()
     }
     await applyPlanned('vg.create', { name: w.vgName, devices: w.pvDevs },
-      { title: `Create volume group ${w.vgName} (${n++} of ${total})`, actionLabel: 'Create volume group' })
+      { title: t('uis.storage.LvmSection.createVolumeGroupOf', { p0: w.vgName, p1: n++, p2: total }), actionLabel: t('uis.storage.LvmSection.createVolumeGroup') })
     const sizeBytes = w.lvSizeGB > 0 ? Math.floor(w.lvSizeGB * 1024 ** 3) : 0
     await applyPlanned('lv.create', { vgName: w.vgName, lvName: w.lvName, sizeBytes },
-      { title: `Create logical volume ${w.lvName} (${n} of ${total})`, actionLabel: 'Create logical volume' })
+      { title: t('uis.storage.LvmSection.createLogicalVolumeOf', { p0: w.lvName, p1: n, p2: total }), actionLabel: t('uis.storage.LvmSection.createLogicalVolume') })
     lvmWiz.value = null
     await refresh()
   } catch (e: any) {
-    w.err = e?.message ?? 'LVM creation failed'
+    w.err = e?.message ?? t('uis.storage.LvmSection.lvmCreationFailed')
   } finally {
     if (lvmWiz.value) w.busy = false
   }
@@ -138,11 +138,11 @@ async function doAddLv() {
   try {
     const sizeBytes = d.lvSizeGB > 0 ? Math.floor(d.lvSizeGB * 1024 ** 3) : 0
     await applyPlanned('lv.create', { vgName: d.vg.name, lvName: d.lvName, sizeBytes },
-      { title: `Create logical volume ${d.lvName}`, actionLabel: 'Create logical volume' })
+      { title: t('uis.storage.LvmSection.createLogicalVolume2', { p0: d.lvName }), actionLabel: t('uis.storage.LvmSection.createLogicalVolume') })
     addLvDlg.value = null
     await refresh()
   } catch (e: any) {
-    d.err = e?.message ?? 'Failed to create LV'
+    d.err = e?.message ?? t('uis.storage.LvmSection.failedToCreateLv')
   } finally {
     if (addLvDlg.value) d.busy = false
   }
@@ -158,11 +158,11 @@ async function doRemoveLv() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('lv.remove', { vgName: d.lv.vgName, lvName: d.lv.name },
-      { title: `Delete logical volume ${d.lv.vgName}/${d.lv.name}`, actionLabel: `Delete ${d.lv.name}` })
+      { title: t('uis.storage.LvmSection.deleteLogicalVolume', { p0: d.lv.vgName, p1: d.lv.name }), actionLabel: t('uis.storage.LvmSection.delete', { p0: d.lv.name }) })
     removeLvDlg.value = null
     await refresh()
   } catch (e: any) {
-    d.err = e?.message ?? 'Failed to remove LV'
+    d.err = e?.message ?? t('uis.storage.LvmSection.failedToRemoveLv')
   } finally {
     if (removeLvDlg.value) d.busy = false
   }
@@ -178,11 +178,11 @@ async function doRemoveVg() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('vg.remove', { vgName: d.vg.name },
-      { title: `Delete volume group ${d.vg.name}`, actionLabel: `Delete ${d.vg.name}` })
+      { title: t('uis.storage.LvmSection.deleteVolumeGroup', { p0: d.vg.name }), actionLabel: t('uis.storage.LvmSection.delete', { p0: d.vg.name }) })
     removeVgDlg.value = null
     await refresh()
   } catch (e: any) {
-    d.err = e?.message ?? 'Failed to remove VG'
+    d.err = e?.message ?? t('uis.storage.LvmSection.failedToRemoveVg')
   } finally {
     if (removeVgDlg.value) d.busy = false
   }

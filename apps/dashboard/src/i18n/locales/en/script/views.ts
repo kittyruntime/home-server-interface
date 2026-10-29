@@ -1,0 +1,38 @@
+// Messages from the scripts (notices, errors, labels), generated, then kept by hand.
+export default {
+  DashboardLayout: {
+    overview: 'Overview',
+    files: 'Files',
+    settings: 'Settings',
+    apps: 'Apps',
+    storage: 'Storage',
+    appStore: 'App Store',
+    monitor: 'Monitor',
+    sharing: 'Sharing',
+  },
+  SetupView: {
+    administrator: 'Administrator',
+    server: 'Server',
+    secureAccess: 'Secure access',
+    nextSteps: 'Next steps',
+    setTheServerIdentity: 'Set the server identity',
+    apply: 'Apply',
+    serveHsiOverHttps: 'Serve HSI over HTTPS',
+    turnOn: 'Turn on',
+    createOrImportAVolume: 'Create or import a volume',
+    turnFreeDisksIntoA: 'Turn free disks into a volume, or bring back the arrays already on them.',
+    shareAFolder: 'Share a folder',
+    createAPlaceAndShare: 'Create a Place and share it over SMB with your devices.',
+    getAlerts: 'Get alerts',
+    sendDiskAndStorageAlerts: 'Send disk and storage alerts to email, Discord, ntfy or a webhook.',
+    restoreAConfigurationBackup: 'Restore a configuration backup',
+    alreadyHadHsiRestoreIts: 'Already had HSI? Restore its encrypted configuration backup.',
+    useAtLeast6Characters: 'Use at least 6 characters',
+    thePasswordsDoNotMatch: 'The passwords do not match',
+  },
+  SharePublicView: {
+    somethingWentWrongPleaseTry: 'Something went wrong. Please try again.',
+    wrongPassword: 'Wrong password',
+    couldNotOpenThisFolder: 'Could not open this folder.',
+  },
+}

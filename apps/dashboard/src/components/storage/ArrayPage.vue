@@ -32,10 +32,10 @@ const state = computed(() => {
   const a = array.value
   if (!a) return { cls: '', dot: '', text: '' }
   const syncing = a.syncAction && ['recovery', 'resync', 'reshape', 'check'].includes(a.syncAction) && a.resyncPercent != null
-  if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `Rebuilding ${Math.round(a.resyncPercent!)}%` }
-  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: `Degraded: ${a.total - a.active} of ${a.total} missing` }
+  if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: t('uis.storage.ArrayPage.rebuilding', { p0: Math.round(a.resyncPercent!) }) }
+  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.ArrayPage.degradedOfMissing', { p0: a.total - a.active, p1: a.total }) }
   if (syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `${a.syncAction === 'check' ? 'Checking' : 'Resyncing'} ${Math.round(a.resyncPercent!)}%` }
-  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
+  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.ArrayPage.healthy') }
 })
 
 function findDev(list: BlockDev[], name: string): BlockDev | undefined {

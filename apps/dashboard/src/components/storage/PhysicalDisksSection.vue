@@ -203,14 +203,14 @@ function tempClass(t: number): string {
 }
 
 const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
-  { key: 'name',        label: 'Device' },
-  { key: 'model',       label: 'Model' },
-  { key: 'serial',      label: 'Serial / WWN' },
-  { key: 'size',        label: 'Size', class: 'text-right' },
-  { key: 'kind',        label: 'Type' },
-  { key: 'role',        label: 'Role' },
-  { key: 'health',      label: 'Health' },
-  { key: 'temperature', label: 'Temp', class: 'text-right' },
+  { key: 'name',        label: t('uis.storage.PhysicalDisksSection.device') },
+  { key: 'model',       label: t('uis.storage.PhysicalDisksSection.model') },
+  { key: 'serial',      label: t('uis.storage.PhysicalDisksSection.serialWwn') },
+  { key: 'size',        label: t('uis.storage.PhysicalDisksSection.size'), class: 'text-right' },
+  { key: 'kind',        label: t('uis.storage.PhysicalDisksSection.type') },
+  { key: 'role',        label: t('uis.storage.PhysicalDisksSection.role') },
+  { key: 'health',      label: t('uis.storage.PhysicalDisksSection.health') },
+  { key: 'temperature', label: t('uis.storage.PhysicalDisksSection.temp'), class: 'text-right' },
 ]
 
 // ── Selection: free disks for a new array or volume group ─────────────────────
@@ -246,11 +246,11 @@ async function doPartInit() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.init', { device: d.disk.name },
-      { title: `New partition table on /dev/${d.disk.name}`, actionLabel: `Erase /dev/${d.disk.name}` })
+      { title: t('uis.storage.PhysicalDisksSection.newPartitionTableOnDev', { p0: d.disk.name }), actionLabel: t('uis.storage.PhysicalDisksSection.eraseDev', { p0: d.disk.name }) })
     partInitDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to initialise partition table'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToInitialisePartitionTable')
   } finally {
     if (partInitDlg.value) d.busy = false
   }
@@ -264,11 +264,11 @@ async function doPartCreate() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.create', { device: d.disk.name, startPct: 0, endPct: 100 },
-      { title: `Add a partition on /dev/${d.disk.name}`, actionLabel: 'Add partition' })
+      { title: t('uis.storage.PhysicalDisksSection.addAPartitionOnDev', { p0: d.disk.name }), actionLabel: t('uis.storage.PhysicalDisksSection.addPartition') })
     partCreateDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to create partition'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToCreatePartition')
   } finally {
     if (partCreateDlg.value) d.busy = false
   }
@@ -289,11 +289,11 @@ async function doPartDelete() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.delete', { device: d.disk.name, partNum: num },
-      { title: `Delete partition ${d.part.name}`, actionLabel: `Delete ${d.part.name}` })
+      { title: t('uis.storage.PhysicalDisksSection.deletePartition', { p0: d.part.name }), actionLabel: t('uis.storage.PhysicalDisksSection.delete', { p0: d.part.name }) })
     partDeleteDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to delete partition'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToDeletePartition')
   } finally {
     if (partDeleteDlg.value) d.busy = false
   }

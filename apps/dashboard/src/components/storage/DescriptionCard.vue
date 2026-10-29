@@ -38,11 +38,11 @@ async function run(kind: 'reapply' | 'accept') {
     if (kind === 'reapply') {
       const r = reapplyRequest(s.mountPoint, s.items)
       await applyPlanned('storage.reapply', r.input, {
-        title: `Reapply the description of ${s.mountPoint}`, actionLabel: 'Reapply', acknowledge: r.acknowledge,
+        title: t('uis.storage.DescriptionCard.reapplyTheDescriptionOf', { p0: s.mountPoint }), actionLabel: t('uis.storage.DescriptionCard.reapply'), acknowledge: r.acknowledge,
       })
     } else {
       await applyPlanned('storage.accept', { mountPoint: s.mountPoint }, {
-        title: `Describe ${s.mountPoint} as it is now`, actionLabel: 'Accept current state',
+        title: t('uis.storage.DescriptionCard.describeAsItIsNow', { p0: s.mountPoint }), actionLabel: t('uis.storage.DescriptionCard.acceptCurrentState'),
       })
     }
     await load()

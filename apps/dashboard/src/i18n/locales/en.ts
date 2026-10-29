@@ -1,5 +1,7 @@
 import ui from './en/index'
 import uip from './en/params/index'
+import uis from './en/script/index'
+import lib from './en/lib'
 // English messages: the source language. Every key here must exist in the
 // other languages (a test checks it); text says what the UI says, nothing more.
 export default {
@@ -71,6 +73,8 @@ export default {
   },
   ui,
   uip,
+  uis,
+  lib,
   profile: {
     language: 'Language',
     languageHint: 'The language of the interface on every device you sign in to.',

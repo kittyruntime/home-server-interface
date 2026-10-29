@@ -49,7 +49,7 @@ const { confirm } = useConfirm()
 // Every move goes through here: links, sections and breadcrumbs alike.
 async function go(next: StorageNav) {
   if (leavesWizard(location.value, next)) {
-    if (wizardDirty.value && !await confirm('Leave the Create volume wizard? Your choices will be lost.', { confirmLabel: 'Leave' })) return
+    if (wizardDirty.value && !await confirm(t('uis.storage.StoragePanel.leaveTheCreateVolumeWizard'), { confirmLabel: t('uis.storage.StoragePanel.leave') })) return
     wizardDirty.value = false
   }
   location.value = next

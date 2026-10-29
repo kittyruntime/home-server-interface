@@ -29,7 +29,7 @@ async function load() {
     thresholds.value = t
     form.value = { ...t }
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load thresholds'
+    error.value = e?.message ?? t('uis.settings.AlertingSection.failedToLoadThresholds')
   } finally {
     loading.value = false
   }
@@ -39,7 +39,7 @@ async function saveThresholds() {
   saveError.value = ''
   saved.value = false
   if (form.value.diskUsageCriticalPercent <= form.value.diskUsageWarningPercent) {
-    saveError.value = 'Critical must be higher than warning'
+    saveError.value = t('uis.settings.AlertingSection.criticalMustBeHigherThan')
     return
   }
   saving.value = true
@@ -47,7 +47,7 @@ async function saveThresholds() {
     thresholds.value = await trpc.alert.updateThresholds.mutate(form.value)
     saved.value = true
   } catch (e: any) {
-    saveError.value = e?.message ?? 'Failed to save thresholds'
+    saveError.value = e?.message ?? t('uis.settings.AlertingSection.failedToSaveThresholds')
   } finally {
     saving.value = false
   }

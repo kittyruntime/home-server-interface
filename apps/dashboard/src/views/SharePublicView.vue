@@ -48,7 +48,7 @@ async function loadInfo() {
   loading.value = true
   loadError.value = ''
   try { info.value = await trpc.shareLink.info.query({ token, accessToken: accessToken.value ?? undefined }) }
-  catch { loadError.value = 'Something went wrong. Please try again.' }
+  catch { loadError.value = t('uis.views.SharePublicView.somethingWentWrongPleaseTry') }
   finally { loading.value = false }
 }
 
@@ -62,7 +62,7 @@ async function submitPassword() {
     if (i && i.state === 'ok' && 'kind' in i && i.kind === 'dir') {
       await loadDir('')
     }
-  } catch { unlockError.value = 'Wrong password' }
+  } catch { unlockError.value = t('uis.views.SharePublicView.wrongPassword') }
 }
 
 async function loadDir(path: string) {
@@ -71,7 +71,7 @@ async function loadDir(path: string) {
   try {
     const r = await trpc.shareLink.browse.query({ token, subPath: path, accessToken: accessToken.value ?? undefined })
     entries.value = r.entries
-  } catch { loadError.value = 'Could not open this folder.' }
+  } catch { loadError.value = t('uis.views.SharePublicView.couldNotOpenThisFolder') }
 }
 
 const crumbs = computed(() => subPath.value ? subPath.value.split('/').filter(Boolean) : [])

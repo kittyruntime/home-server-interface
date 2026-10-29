@@ -62,8 +62,8 @@ async function expand() {
   d.err = ''
   try {
     const res = await applyPlanned('volume.expand', { uuid: d.id, mode, ...(d.disk && chosen.value?.disks ? { disk: d.disk } : {}) }, {
-      title: `Expand the volume ${d.name}`,
-      actionLabel: 'Expand',
+      title: t('uis.storage.ExpandVolumeDialog.expandTheVolume', { p0: d.name }),
+      actionLabel: t('uis.storage.ExpandVolumeDialog.expand'),
       danger: erasesADisk(mode),
       acknowledge: needsBackup(mode) ? 'I have a backup of this volume' : undefined,
     })
