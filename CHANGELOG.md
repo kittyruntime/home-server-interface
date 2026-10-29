@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Installing and updating with a noexec /tmp**: the installer, which also
+  applies updates from the dashboard, now prepares the release under
+  `/var/lib/hsi` instead of `/tmp`, so it no longer stops with "Release
+  archive is incomplete" on servers where `/tmp` is mounted `noexec`.
+- **Uploading to a full volume**: the file manager now says the volume is out
+  of space instead of showing a server error, and the upload can go on once
+  there is room. A refused write for lack of permission is reported as such
+  too.
 - **Write access to shared folders**: one HSI account without a Linux account
   (removed by hand, for example) no longer takes write access away from every
   other account in the file manager and over SMB.

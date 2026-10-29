@@ -181,6 +181,8 @@ func mapOsErr(err error) *fsError {
 		return &fsError{Code: "ENOENT", Message: "no such file or directory"}
 	case syscall.EEXIST, syscall.ENOTEMPTY:
 		return &fsError{Code: "EEXIST", Message: "destination already exists"}
+	case syscall.ENOSPC, syscall.EDQUOT:
+		return &fsError{Code: "ENOSPC", Message: "no space left on device"}
 	}
 	if err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}

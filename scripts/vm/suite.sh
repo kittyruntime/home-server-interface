@@ -806,10 +806,12 @@ case "$scenario" in
     expect_running "$version"; expect_mirror; expect_mirror_data
     ;;
   interrupted)
-    separate_tmp
     vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
     install_published
     expect_running "$published"
+    # After the published release: installers before 1.73.1 ran their stage
+    # from /tmp.
+    separate_tmp
     add_data
     interrupted_update "$published"
     expect_data

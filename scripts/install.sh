@@ -1014,7 +1014,11 @@ if [[ "$FROM_SOURCE" -eq 0 ]]; then
     || die "This installer installs $FIRST_SAFE_UPDATE_VERSION or newer. To install $VERSION, run the install.sh of that release."
 
   step "Downloading and verifying $VERSION"
-  DL_DIR=$(mktemp -d)
+  # Not under /tmp: it may be noexec, and the stage's worker runs before the
+  # switch. A run cut short (power loss) leaves its folder: swept after a day.
+  mkdir -p "/var/lib/${APP_NAME}"
+  find "/var/lib/${APP_NAME}" -maxdepth 1 -name '.download-*' -mmin +1440 -exec rm -rf -- {} + 2>/dev/null || true
+  DL_DIR=$(mktemp -d "/var/lib/${APP_NAME}/.download-XXXXXX")
   stage_release
   RELEASE_WORKER_BIN="${RELEASE_APP_NAME}-worker"
   release_stage_complete "$RELEASE_STAGE" "$RELEASE_WORKER_BIN" \
