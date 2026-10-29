@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.72.0] - 2026-10-29
+
 ### Added
 - **French interface**: the dashboard is available in English and French.
   The language follows the browser at first, is chosen in the profile, and
@@ -1570,7 +1572,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.71.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.72.0...HEAD
+[1.72.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.71.0...v1.72.0
 [1.71.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.70.0...v1.71.0
 [1.70.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.69.0...v1.70.0
 [1.69.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.68.2...v1.69.0
