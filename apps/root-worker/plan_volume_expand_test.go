@@ -288,3 +288,37 @@ func TestPlanVolumeExpandRecordsArraySize(t *testing.T) {
 		t.Fatalf("identity and size recorded: %+v", e)
 	}
 }
+
+// An array in use flips between "clean" and "active" as it is written to:
+// that must not make the preview stale, while a degraded array still does.
+func TestPlanVolumeExpandStateIgnoresWrites(t *testing.T) {
+	stubExpandHost(t)
+	withState := func(state string) string {
+		hostMdDetail = func(string) (string, error) {
+			return strings.Replace(raid5Detail, "    Number", "                State : "+state+"\n    Number", 1), nil
+		}
+		p, fe := expand(t, "raidAddDisk", "sdf")
+		if fe != nil {
+			t.Fatalf("%s: %v", state, fe)
+		}
+		t.Setenv("HSI_EXPANSIONS", t.TempDir()+"/expansions.json")
+		return p.Observed["state"]
+	}
+	if a, b := withState("clean"), withState("active"); a != b {
+		t.Fatalf("clean %q and active %q must observe the same state", a, b)
+	}
+	if a, b := withState("clean"), withState("active, checking"); a == b {
+		t.Fatalf("a check under way must change the observed state: %q", b)
+	}
+}
+
+func TestMdStateFlags(t *testing.T) {
+	for in, want := range map[string]string{
+		"clean": "", "active": "", "clean, degraded": "degraded",
+		"active, degraded, recovering": "degraded recovering", " active , resyncing ": "resyncing",
+	} {
+		if got := mdStateFlags(in); got != want {
+			t.Errorf("mdStateFlags(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
