@@ -2,6 +2,7 @@
   "id": "navidrome",
   "name": "Navidrome",
   "category": "Media",
+  "added": "2026-07-13",
   "tagline": "Self-hosted music streaming server compatible with Subsonic clients.",
   "description": "Navidrome is a modern, lightweight music server and streamer that gives you access to your own music collection from any browser or Subsonic-compatible app.",
   "website": "https://www.navidrome.org",

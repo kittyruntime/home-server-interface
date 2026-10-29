@@ -18,6 +18,11 @@ export default {
     cancel: 'Annuler',
   },
   AppStorePanel: {
+    sortApps: 'Trier les applications',
+    installedFirst: 'Installées d\'abord',
+    byName: 'Par nom',
+    recentlyAdded: 'Ajoutées récemment',
+    new: 'Nouveau',
     back: '← Retour',
     appStore: 'App Store',
     searchApps: 'Rechercher une application…',
@@ -29,6 +34,7 @@ export default {
     open: 'Ouvrir ↗',
   },
   AppStoreDetail: {
+    new: 'Nouveau',
     back: '← Retour',
     install: 'Installer',
     update: 'Mettre à jour…',

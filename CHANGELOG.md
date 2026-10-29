@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Sort the App Store**: installed first, by name, or the latest added
+  first. Apps that joined the catalog in the last 60 days are marked New,
+  never ranked by popularity (#26).
 - **More about each App Store app**: its page shows the license, links to
   the documentation and the source code, and its first steps (first sign-in,
   where to put files, what to set up first, such as a reverse proxy with

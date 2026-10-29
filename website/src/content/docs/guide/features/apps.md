@@ -19,6 +19,9 @@ admin-only.
   (first sign-in, where to put files), which the App Store shows again once the
   app is installed; the Installed and Updates filters find the apps already on
   the server.
+- **Finding apps**: search, filter by category, installed apps or updates, and
+  sort installed first, by name or the latest added first. Apps that joined the
+  catalog in the last 60 days are marked New; nothing is ranked by popularity.
 - **App updates**: when a new HSI version ships a newer image for an installed
   App Store app, its card and page say so with a link to the release notes, and the
   Apps page marks it. **Update…** previews the one changed line of

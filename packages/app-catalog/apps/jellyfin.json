@@ -2,6 +2,7 @@
   "id": "jellyfin",
   "name": "Jellyfin",
   "category": "Media",
+  "added": "2026-07-13",
   "tagline": "Free software media server for your movies, shows and music.",
   "description": "Jellyfin lets you stream your own media library to any device. No tracking, no fees.",
   "website": "https://jellyfin.org",

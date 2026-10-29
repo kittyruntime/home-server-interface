@@ -2,6 +2,7 @@
   "id": "paperless-ngx",
   "name": "Paperless-ngx",
   "category": "Productivity",
+  "added": "2026-10-28",
   "tagline": "Scan, index and search all your paper documents.",
   "description": "Paperless-ngx turns your scans and PDFs into a searchable archive with OCR, tags and correspondents. Drop files in its inbox folder and it files them for you. Runs with its own Redis.",
   "website": "https://docs.paperless-ngx.com",

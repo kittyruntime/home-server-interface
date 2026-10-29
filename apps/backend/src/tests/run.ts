@@ -2369,10 +2369,11 @@ await testSharePlans()
   assert.equal(au.replaceImage("x:\n\n    image: a/b:1\n", "a/b:1", "a/b:2"), "x:\n\n    image: a/b:2\n")
 
   const { zAppManifest } = await import("@app/app-catalog")
-  const base = { id: "x", name: "X", category: "Utilities", tagline: "t", description: "d", image: "x/x:1" }
+  const base = { id: "x", name: "X", category: "Utilities", added: "2026-01-01", tagline: "t", description: "d", image: "x/x:1" }
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "javascript:alert(1)" }).success, false)
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "http://example.com" }).success, false)
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "https://example.com/releases" }).success, true)
+  assert.equal(zAppManifest.safeParse({ ...base, added: "29/10/2026" }).success, false, "added is a YYYY-MM-DD date")
   assert.equal(zAppManifest.safeParse({ ...base, source: "http://example.com" }).success, false, "source links are HTTPS")
   assert.equal(zAppManifest.safeParse({ ...base, license: "<b>GPL</b>" }).success, false)
   assert.equal(zAppManifest.safeParse({ ...base, postInstall: Array(7).fill("step") }).success, false, "a few first steps, not a manual")
