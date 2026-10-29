@@ -618,7 +618,14 @@ case "$scenario" in
     api_setup
     apply_plan storage.reapply '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
     expect_mirror; expect_mirror_data; expect_account_data
-    vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after the restore"
+    # Samba passwords are not in the backup (documented): the account sets a
+    # new password in its profile, which gives it its Samba account back.
+    vmuser_id=$(vm_ssh "python3 -c 'import sqlite3; print(sqlite3.connect(\"file:$DB?mode=ro\",uri=True).execute(\"select id from User where username=\\\"vmuser\\\"\").fetchone()[0])'")
+    sign_token "$vmuser_id" false /root/token-vmuser
+    API_TOKEN=/root/token-vmuser api user.changePassword '{"currentPassword":"vm-user-password","newPassword":"vm-user-password-2"}' >/dev/null
+    vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after setting a new password"
+    vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%vm-user-password-2' -c 'ls vmuser/*'" >/dev/null 2>&1 \
+      || fail "vmuser cannot open the share with its new password"
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
