@@ -31,3 +31,14 @@ func TestShareGroupRoster(t *testing.T) {
 		t.Fatalf("roster: %v", got)
 	}
 }
+
+// A fresh install has no Place with writers: the share group must not be
+// created then, or a configuration restore finds it with another gid.
+func TestPlacesHaveWriters(t *testing.T) {
+	if placesHaveWriters(nil) || placesHaveWriters([]placeAccessDef{{Path: "/srv/a"}}) {
+		t.Fatal("no writers: no group needed")
+	}
+	if !placesHaveWriters([]placeAccessDef{{Path: "/srv/a"}, {Path: "/srv/b", WriteUsers: []string{"ann"}}}) {
+		t.Fatal("a writer needs the group")
+	}
+}

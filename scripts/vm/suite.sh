@@ -16,6 +16,9 @@
 #   features each feature checked on the host (#38): an account (Linux and
 #           Samba), the file manager as that account on a volume, SMB from a
 #           client, and an App Store app installed, changed and removed
+#   restore back up the configuration of a NAS with a mirror and an account,
+#           replace the system disk, install again and restore the backup:
+#           the volume comes back with its files, owners, Place and share
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -293,11 +296,12 @@ add_mirror_data() {
   log "Writing files on the mirror"
   vm_ssh 'mkdir -p /srv/vm-mirror/data/nested && for i in 1 2 3 4; do head -c 8M /dev/urandom > /srv/vm-mirror/data/nested/file$i.bin; done
     chown -R 1234:1234 /srv/vm-mirror/data && chmod 0750 /srv/vm-mirror/data/nested
-    cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort > /root/mirror.sum'
+    cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort' > "$VM_DIR/mirror.sum"
 }
 
 expect_mirror_data() {
-  vm_ssh 'cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort | diff /root/mirror.sum -' \
+  # Kept on this side: the restore scenario replaces the system disk.
+  vm_ssh 'cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort' | diff "$VM_DIR/mirror.sum" - \
     || fail "files on the mirror were lost or changed"
   log "Files on the mirror intact"
 }
@@ -457,6 +461,50 @@ app_feature() {
   log "IT Tools installed, moved and removed"
 }
 
+BACKUP_PASSWORD="vm-test-config-backup-password"
+
+# An account made through HSI (Linux and Samba), owning files on the mirror.
+add_account_data() {
+  log "Creating the account vmuser and giving it files on the mirror"
+  api user.create '{"username":"vmuser","password":"vm-user-password"}' >/dev/null
+  vm_ssh 'id vmuser && mkdir -p /srv/vm-mirror/vmuser && head -c 4M /dev/urandom > /srv/vm-mirror/vmuser/own.bin && chown -R vmuser:vmuser /srv/vm-mirror/vmuser' >/dev/null \
+    || fail "the account vmuser has no Linux account"
+  vm_ssh 'stat -c "%u:%g" /srv/vm-mirror/vmuser/own.bin' > "$VM_DIR/vmuser.ids"
+}
+
+expect_account_data() {
+  local ids
+  ids=$(vm_ssh 'stat -c "%U %u:%g" /srv/vm-mirror/vmuser/own.bin')
+  [[ $ids == "vmuser $(cat "$VM_DIR/vmuser.ids")" ]] || fail "the files of vmuser are now owned by $ids, expected vmuser $(cat "$VM_DIR/vmuser.ids")"
+  log "vmuser owns its files with the same ids"
+}
+
+config_backup() {
+  log "Downloading a configuration backup"
+  vm_ssh "curl -sfk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
+    --data '{\"password\":\"$BACKUP_PASSWORD\"}' -o /root/config.hsibak https://127.0.0.1:9001/system/config-backup" \
+    || fail "the configuration backup failed"
+  vm_get /root/config.hsibak "$VM_DIR/config.hsibak"
+  [[ -s $VM_DIR/config.hsibak ]] || fail "the configuration backup is empty"
+}
+
+config_restore() {
+  local preview token
+  log "Restoring the configuration backup"
+  vm_put "$VM_DIR/config.hsibak" /root/config.hsibak
+  preview=$(vm_ssh "curl -sk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/vnd.hsi.config-backup' \
+    -H \"x-hsi-backup-password: $(printf %s "$BACKUP_PASSWORD" | base64 -w0)\" --data-binary @/root/config.hsibak \
+    https://127.0.0.1:9001/system/config-restore/preview")
+  token=$(python3 -c 'import json,sys; p=json.loads(sys.argv[1]); assert not p.get("conflicts"), p; print(p["token"])' "$preview") \
+    || fail "the restore preview was refused: $preview"
+  echo "$preview" > "$VM_DIR/restore-preview.json"
+  vm_ssh "curl -sfk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
+    --data '{\"token\":\"$token\"}' https://127.0.0.1:9001/system/config-restore/apply" >/dev/null \
+    || fail "the restore was refused"
+  # The server restarts on the restored database.
+  sleep 10
+}
+
 vm_boot
 case "$scenario" in
   fresh)
@@ -544,6 +592,44 @@ case "$scenario" in
     vm_reboot
     expect_running "$version"; expect_mirror
     vm_ssh 'id vmuser >/dev/null && test -f /srv/vm-mirror/from-smb/hello.txt' || fail "vmuser or its files are gone after a reboot"
+    ;;
+  restore)
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    create_mirror
+    expect_mirror
+    add_mirror_data
+    add_account_data
+    config_backup
+    vm_poweroff
+    vm_new_system
+    vm_start
+    # An unrelated account first: ids the new system hands out by default no
+    # longer match the old ones, so only a restore that keeps them passes.
+    vm_ssh 'useradd -M -u 1500 squatter' || fail "could not add an account"
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    config_restore
+    expect_running "$version"
+    api_setup
+    apply_plan storage.reapply '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
+    expect_mirror; expect_mirror_data; expect_account_data
+    # Samba passwords are not in the backup (documented): the account sets a
+    # new password in its profile, which gives it its Samba account back.
+    vmuser_id=$(vm_ssh "python3 -c 'import sqlite3; print(sqlite3.connect(\"file:$DB?mode=ro\",uri=True).execute(\"select id from User where username=\\\"vmuser\\\"\").fetchone()[0])'")
+    sign_token "$vmuser_id" false /root/token-vmuser
+    API_TOKEN=/root/token-vmuser api user.changePassword '{"currentPassword":"vm-user-password","newPassword":"vm-user-password-2"}' >/dev/null
+    vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after setting a new password"
+    # It has no access to the mirror's Place here: signing in to Samba is
+    # what the new password must allow.
+    vm_ssh "smbclient -L //127.0.0.1 -U 'vmuser%vm-user-password-2'" > "$VM_DIR/smb-signin.log" 2>&1 \
+      || { cat "$VM_DIR/smb-signin.log"; vm_ssh 'pdbedit -v vmuser; systemctl is-active smbd; journalctl -u hsi-worker -n 30 --no-pager | grep -i -E "samba|smb|vmuser"'; fail "Samba refuses vmuser's new password"; }
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac

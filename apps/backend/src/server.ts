@@ -2,6 +2,7 @@ import { buildApp, connectNats, startEventSubscriber } from "./app"
 import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeGuard } from "./services/volume-guard"
+import { syncSharesBestEffort } from "./services/sharing.service"
 import { startTelemetry } from "./services/telemetry"
 import { migrateRsyncPlans } from "./services/backup-status"
 import { startTlsWatch } from "./services/tls-watch"
@@ -63,6 +64,10 @@ const start = async () => {
     startMetricsSampler()
     startAlertSampler()
     startVolumeGuard()
+    // Shares and Place access follow the database, which a configuration
+    // restore replaces just before this restart: nothing else writes them out
+    // until some sharing setting changes (#1).
+    void syncSharesBestEffort(prisma)
     await migrateNotificationStorage()
     await ensureDefaultRule()
     await startDeliveryQueue()

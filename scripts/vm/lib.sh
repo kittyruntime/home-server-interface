@@ -29,6 +29,12 @@ vm_put() {
     "$1" "root@127.0.0.1:$2"
 }
 
+vm_get() {
+  scp -q -i "$VM_DIR/id_ed25519" -P "$VM_SSH_PORT" \
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+    "root@127.0.0.1:$1" "$2"
+}
+
 vm_wait_ssh() {
   local deadline=$((SECONDS + ${1:-300}))
   local next=$((SECONDS + 60))
@@ -68,14 +74,29 @@ users:
 package_update: true
 packages: [curl, ca-certificates, python3, openssl]
 USERDATA
-  printf 'instance-id: hsi-vm\nlocal-hostname: hsi-vm\n' > "$VM_DIR/meta-data"
-  cloud-localds "$VM_DIR/seed.iso" "$VM_DIR/user-data" "$VM_DIR/meta-data"
+  vm_seed hsi-vm
   local i
   for ((i = 1; i <= VM_DATA_DISKS; i++)); do
     qemu-img create -q -f qcow2 "$VM_DIR/data$i.qcow2" "$VM_DATA_DISK_SIZE"
   done
   log "Booting the VM (${VM_DATA_DISKS} data disks of ${VM_DATA_DISK_SIZE})"
   vm_start
+}
+
+# The cloud-init seed: a new instance id makes cloud-init set a new system
+# disk up again (SSH key, packages).
+vm_seed() {
+  printf 'instance-id: %s\nlocal-hostname: hsi-vm\n' "$1" > "$VM_DIR/meta-data"
+  cloud-localds "$VM_DIR/seed.iso" "$VM_DIR/user-data" "$VM_DIR/meta-data"
+}
+
+# Replaces the system disk by a blank one, as after a boot drive failure; the
+# data disks stay as they are. The VM must be off.
+vm_new_system() {
+  log "Replacing the system disk"
+  rm -f "$VM_DIR/system.qcow2"
+  qemu-img create -q -f qcow2 -b "$VM_CACHE/debian-13.qcow2" -F qcow2 "$VM_DIR/system.qcow2" 20G
+  vm_seed "hsi-vm-$RANDOM"
 }
 
 # vm_start [disk number...]: starts QEMU on the existing system disk with the

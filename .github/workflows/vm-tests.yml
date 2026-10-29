@@ -28,6 +28,8 @@ on:
       - "apps/backend/src/trpc/routers/fs.ts"
       - "apps/backend/src/trpc/routers/user.ts"
       - "packages/compose/**"
+      - "apps/backend/src/services/config-*.ts"
+      - "apps/backend/src/routes/backup.ts"
       - "apps/backend/src/trpc/routers/network.ts"
       - ".github/workflows/vm-tests.yml"
 
@@ -100,7 +102,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [fresh, update, storage, network, recovery, features]
+        scenario: [fresh, update, storage, network, recovery, features, restore]
     steps:
       - uses: actions/checkout@v7
 

@@ -182,15 +182,39 @@ func renderSmbConf(shares []shareDef) (string, error) {
 // and each place directory made group-owned + setgid + group-writable. This lets
 // BOTH SMB and the web file-manager (which write as the connecting user) write,
 // even for places without an SMB share. Not gated on smbd. Best-effort.
+type placeAccessDef struct {
+	Path       string   `json:"path"`
+	WriteUsers []string `json:"writeUsers"`
+}
+
+// placesHaveWriters: some Place gives someone write access, so the share
+// group must exist.
+func placesHaveWriters(places []placeAccessDef) bool {
+	for _, p := range places {
+		if len(p.WriteUsers) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func handleSharingPlaceAccess(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
-		Places []struct {
-			Path       string   `json:"path"`
-			WriteUsers []string `json:"writeUsers"`
-		} `json:"places"`
+		Places []placeAccessDef `json:"places"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
+		return
+	}
+	// No Place has writers (a fresh install): leave the group uncreated, so a
+	// configuration restore can create it with the gid of the backup.
+	if !placesHaveWriters(req.Places) {
+		if _, err := user.LookupGroup(shareGroup); err == nil {
+			if err := setShareGroupMembers(nil); err != nil {
+				log.Printf("sharing: set group members: %v", err)
+			}
+		}
+		replyOk(nc, msg.Reply, map[string]any{"ok": true})
 		return
 	}
 	if err := ensureShareGroup(); err != nil {
