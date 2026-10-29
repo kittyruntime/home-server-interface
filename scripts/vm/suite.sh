@@ -609,7 +609,7 @@ case "$scenario" in
     # An unrelated account first: ids the new system hands out by default no
     # longer match the old ones, so only a restore that keeps them passes.
     vm_ssh 'useradd -M -u 1500 squatter' || fail "could not add an account"
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient >/dev/null' || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
