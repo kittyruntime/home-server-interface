@@ -29,6 +29,8 @@ func TestShareGroupRoster(t *testing.T) {
 	got := shareGroupRoster([]string{"ann", "root", "ghost", "Bad Name", "bob"}, exists)
 	if strings.Join(got, ",") != "ann,bob" {
 		t.Fatalf("roster: %v", got)
+	}
+}
 
 // A fresh install has no Place with writers: the share group must not be
 // created then, or a configuration restore finds it with another gid.
