@@ -139,6 +139,15 @@ vm_poweroff() {
   done
 }
 
+# A power cut: QEMU is killed, whatever the guest had not written is lost.
+vm_cut() {
+  local pid
+  pid=$(cat "$VM_DIR/qemu.pid")
+  log "Cutting the VM's power"
+  kill -9 "$pid" 2>/dev/null || true
+  while kill -0 "$pid" 2>/dev/null; do sleep 1; done
+}
+
 vm_reboot() {
   log "Rebooting the VM"
   vm_ssh 'systemctl reboot' || true

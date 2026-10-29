@@ -19,6 +19,11 @@
 #   restore back up the configuration of a NAS with a mirror and an account,
 #           replace the system disk, install again and restore the backup:
 #           the volume comes back with its files, owners, Place and share
+#   faults  the mirror read-only, then another filesystem in its place: HSI
+#           holds it and writes nothing; then it fills up during an upload
+#   interrupted with /tmp on its own noexec filesystem: the power is cut
+#           during an update (rolled back) and during a configuration restore
+#           on a new system disk (which still goes through)
 #
 # Each run uses a disposable VM (lib.sh). Exit status 0 means every check held.
 set -euo pipefail
@@ -317,16 +322,34 @@ wait_clean() {
     || fail "$md did not get in sync"
 }
 
-# expect_hold <blocked|back|none>: the guard's view of the mirror, which it
-# refreshes every minute.
+# expect_hold <blocked|back|none> [reason]: the guard's view of the mirror,
+# which it refreshes every minute.
 expect_hold() {
-  local want="$1" got="" deadline=$((SECONDS + 300))
+  local got="" deadline=$((SECONDS + 300))
   while (( SECONDS < deadline )); do
-    got=$(api_query storage.volumes.list | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin) if x["mountPoint"]=="/srv/vm-mirror"]; print(((v[0]["hold"] or {}).get("status") or "none") if v else "unlisted")')
-    [[ $got == "$want" ]] && { log "Hold on the mirror: $want"; return; }
+    got=$(api_query storage.volumes.list | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin) if x["mountPoint"]=="/srv/vm-mirror"]; h=(v[0]["hold"] or {}) if v else {}; print((h.get("status") or "none") + ":" + (h.get("reason") or "") if v else "unlisted:")')
+    [[ ${got%%:*} == "$1" && ( -z ${2:-} || ${got#*:} == "$2" ) ]] && { log "Hold on the mirror: $got"; return; }
     sleep 10
   done
-  fail "the hold on the mirror is $got, expected $want"
+  fail "the hold on the mirror is $got, expected $1${2:+:$2}"
+}
+
+# expect_held_off: the file manager is refused on the held mirror and its
+# share is not offered.
+expect_held_off() {
+  api_error fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"stray"}' | grep -q 'resume it in Storage first' \
+    || fail "the file manager was not refused on the held volume"
+  vm_ssh '! test -e /srv/vm-mirror/stray' || fail "the file manager wrote on the held volume"
+  vm_ssh 'conf=$(systemctl show -p ExecStart smbd | grep -o -- "--configfile=[^ ;]*" | cut -d= -f2)
+    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | awk "/^\[/{s=\$0} s==\"[mirror]\" && /available = No/{f=1} END{exit !f}"' \
+    || fail "the share of the held volume is still offered"
+}
+
+# resume_mirror: the mirror is back as it should be; the administrator resumes it.
+resume_mirror() {
+  expect_hold back
+  api storage.volumes.resume '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
+  expect_hold none
 }
 
 expand_mirror() {
@@ -363,11 +386,7 @@ expect_missing() {
   expect_hold blocked
   vm_ssh 'touch /srv/vm-mirror/stray 2>/dev/null' && fail "root could write into the empty mount point"
   vm_ssh '[ -z "$(ls -A /srv/vm-mirror)" ]' || fail "the empty mount point is not empty"
-  api_error fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"stray"}' | grep -q 'resume it in Storage first' \
-    || fail "the file manager was not refused on the missing volume"
-  vm_ssh 'conf=$(systemctl show -p ExecStart smbd | grep -o -- "--configfile=[^ ;]*" | cut -d= -f2)
-    testparm -s "${conf:-/etc/samba/smb.conf}" 2>/dev/null | awk "/^\[/{s=\$0} s==\"[mirror]\" && /available = No/{f=1} END{exit !f}"' \
-    || fail "the share of the missing volume is still offered"
+  expect_held_off
   log "Missing volume held; the boot disk was not written"
 }
 
@@ -390,9 +409,9 @@ account_feature() {
   echo "$id" > "$VM_DIR/vmuser.id"
 }
 
-# vmuser may read, write and delete in the mirror's Place, then works in it
-# through the file manager: the files are its own on the host.
-files_feature() {
+# grant_vmuser: vmuser may read, write and delete in the mirror's Place, and
+# /root/token-vmuser signs it in.
+grant_vmuser() {
   local id place
   id=$(cat "$VM_DIR/vmuser.id")
   place=$(api_query place.list | python3 -c 'import json,sys; print(next(p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/vm-mirror"))')
@@ -401,6 +420,12 @@ files_feature() {
   # may write in Places.
   vm_until 60 "vmuser did not join hsi-share after getting write access" 'id -nG vmuser | grep -qw hsi-share'
   sign_token "$id" false /root/token-vmuser
+}
+
+# The file manager as vmuser, in the mirror's Place: the files it makes
+# are its own on the host.
+files_feature() {
+  grant_vmuser
   log "File manager as vmuser on the mirror"
   wait_job "$(API_TOKEN=/root/token-vmuser api fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"from-ui"}')" "making a folder as vmuser"
   wait_job "$(API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"note.txt"}')" "making a file as vmuser"
@@ -488,21 +513,157 @@ config_backup() {
   [[ -s $VM_DIR/config.hsibak ]] || fail "the configuration backup is empty"
 }
 
-config_restore() {
-  local preview token
-  log "Restoring the configuration backup"
+# restore_preview: uploads the backup and prints the token of its preview.
+restore_preview() {
+  local preview
   vm_put "$VM_DIR/config.hsibak" /root/config.hsibak
   preview=$(vm_ssh "curl -sk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/vnd.hsi.config-backup' \
     -H \"x-hsi-backup-password: $(printf %s "$BACKUP_PASSWORD" | base64 -w0)\" --data-binary @/root/config.hsibak \
     https://127.0.0.1:9001/system/config-restore/preview")
-  token=$(python3 -c 'import json,sys; p=json.loads(sys.argv[1]); assert not p.get("conflicts"), p; print(p["token"])' "$preview") \
-    || fail "the restore preview was refused: $preview"
   echo "$preview" > "$VM_DIR/restore-preview.json"
+  python3 -c 'import json,sys; p=json.loads(sys.argv[1]); assert not p.get("conflicts"), p; print(p["token"])' "$preview" \
+    || fail "the restore preview was refused: $preview"
+}
+
+config_restore() {
+  local token
+  log "Restoring the configuration backup"
+  token=$(restore_preview)
   vm_ssh "curl -sfk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
     --data '{\"token\":\"$token\"}' https://127.0.0.1:9001/system/config-restore/apply" >/dev/null \
     || fail "the restore was refused"
   # The server restarts on the restored database.
   sleep 10
+}
+
+# The update helpers' paths on the VM.
+UPDATE_STATE=/var/lib/hsi/update
+
+install_published() {
+  published=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+  log "Installing the published $published"
+  vm_ssh "curl -fsSL https://github.com/$REPO/releases/download/$published/install.sh -o /root/published-install.sh && VERSION=$published bash /root/published-install.sh" > "$VM_DIR/install-$published.log" 2>&1 \
+    || { tail -40 "$VM_DIR/install-$published.log"; fail "install of $published failed"; }
+}
+
+# /tmp on its own filesystem, noexec as hardened servers have it: installing,
+# updating and restoring must neither rename across it nor run from it.
+separate_tmp() {
+  vm_ssh 'grep -q "[[:space:]]/tmp[[:space:]]" /etc/fstab || echo "tmpfs /tmp tmpfs nosuid,nodev,noexec 0 0" >> /etc/fstab
+    systemctl daemon-reload
+    if findmnt -n /tmp >/dev/null; then mount -o remount,nosuid,nodev,noexec /tmp; else mount /tmp; fi
+    [ "$(stat -c %d /tmp)" != "$(stat -c %d /)" ] && findmnt -no OPTIONS /tmp | grep -qw noexec' \
+    || fail "/tmp is not a separate noexec filesystem"
+  log "/tmp is a separate noexec filesystem"
+}
+
+# interrupted_update <installed version>: the power goes while an update to
+# the built archive waits for the new version's health, after the switch. The
+# worker rolls the update back when it starts again.
+interrupted_update() {
+  log "Updating to $version, cutting the power after the switch"
+  vm_put "$archive" "/root/$(basename "$archive")"
+  vm_put "$root/scripts/install.sh" /root/install.sh
+  vm_ssh "VERSION=$version HSI_RELEASE_ARCHIVE=/root/$(basename "$archive") nohup setsid bash /root/install.sh > /root/update.log 2>&1 < /dev/null &"
+  vm_ssh "for i in \$(seq 1 9000); do python3 -c 'import json,sys; sys.exit(json.load(open(\"$UPDATE_STATE/in-progress.json\"))[\"step\"]!=\"health\")' 2>/dev/null && exit 0; sleep 0.1; done; exit 1" \
+    || { vm_ssh 'tail -30 /root/update.log'; fail "the update never reached its health check"; }
+  vm_cut
+  vm_start
+  expect_running "$1"
+  vm_ssh "! test -e $UPDATE_STATE/in-progress.json && python3 -c 'import json,sys; sys.exit(json.load(open(\"$UPDATE_STATE/last.json\"))[\"status\"]!=\"rolled-back\")'" \
+    || { vm_ssh "cat $UPDATE_STATE/last.json $UPDATE_STATE/in-progress.json; journalctl -u hsi-worker -b -n 40 --no-pager"; fail "the interrupted update was not rolled back"; }
+  log "The interrupted update was rolled back to $1"
+}
+
+# The power goes while a restore is applied: the server is frozen as soon as
+# the worker has made the accounts, before it swaps the database. HSI starts
+# again, and the restore still goes through.
+interrupted_restore() {
+  local token
+  log "Restoring the configuration backup, cutting the power halfway"
+  token=$(restore_preview)
+  vm_ssh "nohup curl -sk -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' \
+      --data '{\"token\":\"$token\"}' https://127.0.0.1:9001/system/config-restore/apply > /root/apply.log 2>&1 < /dev/null &
+    for i in \$(seq 1 200000); do getent passwd vmuser >/dev/null && break; done
+    kill -STOP \$(systemctl show -p MainPID --value hsi-server)
+    getent passwd vmuser" >/dev/null || fail "the restore never made the account vmuser"
+  vm_cut
+  vm_start
+  expect_running "$version"
+  vm_ssh 'id vmuser' >/dev/null || fail "the account the restore made is gone"
+  if vm_ssh "python3 -c 'import sqlite3,sys; sys.exit(not sqlite3.connect(\"file:$DB?mode=ro\",uri=True).execute(\"select 1 from User where username=\\\"vmuser\\\"\").fetchone())'"; then
+    log "The database was swapped before the cut"
+  else
+    log "The cut left the database as it was: restoring again"
+    api_setup
+    config_restore
+    expect_running "$version"
+  fi
+  api_setup
+}
+
+# readonly_fault: the mirror is remounted read-only (as errors=remount-ro
+# would), then writable again.
+readonly_fault() {
+  log "Remounting the mirror read-only"
+  vm_ssh 'mount -o remount,ro /srv/vm-mirror' || fail "could not remount the mirror read-only"
+  expect_hold blocked readonly
+  expect_held_off
+  vm_ssh 'mount -o remount,rw /srv/vm-mirror' || fail "could not remount the mirror writable"
+  resume_mirror
+}
+
+# wrong_fault: another filesystem is mounted in place of the mirror. Nothing
+# is written on it, then the mirror comes back.
+wrong_fault() {
+  local other
+  other=$(data_disk 4)
+  log "Mounting another filesystem ($other) in place of the mirror"
+  vm_ssh "mkfs.ext4 -q -F /dev/$other && umount /srv/vm-mirror && mount /dev/$other /srv/vm-mirror" || fail "could not mount $other on /srv/vm-mirror"
+  expect_hold blocked wrong
+  expect_held_off
+  vm_ssh '[ -z "$(ls -A /srv/vm-mirror | grep -vx lost+found)" ]' || fail "something was written on the other filesystem"
+  vm_ssh 'umount /srv/vm-mirror && mount /srv/vm-mirror' || fail "could not mount the mirror again"
+  resume_mirror
+}
+
+# upload_chunk <upload id> <chunk index>: sends one 1 MiB chunk of the 2 MiB
+# /root/upload.bin to the mirror as vmuser, and prints the HTTP status.
+upload_chunk() {
+  vm_ssh "dd if=/root/upload.bin bs=1M skip=$2 count=1 status=none | curl -sk -o /root/upload.out -w '%{http_code}' \
+    -H \"authorization: Bearer \$(cat /root/token-vmuser)\" -H 'content-type: application/octet-stream' \
+    -H 'x-upload-id: $1' -H 'x-chunk-index: $2' -H 'x-total-chunks: 2' -H 'x-chunk-offset: $(( $2 * 1048576 ))' \
+    -H 'x-total-bytes: 2097152' -H 'x-file-name: upload.bin' -H 'x-dest-dir: %2Fsrv%2Fvm-mirror' \
+    --data-binary @- https://127.0.0.1:9001/files/upload/chunk"
+}
+
+# full_volume: the mirror fills up during an upload. The write is refused,
+# a new upload too, HSI keeps running, and the upload ends once there is room.
+full_volume() {
+  local id sha status
+  id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+  log "Uploading to the mirror as vmuser while it fills up"
+  vm_ssh 'head -c 2M /dev/urandom > /root/upload.bin'
+  status=$(upload_chunk "$id" 0)
+  [[ $status == 200 ]] || fail "the first chunk got $status: $(vm_ssh 'cat /root/upload.out')"
+  vm_ssh 'dd if=/dev/zero of=/srv/vm-mirror/filler bs=1M status=none 2>/dev/null; sync; [ "$(df -B1 --output=avail /srv/vm-mirror | tail -1)" -lt 1048576 ]' \
+    || fail "could not fill the mirror"
+  status=$(upload_chunk "$id" 1)
+  [[ $status == 507 ]] || fail "a chunk written on the full mirror got $status, expected 507: $(vm_ssh 'cat /root/upload.out')"
+  status=$(upload_chunk "$(python3 -c 'import uuid; print(uuid.uuid4())')" 0)
+  [[ $status == 507 ]] || fail "a new upload to the full mirror got $status, expected 507: $(vm_ssh 'cat /root/upload.out')"
+  expect_running "$version"
+  expect_hold none
+  log "Making room, then sending the refused chunk again"
+  vm_ssh 'rm /srv/vm-mirror/filler'
+  status=$(upload_chunk "$id" 1)
+  [[ $status == 200 ]] || fail "the chunk got $status after making room: $(vm_ssh 'cat /root/upload.out')"
+  sha=$(vm_ssh 'sha256sum /root/upload.bin | cut -d" " -f1')
+  wait_job "$(vm_ssh "curl -sk -H \"authorization: Bearer \$(cat /root/token-vmuser)\" -H 'content-type: application/json' \
+    --data '{\"uploadId\":\"$id\",\"sha256\":\"$sha\"}' https://127.0.0.1:9001/files/upload/complete")" "finishing the upload"
+  vm_ssh 'cmp -s /root/upload.bin /srv/vm-mirror/upload.bin && [ "$(stat -c %U /srv/vm-mirror/upload.bin)" = vmuser ] && ! ls -A /srv/vm-mirror | grep -q "^\.upload-"' \
+    || fail "the upload did not end as vmuser's file, or left a partial file: $(vm_ssh 'ls -la /srv/vm-mirror')"
+  log "A full mirror refused the upload; it ended once there was room"
 }
 
 vm_boot
@@ -517,10 +678,7 @@ case "$scenario" in
     expect_running "$version"; expect_ledger; expect_data
     ;;
   update)
-    published=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
-    log "Installing the published $published"
-    vm_ssh "curl -fsSL https://github.com/$REPO/releases/download/$published/install.sh -o /root/published-install.sh && VERSION=$published bash /root/published-install.sh" > "$VM_DIR/install-$published.log" 2>&1 \
-      || { tail -40 "$VM_DIR/install-$published.log"; fail "install of $published failed"; }
+    install_published
     expect_running "$published"
     add_data
     install_build
@@ -572,9 +730,7 @@ case "$scenario" in
     vm_poweroff
     vm_start 1 3 4
     expect_running "$version"
-    expect_hold back
-    api storage.volumes.resume '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
-    expect_hold none
+    resume_mirror
     expect_mirror; expect_mirror_data
     ;;
   features)
@@ -630,6 +786,54 @@ case "$scenario" in
       || { cat "$VM_DIR/smb-signin.log"; vm_ssh 'pdbedit -v vmuser; systemctl is-active smbd; journalctl -u hsi-worker -n 30 --no-pager | grep -i -E "samba|smb|vmuser"'; fail "Samba refuses vmuser's new password"; }
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
+    ;;
+  faults)
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    # A quarter of the disks: filling it up stays quick.
+    create_mirror 25
+    expect_mirror
+    add_mirror_data
+    readonly_fault
+    wrong_fault
+    expect_mirror; expect_mirror_data
+    account_feature
+    grant_vmuser
+    full_volume
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data
+    ;;
+  interrupted)
+    separate_tmp
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_published
+    expect_running "$published"
+    add_data
+    interrupted_update "$published"
+    expect_data
+    install_build
+    expect_running "$version"; expect_ledger; expect_data
+    api_setup
+    create_mirror
+    expect_mirror
+    add_mirror_data
+    add_account_data
+    config_backup
+    vm_poweroff
+    vm_new_system
+    vm_start
+    separate_tmp
+    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    install_build
+    expect_running "$version"
+    api_setup
+    interrupted_restore
+    apply_plan storage.reapply '{"mountPoint":"/srv/vm-mirror"}' >/dev/null
+    expect_mirror; expect_mirror_data; expect_account_data
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac

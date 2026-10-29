@@ -23,6 +23,7 @@ on:
       - "apps/backend/src/services/containerStacks.ts"
       - "apps/backend/src/services/sharing*.ts"
       - "apps/backend/src/trpc/routers/fs.ts"
+      - "apps/backend/src/routes/files.ts"
       - "apps/backend/src/trpc/routers/user.ts"
       - "packages/compose/**"
       - "apps/backend/src/services/config-*.ts"
@@ -99,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [fresh, update, storage, network, recovery, features, restore]
+        scenario: [fresh, update, storage, network, recovery, features, restore, faults, interrupted]
     steps:
       - uses: actions/checkout@v7
 
