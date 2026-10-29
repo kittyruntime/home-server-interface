@@ -514,13 +514,13 @@ mcp_feature() {
   tools=$(mcp "$admin" '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
   grep -q '"storage_overview"' <<<"$tools" && ! grep -q '"fs_delete\|"delete_' <<<"$tools" || fail "unexpected MCP tools for a read-only admin token: $tools"
   mcp_call "$admin" storage_overview '{}' | grep -q '/srv/vm-mirror' || fail "storage_overview does not show the mirror"
-  mcp_call "$admin" list_files '{"path":"/srv/vm-mirror/from-smb"}' | grep -q 'hello.txt' || fail "list_files does not show hello.txt"
-  [[ $(mcp_call "$admin" read_text_file '{"path":"/srv/vm-mirror/from-smb/hello.txt"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["content"].strip())') \
-    == "$(vm_ssh 'cat /etc/hostname')" ]] || fail "read_text_file does not return the file"
-  api_get audit.list '{"limit":20,"via":"mcp"}' | grep -q '"fs.readText"' || fail "the read through MCP is not in the audit log"
 
+  # Files as vmuser: they are read as its Linux account (the test admin has none).
   user=$(API_TOKEN=/root/token-vmuser api apiToken.create '{"name":"vm user","scopes":["files:read","storage:read","apps:read","users:read","system:read"]}' \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["secret"])')
+  [[ $(mcp_call "$user" read_text_file '{"path":"/srv/vm-mirror/from-smb/hello.txt"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["content"].strip())') \
+    == "$(vm_ssh 'cat /etc/hostname')" ]] || fail "read_text_file does not return the file"
+  api_get audit.list '{"limit":20,"via":"mcp"}' | grep -q '"fs.readText"' || fail "the read through MCP is not in the audit log"
   tools=$(mcp "$user" '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
   grep -q '"list_files"' <<<"$tools" && ! grep -q '"storage_overview"\|"list_apps"' <<<"$tools" || fail "vmuser's token is offered tools beyond vmuser's rights: $tools"
   mcp_call "$user" list_files '{"path":"/srv/vm-mirror/from-smb"}' | grep -q 'hello.txt' || fail "vmuser's token cannot list its Place"
