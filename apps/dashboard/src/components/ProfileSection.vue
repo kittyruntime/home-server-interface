@@ -13,6 +13,7 @@ import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { LOCALES, isLocale, locale, setLocale } from '../i18n'
 import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from '../lib/advanced-mode'
+import { useDeleteConfirm } from '../lib/delete-confirm'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ const { theme, setTheme } = useTheme()
 const { t } = useI18n()
 const { accent, setAccent } = useAccent()
 const { advancedMode, setAdvancedMode } = useAdvancedMode()
+const { confirmFileDelete, setConfirmFileDelete } = useDeleteConfirm()
 
 const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; label: string }[] = [
   { value: 'auto',  label: t('uis.settings.ProfileSection.auto')  },
@@ -289,6 +291,15 @@ onMounted(async () => {
             /></Tip>
           </RadioGroupRoot>
           <span class="text-xs text-muted-foreground ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
+        </Card>
+      </div>
+
+      <!-- ── Delete confirmation ── -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('profile.confirmFileDelete') }}</h4>
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
+          <p class="text-xs text-muted-foreground">{{ t('profile.confirmFileDeleteHint') }}</p>
+          <Switch :model-value="confirmFileDelete" :aria-label="t('profile.confirmFileDelete')" @update:model-value="setConfirmFileDelete" />
         </Card>
       </div>
 

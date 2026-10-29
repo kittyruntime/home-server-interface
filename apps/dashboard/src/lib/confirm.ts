@@ -4,6 +4,10 @@ export interface ConfirmOptions {
   title?: string
   confirmLabel?: string
   danger?: boolean
+  /** Shows a "don't ask again" checkbox with this label. */
+  optOutLabel?: string
+  /** Called when the user confirms with the "don't ask again" box checked. */
+  onOptOut?: () => void
 }
 
 interface ConfirmState extends ConfirmOptions {

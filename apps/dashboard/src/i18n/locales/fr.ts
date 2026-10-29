@@ -79,5 +79,16 @@ export default {
   profile: {
     language: 'Langue',
     languageHint: 'La langue de l’interface sur tous les appareils où vous vous connectez.',
+    confirmFileDelete: 'Confirmer avant de supprimer',
+    confirmFileDeleteHint: 'Demander avant de supprimer des fichiers et dossiers dans le gestionnaire de fichiers. La suppression est définitive.',
+  },
+  fileDelete: {
+    title: 'Supprimer définitivement ?',
+    confirm: 'Supprimer',
+    messageFile: '« {name} » sera supprimé. Cette action est irréversible.',
+    messageFolder: 'Le dossier « {name} » et tout son contenu seront supprimés. Cette action est irréversible.',
+    messageMany: '{count} éléments seront supprimés, les dossiers avec tout leur contenu. Cette action est irréversible.',
+    dontAskAgain: 'Ne plus demander',
+    deleting: 'Suppression de {count} élément(s)',
   },
 } satisfies typeof en
