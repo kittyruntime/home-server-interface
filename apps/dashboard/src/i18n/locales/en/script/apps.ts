@@ -14,6 +14,8 @@ export default {
     unknown: 'Unknown',
     delete: 'Delete {p0}',
     delete2: 'Delete',
+    deleteData: 'Also delete its data in Docker volumes (databases, caches)',
+    deleteDataHint: 'Off: they are kept, and installing it again under the same name uses them. Folders in Places are never deleted.',
     start: 'Start {p0}',
     start2: 'Start',
     apply: 'Apply {p0}',

@@ -1096,7 +1096,11 @@ async function testAppPlanBuilders() {
     calls.push(`${name}:${String(args[0])}`)
     return name === "createPlace" ? "place-new" : name === "publishJob" ? "job-7" : undefined
   }
-  const stacks: Record<string, string> = { web: "services:\n  web:\n    image: nginx:1.27\n" }
+  const stacks: Record<string, string> = {
+    web: "services:\n  web:\n    image: nginx:1.27\n",
+    // A database in a named volume and a folder in a Place (#26).
+    blog: "services:\n  blog:\n    image: ghost:5\n    volumes: [/mnt/media/blog:/content]\n  db:\n    image: mariadb:11\n    volumes: [db:/var/lib/mysql]\nvolumes:\n  db:\n",
+  }
   let secretN = 0
   const manifest = {
     id: "demo", name: "Demo", image: "demo/demo:1.0", webUiPort: 80, restartPolicy: "unless-stopped",
@@ -1139,6 +1143,20 @@ async function testAppPlanBuilders() {
   const rm = await ap.buildAppPlan("app.remove", { name: "web" }, deps)
   assert.deepEqual(rm.steps.map(s => s.kind), ["run", "delete"])
   assert.equal(rm.steps[1]!.destructive, true)
+
+  // remove keeps the data by default and says where it stays; deleteData
+  // deletes the Docker volumes, never the folders in Places (#26).
+  const keep = await ap.buildAppPlan("app.remove", { name: "blog" }, deps)
+  assert.deepEqual(keep.steps.map(s => s.kind), ["run", "delete", "info", "info"])
+  assert.ok(!keep.steps[0]!.command!.includes("--volumes"))
+  assert.match(keep.steps[2]!.summary, /Keep its Docker volumes blog_db/)
+  assert.match(keep.steps[3]!.summary, /Keep its folders \/mnt\/media\/blog/)
+  const wipe = await ap.buildAppPlan("app.remove", { name: "blog", deleteData: true }, deps)
+  assert.deepEqual(wipe.steps.map(s => s.kind), ["run", "delete", "delete", "info"])
+  assert.deepEqual(wipe.steps[0]!.command!.slice(-2), ["down", "--volumes"])
+  assert.equal(wipe.steps[2]!.destructive, true)
+  assert.match(wipe.steps[2]!.summary, /blog_db/)
+  assert.notEqual(ap.appFingerprint(keep, { name: "blog" }), ap.appFingerprint(wipe, { name: "blog", deleteData: true }), "the choice changes the plan")
 
   // install: new Place, compose file with a generated secret (masked), up.
   const inst = { id: "demo", name: "demo1", ports: [], env: [], volumes: [{ target: "/data", source: { kind: "newPlace", name: "Demo data", path: "/srv/demo" } }] }
