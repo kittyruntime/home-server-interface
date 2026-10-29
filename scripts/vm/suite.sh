@@ -570,8 +570,11 @@ interrupted_update() {
   vm_cut
   vm_start
   expect_running "$1"
-  vm_ssh "! test -e $UPDATE_STATE/in-progress.json && python3 -c 'import json,sys; sys.exit(json.load(open(\"$UPDATE_STATE/last.json\"))[\"status\"]!=\"rolled-back\")'" \
-    || { vm_ssh "cat $UPDATE_STATE/last.json $UPDATE_STATE/in-progress.json; journalctl -u hsi-worker -b -n 40 --no-pager"; fail "the interrupted update was not rolled back"; }
+  # The recovery (its own unit) writes its result once the version it went
+  # back to is healthy: HSI may answer a little before.
+  vm_ssh "for i in \$(seq 1 300); do test -e $UPDATE_STATE/in-progress.json || break; sleep 1; done
+    ! test -e $UPDATE_STATE/in-progress.json && python3 -c 'import json,sys; sys.exit(json.load(open(\"$UPDATE_STATE/last.json\"))[\"status\"]!=\"rolled-back\")'" \
+    || { vm_ssh "cat $UPDATE_STATE/last.json $UPDATE_STATE/in-progress.json; journalctl -u hsi-update-recover -u hsi-worker -b -n 60 --no-pager"; fail "the interrupted update was not rolled back"; }
   log "The interrupted update was rolled back to $1"
 }
 
