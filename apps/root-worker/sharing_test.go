@@ -21,3 +21,13 @@ func TestRenderSmbConfUnavailableShare(t *testing.T) {
 		t.Fatalf("available = no written twice:\n%s", conf)
 	}
 }
+
+// One HSI account without a Linux account must not keep the others out of
+// the share group (gpasswd -M refuses the whole list).
+func TestShareGroupRoster(t *testing.T) {
+	exists := func(u string) bool { return u != "ghost" }
+	got := shareGroupRoster([]string{"ann", "root", "ghost", "Bad Name", "bob"}, exists)
+	if strings.Join(got, ",") != "ann,bob" {
+		t.Fatalf("roster: %v", got)
+	}
+}

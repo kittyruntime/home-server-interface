@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Write access to shared folders**: one HSI account without a Linux account
+  (removed by hand, for example) no longer takes write access away from every
+  other account in the file manager and over SMB.
 - **Expanding a volume in use**: the preview no longer goes stale at once with
   "The server changed since this preview" when the volume's array is being
   written to (#7).
