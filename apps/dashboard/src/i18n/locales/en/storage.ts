@@ -205,7 +205,7 @@ export default {
     notMounted: 'Not mounted',
     format: 'Format',
     mount: 'Mount',
-    taille: 'Taille',
+    taille: 'Size',
   },
   VolumesSection: {
     volumes: 'Volumes',

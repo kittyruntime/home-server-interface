@@ -65,7 +65,7 @@ export default {
   },
   EnvsEditor: {
     noEnvironmentVariables: 'No environment variables.',
-    keyValue10OtherFoo: 'KEY=value&#10;OTHER=foo',
+    keyValue10OtherFoo: 'KEY=value\nOTHER=foo',
   },
   LabelsTable: {
     noLabels: 'No labels.',
@@ -93,7 +93,7 @@ export default {
     compose: 'Compose',
     pasteA: 'Paste a',
     toAutoFillTheForm: 'to auto-fill the form.',
-    version3810Services: 'version: \'3.8\'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - \'8080:80\'',
+    version3810Services: 'version: \'3.8\'\nservices:\n  app:\n    image: nginx:alpine\n    ports:\n      - \'8080:80\'',
     service: 'Service:',
     importFillForm: 'Import & fill form',
     thisAppHasSeveralServices: 'This app has several services - edit the YAML directly.',
