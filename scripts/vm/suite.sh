@@ -437,7 +437,7 @@ app_feature() {
   vm_until 300 "IT Tools does not answer on port 8085" 'curl -sf http://127.0.0.1:8085/ | grep -qi "it-tools\|IT Tools"'
   [[ $(stack_state ittools) == running* ]] || fail "the ittools stack is $(stack_state ittools)"
   vm_ssh 'test -f /opt/containers/ittools/compose.yaml && docker compose -f /opt/containers/ittools/compose.yaml config -q' || fail "no valid compose.yaml for ittools"
-  api_query container.list | python3 -c 'import json,sys; a=[x for x in json.load(sys.stdin) if x["name"]=="ittools"]; assert a and a[0]["status"]=="running", a' \
+  api_query container.app.list | python3 -c 'import json,sys; a=[x for x in json.load(sys.stdin) if x["name"]=="ittools"]; assert a and a[0]["status"]=="running", a' \
     || fail "HSI does not read ittools back as running"
 
   log "Moving IT Tools to port 8086 by editing its compose.yaml"
@@ -452,7 +452,7 @@ app_feature() {
   apply_plan app.remove '{"name":"ittools"}' apps >/dev/null
   vm_until 120 "the ittools stack is still there" '! docker compose ls -a | grep -q "^ittools "'
   vm_until 30 "the ittools folder is still there" '! test -e /opt/containers/ittools'
-  api_query container.list | python3 -c 'import json,sys; assert not [x for x in json.load(sys.stdin) if x["name"]=="ittools"]' \
+  api_query container.app.list | python3 -c 'import json,sys; assert not [x for x in json.load(sys.stdin) if x["name"]=="ittools"]' \
     || fail "HSI still lists ittools"
   log "IT Tools installed, moved and removed"
 }
