@@ -138,6 +138,31 @@ api_query() {
     || fail "API $1 failed: $out"
 }
 
+# api_get <procedure> <json input>: a tRPC query that takes an input.
+api_get() {
+  local out
+  out=$(vm_ssh "curl -sk -G -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" --data-urlencode input@- https://127.0.0.1:9001/trpc/$1" <<<"$2") \
+    || fail "API $1 unreachable"
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert "result" in r, r.get("error", r); print(json.dumps(r["result"]["data"]))' "$out" \
+    || fail "API $1 failed: $out"
+}
+
+# wait_job <reply with a jobId> <what>: waits for the worker job to complete,
+# and fails with the job's own error otherwise.
+wait_job() {
+  local job status i
+  job=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["jobId"])' "$1")
+  for i in $(seq 1 60); do
+    status=$(api_get tasks.get "{\"jobId\":\"$job\"}")
+    case $(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["status"])' "$status") in
+      completed) return ;;
+      failed) fail "$2: $status" ;;
+    esac
+    sleep 1
+  done
+  fail "$2: the job did not end: $status"
+}
+
 # api_error <procedure> <json input>: the error message of a call that must fail.
 api_error() {
   local out
@@ -370,16 +395,16 @@ files_feature() {
   api permission.upsert "{\"placeId\":\"$place\",\"subjectType\":\"user\",\"subjectId\":\"$id\",\"canRead\":true,\"canWrite\":true,\"canDelete\":true,\"canShare\":false}" >/dev/null
   sign_token "$id" false /root/token-vmuser
   log "File manager as vmuser on the mirror"
-  API_TOKEN=/root/token-vmuser api fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"from-ui"}' >/dev/null
-  vm_until 30 "the folder made through the file manager did not appear" 'test -d /srv/vm-mirror/from-ui'
-  API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"note.txt"}' >/dev/null
-  vm_until 30 "the file made through the file manager did not appear" 'test -f /srv/vm-mirror/from-ui/note.txt'
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.mkdir '{"parentPath":"/srv/vm-mirror","name":"from-ui"}')" "making a folder as vmuser"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"note.txt"}')" "making a file as vmuser"
+  vm_ssh 'test -f /srv/vm-mirror/from-ui/note.txt' || fail "the file made through the file manager is not on the host"
   [[ $(vm_ssh 'stat -c %U /srv/vm-mirror/from-ui /srv/vm-mirror/from-ui/note.txt | sort -u') == vmuser ]] \
     || fail "files made by vmuser are not its own: $(vm_ssh 'stat -c "%n %U" /srv/vm-mirror/from-ui /srv/vm-mirror/from-ui/note.txt')"
-  API_TOKEN=/root/token-vmuser api fs.rename '{"path":"/srv/vm-mirror/from-ui/note.txt","newName":"renamed.txt"}' >/dev/null
-  vm_until 30 "the rename did not happen" 'test -f /srv/vm-mirror/from-ui/renamed.txt && ! test -e /srv/vm-mirror/from-ui/note.txt'
-  API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/renamed.txt"}' >/dev/null
-  vm_until 30 "the delete did not happen" '! test -e /srv/vm-mirror/from-ui/renamed.txt'
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.rename '{"path":"/srv/vm-mirror/from-ui/note.txt","newName":"renamed.txt"}')" "renaming as vmuser"
+  vm_ssh 'test -f /srv/vm-mirror/from-ui/renamed.txt && ! test -e /srv/vm-mirror/from-ui/note.txt' || fail "the rename is not on the host"
+  API_TOKEN=/root/token-vmuser api_get fs.list '{"path":"/srv/vm-mirror/from-ui"}' | grep -q renamed.txt || fail "the file manager does not list the renamed file"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/renamed.txt"}')" "deleting as vmuser"
+  vm_ssh '! test -e /srv/vm-mirror/from-ui/renamed.txt' || fail "the delete is not on the host"
   # Outside its Places, vmuser is refused.
   API_TOKEN=/root/token-vmuser api_error fs.mkdir '{"parentPath":"/root","name":"nope"}' >/dev/null
   vm_ssh '! test -e /root/nope' || fail "vmuser wrote outside its Places"
