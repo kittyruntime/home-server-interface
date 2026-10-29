@@ -35,7 +35,7 @@ source "$here/lib.sh"
 scenario="${1:?scenario}"; archive="${2:?archive}"; version="v${3#v}"
 REPO="kittyruntime/home-server-interface"
 DB=/opt/hsi/database/data/hsi.db
-trap 'vm_ssh "journalctl -u hsi-server -n 80 --no-pager" > "$VM_DIR/hsi-server.log" 2>&1 || true; vm_stop' EXIT
+trap 'vm_ssh "journalctl -u hsi-server -n 80 --no-pager; tail -n 200 /var/log/hsi/app.log /var/log/hsi/root-worker.log" > "$VM_DIR/hsi-server.log" 2>&1 || true; vm_stop' EXIT
 
 install_build() {
   log "Installing the built archive $version"
@@ -50,7 +50,7 @@ expect_running() {
   local want="$1" health
   # A fresh install serves HTTPS on the backend port; older installs may use 443.
   health=$(vm_ssh 'for i in $(seq 1 90); do for p in 9001 443; do curl -sfk "https://127.0.0.1:$p/health" && exit 0; done; sleep 2; done; exit 1') \
-    || { vm_ssh 'systemctl --no-pager status hsi-server hsi-worker hsi-nats | grep -E "^. |Active:"; ss -ltnp | grep -E ":(9001|443) "; journalctl -b -u hsi-server -u hsi-worker -n 80 --no-pager'; fail "health endpoint never answered (expected $want)"; }
+    || { vm_ssh 'systemctl --no-pager status hsi-server hsi-worker hsi-nats | grep -E "^. |Active:"; ss -ltnp | grep -E ":(9001|443) "; journalctl -b -u hsi-server -u hsi-worker -n 40 --no-pager; tail -n 60 /var/log/hsi/app.log /var/log/hsi/root-worker.log'; fail "health endpoint never answered (expected $want)"; }
   python3 -c 'import json,sys; h=json.loads(sys.argv[1]); assert h["status"]=="ok" and h["db"] and h["nats"], h; assert h["version"]==sys.argv[2], (h["version"], sys.argv[2])' "$health" "$want" \
     || fail "unexpected health: $health"
   vm_ssh 'systemctl is-active --quiet hsi-server hsi-worker hsi-nats' || fail "a service is not active"
@@ -558,15 +558,15 @@ separate_tmp() {
 }
 
 # interrupted_update <installed version>: the power goes while an update to
-# the built archive waits for the new version's health, after the switch. The
+# the built archive switches to the new version or waits for its health. The
 # worker rolls the update back when it starts again.
 interrupted_update() {
-  log "Updating to $version, cutting the power after the switch"
+  log "Updating to $version, cutting the power at the switch"
   vm_put "$archive" "/root/$(basename "$archive")"
   vm_put "$root/scripts/install.sh" /root/install.sh
   vm_ssh "VERSION=$version HSI_RELEASE_ARCHIVE=/root/$(basename "$archive") nohup setsid bash /root/install.sh > /root/update.log 2>&1 < /dev/null &"
-  vm_ssh "for i in \$(seq 1 9000); do python3 -c 'import json,sys; sys.exit(json.load(open(\"$UPDATE_STATE/in-progress.json\"))[\"step\"]!=\"health\")' 2>/dev/null && exit 0; sleep 0.1; done; exit 1" \
-    || { vm_ssh 'tail -30 /root/update.log'; fail "the update never reached its health check"; }
+  vm_ssh "for i in \$(seq 1 18000); do grep -Eqs '\"step\": \"(switch|health)\"' $UPDATE_STATE/in-progress.json && exit 0; sleep 0.05; done; exit 1" \
+    || { vm_ssh 'tail -30 /root/update.log'; fail "the update never reached its switch"; }
   vm_cut
   vm_start
   expect_running "$1"
