@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   volumes, and the preview then shows them as erased. Folders in Places are
   never deleted (#26).
 
+### Fixed
+- **Expanding a volume in use**: the preview no longer goes stale at once with
+  "The server changed since this preview" when the volume's array is being
+  written to (#7).
+
 ## [1.73.0] - 2026-10-29
 
 ### Added

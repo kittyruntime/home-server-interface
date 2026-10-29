@@ -156,6 +156,20 @@ func growFsSteps(fstype, lvPath, mp string, mounted bool) ([]planStep, *fsError)
 	return nil, &fsError{Code: "ERR", Message: "growing a " + fstype + " filesystem is not supported (ext4, XFS and btrfs are)"}
 }
 
+// mdStateFlags keeps what an mdadm State says about the array's health and
+// work in progress (degraded, recovering...). "clean" and "active" only say
+// whether it was written to lately: an array in use flips between them, and a
+// preview observing them would go stale at once.
+func mdStateFlags(state string) string {
+	var flags []string
+	for _, f := range strings.Split(state, ",") {
+		if f = strings.TrimSpace(f); f != "" && f != "clean" && f != "active" {
+			flags = append(flags, f)
+		}
+	}
+	return strings.Join(flags, " ")
+}
+
 func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
 		UUID string `json:"uuid"`
@@ -264,7 +278,7 @@ func planVolumeExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		}
 		obs["members"] = strings.Join(members, " ")
 		obs["sync"] = hostSyncAction(array)
-		obs["state"] = state
+		obs["state"] = mdStateFlags(state)
 		if strings.Contains(state, "degraded") {
 			return nil, &fsError{Code: "EBUSY", Message: "/dev/" + array + " is degraded: replace its failed disk before expanding it"}
 		}

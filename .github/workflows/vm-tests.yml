@@ -1,8 +1,9 @@
 name: VM tests
 
 # Installs and updates HSI on disposable KVM virtual machines (#17): a fresh
-# install with reboot and a refused broken update, and an update from the
-# latest published release with a rollback. See scripts/vm/suite.sh.
+# install with reboot and a refused broken update, an update from the latest
+# published release with a rollback, and storage, network and recovery
+# scenarios checked on the host. See scripts/vm/suite.sh.
 on:
   # Also a gate of the release workflow: nothing is published unless every
   # scenario passes on the tagged source.
@@ -20,6 +21,7 @@ on:
       - "runtime/**"
       - "apps/backend/src/trpc/routers/storage.ts"
       - "apps/backend/src/services/volume*.ts"
+      - "apps/backend/src/services/storage*.ts"
       - "apps/backend/src/trpc/routers/network.ts"
       - ".github/workflows/vm-tests.yml"
 
@@ -92,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [fresh, update, storage, network]
+        scenario: [fresh, update, storage, network, recovery]
     steps:
       - uses: actions/checkout@v7
 
