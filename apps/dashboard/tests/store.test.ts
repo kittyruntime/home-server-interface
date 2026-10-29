@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catalogVersion, filterChips, keptFilter, matchesSearch, versionLabel, visibleApps, type StoreApp } from '../src/lib/store.ts'
+import { catalogVersion, filterChips, isNew, keptFilter, matchesSearch, versionLabel, visibleApps, type StoreApp } from '../src/lib/store.ts'
 
 const app = (name: string, category: string, extra: Partial<StoreApp> = {}): StoreApp => ({
   name, category, tagline: `${name} tagline`, description: `${name} description`, image: `x/${name.toLowerCase()}:1.0`, installedApp: null, ...extra,
@@ -69,4 +69,25 @@ test('versionLabel names the installed version, or the catalog one only for an a
   assert.equal(versionLabel({ ...kuma, installedApp: { update: null, image: 'louislam/uptime-kuma:1.23.15' } }), 'installed 1.23.15')
   // A viewer who is not an admin does not get the installed image: no version rather than a wrong one.
   assert.equal(versionLabel({ ...kuma, installedApp: { update: null, image: null } }), null)
+})
+
+test('visibleApps sorts by name or by the day apps joined the catalog', () => {
+  const dated = [
+    app('Syncthing', 'Utilities', { added: '2026-07-13' }),
+    app('jellyfin', 'Media', { added: '2026-07-13' }),
+    app('Paperless', 'Productivity', { added: '2026-10-28', installedApp: installed }),
+  ]
+  assert.deepEqual(visibleApps(dated, 'All', '', 'name').map(a => a.name), ['jellyfin', 'Paperless', 'Syncthing'], 'case does not matter')
+  assert.deepEqual(visibleApps(dated, 'All', '', 'added').map(a => a.name), ['Paperless', 'jellyfin', 'Syncthing'], 'latest first, then by name')
+  assert.deepEqual(visibleApps(dated, 'All', '').map(a => a.name), ['Paperless', 'Syncthing', 'jellyfin'], 'default: installed first, catalog order')
+  assert.deepEqual(visibleApps(dated, 'Media', '', 'added').map(a => a.name), ['jellyfin'], 'the order keeps the filter')
+})
+
+test('isNew marks apps that joined the catalog in the last 60 days', () => {
+  const now = new Date('2026-10-29T12:00:00Z')
+  assert.equal(isNew(app('A', 'Media', { added: '2026-10-28' }), now), true)
+  assert.equal(isNew(app('A', 'Media', { added: '2026-08-31' }), now), true)
+  assert.equal(isNew(app('A', 'Media', { added: '2026-08-29' }), now), false)
+  assert.equal(isNew(app('A', 'Media'), now), false, 'no date: not new')
+  assert.equal(isNew(app('A', 'Media', { added: '2027-01-01' }), now), false, 'a date ahead of the clock is not trusted')
 })

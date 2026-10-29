@@ -13,6 +13,8 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `recovery` | A mirror on 60% of its volume group grown into the free space (`volume.expand`), a member failed, removed and replaced by a blank disk through the API with the rebuild awaited, a reboot, then a boot without the mirror's disks (HSI up, volume held, empty mount point unwritable, file manager refused, share unavailable) and a boot with them again (hold back, Resume). Files, owners and modes are checked at each step |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
+The release workflow runs every scenario on a pushed tag first and publishes
+only when they all pass (a manual republish of an existing tag skips them).
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
 and runs the scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.

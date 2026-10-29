@@ -11,6 +11,7 @@ import ErrorState from '../ui/ErrorState.vue'
 import { generateSecret, portCandidates } from './install-helpers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const { t } = useI18n()
@@ -27,6 +28,10 @@ interface PortRow {
   protocol:  'tcp' | 'udp'
   label:     string
   host:      number
+  /** The web port only: where it is reached behind the admin's own reverse proxy. */
+  web:       boolean
+  domain:    string
+  tls:       boolean
 }
 interface EnvRow {
   key:      string
@@ -89,6 +94,9 @@ async function load() {
     protocol:  p.protocol,
     label:     p.label,
     host:      p.hostDefault ?? p.container,
+    web:       p.container === m.webUiPort && p.protocol === 'tcp',
+    domain:    '',
+    tls:       true,
   }))
 
   envRows.value = m.env
@@ -215,7 +223,10 @@ async function install() {
     const payload: InstallInput = {
       id:      props.appId,
       name:    name.value,
-      ports:   ports.value.map((p) => ({ container: p.container, host: p.host })),
+      ports:   ports.value.map((p) => ({
+        container: p.container, host: p.host,
+        ...(p.web && p.domain.trim() ? { domain: p.domain.trim(), tls: p.tls } : {}),
+      })),
       env:     envRows.value.map((e) => ({ key: e.key, value: e.value })),
       volumes,
     }
@@ -274,6 +285,18 @@ async function install() {
               v-model.number="p.host"
               class="w-28 shrink-0"
             />
+          </div>
+          <!-- Optional (#26): the address of the admin's own reverse proxy, for Open. -->
+          <div v-if="p.web" class="flex flex-wrap items-center gap-x-3 gap-y-1 pl-0 sm:pl-4">
+            <label :for="`addr-${p.container}`" class="text-xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.reachedAt') }}</label>
+            <Input
+              :id="`addr-${p.container}`" v-model="p.domain" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+              :placeholder="t('ui.store.AppInstallWizard.reachedAtPlaceholder')" class="h-8 min-w-0 flex-1 font-mono text-xs"
+            />
+            <label v-if="p.domain.trim()" class="flex items-center gap-1.5 text-xs text-foreground">
+              <Checkbox v-model="p.tls" />{{ t('ui.store.AppInstallWizard.https') }}
+            </label>
+            <p class="basis-full text-2xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.reachedAtHint') }}</p>
           </div>
           <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ portWarnings[`${p.container}-${p.protocol}`] }}
