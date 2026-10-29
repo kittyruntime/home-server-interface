@@ -12,7 +12,8 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `network` | NetworkManager takes over the VM's interface; manual addressing applied through the API and kept; then a wrong address applied without keeping it: SSH drops and NetworkManager restores the previous settings by itself |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
-The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
+The release workflow runs every scenario on the tagged source first and publishes
+only when they all pass. The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
 and runs both scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.
 Logs (install, rollback, console, `hsi-server` journal) are kept as artifacts.

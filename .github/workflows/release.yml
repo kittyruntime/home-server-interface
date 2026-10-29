@@ -17,7 +17,17 @@ permissions:
   contents: write
 
 jobs:
+  # Install, update, rollback, storage, network and recovery on disposable
+  # VMs (#17, #38): a release is published only when they all pass.
+  vm-tests:
+    uses: ./.github/workflows/vm-tests.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', github.event.inputs.version) || github.ref }}
+    permissions:
+      contents: read
+
   release:
+    needs: vm-tests
     runs-on: ubuntu-latest
 
     steps:

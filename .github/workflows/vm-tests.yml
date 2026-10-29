@@ -4,6 +4,14 @@ name: VM tests
 # install with reboot and a refused broken update, and an update from the
 # latest published release with a rollback. See scripts/vm/suite.sh.
 on:
+  # Also a gate of the release workflow: nothing is published unless every
+  # scenario passes on the tagged source.
+  workflow_call:
+    inputs:
+      ref:
+        description: "The ref to test (the release tag)"
+        type: string
+        required: false
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"
@@ -24,7 +32,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: vm-tests-${{ github.ref }}
+  group: vm-tests-${{ inputs.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -34,6 +42,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v6
 
@@ -92,6 +102,8 @@ jobs:
         scenario: [fresh, update, storage, network]
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/download-artifact@v5
         with:

@@ -170,6 +170,11 @@ release. Never release automatically.
    It bumps `package.json`, moves the `[Unreleased]` notes under the new version,
    commits, tags `v<version>`, and pushes `main` + the tag, which triggers the
    GitHub Actions release workflow.
+4. The workflow first runs the VM tests (`scripts/vm/suite.sh`, every
+   scenario) on the tagged source, then builds, signs and publishes. When a
+   scenario fails nothing is published: fix it on `main`, then publish the
+   same tag again with the workflow's *Run workflow* button once the tag
+   points at the fix, or cut the next version.
 
 The script refuses to run on a dirty tree, off `main`, with an existing tag, or
 with an empty `[Unreleased]` section.
