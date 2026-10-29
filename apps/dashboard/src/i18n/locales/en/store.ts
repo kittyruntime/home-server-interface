@@ -23,6 +23,11 @@ export default {
     cancel: 'Cancel',
   },
   AppStorePanel: {
+    sortApps: 'Sort apps',
+    installedFirst: 'Installed first',
+    byName: 'By name',
+    recentlyAdded: 'Recently added',
+    new: 'New',
     back: '← Back',
     appStore: 'App Store',
     searchApps: 'Search apps…',
@@ -34,6 +39,7 @@ export default {
     open: 'Open ↗',
   },
   AppStoreDetail: {
+    new: 'New',
     back: '← Back',
     install: 'Install',
     update: 'Update…',
@@ -43,6 +49,11 @@ export default {
     installsWith: 'Installs with:',
     website: 'Website ↗',
     releaseNotes: 'Release notes ↗',
+    documentation: 'Documentation ↗',
+    sourceCode: 'Source code ↗',
+    license: 'License',
+    gettingStarted: 'Getting started',
+    afterInstalling: 'After installing',
     permissions: 'Permissions',
   },
 }

@@ -2,11 +2,17 @@
   "id": "it-tools",
   "name": "IT Tools",
   "category": "Developer",
+  "added": "2026-07-13",
   "tagline": "Collection of handy online tools for developers.",
   "description": "IT Tools bundles dozens of everyday developer utilities (encoders, converters, generators, and more) in one self-hosted web app.",
   "website": "https://it-tools.tech",
   "image": "corentinth/it-tools:2024.10.22-7ca5933",
   "changelog": "https://github.com/CorentinTh/it-tools/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/CorentinTh/it-tools",
+  "postInstall": [
+    "Nothing to set up: open it and pick a tool."
+  ],
   "webUiPort": 80,
   "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI" }]
 }
