@@ -32,6 +32,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import JobLogsDialog from '../components/JobLogsDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
+import { maintenance } from '../lib/maintenance'
 import Dock from '../components/desktop/Dock.vue'
 import Launchpad from '../components/desktop/Launchpad.vue'
 import DesktopShell from '../components/desktop/DesktopShell.vue'
@@ -451,7 +452,8 @@ onUnmounted(() => {
 
   </div>
 
-  <Toaster position="top-right" close-button />
+  <!-- Nothing to report while the server is away (#132). -->
+  <Toaster v-if="!maintenance.kind" position="top-right" close-button />
   <ConfirmDialog />
   <PlanDialog />
   <JobLogsDialog v-if="isAdmin" />

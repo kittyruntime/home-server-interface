@@ -112,9 +112,6 @@ export default {
     rebootServer: 'Reboot server',
     continue: 'Continue',
     confirmServerReboot: 'Confirm server reboot',
-    notOk: 'not ok',
-    reconnecting: 'Reconnecting',
-    ready: 'Ready',
   },
   UserDetailPanel: {
     failedToLoadIdentityStatus: 'Failed to load identity status',

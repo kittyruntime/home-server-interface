@@ -10,6 +10,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import ReleaseNotes from './ReleaseNotes.vue'
 import { useConfirm } from '../lib/confirm'
+import { startMaintenance } from '../lib/maintenance'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { Button } from '@/components/ui/button'
 
@@ -27,12 +28,7 @@ const checking = ref(false)
 const error    = ref<string | null>(null)
 const restarting = ref(false)
 const rebooting = ref(false)
-const restartKind = ref<'update' | 'manual' | 'host'>('update')
 const { confirm } = useConfirm()
-
-type RestartStep = 'scheduled' | 'restarting' | 'reconnecting' | 'done'
-const restartStep     = ref<RestartStep | null>(null)
-const reloadCountdown = ref(3)
 
 async function fetchStatus() {
   try {
@@ -75,13 +71,8 @@ async function applyUpdate() {
   applying.value = true
   error.value = null
   try {
-    restartKind.value = 'update'
     await trpc.update.execute.mutate({ version: status.value.latest })
-    restartStep.value = 'scheduled'
-    setTimeout(() => {
-      restartStep.value = 'restarting'
-      pollRestart()
-    }, 1000)
+    startMaintenance('update', status.value.latest)
   } catch (e: any) {
     error.value = e?.message ?? t('uis.settings.UpdateSection.failedToScheduleUpdate')
     applying.value = false
@@ -96,14 +87,9 @@ async function restartSoftware() {
   if (!accepted) return
   restarting.value = true
   error.value = null
-  restartKind.value = 'manual'
   try {
     await trpc.update.restart.mutate()
-    restartStep.value = 'scheduled'
-    setTimeout(() => {
-      restartStep.value = 'restarting'
-      pollRestart()
-    }, 500)
+    startMaintenance('restart')
   } catch (e: any) {
     error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRestartHsi')
     restarting.value = false
@@ -123,71 +109,13 @@ async function rebootHost() {
   if (!confirmed) return
   rebooting.value = true
   error.value = null
-  restartKind.value = 'host'
   try {
     await trpc.update.rebootHost.mutate()
-    restartStep.value = 'scheduled'
-    setTimeout(() => {
-      restartStep.value = 'restarting'
-      pollRestart()
-    }, 500)
+    startMaintenance('reboot')
   } catch (e: any) {
     error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRebootTheServer')
     rebooting.value = false
   }
-}
-
-function pollRestart() {
-  let serverWentDown = false
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch('/health', { signal: AbortSignal.timeout(1500) })
-      if (!res.ok) throw new Error(t('uis.settings.UpdateSection.notOk'))
-      if (serverWentDown) {
-        clearInterval(interval)
-        restartStep.value = 'done'
-        startReloadCountdown()
-      }
-    } catch {
-      if (!serverWentDown) {
-        serverWentDown = true
-        restartStep.value = 'reconnecting'
-      }
-    }
-  }, 2000)
-}
-
-function startReloadCountdown() {
-  reloadCountdown.value = 3
-  const t = setInterval(() => {
-    reloadCountdown.value--
-    if (reloadCountdown.value <= 0) {
-      clearInterval(t)
-      window.location.reload()
-    }
-  }, 1000)
-}
-
-
-function stepLabel(key: RestartStep) {
-  if (key === 'scheduled') return restartKind.value === 'update' ? 'Update scheduled' : restartKind.value === 'host' ? 'Server reboot requested' : 'Restart requested'
-  if (key === 'restarting') return restartKind.value === 'update' ? 'Installing and restarting' : restartKind.value === 'host' ? 'Server rebooting' : 'HSI restarting'
-  if (key === 'reconnecting') return t('uis.settings.UpdateSection.reconnecting')
-  return t('uis.settings.UpdateSection.ready')
-}
-
-const STEPS: RestartStep[] = ['scheduled', 'restarting', 'reconnecting', 'done']
-
-const STEP_ORDER: RestartStep[] = ['scheduled', 'restarting', 'reconnecting', 'done']
-
-function stepState(key: RestartStep): 'done' | 'active' | 'pending' {
-  const current = restartStep.value
-  if (!current) return 'pending'
-  const ci = STEP_ORDER.indexOf(current)
-  const ki = STEP_ORDER.indexOf(key)
-  if (ki < ci) return 'done'
-  if (ki === ci) return 'active'
-  return 'pending'
 }
 
 let timer: ReturnType<typeof setInterval>
@@ -204,47 +132,7 @@ onUnmounted(() => clearInterval(timer))
     <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.UpdateSection.updates') }}</h2>
     <p class="text-sm text-muted-foreground mb-6">{{ t('ui.settings.UpdateSection.manageSoftwareUpdatesForThis') }}</p>
 
-    <!-- ── Restart timeline ─────────────────────────────────────────────── -->
-    <div v-if="restartStep" class="space-y-6">
-      <Card class="block gap-0 py-0 overflow-hidden p-6">
-        <p class="eyebrow mb-6">{{ restartKind === 'update' ? 'Installing update' : restartKind === 'host' ? 'Rebooting server' : 'Restarting HSI' }}</p>
-        <div class="space-y-5">
-          <div v-for="step in STEPS" :key="step" class="flex items-center gap-3">
-            <!-- Icon -->
-            <div
-              :class="[
-                'w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors',
-                stepState(step) === 'done'   ? 'bg-success/15 text-success' :
-                stepState(step) === 'active' ? 'bg-primary/10 text-primary'   :
-                'bg-accent text-muted-foreground'
-              ]"
-            >
-              <!-- Done -->
-              <CheckIcon v-if="stepState(step) === 'done'" class="w-3.5 h-3.5" aria-hidden="true" />
-              <!-- Active spinning -->
-              <LoadingSpinner v-else-if="stepState(step) === 'active'" />
-              <!-- Pending dot -->
-              <span v-else class="w-1.5 h-1.5 rounded-full bg-current" />
-            </div>
-            <!-- Label -->
-            <span
-              :class="[
-                'text-sm transition-colors',
-                stepState(step) === 'done'   ? 'text-foreground/80' :
-                stepState(step) === 'active' ? 'text-foreground font-medium' :
-                'text-muted-foreground'
-              ]"
-            >{{ stepLabel(step) }}</span>
-            <!-- Countdown on done -->
-            <span v-if="step === 'done' && restartStep === 'done'" class="ml-auto text-xs text-muted-foreground font-mono">
-              {{ t('uip.settings.UpdateSection.reloadingIn', { p0: reloadCountdown }) }}
-            </span>
-          </div>
-        </div>
-      </Card>
-    </div>
-
-    <LoadingState v-else-if="loading" variant="compact" />
+    <LoadingState v-if="loading" variant="compact" />
 
     <!-- ── Error ────────────────────────────────────────────────────────── -->
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>

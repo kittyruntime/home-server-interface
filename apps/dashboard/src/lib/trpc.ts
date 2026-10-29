@@ -17,6 +17,8 @@ function onSessionInvalid() {
   }
 }
 
+export const MAINTENANCE_EVENT = 'hsi:maintenance'
+
 export const trpc = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
@@ -28,6 +30,9 @@ export const trpc = createTRPCClient<AppRouter>({
       async fetch(input, init) {
         const res = await fetch(input, init)
         if (res.status === 401) onSessionInvalid()
+        // A change refused during an update or a restart (#132): lib/maintenance
+        // listens, without importing this client back.
+        if (res.status === 503) window.dispatchEvent(new Event(MAINTENANCE_EVENT))
         return res
       },
     }),

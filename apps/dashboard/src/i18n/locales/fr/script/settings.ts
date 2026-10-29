@@ -105,9 +105,6 @@ export default {
     rebootServer: 'Redémarrer le serveur',
     continue: 'Continuer',
     confirmServerReboot: 'Confirmer le redémarrage du serveur',
-    notOk: 'en échec',
-    reconnecting: 'Reconnexion',
-    ready: 'Prêt',
   },
   UserDetailPanel: {
     failedToLoadIdentityStatus: 'Impossible de charger l’état des identités',

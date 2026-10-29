@@ -91,4 +91,22 @@ export default {
     dontAskAgain: 'Ne plus demander',
     deleting: 'Suppression de {count} élément(s)',
   },
+  maintenance: {
+    titleUpdate: 'Mise à jour de HSI',
+    titleUpdateTo: 'Mise à jour de HSI vers {version}',
+    titleRestart: 'Redémarrage de HSI',
+    titleReboot: 'Redémarrage du serveur',
+    hint: 'N’éteignez pas le serveur. Les modifications sont suspendues sur tous les appareils jusqu’à son retour, puis cette page se recharge.',
+    step: {
+      scheduled: 'Demandé',
+      working: 'En cours',
+      offline: 'En attente du retour du serveur',
+      done: 'De nouveau en ligne',
+    },
+    stepInstalling: 'Téléchargement et installation',
+    stepRestarting: 'Redémarrage',
+    stepRebooting: 'Redémarrage',
+    reloadingIn: 'Rechargement dans {seconds}…',
+    reload: 'Recharger la page',
+  },
 } satisfies typeof en

@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { TooltipProvider } from '@/components/ui/tooltip'
+import MaintenanceOverlay from './components/MaintenanceOverlay.vue'
+import { watchMaintenance } from './lib/maintenance'
+
+watchMaintenance()
 </script>
 
 <template>
@@ -11,5 +15,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
         <component :is="Component" class="route-fade" />
       </Transition>
     </RouterView>
+    <MaintenanceOverlay />
   </TooltipProvider>
 </template>

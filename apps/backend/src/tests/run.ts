@@ -2885,4 +2885,34 @@ async function testTelemetryChannelOptOutAndPayload() {
   assert.ok(firstHeartbeatDelay(() => 0.999) < 60 * 60 * 1000)
 }
 await testTelemetryChannelOptOutAndPayload()
+
+// Maintenance (#132): an update, a restart or a reboot blocks mutations until
+// a new backend answers, or until it clearly never will.
+{
+  const m = await import("../services/maintenance")
+  const t0 = new Date("2026-10-29T10:00:00.000Z")
+  const at = (min: number) => new Date(t0.getTime() + min * 60_000)
+  const update = { kind: "update" as const, target: "v1.73.0", since: t0.toISOString() }
+  const result = (o: object) => ({ from: "v1.72.0", to: "v1.73.0", status: "refused", step: "verify", reason: "x", at: at(1).toISOString(), ...o })
+  assert.ok(m.maintenanceHolds(update, at(10), null), "an update holds while the old backend runs")
+  assert.ok(!m.maintenanceHolds(update, at(61), null), "an update that never restarted HSI expires")
+  assert.ok(!m.maintenanceHolds(update, at(2), result({})), "refused before any restart: over")
+  assert.ok(m.maintenanceHolds(update, at(2), result({ at: at(-5).toISOString() })), "an older result does not end it")
+  assert.ok(m.maintenanceHolds(update, at(2), result({ to: "v1.71.0" })), "a result for another version does not end it")
+  assert.ok(!m.maintenanceHolds({ kind: "restart", target: null, since: t0.toISOString() }, at(6), null), "a restart that never came expires")
+  assert.ok(m.maintenanceHolds({ kind: "reboot", target: null, since: t0.toISOString() }, at(10), null))
+
+  m.resetMaintenance()
+  assert.equal(await m.currentMaintenance(), null, "a fresh backend is not in maintenance")
+  m.beginMaintenance("restart")
+  assert.equal((await m.currentMaintenance())?.kind, "restart")
+
+  const { router, protectedProcedure } = await import("../trpc/index")
+  const r = router({ change: protectedProcedure.mutation(() => "done"), read: protectedProcedure.query(() => "ok") })
+  const caller = r.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  await assert.rejects(() => caller.change(), (e: any) => e.code === "SERVICE_UNAVAILABLE", "mutations are refused")
+  assert.equal(await caller.read(), "ok", "queries stay open")
+  m.resetMaintenance()
+  assert.equal(await caller.change(), "done")
+}
 console.log("Backend security tests passed")

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Maintenance screen**: while an update, an HSI restart or a server reboot
+  runs, every open dashboard, for every user and also after a reload, is
+  covered by a full-screen screen with the steps in large text, until the
+  server is back. Meanwhile the server refuses changes (signing in and out
+  stays open). After an update, admins see the result before the page
+  reloads; a failed or rolled back update stays on screen (#132).
 - **Confirmation before deleting files**: the file manager asks before
   deleting files or folders, since deletion is permanent. The dialog offers
   "Don't ask again", and the confirmation can be turned back on in the
