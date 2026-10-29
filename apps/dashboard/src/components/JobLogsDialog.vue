@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import Modal from './ui/Modal.vue'
 import LoadingState from './ui/LoadingState.vue'
@@ -7,6 +8,8 @@ import EmptyState from './ui/EmptyState.vue'
 import { trpc } from '../lib/trpc'
 import { jobLogsTarget } from '../lib/jobLogs'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type LogLine = Awaited<ReturnType<typeof trpc.tasks.logs.query>>[number]
 
@@ -55,7 +58,7 @@ async function copyAll() {
   <Modal v-if="jobLogsTarget" ref="modal" :key="jobLogsTarget" panel-class="w-full max-w-3xl" @close="jobLogsTarget = null">
     <template #header>
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-foreground">Operation logs</h3>
+        <h3 class="text-sm font-semibold text-foreground">{{ t('ui.settings.JobLogsDialog.operationLogs') }}</h3>
         <p class="text-2xs font-mono text-muted-foreground truncate">{{ jobLogsTarget }}</p>
       </div>
     </template>
@@ -64,8 +67,8 @@ async function copyAll() {
     <ErrorState v-else-if="error" :message="error" compact />
     <EmptyState
       v-else-if="lines.length === 0"
-      message="No log lines for this operation"
-      description="They may have been rotated away. Set HSI_LOG_LEVEL=debug for more detail."
+      :message="t('ui.settings.JobLogsDialog.noLogLinesForThis')"
+      :description="t('ui.settings.JobLogsDialog.theyMayHaveBeenRotated')"
     />
     <ol v-else class="divide-y divide-border font-mono text-2xs leading-relaxed">
       <li v-for="(l, i) in lines" :key="i" class="px-5 py-2">
@@ -85,10 +88,10 @@ async function copyAll() {
     </ol>
 
     <template #footer>
-      <p class="text-2xs text-muted-foreground">From app.log and root-worker.log</p>
+      <p class="text-2xs text-muted-foreground">{{ t('ui.settings.JobLogsDialog.fromAppLogAndRoot') }}</p>
       <div class="flex-1" />
-      <Button variant="ghost" size="sm" v-if="lines.length" @click="copyAll">Copy</Button>
-      <Button size="sm" @click="modal?.requestClose()">Close</Button>
+      <Button variant="ghost" size="sm" v-if="lines.length" @click="copyAll">{{ t('ui.settings.JobLogsDialog.copy') }}</Button>
+      <Button size="sm" @click="modal?.requestClose()">{{ t('ui.settings.JobLogsDialog.close') }}</Button>
     </template>
   </Modal>
 </template>

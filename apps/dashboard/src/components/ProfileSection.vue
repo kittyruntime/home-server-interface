@@ -10,6 +10,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
+import { LOCALES, isLocale, locale, setLocale } from '../i18n'
+import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from '../lib/advanced-mode'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
@@ -30,20 +32,21 @@ const meCanManage = computed(() => !!me.value && (me.value.isAdmin || me.value.i
 const { setToken } = useAuth()
 
 const { theme, setTheme } = useTheme()
+const { t } = useI18n()
 const { accent, setAccent } = useAccent()
 const { advancedMode, setAdvancedMode } = useAdvancedMode()
 
 const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; label: string }[] = [
-  { value: 'auto',  label: 'Auto'  },
-  { value: 'light', label: 'Light' },
-  { value: 'dark',  label: 'Dark'  },
+  { value: 'auto',  label: t('uis.settings.ProfileSection.auto')  },
+  { value: 'light', label: t('uis.settings.ProfileSection.light') },
+  { value: 'dark',  label: t('uis.settings.ProfileSection.dark')  },
 ]
 
 const ACCENT_OPTIONS: { value: Accent; color: string; label: string }[] = [
-  { value: 'orange', color: '#f97316', label: 'Orange' },
-  { value: 'blue',   color: '#3b82f6', label: 'Blue'   },
-  { value: 'green',  color: '#22c55e', label: 'Green'  },
-  { value: 'purple', color: '#a855f7', label: 'Purple' },
+  { value: 'orange', color: '#f97316', label: t('uis.settings.ProfileSection.orange') },
+  { value: 'blue',   color: '#3b82f6', label: t('uis.settings.ProfileSection.blue')   },
+  { value: 'green',  color: '#22c55e', label: t('uis.settings.ProfileSection.green')  },
+  { value: 'purple', color: '#a855f7', label: t('uis.settings.ProfileSection.purple') },
 ]
 
 const me      = ref<Me | null>(null)
@@ -73,7 +76,7 @@ async function saveName() {
     nameSuccess.value = true
     setTimeout(() => { nameSuccess.value = false }, 3000)
   } catch (e: any) {
-    nameError.value = e?.message ?? 'Failed to update'
+    nameError.value = e?.message ?? t('uis.settings.ProfileSection.failedToUpdate')
   } finally {
     nameLoading.value = false
   }
@@ -96,8 +99,8 @@ function openPassword() {
 async function submitPassword() {
   pwError.value   = ''
   pwSuccess.value = false
-  if (pwForm.next !== pwForm.confirm) { pwError.value = 'Passwords do not match'; return }
-  if (pwForm.next.length < 6)         { pwError.value = 'New password must be at least 6 characters'; return }
+  if (pwForm.next !== pwForm.confirm) { pwError.value = t('uis.settings.ProfileSection.passwordsDoNotMatch'); return }
+  if (pwForm.next.length < 6)         { pwError.value = t('uis.settings.ProfileSection.newPasswordMustBeAt'); return }
   pwLoading.value = true
   try {
     const result = await trpc.user.changePassword.mutate({ currentPassword: pwForm.current, newPassword: pwForm.next })
@@ -105,7 +108,7 @@ async function submitPassword() {
     pwSuccess.value = true
     Object.assign(pwForm, { current: '', next: '', confirm: '' })
   } catch (e: any) {
-    pwError.value = e?.message ?? 'Failed to change password'
+    pwError.value = e?.message ?? t('uis.settings.ProfileSection.failedToChangePassword')
   } finally {
     pwLoading.value = false
   }
@@ -148,24 +151,24 @@ onMounted(async () => {
       <!-- ── Display name ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Display name</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.displayName') }}</h4>
           <Button variant="link" v-if="!editingName" @click="startEditName"
             class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
-            Edit
+            {{ t('ui.settings.ProfileSection.edit') }}
           </Button>
         </div>
 
         <Card v-if="!editingName" class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between">
           <span :class="me.displayName ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'">
-            {{ me.displayName || 'Not set' }}
+            {{ me.displayName || t('ui.settings.ProfileSection.notSet') }}
           </span>
-          <span v-if="nameSuccess" class="text-xs text-success">Saved</span>
+          <span v-if="nameSuccess" class="text-xs text-success">{{ t('ui.settings.ProfileSection.saved') }}</span>
         </Card>
 
         <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
           <Input
             v-model="nameValue"
-            placeholder="Your full name"
+            :placeholder="t('ui.settings.ProfileSection.yourFullName')"
             autofocus
             @keydown.enter="saveName"
             @keydown.escape="editingName = false"
@@ -178,7 +181,7 @@ onMounted(async () => {
             </Button>
             <Button variant="ghost" size="sm" @click="editingName = false"
               class="text-muted-foreground hover:text-foreground">
-              Cancel
+              {{ t('ui.settings.ProfileSection.cancel') }}
             </Button>
           </div>
         </div>
@@ -187,10 +190,10 @@ onMounted(async () => {
       <!-- ── Change password ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Password</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.password') }}</h4>
           <Button variant="link" v-if="!pwOpen" @click="openPassword"
             class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
-            Change
+            {{ t('ui.settings.ProfileSection.change') }}
           </Button>
         </div>
 
@@ -201,24 +204,24 @@ onMounted(async () => {
         <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
           <div v-if="pwSuccess" class="flex items-center gap-2 text-success text-sm py-1">
             <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-            Password updated successfully.
+            {{ t('ui.settings.ProfileSection.passwordUpdatedSuccessfully') }}
           </div>
 
           <template v-else>
             <div>
-              <label class="block text-xs text-muted-foreground mb-1">Current password</label>
+              <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.currentPassword') }}</label>
               <Input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
                 class="w-full px-3 py-1.5 text-sm"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">New password</label>
-                <Input v-model="pwForm.next" type="password" placeholder="Min. 6 chars"
+                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.newPassword') }}</label>
+                <Input v-model="pwForm.next" type="password" :placeholder="t('ui.settings.ProfileSection.min6Chars')"
                   class="w-full px-3 py-1.5 text-sm"/>
               </div>
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">Confirm</label>
-                <Input v-model="pwForm.confirm" type="password" placeholder="Repeat"
+                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.confirm') }}</label>
+                <Input v-model="pwForm.confirm" type="password" :placeholder="t('ui.settings.ProfileSection.repeat')"
                   @keydown.enter="submitPassword"
                   class="w-full px-3 py-1.5 text-sm"/>
               </div>
@@ -230,21 +233,37 @@ onMounted(async () => {
               </Button>
               <Button variant="ghost" size="sm" @click="pwOpen = false"
                 class="text-muted-foreground hover:text-foreground">
-                Cancel
+                {{ t('ui.settings.ProfileSection.cancel') }}
               </Button>
             </div>
           </template>
         </div>
       </div>
 
+      <!-- ── Language ── -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('profile.language') }}</h4>
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row flex-wrap items-center justify-between gap-3">
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="locale"
+            :aria-label="t('profile.language')"
+            @update:model-value="v => { if (isLocale(v)) setLocale(v) }"
+          >
+            <ToggleGroupItem v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code" class="px-3 text-xs">{{ l.label }}</ToggleGroupItem>
+          </ToggleGroup>
+          <p class="text-xs text-muted-foreground">{{ t('profile.languageHint') }}</p>
+        </Card>
+      </div>
+
       <!-- ── Theme ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Theme</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.theme') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-2">
           <ToggleGroup
             type="single" variant="outline" size="sm"
             :model-value="theme"
-            aria-label="Theme"
+            :aria-label="t('ui.settings.ProfileSection.theme')"
             @update:model-value="v => { const opt = THEME_OPTIONS.find(o => o.value === v); if (opt) setTheme(opt.value) }"
           >
             <ToggleGroupItem v-for="opt in THEME_OPTIONS" :key="opt.value" :value="opt.value" class="px-3 text-xs">{{ opt.label }}</ToggleGroupItem>
@@ -254,11 +273,11 @@ onMounted(async () => {
 
       <!-- ── Accent color ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Accent color</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.accentColor') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-3">
           <RadioGroupRoot
             :model-value="accent"
-            aria-label="Accent color"
+            :aria-label="t('ui.settings.ProfileSection.accentColor')"
             class="flex items-center gap-3"
             @update:model-value="v => { const opt = ACCENT_OPTIONS.find(o => o.value === v); if (opt) setAccent(opt.value) }"
           >
@@ -275,10 +294,10 @@ onMounted(async () => {
 
       <!-- ── Advanced mode ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Advanced mode</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
           <p class="text-xs text-muted-foreground">
-            Show extra technical detail where it's available: raw UID/GID on files, for now.
+            {{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}
           </p>
           <Tip text="Advanced mode"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>
         </Card>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ref, computed, onMounted } from 'vue'
@@ -10,6 +11,9 @@ import ErrorState from './ui/ErrorState.vue'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
+
 
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
 
@@ -34,7 +38,7 @@ async function load() {
     status.value = await trpc.tls.status.query()
     proxies.value = status.value.trustedProxies.join('\n')
   } catch (e: any) {
-    loadError.value = e?.message ?? 'Failed to load the secure access status'
+    loadError.value = e?.message ?? t('uis.settings.SecureAccessSection.failedToLoadTheSecure')
   } finally {
     loading.value = false
   }
@@ -70,14 +74,14 @@ async function run(fn: () => Promise<void>) {
 
 function turnOn() {
   return run(async () => {
-    await applyPlanned('tls.enable', {}, { title: 'Serve HSI over HTTPS', actionLabel: 'Turn on' })
+    await applyPlanned('tls.enable', {}, { title: t('uis.settings.SecureAccessSection.serveHsiOverHttps'), actionLabel: t('uis.settings.SecureAccessSection.turnOn') })
     await afterPlan({ https: true, port: status.value!.port, standardPorts: status.value!.standardPorts })
   })
 }
 
 function useLocal() {
   return run(async () => {
-    await applyPlanned('tls.useLocal', {}, { title: 'Use the local authority', actionLabel: 'Use the local authority' })
+    await applyPlanned('tls.useLocal', {}, { title: t('uis.settings.SecureAccessSection.useTheLocalAuthority'), actionLabel: t('uis.settings.SecureAccessSection.useTheLocalAuthority') })
     await load()
   })
 }
@@ -90,11 +94,11 @@ function onFile(which: 'cert' | 'key', e: Event) {
 
 function submitImport() {
   return run(async () => {
-    if (!certFile.value) { actionError.value = 'Choose a certificate file'; return }
+    if (!certFile.value) { actionError.value = t('uis.settings.SecureAccessSection.chooseACertificateFile'); return }
     const cert = await certFile.value.text()
     const key = keyFile.value ? await keyFile.value.text() : ''
     const wasHttps = isHttps.value
-    const reply = await applyPlanned('tls.import', { cert, key }, { title: 'Serve an imported certificate', actionLabel: 'Import' })
+    const reply = await applyPlanned('tls.import', { cert, key }, { title: t('uis.settings.SecureAccessSection.serveAnImportedCertificate'), actionLabel: t('uis.settings.SecureAccessSection.import') })
     warnings.value = reply.warnings
     form.value = ''
     certFile.value = null
@@ -107,7 +111,7 @@ function submitImport() {
 function submitProxy() {
   return run(async () => {
     const trustedProxies = proxies.value.split('\n').map(s => s.trim()).filter(Boolean)
-    await applyPlanned('tls.proxy', { trustedProxies }, { title: 'Run behind a reverse proxy', actionLabel: 'Apply' })
+    await applyPlanned('tls.proxy', { trustedProxies }, { title: t('uis.settings.SecureAccessSection.runBehindAReverseProxy'), actionLabel: t('uis.settings.SecureAccessSection.apply') })
     form.value = ''
     await afterPlan({ https: false, port: status.value!.port, standardPorts: false })
   })
@@ -126,105 +130,105 @@ function setStandardPorts(enabled: boolean) {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Secure access</h2>
-    <p class="text-sm text-muted-foreground mb-6">Serve HSI over HTTPS so passwords and files are encrypted on your network.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ $t('ui.settings.SecureAccessSection.secureAccess') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ $t('ui.settings.SecureAccessSection.serveHsiOverHttpsSo') }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
-    <ErrorState v-else-if="loadError" :message="loadError" retry-label="Retry" compact @retry="load" />
-    <p v-else-if="restarting" role="status" class="status-text text-foreground/80">Restarting HSI…</p>
+    <ErrorState v-else-if="loadError" :message="loadError" :retry-label="$t('ui.settings.SecureAccessSection.retry')" compact @retry="load" />
+    <p v-else-if="restarting" role="status" class="status-text text-foreground/80">{{ $t('ui.settings.SecureAccessSection.restartingHsi') }}</p>
 
     <template v-else-if="status">
       <!-- Status -->
       <Card class="block gap-0 py-0 overflow-hidden p-5 mb-4">
-        <div class="eyebrow mb-3">Status</div>
+        <div class="eyebrow mb-3">{{ $t('ui.settings.SecureAccessSection.status') }}</div>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-muted-foreground">Mode</span>
+            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.mode') }}</span>
             <span class="text-foreground">{{ modeLabel(status.mode) }}</span>
           </div>
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-muted-foreground">Port</span>
+            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.port') }}</span>
             <span class="text-foreground tabular-nums">
-              {{ status.port }}<template v-if="status.standardPorts">, also 443, with 80 redirecting</template>
+              {{ status.port }}<template v-if="status.standardPorts">{{ $t('ui.settings.SecureAccessSection.also443With80Redirecting') }}</template>
             </span>
           </div>
           <template v-if="status.certificate">
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">Names</span>
+              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.names') }}</span>
               <span class="text-foreground text-right break-all">{{ status.certificate.names.join(', ') }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">Issuer</span>
+              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.issuer') }}</span>
               <span class="text-foreground text-right break-all">{{ status.certificate.issuer }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">Certificate</span>
+              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.certificate') }}</span>
               <span class="text-foreground tabular-nums">expires {{ ymd(status.certificate.notAfter) }}</span>
             </div>
           </template>
           <div v-if="status.authorityFingerprint">
-            <span class="text-xs text-muted-foreground">Authority fingerprint</span>
+            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.authorityFingerprint') }}</span>
             <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ status.authorityFingerprint }}</p>
           </div>
         </div>
-        <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> The certificate expires in {{ expiry.days }} days.</p>
-        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> The certificate has expired.</p>
+        <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ $t('uip.settings.SecureAccessSection.theCertificateExpiresInDays', { p0: expiry.days }) }}</p>
+        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ $t('ui.settings.SecureAccessSection.theCertificateHasExpired') }}</p>
         <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-muted-foreground">
-          This server still has the nginx site created by older versions. To let HSI serve HTTPS itself, turn HTTPS on here, then remove both /etc/nginx/sites-enabled/hsi and /etc/nginx/sites-available/hsi and reload nginx.
+          {{ $t('ui.settings.SecureAccessSection.thisServerStillHasThe') }}
         </p>
       </Card>
 
       <!-- Actions -->
       <Card class="block gap-0 py-0 overflow-hidden p-5 mb-4">
-        <div class="eyebrow mb-3">Actions</div>
+        <div class="eyebrow mb-3">{{ $t('ui.settings.SecureAccessSection.actions') }}</div>
         <div class="flex flex-wrap gap-2">
-          <Button size="sm" v-if="status.mode === 'off' || status.mode === 'proxy'" @click="turnOn">Turn HTTPS on…</Button>
-          <Button variant="outline" size="sm" v-if="status.mode === 'imported'" @click="useLocal">Use the local authority…</Button>
-          <Button variant="outline" size="sm" @click="form = form === 'import' ? '' : 'import'">Import a certificate…</Button>
-          <Button variant="outline" size="sm" @click="form = form === 'proxy' ? '' : 'proxy'">Behind a reverse proxy…</Button>
+          <Button size="sm" v-if="status.mode === 'off' || status.mode === 'proxy'" @click="turnOn">{{ $t('ui.settings.SecureAccessSection.turnHttpsOn') }}</Button>
+          <Button variant="outline" size="sm" v-if="status.mode === 'imported'" @click="useLocal">{{ $t('ui.settings.SecureAccessSection.useTheLocalAuthority') }}</Button>
+          <Button variant="outline" size="sm" @click="form = form === 'import' ? '' : 'import'">{{ $t('ui.settings.SecureAccessSection.importACertificate') }}</Button>
+          <Button variant="outline" size="sm" @click="form = form === 'proxy' ? '' : 'proxy'">{{ $t('ui.settings.SecureAccessSection.behindAReverseProxy') }}</Button>
         </div>
 
         <form v-if="form === 'import'" class="mt-4 space-y-3" @submit.prevent="submitImport">
-          <label class="block text-xs text-muted-foreground">Certificate or full chain
+          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.certificateOrFullChain') }}
             <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('cert', $event)" />
           </label>
-          <label class="block text-xs text-muted-foreground">Private key (optional when it is in the same file)
+          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.privateKeyOptionalWhenIt') }}
             <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('key', $event)" />
           </label>
-          <Button size="sm" type="submit">Review import</Button>
+          <Button size="sm" type="submit">{{ $t('ui.settings.SecureAccessSection.reviewImport') }}</Button>
         </form>
 
         <form v-if="form === 'proxy'" class="mt-4 space-y-3" @submit.prevent="submitProxy">
-          <label class="block text-xs text-muted-foreground">Trusted proxies, one per line
+          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.trustedProxiesOnePerLine') }}
             <Textarea v-model="proxies" rows="3" class="mt-1 w-full font-mono text-sm" />
           </label>
-          <p class="text-xs text-muted-foreground">Leave empty when the proxy runs on this server</p>
-          <Button size="sm" type="submit">Review change</Button>
+          <p class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.leaveEmptyWhenTheProxy') }}</p>
+          <Button size="sm" type="submit">{{ $t('ui.settings.SecureAccessSection.reviewChange') }}</Button>
         </form>
 
         <p v-for="w in warnings" :key="w" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
         <p v-if="actionError" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ actionError }}</p>
 
         <div v-if="isHttps" class="mt-4 flex items-center justify-between gap-4">
-          <span class="text-sm text-foreground/80">Also serve on ports 443 and 80</span>
+          <span class="text-sm text-foreground/80">{{ $t('ui.settings.SecureAccessSection.alsoServeOnPorts443') }}</span>
           <Switch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
         </div>
       </Card>
 
       <!-- Trust the authority -->
       <Card v-if="status.authorityFingerprint" class="block gap-0 py-0 overflow-hidden p-5">
-        <div class="eyebrow mb-3">Trust the authority</div>
-        <p class="text-xs text-muted-foreground mb-3">Install the authority certificate on each device so browsers stop showing a warning.</p>
-        <Button as="a" variant="outline" size="sm" href="/ca.crt" download>Download the authority certificate</Button>
+        <div class="eyebrow mb-3">{{ $t('ui.settings.SecureAccessSection.trustTheAuthority') }}</div>
+        <p class="text-xs text-muted-foreground mb-3">{{ $t('ui.settings.SecureAccessSection.installTheAuthorityCertificateOn') }}</p>
+        <Button as="a" variant="outline" size="sm" href="/ca.crt" download>{{ $t('ui.settings.SecureAccessSection.downloadTheAuthorityCertificate') }}</Button>
         <details class="mt-3">
-          <summary class="cursor-pointer text-sm text-foreground/80">How to trust it on your device</summary>
+          <summary class="cursor-pointer text-sm text-foreground/80">{{ $t('ui.settings.SecureAccessSection.howToTrustItOn') }}</summary>
           <ul class="mt-2 space-y-2">
             <li v-for="t in TRUST_STEPS" :key="t.os" class="text-xs text-muted-foreground">
               <span class="font-semibold text-foreground">{{ t.os }}.</span> {{ t.steps }}
             </li>
           </ul>
         </details>
-        <p class="mt-3 text-xs"><a :href="DOCS_URL" target="_blank" rel="noopener" class="text-primary hover:underline">Read the full guide</a></p>
+        <p class="mt-3 text-xs"><a :href="DOCS_URL" target="_blank" rel="noopener" class="text-primary hover:underline">{{ $t('ui.settings.SecureAccessSection.readTheFullGuide') }}</a></p>
       </Card>
     </template>
   </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Progress } from '@/components/ui/progress'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -8,6 +9,8 @@ import BusyLabel from '../ui/BusyLabel.vue'
 import RunHistory from './RunHistory.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 type Plan = Status['plans'][number]
@@ -28,7 +31,7 @@ const route = computed(() => {
   const p = props.plan
   if (p.type === 'versions' && p.versions) {
     const repo = props.repositories.find(r => r.id === p.versions!.repository)
-    return `${p.versions.sources.join(', ')} → ${repo?.name ?? 'missing repository'}`
+    return `${p.versions.sources.join(', ')} → ${repo?.name ?? t('uis.backups.PlanCard.missingRepository')}`
   }
   const s = (p.sync ?? {}) as { direction?: string; source?: string; destination?: string; remoteHost?: string; remoteUser?: string }
   const remote = s.remoteHost ? `${s.remoteUser}@${s.remoteHost}:` : ''
@@ -54,8 +57,8 @@ async function remove() {
   error.value = ''
   try {
     await applyPlanned('backup.plan.remove', { id: props.plan.id }, {
-      title: `Remove the plan ${props.plan.name}`,
-      actionLabel: 'Remove plan',
+      title: t('uis.backups.PlanCard.removeThePlan', { p0: props.plan.name }),
+      actionLabel: t('uis.backups.PlanCard.removePlan'),
       danger: true,
       notice: props.plan.type === 'versions' ? 'The versions already in the repository are kept.' : 'The files already copied are kept.',
     })
@@ -73,7 +76,7 @@ async function remove() {
       <div class="flex flex-wrap items-center gap-2">
         <h3 class="min-w-0 break-words text-sm font-medium text-foreground">{{ plan.name }}</h3>
         <Badge variant="secondary">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</Badge>
-        <Badge variant="secondary" v-if="!plan.enabled">Paused</Badge>
+        <Badge variant="secondary" v-if="!plan.enabled">{{ t('ui.backups.PlanCard.paused') }}</Badge>
       </div>
       <p class="mt-1 font-mono text-2xs text-muted-foreground [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
     </div>
@@ -85,18 +88,18 @@ async function remove() {
 
     <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
       <span>{{ scheduleLabel(plan.schedule as Schedule) }}</span>
-      <span>Next run: {{ plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }}</span>
+      <span>{{ t('uip.backups.PlanCard.nextRun', { p0: plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }) }}</span>
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
     </div>
     <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <div class="mt-4 flex flex-wrap gap-1">
       <Button size="xs" :disabled="running || starting" @click="runNow">
-        <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">Run now</BusyLabel>
+        <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">{{ t('ui.backups.PlanCard.runNow') }}</BusyLabel>
       </Button>
-      <Button variant="ghost" size="xs" @click="emit('edit')">Edit</Button>
-      <Button variant="ghost" size="xs" @click="history = true">History</Button>
-      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">Remove…</Button>
+      <Button variant="ghost" size="xs" @click="emit('edit')">{{ t('ui.backups.PlanCard.edit') }}</Button>
+      <Button variant="ghost" size="xs" @click="history = true">{{ t('ui.backups.PlanCard.history') }}</Button>
+      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">{{ t('ui.backups.PlanCard.remove') }}</Button>
     </div>
 
     <RunHistory v-if="history" kind="runs" :id="plan.id" :title="`History of ${plan.name}`" @close="history = false" />

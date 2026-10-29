@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDesktop } from '../../lib/desktop'
 import { useWallpaper } from '../../lib/wallpaper'
@@ -10,6 +11,8 @@ import { ImageIcon, Maximize2Icon, Minimize2Icon, Trash2Icon } from '@lucide/vue
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+
+const { t } = useI18n()
 
 const { windows, clampToViewport } = useDesktop()
 const { backgroundStyle } = useWallpaper()
@@ -103,16 +106,16 @@ function isFocused(id: string): boolean {
         </ContextMenuItem>
         <ContextMenuItem variant="destructive" @select="removeWidgetFromMenu(ctxWidget.id)">
           <Trash2Icon />
-          Remove widget
+          {{ t('ui.desktop.DesktopShell.removeWidget') }}
         </ContextMenuItem>
       </template>
       <template v-else>
         <ContextMenuItem @select="showWallpaperPicker = true">
           <ImageIcon />
-          Change wallpaper…
+          {{ t('ui.desktop.DesktopShell.changeWallpaper') }}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-muted-foreground">Add widget</ContextMenuLabel>
+        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-muted-foreground">{{ t('ui.desktop.DesktopShell.addWidget') }}</ContextMenuLabel>
         <ContextMenuItem
           v-for="cat in widgetsRef?.addableTypes ?? []" :key="cat.type"
           @select="addWidgetFromMenu(cat.type)"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import SectionNav from '@/components/ui/SectionNav.vue'
@@ -20,6 +21,8 @@ import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
 import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, type StorageLocation, type StorageNav, type StorageSection } from '../../lib/storage-nav'
 import { pendingStorageLocation } from '../../lib/storage-open'
+
+const { t } = useI18n()
 
 type SectionId = StorageSection
 
@@ -46,7 +49,7 @@ const { confirm } = useConfirm()
 // Every move goes through here: links, sections and breadcrumbs alike.
 async function go(next: StorageNav) {
   if (leavesWizard(location.value, next)) {
-    if (wizardDirty.value && !await confirm('Leave the Create volume wizard? Your choices will be lost.', { confirmLabel: 'Leave' })) return
+    if (wizardDirty.value && !await confirm(t('uis.storage.StoragePanel.leaveTheCreateVolumeWizard'), { confirmLabel: t('uis.storage.StoragePanel.leave') })) return
     wizardDirty.value = false
   }
   location.value = next
@@ -84,7 +87,7 @@ const ICONS: Record<SectionId, Component> = {
   volumes: ServerIcon, disks: HardDriveIcon, raid: PackageIcon, lvm: Rows3Icon,
   mounts: DatabaseIcon, maintenance: CalendarIcon,
 }
-const navItems = nav.map(n => ({ ...n, icon: ICONS[n.id] }))
+const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id], icon: ICONS[n.id] })))
 </script>
 
 <template>
@@ -101,10 +104,9 @@ const navItems = nav.map(n => ({ ...n, icon: ICONS[n.id] }))
         <Alert variant="warning" v-if="missingTools.length" role="status"
           class="block mb-5">
           <p class="text-foreground">
-            Some storage tools are not installed on the server, so these features are unavailable:
-            {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
+            {{ t('uip.storage.StoragePanel.someStorageToolsAreNot', { p0: missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }) }}
           </p>
-          <p class="mt-1 text-muted-foreground">Install them with <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
+          <p class="mt-1 text-muted-foreground">{{ t('ui.storage.StoragePanel.installThemWith') }} <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
         </Alert>
         <Breadcrumb v-if="crumbs.length > 1" class="mb-4">
           <BreadcrumbList class="text-xs sm:gap-1.5">

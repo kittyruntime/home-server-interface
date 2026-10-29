@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { SearchIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-withDefaults(defineProps<{ modelValue: string; placeholder?: string }>(), {
-  placeholder: 'Search…',
-})
+const { t } = useI18n()
+
+defineProps<{ modelValue: string; placeholder?: string }>()
 defineEmits<{ 'update:modelValue': [v: string] }>()
 </script>
 
@@ -14,7 +15,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
     <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
     <Input
       :model-value="modelValue"
-      :placeholder="placeholder"
+      :placeholder="placeholder ?? t('uis.shared.SearchInput.search')"
       class="pl-8 pr-8"
       @update:model-value="$emit('update:modelValue', String($event))"
     />
@@ -22,8 +23,8 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
       v-if="modelValue"
       variant="ghost"
       size="icon-xs"
-      tooltip="Clear"
-      aria-label="Clear search"
+      :tooltip="t('ui.shared.SearchInput.clear')"
+      :aria-label="t('ui.shared.SearchInput.clearSearch')"
       class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
       @click="$emit('update:modelValue', '')"
     >

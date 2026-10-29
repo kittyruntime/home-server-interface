@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import SegmentedBar from '../ui/SegmentedBar.vue'
 import {
@@ -6,6 +7,8 @@ import {
 } from '../../lib/dashboard-widgets'
 import { smartStatus } from '../storage/smart'
 import { useAuth } from '../../lib/auth'
+
+const { t } = useI18n()
 
 defineEmits<{
   'contextmenu-widget': [widget: Widget, event: MouseEvent]
@@ -67,7 +70,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
 
       <!-- ---- Memory ---- -->
       <template v-else-if="w.type === 'memory'">
-        <p class="eyebrow mb-3">Memory</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.memory') }}</p>
         <div class="flex-1 flex flex-col justify-between">
           <div class="flex items-baseline justify-between mb-3">
             <span class="text-2xl font-bold text-muted-foreground font-figure tabular-nums leading-none">
@@ -83,23 +86,23 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
               :color="memColor(metrics?.memory.percent ?? 0)"
               height="compact"
             />
-            <p class="text-xs text-muted-foreground tabular-nums">{{ metrics?.memory.percent ?? 0 }}% used</p>
+            <p class="text-xs text-muted-foreground tabular-nums">{{ t('uip.desktop.DesktopWidgets.used', { p0: metrics?.memory.percent ?? 0 }) }}</p>
           </div>
         </div>
       </template>
 
       <!-- ---- Network ---- -->
       <template v-else-if="w.type === 'network'">
-        <p class="eyebrow mb-3">Network</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.network') }}</p>
         <div class="flex-1 flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <div class="space-y-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-2xs font-semibold uppercase tracking-caps text-success">↓ rx</span>
+                <span class="text-2xs font-semibold uppercase tracking-caps text-success">{{ t('ui.desktop.DesktopWidgets.rx') }}</span>
                 <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="text-2xs font-semibold text-primary uppercase tracking-caps">↑ tx</span>
+                <span class="text-2xs font-semibold text-primary uppercase tracking-caps">{{ t('ui.desktop.DesktopWidgets.tx') }}</span>
                 <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
               </div>
             </div>
@@ -128,28 +131,28 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
 
       <!-- ---- Containers ---- -->
       <template v-else-if="w.type === 'containers'">
-        <p class="eyebrow mb-3">Containers</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.containers') }}</p>
         <div class="flex-1 flex items-center gap-6">
           <div class="text-center">
             <p class="text-3xl font-bold font-figure tabular-nums leading-none text-success">{{ ctrRunning }}</p>
-            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Running</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.desktop.DesktopWidgets.running') }}</p>
           </div>
           <div class="text-center">
             <p class="text-3xl font-bold text-muted-foreground font-figure tabular-nums leading-none">{{ ctrStopped }}</p>
-            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Stopped</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.desktop.DesktopWidgets.stopped') }}</p>
           </div>
           <div class="text-center">
             <p class="text-3xl font-bold font-figure tabular-nums leading-none" :class="ctrError > 0 ? 'text-primary' : 'text-muted-foreground'">{{ ctrError }}</p>
-            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Error</p>
+            <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.desktop.DesktopWidgets.error') }}</p>
           </div>
         </div>
       </template>
 
       <!-- ---- Storage ---- -->
       <template v-else-if="w.type === 'storage'">
-        <p class="eyebrow mb-3">Storage</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.storage') }}</p>
         <div v-if="disks.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
-          No filesystems
+          {{ t('ui.desktop.DesktopWidgets.noFilesystems') }}
         </div>
         <div v-else class="flex-1 flex flex-col gap-3 overflow-y-auto">
           <div v-for="d in disks" :key="d.mountPoint">
@@ -170,11 +173,11 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
 
       <!-- ---- System info ---- -->
       <template v-else-if="w.type === 'sysinfo'">
-        <p class="eyebrow mb-3">System</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.system') }}</p>
         <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-muted-foreground">-</div>
         <dl v-else class="flex-1 flex flex-col justify-center gap-2 text-sm">
           <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">Host</dt>
+            <dt class="text-muted-foreground">{{ t('ui.desktop.DesktopWidgets.host') }}</dt>
             <dd class="font-mono text-foreground truncate" :title="sysinfo.hostname">{{ sysinfo.hostname }}</dd>
           </div>
           <div class="flex justify-between gap-3">
@@ -182,11 +185,11 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
             <dd class="text-foreground/80 truncate capitalize" :title="`${sysinfo.platform} ${sysinfo.release}`">{{ sysinfo.platform }} {{ sysinfo.release }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">CPUs</dt>
+            <dt class="text-muted-foreground">{{ t('ui.desktop.DesktopWidgets.cpus') }}</dt>
             <dd class="font-mono text-foreground/80">{{ sysinfo.cpuCount }}</dd>
           </div>
           <div class="flex justify-between gap-3">
-            <dt class="text-muted-foreground">Load</dt>
+            <dt class="text-muted-foreground">{{ t('ui.desktop.DesktopWidgets.load') }}</dt>
             <dd class="font-mono text-foreground/80 tabular-nums">
               {{ sysinfo.loadavg.map(n => n.toFixed(2)).join('  ') }}
             </dd>
@@ -196,9 +199,9 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
 
       <!-- ---- Disk health (SMART) ---- -->
       <template v-else-if="w.type === 'smart'">
-        <p class="eyebrow mb-3">Disk Health</p>
+        <p class="eyebrow mb-3">{{ t('ui.desktop.DesktopWidgets.diskHealth') }}</p>
         <div v-if="smartDevices.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
-          No drives
+          {{ t('ui.desktop.DesktopWidgets.noDrives') }}
         </div>
         <div v-else class="flex-1 flex flex-col gap-2.5 overflow-y-auto">
           <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">

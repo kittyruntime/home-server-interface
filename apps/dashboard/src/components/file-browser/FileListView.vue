@@ -10,6 +10,7 @@ import { formatDay } from '../../lib/format-date'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
+
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type SortField = 'name' | 'size' | 'date'
 
@@ -63,18 +64,18 @@ function fileExt(name: string): string {
       <FileTypeIcon :name="t.name" class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'">{{ t.name }}</span>
       <span v-if="t.status === 'error'" class="text-2xs text-destructive shrink-0">{{ t.error }}</span>
-      <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">Paused</span>
+      <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">{{ $t('ui.files.FileListView.paused') }}</span>
       <LoadingSpinner v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="text-sm text-muted-foreground shrink-0" />
     </div>
 
     <div v-if="creatingFolder" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
       <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-      <span class="flex-1 text-sm italic text-muted-foreground select-none">New Folder…</span>
+      <span class="flex-1 text-sm italic text-muted-foreground select-none">{{ $t('ui.files.FileListView.newFolder') }}</span>
       <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
     </div>
     <div v-if="creatingFile" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
       <FileTextIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-      <span class="flex-1 text-sm italic text-muted-foreground select-none">New File…</span>
+      <span class="flex-1 text-sm italic text-muted-foreground select-none">{{ $t('ui.files.FileListView.newFile') }}</span>
       <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
     </div>
 
@@ -128,20 +129,20 @@ function fileExt(name: string): string {
         <TableHead class="pl-3 pr-1 py-2.5 w-7">
           <Checkbox
             :model-value="selected.size > 0 && selected.size < entries.length ? 'indeterminate' : selected.size === entries.length && entries.length > 0"
-            aria-label="Select all"
+            :aria-label="$t('ui.files.FileListView.selectAll')"
             class="opacity-60 hover:opacity-100 transition-opacity"
             @click.stop
             @update:model-value="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
           />
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium">
-          <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'"  @click="emit('setSort', 'name')">Name</SortableHeader>
+          <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'"  @click="emit('setSort', 'name')">{{ $t('ui.files.FileListView.name') }}</SortableHeader>
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium text-right">
-          <SortableHeader :active="sortField === 'size'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'size')">Size</SortableHeader>
+          <SortableHeader :active="sortField === 'size'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'size')">{{ $t('ui.files.FileListView.size') }}</SortableHeader>
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium text-right">
-          <SortableHeader :active="sortField === 'date'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'date')">Modified</SortableHeader>
+          <SortableHeader :active="sortField === 'date'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'date')">{{ $t('ui.files.FileListView.modified') }}</SortableHeader>
         </TableHead>
       </TableRow>
     </TableHeader>
@@ -157,7 +158,7 @@ function fileExt(name: string): string {
               {{ t.name }}
             </span>
             <span v-if="t.status === 'error'" class="text-2xs text-destructive shrink-0">{{ t.error }}</span>
-            <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">Paused</span>
+            <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">{{ $t('ui.files.FileListView.paused') }}</span>
             <LoadingSpinner v-else-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="text-sm text-muted-foreground shrink-0" />
           </div>
         </TableCell>
@@ -169,7 +170,7 @@ function fileExt(name: string): string {
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-            <span class="text-muted-foreground text-sm italic select-none">New Folder…</span>
+            <span class="text-muted-foreground text-sm italic select-none">{{ $t('ui.files.FileListView.newFolder') }}</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
         </TableCell>
@@ -182,7 +183,7 @@ function fileExt(name: string): string {
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <FileTextIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-            <span class="text-muted-foreground text-sm italic select-none">New File…</span>
+            <span class="text-muted-foreground text-sm italic select-none">{{ $t('ui.files.FileListView.newFile') }}</span>
             <LoadingSpinner class="text-sm text-muted-foreground shrink-0" />
           </div>
         </TableCell>
@@ -248,7 +249,7 @@ function fileExt(name: string): string {
                 v-if="entry.type === 'file'"
                 variant="ghost" size="icon-xs"
                 @click.stop="emit('openFile', entry)"
-                tooltip="Preview"
+                :tooltip="$t('ui.files.FileListView.preview')"
                 :aria-label="`Preview ${entry.name}`"
                 class="shrink-0 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
               >

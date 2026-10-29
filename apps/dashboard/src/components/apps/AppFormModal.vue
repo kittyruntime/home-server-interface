@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ref, reactive, watch, computed, onMounted } from 'vue'
@@ -17,6 +18,8 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 
+const { t } = useI18n()
+
 // Stack summary from container.app.get - `app` is null for multi-service files,
 // which the form cannot represent (those are edited via the raw YAML only).
 type StackSummary = Awaited<ReturnType<typeof trpc.container.app.get.query>>
@@ -29,13 +32,13 @@ const emit  = defineEmits<{
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'basic',    label: 'Basic' },
-  { id: 'ports',    label: 'Ports' },
-  { id: 'envs',     label: 'Envs' },
-  { id: 'volumes',  label: 'Volumes' },
-  { id: 'networks', label: 'Networks' },
-  { id: 'labels',   label: 'Labels' },
-  { id: 'advanced', label: 'Advanced' },
+  { id: 'basic',    label: t('uis.apps.AppFormModal.basic') },
+  { id: 'ports',    label: t('uis.apps.AppFormModal.ports') },
+  { id: 'envs',     label: t('uis.apps.AppFormModal.envs') },
+  { id: 'volumes',  label: t('uis.apps.AppFormModal.volumes') },
+  { id: 'networks', label: t('uis.apps.AppFormModal.networks') },
+  { id: 'labels',   label: t('uis.apps.AppFormModal.labels') },
+  { id: 'advanced', label: t('uis.apps.AppFormModal.advanced') },
 ]
 const activeTab   = ref<Tab>('basic')
 const showCompose = ref(false)
@@ -89,13 +92,13 @@ watch(composeServices, svcs => {
 
 function importCompose() {
   composeError.value = ''
-  if (!composeRaw.value.trim()) { composeError.value = 'Paste a compose.yml first.'; return }
+  if (!composeRaw.value.trim()) { composeError.value = t('uis.apps.AppFormModal.pasteAComposeYmlFirst'); return }
   let doc: any
-  try { doc = parseYaml(composeRaw.value) } catch (e: any) { composeError.value = `YAML parse error: ${e.message}`; return }
+  try { doc = parseYaml(composeRaw.value) } catch (e: any) { composeError.value = t('uis.apps.AppFormModal.yamlParseError', { p0: e.message }); return }
   const services = doc?.services
-  if (!services || typeof services !== 'object') { composeError.value = 'No services found.'; return }
+  if (!services || typeof services !== 'object') { composeError.value = t('uis.apps.AppFormModal.noServicesFound'); return }
   const svc = services[composeSelectedService.value]
-  if (!svc) { composeError.value = `Service "${composeSelectedService.value}" not found.`; return }
+  if (!svc) { composeError.value = t('uis.apps.AppFormModal.serviceNotFound', { p0: composeSelectedService.value }); return }
 
   if (svc.image) form.image = svc.image
 
@@ -244,7 +247,7 @@ watch(() => props.editName, async (name) => {
         activeTab.value = 'advanced'
       }
     } catch (e: any) {
-      error.value = e?.message ?? 'Failed to load app'
+      error.value = e?.message ?? t('uis.apps.AppFormModal.failedToLoadApp')
     } finally {
       loading.value = false
     }
@@ -299,14 +302,14 @@ async function save() {
     await applyPlanned('app.save', { name: form.name, create: !editing.value, data: payload }, {
       domain: 'apps',
       title: editing.value ? `Save ${form.name}` : `Create ${form.name}`,
-      actionLabel: 'Save',
+      actionLabel: t('uis.apps.AppFormModal.save'),
     })
     const name = form.name
     editing.value = true // a created app can now be applied/updated in place
     savedName.value = name
     emit('saved', name)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to save'
+    error.value = e?.message ?? t('uis.apps.AppFormModal.failedToSave')
   } finally {
     loading.value = false
   }
@@ -319,18 +322,18 @@ async function applyNow() {
   applyError.value = ''
   try {
     const jobId = await applyPlannedJob('app.apply', { name: savedName.value }, {
-      title: `Apply ${savedName.value}`, actionLabel: 'Apply',
+      title: t('uis.apps.AppFormModal.apply', { p0: savedName.value }), actionLabel: t('uis.apps.AppFormModal.apply2'),
     })
     const result = await pollJobResult(jobId)
     // A failed (or timed out) job must report as an error, not as success.
-    if (result.status !== 'completed') throw new Error(result.error ?? 'Apply failed')
+    if (result.status !== 'completed') throw new Error(result.error ?? t('uis.apps.AppFormModal.applyFailed'))
     applyState.value = 'applied'
     emit('saved', savedName.value)
   } catch (e: any) {
     // Cancelled in the plan dialog: nothing happened.
     if (e?.message === '') { applyState.value = 'idle'; return }
     applyState.value = 'error'
-    applyError.value = e?.message ?? 'Apply failed'
+    applyError.value = e?.message ?? t('uis.apps.AppFormModal.applyFailed')
   } finally {
     applying.value = false
   }
@@ -345,7 +348,7 @@ async function applyNow() {
       <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
         class="text-muted-foreground hover:text-foreground"
-        tooltip="Back" aria-label="Back"
+        :tooltip="t('ui.apps.AppFormModal.back')" :aria-label="t('ui.apps.AppFormModal.back')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -361,22 +364,22 @@ async function applyNow() {
         :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-muted-foreground']"
       >
         <UploadIcon class="size-3.5" aria-hidden="true" />
-        <span class="hidden sm:inline">Import Compose</span><span class="sm:hidden">Compose</span>
+        <span class="hidden sm:inline">{{ t('ui.apps.AppFormModal.importCompose') }}</span><span class="sm:hidden">{{ t('ui.apps.AppFormModal.compose') }}</span>
       </Button>
     </div>
 
     <!-- Compose import panel -->
     <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-border bg-muted/60 space-y-3 shrink-0">
-      <p class="text-xs text-muted-foreground">Paste a <span class="font-mono">compose.yml</span> to auto-fill the form.</p>
+      <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.pasteA') }} <span class="font-mono">compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
       <Textarea
         v-model="composeRaw"
-        placeholder="version: '3.8'&#10;services:&#10;  app:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '8080:80'"
+        :placeholder="t('ui.apps.AppFormModal.version3810Services')"
         rows="8"
         class="w-full px-3 py-2 text-xs font-mono resize-none"
       />
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-          <label class="text-xs text-muted-foreground whitespace-nowrap">Service:</label>
+          <label class="text-xs text-muted-foreground whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
           <NativeSelect wrapper-class="flex-1"
             v-model="composeSelectedService"
             class="px-3 py-1.5 text-sm"
@@ -385,7 +388,7 @@ async function applyNow() {
           </NativeSelect>
         </div>
         <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-muted-foreground">
-          Service: <span class="font-mono text-foreground/80">{{ composeServices[0] }}</span>
+          {{ t('ui.apps.AppFormModal.service') }} <span class="font-mono text-foreground/80">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
         <p v-if="composeError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
@@ -394,22 +397,22 @@ async function applyNow() {
           :disabled="!composeRaw.trim()"
           class="whitespace-nowrap"
         >
-          Import &amp; fill form
+          {{ t('ui.apps.AppFormModal.importFillForm') }}
         </Button>
       </div>
     </div>
 
     <!-- Multi-service notice -->
     <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-border bg-warning/10 shrink-0">
-      <p class="text-xs text-foreground/80">This app has several services - edit the YAML directly.</p>
+      <p class="text-xs text-foreground/80">{{ t('ui.apps.AppFormModal.thisAppHasSeveralServices') }}</p>
     </div>
 
     <!-- Saved - apply prompt -->
     <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-border bg-primary/5 flex items-center gap-3 shrink-0">
       <p class="text-xs text-foreground/80 flex-1">
-        <template v-if="applyState === 'applied'">Changes saved and applied.</template>
-        <template v-else-if="applyState === 'error'">Changes saved, but apply failed: <span class="text-primary">{{ applyError }}</span></template>
-        <template v-else>Changes saved. Apply now?</template>
+        <template v-if="applyState === 'applied'">{{ t('ui.apps.AppFormModal.changesSavedAndApplied') }}</template>
+        <template v-else-if="applyState === 'error'">{{ t('ui.apps.AppFormModal.changesSavedButApplyFailed') }} <span class="text-primary">{{ applyError }}</span></template>
+        <template v-else>{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</template>
       </p>
       <Button size="sm"
         v-if="applyState !== 'applied'"
@@ -432,26 +435,26 @@ async function applyNow() {
       <!-- Basic -->
       <div v-if="activeTab === 'basic'" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Container name *</label>
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
           <Input
-            v-model="form.name" placeholder="my-app" :disabled="editing"
+            v-model="form.name" laceholder="my-app" :disabled="editing"
             class="w-full px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">Image *</label>
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
           <Input
-            v-model="form.image" placeholder="nginx:alpine"
+            v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
             class="w-full px-3 py-2 text-sm font-mono"
           />
         </div>
         <div class="space-y-1.5 pt-3 border-t border-border">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">URL sidebar (optional)</label>
+          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
           <Input
-            v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
+            v-model="form.pinnedUrl" laceholder="http://192.168.1.x:8080"
             class="w-full px-3 py-2 text-sm font-mono"
           />
-          <p class="text-xs text-muted-foreground">Pins the app in the sidebar if set.</p>
+          <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
         </div>
       </div>
 
@@ -472,17 +475,17 @@ async function applyNow() {
 
       <!-- Networks -->
       <div v-else-if="activeTab === 'networks'" class="space-y-3">
-        <p class="text-xs text-muted-foreground">Enter container network names to attach (e.g. <span class="font-mono">bridge</span>, <span class="font-mono">host</span>, or a custom network).</p>
+        <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span class="font-mono">bridge</span>, <span class="font-mono">host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
         <div class="flex gap-2">
           <Input
-            v-model="networkInput" placeholder="network-name"
+            v-model="networkInput" :placeholder="t('ui.apps.AppFormModal.networkName')"
             @keydown.enter.prevent="addNetwork"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
           <Button variant="secondary" size="sm"
             @click="addNetwork"
             class="bg-primary/10 text-primary"
-          >Add</Button>
+          >{{ t('ui.apps.AppFormModal.add') }}</Button>
         </div>
         <div class="flex flex-wrap gap-1.5">
           <Badge variant="outline"
@@ -492,7 +495,7 @@ async function applyNow() {
             {{ n }}
             <Button variant="ghost" size="icon-xs" :aria-label="`Remove network ${n}`" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></Button>
           </Badge>
-          <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">No networks attached.</span>
+          <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.noNetworksAttached') }}</span>
         </div>
       </div>
 
@@ -520,7 +523,7 @@ async function applyNow() {
       <div v-else class="flex-1" />
       <Button variant="ghost"
         @click="emit('close')"
-      >Cancel</Button>
+      >{{ t('ui.apps.AppFormModal.cancel') }}</Button>
       <Button
         @click="save" :disabled="loading || !form.name || !form.image"
       >
@@ -530,7 +533,7 @@ async function applyNow() {
     <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-border shrink-0">
       <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
-      <Button variant="ghost" @click="emit('close')">Close</Button>
+      <Button variant="ghost" @click="emit('close')">{{ t('ui.apps.AppFormModal.close') }}</Button>
     </div>
 
   </div>

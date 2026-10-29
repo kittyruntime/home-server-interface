@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { RefreshCwIcon, SearchIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDateTime } from '../lib/format-date'
@@ -11,6 +12,8 @@ import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 type AuditEntry = Awaited<ReturnType<typeof trpc.audit.list.query>>['entries'][number]
 
@@ -40,7 +43,7 @@ async function load() {
   } catch (e: unknown) {
     // Surface the failure instead of falling through to the empty state, which
     // would misrepresent a load error as "no activity".
-    error.value = (e as { message?: string })?.message ?? 'Failed to load the audit log'
+    error.value = (e as { message?: string })?.message ?? t('uis.settings.AuditLogSection.failedToLoadTheAudit')
   } finally {
     loading.value = false
   }
@@ -63,17 +66,17 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Audit log</h2>
-    <p class="text-sm text-muted-foreground mb-6">All actions performed by authenticated users.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.AuditLogSection.auditLog') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.monitor.AuditLogSection.allActionsPerformedByAuthenticated') }}</p>
 
     <!-- Filter -->
     <div class="flex gap-3 mb-5 min-w-0">
       <div class="relative flex-1 min-w-0">
         <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
-        <Input v-model="filterAction" placeholder="Filter by action…"
+        <Input v-model="filterAction" :placeholder="t('ui.monitor.AuditLogSection.filterByAction')"
           class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
-      <Button variant="outline" size="icon" :disabled="loading" tooltip="Refresh" aria-label="Refresh audit log" @click="load">
+      <Button variant="outline" size="icon" :disabled="loading" :tooltip="t('ui.monitor.AuditLogSection.refresh')" :aria-label="t('ui.monitor.AuditLogSection.refreshAuditLog')" @click="load">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="size-4" aria-hidden="true" />
       </Button>
@@ -83,7 +86,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <LoadingState v-if="loading && !entries.length" />
 
     <!-- Error -->
-    <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
+    <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.monitor.AuditLogSection.retry')" @retry="load" />
 
     <!-- Empty -->
     <EmptyState
@@ -92,7 +95,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       :description="filterAction ? undefined : 'Actions taken by admins and privileged operations will appear here.'"
     >
       <template v-if="filterAction" #action>
-        <Button variant="outline" size="sm" @click="filterAction = ''">Clear filter</Button>
+        <Button variant="outline" size="sm" @click="filterAction = ''">{{ t('ui.monitor.AuditLogSection.clearFilter') }}</Button>
       </template>
     </EmptyState>
 
@@ -109,12 +112,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
             <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <TableHead class="text-left px-4 py-3 font-medium w-44">Time</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium w-32">User</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium">Action</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium max-w-0">Target</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-44">{{ t('ui.monitor.AuditLogSection.time') }}</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-32">{{ t('ui.monitor.AuditLogSection.user') }}</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">{{ t('ui.monitor.AuditLogSection.action') }}</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium max-w-0">{{ t('ui.monitor.AuditLogSection.target') }}</TableHead>
               <TableHead class="text-left px-4 py-3 font-medium w-28">IP</TableHead>
-              <TableHead class="text-center px-4 py-3 font-medium w-16">Status</TableHead>
+              <TableHead class="text-center px-4 py-3 font-medium w-16">{{ t('ui.monitor.AuditLogSection.status') }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody class="divide-y divide-border">
@@ -154,7 +157,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   </span>
                   <span v-else
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
-                    <span class="w-1.5 h-1.5 rounded-full bg-destructive"/>Fail
+                    <span class="w-1.5 h-1.5 rounded-full bg-destructive"/>{{ t('ui.monitor.AuditLogSection.fail') }}
                   </span>
                 </TableCell>
               </TableRow>
@@ -162,18 +165,18 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
               <!-- Expanded detail row -->
               <TableRow v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
                 <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-muted/50">
-                  <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">Detail</div>
+                  <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">{{ t('ui.monitor.AuditLogSection.detail') }}</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
                     <div><span class="text-muted-foreground">ID </span><span class="font-mono text-foreground/80">{{ entry.id }}</span></div>
-                    <div><span class="text-muted-foreground">Action </span><span class="font-mono text-foreground/80">{{ entry.action }}</span></div>
+                    <div><span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.action') }} </span><span class="font-mono text-foreground/80">{{ entry.action }}</span></div>
                     <div v-if="entry.user">
-                      <span class="text-muted-foreground">User </span>
+                      <span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.user') }} </span>
                       <span class="text-foreground/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
                     </div>
-                    <div v-if="entry.target"><span class="text-muted-foreground">Target </span><span class="font-mono text-foreground/80">{{ entry.target }}</span></div>
+                    <div v-if="entry.target"><span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="font-mono text-foreground/80">{{ entry.target }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
-                    <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">Input</div>
+                    <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">{{ t('ui.monitor.AuditLogSection.input') }}</div>
                     <pre class="text-2xs font-mono bg-muted border border-border rounded-lg px-3 py-2 overflow-x-auto text-foreground/80 whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
                   </template>
                 </TableCell>
@@ -189,12 +192,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <div class="flex items-center gap-1">
           <Button variant="outline" size="xs" @click="page--" :disabled="page === 0 || loading"
             >
-            ← Prev
+            {{ t('ui.monitor.AuditLogSection.prev') }}
           </Button>
           <span class="px-3 py-1.5 text-xs">{{ page + 1 }} / {{ pages }}</span>
           <Button variant="outline" size="xs" @click="page++" :disabled="page >= pages - 1 || loading"
             >
-            Next →
+            {{ t('ui.monitor.AuditLogSection.next') }}
           </Button>
         </div>
       </div>

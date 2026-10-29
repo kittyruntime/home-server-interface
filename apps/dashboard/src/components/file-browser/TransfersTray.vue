@@ -8,6 +8,8 @@ import { useUploads, type Transfer, type TransferStatus } from '../../lib/upload
 import { resumeByReselect } from '../../lib/upload-runner'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 
+
+
 const uploads = useUploads()
 const collapsed = ref(false)
 
@@ -140,7 +142,7 @@ function handleReselectPick(e: Event) {
     <div class="flex items-center gap-3 px-3.5 py-2">
       <Button variant="ghost" size="xs" :aria-expanded="!collapsed" class="-ml-2 shrink-0 text-foreground/80" @click="collapsed = !collapsed">
         <ChevronDownIcon class="size-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
-        Transfers · {{ activeCount }} active
+        {{ $t('uip.files.TransfersTray.transfersActive', { p0: activeCount }) }}
       </Button>
 
       <!-- Mini overall progress bar -->
@@ -155,7 +157,7 @@ function handleReselectPick(e: Event) {
         @click="clearFinished"
         class="h-auto p-0 text-2xs text-muted-foreground hover:text-foreground/80 uppercase tracking-caps shrink-0"
       >
-        Clear completed
+        {{ $t('ui.files.TransfersTray.clearCompleted') }}
       </Button>
     </div>
 
@@ -213,14 +215,14 @@ function handleReselectPick(e: Event) {
               <PlayIcon v-if="t.status === 'paused'" class="size-3" aria-hidden="true" />
               <PauseIcon v-else class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" tooltip="Cancel" aria-label="Cancel"
+            <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" :tooltip="$t('ui.files.TransfersTray.cancel')" :aria-label="$t('ui.files.TransfersTray.cancel')"
               class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
               <SquareIcon class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="xs" v-if="canRetry(t)" @click="retryOrReselect(t)" class="h-5 px-1.5 text-2xs text-primary hover:text-primary hover:bg-primary/10">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </Button>
-            <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" tooltip="Remove" aria-label="Remove"
+            <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" :tooltip="$t('ui.files.TransfersTray.remove')" :aria-label="$t('ui.files.TransfersTray.remove')"
               class="text-muted-foreground hover:text-foreground">
               <XIcon class="w-3 h-3" aria-hidden="true" />
             </Button>

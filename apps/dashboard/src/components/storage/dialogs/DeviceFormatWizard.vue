@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { applyPlanned } from '../../../lib/plan'
@@ -7,6 +8,8 @@ import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 /* Shared 3-step format wizard used by every storage section. Call open(dev)
    via a template ref; it emits `done` after a successful format so the parent
@@ -46,11 +49,11 @@ async function doFormat() {
   try {
     const device = w.dev.path.replace(/^\/dev\//, '')
     await applyPlanned('format', { device, fstype: w.fstype, label: w.label || undefined },
-      { title: `Format ${w.dev.path}`, actionLabel: `Format ${w.dev.path}` })
+      { title: t('uis.storage.DeviceFormatWizard.format', { p0: w.dev.path }), actionLabel: t('uis.storage.DeviceFormatWizard.format', { p0: w.dev.path }) })
     w.step = 4
     emit('done')
   } catch (e: unknown) {
-    w.err = (e as { message?: string })?.message ?? 'Format failed'
+    w.err = (e as { message?: string })?.message ?? t('uis.storage.DeviceFormatWizard.formatFailed')
   } finally {
     if (wiz.value) w.busy = false
   }
@@ -84,29 +87,29 @@ defineExpose({ open })
       <Alert variant="destructive" class="flex items-start gap-3 p-4 text-foreground" role="note">
         <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
         <div>
-          <div class="font-semibold text-destructive text-sm mb-1">All data will be permanently erased</div>
+          <div class="font-semibold text-destructive text-sm mb-1">{{ t('ui.storage.DeviceFormatWizard.allDataWillBePermanently') }}</div>
           <div class="text-xs text-destructive/80">
-            Formatting <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> will destroy every file currently on this device. This operation cannot be undone.
+            {{ t('ui.storage.DeviceFormatWizard.formatting') }} <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.willDestroyEveryFileCurrently') }}
           </div>
         </div>
       </Alert>
 
       <div class="space-y-1 text-xs text-muted-foreground">
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-foreground/80">Current FS</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
-        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-foreground/80">Model</span><span>{{ wiz.dev.model }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.currentFs') }}</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
+        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.model') }}</span><span>{{ wiz.dev.model }}</span></div>
       </div>
 
       <div class="flex gap-2 pt-2">
-        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">Cancel</Button>
-        <Button @click="wiz.step = 2" class="flex-1 justify-center">I understand, continue →</Button>
+        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.cancel') }}</Button>
+        <Button @click="wiz.step = 2" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.iUnderstandContinue') }}</Button>
       </div>
     </div>
 
     <!-- Step 2: Choose filesystem -->
     <div v-else-if="wiz.step === 2" class="p-6 space-y-3">
-      <p class="text-sm text-foreground/80 font-medium mb-2">Choose a filesystem for <span class="font-mono text-foreground">/dev/{{ wiz.dev.name }}</span></p>
+      <p class="text-sm text-foreground/80 font-medium mb-2">{{ t('ui.storage.DeviceFormatWizard.chooseAFilesystemFor') }} <span class="font-mono text-foreground">/dev/{{ wiz.dev.name }}</span></p>
 
       <div class="space-y-2">
         <label
@@ -136,34 +139,34 @@ defineExpose({ open })
       </div>
 
       <div class="pt-1">
-        <label class="block text-xs text-foreground/80 mb-1">Volume label <span class="text-muted-foreground">(optional)</span></label>
+        <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.storage.DeviceFormatWizard.volumeLabel') }} <span class="text-muted-foreground">{{ t('ui.storage.DeviceFormatWizard.optional') }}</span></label>
         <Input
           v-model="wiz.label"
           type="text"
-          placeholder="e.g. Data, Backup, Media"
+          :placeholder="t('ui.storage.DeviceFormatWizard.eGDataBackupMedia')"
           maxlength="64"
           class="w-full px-3 py-2 text-sm placeholder-muted-foreground"
         />
       </div>
 
       <div class="flex gap-2 pt-1">
-        <Button variant="outline" @click="wiz.step = 1" class="flex-1 justify-center">← Back</Button>
-        <Button @click="wiz.step = 3" class="flex-1 justify-center">Next →</Button>
+        <Button variant="outline" @click="wiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.back') }}</Button>
+        <Button @click="wiz.step = 3" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.next') }}</Button>
       </div>
     </div>
 
     <!-- Step 3: Confirm -->
     <div v-else-if="wiz.step === 3" class="p-6 space-y-4">
       <div class="space-y-1 text-xs text-muted-foreground">
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Device</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Size</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Filesystem</span><span class="font-mono">{{ wiz.fstype }}</span></div>
-        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-foreground/80">Label</span><span>{{ wiz.label }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.filesystem') }}</span><span class="font-mono">{{ wiz.fstype }}</span></div>
+        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.label') }}</span><span>{{ wiz.label }}</span></div>
       </div>
 
       <div>
         <label class="block text-xs text-foreground/80 mb-1.5">
-          Type <span class="font-mono font-bold text-foreground">{{ wiz.dev.name }}</span> to confirm
+          {{ t('ui.storage.DeviceFormatWizard.type') }} <span class="font-mono font-bold text-foreground">{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.toConfirm') }}
         </label>
         <Input
           v-model="wiz.confirm"
@@ -176,14 +179,14 @@ defineExpose({ open })
       <p v-if="wiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
 
       <div class="flex gap-2">
-        <Button variant="outline" @click="wiz.step = 2" :disabled="wiz.busy" class="flex-1 justify-center">← Back</Button>
+        <Button variant="outline" @click="wiz.step = 2" :disabled="wiz.busy" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.back') }}</Button>
         <Button variant="destructive"
           @click="doFormat"
           :disabled="wiz.confirm !== wiz.dev.name || wiz.busy"
           class="flex-1 justify-center"
         >
-          <span v-if="wiz.busy">Formatting…</span>
-          <span v-else>Format now</span>
+          <span v-if="wiz.busy">{{ t('ui.storage.DeviceFormatWizard.formatting2') }}</span>
+          <span v-else>{{ t('ui.storage.DeviceFormatWizard.formatNow') }}</span>
         </Button>
       </div>
     </div>
@@ -191,15 +194,14 @@ defineExpose({ open })
     <!-- Done: a new filesystem is root-owned until it is mounted with access set up -->
     <div v-else class="p-6 space-y-4">
       <div>
-        <div class="font-semibold text-sm text-foreground">Formatted</div>
+        <div class="font-semibold text-sm text-foreground">{{ t('ui.storage.DeviceFormatWizard.formatted') }}</div>
         <p class="text-xs text-muted-foreground mt-1">
-          <span class="font-mono">/dev/{{ wiz.dev.name }}</span> now holds an empty {{ wiz.fstype }} filesystem.
-          Mount it to choose who can write to it and to create a Place for it.
+          <span class="font-mono">/dev/{{ wiz.dev.name }}</span> {{ t('uip.storage.DeviceFormatWizard.nowHoldsAnEmptyFilesystem', { p0: wiz.fstype }) }}
         </p>
       </div>
       <div class="flex gap-2">
-        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">Later</Button>
-        <Button @click="mountNow" class="flex-1 justify-center">Mount now…</Button>
+        <Button variant="outline" @click="wiz = null" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.later') }}</Button>
+        <Button @click="mountNow" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.mountNow') }}</Button>
       </div>
     </div>
 

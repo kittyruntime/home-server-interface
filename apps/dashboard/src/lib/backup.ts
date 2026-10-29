@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 // Backups: labels for schedules, retention, repository locations and run results.
 
 export interface Schedule { every: 'manual' | 'hourly' | 'daily' | 'weekly'; minute: number; hour: number; weekday: number }
@@ -13,10 +14,10 @@ const pad = (n: number) => String(n).padStart(2, '0')
 export function scheduleLabel(s: Schedule): string {
   const at = `${pad(s.hour)}:${pad(s.minute)}`
   switch (s.every) {
-    case 'manual': return 'Manual'
-    case 'hourly': return `Every hour at :${pad(s.minute)}`
-    case 'daily': return `Every day at ${at}`
-    case 'weekly': return WEEKDAYS[s.weekday] ? `Every ${WEEKDAYS[s.weekday]} at ${at}` : `Every week at ${at}`
+    case 'manual': return tr('lib.backup.manual', 'Manual')
+    case 'hourly': return tr('lib.backup.everyHourAt', `Every hour at :${pad(s.minute)}`, { p0: pad(s.minute) })
+    case 'daily': return tr('lib.backup.everyDayAt', `Every day at ${at}`, { p0: at })
+    case 'weekly': return WEEKDAYS[s.weekday] ? tr('lib.backup.everyAt', `Every ${WEEKDAYS[s.weekday]} at ${at}`, { p0: WEEKDAYS[s.weekday], p1: at }) : tr('lib.backup.everyWeekAt', `Every week at ${at}`, { p0: at })
   }
 }
 
@@ -27,7 +28,7 @@ export function retentionLabel(r: Retention): string {
   if (r.keepDaily > 0) parts.push(`${r.keepDaily} daily`)
   if (r.keepWeekly > 0) parts.push(`${r.keepWeekly} weekly`)
   if (r.keepMonthly > 0) parts.push(`${r.keepMonthly} monthly`)
-  return parts.length ? `Keeps ${parts.join(', ')}` : 'Keeps nothing'
+  return parts.length ? tr('lib.backup.keeps', `Keeps ${parts.join(', ')}`, { p0: parts.join(', ') }) : tr('lib.backup.keepsNothing', 'Keeps nothing')
 }
 
 /** Where the repository lives, without credentials: a path, a user@host:path, a bucket path or a URL. */
@@ -47,10 +48,10 @@ export function locationLabel(r: RepoLocation): string {
 
 function ago(end: Date, now: Date): string {
   const s = Math.floor((now.getTime() - end.getTime()) / 1000)
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`
-  return `${Math.floor(s / 86400)} d ago`
+  if (s < 60) return tr('lib.backup.justNow', 'just now')
+  if (s < 3600) return tr('lib.backup.minAgo', `${Math.floor(s / 60)} min ago`, { p0: Math.floor(s / 60) })
+  if (s < 86400) return tr('lib.backup.hAgo', `${Math.floor(s / 3600)} h ago`, { p0: Math.floor(s / 3600) })
+  return tr('lib.backup.dAgo', `${Math.floor(s / 86400)} d ago`, { p0: Math.floor(s / 86400) })
 }
 
 /** The first n characters of text, never cutting a character made of two UTF-16 units in half. */
@@ -61,15 +62,15 @@ export function clip(text: string, n: number): string {
 
 /** The last run as a short sentence and the colour it deserves. */
 export function runLabel(r: { status: string; end?: string; error?: string } | null, now: Date = new Date()): { text: string; tone: 'ok' | 'warn' | 'err' | 'muted' } {
-  if (!r) return { text: 'Never run', tone: 'muted' }
+  if (!r) return { text: tr('lib.backup.neverRun', 'Never run'), tone: 'muted' }
   if (r.status === 'success') {
     const end = r.end ? new Date(r.end) : null
-    const text = end && !Number.isNaN(end.getTime()) ? `Succeeded ${ago(end, now)}` : 'Succeeded'
+    const text = end && !Number.isNaN(end.getTime()) ? tr('lib.backup.succeeded', `Succeeded ${ago(end, now)}`, { p0: ago(end, now) }) : tr('lib.backup.succeeded2', 'Succeeded')
     return { text, tone: 'ok' }
   }
-  if (r.status === 'failed') return { text: `Failed: ${clip(r.error ?? 'unknown error', 120)}`, tone: 'err' }
-  if (r.status === 'running') return { text: 'Running', tone: 'muted' }
-  return { text: 'Unknown state', tone: 'muted' }
+  if (r.status === 'failed') return { text: tr('lib.backup.failed', `Failed: ${clip(r.error ?? tr('lib.backup.unknownError', 'unknown error'), 120)}`, { p0: clip(r.error ?? tr('lib.backup.unknownError', 'unknown error'), 120) }), tone: 'err' }
+  if (r.status === 'running') return { text: tr('lib.backup.running', 'Running'), tone: 'muted' }
+  return { text: tr('lib.backup.unknownState', 'Unknown state'), tone: 'muted' }
 }
 
 /** Binary units with one decimal from KB up, e.g. 1536 becomes "1.5 KB". */
@@ -119,10 +120,10 @@ export function restorePayload(repository: string, snapshot: string, path: strin
 
 /** When a future run or check happens, e.g. "in 3 h"; "due now" once the time has passed. */
 export function untilLabel(iso: string | null, now: Date = new Date()): string {
-  if (!iso) return 'Not scheduled'
+  if (!iso) return tr('lib.backup.notScheduled', 'Not scheduled')
   const s = Math.floor((new Date(iso).getTime() - now.getTime()) / 1000)
-  if (s < 60) return 'due now'
-  if (s < 3600) return `in ${Math.floor(s / 60)} min`
+  if (s < 60) return tr('lib.backup.dueNow', 'due now')
+  if (s < 3600) return tr('lib.backup.inMin', `in ${Math.floor(s / 60)} min`, { p0: Math.floor(s / 60) })
   if (s < 86400) return `in ${Math.floor(s / 3600)} h`
   return `in ${Math.floor(s / 86400)} d`
 }
@@ -132,8 +133,8 @@ export function durationLabel(start: string, end?: string): string {
   if (!end) return ''
   const s = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000))
   if (s < 60) return `${s} s`
-  if (s < 3600) return `${Math.floor(s / 60)} min ${s % 60} s`
-  return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`
+  if (s < 3600) return tr('lib.backup.minS', `${Math.floor(s / 60)} min ${s % 60} s`, { p0: Math.floor(s / 60), p1: s % 60 })
+  return tr('lib.backup.hMin', `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`, { p0: Math.floor(s / 3600), p1: Math.floor((s % 3600) / 60) })
 }
 
 /** The status poll: every 5 s while a plan runs, else every minute. */

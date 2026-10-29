@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { usePageRefresh } from './page-refresh'
@@ -10,6 +11,8 @@ import { arrayTargets } from './object-targets'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
 import { Item } from '@/components/ui/item'
+
+const { t } = useI18n()
 
 // The page of one RAID array (#40): its state and members, what it carries,
 // and what was done to it. The Overview is the RAID section limited to it.
@@ -29,10 +32,10 @@ const state = computed(() => {
   const a = array.value
   if (!a) return { cls: '', dot: '', text: '' }
   const syncing = a.syncAction && ['recovery', 'resync', 'reshape', 'check'].includes(a.syncAction) && a.resyncPercent != null
-  if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `Rebuilding ${Math.round(a.resyncPercent!)}%` }
-  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: `Degraded: ${a.total - a.active} of ${a.total} missing` }
+  if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: t('uis.storage.ArrayPage.rebuilding', { p0: Math.round(a.resyncPercent!) }) }
+  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.ArrayPage.degradedOfMissing', { p0: a.total - a.active, p1: a.total }) }
   if (syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `${a.syncAction === 'check' ? 'Checking' : 'Resyncing'} ${Math.round(a.resyncPercent!)}%` }
-  return { cls: 'text-foreground/80', dot: 'bg-success', text: 'Healthy' }
+  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.ArrayPage.healthy') }
 })
 
 function findDev(list: BlockDev[], name: string): BlockDev | undefined {
@@ -81,7 +84,7 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
     </template>
 
     <template #actions>
-      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">Refresh</Button>
+      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">{{ t('ui.storage.ArrayPage.refresh') }}</Button>
     </template>
 
     <template v-if="array" #overview>
@@ -91,27 +94,27 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
     <template v-if="array" #structure>
       <div class="space-y-4 max-w-lg">
         <div>
-          <h3 class="eyebrow mb-2">On this array</h3>
-          <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">Nothing yet.</p>
+          <h3 class="eyebrow mb-2">{{ t('ui.storage.ArrayPage.onThisArray') }}</h3>
+          <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">{{ t('ui.storage.ArrayPage.nothingYet') }}</p>
           <ul class="space-y-1.5">
             <li v-if="vg">
               <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'vg', name: vg })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume group</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volumeGroup') }}</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>
             <li v-for="v in volumes" :key="v.id">
               <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Volume</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>
           </ul>
         </div>
         <div>
-          <h3 class="eyebrow mb-2">Members</h3>
+          <h3 class="eyebrow mb-2">{{ t('ui.storage.ArrayPage.members') }}</h3>
           <ul class="space-y-1.5">
             <li v-for="m in members" :key="m">
               <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'disk', name: m })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">Member</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
+                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.member') }}</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>
           </ul>

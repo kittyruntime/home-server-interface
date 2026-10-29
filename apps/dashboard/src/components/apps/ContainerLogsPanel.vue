@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import Modal from '../ui/Modal.vue'
 import { DialogTitle } from 'reka-ui'
 import { ArrowDownIcon, XIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
+
+const { t } = useI18n()
 
 const props = defineProps<{ name: string }>()
 const emit  = defineEmits<{ close: [] }>()
@@ -60,12 +63,12 @@ async function startStream() {
       signal: controller.signal,
     })
   } catch (e: any) {
-    if (e.name !== 'AbortError') error.value = e.message ?? 'Connection failed'
+    if (e.name !== 'AbortError') error.value = e.message ?? t('uis.apps.ContainerLogsPanel.connectionFailed')
     return
   }
 
   if (!res.ok) {
-    error.value = `Error ${res.status}: ${await res.text()}`
+    error.value = t('uis.apps.ContainerLogsPanel.error', { p0: res.status, p1: await res.text() })
     return
   }
 
@@ -120,7 +123,7 @@ async function startStream() {
       }
     }
   } catch (e: any) {
-    if (e.name !== 'AbortError') error.value = e.message ?? 'Stream error'
+    if (e.name !== 'AbortError') error.value = e.message ?? t('uis.apps.ContainerLogsPanel.streamError')
   } finally {
     if (flushTimer) clearTimeout(flushTimer)
     flush()
@@ -175,22 +178,22 @@ onUnmounted(() => controller?.abort())
                 : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:border-[#30363d]']"
           >
             <ArrowDownIcon class="size-3" aria-hidden="true" />
-            Follow
+            {{ t('ui.apps.ContainerLogsPanel.follow') }}
           </Button>
           <!-- Clear -->
           <Button
             variant="outline" size="xs"
             @click="clear"
-            tooltip="Clear"
+            :tooltip="t('ui.apps.ContainerLogsPanel.clear')"
             class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:bg-transparent dark:border-[#30363d]"
           >
             <XIcon class="size-3" aria-hidden="true" />
-            Clear
+            {{ t('ui.apps.ContainerLogsPanel.clear') }}
           </Button>
           <!-- Close -->
           <Button variant="ghost" size="icon-sm"
             @click="close"
-            tooltip="Close" aria-label="Close"
+            :tooltip="t('ui.apps.ContainerLogsPanel.close')" :aria-label="t('ui.apps.ContainerLogsPanel.close')"
             class="text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d]"
           >
             <XIcon class="w-4 h-4" aria-hidden="true" />
@@ -210,7 +213,7 @@ onUnmounted(() => controller?.abort())
 
         <!-- Empty -->
         <div v-if="lines.length === 0 && !error && connected"
-          class="text-[#7d8590] italic">Waiting for logs…</div>
+          class="text-[#7d8590] italic">{{ t('ui.apps.ContainerLogsPanel.waitingForLogs') }}</div>
 
         <!-- Lines -->
         <div
@@ -232,7 +235,7 @@ onUnmounted(() => controller?.abort())
       <div class="flex items-center justify-between px-4 py-1.5 border-t border-[#30363d] bg-[#161b22] flex-shrink-0">
         <span class="text-2xs text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
         <span v-if="!follow" class="text-2xs text-[#7d8590]">
-          Scroll to bottom to resume auto-scroll
+          {{ t('ui.apps.ContainerLogsPanel.scrollToBottomToResume') }}
         </span>
       </div>
     </div>

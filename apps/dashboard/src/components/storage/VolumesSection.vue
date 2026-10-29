@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
@@ -13,6 +14,8 @@ import { smartStatus, sharedSmart, readSmartList } from './smart'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
 import Tip from '../ui/Tip.vue'
+
+const { t } = useI18n()
 
 // The Storage landing page (#40): where the data lives. One row per volume
 // (a data filesystem, mounted, not mounted or missing at boot), with its
@@ -76,15 +79,15 @@ async function loadSmart() {
 function smartIssue(v: Volume): string | null {
   for (const d of v.disks) {
     const st = smartStatus(smart.value[d.name])
-    if (st === 'failed')  return `SMART failed on ${d.name}`
-    if (st === 'warning') return `SMART warning on ${d.name}`
+    if (st === 'failed')  return t('uis.storage.VolumesSection.smartFailedOn', { p0: d.name })
+    if (st === 'warning') return t('uis.storage.VolumesSection.smartWarningOn', { p0: d.name })
   }
   return null
 }
 
 type Health = 'ok' | 'idle' | 'warning' | 'danger'
 function health(v: Volume): { level: Health; text: string } {
-  if (v.state === 'missing') return { level: 'danger', text: v.issues[0]?.text ?? 'Missing' }
+  if (v.state === 'missing') return { level: 'danger', text: v.issues[0]?.text ?? t('uis.storage.VolumesSection.missing') }
   const bad = v.issues.find(i => i.kind === 'degraded' || i.kind === 'blocked')
   if (bad) return { level: 'danger', text: bad.text }
   const smartText = smartIssue(v)
@@ -92,8 +95,8 @@ function health(v: Volume): { level: Health; text: string } {
   const warn = v.issues[0]
   if (warn) return { level: 'warning', text: warn.text }
   if (smartText) return { level: 'warning', text: smartText }
-  if (v.state === 'not-mounted') return { level: 'idle', text: 'Not mounted' }
-  return { level: 'ok', text: 'Healthy' }
+  if (v.state === 'not-mounted') return { level: 'idle', text: t('uis.storage.VolumesSection.notMounted') }
+  return { level: 'ok', text: t('uis.storage.VolumesSection.healthy') }
 }
 const HEALTH_DOT: Record<Health, string> = { ok: 'bg-success', idle: 'bg-muted-foreground', warning: 'bg-warning', danger: 'bg-destructive' }
 const HEALTH_TEXT: Record<Health, string> = { ok: 'text-foreground/80', idle: 'text-muted-foreground', warning: 'text-warning', danger: 'text-destructive' }
@@ -162,7 +165,7 @@ async function mount(v: Volume) {
   <div>
     <div class="flex items-start justify-between gap-4 mb-5">
       <div class="min-w-0">
-        <h2 class="text-lg font-semibold text-foreground">Volumes</h2>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.VolumesSection.volumes') }}</h2>
         <p v-if="overview" class="text-sm text-muted-foreground mt-0.5">
           {{ overview.volumes.length }} {{ overview.volumes.length === 1 ? 'volume' : 'volumes' }}
           · {{ diskCount }} {{ diskCount === 1 ? 'disk' : 'disks' }}
@@ -170,17 +173,16 @@ async function mount(v: Volume) {
         </p>
       </div>
       <Tip :text="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" wrap>
-        <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length" @click="createVolume">Create volume…</Button>
+        <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length" @click="createVolume">{{ t('ui.storage.VolumesSection.createVolume') }}</Button>
       </Tip>
     </div>
 
     <Alert variant="info" v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3" role="note">
       <p class="text-sm text-foreground">
-        Existing storage was found on the disks:
-        <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>.
-        Importing keeps its data.
+        {{ t('ui.storage.VolumesSection.existingStorageWasFoundOn') }}
+        <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>{{ t('ui.storage.VolumesSection.importingKeepsItsData') }}
       </p>
-      <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">Review and import</Button>
+      <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">{{ t('ui.storage.VolumesSection.reviewAndImport') }}</Button>
     </Alert>
 
     <div v-for="d in unlisted" :key="d.mountPoint" class="mb-4">
@@ -192,17 +194,17 @@ async function mount(v: Volume) {
 
     <template v-if="!loading && overview">
       <Card v-if="!volumes.length" class="block gap-0 py-0 shadow-none px-4 py-8 text-center text-sm text-muted-foreground">
-        No data volume yet. Create one from free disks to store files, shares and apps.
+        {{ t('ui.storage.VolumesSection.noDataVolumeYetCreate') }}
       </Card>
 
       <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
         <!-- Header (wide) -->
         <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-border bg-muted text-2xs font-medium text-muted-foreground">
-          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">Volume</Button>
-          <span>Redundancy</span>
-          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'space' && 'text-foreground'" @click="sortKey = 'space'">Space</Button>
-          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'health' && 'text-foreground'" @click="sortKey = 'health'">Health</Button>
-          <span>Used by</span>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'name' && 'text-foreground'" @click="sortKey = 'name'">{{ t('ui.storage.VolumesSection.volume') }}</Button>
+          <span>{{ t('ui.storage.VolumesSection.redundancy') }}</span>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'space' && 'text-foreground'" @click="sortKey = 'space'">{{ t('ui.storage.VolumesSection.space') }}</Button>
+          <Button variant="link" class="h-auto p-0 text-left hover:text-foreground" :class="sortKey === 'health' && 'text-foreground'" @click="sortKey = 'health'">{{ t('ui.storage.VolumesSection.health') }}</Button>
+          <span>{{ t('ui.storage.VolumesSection.usedBy') }}</span>
         </div>
 
         <div v-for="v in volumes" :key="v.id" class="border-b border-border last:border-b-0">
@@ -218,7 +220,7 @@ async function mount(v: Volume) {
                 <Progress class="h-1.5 rounded-full bg-accent" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
                 <span class="block mt-1 font-mono tabular-nums text-2xs text-foreground/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               </template>
-              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">Mount</Button>
+              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
               <span v-else class="text-muted-foreground">-</span>
             </span>
             <span class="flex items-center gap-1.5 min-w-0" :class="HEALTH_TEXT[health(v).level]">
@@ -245,7 +247,7 @@ async function mount(v: Volume) {
             <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-muted-foreground">
               <span>{{ REDUNDANCY[v.redundancy] }} · {{ usedByText(v) }}</span>
               <span v-if="v.space" class="font-mono tabular-nums">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
-              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">Mount</Button>
+              <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
             </div>
           </div>
         </div>
@@ -253,12 +255,12 @@ async function mount(v: Volume) {
 
       <div class="mt-4 space-y-1.5 text-xs text-muted-foreground">
         <p v-if="overview.freeDisks.length">
-          Free disks:
+          {{ t('ui.storage.VolumesSection.freeDisks') }}
           <span class="font-mono text-foreground/80">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
-          <Button variant="link" class="h-auto p-0 ml-1.5 text-foreground" @click="createVolume">Create volume</Button>
+          <Button variant="link" class="h-auto p-0 ml-1.5 text-foreground" @click="createVolume">{{ t('ui.storage.VolumesSection.createVolume2') }}</Button>
         </p>
         <p v-if="overview.system">
-          System: <span class="font-mono text-foreground/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
+          {{ t('ui.storage.VolumesSection.system') }} <span class="font-mono text-foreground/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
         </p>
       </div>
     </template>

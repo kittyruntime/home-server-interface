@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+const { t } = useI18n()
+
 
 // The page of one storage object (#40): a header with the object's name, its
 // chips, its key figure and its actions, then Overview / Structure / Activity.
@@ -21,9 +25,9 @@ const emit = defineEmits<{ back: [] }>()
 const tab = defineModel<ObjectTab>('tab', { default: 'overview' })
 
 const TABS: { id: ObjectTab; label: string }[] = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'structure', label: 'Structure' },
-  { id: 'activity',  label: 'Activity' },
+  { id: 'overview',  label: t('uis.storage.ObjectPage.overview') },
+  { id: 'structure', label: t('uis.storage.ObjectPage.structure') },
+  { id: 'activity',  label: t('uis.storage.ObjectPage.activity') },
 ]
 </script>
 
@@ -50,7 +54,7 @@ const TABS: { id: ObjectTab; label: string }[] = [
       </header>
 
       <Tabs v-model="tab">
-        <TabsList aria-label="Sections of this page" class="mb-4">
+        <TabsList :aria-label="$t('ui.storage.ObjectPage.sectionsOfThisPage')" class="mb-4">
           <TabsTrigger v-for="t in TABS" :key="t.id" :value="t.id">{{ t.label }}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><slot name="overview" /></TabsContent>

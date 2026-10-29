@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, RefreshCwIcon } from '@lucide/vue'
@@ -11,6 +12,8 @@ import ReleaseNotes from './ReleaseNotes.vue'
 import { useConfirm } from '../lib/confirm'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 type Preflight = Awaited<ReturnType<typeof trpc.update.preflight.query>>
@@ -37,7 +40,7 @@ async function fetchStatus() {
     error.value = null
     if (status.value.hasUpdate) fetchPreflight()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to fetch update status'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToFetchUpdateStatus')
   } finally {
     loading.value = false
   }
@@ -61,7 +64,7 @@ async function checkNow() {
     await trpc.update.check.mutate()
     await fetchStatus()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to check for updates'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToCheckForUpdates')
   } finally {
     checking.value = false
   }
@@ -80,15 +83,15 @@ async function applyUpdate() {
       pollRestart()
     }, 1000)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to schedule update'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToScheduleUpdate')
     applying.value = false
   }
 }
 
 async function restartSoftware() {
   const accepted = await confirm(
-    'Restart HSI now? The interface will be unavailable for a few seconds. Running file transfers and in-progress tasks may be interrupted.',
-    { title: 'Restart HSI', confirmLabel: 'Restart now', danger: true },
+    t('uis.settings.UpdateSection.restartHsiNowTheInterface'),
+    { title: t('uis.settings.UpdateSection.restartHsi'), confirmLabel: t('uis.settings.UpdateSection.restartNow'), danger: true },
   )
   if (!accepted) return
   restarting.value = true
@@ -102,20 +105,20 @@ async function restartSoftware() {
       pollRestart()
     }, 500)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to restart HSI'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRestartHsi')
     restarting.value = false
   }
 }
 
 async function rebootHost() {
   const accepted = await confirm(
-    'Reboot the entire server? HSI, containers, file shares, and every service on this machine will be temporarily unavailable. Running tasks may be interrupted.',
-    { title: 'Reboot server', confirmLabel: 'Continue', danger: true },
+    t('uis.settings.UpdateSection.rebootTheEntireServerHsi'),
+    { title: t('uis.settings.UpdateSection.rebootServer'), confirmLabel: t('uis.settings.UpdateSection.continue'), danger: true },
   )
   if (!accepted) return
   const confirmed = await confirm(
-    'Final confirmation: reboot the physical host now?',
-    { title: 'Confirm server reboot', confirmLabel: 'Reboot server', danger: true },
+    t('uis.settings.UpdateSection.finalConfirmationRebootThePhysical'),
+    { title: t('uis.settings.UpdateSection.confirmServerReboot'), confirmLabel: t('uis.settings.UpdateSection.rebootServer'), danger: true },
   )
   if (!confirmed) return
   rebooting.value = true
@@ -129,7 +132,7 @@ async function rebootHost() {
       pollRestart()
     }, 500)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to reboot the server'
+    error.value = e?.message ?? t('uis.settings.UpdateSection.failedToRebootTheServer')
     rebooting.value = false
   }
 }
@@ -139,7 +142,7 @@ function pollRestart() {
   const interval = setInterval(async () => {
     try {
       const res = await fetch('/health', { signal: AbortSignal.timeout(1500) })
-      if (!res.ok) throw new Error('not ok')
+      if (!res.ok) throw new Error(t('uis.settings.UpdateSection.notOk'))
       if (serverWentDown) {
         clearInterval(interval)
         restartStep.value = 'done'
@@ -169,8 +172,8 @@ function startReloadCountdown() {
 function stepLabel(key: RestartStep) {
   if (key === 'scheduled') return restartKind.value === 'update' ? 'Update scheduled' : restartKind.value === 'host' ? 'Server reboot requested' : 'Restart requested'
   if (key === 'restarting') return restartKind.value === 'update' ? 'Installing and restarting' : restartKind.value === 'host' ? 'Server rebooting' : 'HSI restarting'
-  if (key === 'reconnecting') return 'Reconnecting'
-  return 'Ready'
+  if (key === 'reconnecting') return t('uis.settings.UpdateSection.reconnecting')
+  return t('uis.settings.UpdateSection.ready')
 }
 
 const STEPS: RestartStep[] = ['scheduled', 'restarting', 'reconnecting', 'done']
@@ -198,8 +201,8 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Updates</h2>
-    <p class="text-sm text-muted-foreground mb-6">Manage software updates for this server.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.UpdateSection.updates') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.settings.UpdateSection.manageSoftwareUpdatesForThis') }}</p>
 
     <!-- ── Restart timeline ─────────────────────────────────────────────── -->
     <div v-if="restartStep" class="space-y-6">
@@ -234,7 +237,7 @@ onUnmounted(() => clearInterval(timer))
             >{{ stepLabel(step) }}</span>
             <!-- Countdown on done -->
             <span v-if="step === 'done' && restartStep === 'done'" class="ml-auto text-xs text-muted-foreground font-mono">
-              reloading in {{ reloadCountdown }}…
+              {{ t('uip.settings.UpdateSection.reloadingIn', { p0: reloadCountdown }) }}
             </span>
           </div>
         </div>
@@ -252,20 +255,20 @@ onUnmounted(() => clearInterval(timer))
       <!-- Version row -->
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-row items-center justify-between gap-6">
         <div>
-          <p class="eyebrow mb-1">Current version</p>
+          <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.currentVersion') }}</p>
           <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
           <ArrowRightIcon class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div class="text-right">
-            <p class="eyebrow mb-1">Available</p>
+            <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.available') }}</p>
             <p class="font-figure text-xl text-primary">{{ status.latest }}</p>
           </div>
         </template>
         <template v-else>
           <div class="flex items-center gap-2 text-success">
             <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span class="text-sm">Up to date</span>
+            <span class="text-sm">{{ t('ui.settings.UpdateSection.upToDate') }}</span>
           </div>
         </template>
       </Card>
@@ -278,7 +281,7 @@ onUnmounted(() => clearInterval(timer))
           <span class="text-xs text-muted-foreground">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
         <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-warning">
-          <p>The update is complete. These application settings were not carried over, so the applications may not behave as before. Fix each one, then restart the application. Running the update again will not restore them.</p>
+          <p>{{ t('ui.settings.UpdateSection.theUpdateIsCompleteThese') }}</p>
           <ul class="list-disc pl-5 space-y-2">
             <li v-for="(item, index) in status.lastResult.skippedSettings" :key="index">
               <strong>{{ item.application }} ({{ item.setting }})</strong>: {{ item.reason }}.
@@ -295,13 +298,13 @@ onUnmounted(() => clearInterval(timer))
       <!-- Release notes -->
       <Card v-if="status.hasUpdate && status.releaseNotes" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
-          <p class="eyebrow">What's new in {{ status.latest }}</p>
+          <p class="eyebrow">{{ t('uip.settings.UpdateSection.whatSNewIn', { p0: status.latest }) }}</p>
           <a
             :href="`${status.repoUrl}/releases/tag/${status.latest}`"
             target="_blank" rel="noopener noreferrer"
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            View on GitHub
+            {{ t('ui.settings.UpdateSection.viewOnGithub') }}
             <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
@@ -313,7 +316,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- Pre-flight checks -->
       <Card v-if="status.hasUpdate && preflight" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border">
-          <p class="eyebrow">Pre-flight checks</p>
+          <p class="eyebrow">{{ t('ui.settings.UpdateSection.preFlightChecks') }}</p>
         </div>
         <ul class="divide-y divide-border">
           <li v-for="c in preflight.checks" :key="c.id" class="px-4 py-2.5 flex items-center gap-3">
@@ -330,8 +333,8 @@ onUnmounted(() => clearInterval(timer))
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
         <p class="text-xs text-muted-foreground">
-          <template v-if="preflight && !preflight.canApply">A pre-flight check is failing: resolve it before installing.</template>
-          <template v-else>The server will restart after installation (~30s downtime).</template>
+          <template v-if="preflight && !preflight.canApply">{{ t('ui.settings.UpdateSection.aPreFlightCheckIs') }}</template>
+          <template v-else>{{ t('ui.settings.UpdateSection.theServerWillRestartAfter') }}</template>
         </p>
         <Button size="sm"
           @click="applyUpdate"
@@ -347,15 +350,15 @@ onUnmounted(() => clearInterval(timer))
       <div class="flex items-center justify-between pt-1 border-t border-border">
         <div>
           <p class="text-xs text-muted-foreground">
-            <template v-if="status.checkedAt">Last checked {{ formatDateTime(status.checkedAt) }}</template>
-            <template v-else>Never checked (runs daily via systemd timer)</template>
+            <template v-if="status.checkedAt">{{ t('uip.settings.UpdateSection.lastChecked', { p0: formatDateTime(status.checkedAt) }) }}</template>
+            <template v-else>{{ t('ui.settings.UpdateSection.neverCheckedRunsDailyVia') }}</template>
           </p>
           <a
             :href="`${status.repoUrl}/releases`"
             target="_blank" rel="noopener noreferrer"
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
           >
-            View all releases on GitHub
+            {{ t('ui.settings.UpdateSection.viewAllReleasesOnGithub') }}
             <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
@@ -371,8 +374,8 @@ onUnmounted(() => clearInterval(timer))
 
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">Restart HSI</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the application backend without rebooting the host server.</p>
+          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.restartHsi') }}</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartTheApplicationBackendWithout') }}</p>
         </div>
         <Button variant="outline" size="sm"
           @click="restartSoftware"
@@ -387,8 +390,8 @@ onUnmounted(() => clearInterval(timer))
 
       <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 border-destructive/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">Reboot server</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the physical host and every service running on it.</p>
+          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.rebootServer') }}</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartThePhysicalHostAnd') }}</p>
         </div>
         <Button variant="destructive" size="sm"
           @click="rebootHost"

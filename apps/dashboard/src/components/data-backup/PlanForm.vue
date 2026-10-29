@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,6 +14,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+
+const { t } = useI18n()
+
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 
@@ -39,7 +43,7 @@ watch(() => props.repositories, repos => {
   form.value.versions.repository = defaultRepository(form.value.versions.repository, repos)
 })
 const RETENTION: Array<{ key: keyof typeof form.value.versions.retention; label: string }> = [
-  { key: 'keepLast', label: 'Latest' }, { key: 'keepDaily', label: 'Daily' }, { key: 'keepWeekly', label: 'Weekly' }, { key: 'keepMonthly', label: 'Monthly' },
+  { key: 'keepLast', label: t('uis.backups.PlanForm.latest') }, { key: 'keepDaily', label: t('uis.backups.PlanForm.daily') }, { key: 'keepWeekly', label: t('uis.backups.PlanForm.weekly') }, { key: 'keepMonthly', label: t('uis.backups.PlanForm.monthly') },
 ]
 
 async function save() {
@@ -47,7 +51,7 @@ async function save() {
   try {
     await applyPlanned('backup.plan.save', { plan: planPayload(form.value) }, {
       title: props.plan ? `Edit the plan ${form.value.name.trim()}` : `Create the plan ${form.value.name.trim()}`,
-      actionLabel: 'Save plan',
+      actionLabel: t('uis.backups.PlanForm.savePlan'),
     })
     emit('saved')
   } catch (e) {
@@ -67,7 +71,7 @@ async function save() {
     </div>
 
     <fieldset v-if="!plan">
-      <legend class="sr-only">Plan type</legend>
+      <legend class="sr-only">{{ $t('ui.backups.PlanForm.planType') }}</legend>
       <RadioGroup v-model="form.type" class="grid gap-2 sm:grid-cols-2">
       <label
         v-for="t in ([['versions', 'Versions', 'Encrypted snapshots in a repository: go back to an earlier date.'], ['sync', 'Sync', 'A mirror copy with rsync: a deletion is copied too.']] as const)"
@@ -83,27 +87,27 @@ async function save() {
       </RadioGroup>
     </fieldset>
 
-    <label class="block text-xs text-foreground/80">Plan name
+    <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.planName') }}
       <Input v-model="form.name" required maxlength="80" class="mt-1" :placeholder="form.type === 'sync' ? 'Nightly media mirror' : 'Photos'" />
     </label>
 
     <!-- Versions -->
     <template v-if="form.type === 'versions'">
-      <label class="block text-xs text-foreground/80">Folders to back up, one per line
-        <Textarea v-model="form.versions.sources" required rows="3" class="mt-1 font-mono" placeholder="/srv/data/photos&#10;/srv/data/documents" />
+      <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.foldersToBackUpOne') }}
+        <Textarea v-model="form.versions.sources" required rows="3" class="mt-1 font-mono" laceholder="/srv/data/photos&#10;/srv/data/documents" />
       </label>
-      <label class="block text-xs text-foreground/80">Repository
+      <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.repository') }}
         <NativeSelect wrapper-class="mt-1" v-model="form.versions.repository" required :disabled="noRepository">
           <NativeSelectOption v-for="r in repositories" :key="r.id" :value="r.id">{{ r.name }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <p v-if="noRepository" class="status-text text-warning"><span class="status-tag">[WARN]</span> Add a repository first, below.</p>
-      <label class="block text-xs text-foreground/80">Exclusions, one pattern per line
-        <Textarea v-model="form.versions.excludes" rows="2" class="mt-1 font-mono" placeholder=".cache&#10;*.tmp" />
+      <p v-if="noRepository" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ $t('ui.backups.PlanForm.addARepositoryFirstBelow') }}</p>
+      <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.exclusionsOnePatternPerLine') }}
+        <Textarea v-model="form.versions.excludes" rows="2" class="mt-1 font-mono" :placeholder="$t('ui.backups.PlanForm.cache10Tmp')" />
       </label>
       <div v-if="appChoices.length">
-        <p class="text-xs text-foreground/80">Apps to stop during the backup</p>
-        <p class="text-2xs text-muted-foreground">Their files are copied while they are stopped, then they start again.</p>
+        <p class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.appsToStopDuringThe') }}</p>
+        <p class="text-2xs text-muted-foreground">{{ $t('ui.backups.PlanForm.theirFilesAreCopiedWhile') }}</p>
         <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
           <label v-for="a in appChoices" :key="a" class="flex items-center gap-2 text-xs text-foreground/80">
             <Checkbox :model-value="form.versions.stopApps.includes(a)" @update:model-value="checked => form.versions.stopApps = checked === true ? [...form.versions.stopApps, a] : form.versions.stopApps.filter(x => x !== a)" /> {{ a }}
@@ -111,7 +115,7 @@ async function save() {
         </div>
       </div>
       <div>
-        <p class="text-xs text-foreground/80">Versions to keep</p>
+        <p class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.versionsToKeep') }}</p>
         <div class="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <label v-for="k in RETENTION" :key="k.key" class="text-2xs text-muted-foreground">{{ k.label }}
             <Input v-model.number="form.versions.retention[k.key]" type="number" min="0" max="1000" required class="mt-1 tabular-nums" />
@@ -122,80 +126,80 @@ async function save() {
 
     <!-- Sync -->
     <template v-else>
-      <label class="block text-xs text-foreground/80">Transfer direction
+      <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.transferDirection') }}
         <NativeSelect wrapper-class="mt-1" v-model="form.sync.direction">
-          <NativeSelectOption value="push">NAS → destination</NativeSelectOption>
-          <NativeSelectOption value="pull">Target → NAS</NativeSelectOption>
+          <NativeSelectOption value="push">{{ $t('ui.backups.PlanForm.nasDestination') }}</NativeSelectOption>
+          <NativeSelectOption value="pull">{{ $t('ui.backups.PlanForm.targetNas') }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <label class="flex items-center gap-2 text-xs text-foreground/80"><Checkbox v-model="form.sync.remote" /> Use a remote SSH target</label>
+      <label class="flex items-center gap-2 text-xs text-foreground/80"><Checkbox v-model="form.sync.remote" /> {{ $t('ui.backups.PlanForm.useARemoteSshTarget') }}</label>
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="text-xs text-foreground/80">{{ form.sync.direction === 'push' ? 'NAS source' : 'Target source' }}
-          <Input v-model="form.sync.source" required class="mt-1 font-mono" placeholder="/mnt/data" />
+          <Input v-model="form.sync.source" required class="mt-1 font-mono" laceholder="/mnt/data" />
         </label>
         <label class="text-xs text-foreground/80">{{ form.sync.direction === 'push' ? 'Destination' : 'NAS destination' }}
-          <Input v-model="form.sync.destination" required class="mt-1 font-mono" placeholder="/mnt/backup" />
+          <Input v-model="form.sync.destination" required class="mt-1 font-mono" laceholder="/mnt/backup" />
         </label>
       </div>
       <div v-if="form.sync.remote" class="grid gap-3 sm:grid-cols-2">
-        <label class="text-xs text-foreground/80">Host
-          <Input v-model="form.sync.remoteHost" required class="mt-1" placeholder="backup.example.net" />
+        <label class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.host') }}
+          <Input v-model="form.sync.remoteHost" required class="mt-1" :placeholder="$t('ui.backups.PlanForm.backupExampleNet')" />
         </label>
-        <label class="text-xs text-foreground/80">SSH user
-          <Input v-model="form.sync.remoteUser" required class="mt-1" placeholder="backup" />
+        <label class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.sshUser') }}
+          <Input v-model="form.sync.remoteUser" required class="mt-1" laceholder="backup" />
         </label>
-        <label class="text-xs text-foreground/80">SSH key path
-          <Input v-model="form.sync.sshKeyPath" required class="mt-1 font-mono" placeholder="/root/.ssh/hsi_backup" />
+        <label class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.sshKeyPath') }}
+          <Input v-model="form.sync.sshKeyPath" required class="mt-1 font-mono" laceholder="/root/.ssh/hsi_backup" />
         </label>
-        <label class="text-xs text-foreground/80">Port
+        <label class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.port') }}
           <Input v-model.number="form.sync.remotePort" type="number" min="1" max="65535" class="mt-1" />
         </label>
-        <p class="sm:col-span-2 text-2xs text-muted-foreground">The host must already exist in root's known_hosts and the private key must be mode 0600 or stricter.</p>
+        <p class="sm:col-span-2 text-2xs text-muted-foreground">{{ $t('ui.backups.PlanForm.theHostMustAlreadyExist') }}</p>
       </div>
-      <label class="block text-xs text-foreground/80">Exclusions, one pattern per line
-        <Textarea v-model="form.sync.excludes" rows="2" class="mt-1 font-mono" placeholder=".cache/&#10;*.tmp" />
+      <label class="block text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.exclusionsOnePatternPerLine') }}
+        <Textarea v-model="form.sync.excludes" rows="2" class="mt-1 font-mono" :placeholder="$t('ui.backups.PlanForm.cache10Tmp2')" />
       </label>
       <div class="flex flex-wrap gap-4 text-xs text-foreground/80">
-        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.compress" /> Compress transfer</label>
-        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.deleteExtra" /> Mirror deletions at destination</label>
+        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.compress" /> {{ $t('ui.backups.PlanForm.compressTransfer') }}</label>
+        <label class="flex items-center gap-2"><Checkbox v-model="form.sync.deleteExtra" /> {{ $t('ui.backups.PlanForm.mirrorDeletionsAtDestination') }}</label>
       </div>
       <p v-if="form.sync.deleteExtra" class="status-text text-warning">
-        <span class="status-tag">[WARN]</span> Mirror mode deletes destination files that no longer exist at the source. Verify both paths before enabling it.
+        <span class="status-tag">[WARN]</span> {{ $t('ui.backups.PlanForm.mirrorModeDeletesDestinationFiles') }}
       </p>
     </template>
 
     <!-- Schedule -->
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <label class="text-xs text-foreground/80">Schedule
+      <label class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.schedule') }}
         <NativeSelect wrapper-class="mt-1" v-model="form.schedule.every">
-          <NativeSelectOption value="manual">Manual only</NativeSelectOption>
-          <NativeSelectOption value="hourly">Hourly</NativeSelectOption>
-          <NativeSelectOption value="daily">Daily</NativeSelectOption>
-          <NativeSelectOption value="weekly">Weekly</NativeSelectOption>
+          <NativeSelectOption value="manual">{{ $t('ui.backups.PlanForm.manualOnly') }}</NativeSelectOption>
+          <NativeSelectOption value="hourly">{{ $t('ui.backups.PlanForm.hourly') }}</NativeSelectOption>
+          <NativeSelectOption value="daily">{{ $t('ui.backups.PlanForm.daily') }}</NativeSelectOption>
+          <NativeSelectOption value="weekly">{{ $t('ui.backups.PlanForm.weekly') }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <label v-if="form.schedule.every === 'weekly'" class="text-xs text-foreground/80">Day
+      <label v-if="form.schedule.every === 'weekly'" class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.day') }}
         <NativeSelect wrapper-class="mt-1" v-model.number="form.schedule.weekday">
           <NativeSelectOption v-for="(d, i) in WEEKDAYS" :key="d" :value="i">{{ d }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <label v-if="form.schedule.every === 'daily' || form.schedule.every === 'weekly'" class="text-xs text-foreground/80">Hour
+      <label v-if="form.schedule.every === 'daily' || form.schedule.every === 'weekly'" class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.hour') }}
         <Input v-model.number="form.schedule.hour" type="number" min="0" max="23" required class="mt-1 tabular-nums" />
       </label>
-      <label v-if="form.schedule.every !== 'manual'" class="text-xs text-foreground/80">Minute
+      <label v-if="form.schedule.every !== 'manual'" class="text-xs text-foreground/80">{{ $t('ui.backups.PlanForm.minute') }}
         <Input v-model.number="form.schedule.minute" type="number" min="0" max="59" required class="mt-1 tabular-nums" />
       </label>
     </div>
 
     <div class="flex items-center justify-between gap-4">
-      <span class="text-sm text-foreground/80">Enabled</span>
+      <span class="text-sm text-foreground/80">{{ $t('ui.backups.PlanForm.enabled') }}</span>
       <Tip text="Run on the schedule"><Switch v-model="form.enabled" /></Tip>
     </div>
 
     <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
     <div class="flex gap-2">
-      <Button size="sm" type="submit" :disabled="form.type === 'versions' && noRepository">Review plan</Button>
-      <Button variant="ghost" size="sm" type="button" @click="emit('cancel')">Cancel</Button>
+      <Button size="sm" type="submit" :disabled="form.type === 'versions' && noRepository">{{ $t('ui.backups.PlanForm.reviewPlan') }}</Button>
+      <Button variant="ghost" size="sm" type="button" @click="emit('cancel')">{{ $t('ui.backups.PlanForm.cancel') }}</Button>
     </div>
   </form>
 </template>

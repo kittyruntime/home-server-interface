@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PlaceIcon from './PlaceIcon.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon } from '@lucide/vue'
@@ -7,6 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { Badge } from '@/components/ui/badge'
+
+const { t } = useI18n()
 
 type Place = { id: string; name: string; path: string; icon?: string | null }
 type Group = { id: string; name: string }
@@ -79,9 +82,9 @@ onMounted(load)
 
 <template>
   <section>
-    <h3 class="text-xs font-medium uppercase tracking-caps text-muted-foreground mb-3 px-1">Permissions</h3>
+    <h3 class="text-xs font-medium uppercase tracking-caps text-muted-foreground mb-3 px-1">{{ t('ui.settings.PermissionsSection.permissions') }}</h3>
 
-    <div v-if="places.length === 0" class="text-sm text-muted-foreground px-1">No places yet. Add one in the Places tab, then grant users or groups access here.</div>
+    <div v-if="places.length === 0" class="text-sm text-muted-foreground px-1">{{ t('ui.settings.PermissionsSection.noPlacesYetAddOne') }}</div>
 
     <div class="space-y-2">
       <Collapsible
@@ -105,14 +108,14 @@ onMounted(load)
 
         <!-- Permission matrix -->
         <CollapsibleContent class="border-t border-border">
-          <p class="px-4 py-1.5 text-2xs text-muted-foreground leading-relaxed">Admins always have full access.</p>
+          <p class="px-4 py-1.5 text-2xs text-muted-foreground leading-relaxed">{{ t('ui.settings.PermissionsSection.adminsAlwaysHaveFullAccess') }}</p>
           <Table class="w-full text-xs">
             <TableHeader>
               <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border">
-                <TableHead class="px-4 py-2 text-left font-medium">Subject</TableHead>
-                <TableHead class="px-3 py-2 text-center font-medium w-16">Read</TableHead>
-                <TableHead class="px-3 py-2 text-center font-medium w-16">Write</TableHead>
-                <TableHead class="px-3 py-2 text-center font-medium w-16">Delete</TableHead>
+                <TableHead class="px-4 py-2 text-left font-medium">{{ t('ui.settings.PermissionsSection.subject') }}</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.read') }}</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.write') }}</TableHead>
+                <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.delete') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody class="divide-y divide-border">
@@ -144,7 +147,7 @@ onMounted(load)
               </TableRow>
 
               <TableRow v-if="groups.length === 0 && users.length === 0">
-                <TableCell colspan="4" class="px-4 py-3 text-muted-foreground">No groups or users to assign.</TableCell>
+                <TableCell colspan="4" class="px-4 py-3 text-muted-foreground">{{ t('ui.settings.PermissionsSection.noGroupsOrUsersTo') }}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

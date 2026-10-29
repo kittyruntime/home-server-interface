@@ -20,6 +20,7 @@ const zPreferences = z.object({
   theme:        z.enum(["auto", "light", "dark"]).optional(),
   accent:       z.enum(["orange", "blue", "green", "purple"]).optional(),
   sidebarOrder: z.array(z.string()).optional(),
+  locale:       z.enum(["en", "fr"]).optional(),
 })
 function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
   const r = zPreferences.safeParse(v ?? {})

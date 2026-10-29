@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import { actionLabel } from '../../lib/audit-labels'
+
+const { t } = useI18n()
 
 // Recent operations on one storage object (#40), from the audit log.
 const props = defineProps<{ targets: string[]; arrays?: string[] }>()
@@ -54,7 +57,7 @@ function toggle(id: string) {
   <div>
     <LoadingState v-if="loading" variant="compact" />
     <p v-else-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
-    <p v-else-if="!entries.length" class="text-sm text-muted-foreground">No recorded operation yet.</p>
+    <p v-else-if="!entries.length" class="text-sm text-muted-foreground">{{ t('ui.storage.ActivityList.noRecordedOperationYet') }}</p>
     <ol v-else class="divide-y divide-border rounded-xl border border-border bg-card">
       <li v-for="e in entries" :key="e.id" class="px-4 py-2.5">
         <div class="flex items-center gap-3 text-sm">

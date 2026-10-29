@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { usePageRefresh } from './page-refresh'
@@ -9,6 +10,8 @@ import { useStorageData, fmtBytes } from './store'
 import { vgTargets } from './object-targets'
 import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 // The page of one LVM volume group (#40): its space, its logical volumes and
 // what they carry, its physical volumes, and what was done to it. The
@@ -94,7 +97,7 @@ const targets = computed(() => vgTargets({
     </template>
 
     <template #actions>
-      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">Refresh</Button>
+      <Button variant="ghost" size="sm" :disabled="loading" @click="refresh">{{ t('ui.storage.VgPage.refresh') }}</Button>
     </template>
 
     <template v-if="vg" #overview>
@@ -104,8 +107,8 @@ const targets = computed(() => vgTargets({
     <template v-if="vg" #structure>
       <div class="space-y-4 max-w-lg">
         <div>
-          <h3 class="eyebrow mb-2">Logical volumes</h3>
-          <p v-if="!lvs.length" class="text-sm text-muted-foreground">None yet.</p>
+          <h3 class="eyebrow mb-2">{{ t('ui.storage.VgPage.logicalVolumes') }}</h3>
+          <p v-if="!lvs.length" class="text-sm text-muted-foreground">{{ t('ui.storage.VgPage.noneYet') }}</p>
           <ul class="space-y-1.5">
             <li v-for="lv in lvs" :key="lv.name">
               <component :is="volumeOf[lv.name] ? 'button' : 'div'"
@@ -120,7 +123,7 @@ const targets = computed(() => vgTargets({
           </ul>
         </div>
         <div>
-          <h3 class="eyebrow mb-2">Physical volumes</h3>
+          <h3 class="eyebrow mb-2">{{ t('ui.storage.VgPage.physicalVolumes') }}</h3>
           <ul class="space-y-1.5">
             <li v-for="pv in pvs" :key="pv.name">
               <component :is="pvTarget(pv.name) ? 'button' : 'div'"

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import PlaceIcon from './PlaceIcon.vue'
+
+const { t } = useI18n()
 
 // Picks the emoji of a place: a few suggestions, any emoji typed or pasted,
 // or back to the folder icon.
@@ -53,10 +56,10 @@ function pickCustom() {
         </Button>
       </div>
       <form class="flex gap-2" @submit.prevent="pickCustom">
-        <Input v-model="custom" maxlength="16" placeholder="Any emoji" aria-label="Any emoji" class="h-8 text-base" />
-        <Button type="submit" size="sm" :disabled="!custom.trim()">Use</Button>
+        <Input v-model="custom" maxlength="16" :placeholder="t('ui.settings.PlaceIconPicker.anyEmoji')" :aria-label="t('ui.settings.PlaceIconPicker.anyEmoji')" class="h-8 text-base" />
+        <Button type="submit" size="sm" :disabled="!custom.trim()">{{ t('ui.settings.PlaceIconPicker.use') }}</Button>
       </form>
-      <Button variant="ghost" size="sm" class="w-full" :disabled="!icon" @click="pick(null)">Use the folder icon</Button>
+      <Button variant="ghost" size="sm" class="w-full" :disabled="!icon" @click="pick(null)">{{ t('ui.settings.PlaceIconPicker.useTheFolderIcon') }}</Button>
     </PopoverContent>
   </Popover>
 </template>

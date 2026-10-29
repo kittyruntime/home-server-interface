@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -38,6 +39,8 @@ import { ArrowRightIcon, BellIcon, EllipsisIcon, LayoutGridIcon, PlusIcon, Trian
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
@@ -86,15 +89,15 @@ watch(pendingAppFocus, name => {
 })
 
 const activeAppLabel = computed(() => {
-  if (activeApp.value === 'dashboard') return 'Overview'
-  if (activeApp.value === 'files') return 'Files'
-  if (activeApp.value === 'settings') return 'Settings'
-  if (activeApp.value === 'apps') return 'Apps'
-  if (activeApp.value === 'storage') return 'Storage'
-  if (activeApp.value === 'store') return 'App Store'
-  if (activeApp.value === 'monitor') return 'Monitor'
-  if (activeApp.value === 'sharing') return 'Sharing'
-  return 'Overview'
+  if (activeApp.value === 'dashboard') return t('uis.views.DashboardLayout.overview')
+  if (activeApp.value === 'files') return t('uis.views.DashboardLayout.files')
+  if (activeApp.value === 'settings') return t('uis.views.DashboardLayout.settings')
+  if (activeApp.value === 'apps') return t('uis.views.DashboardLayout.apps')
+  if (activeApp.value === 'storage') return t('uis.views.DashboardLayout.storage')
+  if (activeApp.value === 'store') return t('uis.views.DashboardLayout.appStore')
+  if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
+  if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
+  return t('uis.views.DashboardLayout.overview')
 })
 
 function selectApp(id: string) {
@@ -297,8 +300,8 @@ onUnmounted(() => {
         <Button
           variant="ghost"
           size="icon-lg"
-          aria-label="Activity"
-          tooltip="Activity"
+          :aria-label="t('ui.views.DashboardLayout.activity')"
+          :tooltip="t('ui.views.DashboardLayout.activity')"
           class="relative mb-2 rounded-xl text-muted-foreground hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />
@@ -315,7 +318,7 @@ onUnmounted(() => {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Account"
+            :aria-label="t('ui.views.DashboardLayout.account')"
             class="group size-9 rounded-full p-0 select-none hover:bg-transparent"
           >
             <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
@@ -338,8 +341,8 @@ onUnmounted(() => {
       >
         <TriangleAlertIcon class="size-4 shrink-0 text-warning" />
         <span class="text-foreground flex-1 min-w-0">
-          You must change your password before doing anything else.
-          <Button variant="link" class="h-auto p-0 font-medium text-foreground underline" @click="goToProfile">Change it now</Button>
+          {{ t('ui.views.DashboardLayout.youMustChangeYourPassword') }}
+          <Button variant="link" class="h-auto p-0 font-medium text-foreground underline" @click="goToProfile">{{ t('ui.views.DashboardLayout.changeItNow') }}</Button>
         </span>
       </div>
       <DesktopShell v-if="desktopMode && !isMobile" />
@@ -353,7 +356,7 @@ onUnmounted(() => {
             @click="appsPanelRef?.openNew()"
           >
             <PlusIcon />
-            New App
+            {{ t('ui.views.DashboardLayout.newApp') }}
           </Button>
         </header>
 
@@ -373,7 +376,7 @@ onUnmounted(() => {
           <div v-else class="flex items-center justify-center h-full text-muted-foreground select-none">
             <div class="text-center space-y-3">
               <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
-              <p class="text-sm">Select an app from the sidebar</p>
+              <p class="text-sm">{{ t('ui.views.DashboardLayout.selectAnAppFromThe') }}</p>
             </div>
           </div>
           </div>
@@ -405,7 +408,7 @@ onUnmounted(() => {
 
       <DropdownMenu v-if="mobileMoreItems.length">
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" aria-label="More apps"
+          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.moreApps')"
             class="relative h-11 min-w-0 flex-1 rounded-xl text-muted-foreground hover:bg-transparent data-[state=open]:text-primary">
             <EllipsisIcon class="size-5" />
           </Button>
@@ -421,7 +424,7 @@ onUnmounted(() => {
       <!-- Notifications bell -->
       <ActivityPopover v-if="isMobile" side="top">
         <template #default="{ open }">
-          <Button variant="ghost" aria-label="Activity"
+          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
             :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
               open ? 'text-primary' : 'text-muted-foreground']">
             <BellIcon class="size-5" />
@@ -435,7 +438,7 @@ onUnmounted(() => {
       <!-- User avatar -->
       <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
         <template #default="{ initials }">
-          <Button variant="ghost" aria-label="Account"
+          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.account')"
             class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
             <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
               <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>

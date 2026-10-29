@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import Modal from '../../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 /* Shared skeleton for the destructive storage confirmations (remove LV/VG,
    destroy RAID, init partition table, delete partition). The parent renders it
@@ -44,14 +47,14 @@ const canConfirm = computed(() =>
       </div>
       <div v-if="confirmWord != null">
         <label class="block text-xs text-foreground/80 mb-1.5">
-          Type <span class="font-mono font-bold text-foreground">{{ confirmWord }}</span> to confirm
+          {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-mono font-bold text-foreground">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
         </label>
         <Input v-model="typed" type="text" :placeholder="confirmWord"
           class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"/>
       </div>
       <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div class="flex gap-2">
-        <Button variant="outline" @click="emit('close')" class="flex-1 justify-center">Cancel</Button>
+        <Button variant="outline" @click="emit('close')" class="flex-1 justify-center">{{ t('ui.storage.ConfirmDestroyDialog.cancel') }}</Button>
         <Button variant="destructive" @click="emit('confirm')" :disabled="!canConfirm"
           class="flex-1 justify-center">
           <span v-if="busy">{{ busyLabel }}</span>

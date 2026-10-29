@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { useDesktop, APP_LABEL } from '../../lib/desktop'
 import { useAlerts } from '../../composables/useAlerts'
 import AppIcon from './AppIcon.vue'
+
+const { t } = useI18n()
 
 const { windows, focusWindow, toggleMinimize } = useDesktop()
 const { hasAlerts } = useAlerts()
@@ -23,7 +26,7 @@ function onIconClick(id: string) {
   if (w.minimized) {
     focusWindow(id)
   } else if (isFocused(id)) {
-    if (w.dirty && !confirm('Discard unsaved changes?')) return
+    if (w.dirty && !confirm(t('uis.desktop.Dock.discardUnsavedChanges'))) return
     toggleMinimize(id)
   } else {
     focusWindow(id)
@@ -35,8 +38,8 @@ function onIconClick(id: string) {
   <div class="flex flex-col items-center w-16 py-4 h-full">
     <Button
       size="icon-sm"
-      tooltip="Launchpad"
-      aria-label="Launchpad"
+      :tooltip="t('ui.desktop.Dock.launchpad')"
+      :aria-label="t('ui.desktop.Dock.launchpad')"
       class="relative mb-5 rounded-lg select-none"
       @click="$emit('openLaunchpad')"
     >

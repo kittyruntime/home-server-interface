@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -30,6 +31,8 @@ import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   open:     [disk: string]
@@ -200,14 +203,14 @@ function tempClass(t: number): string {
 }
 
 const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
-  { key: 'name',        label: 'Device' },
-  { key: 'model',       label: 'Model' },
-  { key: 'serial',      label: 'Serial / WWN' },
-  { key: 'size',        label: 'Size', class: 'text-right' },
-  { key: 'kind',        label: 'Type' },
-  { key: 'role',        label: 'Role' },
-  { key: 'health',      label: 'Health' },
-  { key: 'temperature', label: 'Temp', class: 'text-right' },
+  { key: 'name',        label: t('uis.storage.PhysicalDisksSection.device') },
+  { key: 'model',       label: t('uis.storage.PhysicalDisksSection.model') },
+  { key: 'serial',      label: t('uis.storage.PhysicalDisksSection.serialWwn') },
+  { key: 'size',        label: t('uis.storage.PhysicalDisksSection.size'), class: 'text-right' },
+  { key: 'kind',        label: t('uis.storage.PhysicalDisksSection.type') },
+  { key: 'role',        label: t('uis.storage.PhysicalDisksSection.role') },
+  { key: 'health',      label: t('uis.storage.PhysicalDisksSection.health') },
+  { key: 'temperature', label: t('uis.storage.PhysicalDisksSection.temp'), class: 'text-right' },
 ]
 
 // ── Selection: free disks for a new array or volume group ─────────────────────
@@ -243,11 +246,11 @@ async function doPartInit() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.init', { device: d.disk.name },
-      { title: `New partition table on /dev/${d.disk.name}`, actionLabel: `Erase /dev/${d.disk.name}` })
+      { title: t('uis.storage.PhysicalDisksSection.newPartitionTableOnDev', { p0: d.disk.name }), actionLabel: t('uis.storage.PhysicalDisksSection.eraseDev', { p0: d.disk.name }) })
     partInitDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to initialise partition table'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToInitialisePartitionTable')
   } finally {
     if (partInitDlg.value) d.busy = false
   }
@@ -261,11 +264,11 @@ async function doPartCreate() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.create', { device: d.disk.name, startPct: 0, endPct: 100 },
-      { title: `Add a partition on /dev/${d.disk.name}`, actionLabel: 'Add partition' })
+      { title: t('uis.storage.PhysicalDisksSection.addAPartitionOnDev', { p0: d.disk.name }), actionLabel: t('uis.storage.PhysicalDisksSection.addPartition') })
     partCreateDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to create partition'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToCreatePartition')
   } finally {
     if (partCreateDlg.value) d.busy = false
   }
@@ -286,11 +289,11 @@ async function doPartDelete() {
   d.busy = true; d.err = ''
   try {
     await applyPlanned('part.delete', { device: d.disk.name, partNum: num },
-      { title: `Delete partition ${d.part.name}`, actionLabel: `Delete ${d.part.name}` })
+      { title: t('uis.storage.PhysicalDisksSection.deletePartition', { p0: d.part.name }), actionLabel: t('uis.storage.PhysicalDisksSection.delete', { p0: d.part.name }) })
     partDeleteDlg.value = null
     await refresh()
   } catch (e: unknown) {
-    d.err = (e as { message?: string })?.message ?? 'Failed to delete partition'
+    d.err = (e as { message?: string })?.message ?? t('uis.storage.PhysicalDisksSection.failedToDeletePartition')
   } finally {
     if (partDeleteDlg.value) d.busy = false
   }
@@ -312,10 +315,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">Disks</h2>
-        <p class="text-sm text-muted-foreground mt-0.5">Physical disks and everything built on them: partitions, RAID, LVM, filesystems.</p>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.PhysicalDisksSection.disks') }}</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">{{ t('ui.storage.PhysicalDisksSection.physicalDisksAndEverythingBuilt') }}</p>
       </div>
-      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.PhysicalDisksSection.refresh')" :aria-label="t('ui.storage.PhysicalDisksSection.refresh')" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -325,7 +328,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-if="!loading || devices.length">
-      <div v-if="physicalDisks.length === 0" class="text-sm text-muted-foreground">No physical drives detected.</div>
+      <div v-if="physicalDisks.length === 0" class="text-sm text-muted-foreground">{{ t('ui.storage.PhysicalDisksSection.noPhysicalDrivesDetected') }}</div>
 
       <template v-else>
         <!-- Summary: each count filters the list -->
@@ -333,7 +336,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
             <span class="font-semibold text-foreground">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
             <span class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
-            <span v-if="summary.roles.free" class="text-muted-foreground tabular-nums">{{ fmtBytes(summary.freeBytes) }} on free disks</span>
+            <span v-if="summary.roles.free" class="text-muted-foreground tabular-nums">{{ t('uip.storage.PhysicalDisksSection.onFreeDisks', { p0: fmtBytes(summary.freeBytes) }) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
@@ -356,29 +359,29 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
-          <Input v-model="search" type="search" placeholder="Search device, model, serial…" aria-label="Search disks"
+          <Input v-model="search" type="search" :placeholder="t('ui.storage.PhysicalDisksSection.searchDeviceModelSerial')" :aria-label="t('ui.storage.PhysicalDisksSection.searchDisks')"
             class="flex-1 min-w-[12rem] px-3 py-1.5 text-sm placeholder-muted-foreground"/>
-          <NativeSelect wrapper-class="w-auto" v-model="prefs.role" aria-label="Filter by role"
+          <NativeSelect wrapper-class="w-auto" v-model="prefs.role" :aria-label="t('ui.storage.PhysicalDisksSection.filterByRole')"
             class="px-2 py-1.5 text-xs">
-            <NativeSelectOption value="all">All roles</NativeSelectOption>
+            <NativeSelectOption value="all">{{ t('ui.storage.PhysicalDisksSection.allRoles') }}</NativeSelectOption>
             <NativeSelectOption v-for="(label, role) in ROLE_LABELS" :key="role" :value="role">{{ label }}</NativeSelectOption>
           </NativeSelect>
-          <NativeSelect wrapper-class="w-auto" v-model="prefs.health" aria-label="Filter by health"
+          <NativeSelect wrapper-class="w-auto" v-model="prefs.health" :aria-label="t('ui.storage.PhysicalDisksSection.filterByHealth')"
             class="px-2 py-1.5 text-xs">
-            <NativeSelectOption value="all">Any health</NativeSelectOption>
+            <NativeSelectOption value="all">{{ t('ui.storage.PhysicalDisksSection.anyHealth') }}</NativeSelectOption>
             <NativeSelectOption v-for="(label, h) in HEALTH_LABEL" :key="h" :value="h">{{ label }}</NativeSelectOption>
           </NativeSelect>
-          <NativeSelect :model-value="prefs.sortKey" @update:model-value="key => prefs.sortKey = key as SortKey" aria-label="Sort by"
+          <NativeSelect :model-value="prefs.sortKey" @update:model-value="key => prefs.sortKey = key as SortKey" :aria-label="t('ui.storage.PhysicalDisksSection.sortBy')"
             :wrapper-class="['w-auto', view === 'table' && '@4xl/content:hidden']" class="px-2 py-1.5 text-xs">
-            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">Sort: {{ c.label }}</NativeSelectOption>
+            <NativeSelectOption v-for="c in COLUMNS" :key="c.key" :value="c.key">{{ t('uip.storage.PhysicalDisksSection.sort', { p0: c.label }) }}</NativeSelectOption>
           </NativeSelect>
           <label class="flex items-center gap-1.5 text-xs text-foreground/80 cursor-pointer">
-            <Checkbox v-model="prefs.grouped" /> Group by role
+            <Checkbox v-model="prefs.grouped" /> {{ t('ui.storage.PhysicalDisksSection.groupByRole') }}
           </label>
           <ToggleGroup
             type="single" variant="outline" size="sm"
             :model-value="view"
-            aria-label="View"
+            :aria-label="t('ui.storage.PhysicalDisksSection.view')"
             @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
           >
             <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v" class="px-2.5 text-xs">
@@ -388,21 +391,21 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         </div>
 
         <div v-if="filtered && visibleRows.length" class="mb-2 text-2xs text-muted-foreground">
-          Showing {{ visibleRows.length }} of {{ summary.disks }} disks ·
-          <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
+          {{ t('uip.storage.PhysicalDisksSection.showingOfDisks', { p0: visibleRows.length, p1: summary.disks }) }}
+          <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">{{ t('ui.storage.PhysicalDisksSection.clearFilters') }}</Button>
         </div>
 
         <!-- Selected free disks -->
         <div v-if="selected.size" class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-input bg-card text-xs">
-          <span class="text-foreground/80">{{ selected.size }} free {{ selected.size === 1 ? 'disk' : 'disks' }} selected</span>
-          <Button @click="startCreate('volume')" class="text-xs">Create volume…</Button>
-          <Button variant="outline" v-if="selected.size >= 2" @click="startCreate('raid')" class="text-xs">Create RAID…</Button>
-          <Button variant="outline" @click="startCreate('lvm')" class="text-xs">Create volume group…</Button>
-          <Button variant="link" @click="selected = new Set()" class="h-auto p-0 ml-auto text-muted-foreground hover:text-foreground">Clear</Button>
+          <span class="text-foreground/80">{{ t('uip.storage.PhysicalDisksSection.freeSelected', { p0: selected.size, p1: selected.size === 1 ? 'disk' : 'disks' }) }}</span>
+          <Button @click="startCreate('volume')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createVolume') }}</Button>
+          <Button variant="outline" v-if="selected.size >= 2" @click="startCreate('raid')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createRaid') }}</Button>
+          <Button variant="outline" @click="startCreate('lvm')" class="text-xs">{{ t('ui.storage.PhysicalDisksSection.createVolumeGroup') }}</Button>
+          <Button variant="link" @click="selected = new Set()" class="h-auto p-0 ml-auto text-muted-foreground hover:text-foreground">{{ t('ui.storage.PhysicalDisksSection.clear') }}</Button>
         </div>
 
         <div v-if="!visibleRows.length" class="text-sm text-muted-foreground py-6 text-center">
-          No disk matches these filters. <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">Clear filters</Button>
+          {{ t('ui.storage.PhysicalDisksSection.noDiskMatchesTheseFilters') }} <Button variant="link" @click="clearFilters" class="h-auto p-0 text-primary">{{ t('ui.storage.PhysicalDisksSection.clearFilters') }}</Button>
         </div>
 
         <!-- ═══ Table view: one compact row per disk, details on demand ═══ -->
@@ -518,7 +521,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <!-- Create partition table -->
     <ConfirmDestroyDialog
       v-if="partInitDlg"
-      title="Create partition table"
+      :title="t('ui.storage.PhysicalDisksSection.createPartitionTable')"
       subtitle="Writes a new GPT partition table: all existing data on the disk will be lost."
       :confirm-word="partInitDlg.disk.name"
       action-label="Create partition table"
@@ -528,37 +531,37 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
       @confirm="doPartInit"
       @close="partInitDlg = null"
     >
-      <template #warning>All partitions and data on <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> will be permanently destroyed. This cannot be undone.</template>
+      <template #warning>{{ t('ui.storage.PhysicalDisksSection.allPartitionsAndDataOn') }} <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willBePermanentlyDestroyedThis') }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
-        <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-foreground/80">Model</span><span>{{ partInitDlg.disk.model }}</span></div>
-        <div v-if="partInitDlg.disk.serial" class="flex gap-2"><span class="w-16 text-foreground/80">Serial</span><span class="font-mono">{{ partInitDlg.disk.serial }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.disk') }}</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.size') }}</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
+        <div v-if="partInitDlg.disk.model" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.model') }}</span><span>{{ partInitDlg.disk.model }}</span></div>
+        <div v-if="partInitDlg.disk.serial" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.serial') }}</span><span class="font-mono">{{ partInitDlg.disk.serial }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
     <!-- Add partition -->
     <Modal v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
           <div class="px-5 py-4 border-b border-border">
-            <h3 class="font-semibold text-foreground">Add partition</h3>
-            <p class="text-xs text-muted-foreground mt-0.5">Creates a new partition spanning all available free space on <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
+            <h3 class="font-semibold text-foreground">{{ t('ui.storage.PhysicalDisksSection.addPartition') }}</h3>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.storage.PhysicalDisksSection.createsANewPartitionSpanning') }} <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
               <InfoIcon class="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-              The partition will use the entire free space (0% → 100%). After creation you can format and mount it.
+              {{ t('ui.storage.PhysicalDisksSection.thePartitionWillUseThe') }}
             </div>
             <div class="space-y-1 text-xs text-muted-foreground">
-              <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
-              <div class="flex gap-2"><span class="w-16 text-foreground/80">Disk size</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.disk') }}</span><span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span></div>
+              <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.diskSize') }}</span><span>{{ fmtBytes(partCreateDlg.disk.size) }}</span></div>
             </div>
             <p v-if="partCreateDlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ partCreateDlg.err }}</p>
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="partCreateDlg = null" class="flex-1 justify-center">Cancel</Button>
+              <Button variant="outline" @click="partCreateDlg = null" class="flex-1 justify-center">{{ t('ui.storage.PhysicalDisksSection.cancel') }}</Button>
               <Button @click="doPartCreate" :disabled="partCreateDlg.busy"
                 class="flex-1 justify-center">
-                <span v-if="partCreateDlg.busy">Creating…</span>
-                <span v-else>Create partition</span>
+                <span v-if="partCreateDlg.busy">{{ t('ui.storage.PhysicalDisksSection.creating') }}</span>
+                <span v-else>{{ t('ui.storage.PhysicalDisksSection.createPartition') }}</span>
               </Button>
             </div>
           </div>
@@ -567,7 +570,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <!-- Delete partition -->
     <ConfirmDestroyDialog
       v-if="partDeleteDlg"
-      title="Delete partition"
+      :title="t('ui.storage.PhysicalDisksSection.deletePartition')"
       action-label="Delete partition"
       busy-label="Deleting…"
       :busy="partDeleteDlg.busy"
@@ -575,14 +578,14 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
       @confirm="doPartDelete"
       @close="partDeleteDlg = null"
     >
-      <template #warning>Deleting <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> will permanently destroy all data in that partition.</template>
+      <template #warning>{{ t('ui.storage.PhysicalDisksSection.deleting') }} <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willPermanentlyDestroyAllData') }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Partition</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Size</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
-        <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-foreground/80">Filesystem</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Disk</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-muted-foreground">{{ partDeleteDlg.disk.model }}</span></div>
-        <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-foreground/80">Serial</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">Partition #</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.partition') }}</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.size') }}</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
+        <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.filesystem') }}</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.disk') }}</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-muted-foreground">{{ partDeleteDlg.disk.model }}</span></div>
+        <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.serial') }}</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.PhysicalDisksSection.partition2') }}</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PlaceIconPicker from './PlaceIconPicker.vue'
 import { useToast } from '../lib/toast'
 import { Card } from '@/components/ui/card'
@@ -12,6 +13,8 @@ import LoadingState from './ui/LoadingState.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 type Place = { id: string; name: string; path: string; icon?: string | null }
 type Group = { id: string; name: string }
@@ -57,7 +60,7 @@ async function addPlace() {
     adding.value  = false
   } catch (e: any) {
     if (e?.message === 'Path does not exist') pathMissing.value = true
-    addError.value = e?.message ?? 'Failed to add place'
+    addError.value = e?.message ?? t('uis.settings.PlacesSection.failedToAddPlace')
   } finally {
     addLoading.value = false
   }
@@ -70,7 +73,7 @@ async function createDir() {
     await trpc.place.mkdir.mutate({ path: newPath.value.trim() })
     pathMissing.value = false
   } catch (e: any) {
-    addError.value = e?.message ?? 'Failed to create directory'
+    addError.value = e?.message ?? t('uis.settings.PlacesSection.failedToCreateDirectory')
     addLoading.value = false
     return
   }
@@ -83,7 +86,7 @@ async function setIcon(place: Place, icon: string | null) {
     await trpc.place.setIcon.mutate({ id: place.id, icon })
     place.icon = icon
   } catch (e: any) {
-    toast.error(e?.message ?? 'Failed to change the icon')
+    toast.error(e?.message ?? t('uis.settings.PlacesSection.failedToChangeTheIcon'))
   }
 }
 
@@ -140,10 +143,9 @@ onMounted(async () => {
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">Places</h2>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.PlacesSection.places') }}</h2>
         <p class="text-xs text-muted-foreground mt-1 max-w-md leading-relaxed">
-          Folders on your NAS that you share with people. Each place maps a friendly name to a path on
-          the server, then grants read, write or delete access per user or group.
+          {{ t('ui.settings.PlacesSection.foldersOnYourNasThat') }}
         </p>
       </div>
       <Button size="xs"
@@ -152,7 +154,7 @@ onMounted(async () => {
         class="shrink-0"
       >
         <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-        Add place
+        {{ t('ui.settings.PlacesSection.addPlace') }}
       </Button>
     </div>
 
@@ -162,22 +164,22 @@ onMounted(async () => {
     <template v-else>
       <!-- Add form -->
       <div v-if="adding" class="rounded-xl border border-input bg-card p-4 space-y-3">
-        <h4 class="eyebrow">New place</h4>
+        <h4 class="eyebrow">{{ t('ui.settings.PlacesSection.newPlace') }}</h4>
         <div class="flex gap-3">
           <div class="flex-1">
-            <label class="block text-xs text-foreground/80 mb-1">Name</label>
-            <Input v-model="newName" type="text" placeholder="Media"/>
-            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">Shown to users in the file browser.</p>
+            <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.settings.PlacesSection.name') }}</label>
+            <Input v-model="newName" type="text" :placeholder="t('ui.settings.PlacesSection.media')"/>
+            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.shownToUsersInThe') }}</p>
           </div>
           <div class="flex-[2]">
-            <label class="block text-xs text-foreground/80 mb-1">Path</label>
-            <Input v-model="newPath" type="text" placeholder="/mnt/data" class="font-mono"/>
-            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">Absolute path to a folder on the server. It must already exist.</p>
+            <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.settings.PlacesSection.path') }}</label>
+            <Input v-model="newPath" type="text" laceholder="/mnt/data" class="font-mono"/>
+            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.absolutePathToAFolder') }}</p>
           </div>
         </div>
         <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
         <div v-if="pathMissing" class="rounded-lg bg-muted border border-border px-3 py-2">
-          <p class="text-xs text-foreground/80">This folder doesn't exist yet.</p>
+          <p class="text-xs text-foreground/80">{{ t('ui.settings.PlacesSection.thisFolderDoesnTExist') }}</p>
           <Button variant="link" @click="createDir" :disabled="addLoading"
             class="h-auto p-0 text-primary mt-0.5">
             {{ addLoading ? 'Creating…' : 'Create it and add the place' }}
@@ -188,7 +190,7 @@ onMounted(async () => {
             {{ addLoading ? 'Adding…' : 'Add place' }}
           </Button>
           <Button variant="ghost" size="sm" @click="adding = false; addError = ''; pathMissing = false">
-            Cancel
+            {{ t('ui.settings.PlacesSection.cancel') }}
           </Button>
         </div>
       </div>
@@ -197,14 +199,13 @@ onMounted(async () => {
       <div v-if="places.length === 0 && !adding"
         class="rounded-xl border border-dashed border-input bg-card px-6 py-10 text-center">
         <FolderIcon class="w-10 h-10 mx-auto text-muted-foreground opacity-60" aria-hidden="true" />
-        <h4 class="text-sm font-medium text-foreground mt-3">No places yet</h4>
+        <h4 class="text-sm font-medium text-foreground mt-3">{{ t('ui.settings.PlacesSection.noPlacesYet') }}</h4>
         <p class="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">
-          A place shares a folder on your NAS with users and groups, and you decide exactly who can read,
-          write or delete its contents.
+          {{ t('ui.settings.PlacesSection.aPlaceSharesAFolder') }}
         </p>
         <Button size="sm" @click="adding = true" class="mt-4 mx-auto">
           <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-          Add your first place
+          {{ t('ui.settings.PlacesSection.addYourFirstPlace') }}
         </Button>
       </div>
 
@@ -228,7 +229,7 @@ onMounted(async () => {
             </Button>
             <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
               class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-              tooltip="Remove" aria-label="Remove">
+              :tooltip="t('ui.settings.PlacesSection.remove')" :aria-label="t('ui.settings.PlacesSection.remove')">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
@@ -236,19 +237,19 @@ onMounted(async () => {
           <!-- Permissions matrix (expanded) -->
           <div v-if="expandedPlace === place.id" class="border-t border-border">
             <div class="px-4 py-2.5 bg-muted">
-              <span class="eyebrow">Permissions</span>
+              <span class="eyebrow">{{ t('ui.settings.PlacesSection.permissions') }}</span>
               <p class="text-2xs text-muted-foreground mt-0.5 leading-relaxed">
-                Choose what each user or group can do in this folder. Admins always have full access.
+                {{ t('ui.settings.PlacesSection.chooseWhatEachUserOr') }}
               </p>
             </div>
             <Table class="w-full text-xs">
               <TableHeader>
                 <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border bg-muted">
-                  <TableHead class="px-4 py-2 text-left font-medium">Subject</TableHead>
-                  <Tip text="List and download files"><TableHead class="px-3 py-2 text-center font-medium w-16">Read</TableHead></Tip>
-                  <Tip text="Upload, rename and modify files"><TableHead class="px-3 py-2 text-center font-medium w-16">Write</TableHead></Tip>
-                  <Tip text="Remove files and folders"><TableHead class="px-3 py-2 text-center font-medium w-16">Delete</TableHead></Tip>
-                  <Tip text="Create public share links for this folder"><TableHead class="px-3 py-2 text-center font-medium w-16">Share</TableHead></Tip>
+                  <TableHead class="px-4 py-2 text-left font-medium">{{ t('ui.settings.PlacesSection.subject') }}</TableHead>
+                  <Tip text="List and download files"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.read') }}</TableHead></Tip>
+                  <Tip text="Upload, rename and modify files"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.write') }}</TableHead></Tip>
+                  <Tip text="Remove files and folders"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.delete') }}</TableHead></Tip>
+                  <Tip text="Create public share links for this folder"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.share') }}</TableHead></Tip>
                 </TableRow>
               </TableHeader>
               <TableBody class="divide-y divide-border">
@@ -280,7 +281,7 @@ onMounted(async () => {
                 </TableRow>
 
                 <TableRow v-if="groups.length === 0 && users.length === 0">
-                  <TableCell colspan="5" class="px-4 py-3 text-muted-foreground">No groups or users to assign.</TableCell>
+                  <TableCell colspan="5" class="px-4 py-3 text-muted-foreground">{{ t('ui.settings.PlacesSection.noGroupsOrUsersTo') }}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { BellIcon, ChartNoAxesColumnIcon, NetworkIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
 import { ref, computed, watch } from 'vue'
@@ -19,6 +20,8 @@ import SecureAccessSection from './SecureAccessSection.vue'
 import TelemetrySection from './TelemetrySection.vue'
 import NetworkSection from './NetworkSection.vue'
 
+const { t } = useI18n()
+
 const { isAdmin, isUserManager } = useAuth()
 
 type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'network' | 'telemetry' | 'backups' | 'data-backups' | 'shares'
@@ -34,31 +37,25 @@ interface NavItem {
   group?: Group
 }
 
-const GROUP_LABEL: Record<Group, string> = {
-  account: 'Account',
-  access: 'Access control',
-  system: 'System',
-  backup: 'Backups',
-}
 
 const nav: NavItem[] = [
-  { id: 'profile',     label: 'My profile',  show: () => true,  group: 'account' },
-  { id: 'shares',      label: 'Shared links', show: () => true, group: 'account' },
+  { id: 'profile',     label: 'profile',  show: () => true,  group: 'account' },
+  { id: 'shares',      label: 'shares', show: () => true, group: 'account' },
   // Access control: who can reach what. Users is grouped here even though it's
   // gated on isUserManager (not isAdmin like the rest): a user manager
   // without full admin still needs it alongside the places/perms they manage.
-  { id: 'users',       label: 'Users',       show: () => isUserManager.value, group: 'access' },
-  { id: 'places',      label: 'Places',      show: () => isAdmin.value, group: 'access' },
-  { id: 'permissions', label: 'Permissions', show: () => isAdmin.value, group: 'access' },
-  { id: 'groups',      label: 'Groups',      show: () => isAdmin.value, group: 'access' },
-  { id: 'alerting',    label: 'Alert thresholds', show: () => isAdmin.value, group: 'system' },
-  { id: 'notifications', label: 'Notifications', show: () => isAdmin.value, group: 'system' },
-  { id: 'secure',      label: 'Secure access', show: () => isAdmin.value, group: 'system' },
-  { id: 'network',     label: 'Network',     show: () => isAdmin.value, group: 'system' },
-  { id: 'updates',     label: 'Updates',     show: () => isAdmin.value, group: 'system' },
-  { id: 'telemetry',   label: 'Telemetry',   show: () => isAdmin.value, group: 'system' },
-  { id: 'backups',     label: 'Backup & restore', show: () => isAdmin.value, group: 'backup' },
-  { id: 'data-backups', label: 'Data backups', show: () => isAdmin.value, group: 'backup' },
+  { id: 'users',       label: 'users',       show: () => isUserManager.value, group: 'access' },
+  { id: 'places',      label: 'places',      show: () => isAdmin.value, group: 'access' },
+  { id: 'permissions', label: 'permissions', show: () => isAdmin.value, group: 'access' },
+  { id: 'groups',      label: 'groups',      show: () => isAdmin.value, group: 'access' },
+  { id: 'alerting',    label: 'alerting', show: () => isAdmin.value, group: 'system' },
+  { id: 'notifications', label: 'notifications', show: () => isAdmin.value, group: 'system' },
+  { id: 'secure',      label: 'secure', show: () => isAdmin.value, group: 'system' },
+  { id: 'network',     label: 'network',     show: () => isAdmin.value, group: 'system' },
+  { id: 'updates',     label: 'updates',     show: () => isAdmin.value, group: 'system' },
+  { id: 'telemetry',   label: 'telemetry',   show: () => isAdmin.value, group: 'system' },
+  { id: 'backups',     label: 'backups', show: () => isAdmin.value, group: 'backup' },
+  { id: 'data-backups', label: 'dataBackups', show: () => isAdmin.value, group: 'backup' },
 ]
 
 const visibleNav = computed(() => nav.filter(n => n.show()))
@@ -80,7 +77,7 @@ const ICONS: Record<SectionId, Component> = {
   backups: SaveIcon, 'data-backups': SaveIcon,
 }
 const navItems = computed(() => visibleNav.value.map(n => ({
-  id: n.id, label: n.label, icon: ICONS[n.id], group: n.group && GROUP_LABEL[n.group],
+  id: n.id, label: t(`settings.nav.${n.label}`), icon: ICONS[n.id], group: n.group && t(`settings.groups.${n.group}`),
 })))
 </script>
 

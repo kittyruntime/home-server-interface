@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -6,6 +7,8 @@ import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 type Thresholds = { diskUsageWarningPercent: number; diskUsageCriticalPercent: number }
 
@@ -26,7 +29,7 @@ async function load() {
     thresholds.value = t
     form.value = { ...t }
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load thresholds'
+    error.value = e?.message ?? t('uis.settings.AlertingSection.failedToLoadThresholds')
   } finally {
     loading.value = false
   }
@@ -36,7 +39,7 @@ async function saveThresholds() {
   saveError.value = ''
   saved.value = false
   if (form.value.diskUsageCriticalPercent <= form.value.diskUsageWarningPercent) {
-    saveError.value = 'Critical must be higher than warning'
+    saveError.value = t('uis.settings.AlertingSection.criticalMustBeHigherThan')
     return
   }
   saving.value = true
@@ -44,7 +47,7 @@ async function saveThresholds() {
     thresholds.value = await trpc.alert.updateThresholds.mutate(form.value)
     saved.value = true
   } catch (e: any) {
-    saveError.value = e?.message ?? 'Failed to save thresholds'
+    saveError.value = e?.message ?? t('uis.settings.AlertingSection.failedToSaveThresholds')
   } finally {
     saving.value = false
   }
@@ -60,23 +63,22 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Alert thresholds</h2>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.AlertingSection.alertThresholds') }}</h2>
     <p class="text-sm text-muted-foreground mb-6">
-      Background health checks, sampled every 5 minutes. Active alerts are listed in Monitor &gt; Alerts.
+      {{ t('ui.settings.AlertingSection.backgroundHealthChecksSampledEvery') }}
     </p>
 
     <LoadingState v-if="loading" />
-    <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
+    <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.settings.AlertingSection.retry')" @retry="load" />
 
     <Card v-else class="block gap-0 py-0 overflow-hidden p-5 max-w-xl">
-      <p class="eyebrow mb-4">Disk usage</p>
+      <p class="eyebrow mb-4">{{ t('ui.settings.AlertingSection.diskUsage') }}</p>
       <p class="text-xs text-muted-foreground mb-4">
-        Each Place's filesystem is checked against these percentages. Doesn't apply to the
-        RAID or S.M.A.R.T. checks, which alert on their own pass/fail state.
+        {{ t('ui.settings.AlertingSection.eachPlaceSFilesystemIs') }}
       </p>
       <div class="flex flex-wrap gap-6">
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-muted-foreground">Warning at</span>
+          <span class="text-xs text-muted-foreground">{{ t('ui.settings.AlertingSection.warningAt') }}</span>
           <div class="flex items-center gap-1.5">
             <Input
               v-model.number="form.diskUsageWarningPercent"
@@ -87,7 +89,7 @@ onMounted(load)
           </div>
         </label>
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-muted-foreground">Critical at</span>
+          <span class="text-xs text-muted-foreground">{{ t('ui.settings.AlertingSection.criticalAt') }}</span>
           <div class="flex items-center gap-1.5">
             <Input
               v-model.number="form.diskUsageCriticalPercent"
@@ -99,7 +101,7 @@ onMounted(load)
         </label>
       </div>
       <p v-if="saveError" role="alert" class="mt-4 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
-      <p v-else-if="saved && !dirty" class="text-xs text-success mt-4">Saved.</p>
+      <p v-else-if="saved && !dirty" class="text-xs text-success mt-4">{{ t('ui.settings.AlertingSection.saved') }}</p>
       <div class="mt-4">
         <Button size="sm"
           :disabled="!dirty || saving"

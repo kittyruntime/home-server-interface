@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tip from './ui/Tip.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon, PlusIcon } from '@lucide/vue'
@@ -12,6 +13,9 @@ import { useConfirm } from '../lib/confirm'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
+
 
 const { confirm } = useConfirm()
 
@@ -45,7 +49,7 @@ async function load() {
     rules.value = r
     deliveries.value = d
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load notifications settings'
+    error.value = e?.message ?? t('uis.settings.NotificationsSection.failedToLoadNotificationsSettings')
   } finally {
     loading.value = false
   }
@@ -54,7 +58,7 @@ async function load() {
 onMounted(load)
 
 function connectorLabel(id: string): string {
-  if (id === 'inapp') return 'In-app (bell)'
+  if (id === 'inapp') return t('uis.settings.NotificationsSection.inAppBell')
   return connectors.value.find(c => c.id === id)?.name ?? id
 }
 
@@ -99,18 +103,18 @@ async function toggleConnector(c: Connector) {
     await trpc.notifications.connectors.setEnabled.mutate({ id: c.id, enabled: !c.enabled })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to update connector'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToUpdateConnector')
   }
 }
 
 async function deleteConnector(c: Connector) {
-  if (!await confirm(`Delete connector "${c.name}"? Rules targeting it will drop it.`, { danger: true, confirmLabel: 'Delete' })) return
+  if (!await confirm(t('uis.settings.NotificationsSection.deleteConnectorRulesTargetingIt', { p0: c.name }), { danger: true, confirmLabel: t('uis.settings.NotificationsSection.delete') })) return
   actionError.value = ''
   try {
     await trpc.notifications.connectors.delete.mutate({ id: c.id })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to delete connector'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToDeleteConnector')
   }
 }
 
@@ -134,18 +138,18 @@ async function toggleRule(r: Rule) {
     })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to update rule'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToUpdateRule')
   }
 }
 
 async function deleteRule(r: Rule) {
-  if (!await confirm(`Delete rule "${r.name}"?`, { danger: true, confirmLabel: 'Delete' })) return
+  if (!await confirm(t('uis.settings.NotificationsSection.deleteRule', { p0: r.name }), { danger: true, confirmLabel: t('uis.settings.NotificationsSection.delete') })) return
   actionError.value = ''
   try {
     await trpc.notifications.rules.delete.mutate({ id: r.id })
     await load()
   } catch (e: any) {
-    actionError.value = e?.message ?? 'Failed to delete rule'
+    actionError.value = e?.message ?? t('uis.settings.NotificationsSection.failedToDeleteRule')
   }
 }
 
@@ -161,7 +165,7 @@ function deliveryDot(d: Delivery): string {
 }
 
 function deliveryText(d: Delivery): string {
-  if (d.status === 'sent') return 'Delivered'
+  if (d.status === 'sent') return t('uis.settings.NotificationsSection.delivered')
   if (d.status === 'failed') return d.error || 'Failed'
   return d.attempts > 0 ? `Retrying (attempt ${d.attempts + 1} of 3): ${d.error}` : 'Queued'
 }
@@ -176,13 +180,13 @@ function formatTime(at: string | Date): string {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Notifications</h2>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ $t('ui.settings.NotificationsSection.notifications') }}</h2>
     <p class="text-sm text-muted-foreground mb-6">
-      Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.
+      {{ $t('ui.settings.NotificationsSection.routeAlertEventsToThe') }}
     </p>
 
     <LoadingState v-if="loading && !connectors.length && !rules.length" />
-    <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
+    <ErrorState v-else-if="error" :message="error" :retry-label="$t('ui.settings.NotificationsSection.retry')" @retry="load" />
 
     <template v-else>
       <p v-if="actionError" class="status-text text-destructive mb-4">[ERR] {{ actionError }}</p>
@@ -192,10 +196,10 @@ function formatTime(at: string | Date): string {
         <!-- Connectors -->
         <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
           <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
-            <p class="eyebrow">Connectors</p>
+            <p class="eyebrow">{{ $t('ui.settings.NotificationsSection.connectors') }}</p>
             <Button size="xs" @click="openConnectorDialog(null)">
               <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-              Add connector
+              {{ $t('ui.settings.NotificationsSection.addConnector') }}
             </Button>
           </div>
           <ul v-if="connectors.length > 0" class="divide-y divide-border">
@@ -204,27 +208,27 @@ function formatTime(at: string | Date): string {
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium text-foreground truncate">{{ c.name }}</span>
                   <Badge variant="secondary">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</Badge>
-                  <Badge variant="outline" v-if="c.secretsUnreadable" class="bg-destructive/10 text-destructive">secrets unreadable</Badge>
+                  <Badge variant="outline" v-if="c.secretsUnreadable" class="bg-destructive/10 text-destructive">{{ $t('ui.settings.NotificationsSection.secretsUnreadable') }}</Badge>
                 </div>
                 <p class="text-xs text-muted-foreground font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
               <Tip :text="c.enabled ? 'Disable connector' : 'Enable connector'"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
-              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">Edit</Button>
-              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">Delete</Button>
+              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
+              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-muted-foreground">
-            No connectors yet. Add one to send alerts by email or to Discord, Slack, ntfy or any webhook.
+            {{ $t('ui.settings.NotificationsSection.noConnectorsYetAddOne') }}
           </p>
         </section>
 
         <!-- Rules -->
         <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
           <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
-            <p class="eyebrow">Rules</p>
+            <p class="eyebrow">{{ $t('ui.settings.NotificationsSection.rules') }}</p>
             <Button size="xs" @click="openRuleDialog(null)">
               <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-              Add rule
+              {{ $t('ui.settings.NotificationsSection.addRule') }}
             </Button>
           </div>
           <ul v-if="rules.length > 0" class="divide-y divide-border">
@@ -236,7 +240,7 @@ function formatTime(at: string | Date): string {
                 </div>
                 <p class="text-xs text-muted-foreground mt-0.5">
                   <span v-if="r.sourcePrefix" class="font-mono">{{ r.sourcePrefix }}</span>
-                  <span v-else>All sources</span>
+                  <span v-else>{{ $t('ui.settings.NotificationsSection.allSources') }}</span>
                 </p>
                 <div class="flex flex-wrap gap-1.5 mt-1.5">
                   <span
@@ -246,12 +250,12 @@ function formatTime(at: string | Date): string {
                 </div>
               </div>
               <Tip :text="r.enabled ? 'Disable rule' : 'Enable rule'"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
-              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">Edit</Button>
-              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">Delete</Button>
+              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
+              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-muted-foreground">
-            No rules yet. Add a rule to route alerts to a target.
+            {{ $t('ui.settings.NotificationsSection.noRulesYetAddA') }}
           </p>
         </section>
 
@@ -260,7 +264,7 @@ function formatTime(at: string | Date): string {
           <CollapsibleTrigger
             :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50', deliveriesExpanded ? 'border-b border-border' : '']"
           >
-            <span class="eyebrow">Recent deliveries</span>
+            <span class="eyebrow">{{ $t('ui.settings.NotificationsSection.recentDeliveries') }}</span>
             <ChevronDownIcon :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -269,12 +273,12 @@ function formatTime(at: string | Date): string {
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
               <span class="font-medium text-foreground/80 shrink-0">{{ d.connectorName }}</span>
               <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'">{{ deliveryText(d) }}</span>
-              <Badge variant="secondary" v-if="d.test" class="shrink-0">Test</Badge>
+              <Badge variant="secondary" v-if="d.test" class="shrink-0">{{ $t('ui.settings.NotificationsSection.test') }}</Badge>
               <span class="text-muted-foreground tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-muted-foreground">
-            No deliveries yet. Send test deliveries from a connector dialog.
+            {{ $t('ui.settings.NotificationsSection.noDeliveriesYetSendTest') }}
           </p>
           </CollapsibleContent>
         </Collapsible>

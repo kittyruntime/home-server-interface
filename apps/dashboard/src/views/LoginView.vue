@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { CircleAlertIcon, EyeIcon, EyeOffIcon } from '@lucide/vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -7,6 +8,8 @@ import { useAuth } from '../lib/auth'
 import { trpc } from '../lib/trpc'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const { login } = useAuth()
@@ -40,7 +43,7 @@ async function handleLogin() {
   } catch (err) {
     error.value = err instanceof TRPCClientError && err.data?.code === 'TOO_MANY_REQUESTS'
       ? err.message
-      : 'Invalid username or password'
+      : t('login.invalid')
   } finally {
     loading.value = false
   }
@@ -66,8 +69,8 @@ async function handleLogin() {
             <rect x="20" y="28" width="8" height="14" rx="1.5" fill="var(--primary)"/>
           </svg>
         </div>
-        <div class="text-4xl font-semibold text-foreground mb-1">Home Server</div>
-        <div class="eyebrow">Home Server Interface</div>
+        <div class="text-4xl font-semibold text-foreground mb-1">{{ t('ui.views.LoginView.homeServer') }}</div>
+        <div class="eyebrow">{{ t('ui.views.LoginView.homeServerInterface') }}</div>
       </div>
 
       <form
@@ -75,18 +78,18 @@ async function handleLogin() {
         class="bg-card border border-input rounded-xl p-8 shadow-sm"
       >
         <div class="mb-5">
-          <label for="login-username" class="eyebrow block mb-2">Username</label>
+          <label for="login-username" class="eyebrow block mb-2">{{ t('login.username') }}</label>
           <Input
             id="login-username"
             v-model="username"
             type="text"
             autocomplete="username"
-            placeholder="Your username"
+            :placeholder="t('login.usernamePlaceholder')"
           />
         </div>
 
         <div class="mb-6">
-          <label for="login-password" class="eyebrow block mb-2">Password</label>
+          <label for="login-password" class="eyebrow block mb-2">{{ t('login.password') }}</label>
           <div class="relative">
             <Input
               id="login-password"
@@ -101,7 +104,7 @@ async function handleLogin() {
               variant="ghost"
               size="icon-sm"
               @click="showPassword = !showPassword"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
               :aria-pressed="showPassword"
               class="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
             >
@@ -121,12 +124,12 @@ async function handleLogin() {
           :disabled="loading"
           class="w-full justify-center"
         >
-          {{ loading ? 'Signing in…' : 'Sign In' }}
+          {{ loading ? t('login.signingIn') : t('login.signIn') }}
         </Button>
       </form>
 
       <p class="text-center text-xs text-muted-foreground mt-6">
-        Home Server Interface
+        {{ t('ui.views.LoginView.homeServerInterface') }}
       </p>
     </div>
   </div>

@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 // App Store: filters, search and order of the catalog cards.
 
 export interface StoreApp {
@@ -16,13 +17,13 @@ const hasUpdate = (a: StoreApp) => !!a.installedApp?.update
 
 /** All, then Installed and Updates when there are any, then each category with its count. */
 export function filterChips(apps: StoreApp[]): FilterChip[] {
-  const chips: FilterChip[] = [{ key: 'All', label: 'All', count: apps.length }]
+  const chips: FilterChip[] = [{ key: 'All', label: tr('lib.store.all', 'All'), count: apps.length }]
   const installed = apps.filter(isInstalled).length
   const updates = apps.filter(hasUpdate).length
-  if (installed) chips.push({ key: 'Installed', label: 'Installed', count: installed })
-  if (updates) chips.push({ key: 'Updates', label: 'Updates', count: updates })
+  if (installed) chips.push({ key: 'Installed', label: tr('lib.store.installed', 'Installed'), count: installed })
+  if (updates) chips.push({ key: 'Updates', label: tr('lib.store.updates', 'Updates'), count: updates })
   for (const c of new Set(apps.map(a => a.category))) {
-    chips.push({ key: c, label: c, count: apps.filter(a => a.category === c).length })
+    chips.push({ key: c, label: categoryLabel(c), count: apps.filter(a => a.category === c).length })
   }
   return chips
 }
@@ -64,4 +65,9 @@ export function versionLabel(a: StoreApp): string | null {
   }
   const v = a.installedApp.image ? catalogVersion(a.installedApp.image) : null
   return v ? `installed ${v}` : null
+}
+
+/** A catalog category in the interface language (the catalog names it in English). */
+export function categoryLabel(category: string): string {
+  return tr(`lib.store.categories.${category}`, category)
 }

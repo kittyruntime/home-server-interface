@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 import { ref, computed } from 'vue'
 
 // The canonical sidebar app list, in default order. `adminOnly` items mirror the
@@ -12,14 +13,14 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'Overview' },
-  { id: 'files',     label: 'Files' },
-  { id: 'apps',      label: 'Apps' },
-  { id: 'storage',   label: 'Storage',   adminOnly: true, capability: 'storage' },
-  { id: 'store',     label: 'App Store', adminOnly: true },
-  { id: 'monitor',   label: 'Monitor',   adminOnly: true },
-  { id: 'sharing',   label: 'Sharing',   adminOnly: true },
-  { id: 'settings',  label: 'Settings' },
+  { id: 'dashboard', label: tr('lib.sidebar_nav.overview', 'Overview') },
+  { id: 'files',     label: tr('lib.sidebar_nav.files', 'Files') },
+  { id: 'apps',      label: tr('lib.sidebar_nav.apps', 'Apps') },
+  { id: 'storage',   label: tr('lib.sidebar_nav.storage', 'Storage'),   adminOnly: true, capability: 'storage' },
+  { id: 'store',     label: tr('lib.sidebar_nav.appStore', 'App Store'), adminOnly: true },
+  { id: 'monitor',   label: tr('lib.sidebar_nav.monitor', 'Monitor'),   adminOnly: true },
+  { id: 'sharing',   label: tr('lib.sidebar_nav.sharing', 'Sharing'),   adminOnly: true },
+  { id: 'settings',  label: tr('lib.sidebar_nav.settings', 'Settings') },
 ]
 
 const DEFAULT_ORDER = NAV_ITEMS.map(i => i.id)

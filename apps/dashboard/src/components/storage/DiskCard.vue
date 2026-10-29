@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Separator } from '@/components/ui/separator'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -21,6 +22,8 @@ import {
   type BlockDev, type DeviceRole, type LvmLV,
 } from './store'
 import { type SmartResult, smartStatus, smartHealth } from './smart'
+
+const { t } = useI18n()
 
 /* One physical disk with its SMART panel and everything built on it:
    partitions, RAID/LVM membership, filesystems and mount points. Actions are
@@ -112,7 +115,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">{{ roleLabel(roleOf(disk)!) }} →</Button>
         </div>
         <div v-if="disk.byId" class="text-2xs font-mono text-muted-foreground mt-0.5 truncate" :title="`/dev/disk/by-id/${disk.byId}: stable name, unlike /dev/${disk.name}`">/dev/disk/by-id/{{ disk.byId }}</div>
-        <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">Operating system disk: no modifications allowed</div>
+        <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">{{ t('ui.storage.DiskCard.operatingSystemDiskNoModifications') }}</div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Health badge -->
@@ -127,9 +130,9 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             <LoadingSpinner v-if="status === 'loading'" class="text-xs" />
             <span v-else class="w-1.5 h-1.5 rounded-full"
               :class="status === 'passed' ? 'bg-success' : status === 'warning' ? 'bg-warning' : status === 'failed' ? 'bg-destructive animate-pulse' : 'bg-muted-foreground/40'"/>
-            <span v-if="status === 'passed'">Healthy</span>
-            <span v-else-if="status === 'warning'">Warning</span>
-            <span v-else-if="status === 'failed'">Failed</span>
+            <span v-if="status === 'passed'">{{ t('ui.storage.DiskCard.healthy') }}</span>
+            <span v-else-if="status === 'warning'">{{ t('ui.storage.DiskCard.warning') }}</span>
+            <span v-else-if="status === 'failed'">{{ t('ui.storage.DiskCard.failed') }}</span>
             <span v-else-if="status === 'loading'">…</span>
             <span v-else>SMART</span>
             <template v-if="smart?.available && smart?.temperature">
@@ -141,7 +144,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
         <!-- + Partition button (non-system only) -->
         <Button variant="outline" size="xs" v-if="!disk.isSystem && !diskLocked(disk)" @click="emit('partCreate', disk)"
           class="text-foreground/80 hover:border-primary/50 hover:text-primary">
-          + Partition
+          {{ t('ui.storage.DiskCard.partition') }}
         </Button>
       </div>
     </div>
@@ -162,7 +165,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 
         <!-- Unavailable -->
         <div v-else-if="sc && !sc.available" class="px-4 py-3 text-sm text-muted-foreground">
-          S.M.A.R.T. not supported by this device, or smartctl is not installed. Virtual disks and many USB enclosures do not expose it.
+          {{ t('ui.storage.DiskCard.sMART') }}
         </div>
 
         <!-- Data -->
@@ -184,10 +187,10 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </span>
             </div>
             <div v-if="sc.powerOnHours" class="text-xs text-muted-foreground">
-              {{ fmtHours(sc.powerOnHours) }} powered on
+              {{ t('uip.storage.DiskCard.poweredOn', { p0: fmtHours(sc.powerOnHours) }) }}
             </div>
             <div v-if="sc.powerCycles" class="text-xs text-muted-foreground">
-              {{ sc.powerCycles.toLocaleString() }} power cycles
+              {{ t('uip.storage.DiskCard.powerCycles', { p0: sc.powerCycles.toLocaleString() }) }}
             </div>
             <div class="ml-auto text-2xs px-1.5 py-0.5 rounded-sm bg-muted border border-border text-muted-foreground">
               {{ sc.nvme ? 'NVMe' : sc.rotationRate === 0 ? 'SSD' : `HDD ${sc.rotationRate} RPM` }}
@@ -196,37 +199,37 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 
           <!-- Device info row -->
           <div v-if="sc.serialNumber || sc.firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-muted-foreground border-b border-border">
-            <span v-if="sc.modelFamily"><span class="text-foreground/80">Family</span> {{ sc.modelFamily }}</span>
+            <span v-if="sc.modelFamily"><span class="text-foreground/80">{{ t('ui.storage.DiskCard.family') }}</span> {{ sc.modelFamily }}</span>
             <span v-if="sc.serialNumber"><span class="text-foreground/80">S/N</span> <span class="font-mono">{{ sc.serialNumber }}</span></span>
             <span v-if="sc.firmware"><span class="text-foreground/80">FW</span> <span class="font-mono">{{ sc.firmware }}</span></span>
           </div>
 
           <!-- NVMe health log -->
           <div v-if="sc.nvme" class="px-4 py-3 space-y-2">
-            <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">NVMe Health Log</div>
+            <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">{{ t('ui.storage.DiskCard.nvmeHealthLog') }}</div>
             <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Critical Warning</span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.criticalWarning') }}</span>
                 <span :class="sc.nvme.criticalWarning > 0 ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.criticalWarning }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Media Errors</span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.mediaErrors') }}</span>
                 <span :class="sc.nvme.mediaErrors > 0 ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.mediaErrors }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Available Spare</span>
-                <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.availableSpare }}% <span class="text-muted-foreground">(min {{ sc.nvme.availableSpareThresh }}%)</span></span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.availableSpare') }}</span>
+                <span :class="sc.nvme.availableSpare <= sc.nvme.availableSpareThresh ? 'text-destructive font-semibold' : 'text-foreground/80'">{{ sc.nvme.availableSpare }}% <span class="text-muted-foreground">{{ t('uip.storage.DiskCard.min', { p0: sc.nvme.availableSpareThresh }) }}</span></span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Percentage Used</span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.percentageUsed') }}</span>
                 <span :class="sc.nvme.percentageUsed >= 90 ? 'text-destructive font-semibold' : sc.nvme.percentageUsed >= 70 ? 'text-warning' : 'text-foreground/80'">{{ sc.nvme.percentageUsed }}%</span>
               </div>
               <div v-if="sc.nvme.dataReadTiB > 0" class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Data Read</span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.dataRead') }}</span>
                 <span class="text-foreground/80 font-mono">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
               </div>
               <div v-if="sc.nvme.dataWrittenTiB > 0" class="flex justify-between gap-2">
-                <span class="text-muted-foreground">Data Written</span>
+                <span class="text-muted-foreground">{{ t('ui.storage.DiskCard.dataWritten') }}</span>
                 <span class="text-foreground/80 font-mono">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
               </div>
             </div>
@@ -234,17 +237,17 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
 
           <!-- ATA attributes table -->
           <div v-if="sc.attributes.length > 0" class="px-4 pb-4 pt-3">
-            <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">ATA Attributes</div>
+            <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">{{ t('ui.storage.DiskCard.ataAttributes') }}</div>
             <div class="rounded-lg overflow-hidden border border-border">
               <Table class="w-full text-2xs border-collapse">
                 <TableHeader>
                   <TableRow class="bg-muted text-muted-foreground">
                     <TableHead class="text-left px-2.5 py-1.5 font-medium w-8">ID</TableHead>
-                    <TableHead class="text-left px-2.5 py-1.5 font-medium">Attribute</TableHead>
-                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Value</TableHead>
-                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Worst</TableHead>
-                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Thresh</TableHead>
-                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">Raw</TableHead>
+                    <TableHead class="text-left px-2.5 py-1.5 font-medium">{{ t('ui.storage.DiskCard.attribute') }}</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">{{ t('ui.storage.DiskCard.value') }}</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">{{ t('ui.storage.DiskCard.worst') }}</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">{{ t('ui.storage.DiskCard.thresh') }}</TableHead>
+                    <TableHead class="text-right px-2.5 py-1.5 font-medium tabular-nums">{{ t('ui.storage.DiskCard.raw') }}</TableHead>
                     <TableHead class="text-center px-2.5 py-1.5 font-medium w-8"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -294,12 +297,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               <!-- Role: RAID member -->
               <Button variant="outline" size="xs" v-if="memberOwner(part, 'raid')" @click="emit('navigate', { kind: 'array', name: memberOwner(part, 'raid')! })"
                 class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">
-                RAID {{ memberOwner(part, 'raid') }} →
+                {{ t('uip.storage.DiskCard.raid', { p0: memberOwner(part, 'raid') }) }}
               </Button>
               <!-- Role: LVM PV -->
               <Button variant="outline" size="xs" v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
                 class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
-                LVM {{ memberOwner(part, 'lvm') }} →
+                {{ t('uip.storage.DiskCard.lvm', { p0: memberOwner(part, 'lvm') }) }}
               </Button>
               <!-- Role: member of an array/VG that is not active -->
               <span v-if="roleOf(part) && !roleOf(part)!.owner"
@@ -323,14 +326,14 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <!-- Actions: revealed on hover, hidden by default -->
           <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
             <Button variant="outline" size="xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
-              class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+              class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">{{ t('ui.storage.DiskCard.format') }}</Button>
             <Button variant="outline" size="xs" v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="emit('mount', part)"
-              class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+              class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">{{ t('ui.storage.DiskCard.mount') }}</Button>
             <Button variant="outline" size="xs" v-if="part.mountpoint" @click="emit('umount', part)"
-              class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
+              class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">{{ t('ui.storage.DiskCard.unmount') }}</Button>
             <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
             <Button variant="ghost" size="icon-xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('partDelete', disk, part)"
-              tooltip="Delete this partition" aria-label="Delete this partition"
+              :tooltip="t('ui.storage.DiskCard.deleteThisPartition')" :aria-label="t('ui.storage.DiskCard.deleteThisPartition')"
               class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
               <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
@@ -350,22 +353,22 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
         </div>
         <div class="flex items-center gap-1 shrink-0">
           <Button variant="outline" size="xs" v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('format', disk)"
-            class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+            class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">{{ t('ui.storage.DiskCard.format') }}</Button>
           <Button variant="outline" size="xs" v-if="!disk.mountpoint && !roleOf(disk)" @click="emit('mount', disk)"
-            class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+            class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">{{ t('ui.storage.DiskCard.mount') }}</Button>
           <Button variant="outline" size="xs" v-if="disk.mountpoint" @click="emit('umount', disk)"
-            class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
+            class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">{{ t('ui.storage.DiskCard.unmount') }}</Button>
         </div>
       </div>
       <!-- Truly blank disk: no partition table, no filesystem -->
       <div v-else class="flex items-center gap-3 px-4 py-2.5">
         <div class="w-1.5 h-1.5 rounded-full shrink-0 bg-muted-foreground/20"/>
         <div class="flex-1 min-w-0">
-          <span class="text-2xs text-muted-foreground">No partition table. Create one to start using this disk.</span>
+          <span class="text-2xs text-muted-foreground">{{ t('ui.storage.DiskCard.noPartitionTableCreateOne') }}</span>
         </div>
         <Button variant="outline" size="xs" @click="emit('partInit', disk)"
           class="shrink-0 text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">
-          Create partition table…
+          {{ t('ui.storage.DiskCard.createPartitionTable') }}
         </Button>
       </div>
     </div>
@@ -374,17 +377,17 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     <Collapsible v-if="!disk.isSystem && disk.children && disk.children.length > 0 && !diskLocked(disk)" class="border-t border-border" :open="danger" @update:open="v => danger = v">
       <CollapsibleTrigger class="w-full flex items-center gap-2 px-4 py-2 text-2xs text-muted-foreground/60 hover:text-muted-foreground transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <ChevronRightIcon class="w-3 h-3 shrink-0 transition-transform" :class="danger ? 'rotate-90' : ''" aria-hidden="true" />
-        Advanced
+        {{ t('ui.storage.DiskCard.advanced') }}
       </CollapsibleTrigger>
       <CollapsibleContent class="px-4 pb-3 pt-0.5">
         <Alert variant="destructive" class="flex items-start gap-3 p-3 text-foreground" role="note">
           <TriangleAlertIcon class="w-3.5 h-3.5 text-destructive/70 mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
-            <p class="text-2xs text-foreground/80 font-medium mb-0.5">Wipe and create a new partition table</p>
-            <p class="text-2xs text-muted-foreground">Permanently destroys all existing partitions and data on <span class="font-mono">/dev/{{ disk.name }}</span>. Cannot be undone.</p>
+            <p class="text-2xs text-foreground/80 font-medium mb-0.5">{{ t('ui.storage.DiskCard.wipeAndCreateANew') }}</p>
+            <p class="text-2xs text-muted-foreground">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span class="font-mono">/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
             <Button variant="outline" size="xs" @click="emit('partInit', disk)"
               class="mt-2 text-2xs border-destructive/30 text-destructive/80 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10">
-              Create partition table…
+              {{ t('ui.storage.DiskCard.createPartitionTable') }}
             </Button>
           </div>
         </Alert>

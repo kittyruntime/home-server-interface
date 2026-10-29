@@ -1,0 +1,45 @@
+export default {
+  DesktopShell: {
+    removeWidget: 'Retirer le widget',
+    changeWallpaper: 'Changer le fond d’écran…',
+    addWidget: 'Ajouter un widget',
+  },
+  DesktopWindow: {
+    newApp: 'Nouvelle application',
+    save: 'Enregistrer',
+    download: 'Télécharger',
+    minimize: 'Réduire',
+    close: 'Fermer',
+  },
+  Dock: {
+    launchpad: 'Lanceur',
+  },
+  DesktopWidgets: {
+    memory: 'Mémoire',
+    network: 'Réseau',
+    rx: '↓ reçu',
+    tx: '↑ envoyé',
+    containers: 'Conteneurs',
+    running: 'En marche',
+    stopped: 'Arrêtés',
+    error: 'Erreur',
+    storage: 'Stockage',
+    noFilesystems: 'Aucun système de fichiers',
+    system: 'Système',
+    host: 'Hôte',
+    cpus: 'Processeurs',
+    load: 'Charge',
+    diskHealth: 'Santé des disques',
+    noDrives: 'Aucun disque',
+  },
+  WallpaperPicker: {
+    changeWallpaper: 'Changer le fond d’écran',
+    color: 'Couleur',
+    image: 'Image',
+    uploadImage: 'Envoyer une image…',
+    resetToDefault: 'Rétablir par défaut',
+  },
+  Launchpad: {
+    launchpad: 'Lanceur',
+  },
+}

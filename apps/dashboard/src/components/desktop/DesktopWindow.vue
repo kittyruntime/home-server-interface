@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { CheckIcon, CopyIcon, DownloadIcon, MinusIcon, PlusIcon, SquareIcon, XIcon } from '@lucide/vue'
 import { ref, computed, onUnmounted, onMounted, provide, watch, defineAsyncComponent } from 'vue'
@@ -14,6 +15,8 @@ import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
 import type AppsPanelT from '../apps/AppsPanel.vue'
 import type SettingsPanelT from '../SettingsPanel.vue'
 import { Badge } from '@/components/ui/badge'
+
+const { t } = useI18n()
 
 // Split the heavier per-app panels into their own chunks: only the window's
 // active app is ever mounted, so they need not weigh down the initial bundle.
@@ -63,7 +66,7 @@ const { confirm } = useConfirm()
 
 // A minimized window is unmounted too: both lose unsaved changes.
 async function discardChanges(): Promise<boolean> {
-  return !props.win.dirty || await confirm('Discard unsaved changes?', { danger: true, confirmLabel: 'Discard' })
+  return !props.win.dirty || await confirm(t('uis.desktop.DesktopWindow.discardUnsavedChanges'), { danger: true, confirmLabel: t('uis.desktop.DesktopWindow.discard') })
 }
 
 async function onCloseClick() {
@@ -172,7 +175,7 @@ function onMaximizeClick() {
         <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
-          tooltip="New App" aria-label="New App"
+          :tooltip="t('ui.desktop.DesktopWindow.newApp')" :aria-label="t('ui.desktop.DesktopWindow.newApp')"
           class="text-muted-foreground hover:text-foreground"
         >
           <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -180,7 +183,7 @@ function onMaximizeClick() {
         <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'file-preview' && win.dirty"
           @click="filePreviewRef?.save()"
-          tooltip="Save" aria-label="Save"
+          :tooltip="t('ui.desktop.DesktopWindow.save')" :aria-label="t('ui.desktop.DesktopWindow.save')"
           class="text-muted-foreground hover:text-foreground"
         >
           <CheckIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -192,20 +195,20 @@ function onMaximizeClick() {
           v-if="win.appId === 'file-preview'"
           :href="downloadHref ?? undefined"
           :download="win.filePreview!.name"
-          tooltip="Download"
-          aria-label="Download"
+          :tooltip="t('ui.desktop.DesktopWindow.download')"
+          :aria-label="t('ui.desktop.DesktopWindow.download')"
           class="text-muted-foreground"
         >
           <DownloadIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" tooltip="Minimize" aria-label="Minimize" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" :tooltip="t('ui.desktop.DesktopWindow.minimize')" :aria-label="t('ui.desktop.DesktopWindow.minimize')" class="text-muted-foreground hover:text-foreground">
           <MinusIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
         <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :tooltip="win.maximized ? 'Restore' : 'Maximize'" :aria-label="win.maximized ? 'Restore' : 'Maximize'" class="text-muted-foreground hover:text-foreground">
           <CopyIcon v-if="win.maximized" class="w-3.5 h-3.5" aria-hidden="true" />
           <SquareIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onCloseClick" tooltip="Close" aria-label="Close" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
+        <Button variant="ghost" size="icon-xs" @click="onCloseClick" :tooltip="t('ui.desktop.DesktopWindow.close')" :aria-label="t('ui.desktop.DesktopWindow.close')" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
           <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
       </div>

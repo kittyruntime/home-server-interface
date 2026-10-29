@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { RefreshCwIcon } from '@lucide/vue'
@@ -14,6 +15,8 @@ import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import VolumeHealthPanel from './VolumeHealthPanel.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ navigate: [target: StorageLocation] }>()
 
@@ -207,10 +210,10 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">Mounts</h2>
-        <p class="text-sm text-muted-foreground mt-0.5">All mounted filesystems, across all sources.</p>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.MountsSection.mounts') }}</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">{{ t('ui.storage.MountsSection.allMountedFilesystemsAcrossAll') }}</p>
       </div>
-      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.MountsSection.refresh')" :aria-label="t('ui.storage.MountsSection.refresh')" class="text-muted-foreground hover:text-foreground">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -224,20 +227,20 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
       <!-- Mounted filesystems -->
       <div v-if="mounted.length === 0" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground mb-6">
-        No filesystems currently mounted.
+        {{ t('ui.storage.MountsSection.noFilesystemsCurrentlyMounted') }}
       </div>
       <div v-else class="mb-8">
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><Button variant="link" @click="emit('navigate',e.target)" class="h-auto p-0 text-muted-foreground">{{e.sourceLabel}} →</Button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">Unmount</Button></div></article></div>
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in mounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex min-w-0 items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground" :title="e.mountpoint">{{e.mountpoint}}</strong><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="e.device">{{e.device}}</p></div><Badge variant="secondary">{{e.fstype}}</Badge></div><div v-if="e.usageTotal>0" class="mt-3"><div class="mb-1 flex justify-between text-2xs text-muted-foreground"><span>{{fmtBytes(e.usageUsed)}} used</span><span>{{fmtBytes(e.usageFree)}} free</span></div><div class="h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" :class="usageBarClass(usagePct(e.bd))" :style="{width:usagePct(e.bd)+'%'}"/></div></div><div class="mt-3 flex items-center justify-between"><Button variant="link" @click="emit('navigate',e.target)" class="h-auto p-0 text-muted-foreground">{{e.sourceLabel}} →</Button><Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)">{{ t('ui.storage.MountsSection.unmount') }}</Button></div></article></div>
         <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
             <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <TableHead class="text-left px-4 py-3 font-medium">Mount point</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">{{ t('ui.storage.MountsSection.mountPoint') }}</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium">{{ t('ui.storage.MountsSection.device') }}</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-28">{{ t('ui.storage.MountsSection.source') }}</TableHead>
               <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
-              <TableHead class="text-left px-4 py-3 font-medium w-44">Used / Total</TableHead>
-              <TableHead class="text-right px-4 py-3 font-medium w-24">Actions</TableHead>
+              <TableHead class="text-left px-4 py-3 font-medium w-44">{{ t('ui.storage.MountsSection.usedTotal') }}</TableHead>
+              <TableHead class="text-right px-4 py-3 font-medium w-24">{{ t('ui.storage.MountsSection.actions') }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody class="divide-y divide-border">
@@ -264,7 +267,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               <TableCell class="px-4 py-2.5 text-right">
                 <Button variant="outline" size="xs" v-if="!e.bd.isSystem" @click="openUmount(e.bd)"
                   class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">
-                  Unmount
+                  {{ t('ui.storage.MountsSection.unmount') }}
                 </Button>
               </TableCell>
             </TableRow>
@@ -275,17 +278,17 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
       <!-- Unmounted with filesystem -->
       <template v-if="unmounted.length > 0">
-        <h3 class="text-sm font-medium text-foreground/80 mb-3">Not mounted</h3>
-        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in unmounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground">{{e.device}}</strong><p class="mt-1 text-2xs text-muted-foreground">{{e.fstype}} · {{fmtBytes(e.size)}}</p></div><Badge variant="secondary">{{e.sourceLabel}}</Badge></div><div class="mt-3 flex justify-end gap-2"><Button variant="outline" size="xs" @click="openFormat(e.bd)">Format</Button><Button size="xs" @click="openMount(e.bd)">Mount</Button></div></article></div>
+        <h3 class="text-sm font-medium text-foreground/80 mb-3">{{ t('ui.storage.MountsSection.notMounted') }}</h3>
+        <div class="space-y-2 @3xl/content:hidden"><article v-for="e in unmounted" :key="e.key" class="rounded-xl border border-border bg-card p-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><strong class="block truncate font-mono text-xs text-foreground">{{e.device}}</strong><p class="mt-1 text-2xs text-muted-foreground">{{e.fstype}} · {{fmtBytes(e.size)}}</p></div><Badge variant="secondary">{{e.sourceLabel}}</Badge></div><div class="mt-3 flex justify-end gap-2"><Button variant="outline" size="xs" @click="openFormat(e.bd)">{{ t('ui.storage.MountsSection.format') }}</Button><Button size="xs" @click="openMount(e.bd)">{{ t('ui.storage.MountsSection.mount') }}</Button></div></article></div>
         <div class="hidden rounded-xl border border-border overflow-hidden @3xl/content:block">
           <Table class="w-full text-sm border-collapse">
             <TableHeader>
               <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-                <TableHead class="text-left px-4 py-3 font-medium">Device</TableHead>
-                <TableHead class="text-left px-4 py-3 font-medium w-28">Source</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium">{{ t('ui.storage.MountsSection.device') }}</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-28">{{ t('ui.storage.MountsSection.source') }}</TableHead>
                 <TableHead class="text-left px-4 py-3 font-medium w-16">FS</TableHead>
-                <TableHead class="text-left px-4 py-3 font-medium w-24">Taille</TableHead>
-                <TableHead class="text-right px-4 py-3 font-medium w-32">Actions</TableHead>
+                <TableHead class="text-left px-4 py-3 font-medium w-24">{{ t('ui.storage.MountsSection.taille') }}</TableHead>
+                <TableHead class="text-right px-4 py-3 font-medium w-32">{{ t('ui.storage.MountsSection.actions') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody class="divide-y divide-border">
@@ -301,11 +304,11 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                 <TableCell class="px-4 py-2.5 text-right flex items-center justify-end gap-1.5">
                   <Button variant="outline" size="xs" @click="openFormat(e.bd)"
                     class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">
-                    Format
+                    {{ t('ui.storage.MountsSection.format') }}
                   </Button>
                   <Button variant="outline" size="xs" @click="openMount(e.bd)"
                     class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">
-                    Mount
+                    {{ t('ui.storage.MountsSection.mount') }}
                   </Button>
                 </TableCell>
               </TableRow>

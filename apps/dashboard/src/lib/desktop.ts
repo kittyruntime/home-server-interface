@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { randomId } from './uuid'
 
 export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'file-preview'
@@ -27,16 +27,11 @@ export interface DesktopWindow {
   dirty?: boolean
 }
 
-export const APP_LABEL: Record<AppId, string> = {
-  files: 'Files',
-  apps: 'Apps',
-  settings: 'Settings',
-  storage: 'Storage',
-  store: 'App Store',
-  monitor: 'Monitor',
-  sharing: 'Sharing',
-  'file-preview': 'Preview',
-}
+// English names; i18n/labels.ts puts them in the interface language.
+export const APP_LABEL = reactive<Record<AppId, string>>({
+  files: 'Files', apps: 'Apps', settings: 'Settings', storage: 'Storage',
+  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', 'file-preview': 'Preview',
+})
 
 const STORAGE_KEY = 'desktop'
 const MODE_KEY = 'desktopMode'

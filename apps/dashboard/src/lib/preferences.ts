@@ -2,6 +2,7 @@ import { watch } from 'vue'
 import { trpc } from './trpc'
 import { useTheme, useAccent, type Theme, type Accent } from './theme'
 import { orderedIds, setOrder } from './sidebar-nav'
+import { isLocale, locale, setLocale } from '../i18n'
 
 // Per-account preference sync. The individual stores (theme/accent/sidebar order)
 // remain localStorage-backed for instant, offline-friendly reads; this layer
@@ -20,6 +21,7 @@ function schedulePush() {
       theme:        theme.value,
       accent:       accent.value,
       sidebarOrder: [...orderedIds.value],
+      locale:       locale.value,
     }).catch(() => { /* best-effort, localStorage remains the source of truth */ })
   }, 600)
 }
@@ -37,10 +39,11 @@ export async function syncPreferences() {
     if (p.theme)  setTheme(p.theme as Theme)
     if (p.accent) setAccent(p.accent as Accent)
     if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
+    if (isLocale(p.locale)) setLocale(p.locale)
   } catch {
     // Not authenticated / offline: keep whatever localStorage already had.
   }
 
   // Register AFTER hydration so applying server values above doesn't echo back.
-  watch([theme, accent, orderedIds], schedulePush)
+  watch([theme, accent, orderedIds, locale], schedulePush)
 }

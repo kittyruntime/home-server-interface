@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { onMounted, ref } from 'vue'
@@ -10,6 +11,8 @@ import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import { Badge } from '@/components/ui/badge'
+
+const { t } = useI18n()
 
 // The recent runs of a plan, or the checks of a repository, newest first.
 const props = defineProps<{ kind: 'runs' | 'checks'; id: string; title: string }>()
@@ -46,17 +49,17 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
 
     <div class="px-5 py-4">
       <LoadingState v-if="loading" variant="compact" />
-      <ErrorState v-else-if="error" :message="error" retry-label="Retry" compact @retry="load" />
-      <EmptyState v-else-if="!runs.length" message="No run yet." />
+      <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.backups.RunHistory.retry')" compact @retry="load" />
+      <EmptyState v-else-if="!runs.length" :message="t('ui.backups.RunHistory.noRunYet')" />
       <div v-else class="overflow-x-auto rounded-xl border border-border">
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
             <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
-              <TableHead class="text-left px-3 py-2 font-medium">Started</TableHead>
-              <TableHead class="text-left px-3 py-2 font-medium">Duration</TableHead>
-              <TableHead class="text-left px-3 py-2 font-medium">Status</TableHead>
-              <TableHead v-if="kind === 'runs'" class="text-right px-3 py-2 font-medium">Added</TableHead>
-              <TableHead v-if="kind === 'runs'" class="text-left px-3 py-2 font-medium">Snapshot</TableHead>
+              <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.started') }}</TableHead>
+              <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.duration') }}</TableHead>
+              <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.status') }}</TableHead>
+              <TableHead v-if="kind === 'runs'" class="text-right px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.added') }}</TableHead>
+              <TableHead v-if="kind === 'runs'" class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.snapshot') }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody class="divide-y divide-border">
@@ -66,8 +69,8 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
                 <TableCell class="px-3 py-2 text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</TableCell>
                 <TableCell class="px-3 py-2 text-xs whitespace-nowrap">
                   <span :class="TONE_CLASS[runLabel(r).tone]">{{ STATUS[r.status] ?? r.status }}</span>
-                  <Tip v-if="r.consistent === true" text="The apps were stopped during the run"><Badge variant="secondary" class="ml-2">Consistent</Badge></Tip>
-                  <Tip v-else-if="r.consistent === false" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning ml-2">Not consistent</Badge></Tip>
+                  <Tip v-if="r.consistent === true" text="The apps were stopped during the run"><Badge variant="secondary" class="ml-2">{{ t('ui.backups.RunHistory.consistent') }}</Badge></Tip>
+                  <Tip v-else-if="r.consistent === false" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning ml-2">{{ t('ui.backups.RunHistory.notConsistent') }}</Badge></Tip>
                 </TableCell>
                 <TableCell v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</TableCell>
                 <TableCell v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-muted-foreground">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</TableCell>

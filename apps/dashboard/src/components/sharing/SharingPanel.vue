@@ -1,25 +1,28 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { CircleCheckIcon, FolderIcon, WifiIcon } from '@lucide/vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Component } from 'vue'
 import SharesSection from './SharesSection.vue'
 import ConnectionsSection from './ConnectionsSection.vue'
 import DiagnosticsSection from './DiagnosticsSection.vue'
+
+const { t } = useI18n()
 
 type SectionId = 'shares' | 'connections' | 'diagnostics'
 
 interface NavItem { id: SectionId; label: string }
 
 const nav: NavItem[] = [
-  { id: 'shares',      label: 'Shares' },
-  { id: 'connections', label: 'Connections' },
-  { id: 'diagnostics', label: 'Diagnostics' },
+  { id: 'shares',      label: 'shares' },
+  { id: 'connections', label: 'connections' },
+  { id: 'diagnostics', label: 'diagnostics' },
 ]
 
 const active = ref<SectionId>('shares')
 
-const navItems = nav.map(n => ({ ...n, icon: ({ shares: FolderIcon, connections: WifiIcon, diagnostics: CircleCheckIcon } as Record<SectionId, Component>)[n.id] }))
+const navItems = computed(() => nav.map(n => ({ ...n, label: t(`sharing.nav.${n.label}`), icon: ({ shares: FolderIcon, connections: WifiIcon, diagnostics: CircleCheckIcon } as Record<SectionId, Component>)[n.id] })))
 </script>
 
 <template>

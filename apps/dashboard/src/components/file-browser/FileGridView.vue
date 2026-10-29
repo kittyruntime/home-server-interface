@@ -7,6 +7,7 @@ import { EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
+
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
 defineProps<{
@@ -58,14 +59,14 @@ const emit = defineEmits<{
         {{ t.name }}
       </span>
 
-      <span v-if="t.status === 'paused'" class="text-2xs text-warning">Paused</span>
-      <span v-else-if="t.status === 'error'" class="text-2xs text-destructive">Failed</span>
+      <span v-if="t.status === 'paused'" class="text-2xs text-warning">{{ $t('ui.files.FileGridView.paused') }}</span>
+      <span v-else-if="t.status === 'error'" class="text-2xs text-destructive">{{ $t('ui.files.FileGridView.failed') }}</span>
     </div>
 
     <!-- Ghost card while creating a folder -->
     <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
       <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
-      <span class="text-xs text-muted-foreground italic">New Folder…</span>
+      <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFolder') }}</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
         <LoadingSpinner class="text-xl text-primary" />
@@ -75,7 +76,7 @@ const emit = defineEmits<{
     <!-- Ghost card while creating a file -->
     <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
       <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
-      <span class="text-xs text-muted-foreground italic">New File…</span>
+      <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFile') }}</span>
       <!-- Centered spinner overlay -->
       <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
         <LoadingSpinner class="text-xl text-primary" />
@@ -120,7 +121,7 @@ const emit = defineEmits<{
         <Button
           variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"
-          tooltip="Preview"
+          :tooltip="$t('ui.files.FileGridView.preview')"
           :aria-label="`Preview ${entry.name}`"
           class="absolute -top-1 -right-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
         >

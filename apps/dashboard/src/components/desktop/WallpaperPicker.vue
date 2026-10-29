@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ref } from 'vue'
 import Modal from '../ui/Modal.vue'
 import { useWallpaper } from '../../lib/wallpaper'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ close: [] }>()
 const { setColor, setImage, clear } = useWallpaper()
@@ -18,7 +21,7 @@ async function pickColor(value: string) {
   try {
     await setColor(value)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to set color'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToSetColor')
   }
 }
 
@@ -29,7 +32,7 @@ async function onFileChange(e: Event) {
   try {
     await setImage(file)
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to upload image'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToUploadImage')
   } finally {
     ;(e.target as HTMLInputElement).value = ''
   }
@@ -40,7 +43,7 @@ async function reset() {
   try {
     await clear()
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to reset wallpaper'
+    error.value = e?.message ?? t('uis.desktop.WallpaperPicker.failedToResetWallpaper')
   }
 }
 </script>
@@ -48,12 +51,12 @@ async function reset() {
 <template>
   <Modal panel-class="w-full max-w-sm" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground">Change wallpaper</h3>
+      <h3 class="text-sm font-semibold text-foreground">{{ t('ui.desktop.WallpaperPicker.changeWallpaper') }}</h3>
     </template>
 
     <div class="p-6 space-y-5">
       <div>
-        <p class="eyebrow mb-2">Color</p>
+        <p class="eyebrow mb-2">{{ t('ui.desktop.WallpaperPicker.color') }}</p>
         <div class="flex flex-wrap gap-2">
           <Button
             v-for="c in SWATCHES" :key="c"
@@ -74,12 +77,12 @@ async function reset() {
       </div>
 
       <div>
-        <p class="eyebrow mb-2">Image</p>
+        <p class="eyebrow mb-2">{{ t('ui.desktop.WallpaperPicker.image') }}</p>
         <Button variant="outline" size="sm"
           class="w-full bg-muted text-foreground/80"
           @click="fileInput?.click()"
         >
-          Upload image...
+          {{ t('ui.desktop.WallpaperPicker.uploadImage') }}
         </Button>
         <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onFileChange" />
       </div>
@@ -92,7 +95,7 @@ async function reset() {
         class="text-foreground/80"
         @click="reset"
       >
-        Reset to default
+        {{ t('ui.desktop.WallpaperPicker.resetToDefault') }}
       </Button>
     </template>
   </Modal>

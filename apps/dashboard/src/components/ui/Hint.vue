@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+const { t } = useI18n()
 
 /* Small inline help affordance: a "?" trigger that reveals a short popover
    on hover, focus or click. Use next to controls whose purpose or effect
@@ -25,7 +28,7 @@ function onFocus(e: FocusEvent) {
       <PopoverTrigger
         type="button"
         class="grid size-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-muted-foreground ring-1 ring-inset ring-input outline-none hover:text-foreground hover:ring-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-        aria-label="More info"
+        :aria-label="t('ui.shared.Hint.moreInfo')"
         @click.stop
         @focus="onFocus"
         @blur="open = false"

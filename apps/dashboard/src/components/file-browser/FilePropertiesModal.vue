@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Progress } from '@/components/ui/progress'
 import FileTypeIcon from './FileTypeIcon.vue'
 import PlaceIcon from '../PlaceIcon.vue'
@@ -10,6 +11,8 @@ import { useAuth } from '../../lib/auth'
 import { useAdvancedMode } from '../../lib/advanced-mode'
 import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string; icon?: string | null }
@@ -59,8 +62,8 @@ const KIND: Record<string, string> = {
 
 const kindLabel = computed(() => {
   if (stat.value?.type === 'dir') return isPlace.value ? 'Place' : 'Folder'
-  if (!ext.value) return 'File'
-  return KIND[ext.value] ?? `${ext.value.toUpperCase()} File`
+  if (!ext.value) return t('uis.files.FilePropertiesModal.file2')
+  return KIND[ext.value] ?? t('uis.files.FilePropertiesModal.file', { p0: ext.value.toUpperCase() })
 })
 
 const modeSymbol = computed(() => {
@@ -106,7 +109,7 @@ onMounted(async () => {
     stat.value = s
     diskInfo.value = d
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to load properties'
+    error.value = e?.message ?? t('uis.files.FilePropertiesModal.failedToLoadProperties')
   } finally {
     loading.value = false
   }
@@ -141,7 +144,7 @@ onMounted(async () => {
 
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Storage</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.storage') }}</div>
         <Progress class="w-full h-2 bg-muted rounded-full" :model-value="Math.min(diskUsedPct, 100)" :indicator-class="['rounded-full transition-all', diskUsedPct > 90 ? 'bg-destructive' : 'bg-primary']" />
         <div class="flex justify-between text-xs text-muted-foreground">
           <span><span class="text-foreground font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
@@ -152,18 +155,18 @@ onMounted(async () => {
 
       <!-- General -->
       <div class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">General</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.general') }}</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Kind</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.kind') }}</dt>
             <dd class="text-foreground text-right truncate">{{ kindLabel }}</dd>
           </div>
           <div v-if="stat?.size != null" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Size</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.size') }}</dt>
             <dd class="text-foreground text-right">{{ fmtBytes(stat.size) }}</dd>
           </div>
           <div v-if="!isPlace" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Location</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.location') }}</dt>
             <dd class="text-foreground/80 text-right font-mono text-xs truncate">{{ location }}</dd>
           </div>
         </dl>
@@ -171,14 +174,14 @@ onMounted(async () => {
 
       <!-- Dates -->
       <div v-if="stat?.mtime" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Dates</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.dates') }}</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Modified</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.modified') }}</dt>
             <dd class="text-foreground text-right">{{ formatDateTime(stat.mtime) }}</dd>
           </div>
           <div v-if="stat.ctime" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Changed</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.changed') }}</dt>
             <dd class="text-foreground text-right">{{ formatDateTime(stat.ctime) }}</dd>
           </div>
         </dl>
@@ -187,29 +190,29 @@ onMounted(async () => {
       <!-- Permissions -->
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">Permissions</div>
+          <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.permissions') }}</div>
           <Button variant="link"
             v-if="isAdmin"
             @click="emit('close'); emit('openPermissions')"
             class="h-auto p-0 text-primary"
-          >Edit…</Button>
+          >{{ t('ui.files.FilePropertiesModal.edit') }}</Button>
         </div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Mode</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.mode') }}</dt>
             <dd class="font-mono text-foreground">{{ modeSymbol }} <span class="text-muted-foreground">({{ stat.mode }})</span></dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Owner</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.owner') }}</dt>
             <dd class="font-mono text-foreground">{{ stat.owner }}</dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">Group</dt>
+            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.group') }}</dt>
             <dd class="font-mono text-foreground">{{ stat.group }}</dd>
           </div>
           <template v-if="advancedMode">
             <div class="flex justify-between gap-4">
-              <dt class="text-muted-foreground shrink-0">UID / GID</dt>
+              <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.uidGid') }}</dt>
               <dd class="font-mono text-foreground">{{ stat.uid }} / {{ stat.gid }}</dd>
             </div>
           </template>
@@ -220,7 +223,7 @@ onMounted(async () => {
 
     <template #footer>
       <div class="flex-1" />
-      <Button variant="ghost" size="sm" @click="emit('close')">Close</Button>
+      <Button variant="ghost" size="sm" @click="emit('close')">{{ t('ui.files.FilePropertiesModal.close') }}</Button>
     </template>
   </Modal>
 </template>

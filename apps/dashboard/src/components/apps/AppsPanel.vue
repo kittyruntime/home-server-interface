@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { useDockerStatus } from '../../lib/docker'
 import AppList from './AppList.vue'
 import DockerUnavailable from './DockerUnavailable.vue'
+
+const { t } = useI18n()
 
 const { isAdmin } = useAuth()
 const { check: checkDocker, ready: dockerReady } = useDockerStatus()
@@ -20,7 +23,7 @@ defineExpose({ openNew })
 
 <template>
   <div v-if="!isAdmin" class="flex items-center justify-center w-full h-full text-muted-foreground text-sm">
-    Administrator access required.
+    {{ t('ui.apps.AppsPanel.administratorAccessRequired') }}
   </div>
 
   <DockerUnavailable v-else-if="!dockerReady()" />

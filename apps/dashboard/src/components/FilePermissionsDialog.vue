@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import LoadingState from './ui/LoadingState.vue'
@@ -9,6 +10,8 @@ import { useNotifications } from '../lib/notifications'
 import Modal from './ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 const props = defineProps<{ path: string }>()
 const emit  = defineEmits<{ (e: 'close'): void }>()
@@ -113,9 +116,9 @@ async function save() {
               <TableHeader>
                 <TableRow class="text-xs text-muted-foreground uppercase tracking-caps">
                   <TableHead class="text-left font-medium pb-2 w-20"></TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">Read</TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">Write</TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">Execute</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.read') }}</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.write') }}</TableHead>
+                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.execute') }}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody class="divide-y divide-border">
@@ -131,14 +134,14 @@ async function save() {
             <!-- Owner / Group (admin only) -->
             <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">Owner</label>
+                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</label>
                 <Input
                   v-model="owner"
                   class="w-full px-3 py-1.5 text-sm font-mono"
                 />
               </div>
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">Group</label>
+                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</label>
                 <Input
                   v-model="group"
                   class="w-full px-3 py-1.5 text-sm font-mono"
@@ -146,15 +149,15 @@ async function save() {
               </div>
             </div>
             <div v-else class="flex gap-4 text-sm">
-              <div><span class="text-muted-foreground text-xs mr-1">Owner</span><span class="font-mono text-foreground/80">{{ owner }}</span></div>
-              <div><span class="text-muted-foreground text-xs mr-1">Group</span><span class="font-mono text-foreground/80">{{ group }}</span></div>
+              <div><span class="text-muted-foreground text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</span><span class="font-mono text-foreground/80">{{ owner }}</span></div>
+              <div><span class="text-muted-foreground text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</span><span class="font-mono text-foreground/80">{{ group }}</span></div>
             </div>
 
       </div>
     </template>
 
     <template v-if="!loading && isAdmin" #footer>
-      <Button variant="ghost" size="sm" @click="emit('close')">Cancel</Button>
+      <Button variant="ghost" size="sm" @click="emit('close')">{{ t('ui.settings.FilePermissionsDialog.cancel') }}</Button>
       <Button size="sm"
         @click="save"
         :disabled="saving"

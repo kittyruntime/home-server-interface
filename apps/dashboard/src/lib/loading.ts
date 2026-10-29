@@ -1,6 +1,8 @@
-// Loading copy in one place, ready for translation (#39). The components add
-// the trailing ellipsis.
-export const LOADING = {
+import { reactive } from 'vue'
+
+// Loading copy in one place (#39), in English; i18n/labels.ts puts it in the
+// interface language. The components add the trailing ellipsis.
+export const LOADING = reactive({
   default: 'Loading',
   analyzing: 'Analyzing',
   preparingPlan: 'Preparing the plan',
@@ -9,4 +11,4 @@ export const LOADING = {
   saving: 'Saving',
   searching: 'Searching',
   readingSmart: 'Reading S.M.A.R.T. data',
-} as const
+})

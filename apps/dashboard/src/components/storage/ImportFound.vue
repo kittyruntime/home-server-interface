@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { applyPlanned } from '../../lib/plan'
 import { ref, onMounted } from 'vue'
@@ -6,6 +7,8 @@ import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import { useConfirm } from '../../lib/confirm'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 /* Existing storage found on the disks but not in use yet (after a reinstall,
    or disks moved from another machine). Import never formats anything: arrays
@@ -28,20 +31,20 @@ onMounted(load)
 async function assemble(a: Scan['arrays'][number]) {
   const degraded = a.missing > 0
   if (degraded && !await confirm(
-    `${a.missing} of ${a.expected} members of this array were not found. Starting it degraded leaves no redundancy until the missing disk is replaced. If a disk is only unplugged, plug it in and scan again instead.`,
-    { danger: true, confirmLabel: 'Start degraded' },
+    t('uis.storage.ImportFound.ofMembersOfThisArray', { p0: a.missing, p1: a.expected }),
+    { danger: true, confirmLabel: t('uis.storage.ImportFound.startDegraded') },
   )) return
   busy.value = a.uuid
   try {
     // The server picks the name: it knows the names mdadm.conf keeps.
     const res = await applyPlanned('import.assemble', { uuid: a.uuid, allowDegraded: degraded },
-      { title: `Assemble the existing array ${a.name || a.device}`, actionLabel: degraded ? 'Start degraded' : 'Assemble' })
+      { title: t('uis.storage.ImportFound.assembleTheExistingArray', { p0: a.name || a.device }), actionLabel: degraded ? 'Start degraded' : 'Assemble' })
     for (const w of res.warnings ?? []) toast.error(w)
-    toast.success(`Array assembled as ${res.device}`)
+    toast.success(t('uis.storage.ImportFound.arrayAssembledAs', { p0: res.device }))
     emit('imported')
     await load()
   } catch (e: any) {
-    if (e?.message !== '') toast.error(e?.message ?? 'Could not assemble the array')
+    if (e?.message !== '') toast.error(e?.message ?? t('uis.storage.ImportFound.couldNotAssembleTheArray'))
   } finally {
     busy.value = null
   }
@@ -51,12 +54,12 @@ async function activate(vg: Scan['vgs'][number]) {
   busy.value = vg.name
   try {
     await applyPlanned('import.activate', { name: vg.name },
-      { title: `Activate the volume group ${vg.name}`, actionLabel: 'Activate' })
-    toast.success(`Volume group ${vg.name} activated`)
+      { title: t('uis.storage.ImportFound.activateTheVolumeGroup', { p0: vg.name }), actionLabel: t('uis.storage.ImportFound.activate') })
+    toast.success(t('uis.storage.ImportFound.volumeGroupActivated', { p0: vg.name }))
     emit('imported')
     await load()
   } catch (e: any) {
-    if (e?.message !== '') toast.error(e?.message ?? 'Could not activate the volume group')
+    if (e?.message !== '') toast.error(e?.message ?? t('uis.storage.ImportFound.couldNotActivateTheVolume'))
   } finally {
     busy.value = null
   }
@@ -67,8 +70,8 @@ defineExpose({ load })
 
 <template>
   <Alert variant="info" v-if="kind === 'raid' && scan?.arrays.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">Arrays found on disks</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These arrays exist on the disks but are not running. Assembling one keeps its data; nothing is formatted.</p>
+    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.arraysFoundOnDisks') }}</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseArraysExistOnThe') }}</p>
     <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm text-foreground">
@@ -76,10 +79,9 @@ defineExpose({ load })
           <span class="text-xs text-muted-foreground ml-2 uppercase">{{ a.level }}</span>
         </div>
         <div class="text-2xs text-muted-foreground font-mono break-all">{{ a.members.join(' + ') }}</div>
-        <div v-if="a.missing > 0" class="text-2xs text-warning">{{ a.missing }} of {{ a.expected }} members not found</div>
+        <div v-if="a.missing > 0" class="text-2xs text-warning">{{ t('uip.storage.ImportFound.ofMembersNotFound', { p0: a.missing, p1: a.expected }) }}</div>
         <div v-if="a.extra > 0" class="text-2xs text-destructive">
-          {{ a.members.length }} disks carry this array, which has {{ a.expected + a.spares }}: one is probably a copy of another, such as a cloned disk.
-          Disconnect the disk that should not be there, then scan again.
+          {{ t('uip.storage.ImportFound.disksCarryThisArrayWhich', { p0: a.members.length, p1: a.expected + a.spares }) }}
         </div>
       </div>
       <Button size="xs" v-if="!(a.extra > 0)" type="button" :disabled="busy !== null" @click="assemble(a)">
@@ -89,8 +91,8 @@ defineExpose({ load })
   </Alert>
 
   <Alert variant="info" v-if="kind === 'lvm' && scan?.vgs.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">Inactive volume groups</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These volume groups exist on the disks but none of their volumes is active. Activating keeps their data; nothing is formatted.</p>
+    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.inactiveVolumeGroups') }}</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseVolumeGroupsExistOn') }}</p>
     <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm font-mono text-foreground">{{ vg.name }}</div>

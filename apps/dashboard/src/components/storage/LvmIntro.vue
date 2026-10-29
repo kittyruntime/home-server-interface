@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ChevronRightIcon, XIcon } from '@lucide/vue'
 import { ref } from 'vue'
+
+const { t } = useI18n()
 
 const DISMISS_KEY = 'lvm-intro-dismissed'
 const dismissed = ref(localStorage.getItem(DISMISS_KEY) === '1')
@@ -13,15 +16,15 @@ function dismiss() {
 
 const stages = [
   {
-    title: 'Disks',
+    title: t('uis.storage.LvmIntro.disks'),
     caption: 'Pick one or more disks, partitions or RAID arrays.',
   },
   {
-    title: 'Volume Group',
+    title: t('uis.storage.LvmIntro.volumeGroup'),
     caption: 'They’re pooled together into one flexible pool (VG).',
   },
   {
-    title: 'Logical Volumes',
+    title: t('uis.storage.LvmIntro.logicalVolumes'),
     caption: 'Carve out resizable volumes (LVs) from the pool as you need them.',
   },
 ]
@@ -31,15 +34,15 @@ const stages = [
   <Transition name="ui-fade">
     <div v-if="!dismissed" class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mb-4 border-input bg-card p-4">
       <Button variant="ghost" size="icon-xs"
-        tooltip="Dismiss"
-        aria-label="Dismiss LVM explanation"
+        :tooltip="t('ui.storage.LvmIntro.dismiss')"
+        :aria-label="t('ui.storage.LvmIntro.dismissLvmExplanation')"
         class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"
       >
         <XIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
 
-      <h3 class="text-sm font-semibold text-foreground pr-8">How LVM works</h3>
+      <h3 class="text-sm font-semibold text-foreground pr-8">{{ t('ui.storage.LvmIntro.howLvmWorks') }}</h3>
 
       <div class="mt-3 flex flex-col @2xl:flex-row @2xl:items-center gap-2 @2xl:gap-1">
         <template v-for="(s, i) in stages" :key="s.title">
@@ -54,9 +57,7 @@ const stages = [
       </div>
 
       <p class="mt-3 text-xs text-muted-foreground leading-snug">
-        Use LVM to combine drives of different sizes into one pool, or to resize storage later
-        without repartitioning. For a single disk you won't need to grow, formatting it directly
-        under <strong class="text-foreground/80">Disks</strong> is simpler.
+        {{ t('ui.storage.LvmIntro.useLvmToCombineDrives') }} <strong class="text-foreground/80">{{ t('ui.storage.LvmIntro.disks') }}</strong> {{ t('ui.storage.LvmIntro.isSimpler') }}
       </p>
     </div>
   </Transition>

@@ -1,3 +1,4 @@
+import { tr } from './tr.ts'
 // Wording for the outcome of the last HSI update and the version it left behind.
 
 // Types come from the backend (update.status), erased at build time.
@@ -15,13 +16,13 @@ export function rollbackCommand(fromWorker: string | null | undefined): string {
 export function lastResultText(r: UpdateResult | null): string | null {
   if (!r) return null
   const why = `at step ${r.step} (${r.reason})`
-  if (r.status === 'success' && r.step === 'repair') return `Reinstalled ${r.to}`
-  if (r.status === 'success') return `Updated from ${r.from} to ${r.to}`
-  if (r.status === 'partial') return `Updated from ${r.from} to ${r.to}, but some application settings were not carried over.`
-  if (r.status === 'rolled-back' && r.step === 'manual') return `Rolled back from ${r.to} to ${r.from} by hand.`
-  if (r.status === 'rolled-back') return `Update to ${r.to} failed ${why}. Rolled back to ${r.from}.`
-  if (r.status === 'rollback-failed') return `Update to ${r.to} failed ${why} and the rollback failed. Manual recovery is needed.`
-  if (r.status === 'refused') return `Update to ${r.to} refused ${why}.`
+  if (r.status === 'success' && r.step === 'repair') return tr('lib.update_result.reinstalled', `Reinstalled ${r.to}`, { p0: r.to })
+  if (r.status === 'success') return tr('lib.update_result.updatedFromTo', `Updated from ${r.from} to ${r.to}`, { p0: r.from, p1: r.to })
+  if (r.status === 'partial') return tr('lib.update_result.updatedFromToButSome', `Updated from ${r.from} to ${r.to}, but some application settings were not carried over.`, { p0: r.from, p1: r.to })
+  if (r.status === 'rolled-back' && r.step === 'manual') return tr('lib.update_result.rolledBackFromToBy', `Rolled back from ${r.to} to ${r.from} by hand.`, { p0: r.to, p1: r.from })
+  if (r.status === 'rolled-back') return tr('lib.update_result.updateToFailedRolledBack', `Update to ${r.to} failed ${why}. Rolled back to ${r.from}.`, { p0: r.to, p1: why, p2: r.from })
+  if (r.status === 'rollback-failed') return tr('lib.update_result.updateToFailedAndThe', `Update to ${r.to} failed ${why} and the rollback failed. Manual recovery is needed.`, { p0: r.to, p1: why })
+  if (r.status === 'refused') return tr('lib.update_result.updateToRefused', `Update to ${r.to} refused ${why}.`, { p0: r.to, p1: why })
   return null
 }
 
@@ -52,7 +53,7 @@ export function compareVersions(a: string, b: string): number {
  * version to return to, not a previous one. */
 export function previousVersionText(target: RollbackTarget | null, current: string, formatDay: (iso: string) => string): string | null {
   if (!target) return null
-  const db = target.snapshotCreated ? `database from ${formatDay(target.snapshotCreated)}` : 'no database snapshot'
-  const label = compareVersions(target.version, current) > 0 ? 'Version you can return to' : 'Previous version'
-  return `${label}: ${target.version} (${db}). To go back:`
+  const db = target.snapshotCreated ? tr('lib.update_result.databaseFrom', `database from ${formatDay(target.snapshotCreated)}`, { p0: formatDay(target.snapshotCreated) }) : tr('lib.update_result.noDatabaseSnapshot', 'no database snapshot')
+  const label = compareVersions(target.version, current) > 0 ? tr('lib.update_result.versionYouCanReturnTo', 'Version you can return to') : tr('lib.update_result.previousVersion', 'Previous version')
+  return tr('lib.update_result.toGoBack', `${label}: ${target.version} (${db}). To go back:`, { p0: label, p1: target.version, p2: db })
 }

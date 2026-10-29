@@ -1,0 +1,20 @@
+export default {
+  ConnectionsSection: { failedToLoadConnections: 'Impossible de charger les connexions' },
+  DiagnosticsSection: { diagnosticsFailed: 'Le diagnostic a échoué' },
+  SharesSection: {
+    failedToLoadShares: 'Impossible de charger les partages',
+    failedToSaveShare: 'Impossible d’enregistrer le partage',
+    failedToUpdateShare: 'Impossible de modifier le partage',
+    failedToDeleteShare: 'Impossible de supprimer le partage',
+    createTheShare: 'Créer le partage',
+    share: 'Partager',
+    saveTheShare: 'Enregistrer le partage',
+    save: 'Enregistrer',
+    disableTheShare: 'Désactiver le partage {p0}',
+    enableTheShare: 'Activer le partage {p0}',
+    disable: 'Désactiver',
+    enable: 'Activer',
+    stopSharingClientsLoseAccess: 'Arrêter de partager {p0} ; les clients perdent l’accès',
+    stopSharing: 'Arrêter le partage',
+  },
+}

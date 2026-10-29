@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ref, computed } from 'vue'
 import { trpc } from '../../../lib/trpc'
@@ -8,6 +9,8 @@ import Modal from '../../ui/Modal.vue'
 import { optionLabel, needsBackup, erasesADisk, type ExpandMode } from '../expand'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 /* Expand a volume (#7). open(volume) lists the ways it can grow; choosing one
    opens the plan review. Emits `done` once the plan ran. */
@@ -59,8 +62,8 @@ async function expand() {
   d.err = ''
   try {
     const res = await applyPlanned('volume.expand', { uuid: d.id, mode, ...(d.disk && chosen.value?.disks ? { disk: d.disk } : {}) }, {
-      title: `Expand the volume ${d.name}`,
-      actionLabel: 'Expand',
+      title: t('uis.storage.ExpandVolumeDialog.expandTheVolume', { p0: d.name }),
+      actionLabel: t('uis.storage.ExpandVolumeDialog.expand'),
       danger: erasesADisk(mode),
       acknowledge: needsBackup(mode) ? 'I have a backup of this volume' : undefined,
     })
@@ -79,10 +82,10 @@ defineExpose({ open })
 <template>
   <Modal v-if="dlg" panel-class="w-full max-w-md" :show-close="false" :prevent-close="dlg.busy" @close="dlg = null">
     <div class="px-5 py-4 border-b border-border">
-      <h3 class="font-semibold text-foreground">Expand {{ dlg.name }}</h3>
+      <h3 class="font-semibold text-foreground">{{ t('uip.storage.ExpandVolumeDialog.expand', { p0: dlg.name }) }}</h3>
     </div>
     <div class="p-5 space-y-4">
-      <p v-if="dlg.loading" class="text-sm text-muted-foreground">Looking at what this volume can use…</p>
+      <p v-if="dlg.loading" class="text-sm text-muted-foreground">{{ t('ui.storage.ExpandVolumeDialog.lookingAtWhatThisVolume') }}</p>
       <p v-else-if="!dlg.options.length" class="text-sm text-foreground/80">{{ dlg.reason || 'Nothing to grow into right now.' }}</p>
       <div v-else class="space-y-2">
         <RadioGroup :model-value="dlg.mode" class="gap-2" @update:model-value="mode => pick(mode as ExpandMode)">
@@ -93,18 +96,18 @@ defineExpose({ open })
           </label>
         </RadioGroup>
         <div v-if="chosen?.disks?.length" class="pt-1">
-          <label class="text-xs text-foreground/80" for="expand-disk">Disk to add (everything on it is erased)</label>
+          <label class="text-xs text-foreground/80" for="expand-disk">{{ t('ui.storage.ExpandVolumeDialog.diskToAddEverythingOn') }}</label>
           <NativeSelect wrapper-class="mt-1 w-full" id="expand-disk" v-model="dlg.disk" class="font-mono">
             <NativeSelectOption v-for="d in chosen.disks" :key="d.name" :value="d.name">/dev/{{ d.name }} · {{ fmtBytes(d.size) }}</NativeSelectOption>
           </NativeSelect>
         </div>
-        <p v-if="dlg.mode === 'addDisk'" class="status-text text-warning"><span class="status-tag">[WARN]</span> The volume will depend on one more disk: if any of them fails, the volume is lost.</p>
-        <p v-if="dlg.mode === 'raidAddDisk' || dlg.mode === 'mirrorGrow'" class="text-xs text-muted-foreground">The array is rewritten in the background (hours on large disks); the volume stays usable, and HSI grows it when that is done.</p>
+        <p v-if="dlg.mode === 'addDisk'" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ t('ui.storage.ExpandVolumeDialog.theVolumeWillDependOn') }}</p>
+        <p v-if="dlg.mode === 'raidAddDisk' || dlg.mode === 'mirrorGrow'" class="text-xs text-muted-foreground">{{ t('ui.storage.ExpandVolumeDialog.theArrayIsRewrittenIn') }}</p>
       </div>
       <p v-if="dlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
-        <Button variant="outline" class="flex-1 justify-center" @click="dlg = null">Cancel</Button>
-        <Button class="flex-1 justify-center" :disabled="dlg.busy || !dlg.mode" @click="expand">Review the plan</Button>
+        <Button variant="outline" class="flex-1 justify-center" @click="dlg = null">{{ t('ui.storage.ExpandVolumeDialog.cancel') }}</Button>
+        <Button class="flex-1 justify-center" :disabled="dlg.busy || !dlg.mode" @click="expand">{{ t('ui.storage.ExpandVolumeDialog.reviewThePlan') }}</Button>
       </div>
     </div>
   </Modal>

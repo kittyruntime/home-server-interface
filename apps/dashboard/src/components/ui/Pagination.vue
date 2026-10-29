@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import {
   Pagination,
   PaginationContent,
@@ -7,6 +8,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+
+const { t } = useI18n()
 
 defineProps<{
   page:      number
@@ -32,14 +35,14 @@ const emit = defineEmits<{ 'update:page': [n: number] }>()
       @update:page="emit('update:page', $event)"
     >
       <PaginationContent v-slot="{ items }">
-        <PaginationPrevious size="icon-sm" aria-label="Previous page"><span class="sr-only">Previous page</span></PaginationPrevious>
+        <PaginationPrevious size="icon-sm" :aria-label="t('ui.shared.Pagination.previousPage')"><span class="sr-only">{{ t('ui.shared.Pagination.previousPage') }}</span></PaginationPrevious>
         <template v-for="(item, index) in items" :key="index">
           <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === current" size="icon-sm">
             {{ item.value }}
           </PaginationItem>
           <PaginationEllipsis v-else :index="index" />
         </template>
-        <PaginationNext size="icon-sm" aria-label="Next page"><span class="sr-only">Next page</span></PaginationNext>
+        <PaginationNext size="icon-sm" :aria-label="t('ui.shared.Pagination.nextPage')"><span class="sr-only">{{ t('ui.shared.Pagination.nextPage') }}</span></PaginationNext>
       </PaginationContent>
     </Pagination>
   </div>

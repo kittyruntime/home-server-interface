@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
@@ -10,9 +11,11 @@ import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
-import { catalogVersion, filterChips, keptFilter, visibleApps } from '../../lib/store'
+import { catalogVersion, filterChips, keptFilter, visibleApps, categoryLabel } from '../../lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -50,11 +53,11 @@ function cardState(a: Entry): CardState {
   }
 }
 const STATE_META: Record<CardState, { label: string; dot: string; text: string }> = {
-  none:       { label: 'Not installed', dot: '',                                      text: 'text-muted-foreground' },
-  installing: { label: 'Installing…',   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
-  running:    { label: 'Running',       dot: 'bg-success',                 text: 'text-success' },
-  stopped:    { label: 'Stopped',       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
-  error:      { label: 'Error',         dot: 'bg-primary',                  text: 'text-primary' },
+  none:       { label: t('uis.store.AppStorePanel.notInstalled'), dot: '',                                      text: 'text-muted-foreground' },
+  installing: { label: t('uis.store.AppStorePanel.installing'),   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
+  running:    { label: t('uis.store.AppStorePanel.running'),       dot: 'bg-success',                 text: 'text-success' },
+  stopped:    { label: t('uis.store.AppStorePanel.stopped'),       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
+  error:      { label: t('uis.store.AppStorePanel.error'),         dot: 'bg-primary',                  text: 'text-primary' },
 }
 
 function openWizard(a: Entry) { selected.value = a }
@@ -90,7 +93,7 @@ async function runPlan(a: Entry, op: 'app.update' | 'app.rollback') {
       await refresh()
       const result = await pollJobResult(reply.jobId, 10 * 60_000) // a pull can be long
       if (result.status !== 'completed') {
-        actionError.value = { id: a.id, message: `${opts.actionLabel} of ${inst.name} failed: ${result.error ?? 'the app could not be recreated'}` }
+        actionError.value = { id: a.id, message: `${opts.actionLabel} of ${inst.name} failed: ${result.error ?? t('uis.store.AppStorePanel.theAppCouldNotBe')}` }
       }
     }
   } catch (e) {
@@ -132,7 +135,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
   <DockerUnavailable v-if="!dockerReady()" />
   <div v-else ref="scroller" class="h-full overflow-y-auto p-4 sm:p-6">
     <div v-if="selected">
-      <Button variant="ghost" size="sm" class="mb-3" @click="selected = null">← Back</Button>
+      <Button variant="ghost" size="sm" class="mb-3" @click="selected = null">{{ t('ui.store.AppStorePanel.back') }}</Button>
       <AppInstallWizard :app-id="selected.id" @installed="selected = null; load()" @close="selected = null" />
     </div>
 
@@ -152,16 +155,16 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
     <template v-else>
       <!-- Header -->
       <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-lg font-semibold text-foreground">App Store</h2>
-        <Input v-model="search" placeholder="Search apps…" aria-label="Search apps" class="max-w-xs" />
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
+        <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="max-w-xs" />
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
       <p v-if="!loading" class="text-xs text-muted-foreground mb-4">
-        {{ apps.length }} apps · {{ installedCount }} installed
+        {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
       </p>
 
       <!-- Filters -->
-      <ToggleGroup v-if="!loading" type="single" variant="outline" size="sm" :spacing="2" aria-label="Category"
+      <ToggleGroup v-if="!loading" type="single" variant="outline" size="sm" :spacing="2" :aria-label="t('ui.store.AppStorePanel.category')"
         :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
         class="mb-4 flex-wrap">
         <ToggleGroupItem v-for="c in chips" :key="c.key" :value="c.key"
@@ -174,8 +177,8 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
       <!-- No results -->
       <div v-else-if="filtered.length === 0" class="text-center py-16 text-muted-foreground">
-        <p class="text-sm">No apps match “{{ search }}”.</p>
-        <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">Clear filters</Button>
+        <p class="text-sm">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
+        <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
       </div>
 
       <!-- Grid -->
@@ -197,7 +200,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
                   class="h-auto justify-start p-0 text-sm font-medium text-foreground truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
                   @click="openDetail(a)"
                 >{{ a.name }}</Button>
-                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ a.category }}</span>
+                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ categoryLabel(a.category) }}</span>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>
@@ -215,9 +218,9 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-muted-foreground font-mono truncate">· {{ catalogVersion(a.image) }}</span>
             </span>
 
-            <Button size="xs" v-if="cardState(a) === 'none'" class="relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">Install</Button>
-            <Button size="xs" v-else-if="a.installedApp?.update" class="relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">Update…</Button>
-            <Button variant="outline" size="xs" v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">Open ↗</Button>
+            <Button size="xs" v-if="cardState(a) === 'none'" class="relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">{{ t('ui.store.AppStorePanel.install') }}</Button>
+            <Button size="xs" v-else-if="a.installedApp?.update" class="relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">{{ t('ui.store.AppStorePanel.update') }}</Button>
+            <Button variant="outline" size="xs" v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">{{ t('ui.store.AppStorePanel.open') }}</Button>
           </div>
         </div>
       </div>
