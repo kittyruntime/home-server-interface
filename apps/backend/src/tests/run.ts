@@ -3023,7 +3023,7 @@ await testTelemetryChannelOptOutAndPayload()
   assert.ok(tools.toolAllowed(byName("list_apps"), user(["apps:read"], { isAdmin: true })))
   assert.ok(tools.toolAllowed(byName("storage_overview"), user(["storage:read"], { capabilities: ["storage"] })), "the storage capability opens storage tools")
   assert.equal(new Set(tools.READ_TOOLS.map(x => x.name)).size, tools.READ_TOOLS.length, "tool names are unique")
-  assert.ok(tools.READ_TOOLS.every(x => x.scope.endsWith(":read")), "read tools need read scopes only")
+  assert.ok(tools.READ_TOOLS.every(x => x.scope?.endsWith(":read")), "read tools need read scopes only")
   const cut = tools.truncateText("x".repeat(10), 4)
   assert.deepEqual(cut, { content: "xxxx", truncated: true, totalChars: 10 })
   const shown = tools.appForAssistant({
@@ -3060,6 +3060,48 @@ await testTelemetryChannelOptOutAndPayload()
   assert.equal(jwt.statusCode, 401, "a dashboard session is not accepted on /mcp")
   assert.equal((await app.inject({ method: "GET", url: "/mcp" })).statusCode, 405)
   await app.close()
+
+  // Changes (#138): reversible ones run, the rest is queued for approval, and
+  // a plan is queued only as it was previewed.
+  const w = await import("../mcp/write-tools")
+  const aa = await import("../services/agent-actions")
+  const all = [...tools.READ_TOOLS, ...w.WRITE_TOOLS, w.CHECK_TOOL]
+  assert.equal(new Set(all.map(x => x.name)).size, all.length, "every MCP tool has its own name")
+  assert.ok(w.WRITE_TOOLS.every(x => x.scope?.endsWith(":write")), "changing tools need a change scope")
+  assert.ok(closedToApiTokens("agentAction.approve"), "an assistant never approves its own requests")
+  const queued: Array<Record<string, any>> = []
+  const fakeCtx = (caller: object, scopes = ["files:write", "apps:write", "storage:write", "users:write"]) => ({
+    caller, user: user(scopes, { isAdmin: true }), auditRead: () => {},
+    queue: async (c: Record<string, any>) => { queued.push(c); return { requestId: "r1", status: "pending" as const, message: "" } },
+    checkRequest: async () => null,
+  }) as any
+  const tw = (n: string) => w.WRITE_TOOLS.find(x => x.name === n)!
+  const files = { fs: { stat: async ({ path }: { path: string }) => ({ path, type: "file", size: 3 }) } }
+  const del = await tw("delete_files").run({ paths: ["/srv/a/x.txt"], reason: "duplicate" } as never, fakeCtx(files)) as any
+  assert.equal(del.status, "pending", "a deletion waits for approval")
+  assert.equal(queued.at(-1)!.procedure, "fs.delete")
+  assert.ok(queued.at(-1)!.destructive)
+  assert.ok(aa.isQueueable("fs.delete") && !aa.isQueueable("fs.chmod") && !aa.isQueueable("update.rebootHost"), "only listed procedures can be queued")
+  await assert.rejects(() => tw("write_text_file").run({ path: "/srv/a/x.txt", content: "new", overwrite: false } as never, fakeCtx(files)),
+    (e: any) => e.code === "CONFLICT", "an existing file is not replaced without asking")
+  await tw("write_text_file").run({ path: "/srv/a/x.txt", content: "new", overwrite: true } as never, fakeCtx(files))
+  assert.equal(queued.at(-1)!.procedure, "fs.writeText", "replacing a file waits for approval")
+  const apps = { apps: { plan: async () => ({ steps: [{ summary: "remove", destructive: true }], fingerprint: "fp-now" }) } }
+  await assert.rejects(() => tw("request_app_change").run({ op: "app.remove", input: { name: "web" }, fingerprint: "fp-old" } as never, fakeCtx(apps)),
+    (e: any) => e.code === "CONFLICT", "a plan that changed since its preview is not queued")
+  await tw("request_app_change").run({ op: "app.remove", input: { name: "web" }, fingerprint: "fp-now" } as never, fakeCtx(apps))
+  assert.deepEqual(queued.at(-1)!.input, { op: "app.remove", input: { name: "web" }, fingerprint: "fp-now" }, "exactly the previewed plan is queued")
+  assert.equal(queued.at(-1)!.procedure, "apps.execute")
+  const storage = { storage: { plan: async () => ({ steps: [], fingerprint: "f" }) } }
+  await assert.rejects(() => tw("preview_storage_change").run({ op: "network.ipv4", input: {} } as never, fakeCtx(storage, ["storage:write"])),
+    (e: any) => e.code === "FORBIDDEN", "network settings need the system scope")
+  assert.ok(tools.toolAllowed(tw("preview_storage_change"), user(["system:write"], { isAdmin: true })), "network changes are offered with the system scope alone")
+  assert.ok(!tools.toolAllowed(tw("preview_storage_change"), user(["storage:read"], { isAdmin: true })))
+  assert.ok(aa.decidable({ status: "pending", expiresAt: new Date(Date.now() + 1000) }))
+  assert.ok(!aa.decidable({ status: "pending", expiresAt: new Date(Date.now() - 1000) }), "an expired request cannot be approved")
+  assert.ok(!aa.decidable({ status: "done", expiresAt: new Date(Date.now() + 1000) }), "nor one decided already")
+  assert.deepEqual(aa.outcome({ ok: false, error: "step 2 failed" }), { ok: false, error: "step 2 failed" }, "a plan with a failed step is a failure")
+  assert.deepEqual(aa.outcome({ jobId: "x" }), { ok: true })
 
   // The protocol itself, with a token whose user and scopes are given.
   const mcp = Fastify()

@@ -14,18 +14,34 @@ import { maskSecrets } from "../services/app-plan"
 export type Caller = ReturnType<typeof appRouter.createCaller>
 type Requirement = "admin" | "storage" | "userManager"
 
+export interface QueuedChange {
+  procedure: string
+  input: Record<string, unknown>
+  title: string
+  preview: Record<string, unknown>
+  destructive: boolean
+  reason?: string
+}
+
 export interface ToolContext {
   caller: Caller
   user: TokenUser
   /** Records a read in the audit log (reads are not audited otherwise). */
   auditRead: (action: string, target?: string) => void
+  /** Queues a change for the user's approval in the dashboard. */
+  queue: (change: QueuedChange) => Promise<{ requestId: string; status: "pending"; message: string }>
+  /** Where a queued change stands. */
+  checkRequest: (id: string) => Promise<unknown>
 }
 
 export interface ToolDef<S extends ZodRawShape = ZodRawShape> {
   name: string
   title: string
   description: string
-  scope: ApiScope
+  /** null: offered to every token. */
+  scope: ApiScope | null
+  /** Offered with any of these scopes instead; the tool checks the exact one. */
+  anyScope?: ApiScope[]
   requires?: Requirement
   input: S
   run: (args: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<unknown>
@@ -33,8 +49,9 @@ export interface ToolDef<S extends ZodRawShape = ZodRawShape> {
 
 const tool = <S extends ZodRawShape>(def: ToolDef<S>) => def as unknown as ToolDef
 
-export function toolAllowed(t: Pick<ToolDef, "scope" | "requires">, user: TokenUser): boolean {
-  if (!user.apiToken.scopes.includes(t.scope)) return false
+export function toolAllowed(t: Pick<ToolDef, "scope" | "anyScope" | "requires">, user: TokenUser): boolean {
+  const offered = t.anyScope ?? (t.scope ? [t.scope] : null)
+  if (offered && !offered.some(s => user.apiToken.scopes.includes(s))) return false
   switch (t.requires) {
     case "admin": return user.isAdmin
     case "storage": return user.isAdmin || user.capabilities.includes("storage")

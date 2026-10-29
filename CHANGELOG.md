@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assistant does or reads is in the audit log, which can show only the AI
   assistants' actions. See "Connect an AI assistant" in the documentation
   (#138).
+- **Changes by AI assistants, with your approval**: an assistant can make
+  folders and new files, rename, move and copy (never overwriting), and start,
+  stop or restart apps. Deleting files, replacing a file, and every storage,
+  app, account, share, access or update change wait for you: the assistant
+  previews the plan, and a card in the dashboard shows each request with its
+  steps and what it erases until you approve or reject it. Exactly the
+  previewed plan runs, as your account; a plan that went stale is refused.
+  An assistant can never approve its own requests (#138).
 
 ## [1.74.0] - 2026-10-29
 

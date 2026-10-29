@@ -28,6 +28,7 @@ const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPane
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
+import AgentRequests from '../components/AgentRequests.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import JobLogsDialog from '../components/JobLogsDialog.vue'
@@ -455,6 +456,7 @@ onUnmounted(() => {
   <!-- Nothing to report while the server is away (#132). -->
   <Toaster v-if="!maintenance.kind" position="top-right" close-button />
   <ConfirmDialog />
+  <AgentRequests v-if="!maintenance.kind" />
   <PlanDialog />
   <JobLogsDialog v-if="isAdmin" />
   <Launchpad v-if="launchpadOpen" @close="launchpadOpen = false" />

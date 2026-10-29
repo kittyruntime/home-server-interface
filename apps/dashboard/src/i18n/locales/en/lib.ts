@@ -205,6 +205,9 @@ export default {
     fs_readText: 'Read file',
     fs_search: 'Search files',
     container_logs: 'Read app logs',
+    agentAction_request: 'AI assistant request',
+    agentAction_approve: 'Approve AI request',
+    agentAction_reject: 'Reject AI request',
   },
   loading: {
     default: 'Loading',

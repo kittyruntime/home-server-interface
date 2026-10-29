@@ -4,9 +4,10 @@ description: Let Claude or another MCP client look after the NAS with an access 
 ---
 
 HSI is an [MCP](https://modelcontextprotocol.io) server: an AI assistant such as
-Claude can browse your files and check apps, storage, accounts and backups, in
-plain language ("why is the RAID degraded?", "what takes the most space in
-Downloads?"). The assistant acts as you, with an access token: it never gets
+Claude can browse and tidy your files, check apps, storage, accounts and
+backups, and prepare changes, in plain language ("why is the RAID degraded?",
+"sort my Downloads folder by type", "install Jellyfin with the films on the
+data volume"). The assistant acts as you, with an access token: it never gets
 more rights than your account, and every check of the dashboard applies.
 
 ## Create an access token
@@ -77,6 +78,35 @@ The assistant is only offered the tools its token and account allow.
 | Storage, read | With the storage capability: disks, filesystems, RAID and volumes, S.M.A.R.T. health, LVM, alerts |
 | Users, read | Accounts; for admins: groups, who can access a Place, SMB shares |
 | System, read | CPU, memory and network; for admins: system information, backups, HSI updates, the audit log |
+| Files, change | Create a folder, write a new text file, rename, move, copy (none of them overwrite); delete files and replace a file, after your approval |
+| Apps, change | For admins: start, stop or restart an app; install, change, update, roll back or remove an app, after your approval |
+| Storage, change | With the storage capability: every storage operation (format, partitions, RAID, LVM, mount, expand a volume...), after your approval |
+| Users, change | Create or delete an account (user managers), SMB shares and access to Places (admins), after your approval |
+| System, change | For admins: run a backup now; network, HTTPS, server name, backup settings and HSI updates, after your approval |
+
+## Changes and approvals
+
+Changes that are easy to undo run at once: a new folder or file, a rename, a
+move, a copy (none overwrite anything), starting or stopping an app, running a
+backup.
+
+Everything else waits for you. The assistant first previews the change as a
+plan, the same plan the dashboard shows before an operation, then asks for it.
+A card then appears at the bottom of the dashboard: **Review** shows each
+request with the assistant's reason, its steps and the data it erases.
+**Approve** runs exactly that plan, as your account; **Reject** drops it. If the
+server changed since the preview (a disk was replaced, the app was edited), the
+approved plan is refused and the assistant has to preview it again. A request
+not decided within a day expires. Revoking the token drops its requests.
+
+The assistant follows its requests up and reports the result. An assistant
+cannot approve its own requests, whatever its token allows: only a signed-in
+session can.
+
+Never available to an assistant: a shell or commands inside containers,
+changing file owners and permissions, access tokens, your password, restoring
+a configuration backup, and rebooting the server. A deletion is limited to 20
+files or folders per request.
 
 ## Safety
 
