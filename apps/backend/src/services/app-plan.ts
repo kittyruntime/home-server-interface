@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
-import { composeImages, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
+import { composeBindSources, composeImages, composeNamedVolumes, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
 import type { AppManifest } from "@app/app-catalog"
 import { availableUpdate, replaceImage } from "./app-update"
 
@@ -211,19 +211,30 @@ const zInstallVolume = z.object({
   ]),
 })
 
+const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i
+
 export const APP_INPUTS = {
   "app.save": z.object({ name: zName, create: z.boolean().default(false), data: zAppInput.optional(), raw: z.string().min(1).optional() })
     .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" })
     .refine(v => !v.data || v.data.name === v.name, { message: "The app name in the form must be the app's name" }),
   "app.apply":  z.object({ name: zName }),
   "app.start":  z.object({ name: zName }),
-  "app.remove": z.object({ name: zName }),
+  // The app's data is kept unless asked (#26): deleteData also deletes its
+  // Docker volumes. Folders in Places are never deleted here.
+  "app.remove": z.object({ name: zName, deleteData: z.boolean().default(false) }),
   "app.update": z.object({ name: zName }),
   "app.rollback": z.object({ name: zName }),
   "app.install": z.object({
     id:      z.string(),
     name:    zName.max(64),
-    ports:   z.array(z.object({ container: z.number().int(), host: z.number().int().min(1).max(65535) })).default([]),
+    // A port can record where it is reached behind the user's own reverse
+    // proxy (#26): only the Open link uses it, HSI proxies nothing.
+    ports:   z.array(z.object({
+      container: z.number().int(),
+      host:      z.number().int().min(1).max(65535),
+      domain:    z.string().max(253).regex(HOSTNAME, "Enter a host name, such as app.example.com").optional(),
+      tls:       z.boolean().default(false),
+    })).default([]),
     env:     z.array(z.object({ key: z.string(), value: z.string() })).default([]),
     volumes: z.array(zInstallVolume).default([]),
   }),
@@ -328,23 +339,40 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
       const content = await existingStack(deps, req.name)
       const path = deps.stackPath(req.name)
       const dir = path.replace(/\/compose\.yaml$/, "/")
-      return {
-        op,
-        observed: { content },
-        steps: [
-          {
-            kind: "run", target: req.name, background: true,
-            summary: `Stop and remove the containers of ${req.name}`,
-            command: ["docker", "compose", "-f", path, "down"],
-            run: async () => ({ jobId: await deps.effects.publishJob("container.composeDown", { name: req.name, removeFiles: true }) }),
-          },
-          {
-            kind: "delete", target: dir, destructive: true, background: true,
-            summary: `Delete ${dir} (its compose file); named volumes and data folders outside it are kept`,
-            run: async () => ({ detail: "done by the same job as the previous step" }),
-          },
-        ],
+      const volumes = composeNamedVolumes(content, req.name).map(v => v.name)
+      const folders = composeBindSources(content)
+      const steps: AppStep[] = [
+        {
+          kind: "run", target: req.name, background: true,
+          summary: `Stop and remove the containers of ${req.name}`,
+          command: ["docker", "compose", "-f", path, "down", ...(req.deleteData ? ["--volumes"] : [])],
+          run: async () => ({ jobId: await deps.effects.publishJob("container.composeDown", { name: req.name, removeFiles: true, removeVolumes: req.deleteData }) }),
+        },
+        {
+          kind: "delete", target: dir, destructive: true, background: true,
+          summary: `Delete ${dir} (its compose file)`,
+          run: async () => ({ detail: "done by the same job as the previous step" }),
+        },
+      ]
+      if (volumes.length && req.deleteData) {
+        steps.push({
+          kind: "delete", target: volumes.join(", "), destructive: true, background: true,
+          summary: `Delete its Docker volumes ${volumes.join(", ")}, with the data of its services`,
+          run: async () => ({ detail: "done by the same job as the first step" }),
+        })
+      } else if (volumes.length) {
+        steps.push({
+          kind: "info", target: volumes.join(", "),
+          summary: `Keep its Docker volumes ${volumes.join(", ")}: an app installed again under the name ${req.name} uses them`,
+        })
       }
+      if (folders.length) {
+        steps.push({
+          kind: "info", target: folders.join(", "),
+          summary: `Keep its folders ${folders.join(", ")}: they stay in their Places`,
+        })
+      }
+      return { op, observed: { content }, steps }
     }
     case "app.install":
       return buildInstallPlan(parse("app.install", input), deps)
@@ -474,13 +502,17 @@ async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>
     if (!value && me.required) bad(`Missing required setting ${me.key}`)
     return { key: me.key, value }
   })
-  const submittedPorts = new Map(input.ports.map(p => [p.container, p.host]))
-  const ports = m.ports.map(mp => ({
-    containerPort: mp.container,
-    hostPort:      submittedPorts.get(mp.container) ?? mp.hostDefault ?? mp.container,
-    protocol:      mp.protocol as "tcp" | "udp",
-    tls:           false,
-  }))
+  const submittedPorts = new Map(input.ports.map(p => [p.container, p]))
+  const ports = m.ports.map(mp => {
+    const sub = submittedPorts.get(mp.container)
+    return {
+      containerPort: mp.container,
+      hostPort:      sub?.host ?? mp.hostDefault ?? mp.container,
+      protocol:      mp.protocol as "tcp" | "udp",
+      ...(sub?.domain ? { domain: sub.domain.toLowerCase() } : {}),
+      tls:           !!sub?.domain && sub.tls,
+    }
+  })
   const webPort = m.webUiPort != null ? ports.find(p => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort : undefined
 
   const yaml = generateComposeYaml({

@@ -14,6 +14,8 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `features` | Each feature checked on the host (#38): an account created through the API (Linux account without a shell, Samba account, listed by HSI); the file manager as that account, with write access to the mirror's Place, makes, renames and deletes files that are its own on the host and is refused outside its Places; `smbclient` writes on the share with its password and a wrong one is refused; IT Tools installed from the App Store (answers on its port, `docker compose ls`, valid `compose.yaml`, read back as running), moved to another port by editing its `compose.yaml`, then removed; a reboot keeps the account and its files |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
+The release workflow runs every scenario on a pushed tag first and publishes
+only when they all pass (a manual republish of an existing tag skips them).
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
 and runs the scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.

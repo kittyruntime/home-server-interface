@@ -2,11 +2,20 @@
   "id": "qbittorrent",
   "name": "qBittorrent",
   "category": "Downloads",
+  "added": "2026-07-13",
   "tagline": "Feature-rich BitTorrent client with a web interface.",
   "description": "qBittorrent is a free, open-source BitTorrent client with a clean web UI, ideal for managing downloads remotely from your NAS.",
   "website": "https://www.qbittorrent.org",
   "image": "linuxserver/qbittorrent:5.0.2",
   "changelog": "https://www.qbittorrent.org/news",
+  "license": "GPL-2.0",
+  "source": "https://github.com/qbittorrent/qBittorrent",
+  "docs": "https://github.com/qbittorrent/qBittorrent/wiki",
+  "postInstall": [
+    "Sign in as admin with the temporary password printed in its logs (Apps, then the app, then Logs).",
+    "Set your own password at once in Tools, Options, Web UI.",
+    "Downloads land in the Downloads folder."
+  ],
   "webUiPort": 8080,
   "ports": [{ "container": 8080, "protocol": "tcp", "label": "Web UI" }],
   "env": [
