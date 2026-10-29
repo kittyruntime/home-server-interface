@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Network settings** (Settings > Network): IPv4 addressing (DHCP or manual
+  address and gateway) and DNS servers of each interface, through
+  NetworkManager. A change is applied under a NetworkManager checkpoint: it
+  has to be kept within two minutes, from the new address when it moved, or
+  NetworkManager puts the previous settings back by itself, even if the
+  dashboard can no longer be reached. Inside a container (such as LXC) the
+  page explains that the container host sets the network.
 - **App Store apps with several containers**: a catalog app can run a
   database or a cache beside it, installed and removed with it, with shared
   generated passwords. The store page lists what an app installs with, and

@@ -158,6 +158,14 @@ const PLAN_INPUTS = {
     hostname: z.string().max(63).regex(/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/, "A hostname uses letters, digits and hyphens, and does not start or end with a hyphen").optional(),
     timezone: z.string().max(64).regex(/^[A-Za-z0-9_+\-/]+$/, "Invalid time zone").optional(),
   }),
+  // Network (#11): IPv4 addressing and DNS of one interface, admins only.
+  "network.ipv4": z.object({
+    device:  z.string().regex(/^[A-Za-z0-9._-]{1,15}$/),
+    method:  z.enum(["auto", "manual"]),
+    address: z.string().max(18).optional(),
+    gateway: z.string().max(15).optional(),
+    dns:     z.array(z.string().max(15)).max(3).default([]),
+  }),
   // Managed HTTPS (#12): admins only. The key of an imported certificate is
   // redacted from the audit log by name (see redactForAudit).
   "tls.enable": z.object({}),
@@ -187,6 +195,8 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
   // The server's hostname and time zone (#12): admins only.
   if (op === "system.identity" && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change the server identity" })
+  if (op === "network.ipv4" && !ctx.user?.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change the network" })
   if (op.startsWith("tls.") && !ctx.user?.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Only an admin can change secure access" })
   // Expanding rewrites whole arrays and erases the disk it adds: admins only.

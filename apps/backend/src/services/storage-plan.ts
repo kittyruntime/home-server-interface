@@ -6,7 +6,7 @@ export const PLAN_OPS = [
   "pv.create", "vg.create", "lv.create", "lv.remove", "vg.remove",
   "mount", "umount", "raid.create", "raid.stop",
   "raid.fail", "raid.remove", "raid.add", "import.assemble", "import.activate",
-  "volume.expand", "storage.reapply", "storage.accept", "system.identity",
+  "volume.expand", "storage.reapply", "storage.accept", "system.identity", "network.ipv4",
   "tls.enable", "tls.useLocal", "tls.import", "tls.proxy", "tls.standardPorts",
   "backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore",
 ] as const
