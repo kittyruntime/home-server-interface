@@ -1,7 +1,8 @@
 import * as os from "os"
 import * as fs from "fs"
 import { z } from "zod"
-import { router, protectedProcedure, adminProcedure } from "../index"
+import { router, publicProcedure, protectedProcedure, adminProcedure } from "../index"
+import { currentMaintenance } from "../../services/maintenance"
 
 // System router: live metrics, metrics history, and static system info. Disk/RAID/
 // LVM/mount management moved to the `storage` router.
@@ -130,6 +131,9 @@ function sysinfoSnapshot() {
 
 // --- Router ---
 export const systemRouter = router({
+  // Public: the login page and every signed-in user get the overlay (#132).
+  maintenance: publicProcedure.query(() => currentMaintenance()),
+
   metricsHistory: adminProcedure
     .input(z.object({ period: z.enum(['1h', '6h', '24h', '7d']) }))
     .query(async ({ ctx, input }) => {

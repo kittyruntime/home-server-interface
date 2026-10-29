@@ -1,5 +1,6 @@
 import { TRPCError, initTRPC } from "@trpc/server"
 import type { Context } from "./context"
+import { currentMaintenance } from "../services/maintenance"
 
 /**
  * The root-worker's code of a failed request (EPASSWORD, ECONFIRM...), carried by the
@@ -35,6 +36,16 @@ const EXEMPT_WHILE_MUST_CHANGE_PASSWORD = new Set(["user.changePassword", "auth.
 const blockIfMustChangePassword = t.middleware(({ ctx, path, type, next }) => {
   if (type === "mutation" && ctx.user?.mustChangePassword && !EXEMPT_WHILE_MUST_CHANGE_PASSWORD.has(path)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Change your password before performing this action." })
+  }
+  return next()
+})
+
+// While an update, a restart or a reboot is under way (#132), nothing may
+// change the server: the dashboards show a blocking overlay, and this refuses
+// what a stale tab or a script would still send. Signing in and out stays open.
+const blockDuringMaintenance = t.middleware(async ({ path, type, next }) => {
+  if (type === "mutation" && !path.startsWith("auth.") && await currentMaintenance()) {
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "The server is being updated or restarted. Try again once it is back." })
   }
   return next()
 })
@@ -134,7 +145,7 @@ const auditLog = t.middleware(async (opts) => {
   return result
 })
 
-export const protectedProcedure   = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(auditLog)
-export const adminProcedure       = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(isAdmin).use(auditLog)
-export const userManagerProcedure = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(isUserManager).use(auditLog)
-export const storageProcedure = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(hasCapability("storage")).use(auditLog)
+export const protectedProcedure   = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(blockDuringMaintenance).use(auditLog)
+export const adminProcedure       = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(blockDuringMaintenance).use(isAdmin).use(auditLog)
+export const userManagerProcedure = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(blockDuringMaintenance).use(isUserManager).use(auditLog)
+export const storageProcedure = t.procedure.use(isAuthed).use(blockIfMustChangePassword).use(blockDuringMaintenance).use(hasCapability("storage")).use(auditLog)

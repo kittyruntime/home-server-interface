@@ -90,4 +90,22 @@ export default {
     dontAskAgain: 'Don\'t ask again',
     deleting: 'Deleting {count} item(s)',
   },
+  maintenance: {
+    titleUpdate: 'Updating HSI',
+    titleUpdateTo: 'Updating HSI to {version}',
+    titleRestart: 'Restarting HSI',
+    titleReboot: 'Rebooting the server',
+    hint: 'Do not turn off the server. Changes are paused on every device until it is back, then this page reloads.',
+    step: {
+      scheduled: 'Requested',
+      working: 'In progress',
+      offline: 'Waiting for the server to come back',
+      done: 'Back online',
+    },
+    stepInstalling: 'Downloading and installing',
+    stepRestarting: 'Restarting',
+    stepRebooting: 'Rebooting',
+    reloadingIn: 'Reloading in {seconds}…',
+    reload: 'Reload the page',
+  },
 }

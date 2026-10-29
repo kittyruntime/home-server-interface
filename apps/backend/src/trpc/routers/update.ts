@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { requestSync } from "../../nats"
 import { log } from "../../utils/log"
 import { readWorkerUpdateStatus } from "../../services/update-watch"
+import { beginMaintenance } from "../../services/maintenance"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -238,12 +239,14 @@ export const updateRouter = router({
       const attempt = { from: readCurrentVersion(), target: input.version, requestedAt: new Date().toISOString() }
       fs.writeFileSync(path.join(updateStateDir(), ".update-attempt.json"), JSON.stringify(attempt), "utf8")
       writePendingUpdate(pendingUpdateFile(), input.version)
+      beginMaintenance("update", input.version)
       return { ok: true }
     }),
 
   restart: adminProcedure.mutation(() => {
     if (!restartScheduled) {
       restartScheduled = true
+      beginMaintenance("restart")
       // Respond to the browser and let the audit write complete before exiting.
       // The service supervisor starts the backend again after EX_TEMPFAIL.
       const timer = setTimeout(() => process.exit(75), 750)
@@ -254,6 +257,7 @@ export const updateRouter = router({
 
   rebootHost: adminProcedure.mutation(async () => {
     await requestSync<{ scheduled: boolean }>("root.sys.reboot", {}, 5_000)
+    beginMaintenance("reboot")
     return { ok: true }
   }),
 })

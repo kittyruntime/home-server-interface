@@ -14,7 +14,6 @@ export default {
     downloads: '{p0} · {p1}{p2} downloads',
   },
   UpdateSection: {
-    reloadingIn: 'reloading in {p0}…',
     whatSNewIn: 'What\'s new in {p0}',
     lastChecked: 'Last checked {p0}',
   },

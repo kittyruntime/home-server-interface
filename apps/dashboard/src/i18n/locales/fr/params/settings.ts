@@ -7,7 +7,6 @@ export default {
   SecureAccessSection: { theCertificateExpiresInDays: 'Le certificat expire dans {p0} jours.' },
   SharedLinksSection: { downloads: '{p0} · {p1}{p2} téléchargements' },
   UpdateSection: {
-    reloadingIn: 'rechargement dans {p0}…',
     whatSNewIn: 'Nouveautés de {p0}',
     lastChecked: 'Dernière vérification {p0}',
   },
