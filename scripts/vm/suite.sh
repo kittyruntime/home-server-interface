@@ -543,7 +543,7 @@ mcp_feature() {
   sleep 2
   vm_ssh 'test -f /srv/vm-mirror/from-ai/a.txt' || fail "a deletion ran before it was approved"
   API_TOKEN=/root/token-vmuser api_query agentAction.list | grep -q "\"$req\"" || fail "the deletion does not wait in the dashboard"
-  API_TOKEN=/root/token-vmuser api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status":"done"' || fail "approving the deletion failed"
+  API_TOKEN=/root/token-vmuser api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status": "done"' || fail "approving the deletion failed"
   vm_until 30 "the approved deletion did not remove the file" '! test -e /srv/vm-mirror/from-ai/a.txt'
   mcp_call "$writer" check_request "{\"id\":\"$req\"}" | grep -q '"status":"done"' || fail "check_request does not report the approved deletion"
   req=$(mcp_call "$writer" delete_files '{"paths":["/srv/vm-mirror/from-ai/b.txt"]}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["requestId"])')
