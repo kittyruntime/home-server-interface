@@ -7,6 +7,13 @@
   "website": "https://github.com/louislam/uptime-kuma",
   "image": "louislam/uptime-kuma:1.23.16",
   "changelog": "https://github.com/louislam/uptime-kuma/releases",
+  "license": "MIT",
+  "source": "https://github.com/louislam/uptime-kuma",
+  "docs": "https://github.com/louislam/uptime-kuma/wiki",
+  "postInstall": [
+    "Open it and create the administrator account.",
+    "Add a monitor for each site or service to watch, and a notification to be told when one goes down."
+  ],
   "webUiPort": 3001,
   "ports": [{ "container": 3001, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [{ "target": "/app/data", "label": "Data", "suggest": "place" }]

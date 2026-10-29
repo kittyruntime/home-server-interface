@@ -7,6 +7,14 @@
   "website": "https://nextcloud.com",
   "image": "nextcloud:30-apache",
   "changelog": "https://nextcloud.com/changelog/",
+  "license": "AGPL-3.0",
+  "source": "https://github.com/nextcloud/server",
+  "docs": "https://docs.nextcloud.com/",
+  "postInstall": [
+    "Sign in with the administrator name and password chosen at install; the first start takes a few minutes.",
+    "Reach it only through the addresses listed as trusted at install; add others in its config.php.",
+    "Install the desktop and mobile apps to sync your files."
+  ],
   "webUiPort": 80,
   "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI", "hostDefault": 8082 }],
   "env": [

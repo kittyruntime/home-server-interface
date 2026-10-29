@@ -7,6 +7,14 @@
   "website": "https://www.qbittorrent.org",
   "image": "linuxserver/qbittorrent:5.0.2",
   "changelog": "https://www.qbittorrent.org/news",
+  "license": "GPL-2.0",
+  "source": "https://github.com/qbittorrent/qBittorrent",
+  "docs": "https://github.com/qbittorrent/qBittorrent/wiki",
+  "postInstall": [
+    "Sign in as admin with the temporary password printed in its logs (Apps, then the app, then Logs).",
+    "Set your own password at once in Tools, Options, Web UI.",
+    "Downloads land in the Downloads folder."
+  ],
   "webUiPort": 8080,
   "ports": [{ "container": 8080, "protocol": "tcp", "label": "Web UI" }],
   "env": [

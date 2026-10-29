@@ -7,6 +7,13 @@
   "website": "https://syncthing.net",
   "image": "syncthing/syncthing:1.27",
   "changelog": "https://github.com/syncthing/syncthing/releases",
+  "license": "MPL-2.0",
+  "source": "https://github.com/syncthing/syncthing",
+  "docs": "https://docs.syncthing.net",
+  "postInstall": [
+    "Open it and set a user name and password for its interface in Actions, Settings, GUI.",
+    "Add your other devices with their device IDs, then share folders under /var/syncthing."
+  ],
   "webUiPort": 8384,
   "ports": [{ "container": 8384, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [{ "target": "/var/syncthing", "label": "Data", "suggest": "place" }]

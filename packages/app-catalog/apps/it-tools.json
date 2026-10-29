@@ -7,6 +7,11 @@
   "website": "https://it-tools.tech",
   "image": "corentinth/it-tools:2024.10.22-7ca5933",
   "changelog": "https://github.com/CorentinTh/it-tools/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/CorentinTh/it-tools",
+  "postInstall": [
+    "Nothing to set up: open it and pick a tool."
+  ],
   "webUiPort": 80,
   "ports": [{ "container": 80, "protocol": "tcp", "label": "Web UI" }]
 }
