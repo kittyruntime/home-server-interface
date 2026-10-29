@@ -41,6 +41,13 @@ const filtered = computed(() => visibleApps(apps.value, category.value, search.v
 
 const installedCount = computed(() => apps.value.filter(a => a.installed).length)
 
+// An install lands on the app's page, with its first steps (#26).
+function installed(id: string) {
+  selected.value = null
+  detailId.value = id
+  void load()
+}
+
 /** Collapse the persisted container status into a card state. Freshly-installed
  *  apps sit in pending/unknown/created until the worker reports them running:
  *  we surface that as "Installing…" so the ◐ → ● transition is visible. */
@@ -62,10 +69,15 @@ const STATE_META: Record<CardState, { label: string; dot: string; text: string }
   error:      { label: t('uis.store.AppStorePanel.error'),         dot: 'bg-primary',                  text: 'text-primary' },
 }
 
-function openWizard(a: Entry) { selected.value = a }
 // Back from an app's page returns to the same place in the grid, focus included.
 const scroller = ref<HTMLElement | null>(null)
 let gridScroll = 0
+function openWizard(a: Entry) {
+  // Installed from its card: the app's page opens afterwards, and Back from it
+  // returns here.
+  if (!detailId.value) gridScroll = scroller.value?.scrollTop ?? 0
+  selected.value = a
+}
 function openDetail(a: Entry) {
   gridScroll = scroller.value?.scrollTop ?? 0
   detailId.value = a.id
@@ -138,7 +150,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
   <div v-else ref="scroller" class="h-full overflow-y-auto p-4 sm:p-6">
     <div v-if="selected">
       <Button variant="ghost" size="sm" class="mb-3" @click="selected = null">{{ t('ui.store.AppStorePanel.back') }}</Button>
-      <AppInstallWizard :app-id="selected.id" @installed="selected = null; load()" @close="selected = null" />
+      <AppInstallWizard :app-id="selected.id" @installed="installed(selected.id)" @close="selected = null" />
     </div>
 
     <AppStoreDetail

@@ -8,6 +8,14 @@
   "website": "https://adguard.com/en/adguard-home/overview.html",
   "image": "adguard/adguardhome:v0.107.52",
   "changelog": "https://github.com/AdguardTeam/AdGuardHome/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/AdguardTeam/AdGuardHome",
+  "docs": "https://github.com/AdguardTeam/AdGuardHome/wiki",
+  "postInstall": [
+    "Open it on its Setup port and follow the wizard: create the administrator account, and keep the web interface on port 80 and DNS on port 53, the ports HSI published.",
+    "After the wizard, open it on its Web UI port.",
+    "Point your router's DNS setting, or each device's, to this server's address to filter your network."
+  ],
   "webUiPort": 3000,
   "ports": [
     { "container": 3000, "protocol": "tcp", "label": "Setup / Web UI" },

@@ -52,6 +52,13 @@ export const zAppManifest = z.object({
   website:       z.string().url().optional(),
   // Release notes, linked when an update is offered (#26).
   changelog:     z.string().url().startsWith("https://").optional(),
+  // Shown on the app's page before installing (#26): its license (SPDX-like
+  // short name), source code and documentation.
+  license:       z.string().regex(/^[A-Za-z0-9.+-]{2,40}$/).optional(),
+  source:        z.string().url().startsWith("https://").optional(),
+  docs:          z.string().url().startsWith("https://").optional(),
+  // First steps once it runs: first sign-in, where to put files (#26).
+  postInstall:   z.array(z.string().min(1).max(300)).max(6).default([]),
   image:         zPinnedImage,
   webUiPort:     z.number().int().min(1).max(65535).optional(),
   ports:         z.array(zCatalogPort).default([]),

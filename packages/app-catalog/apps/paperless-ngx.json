@@ -8,6 +8,13 @@
   "website": "https://docs.paperless-ngx.com",
   "image": "ghcr.io/paperless-ngx/paperless-ngx:2.14.7",
   "changelog": "https://github.com/paperless-ngx/paperless-ngx/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/paperless-ngx/paperless-ngx",
+  "docs": "https://docs.paperless-ngx.com",
+  "postInstall": [
+    "Sign in with the administrator name and password chosen at install.",
+    "Drop scans and PDFs into the Inbox folder: Paperless imports them, reads them and files them under Documents."
+  ],
   "webUiPort": 8000,
   "ports": [{ "container": 8000, "protocol": "tcp", "label": "Web UI", "hostDefault": 8010 }],
   "env": [

@@ -45,6 +45,11 @@ export default {
     installsWith: 'Installs with:',
     website: 'Website ↗',
     releaseNotes: 'Release notes ↗',
+    documentation: 'Documentation ↗',
+    sourceCode: 'Source code ↗',
+    license: 'License',
+    gettingStarted: 'Getting started',
+    afterInstalling: 'After installing',
     permissions: 'Permissions',
   },
 }

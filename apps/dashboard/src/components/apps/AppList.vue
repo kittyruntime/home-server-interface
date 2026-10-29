@@ -110,8 +110,9 @@ async function runAction(id: string, action: 'start' | 'stop' | 'restart' | 'del
     : null
   try {
     if (action === 'delete') {
-      const jobId = await applyPlannedJob('app.remove', { name: app?.name ?? id }, {
+      const jobId = await applyPlannedJob('app.remove', { name: app?.name ?? id, deleteData: false }, {
         title: t('uis.apps.AppList.delete', { p0: app?.name ?? id }), actionLabel: t('uis.apps.AppList.delete2'), danger: true,
+        option: { key: 'deleteData', label: t('uis.apps.AppList.deleteData'), hint: t('uis.apps.AppList.deleteDataHint') },
       })
       const result = await pollJobResult(jobId)
       // Only drop the row when the job actually completed; on failure the row
