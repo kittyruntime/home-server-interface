@@ -27,6 +27,10 @@ admin-only.
 - **Containers**: create, edit, start, stop and delete containers, read their
   logs, and manage networks, volumes and mounts. An existing Compose file can be
   imported to prefill a container.
+- **Deleting an app keeps its data**: its containers and `compose.yaml` go, its
+  Docker volumes (databases, caches) stay, and installing it again under the
+  same name uses them. Tick **Also delete its data in Docker volumes** to delete
+  them too; the preview names them. Folders in Places are never deleted.
 - **Previewed changes**: saving, applying, starting, installing and deleting show
   the `compose.yaml` content or its diff and the `docker compose` commands before
   they run. Secret-looking values are masked in the preview and the audit log.

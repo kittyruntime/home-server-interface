@@ -13,6 +13,8 @@ export default {
     unknown: 'Inconnu',
     delete: 'Supprimer {p0}',
     delete2: 'Supprimer',
+    deleteData: 'Supprimer aussi ses données dans des volumes Docker (bases de données, caches)',
+    deleteDataHint: 'Décoché : elles sont gardées, et la réinstaller sous le même nom les réutilise. Les dossiers des Places ne sont jamais supprimés.',
     start: 'Démarrer {p0}',
     start2: 'Démarrer',
     apply: 'Appliquer {p0}',

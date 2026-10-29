@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
-import { composeImages, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
+import { composeBindSources, composeImages, composeNamedVolumes, generateComposeYaml, parseComposeYaml, zAppInput, type AppInput } from "@app/compose"
 import type { AppManifest } from "@app/app-catalog"
 import { availableUpdate, replaceImage } from "./app-update"
 
@@ -217,7 +217,9 @@ export const APP_INPUTS = {
     .refine(v => !v.data || v.data.name === v.name, { message: "The app name in the form must be the app's name" }),
   "app.apply":  z.object({ name: zName }),
   "app.start":  z.object({ name: zName }),
-  "app.remove": z.object({ name: zName }),
+  // The app's data is kept unless asked (#26): deleteData also deletes its
+  // Docker volumes. Folders in Places are never deleted here.
+  "app.remove": z.object({ name: zName, deleteData: z.boolean().default(false) }),
   "app.update": z.object({ name: zName }),
   "app.rollback": z.object({ name: zName }),
   "app.install": z.object({
@@ -328,23 +330,40 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
       const content = await existingStack(deps, req.name)
       const path = deps.stackPath(req.name)
       const dir = path.replace(/\/compose\.yaml$/, "/")
-      return {
-        op,
-        observed: { content },
-        steps: [
-          {
-            kind: "run", target: req.name, background: true,
-            summary: `Stop and remove the containers of ${req.name}`,
-            command: ["docker", "compose", "-f", path, "down"],
-            run: async () => ({ jobId: await deps.effects.publishJob("container.composeDown", { name: req.name, removeFiles: true }) }),
-          },
-          {
-            kind: "delete", target: dir, destructive: true, background: true,
-            summary: `Delete ${dir} (its compose file); named volumes and data folders outside it are kept`,
-            run: async () => ({ detail: "done by the same job as the previous step" }),
-          },
-        ],
+      const volumes = composeNamedVolumes(content, req.name).map(v => v.name)
+      const folders = composeBindSources(content)
+      const steps: AppStep[] = [
+        {
+          kind: "run", target: req.name, background: true,
+          summary: `Stop and remove the containers of ${req.name}`,
+          command: ["docker", "compose", "-f", path, "down", ...(req.deleteData ? ["--volumes"] : [])],
+          run: async () => ({ jobId: await deps.effects.publishJob("container.composeDown", { name: req.name, removeFiles: true, removeVolumes: req.deleteData }) }),
+        },
+        {
+          kind: "delete", target: dir, destructive: true, background: true,
+          summary: `Delete ${dir} (its compose file)`,
+          run: async () => ({ detail: "done by the same job as the previous step" }),
+        },
+      ]
+      if (volumes.length && req.deleteData) {
+        steps.push({
+          kind: "delete", target: volumes.join(", "), destructive: true, background: true,
+          summary: `Delete its Docker volumes ${volumes.join(", ")}, with the data of its services`,
+          run: async () => ({ detail: "done by the same job as the first step" }),
+        })
+      } else if (volumes.length) {
+        steps.push({
+          kind: "info", target: volumes.join(", "),
+          summary: `Keep its Docker volumes ${volumes.join(", ")}: an app installed again under the name ${req.name} uses them`,
+        })
       }
+      if (folders.length) {
+        steps.push({
+          kind: "info", target: folders.join(", "),
+          summary: `Keep its folders ${folders.join(", ")}: they stay in their Places`,
+        })
+      }
+      return { op, observed: { content }, steps }
     }
     case "app.install":
       return buildInstallPlan(parse("app.install", input), deps)

@@ -33,6 +33,8 @@ type dockerTaskMsg struct {
 	JobID       string `json:"jobId"`
 	Name        string `json:"name"`
 	RemoveFiles bool   `json:"removeFiles"`
+	// Also delete the stack's own named volumes (down --volumes).
+	RemoveVolumes bool `json:"removeVolumes"`
 }
 
 // ── Compose plumbing ──────────────────────────────────────────────────────────
@@ -415,7 +417,11 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 	case "root.container.composeRestart":
 		err = runCompose(task.Name, "restart")
 	case "root.container.composeDown":
-		if err = runCompose(task.Name, "down"); err == nil && task.RemoveFiles {
+		args := []string{"down"}
+		if task.RemoveVolumes {
+			args = append(args, "--volumes")
+		}
+		if err = runCompose(task.Name, args...); err == nil && task.RemoveFiles {
 			dir := filepath.Dir(mustComposePath(task.Name))
 			if rmErr := os.RemoveAll(dir); rmErr != nil {
 				log.Printf("docker task: cleanup %s: %v", dir, rmErr)

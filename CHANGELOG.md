@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Choose what happens to an app's data when deleting it**: the deletion
+  preview names the Docker volumes it keeps (databases, caches) and the
+  folders that stay in their Places. A new option also deletes the Docker
+  volumes, and the preview then shows them as erased. Folders in Places are
+  never deleted (#26).
+
 ## [1.73.0] - 2026-10-29
 
 ### Added
