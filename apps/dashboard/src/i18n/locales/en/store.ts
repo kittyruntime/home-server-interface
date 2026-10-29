@@ -1,6 +1,10 @@
 // Generated from the templates, then kept by hand.
 export default {
   AppInstallWizard: {
+    reachedAt: 'Reached at (optional)',
+    reachedAtPlaceholder: 'app.example.com',
+    https: 'HTTPS',
+    reachedAtHint: 'The address of your own reverse proxy or tunnel in front of this port: Open uses it. HSI does not set up the proxy or its certificate.',
     back: 'Back',
     appName: 'App name',
     useLowercaseLettersNumbersOr: 'Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).',

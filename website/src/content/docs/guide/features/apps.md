@@ -13,7 +13,9 @@ admin-only.
 
 - **App Store**: a curated catalog with guided installs and pinned image versions.
   Secret settings can be generated, and a port already in use comes with a free
-  one to switch to. After an install, HSI opens the new app with its logs.
+  one to switch to. The web port can be given the address of your own reverse
+  proxy or tunnel (with HTTPS or not), which **Open** then uses; HSI does not
+  set up the proxy. After an install, HSI opens the new app with its logs.
   Each app has a page with its description, version and what the install asks
   for; the Installed and Updates filters find the apps already on the server.
 - **App updates**: when a new HSI version ships a newer image for an installed

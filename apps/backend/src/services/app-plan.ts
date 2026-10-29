@@ -211,6 +211,8 @@ const zInstallVolume = z.object({
   ]),
 })
 
+const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i
+
 export const APP_INPUTS = {
   "app.save": z.object({ name: zName, create: z.boolean().default(false), data: zAppInput.optional(), raw: z.string().min(1).optional() })
     .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" })
@@ -223,7 +225,14 @@ export const APP_INPUTS = {
   "app.install": z.object({
     id:      z.string(),
     name:    zName.max(64),
-    ports:   z.array(z.object({ container: z.number().int(), host: z.number().int().min(1).max(65535) })).default([]),
+    // A port can record where it is reached behind the user's own reverse
+    // proxy (#26): only the Open link uses it, HSI proxies nothing.
+    ports:   z.array(z.object({
+      container: z.number().int(),
+      host:      z.number().int().min(1).max(65535),
+      domain:    z.string().max(253).regex(HOSTNAME, "Enter a host name, such as app.example.com").optional(),
+      tls:       z.boolean().default(false),
+    })).default([]),
     env:     z.array(z.object({ key: z.string(), value: z.string() })).default([]),
     volumes: z.array(zInstallVolume).default([]),
   }),
@@ -474,13 +483,17 @@ async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>
     if (!value && me.required) bad(`Missing required setting ${me.key}`)
     return { key: me.key, value }
   })
-  const submittedPorts = new Map(input.ports.map(p => [p.container, p.host]))
-  const ports = m.ports.map(mp => ({
-    containerPort: mp.container,
-    hostPort:      submittedPorts.get(mp.container) ?? mp.hostDefault ?? mp.container,
-    protocol:      mp.protocol as "tcp" | "udp",
-    tls:           false,
-  }))
+  const submittedPorts = new Map(input.ports.map(p => [p.container, p]))
+  const ports = m.ports.map(mp => {
+    const sub = submittedPorts.get(mp.container)
+    return {
+      containerPort: mp.container,
+      hostPort:      sub?.host ?? mp.hostDefault ?? mp.container,
+      protocol:      mp.protocol as "tcp" | "udp",
+      ...(sub?.domain ? { domain: sub.domain.toLowerCase() } : {}),
+      tls:           !!sub?.domain && sub.tls,
+    }
+  })
   const webPort = m.webUiPort != null ? ports.find(p => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort : undefined
 
   const yaml = generateComposeYaml({
