@@ -3076,16 +3076,29 @@ await testTelemetryChannelOptOutAndPayload()
     checkRequest: async () => null,
   }) as any
   const tw = (n: string) => w.WRITE_TOOLS.find(x => x.name === n)!
-  const files = { fs: { stat: async ({ path }: { path: string }) => ({ path, type: "file", size: 3 }) } }
+  const stamp = { type: "file", size: 3, mtime: "2026-10-29T10:00:00Z", ctime: "2026-10-29T10:00:00Z", uid: 1000 }
+  const files = { fs: { stat: async ({ path }: { path: string }) => ({ path, ...stamp }) } }
   const del = await tw("delete_files").run({ paths: ["/srv/a/x.txt"], reason: "duplicate" } as never, fakeCtx(files)) as any
   assert.equal(del.status, "pending", "a deletion waits for approval")
   assert.equal(queued.at(-1)!.procedure, "fs.delete")
   assert.ok(queued.at(-1)!.destructive)
   assert.ok(aa.isQueueable("fs.delete") && !aa.isQueueable("fs.chmod") && !aa.isQueueable("update.rebootHost"), "only listed procedures can be queued")
+  // Approved as previewed: another object put at the path since (a rename
+  // updates its ctime) is not deleted, and nothing is.
+  const deleted: string[] = []
+  const later = (ctime: string) => ({ fs: { stat: async () => ({ ...stamp, ctime }), delete: async ({ path }: { path: string }) => { deleted.push(path); return { jobId: "j" } } } }) as any
+  await assert.rejects(() => aa.APPROVAL_PROCEDURES["fs.delete"](later("2026-10-29T11:00:00Z"), queued.at(-1)!.input),
+    (e: any) => e.code === "CONFLICT", "a path that changed since the request is not deleted")
+  assert.deepEqual(deleted, [])
+  await aa.APPROVAL_PROCEDURES["fs.delete"](later(stamp.ctime), queued.at(-1)!.input)
+  assert.deepEqual(deleted, ["/srv/a/x.txt"], "an unchanged path is deleted once approved")
+  await assert.rejects(() => tw("write_text_file").run({ path: "/srv/a/x.txt", content: "y".repeat(aa.MAX_OVERWRITE_CHARS + 1), overwrite: true } as never, fakeCtx(files)),
+    (e: any) => e.code === "BAD_REQUEST", "a replacement too long to read in full is not queued")
   await assert.rejects(() => tw("write_text_file").run({ path: "/srv/a/x.txt", content: "new", overwrite: false } as never, fakeCtx(files)),
     (e: any) => e.code === "CONFLICT", "an existing file is not replaced without asking")
   await tw("write_text_file").run({ path: "/srv/a/x.txt", content: "new", overwrite: true } as never, fakeCtx(files))
   assert.equal(queued.at(-1)!.procedure, "fs.writeText", "replacing a file waits for approval")
+  assert.equal(queued.at(-1)!.preview.content, "new", "the whole new content is shown for approval")
   const apps = { apps: { plan: async () => ({ steps: [{ summary: "remove", destructive: true }], fingerprint: "fp-now" }) } }
   await assert.rejects(() => tw("request_app_change").run({ op: "app.remove", input: { name: "web" }, fingerprint: "fp-old" } as never, fakeCtx(apps)),
     (e: any) => e.code === "CONFLICT", "a plan that changed since its preview is not queued")

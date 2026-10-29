@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server"
 import type { Caller } from "../mcp/tools"
 
 // Changes an AI assistant asks for that wait for a person (#138). The
@@ -16,13 +17,47 @@ type Runner = (caller: Caller, input: any) => Promise<unknown>
 // by surprise.
 export const MAX_DELETE_PATHS = 20
 
+// Replacing a file is approved on its whole new content, which the dashboard
+// shows in full: longer content cannot be queued.
+export const MAX_OVERWRITE_CHARS = 20_000
+
+type Stat = { type: string; size: number | null; mtime: string; ctime: string; uid: number }
+
+/**
+ * What a file or folder is, as far as an approval goes: a rename puts a
+ * different object at a path with another ctime, so the approved deletion or
+ * overwrite cannot land on something else.
+ */
+export function fileSignature(s: Stat): string {
+  return [s.type, s.size ?? "", s.mtime, s.ctime, s.uid].join("|")
+}
+
+async function assertUnchanged(caller: Caller, expected: Array<{ path: string; sig: string }>) {
+  for (const { path, sig } of expected) {
+    let now: string
+    try {
+      now = fileSignature(await caller.fs.stat({ path }))
+    } catch {
+      throw new TRPCError({ code: "CONFLICT", message: `${path} is gone since the request`, cause: { code: "ESTALE" } })
+    }
+    if (now !== sig) throw new TRPCError({ code: "CONFLICT", message: `${path} changed since the request: nothing was done`, cause: { code: "ESTALE" } })
+  }
+}
+
 export const APPROVAL_PROCEDURES: Record<string, Runner> = {
-  "fs.delete": async (caller, input: { paths: string[] }) => {
+  // Every path is checked before the first is deleted.
+  "fs.delete": async (caller, input: { paths: string[]; expect: Array<{ path: string; sig: string }> }) => {
+    const paths = input.paths.slice(0, MAX_DELETE_PATHS)
+    await assertUnchanged(caller, input.expect.filter(e => paths.includes(e.path)))
+    if (input.expect.length !== paths.length) throw new TRPCError({ code: "BAD_REQUEST", message: "A path has no recorded state" })
     const jobs: Array<{ path: string; jobId: string }> = []
-    for (const path of input.paths.slice(0, MAX_DELETE_PATHS)) jobs.push({ path, ...(await caller.fs.delete({ path })) })
+    for (const path of paths) jobs.push({ path, ...(await caller.fs.delete({ path })) })
     return { jobs }
   },
-  "fs.writeText": (caller, input) => caller.fs.writeText(input),
+  "fs.writeText": async (caller, input: { path: string; content: string; sig: string }) => {
+    await assertUnchanged(caller, [{ path: input.path, sig: input.sig }])
+    return caller.fs.writeText({ path: input.path, content: input.content })
+  },
   "storage.execute": (caller, input) => caller.storage.execute(input),
   "apps.execute": (caller, input) => caller.apps.execute(input),
   "user.execute": (caller, input) => caller.user.execute(input),

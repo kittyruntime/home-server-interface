@@ -96,7 +96,10 @@ A card then appears at the bottom of the dashboard: **Review** shows each
 request with the assistant's reason, its steps and the data it erases.
 **Approve** runs exactly that plan, as your account; **Reject** drops it. If the
 server changed since the preview (a disk was replaced, the app was edited), the
-approved plan is refused and the assistant has to preview it again. A request
+approved plan is refused and the assistant has to preview it again. The same goes
+for files: a file or folder that changed or was replaced since the request is
+not deleted or overwritten. A replaced file shows its whole new content, so it
+is limited to 20,000 characters. A request
 not decided within a day expires. Revoking the token drops its requests.
 
 The assistant follows its requests up and reports the result. An assistant

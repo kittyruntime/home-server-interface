@@ -70,7 +70,8 @@ function buildServer(req: FastifyRequest, reply: FastifyReply, user: TokenUser):
       },
       checkRequest: async id => {
         const a = await prisma.agentAction.findFirst({
-          where: { id, userId: user.userId },
+          // A token follows its own requests only.
+          where: { id, userId: user.userId, tokenId: user.apiToken.id },
           select: { status: true, title: true, result: true, error: true, expiresAt: true, decidedAt: true },
         })
         if (!a) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown request" })

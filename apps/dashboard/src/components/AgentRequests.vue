@@ -46,6 +46,8 @@ function steps(r: Request): Step[] {
 function details(r: Request): string | null {
   const p = r.preview as Record<string, unknown> | null
   if (!p || Array.isArray(p.steps)) return null
+  // The whole new content of a replaced file: it is what gets approved.
+  if (typeof p.replace === 'string' && typeof p.content === 'string') return p.content
   if (Array.isArray(p.delete)) {
     return (p.delete as Array<{ path: string; type?: string }>).map(i => i.type === 'dir' ? `${i.path}/` : i.path).join('\n')
   }
@@ -140,7 +142,7 @@ onBeforeUnmount(() => {
             </details>
           </li>
         </ol>
-        <pre v-else-if="details(r)" class="mt-3 max-h-48 overflow-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground whitespace-pre-wrap break-all">{{ details(r) }}</pre>
+        <pre v-else-if="details(r)" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground whitespace-pre-wrap break-all">{{ details(r) }}</pre>
 
         <div class="mt-3 flex justify-end gap-2">
           <Button size="sm" variant="ghost" :disabled="busy !== null" @click="decide(r, false)">{{ t('agentRequests.reject') }}</Button>

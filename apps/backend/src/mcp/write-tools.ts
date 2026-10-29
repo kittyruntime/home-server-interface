@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import type { ApiScope } from "../services/api-tokens"
-import { MAX_DELETE_PATHS } from "../services/agent-actions"
+import { MAX_DELETE_PATHS, MAX_OVERWRITE_CHARS, fileSignature } from "../services/agent-actions"
 import type { Caller, ToolContext, ToolDef } from "./tools"
 
 // The tools that change something (#138). Reversible changes run at once,
@@ -145,9 +145,13 @@ export const WRITE_TOOLS: ToolDef[] = [
     run: async ({ path, content, overwrite, reason }, ctx) => {
       if (!await exists(ctx.caller, path)) return waitJob(ctx.caller, (await ctx.caller.fs.writeText({ path, content })).jobId)
       if (!overwrite) throw new TRPCError({ code: "CONFLICT", message: "The file exists: set overwrite to ask the user to replace it" })
+      if (content.length > MAX_OVERWRITE_CHARS) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Replacing a file is limited to ${MAX_OVERWRITE_CHARS} characters, so the user can read all of it: write a new file instead` })
+      }
+      const current = await ctx.caller.fs.stat({ path })
       return ctx.queue({
-        procedure: "fs.writeText", input: { path, content }, title: `Replace ${path}`,
-        preview: { replace: path, newSize: Buffer.byteLength(content), excerpt: content.slice(0, 2000) }, destructive: true, reason,
+        procedure: "fs.writeText", input: { path, content, sig: fileSignature(current) }, title: `Replace ${path}`,
+        preview: { replace: path, currentSize: current.size, content }, destructive: true, reason,
       })
     },
   }),
@@ -176,9 +180,11 @@ export const WRITE_TOOLS: ToolDef[] = [
     run: async ({ paths, reason }, ctx) => {
       const items = []
       for (const path of paths) items.push({ path, ...(await ctx.caller.fs.stat({ path })) })
+      // Approved as they are now: each path's state is checked again first.
+      const expect = items.map(i => ({ path: i.path, sig: fileSignature(i) }))
       return ctx.queue({
-        procedure: "fs.delete", input: { paths }, title: paths.length === 1 ? `Delete ${paths[0]}` : `Delete ${paths.length} items`,
-        preview: { delete: items }, destructive: true, reason,
+        procedure: "fs.delete", input: { paths, expect }, title: paths.length === 1 ? `Delete ${paths[0]}` : `Delete ${paths.length} items`,
+        preview: { delete: items.map(i => ({ path: i.path, type: i.type, size: i.size, mtime: i.mtime })) }, destructive: true, reason,
       })
     },
   }),
