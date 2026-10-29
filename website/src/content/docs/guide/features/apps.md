@@ -14,8 +14,11 @@ admin-only.
 - **App Store**: a curated catalog with guided installs and pinned image versions.
   Secret settings can be generated, and a port already in use comes with a free
   one to switch to. After an install, HSI opens the new app with its logs.
-  Each app has a page with its description, version and what the install asks
-  for; the Installed and Updates filters find the apps already on the server.
+  Each app has a page with its description, version, license, links to its
+  documentation and source code, what the install asks for, and its first steps
+  (first sign-in, where to put files), which the App Store shows again once the
+  app is installed; the Installed and Updates filters find the apps already on
+  the server.
 - **App updates**: when a new HSI version ships a newer image for an installed
   App Store app, its card and page say so with a link to the release notes, and the
   Apps page marks it. **Update…** previews the one changed line of

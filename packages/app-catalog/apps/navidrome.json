@@ -7,6 +7,13 @@
   "website": "https://www.navidrome.org",
   "image": "deluan/navidrome:0.53.3",
   "changelog": "https://github.com/navidrome/navidrome/releases",
+  "license": "GPL-3.0",
+  "source": "https://github.com/navidrome/navidrome",
+  "docs": "https://www.navidrome.org/docs/",
+  "postInstall": [
+    "Open it and create the administrator account: the first account created is the administrator.",
+    "Put your music in the Music library folder; Navidrome scans it on its own."
+  ],
   "webUiPort": 4533,
   "ports": [{ "container": 4533, "protocol": "tcp", "label": "Web UI" }],
   "volumes": [

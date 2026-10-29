@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **More about each App Store app**: its page shows the license, links to
+  the documentation and the source code, and its first steps (first sign-in,
+  where to put files, what to set up first, such as a reverse proxy with
+  HTTPS for Vaultwarden).
+  After an install, the App Store shows that page (#26).
 - **Choose what happens to an app's data when deleting it**: the deletion
   preview names the Docker volumes it keeps (databases, caches) and the
   folders that stay in their Places. A new option also deletes the Docker

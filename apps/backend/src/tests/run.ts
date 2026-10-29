@@ -2373,6 +2373,14 @@ await testSharePlans()
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "javascript:alert(1)" }).success, false)
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "http://example.com" }).success, false)
   assert.equal(zAppManifest.safeParse({ ...base, changelog: "https://example.com/releases" }).success, true)
+  assert.equal(zAppManifest.safeParse({ ...base, source: "http://example.com" }).success, false, "source links are HTTPS")
+  assert.equal(zAppManifest.safeParse({ ...base, license: "<b>GPL</b>" }).success, false)
+  assert.equal(zAppManifest.safeParse({ ...base, postInstall: Array(7).fill("step") }).success, false, "a few first steps, not a manual")
+  // Every app in the store says what it is licensed under, where its code is,
+  // and what to do once it runs (#26).
+  for (const m of (await import("@app/app-catalog")).CATALOG) {
+    assert.ok(m.license && m.source && m.postInstall.length, `${m.id}: license, source and postInstall are filled`)
+  }
 
   // A failed update puts back the earlier rollback point, whatever step failed.
   const ap = await import("../services/app-plan")
