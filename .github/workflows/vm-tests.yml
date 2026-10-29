@@ -7,11 +7,6 @@ on:
   # Also a gate of the release workflow: nothing is published unless every
   # scenario passes on the tagged source.
   workflow_call:
-    inputs:
-      ref:
-        description: "The ref to test (the release tag)"
-        type: string
-        required: false
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"
@@ -32,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: vm-tests-${{ inputs.ref || github.ref }}
+  group: vm-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -42,8 +37,6 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v6
 
@@ -51,9 +44,7 @@ jobs:
         with:
           node-version: 22
           check-latest: true
-          # Called with a ref (the release tag): no shared cache, so the code
-          # checked out there can never write one the default branch reads.
-          cache: ${{ inputs.ref == '' && 'pnpm' || '' }}
+          cache: pnpm
 
       - uses: actions/setup-go@v7
         with:
@@ -104,8 +95,6 @@ jobs:
         scenario: [fresh, update, storage, network]
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
 
       - uses: actions/download-artifact@v5
         with:
@@ -122,7 +111,6 @@ jobs:
           qemu-img info "$(ls ~/.cache/hsi-vm/*.qcow2 2>/dev/null | head -1)" 2>/dev/null || true
 
       - uses: actions/cache@v4
-        if: inputs.ref == ''
         with:
           path: ~/.cache/hsi-vm
           key: debian-13-cloud-${{ github.run_id }}

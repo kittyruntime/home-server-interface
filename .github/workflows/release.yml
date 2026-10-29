@@ -18,16 +18,17 @@ permissions:
 
 jobs:
   # Install, update, rollback, storage, network and recovery on disposable
-  # VMs (#17, #38): a release is published only when they all pass.
+  # VMs (#17, #38), on the pushed tag: a release is published only when they
+  # all pass. Publishing an existing tag again by hand skips them.
   vm-tests:
+    if: github.event_name == 'push'
     uses: ./.github/workflows/vm-tests.yml
-    with:
-      ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', github.event.inputs.version) || github.ref }}
     permissions:
       contents: read
 
   release:
     needs: vm-tests
+    if: ${{ !cancelled() && (needs.vm-tests.result == 'success' || needs.vm-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
 
     steps:
