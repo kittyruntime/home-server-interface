@@ -51,7 +51,9 @@ jobs:
         with:
           node-version: 22
           check-latest: true
-          cache: pnpm
+          # Called with a ref (the release tag): no shared cache, so the code
+          # checked out there can never write one the default branch reads.
+          cache: ${{ inputs.ref == '' && 'pnpm' || '' }}
 
       - uses: actions/setup-go@v7
         with:
@@ -120,6 +122,7 @@ jobs:
           qemu-img info "$(ls ~/.cache/hsi-vm/*.qcow2 2>/dev/null | head -1)" 2>/dev/null || true
 
       - uses: actions/cache@v4
+        if: inputs.ref == ''
         with:
           path: ~/.cache/hsi-vm
           key: debian-13-cloud-${{ github.run_id }}
