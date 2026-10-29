@@ -1,0 +1,32 @@
+name: App catalog
+
+# Every image the App Store pins must still exist upstream for linux/amd64
+# (#26). Weekly as well: an image removed upstream breaks installs without
+# any change here.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 2"
+  pull_request:
+    paths:
+      - "packages/app-catalog/**"
+      - "scripts/check-catalog-images.sh"
+      - ".github/workflows/catalog.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Check the pinned images
+        run: scripts/check-catalog-images.sh

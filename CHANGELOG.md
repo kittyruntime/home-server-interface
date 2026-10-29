@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where to put files, what to set up first, such as a reverse proxy with
   HTTPS for Vaultwarden).
   After an install, the App Store shows that page (#26).
+- **Choose what happens to an app's data when deleting it**: the deletion
+  preview names the Docker volumes it keeps (databases, caches) and the
+  folders that stay in their Places. A new option also deletes the Docker
+  volumes, and the preview then shows them as erased. Folders in Places are
+  never deleted (#26).
 
 ## [1.73.0] - 2026-10-29
 
