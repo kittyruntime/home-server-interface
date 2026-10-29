@@ -28,7 +28,7 @@ export default defineConfig({
           ],
         },
         { label: "Reference", items: ["reference/configuration", "reference/storage-plans"] },
-        { label: "Development", items: ["development/architecture", "development/setup", "development/design-system"] },
+        { label: "Development", items: ["development/architecture", "development/setup", "development/design-system", "development/app-catalog"] },
       ],
     }),
   ],
