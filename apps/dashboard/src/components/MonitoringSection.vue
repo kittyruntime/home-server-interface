@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
@@ -14,6 +15,8 @@ import LoadingState from './ui/LoadingState.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import ErrorState from './ui/ErrorState.vue'
+
+const { t } = useI18n()
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -140,8 +143,8 @@ const chartOptions = {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Monitoring</h2>
-    <p class="text-sm text-muted-foreground mb-6">Live usage now, and history over time.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.MonitoringSection.monitoring') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.monitor.MonitoringSection.liveUsageNowAndHistory') }}</p>
 
     <!-- View toggle -->
     <Tabs
@@ -150,8 +153,8 @@ const chartOptions = {
       @update:model-value="v => { if (v === 'history') { viewMode = 'history'; loadHistory() } else viewMode = 'live' }"
     >
       <TabsList>
-        <TabsTrigger value="live">Live</TabsTrigger>
-        <TabsTrigger value="history">History</TabsTrigger>
+        <TabsTrigger value="live">{{ t('ui.monitor.MonitoringSection.live') }}</TabsTrigger>
+        <TabsTrigger value="history">{{ t('ui.monitor.MonitoringSection.history') }}</TabsTrigger>
       </TabsList>
     </Tabs>
 
@@ -166,14 +169,14 @@ const chartOptions = {
           <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
               <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Processor</span>
+              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.processor') }}</span>
             </div>
 
             <div class="px-4 py-4 space-y-4">
               <!-- Usage bar -->
               <div class="space-y-1.5">
                 <div class="flex justify-between text-xs text-muted-foreground">
-                  <span>Usage</span>
+                  <span>{{ t('ui.monitor.MonitoringSection.usage') }}</span>
                   <span class="font-medium tabular-nums"
                     :class="metrics.cpu > 80 ? 'text-destructive' : metrics.cpu > 60 ? 'text-warning' : 'text-foreground'"
                   >{{ metrics.cpu }}%</span>
@@ -183,7 +186,7 @@ const chartOptions = {
 
               <!-- Load averages -->
               <div class="flex items-center gap-4">
-                <span class="text-xs text-muted-foreground">Load avg</span>
+                <span class="text-xs text-muted-foreground">{{ t('ui.monitor.MonitoringSection.loadAvg') }}</span>
                 <div class="flex gap-4">
                   <div v-for="(val, i) in sysinfo.loadavg" :key="i" class="text-center">
                     <div class="text-sm font-medium text-foreground tabular-nums">{{ val.toFixed(2) }}</div>
@@ -198,7 +201,7 @@ const chartOptions = {
           <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
               <LayersIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Memory</span>
+              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.memory') }}</span>
             </div>
 
             <div class="px-4 py-4 space-y-3">
@@ -226,7 +229,7 @@ const chartOptions = {
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Network throughput</span>
+                <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.networkThroughput') }}</span>
               </div>
               <div class="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
                 <span class="flex items-center gap-1">
@@ -251,35 +254,35 @@ const chartOptions = {
         type="single" variant="outline" size="sm"
         class="mb-5"
         :model-value="period"
-        aria-label="History period"
+        :aria-label="t('ui.monitor.MonitoringSection.historyPeriod')"
         @update:model-value="v => { if (typeof v === 'string' && v) { period = v as Period; loadHistory() } }"
       >
         <ToggleGroupItem v-for="p in (['1h','6h','24h','7d'] as const)" :key="p" :value="p" class="px-3 text-xs">{{ p }}</ToggleGroupItem>
       </ToggleGroup>
 
       <LoadingState v-if="historyLoading" />
-      <ErrorState v-else-if="historyError" :message="historyError" retry-label="Retry" @retry="loadHistory" />
+      <ErrorState v-else-if="historyError" :message="historyError" :retry-label="t('ui.monitor.MonitoringSection.retry')" @retry="loadHistory" />
       <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-muted-foreground">
-        No data yet: history is recorded every minute.
+        {{ t('ui.monitor.MonitoringSection.noDataYetHistoryIs') }}
       </div>
       <template v-else>
         <!-- CPU chart -->
         <div class="mb-6">
-          <div class="eyebrow mb-2">CPU %</div>
+          <div class="eyebrow mb-2">{{ t('ui.monitor.MonitoringSection.cpu') }}</div>
           <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="cpuChartData" :options="chartOptions" />
           </Card>
         </div>
         <!-- RAM chart -->
         <div class="mb-6">
-          <div class="eyebrow mb-2">RAM (GB)</div>
+          <div class="eyebrow mb-2">{{ t('ui.monitor.MonitoringSection.ramGb') }}</div>
           <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="ramChartData" :options="chartOptions" />
           </Card>
         </div>
         <!-- Network chart -->
         <div class="mb-6">
-          <div class="eyebrow mb-2">Network (MB/s)</div>
+          <div class="eyebrow mb-2">{{ t('ui.monitor.MonitoringSection.networkMbS') }}</div>
           <Card class="block gap-0 py-0 shadow-none h-32 rounded-lg p-3">
             <Line :data="netChartData" :options="chartOptions" />
           </Card>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { actionLabel, actionCategory, categoryClass } from '../lib/audit-labels'
@@ -8,6 +9,8 @@ import { useStorageData, fmtBytes, isRaidHealthy } from './storage/store'
 import type { BlockDev } from './storage/store'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
+
+const { t } = useI18n()
 
 const { devices, raids, lvmVGs, lvmLVs, loading: storageLoading } = useStorageData()
 
@@ -99,8 +102,8 @@ function relTime(d: string | Date): string {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Summary</h2>
-    <p class="text-sm text-muted-foreground mb-6">This NAS at a glance: system, storage, containers and recent activity.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.OverviewSection.summary') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.monitor.OverviewSection.thisNasAtAGlance') }}</p>
 
     <LoadingState v-if="isLoadingAll" variant="compact" />
     <ErrorState v-else-if="error" :message="error" compact />
@@ -110,14 +113,14 @@ function relTime(d: string | Date): string {
 
         <!-- System card -->
         <Card class="block gap-0 py-0 overflow-hidden p-5">
-          <div class="eyebrow mb-3">System</div>
+          <div class="eyebrow mb-3">{{ t('ui.monitor.OverviewSection.system') }}</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs text-muted-foreground">Hostname</span>
+              <span class="text-xs text-muted-foreground">{{ t('ui.monitor.OverviewSection.hostname') }}</span>
               <span class="text-sm font-medium text-foreground font-mono">{{ sysinfo?.hostname ?? '-' }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-xs text-muted-foreground">Uptime</span>
+              <span class="text-xs text-muted-foreground">{{ t('ui.monitor.OverviewSection.uptime') }}</span>
               <span class="text-sm text-foreground/80 tabular-nums">{{ metrics ? fmtUptime(metrics.uptime) : '-' }}</span>
             </div>
             <div v-if="metrics" class="space-y-1.5">
@@ -140,16 +143,16 @@ function relTime(d: string | Date): string {
 
         <!-- Storage card -->
         <Card class="block gap-0 py-0 overflow-hidden p-5">
-          <div class="eyebrow mb-3">Storage</div>
+          <div class="eyebrow mb-3">{{ t('ui.monitor.OverviewSection.storage') }}</div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs text-muted-foreground">Used / Total</span>
+              <span class="text-xs text-muted-foreground">{{ t('ui.monitor.OverviewSection.usedTotal') }}</span>
               <span class="text-sm font-medium text-foreground tabular-nums">
                 {{ fmtBytes(storageUsed) }} / {{ fmtBytes(storageTotal) }}
               </span>
             </div>
             <template v-if="raids.length > 0">
-              <div class="text-2xs uppercase tracking-caps text-muted-foreground">RAID Arrays</div>
+              <div class="text-2xs uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.OverviewSection.raidArrays') }}</div>
               <div v-for="r in raids" :key="r.name" class="flex items-center justify-between">
                 <span class="text-xs font-mono text-foreground/80">{{ r.name }}</span>
                 <span :class="['text-2xs font-semibold px-2 py-0.5 rounded-sm border',
@@ -160,25 +163,25 @@ function relTime(d: string | Date): string {
                 </span>
               </div>
             </template>
-            <div v-else class="text-xs text-muted-foreground">No RAID arrays</div>
+            <div v-else class="text-xs text-muted-foreground">{{ t('ui.monitor.OverviewSection.noRaidArrays') }}</div>
           </div>
         </Card>
 
         <!-- Containers card -->
         <Card class="block gap-0 py-0 overflow-hidden p-5">
-          <div class="eyebrow mb-3">Containers</div>
+          <div class="eyebrow mb-3">{{ t('ui.monitor.OverviewSection.containers') }}</div>
           <div class="flex items-end gap-6">
             <div class="text-center">
               <div class="text-2xl font-bold text-foreground font-figure tabular-nums">{{ containerTotal }}</div>
-              <div class="text-2xs text-muted-foreground mt-0.5">Total</div>
+              <div class="text-2xs text-muted-foreground mt-0.5">{{ t('ui.monitor.OverviewSection.total') }}</div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-success font-figure tabular-nums">{{ containerRunning }}</div>
-              <div class="text-2xs text-muted-foreground mt-0.5">Running</div>
+              <div class="text-2xs text-muted-foreground mt-0.5">{{ t('ui.monitor.OverviewSection.running') }}</div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-foreground/80 font-figure tabular-nums">{{ containerStopped }}</div>
-              <div class="text-2xs text-muted-foreground mt-0.5">Stopped</div>
+              <div class="text-2xs text-muted-foreground mt-0.5">{{ t('ui.monitor.OverviewSection.stopped') }}</div>
             </div>
           </div>
         </Card>
@@ -189,19 +192,19 @@ function relTime(d: string | Date): string {
           <div class="flex items-end gap-6">
             <div class="text-center">
               <div class="text-2xl font-bold text-foreground font-figure tabular-nums">{{ lvmVGs.length }}</div>
-              <div class="text-2xs text-muted-foreground mt-0.5">Volume Groups</div>
+              <div class="text-2xs text-muted-foreground mt-0.5">{{ t('ui.monitor.OverviewSection.volumeGroups') }}</div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-foreground font-figure tabular-nums">{{ lvmLVs.length }}</div>
-              <div class="text-2xs text-muted-foreground mt-0.5">Logical Volumes</div>
+              <div class="text-2xs text-muted-foreground mt-0.5">{{ t('ui.monitor.OverviewSection.logicalVolumes') }}</div>
             </div>
           </div>
         </Card>
 
         <!-- Recent Activity card (full width) -->
         <Card class="block gap-0 py-0 overflow-hidden p-5 lg:col-span-2">
-          <div class="eyebrow mb-3">Recent Activity</div>
-          <div v-if="!recentAudit.length" class="text-xs text-muted-foreground">No recent activity.</div>
+          <div class="eyebrow mb-3">{{ t('ui.monitor.OverviewSection.recentActivity') }}</div>
+          <div v-if="!recentAudit.length" class="text-xs text-muted-foreground">{{ t('ui.monitor.OverviewSection.noRecentActivity') }}</div>
           <div v-else class="divide-y divide-border">
             <div v-for="entry in recentAudit" :key="entry.id" class="flex items-center gap-3 py-2">
               <span :class="['w-1.5 h-1.5 rounded-full shrink-0', entry.success ? 'bg-success' : 'bg-destructive']" />
