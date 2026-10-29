@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -6,6 +7,8 @@ import { trpc } from '../lib/trpc'
 import { useToast } from '../lib/toast'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.telemetry.status.query>>
 
@@ -45,36 +48,35 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Telemetry</h2>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.TelemetrySection.telemetry') }}</h2>
     <p class="text-sm text-muted-foreground mb-6 max-w-xl">
-      Once a day, HSI sends an anonymous heartbeat: its version, release channel and a hardware summary.
-      No file names, users, addresses or settings. It helps decide which systems to support.
+      {{ t('ui.settings.TelemetrySection.onceADayHsiSends') }}
     </p>
 
     <LoadingState v-if="loading" />
-    <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
+    <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.settings.TelemetrySection.retry')" @retry="load" />
 
     <div v-else-if="status" class="space-y-4 max-w-xl">
       <Card class="flex flex-row items-center justify-between gap-4 px-4 py-3 shadow-none">
         <div class="min-w-0">
-          <p class="text-sm text-foreground">Send the daily heartbeat</p>
+          <p class="text-sm text-foreground">{{ t('ui.settings.TelemetrySection.sendTheDailyHeartbeat') }}</p>
           <p v-if="status.disabledBy === 'environment'" class="text-xs text-muted-foreground mt-0.5">
-            Turned off on the server with <code class="font-mono">HSI_TELEMETRY_ENABLED</code>.
+            {{ t('ui.settings.TelemetrySection.turnedOffOnTheServer') }} <code class="font-mono">HSI_TELEMETRY_ENABLED</code>.
           </p>
         </div>
         <Switch
           :model-value="status.enabled"
           :disabled="saving || status.disabledBy === 'environment'"
-          aria-label="Send the daily heartbeat"
+          :aria-label="t('ui.settings.TelemetrySection.sendTheDailyHeartbeat')"
           @update:model-value="setEnabled"
         />
       </Card>
 
       <div>
-        <p class="eyebrow mb-1.5">What is sent</p>
+        <p class="eyebrow mb-1.5">{{ t('ui.settings.TelemetrySection.whatIsSent') }}</p>
         <p class="text-xs text-muted-foreground mb-2">
-          To have this installation's data deleted, send its installation ID,
-          <span class="font-mono text-foreground/80 select-all">{{ status.payload.installation_id }}</span>, with your request.
+          {{ t('ui.settings.TelemetrySection.toHaveThisInstallationS') }}
+          <span class="font-mono text-foreground/80 select-all">{{ status.payload.installation_id }}</span>{{ t('ui.settings.TelemetrySection.withYourRequest') }}
         </p>
         <pre class="max-h-96 overflow-auto rounded-lg border bg-muted p-3 font-mono text-2xs leading-relaxed text-foreground/80 select-text">{{ payloadText }}</pre>
       </div>

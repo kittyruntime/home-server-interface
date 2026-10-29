@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import SectionNav from '@/components/ui/SectionNav.vue'
@@ -20,6 +21,8 @@ import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
 import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, type StorageLocation, type StorageNav, type StorageSection } from '../../lib/storage-nav'
 import { pendingStorageLocation } from '../../lib/storage-open'
+
+const { t } = useI18n()
 
 type SectionId = StorageSection
 
@@ -104,7 +107,7 @@ const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id
             Some storage tools are not installed on the server, so these features are unavailable:
             {{ missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }}.
           </p>
-          <p class="mt-1 text-muted-foreground">Install them with <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
+          <p class="mt-1 text-muted-foreground">{{ t('ui.storage.StoragePanel.installThemWith') }} <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
         </Alert>
         <Breadcrumb v-if="crumbs.length > 1" class="mb-4">
           <BreadcrumbList class="text-xs sm:gap-1.5">

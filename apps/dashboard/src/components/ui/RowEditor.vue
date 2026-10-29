@@ -1,6 +1,9 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
+import { useI18n } from 'vue-i18n'
 import { PlusIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: T[]
@@ -24,7 +27,7 @@ function update(i: number, patch: Partial<T>) {
     <div v-for="(item, i) in modelValue" :key="i" class="space-y-1">
       <div class="flex items-center gap-2">
         <slot name="row" :item="item" :index="i" :update="(patch: Partial<T>) => update(i, patch)" />
-        <Button variant="ghost" size="icon-sm" class="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remove" @click="remove(i)">
+        <Button variant="ghost" size="icon-sm" class="shrink-0 text-muted-foreground hover:text-destructive" :aria-label="t('ui.shared.RowEditor.remove')" @click="remove(i)">
           <XIcon />
         </Button>
       </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { applyPlanned } from '../../lib/plan'
 import { ref, onMounted } from 'vue'
@@ -6,6 +7,8 @@ import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import { useConfirm } from '../../lib/confirm'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 /* Existing storage found on the disks but not in use yet (after a reinstall,
    or disks moved from another machine). Import never formats anything: arrays
@@ -67,8 +70,8 @@ defineExpose({ load })
 
 <template>
   <Alert variant="info" v-if="kind === 'raid' && scan?.arrays.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">Arrays found on disks</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These arrays exist on the disks but are not running. Assembling one keeps its data; nothing is formatted.</p>
+    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.arraysFoundOnDisks') }}</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseArraysExistOnThe') }}</p>
     <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm text-foreground">
@@ -89,8 +92,8 @@ defineExpose({ load })
   </Alert>
 
   <Alert variant="info" v-if="kind === 'lvm' && scan?.vgs.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">Inactive volume groups</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">These volume groups exist on the disks but none of their volumes is active. Activating keeps their data; nothing is formatted.</p>
+    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.inactiveVolumeGroups') }}</h3>
+    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseVolumeGroupsExistOn') }}</p>
     <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm font-mono text-foreground">{{ vg.name }}</div>

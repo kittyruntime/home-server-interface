@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ref } from 'vue'
 import { PlusIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+const { t } = useI18n()
 
 export type PickerItem = {
   id: string
@@ -68,20 +71,20 @@ function pick(id: string) {
         </Button>
       </div>
     </div>
-    <p v-else class="text-xs text-muted-foreground px-3">None assigned.</p>
+    <p v-else class="text-xs text-muted-foreground px-3">{{ t('ui.shared.GroupPicker.noneAssigned') }}</p>
 
     <Popover v-if="available.length > 0" v-model:open="open">
       <PopoverTrigger as-child>
         <Button variant="ghost" size="xs" class="ml-1 text-primary hover:text-primary">
           <PlusIcon />
-          Add
+          {{ t('ui.shared.GroupPicker.add') }}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" class="w-64 p-0">
         <Command>
-          <CommandInput placeholder="Search…" />
+          <CommandInput :placeholder="t('ui.shared.GroupPicker.search')" />
           <CommandList class="max-h-48">
-            <CommandEmpty>No matches</CommandEmpty>
+            <CommandEmpty>{{ t('ui.shared.GroupPicker.noMatches') }}</CommandEmpty>
             <CommandItem
               v-for="item in available"
               :key="item.id"

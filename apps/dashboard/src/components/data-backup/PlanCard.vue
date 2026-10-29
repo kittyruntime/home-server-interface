@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Progress } from '@/components/ui/progress'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -8,6 +9,8 @@ import BusyLabel from '../ui/BusyLabel.vue'
 import RunHistory from './RunHistory.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 type Plan = Status['plans'][number]
@@ -73,7 +76,7 @@ async function remove() {
       <div class="flex flex-wrap items-center gap-2">
         <h3 class="min-w-0 break-words text-sm font-medium text-foreground">{{ plan.name }}</h3>
         <Badge variant="secondary">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</Badge>
-        <Badge variant="secondary" v-if="!plan.enabled">Paused</Badge>
+        <Badge variant="secondary" v-if="!plan.enabled">{{ t('ui.backups.PlanCard.paused') }}</Badge>
       </div>
       <p class="mt-1 font-mono text-2xs text-muted-foreground [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
     </div>
@@ -92,11 +95,11 @@ async function remove() {
 
     <div class="mt-4 flex flex-wrap gap-1">
       <Button size="xs" :disabled="running || starting" @click="runNow">
-        <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">Run now</BusyLabel>
+        <BusyLabel :busy="starting || running" :busy-label="running ? 'Running' : 'Starting'">{{ t('ui.backups.PlanCard.runNow') }}</BusyLabel>
       </Button>
-      <Button variant="ghost" size="xs" @click="emit('edit')">Edit</Button>
-      <Button variant="ghost" size="xs" @click="history = true">History</Button>
-      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">Remove…</Button>
+      <Button variant="ghost" size="xs" @click="emit('edit')">{{ t('ui.backups.PlanCard.edit') }}</Button>
+      <Button variant="ghost" size="xs" @click="history = true">{{ t('ui.backups.PlanCard.history') }}</Button>
+      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">{{ t('ui.backups.PlanCard.remove') }}</Button>
     </div>
 
     <RunHistory v-if="history" kind="runs" :id="plan.id" :title="`History of ${plan.name}`" @close="history = false" />

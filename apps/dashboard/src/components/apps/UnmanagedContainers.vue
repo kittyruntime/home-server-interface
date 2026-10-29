@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ChevronRightIcon, CircleAlertIcon, RefreshCwIcon, TriangleIcon } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,8 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
+
+const { t } = useI18n()
 
 const toast = useToast()
 
@@ -157,14 +160,14 @@ onUnmounted(() => {
         @click="toggle"
       >
         <ChevronRightIcon :class="['size-3 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
-        <span class="select-none text-2xs font-bold uppercase tracking-caps text-muted-foreground transition-colors group-hover:text-foreground">Unmanaged</span>
+        <span class="select-none text-2xs font-bold uppercase tracking-caps text-muted-foreground transition-colors group-hover:text-foreground">{{ t('ui.apps.UnmanagedContainers.unmanaged') }}</span>
         <Badge v-if="!loading && containers.length" variant="secondary" class="h-4 min-w-[18px] rounded-full px-1.5 text-2xs tabular-nums">
           {{ containers.length }}
         </Badge>
         <LoadingSpinner v-if="loading" class="text-xs text-muted-foreground" />
       </Button>
 
-      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" tooltip="Refresh" aria-label="Refresh unmanaged containers" @click="load">
+      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" :tooltip="t('ui.apps.UnmanagedContainers.refresh')" :aria-label="t('ui.apps.UnmanagedContainers.refreshUnmanagedContainers')" @click="load">
         <RefreshCwIcon class="size-3.5" aria-hidden="true" />
       </Button>
     </div>
@@ -175,14 +178,14 @@ onUnmounted(() => {
 
         <div class="mx-2 mb-3 rounded-lg border border-border p-3">
           <div class="flex items-center justify-between gap-3">
-            <span class="text-xs text-muted-foreground">Import compose file</span>
+            <span class="text-xs text-muted-foreground">{{ t('ui.apps.UnmanagedContainers.importComposeFile') }}</span>
             <Button variant="outline" size="xs" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</Button>
           </div>
           <div v-if="composeOpen" class="mt-3 grid gap-2">
-            <Input v-model="composeName" class="h-8 text-xs" placeholder="App name, for example media" maxlength="64" aria-label="App name" />
+            <Input v-model="composeName" class="h-8 text-xs" :placeholder="t('ui.apps.UnmanagedContainers.appNameForExampleMedia')" maxlength="64" :aria-label="t('ui.apps.UnmanagedContainers.appName')" />
             <input ref="composeFile" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readComposeFile" />
-            <Button variant="outline" size="xs" class="w-fit" type="button" @click="openComposeFile">Choose YAML file</Button>
-            <Textarea v-model="composeContent" class="font-mono text-xs" rows="8" spellcheck="false" placeholder="services:\n  web:\n    image: nginx" aria-label="Compose file" />
+            <Button variant="outline" size="xs" class="w-fit" type="button" @click="openComposeFile">{{ t('ui.apps.UnmanagedContainers.chooseYamlFile') }}</Button>
+            <Textarea v-model="composeContent" class="font-mono text-xs" rows="8" spellcheck="false" :placeholder="t('ui.apps.UnmanagedContainers.servicesNWebNImage')" :aria-label="t('ui.apps.UnmanagedContainers.composeFile')" />
             <p v-if="composeError" class="text-xs text-destructive" role="alert">{{ composeError }}</p>
             <Button size="sm" class="w-fit" :disabled="composeImporting" @click="importCompose">
               {{ composeImporting ? 'Importing…' : 'Import app' }}
@@ -196,7 +199,7 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="!loading && containers.length === 0" class="px-2 pb-2 pt-1 text-xs text-muted-foreground">
-          No unmanaged containers.
+          {{ t('ui.apps.UnmanagedContainers.noUnmanagedContainers') }}
         </div>
 
         <ul v-else class="flex flex-col gap-1.5">

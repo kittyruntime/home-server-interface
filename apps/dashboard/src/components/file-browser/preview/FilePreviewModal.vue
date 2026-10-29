@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { DownloadIcon } from '@lucide/vue'
 import { ref, computed, onMounted } from 'vue'
 import Modal from '../../ui/Modal.vue'
@@ -7,6 +8,8 @@ import { detectKind } from '../../../lib/file-kind'
 import { downloadUrl } from '../../../lib/file-url'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Entry = { name: string; path: string; size: number | null }
 
@@ -46,8 +49,8 @@ function tryClose() {
         size="icon-xs"
         :href="downloadHref ?? undefined"
         :download="entry.name"
-        tooltip="Download"
-        aria-label="Download"
+        :tooltip="t('ui.files.FilePreviewModal.download')"
+        :aria-label="t('ui.files.FilePreviewModal.download')"
         class="text-muted-foreground shrink-0"
       >
         <DownloadIcon class="w-4 h-4" aria-hidden="true" />
@@ -58,8 +61,8 @@ function tryClose() {
 
     <template v-if="kind === 'text'" #footer>
       <div class="flex-1" />
-      <Button variant="ghost" size="sm" @click="tryClose">Close</Button>
-      <Button size="sm" :disabled="!dirty" @click="bodyRef?.save()">Save</Button>
+      <Button variant="ghost" size="sm" @click="tryClose">{{ t('ui.files.FilePreviewModal.close') }}</Button>
+      <Button size="sm" :disabled="!dirty" @click="bodyRef?.save()">{{ t('ui.files.FilePreviewModal.save') }}</Button>
     </template>
   </Modal>
 </template>

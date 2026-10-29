@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Separator } from '@/components/ui/separator'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import Tip from '../ui/Tip.vue'
@@ -8,6 +9,8 @@ import { ref, nextTick } from 'vue'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+
+const { t } = useI18n()
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Crumb = { label: string; path: string; clickable: boolean }
@@ -72,14 +75,14 @@ async function openSearch() {
     @click.stop
   >
     <!-- Mobile: places sidebar toggle -->
-    <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" tooltip="Places" aria-label="Toggle places sidebar"
+    <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" :tooltip="t('ui.files.FileToolbar.places')" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
       class="sm:hidden flex-shrink-0"
       :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'">
       <MenuIcon class="w-4 h-4" aria-hidden="true" />
     </Button>
 
     <!-- Back / Up -->
-    <Button variant="ghost" size="icon-sm" v-if="canGoUp" @click="emit('goUp')" tooltip="Go up" aria-label="Go to parent folder"
+    <Button variant="ghost" size="icon-sm" v-if="canGoUp" @click="emit('goUp')" :tooltip="t('ui.files.FileToolbar.goUp')" :aria-label="t('ui.files.FileToolbar.goToParentFolder')"
       class="text-muted-foreground hover:text-foreground flex-shrink-0">
       <ArrowLeftIcon class="w-4 h-4" aria-hidden="true" />
     </Button>
@@ -104,35 +107,35 @@ async function openSearch() {
       <!-- Selection actions -->
       <template v-if="selectedCount > 0">
         <span class="text-xs tabular-nums text-muted-foreground select-none pl-1 pr-0.5">{{ selectedCount }} sel.</span>
-        <Button variant="ghost" size="icon-xs" @click="emit('clearSelection')" tooltip="Clear selection" aria-label="Clear selection"
+        <Button variant="ghost" size="icon-xs" @click="emit('clearSelection')" :tooltip="t('ui.files.FileToolbar.clearSelection')" :aria-label="t('ui.files.FileToolbar.clearSelection')"
           class="text-muted-foreground hover:text-foreground/80">
           <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
 
-        <Button variant="ghost" size="icon-sm" @click="emit('copy')" tooltip="Copy" aria-label="Copy selection" class="text-muted-foreground">
+        <Button variant="ghost" size="icon-sm" @click="emit('copy')" :tooltip="t('ui.files.FileToolbar.copy')" :aria-label="t('ui.files.FileToolbar.copySelection')" class="text-muted-foreground">
           <CopyIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-sm" @click="emit('cut')" tooltip="Cut" aria-label="Cut selection" class="text-muted-foreground">
+        <Button variant="ghost" size="icon-sm" @click="emit('cut')" :tooltip="t('ui.files.FileToolbar.cut')" :aria-label="t('ui.files.FileToolbar.cutSelection')" class="text-muted-foreground">
           <ScissorsIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
 
         <template v-if="selectedCount === 1">
-          <Button variant="ghost" size="icon-sm" @click="emit('startRename', selectedEntries[0]!)" tooltip="Rename" aria-label="Rename selection" class="text-muted-foreground">
+          <Button variant="ghost" size="icon-sm" @click="emit('startRename', selectedEntries[0]!)" :tooltip="t('ui.files.FileToolbar.rename')" :aria-label="t('ui.files.FileToolbar.renameSelection')" class="text-muted-foreground">
             <PencilIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon-sm" v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" tooltip="Download" aria-label="Download selection" class="text-muted-foreground">
+          <Button variant="ghost" size="icon-sm" v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" :tooltip="t('ui.files.FileToolbar.download')" :aria-label="t('ui.files.FileToolbar.downloadSelection')" class="text-muted-foreground">
             <DownloadIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon-sm" @click="emit('openPermissions')" tooltip="Permissions" aria-label="Edit permissions" class="text-muted-foreground">
+          <Button variant="ghost" size="icon-sm" @click="emit('openPermissions')" :tooltip="t('ui.files.FileToolbar.permissions')" :aria-label="t('ui.files.FileToolbar.editPermissions')" class="text-muted-foreground">
             <KeyRoundIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon-sm" @click="emit('share')" tooltip="Share" aria-label="Share selection" class="text-muted-foreground">
+          <Button variant="ghost" size="icon-sm" @click="emit('share')" :tooltip="t('ui.files.FileToolbar.share')" :aria-label="t('ui.files.FileToolbar.shareSelection')" class="text-muted-foreground">
             <Share2Icon class="w-4 h-4" aria-hidden="true" />
           </Button>
         </template>
 
-        <Button variant="ghost" size="icon-sm" @click="emit('delete')" tooltip="Delete" aria-label="Delete selection" class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+        <Button variant="ghost" size="icon-sm" @click="emit('delete')" :tooltip="t('ui.files.FileToolbar.delete')" :aria-label="t('ui.files.FileToolbar.deleteSelection')" class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </Button>
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
@@ -141,33 +144,33 @@ async function openSearch() {
       <!-- New (folder / file) -->
       <DropdownMenu v-if="currentPath">
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="sm" aria-label="Create new folder or file" class="gap-1 px-2 text-xs text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+          <Button variant="ghost" size="sm" :aria-label="t('ui.files.FileToolbar.createNewFolderOrFile')" class="gap-1 px-2 text-xs text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
             <PlusIcon aria-hidden="true" />
-            <span class="hidden sm:inline">New</span>
+            <span class="hidden sm:inline">{{ t('ui.files.FileToolbar.new') }}</span>
             <ChevronDownIcon class="hidden sm:block size-3" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" class="min-w-[160px]">
           <DropdownMenuItem @select="emit('createFolder')">
             <FolderPlusIcon aria-hidden="true" />
-            New folder
+            {{ t('ui.files.FileToolbar.newFolder') }}
           </DropdownMenuItem>
           <DropdownMenuItem @select="emit('createFile')">
             <FileTextIcon aria-hidden="true" />
-            New file
+            {{ t('ui.files.FileToolbar.newFile') }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <!-- Upload -->
-      <Button variant="ghost" size="sm" v-if="currentPath" @click="emit('uploadClick')" tooltip="Upload files" aria-label="Upload files"
+      <Button variant="ghost" size="sm" v-if="currentPath" @click="emit('uploadClick')" :tooltip="t('ui.files.FileToolbar.uploadFiles')" :aria-label="t('ui.files.FileToolbar.uploadFiles')"
         class="gap-1 px-2 text-xs text-muted-foreground">
         <UploadIcon aria-hidden="true" />
-        <span class="hidden sm:inline">Upload</span>
+        <span class="hidden sm:inline">{{ t('ui.files.FileToolbar.upload') }}</span>
       </Button>
 
       <!-- Paste -->
-      <Button variant="ghost" size="sm" v-if="clipboard && currentPath" @click.stop="emit('paste')" tooltip="Paste" aria-label="Paste files"
+      <Button variant="ghost" size="sm" v-if="clipboard && currentPath" @click.stop="emit('paste')" :tooltip="t('ui.files.FileToolbar.paste')" :aria-label="t('ui.files.FileToolbar.pasteFiles')"
         :class="['gap-1 px-2 text-xs',
           clipboard.mode === 'cut'
             ? 'bg-warning/15 text-warning hover:bg-warning/25 hover:text-warning'
@@ -180,7 +183,7 @@ async function openSearch() {
       <Separator v-if="currentPath" orientation="vertical" class="data-[orientation=vertical]:h-4 mx-1" />
 
       <!-- Refresh -->
-      <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" tooltip="Refresh" aria-label="Refresh folder"
+      <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" :tooltip="t('ui.files.FileToolbar.refresh')" :aria-label="t('ui.files.FileToolbar.refreshFolder')"
         class="text-muted-foreground hover:text-foreground">
         <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -189,13 +192,13 @@ async function openSearch() {
       <ToggleGroup
         type="single" variant="outline" size="sm"
         :model-value="viewMode"
-        aria-label="View mode"
+        :aria-label="t('ui.files.FileToolbar.viewMode')"
         @update:model-value="v => { if (v === 'list' || v === 'grid') emit('update:viewMode', v) }"
       >
-        <Tip text="List view"><ToggleGroupItem value="list" aria-label="List view">
+        <Tip text="List view"><ToggleGroupItem value="list" :aria-label="t('ui.files.FileToolbar.listView')">
           <ListIcon aria-hidden="true" />
         </ToggleGroupItem></Tip>
-        <Tip text="Grid view"><ToggleGroupItem value="grid" aria-label="Grid view">
+        <Tip text="Grid view"><ToggleGroupItem value="grid" :aria-label="t('ui.files.FileToolbar.gridView')">
           <LayoutGridIcon aria-hidden="true" />
         </ToggleGroupItem></Tip>
       </ToggleGroup>
@@ -204,7 +207,7 @@ async function openSearch() {
            claim ~150px from the breadcrumb (tight in a narrow desktop-mode
            window, tighter still on a phone). -->
       <div v-if="currentPath" class="flex items-center ml-1 border-l border-border pl-2">
-        <Button variant="ghost" size="icon-sm" v-if="!searchOpen" @click="openSearch" tooltip="Search" aria-label="Search this folder"
+        <Button variant="ghost" size="icon-sm" v-if="!searchOpen" @click="openSearch" :tooltip="t('ui.files.FileToolbar.search')" :aria-label="t('ui.files.FileToolbar.searchThisFolder')"
           class="text-muted-foreground hover:text-foreground">
           <SearchIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -216,10 +219,10 @@ async function openSearch() {
             @keydown.enter="submitSearch"
             @keydown.escape="clearSearch"
             type="text"
-            placeholder="Search…"
+            :placeholder="t('ui.files.FileToolbar.search2')"
             class="h-7 pl-6 pr-6 text-xs w-28 sm:w-36"
           />
-          <Button variant="ghost" size="icon-xs" @click="clearSearch" tooltip="Close search" aria-label="Close search"
+          <Button variant="ghost" size="icon-xs" @click="clearSearch" :tooltip="t('ui.files.FileToolbar.closeSearch')" :aria-label="t('ui.files.FileToolbar.closeSearch')"
             class="absolute right-0.5 top-1/2 -translate-y-1/2 size-5 text-muted-foreground">
             <XIcon class="size-3" aria-hidden="true" />
           </Button>

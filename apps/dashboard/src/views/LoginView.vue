@@ -69,8 +69,8 @@ async function handleLogin() {
             <rect x="20" y="28" width="8" height="14" rx="1.5" fill="var(--primary)"/>
           </svg>
         </div>
-        <div class="text-4xl font-semibold text-foreground mb-1">Home Server</div>
-        <div class="eyebrow">Home Server Interface</div>
+        <div class="text-4xl font-semibold text-foreground mb-1">{{ t('ui.views.LoginView.homeServer') }}</div>
+        <div class="eyebrow">{{ t('ui.views.LoginView.homeServerInterface') }}</div>
       </div>
 
       <form
@@ -129,7 +129,7 @@ async function handleLogin() {
       </form>
 
       <p class="text-center text-xs text-muted-foreground mt-6">
-        Home Server Interface
+        {{ t('ui.views.LoginView.homeServerInterface') }}
       </p>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { ref, computed, watch } from 'vue'
@@ -19,6 +20,8 @@ import { expansionLine } from './expand'
 import { useAuth } from '../../lib/auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 // The page of one volume (#40): where the data lives, what it is made of,
 // what uses it, and what was done to it.
@@ -185,9 +188,9 @@ async function afterChange() { await refreshDevices(); await load() }
     </template>
 
     <template v-if="volume" #actions>
-      <Button size="sm" v-if="volume.state === 'not-mounted'" @click="mount">Mount</Button>
-      <Button variant="outline" size="sm" v-else-if="volume.state === 'mounted'" @click="unmount">Unmount</Button>
-      <Button variant="outline" size="sm" v-if="isAdmin && volume.state !== 'missing' && !pending" @click="expandDlg?.open(volume)">Expand…</Button>
+      <Button size="sm" v-if="volume.state === 'not-mounted'" @click="mount">{{ t('ui.storage.VolumePage.mount') }}</Button>
+      <Button variant="outline" size="sm" v-else-if="volume.state === 'mounted'" @click="unmount">{{ t('ui.storage.VolumePage.unmount') }}</Button>
+      <Button variant="outline" size="sm" v-if="isAdmin && volume.state !== 'missing' && !pending" @click="expandDlg?.open(volume)">{{ t('ui.storage.VolumePage.expand') }}</Button>
     </template>
 
     <template v-if="volume" #overview>
@@ -195,11 +198,11 @@ async function afterChange() { await refreshDevices(); await load() }
         <div v-if="pending" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm"
           :class="pending.phase === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-info/30 bg-info/5'">
           <span class="text-foreground">{{ expansionLine(pending, null) }}</span>
-          <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">Retry</Button>
+          <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">{{ t('ui.storage.VolumePage.retry') }}</Button>
         </div>
         <Alert variant="destructive" v-if="volume.state === 'missing'" class="block text-foreground" role="note">
-          HSI mounts this volume at <span class="font-mono">{{ volume.mountPoint }}</span>, but its disk was not found at boot. Apps and shares using it are stopped so nothing writes to the system disk in its place.
-          <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">Open Mounts</Button>
+          {{ t('ui.storage.VolumePage.hsiMountsThisVolumeAt') }} <span class="font-mono">{{ volume.mountPoint }}</span>{{ t('ui.storage.VolumePage.butItsDiskWasNot') }}
+          <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">{{ t('ui.storage.VolumePage.openMounts') }}</Button>
         </Alert>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
           <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-destructive' : 'text-warning'">
@@ -209,37 +212,37 @@ async function afterChange() { await refreshDevices(); await load() }
         <DescriptionCard v-if="volume.mountPoint" :mount-point="volume.mountPoint" @changed="afterChange" />
 
         <div>
-          <h3 class="eyebrow mb-2">Used by</h3>
+          <h3 class="eyebrow mb-2">{{ t('ui.storage.VolumePage.usedBy') }}</h3>
           <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Places</dt><dd class="text-foreground">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Shares</dt><dd class="font-mono text-xs text-foreground self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">Apps</dt><dd class="text-foreground">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.places') }}</dt><dd class="text-foreground">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.shares') }}</dt><dd class="font-mono text-xs text-foreground self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.apps') }}</dt><dd class="text-foreground">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
           </dl>
         </div>
 
         <p class="text-xs text-muted-foreground">
           <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
           <template v-if="volume.tolerates"> · survives {{ volume.tolerates }} failed {{ volume.tolerates === 1 ? 'disk' : 'disks' }}</template>
-          <template v-else-if="volume.state !== 'missing'"> · a failed disk loses this volume</template>
+          <template v-else-if="volume.state !== 'missing'"> {{ t('ui.storage.VolumePage.aFailedDiskLosesThis') }}</template>
         </p>
 
         <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-destructive/30 px-4 py-3">
-          <h3 class="text-sm font-semibold text-destructive">Remove this volume</h3>
+          <h3 class="text-sm font-semibold text-destructive">{{ t('ui.storage.VolumePage.removeThisVolume') }}</h3>
           <p class="mt-1 text-xs text-foreground/80">
-            Erases <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds</template><template v-else>its data</template>. Disks used only by this volume become free again; the review lists them.
-            <template v-if="volume.usedBy.places.length">Its Places and their shares are deleted.</template>
+            {{ t('ui.storage.VolumePage.erases') }} <template v-if="volume.space">the {{ fmtBytes(volume.space.used) }} it holds</template><template v-else>{{ t('ui.storage.VolumePage.itsData') }}</template>{{ t('ui.storage.VolumePage.disksUsedOnlyByThis') }}
+            <template v-if="volume.usedBy.places.length">{{ t('ui.storage.VolumePage.itsPlacesAndTheirShares') }}</template>
           </p>
           <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ volume.usedBy.apps.join(', ') }} {{ volume.usedBy.apps.length === 1 ? 'stores' : 'store' }} data here: remove {{ volume.usedBy.apps.length === 1 ? 'it' : 'them' }} first.
           </p>
           <p v-if="removeError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
-          <Button variant="destructive" size="sm" class="mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">Remove volume…</Button>
+          <Button variant="destructive" size="sm" class="mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">{{ t('ui.storage.VolumePage.removeVolume') }}</Button>
         </section>
       </div>
     </template>
 
     <template v-if="volume" #structure>
-      <p v-if="!volume.stack.length" class="text-sm text-muted-foreground">The devices of this volume are not connected.</p>
+      <p v-if="!volume.stack.length" class="text-sm text-muted-foreground">{{ t('ui.storage.VolumePage.theDevicesOfThisVolume') }}</p>
       <ol v-else class="space-y-1.5 max-w-lg">
         <li v-for="(layer, i) in volume.stack" :key="`${layer.kind}:${layer.name}`">
           <component

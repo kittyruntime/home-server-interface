@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import { confirmState } from '../../lib/confirm'
 import {
@@ -12,6 +13,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 /* The dialog stays open while it animates out; the state is cleared once the
    content has unmounted (close-auto-focus), and a request that replaced this
@@ -44,7 +47,7 @@ function onClosed() {
         <AlertDialogDescription>{{ confirmState.message }}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel @click="choose(false)">Cancel</AlertDialogCancel>
+        <AlertDialogCancel @click="choose(false)">{{ t('ui.shared.ConfirmDialog.cancel') }}</AlertDialogCancel>
         <AlertDialogAction
           :class="confirmState.danger ? buttonVariants({ variant: 'destructive' }) : undefined"
           @click="choose(true)"

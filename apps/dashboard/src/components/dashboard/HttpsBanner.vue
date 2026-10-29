@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { XIcon } from '@lucide/vue'
 import { ref, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ navigate: [target: 'secure'] }>()
 
@@ -34,15 +37,15 @@ onMounted(async () => {
       class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mx-4 mt-4 border-input bg-card p-4 pr-12 sm:mx-6 sm:mt-5"
     >
       <Button variant="ghost" size="icon-xs"
-        tooltip="Dismiss"
-        aria-label="Dismiss the HTTPS notice"
+        :tooltip="t('ui.home.HttpsBanner.dismiss')"
+        :aria-label="t('ui.home.HttpsBanner.dismissTheHttpsNotice')"
         class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
         @click="dismiss"
       >
         <XIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
-      <p class="text-sm text-foreground/80">This server is reached over plain HTTP. Turn HTTPS on to protect passwords and files on your network.</p>
-      <Button size="sm" class="mt-3" @click="emit('navigate', 'secure')">Open Secure access</Button>
+      <p class="text-sm text-foreground/80">{{ t('ui.home.HttpsBanner.thisServerIsReachedOver') }}</p>
+      <Button size="sm" class="mt-3" @click="emit('navigate', 'secure')">{{ t('ui.home.HttpsBanner.openSecureAccess') }}</Button>
     </div>
   </Transition>
 </template>

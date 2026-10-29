@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { PencilIcon, PlusIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -12,6 +13,8 @@ import SearchInput from './ui/SearchInput.vue'
 import { usePagination } from '../lib/usePagination'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 type Group = {
   id: string
@@ -123,7 +126,7 @@ onMounted(load)
 
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold text-foreground">Groups</h2>
+          <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.GroupsSection.groups') }}</h2>
           <p class="text-xs text-muted-foreground mt-0.5">
             {{ filteredGroups.length }} of {{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}
           </p>
@@ -134,18 +137,18 @@ onMounted(load)
           class="shrink-0"
         >
           <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-          Add group
+          {{ t('ui.settings.GroupsSection.addGroup') }}
         </Button>
       </div>
 
       <!-- Add group form -->
       <div v-if="addingGroup" class="border border-input bg-muted rounded-xl p-4 space-y-3">
-        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">New group</h4>
+        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">{{ t('ui.settings.GroupsSection.newGroup') }}</h4>
         <div>
-          <label class="block text-xs text-muted-foreground mb-1">Name <span class="text-primary">*</span></label>
+          <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.GroupsSection.name') }} <span class="text-primary">*</span></label>
           <Input
             v-model="newGroupName"
-            placeholder="e.g. editors"
+            :placeholder="t('ui.settings.GroupsSection.eGEditors')"
             autofocus
             @keydown.enter.prevent="createGroup"
           />
@@ -159,12 +162,12 @@ onMounted(load)
           >
             {{ createLoading ? 'Creating…' : 'Create' }}
           </Button>
-          <Button variant="ghost" size="sm" @click="cancelAdd">Cancel</Button>
+          <Button variant="ghost" size="sm" @click="cancelAdd">{{ t('ui.settings.GroupsSection.cancel') }}</Button>
         </div>
       </div>
 
       <!-- Search -->
-      <SearchInput v-model="search" placeholder="Search groups by name…" class="max-w-sm" />
+      <SearchInput v-model="search" :placeholder="t('ui.settings.GroupsSection.searchGroupsByName')" class="max-w-sm" />
 
       <!-- Table -->
       <Card class="block gap-0 py-0 overflow-hidden">
@@ -172,11 +175,11 @@ onMounted(load)
           <TableHeader>
             <TableRow class="bg-muted border-b border-border">
               <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
-                <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">Group</SortableHeader>
+                <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">{{ t('ui.settings.GroupsSection.group') }}</SortableHeader>
               </TableHead>
-              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">Members</TableHead>
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">{{ t('ui.settings.GroupsSection.members') }}</TableHead>
               <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
-                <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">Created</SortableHeader>
+                <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">{{ t('ui.settings.GroupsSection.created') }}</SortableHeader>
               </TableHead>
               <TableHead class="px-4 py-3 w-16"></TableHead>
             </TableRow>
@@ -206,7 +209,7 @@ onMounted(load)
               <TableCell class="px-4 py-3.5 text-right">
                 <Button variant="ghost" size="icon-sm"
                   @click="openEditor(group)"
-                  tooltip="Edit group" aria-label="Edit group"
+                  :tooltip="t('ui.settings.GroupsSection.editGroup')" :aria-label="t('ui.settings.GroupsSection.editGroup')"
                   class="text-muted-foreground hover:text-foreground"
                 >
                   <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
@@ -218,7 +221,7 @@ onMounted(load)
             <TableRow v-if="filteredGroups.length === 0">
               <TableCell colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
                 <span>{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
-                <Button variant="outline" size="xs" v-if="groups.length && search" class="ml-2" @click="search = ''">Clear search</Button>
+                <Button variant="outline" size="xs" v-if="groups.length && search" class="ml-2" @click="search = ''">{{ t('ui.settings.GroupsSection.clearSearch') }}</Button>
               </TableCell>
             </TableRow>
           </TableBody>

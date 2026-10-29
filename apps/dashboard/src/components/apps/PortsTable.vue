@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref, watch } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
 import { trpc } from '../../lib/trpc'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 export interface PortMapping {
   hostPort:      number
@@ -49,20 +52,20 @@ async function runChecks() {
   <RowEditor
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    empty-text="No port mappings."
+    :empty-text="t('ui.apps.PortsTable.noPortMappings')"
     add-label="Add port"
     :new-item="(): PortMapping => ({ hostPort: 0, containerPort: 0, protocol: 'tcp' })"
   >
     <template #row="{ item, update }">
       <Input
-        type="number" placeholder="Host" min="1" max="65535"
+        type="number" :placeholder="t('ui.apps.PortsTable.host')" min="1" max="65535"
         :model-value="item.hostPort"
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
         class="w-24 px-2 py-1.5 text-sm"
       />
       <span class="text-muted-foreground text-sm">:</span>
       <Input
-        type="number" placeholder="Container" min="1" max="65535"
+        type="number" :placeholder="t('ui.apps.PortsTable.container')" min="1" max="65535"
         :model-value="item.containerPort"
         @input="update({ containerPort: +($event.target as HTMLInputElement).value })"
         class="w-24 px-2 py-1.5 text-sm"
@@ -83,9 +86,9 @@ async function runChecks() {
 
       <!-- Optional access binding: where this port is reached publicly. -->
       <div class="flex items-center gap-2 flex-wrap pl-1">
-        <span class="text-2xs uppercase tracking-caps text-muted-foreground w-14 shrink-0">Access</span>
+        <span class="text-2xs uppercase tracking-caps text-muted-foreground w-14 shrink-0">{{ t('ui.apps.PortsTable.access') }}</span>
         <Input
-          type="text" placeholder="domain (optional) e.g. app.example.com"
+          type="text" :placeholder="t('ui.apps.PortsTable.domainOptionalEGApp')"
           :model-value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
           class="flex-1 min-w-[12rem] px-2 py-1 text-xs"

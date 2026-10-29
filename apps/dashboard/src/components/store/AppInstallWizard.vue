@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -11,6 +12,8 @@ import { generateSecret, portCandidates } from './install-helpers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 type Manifest     = Awaited<ReturnType<typeof trpc.catalog.get.query>>
 type InstallInput = Parameters<typeof trpc.catalog.install.mutate>[0]
@@ -237,7 +240,7 @@ async function install() {
 
     <LoadingState v-if="loading" variant="compact" />
 
-    <div v-else-if="loadError"><ErrorState :message="loadError" /><div class="flex justify-center"><Button variant="outline" size="sm" @click="emit('close')">Back</Button></div></div>
+    <div v-else-if="loadError"><ErrorState :message="loadError" /><div class="flex justify-center"><Button variant="outline" size="sm" @click="emit('close')">{{ t('ui.store.AppInstallWizard.back') }}</Button></div></div>
 
     <template v-else-if="manifest">
       <!-- Header -->
@@ -252,16 +255,16 @@ async function install() {
 
       <!-- Name -->
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">App name</label>
-        <Input v-model="name" maxlength="64" placeholder="app-name" />
+        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.store.AppInstallWizard.appName') }}</label>
+        <Input v-model="name" maxlength="64" laceholder="app-name" />
         <p v-if="!nameValid" role="alert" class="status-text text-destructive">
-          <span class="status-tag">[ERR]</span> Use lowercase letters, numbers, ".", "_" or "-" (must start with a letter or digit).
+          <span class="status-tag">[ERR]</span> {{ t('ui.store.AppInstallWizard.useLowercaseLettersNumbersOr') }}
         </p>
       </div>
 
       <!-- Ports -->
       <div v-if="ports.length" class="space-y-2">
-        <h4 class="eyebrow">Ports</h4>
+        <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.ports') }}</h4>
         <div v-for="p in ports" :key="`${p.container}-${p.protocol}`" class="space-y-1">
           <div class="flex items-center gap-3">
             <span class="text-sm text-foreground flex-1">{{ p.label }}</span>
@@ -283,7 +286,7 @@ async function install() {
 
       <!-- Env -->
       <div v-if="envRows.length" class="space-y-3">
-        <h4 class="eyebrow">Settings</h4>
+        <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.settings') }}</h4>
         <div v-for="e in envRows" :key="e.key" class="space-y-1.5">
           <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">
             {{ e.label }}<span v-if="e.required" class="text-destructive"> *</span>
@@ -297,7 +300,7 @@ async function install() {
               class="flex-1 min-w-0 font-mono"
             />
             <Button variant="outline" size="sm" type="button" class="shrink-0" @click="e.shown = !e.shown">{{ e.shown ? 'Hide' : 'Show' }}</Button>
-            <Button variant="outline" size="sm" type="button" class="shrink-0" @click="generate(e)">Generate</Button>
+            <Button variant="outline" size="sm" type="button" class="shrink-0" @click="generate(e)">{{ t('ui.store.AppInstallWizard.generate') }}</Button>
           </div>
           <Input
             v-else
@@ -305,13 +308,13 @@ async function install() {
             v-model="e.value"
             :placeholder="e.key"
           />
-          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-muted-foreground">Note it somewhere safe before installing: the app asks for it.</p>
+          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.noteItSomewhereSafeBefore') }}</p>
         </div>
       </div>
 
       <!-- Volumes -->
       <div v-if="volumeRows.length" class="space-y-4">
-        <h4 class="eyebrow">Storage</h4>
+        <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.storage') }}</h4>
         <div
           v-for="v in volumeRows" :key="v.target"
           class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0"
@@ -325,10 +328,10 @@ async function install() {
             :model-value="v.mode"
             @change="v.mode = ($event.target as HTMLSelectElement).value as VolMode"
           >
-            <NativeSelectOption value="place">Existing place</NativeSelectOption>
-            <NativeSelectOption value="newPlace">New place</NativeSelectOption>
-            <NativeSelectOption value="bind">Host path (bind mount)</NativeSelectOption>
-            <NativeSelectOption value="named">Named Docker volume</NativeSelectOption>
+            <NativeSelectOption value="place">{{ t('ui.store.AppInstallWizard.existingPlace') }}</NativeSelectOption>
+            <NativeSelectOption value="newPlace">{{ t('ui.store.AppInstallWizard.newPlace') }}</NativeSelectOption>
+            <NativeSelectOption value="bind">{{ t('ui.store.AppInstallWizard.hostPathBindMount') }}</NativeSelectOption>
+            <NativeSelectOption value="named">{{ t('ui.store.AppInstallWizard.namedDockerVolume') }}</NativeSelectOption>
           </NativeSelect>
 
           <NativeSelect
@@ -336,21 +339,21 @@ async function install() {
             :model-value="v.placeId"
             @change="v.placeId = ($event.target as HTMLSelectElement).value"
           >
-            <NativeSelectOption value="">Select a place</NativeSelectOption>
+            <NativeSelectOption value="">{{ t('ui.store.AppInstallWizard.selectAPlace') }}</NativeSelectOption>
             <NativeSelectOption v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }} ({{ pl.path }})</NativeSelectOption>
           </NativeSelect>
           <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-muted-foreground">
-            No places yet. Create one from the Places page, or pick another source.
+            {{ t('ui.store.AppInstallWizard.noPlacesYetCreateOne') }}
           </p>
 
           <div v-else-if="v.mode === 'newPlace'" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Input v-model="v.newPlaceName" placeholder="Place name" />
-            <Input v-model="v.newPlacePath" placeholder="/srv/apps/…" class="font-mono" />
+            <Input v-model="v.newPlaceName" :placeholder="t('ui.store.AppInstallWizard.placeName')" />
+            <Input v-model="v.newPlacePath" laceholder="/srv/apps/…" class="font-mono" />
           </div>
 
-          <Input v-else-if="v.mode === 'bind'" v-model="v.bindPath" placeholder="/host/path" class="font-mono" />
+          <Input v-else-if="v.mode === 'bind'" v-model="v.bindPath" laceholder="/host/path" class="font-mono" />
 
-          <Input v-else-if="v.mode === 'named'" v-model="v.namedName" placeholder="volume-name" class="font-mono" />
+          <Input v-else-if="v.mode === 'named'" v-model="v.namedName" laceholder="volume-name" class="font-mono" />
         </div>
       </div>
 
@@ -358,7 +361,7 @@ async function install() {
       <div class="flex items-center gap-3 pt-2 border-t border-border">
         <p v-if="installError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ installError }}</p>
         <div v-else class="flex-1" />
-        <Button variant="outline" size="sm" @click="emit('close')">Cancel</Button>
+        <Button variant="outline" size="sm" @click="emit('close')">{{ t('ui.store.AppInstallWizard.cancel') }}</Button>
         <Button size="sm" :disabled="!canInstall" @click="install">
           {{ installing ? 'Installing…' : 'Install' }}
         </Button>

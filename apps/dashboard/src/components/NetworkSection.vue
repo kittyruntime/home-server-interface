@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,8 @@ import { applyPlanned } from '../lib/plan'
 import { useToast } from '../lib/toast'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.network.status.query>>
 type Iface = Status['interfaces'][number]
@@ -139,14 +142,13 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Network</h2>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.NetworkSection.network') }}</h2>
     <p class="text-sm text-muted-foreground mb-6 max-w-xl">
-      How this server gets its IPv4 address and DNS servers. A change has to be kept once it is applied;
-      otherwise NetworkManager puts the previous settings back by itself, even if the dashboard is cut off.
+      {{ t('ui.settings.NetworkSection.howThisServerGetsIts') }}
     </p>
 
     <LoadingState v-if="loading && !status" />
-    <ErrorState v-else-if="error" :message="error" retry-label="Retry" @retry="load" />
+    <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.settings.NetworkSection.retry')" @retry="load" />
 
     <div v-else-if="status" class="space-y-4 max-w-2xl">
       <Alert v-if="status.unavailable" variant="info" role="status">
@@ -155,21 +157,21 @@ onUnmounted(() => clearInterval(timer))
 
       <!-- The change just applied from this page -->
       <Alert v-if="pending" variant="warning" role="status" class="block space-y-2">
-        <p class="font-medium">Keep the new network settings?</p>
+        <p class="font-medium">{{ t('ui.settings.NetworkSection.keepTheNewNetworkSettings') }}</p>
         <p class="text-foreground/80">If you can read this, the dashboard still answers. Without an answer they are undone in {{ secondsLeft }} s.</p>
         <div class="flex gap-2">
-          <Button size="sm" @click="keep(pending.checkpoint)">Keep</Button>
-          <Button size="sm" variant="outline" @click="undo(pending.checkpoint)">Undo now</Button>
+          <Button size="sm" @click="keep(pending.checkpoint)">{{ t('ui.settings.NetworkSection.keep') }}</Button>
+          <Button size="sm" variant="outline" @click="undo(pending.checkpoint)">{{ t('ui.settings.NetworkSection.undoNow') }}</Button>
         </div>
       </Alert>
 
       <!-- A change applied elsewhere (the old address), still waiting -->
       <Alert v-for="c in waiting" :key="c" variant="warning" role="status" class="block space-y-2">
-        <p class="font-medium">A network change is waiting to be kept</p>
-        <p class="text-foreground/80">It was applied a moment ago and is undone automatically unless you keep it.</p>
+        <p class="font-medium">{{ t('ui.settings.NetworkSection.aNetworkChangeIsWaiting') }}</p>
+        <p class="text-foreground/80">{{ t('ui.settings.NetworkSection.itWasAppliedAMoment') }}</p>
         <div class="flex gap-2">
-          <Button size="sm" @click="keep(c)">Keep</Button>
-          <Button size="sm" variant="outline" @click="undo(c)">Undo now</Button>
+          <Button size="sm" @click="keep(c)">{{ t('ui.settings.NetworkSection.keep') }}</Button>
+          <Button size="sm" variant="outline" @click="undo(c)">{{ t('ui.settings.NetworkSection.undoNow') }}</Button>
         </div>
       </Alert>
 
@@ -184,32 +186,32 @@ onUnmounted(() => clearInterval(timer))
             </div>
             <p v-if="i.connection" class="text-xs text-muted-foreground mt-0.5">{{ i.connection }}</p>
           </div>
-          <Button v-if="i.managed && editing !== i.device && !status.unavailable" variant="outline" size="sm" @click="edit(i)">Change…</Button>
+          <Button v-if="i.managed && editing !== i.device && !status.unavailable" variant="outline" size="sm" @click="edit(i)">{{ t('ui.settings.NetworkSection.change') }}</Button>
         </div>
 
         <dl class="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-          <dt class="text-muted-foreground">Address</dt>
+          <dt class="text-muted-foreground">{{ t('ui.settings.NetworkSection.address') }}</dt>
           <dd class="font-mono text-foreground/80">{{ i.addresses.join(', ') || 'none' }}</dd>
-          <dt class="text-muted-foreground">Gateway</dt>
+          <dt class="text-muted-foreground">{{ t('ui.settings.NetworkSection.gateway') }}</dt>
           <dd class="font-mono text-foreground/80">{{ i.gateway || 'none' }}</dd>
           <dt class="text-muted-foreground">DNS</dt>
           <dd class="font-mono text-foreground/80">{{ i.dns.join(', ') || 'none' }}</dd>
         </dl>
-        <p v-if="!i.managed" class="mt-2 text-xs text-muted-foreground">NetworkManager does not manage this interface with a connection HSI can change.</p>
+        <p v-if="!i.managed" class="mt-2 text-xs text-muted-foreground">{{ t('ui.settings.NetworkSection.networkmanagerDoesNotManageThis') }}</p>
 
         <form v-if="editing === i.device" class="mt-4 space-y-3 border-t pt-4" @submit.prevent="apply(i)">
-          <ToggleGroup type="single" variant="outline" size="sm" :model-value="form.method" aria-label="Addressing"
+          <ToggleGroup type="single" variant="outline" size="sm" :model-value="form.method" :aria-label="t('ui.settings.NetworkSection.addressing')"
             @update:model-value="v => { if (v === 'auto' || v === 'manual') form.method = v }">
             <ToggleGroupItem value="auto" class="px-3 text-xs">DHCP</ToggleGroupItem>
-            <ToggleGroupItem value="manual" class="px-3 text-xs">Manual</ToggleGroupItem>
+            <ToggleGroupItem value="manual" class="px-3 text-xs">{{ t('ui.settings.NetworkSection.manual') }}</ToggleGroupItem>
           </ToggleGroup>
           <div v-if="form.method === 'manual'" class="grid gap-3 sm:grid-cols-2">
             <div class="space-y-1">
-              <Label :for="`addr-${i.device}`" class="text-xs">Address with prefix</Label>
+              <Label :for="`addr-${i.device}`" class="text-xs">{{ t('ui.settings.NetworkSection.addressWithPrefix') }}</Label>
               <Input :id="`addr-${i.device}`" v-model="form.address" placeholder="192.168.1.20/24" class="font-mono" required />
             </div>
             <div class="space-y-1">
-              <Label :for="`gw-${i.device}`" class="text-xs">Gateway</Label>
+              <Label :for="`gw-${i.device}`" class="text-xs">{{ t('ui.settings.NetworkSection.gateway') }}</Label>
               <Input :id="`gw-${i.device}`" v-model="form.gateway" placeholder="192.168.1.1" class="font-mono" />
             </div>
           </div>
@@ -218,18 +220,18 @@ onUnmounted(() => clearInterval(timer))
             <Input :id="`dns-${i.device}`" v-model="form.dns" placeholder="1.1.1.1, 9.9.9.9" class="font-mono" />
           </div>
           <Alert v-if="newAddress(i)" variant="warning" role="note" class="block text-xs">
-            The dashboard will move to <span class="font-mono">{{ newAddress(i) }}</span>: open
-            <span class="font-mono">{{ newUrl(newAddress(i)!) }}</span> and keep the change there.
+            {{ t('ui.settings.NetworkSection.theDashboardWillMoveTo') }} <span class="font-mono">{{ newAddress(i) }}</span>{{ t('ui.settings.NetworkSection.open') }}
+            <span class="font-mono">{{ newUrl(newAddress(i)!) }}</span> {{ t('ui.settings.NetworkSection.andKeepTheChangeThere') }}
           </Alert>
           <p v-if="formError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ formError }}</p>
           <div class="flex gap-2">
-            <Button type="submit" size="sm">Review…</Button>
-            <Button type="button" variant="ghost" size="sm" @click="editing = null">Cancel</Button>
+            <Button type="submit" size="sm">{{ t('ui.settings.NetworkSection.review') }}</Button>
+            <Button type="button" variant="ghost" size="sm" @click="editing = null">{{ t('ui.settings.NetworkSection.cancel') }}</Button>
           </div>
         </form>
       </Card>
 
-      <p v-if="!status.unavailable && !status.interfaces.length" class="text-sm text-muted-foreground">No network interface found.</p>
+      <p v-if="!status.unavailable && !status.interfaces.length" class="text-sm text-muted-foreground">{{ t('ui.settings.NetworkSection.noNetworkInterfaceFound') }}</p>
     </div>
   </div>
 </template>

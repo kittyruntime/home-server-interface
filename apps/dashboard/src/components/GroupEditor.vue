@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { avatarGradient } from '../lib/avatar'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, Trash2Icon } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import { trpc } from '../lib/trpc'
 import GroupPicker, { type PickerItem } from './ui/GroupPicker.vue'
+
+const { t } = useI18n()
 
 type Group = {
   id: string
@@ -103,7 +106,7 @@ async function toggleMember(userId: string) {
       <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
         class="text-muted-foreground hover:text-foreground shrink-0"
-        tooltip="Back to groups" aria-label="Back to groups"
+        :tooltip="t('ui.settings.GroupEditor.backToGroups')" :aria-label="t('ui.settings.GroupEditor.backToGroups')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
@@ -118,15 +121,15 @@ async function toggleMember(userId: string) {
         <Button variant="ghost" size="icon-sm"
           @click="deleteConfirm = true"
           class="text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-          tooltip="Delete group" aria-label="Delete group"
+          :tooltip="t('ui.settings.GroupEditor.deleteGroup')" :aria-label="t('ui.settings.GroupEditor.deleteGroup')"
         >
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </Button>
       </template>
       <template v-else>
-        <span class="text-xs text-destructive shrink-0">Delete?</span>
-        <Button variant="destructive" size="xs" :disabled="deleteBusy" @click="deleteGroup">Yes</Button>
-        <Button variant="ghost" size="xs" @click="deleteConfirm = false">No</Button>
+        <span class="text-xs text-destructive shrink-0">{{ t('ui.settings.GroupEditor.delete') }}</span>
+        <Button variant="destructive" size="xs" :disabled="deleteBusy" @click="deleteGroup">{{ t('ui.settings.GroupEditor.yes') }}</Button>
+        <Button variant="ghost" size="xs" @click="deleteConfirm = false">{{ t('ui.settings.GroupEditor.no') }}</Button>
       </template>
     </div>
 
@@ -135,11 +138,11 @@ async function toggleMember(userId: string) {
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Members</h4>
+        <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.GroupEditor.members') }}</h4>
         <span class="text-xs text-muted-foreground">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <p v-if="users.length === 0" class="text-xs text-muted-foreground px-0.5">No users</p>
+      <p v-if="users.length === 0" class="text-xs text-muted-foreground px-0.5">{{ t('ui.settings.GroupEditor.noUsers') }}</p>
 
       <GroupPicker
         v-else

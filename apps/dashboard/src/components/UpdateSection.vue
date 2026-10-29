@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, RefreshCwIcon } from '@lucide/vue'
@@ -11,6 +12,8 @@ import ReleaseNotes from './ReleaseNotes.vue'
 import { useConfirm } from '../lib/confirm'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.update.status.query>>
 type Preflight = Awaited<ReturnType<typeof trpc.update.preflight.query>>
@@ -198,8 +201,8 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">Updates</h2>
-    <p class="text-sm text-muted-foreground mb-6">Manage software updates for this server.</p>
+    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.UpdateSection.updates') }}</h2>
+    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.settings.UpdateSection.manageSoftwareUpdatesForThis') }}</p>
 
     <!-- ── Restart timeline ─────────────────────────────────────────────── -->
     <div v-if="restartStep" class="space-y-6">
@@ -252,20 +255,20 @@ onUnmounted(() => clearInterval(timer))
       <!-- Version row -->
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-row items-center justify-between gap-6">
         <div>
-          <p class="eyebrow mb-1">Current version</p>
+          <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.currentVersion') }}</p>
           <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
           <ArrowRightIcon class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div class="text-right">
-            <p class="eyebrow mb-1">Available</p>
+            <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.available') }}</p>
             <p class="font-figure text-xl text-primary">{{ status.latest }}</p>
           </div>
         </template>
         <template v-else>
           <div class="flex items-center gap-2 text-success">
             <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span class="text-sm">Up to date</span>
+            <span class="text-sm">{{ t('ui.settings.UpdateSection.upToDate') }}</span>
           </div>
         </template>
       </Card>
@@ -278,7 +281,7 @@ onUnmounted(() => clearInterval(timer))
           <span class="text-xs text-muted-foreground">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
         <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-warning">
-          <p>The update is complete. These application settings were not carried over, so the applications may not behave as before. Fix each one, then restart the application. Running the update again will not restore them.</p>
+          <p>{{ t('ui.settings.UpdateSection.theUpdateIsCompleteThese') }}</p>
           <ul class="list-disc pl-5 space-y-2">
             <li v-for="(item, index) in status.lastResult.skippedSettings" :key="index">
               <strong>{{ item.application }} ({{ item.setting }})</strong>: {{ item.reason }}.
@@ -301,7 +304,7 @@ onUnmounted(() => clearInterval(timer))
             target="_blank" rel="noopener noreferrer"
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            View on GitHub
+            {{ t('ui.settings.UpdateSection.viewOnGithub') }}
             <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
@@ -313,7 +316,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- Pre-flight checks -->
       <Card v-if="status.hasUpdate && preflight" class="block gap-0 py-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-border">
-          <p class="eyebrow">Pre-flight checks</p>
+          <p class="eyebrow">{{ t('ui.settings.UpdateSection.preFlightChecks') }}</p>
         </div>
         <ul class="divide-y divide-border">
           <li v-for="c in preflight.checks" :key="c.id" class="px-4 py-2.5 flex items-center gap-3">
@@ -330,8 +333,8 @@ onUnmounted(() => clearInterval(timer))
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
         <p class="text-xs text-muted-foreground">
-          <template v-if="preflight && !preflight.canApply">A pre-flight check is failing: resolve it before installing.</template>
-          <template v-else>The server will restart after installation (~30s downtime).</template>
+          <template v-if="preflight && !preflight.canApply">{{ t('ui.settings.UpdateSection.aPreFlightCheckIs') }}</template>
+          <template v-else>{{ t('ui.settings.UpdateSection.theServerWillRestartAfter') }}</template>
         </p>
         <Button size="sm"
           @click="applyUpdate"
@@ -348,14 +351,14 @@ onUnmounted(() => clearInterval(timer))
         <div>
           <p class="text-xs text-muted-foreground">
             <template v-if="status.checkedAt">Last checked {{ formatDateTime(status.checkedAt) }}</template>
-            <template v-else>Never checked (runs daily via systemd timer)</template>
+            <template v-else>{{ t('ui.settings.UpdateSection.neverCheckedRunsDailyVia') }}</template>
           </p>
           <a
             :href="`${status.repoUrl}/releases`"
             target="_blank" rel="noopener noreferrer"
             class="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
           >
-            View all releases on GitHub
+            {{ t('ui.settings.UpdateSection.viewAllReleasesOnGithub') }}
             <ExternalLinkIcon class="w-3 h-3" aria-hidden="true" />
           </a>
         </div>
@@ -371,8 +374,8 @@ onUnmounted(() => clearInterval(timer))
 
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">Restart HSI</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the application backend without rebooting the host server.</p>
+          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.restartHsi') }}</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartTheApplicationBackendWithout') }}</p>
         </div>
         <Button variant="outline" size="sm"
           @click="restartSoftware"
@@ -387,8 +390,8 @@ onUnmounted(() => clearInterval(timer))
 
       <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 border-destructive/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">Reboot server</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">Restart the physical host and every service running on it.</p>
+          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.rebootServer') }}</p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartThePhysicalHostAnd') }}</p>
         </div>
         <Button variant="destructive" size="sm"
           @click="rebootHost"

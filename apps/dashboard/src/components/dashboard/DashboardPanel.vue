@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ChevronsLeftRightIcon, ChevronsUpDownIcon, LayoutGridIcon, PlusIcon, XIcon } from '@lucide/vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -11,6 +12,8 @@ import {
 } from '../../lib/dashboard-widgets'
 import { smartStatus } from '../storage/smart'
 import { useAuth } from '../../lib/auth'
+
+const { t } = useI18n()
 
 const {
   widgets, metrics,
@@ -41,7 +44,7 @@ const SMART_DOT: Record<string, string> = {
     <!-- Toolbar -->
     <div class="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border flex-shrink-0">
       <div class="flex items-center gap-3">
-        <h3 class="text-sm font-semibold text-foreground">Overview</h3>
+        <h3 class="text-sm font-semibold text-foreground">{{ t('ui.home.DashboardPanel.overview') }}</h3>
         <span v-if="metrics" class="text-xs text-muted-foreground font-mono">{{ uptimeStr }}</span>
       </div>
 
@@ -50,7 +53,7 @@ const SMART_DOT: Record<string, string> = {
         <DropdownMenuTrigger as-child>
           <Button variant="outline" size="sm">
             <PlusIcon aria-hidden="true" />
-            Add
+            {{ t('ui.home.DashboardPanel.add') }}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="min-w-[140px]">
@@ -68,7 +71,7 @@ const SMART_DOT: Record<string, string> = {
     <div class="flex-1 overflow-y-auto p-4 sm:p-6">
       <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
         <LayoutGridIcon class="w-10 h-10 opacity-20" aria-hidden="true" />
-        <p class="text-sm">No widgets. Click <strong class="text-foreground/80">Add</strong> to get started.</p>
+        <p class="text-sm">{{ t('ui.home.DashboardPanel.noWidgetsClick') }} <strong class="text-foreground/80">{{ t('ui.home.DashboardPanel.add') }}</strong> {{ t('ui.home.DashboardPanel.toGetStarted') }}</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -88,7 +91,7 @@ const SMART_DOT: Record<string, string> = {
             </Button>
             <Button variant="ghost" size="icon-xs"
               @click="removeWidget(w.id)"
-              tooltip="Remove" aria-label="Remove"
+              :tooltip="t('ui.home.DashboardPanel.remove')" :aria-label="t('ui.home.DashboardPanel.remove')"
               class="text-muted-foreground hover:text-primary hover:bg-primary/10"
             >
               <XIcon class="w-3 h-3" aria-hidden="true" />
@@ -120,7 +123,7 @@ const SMART_DOT: Record<string, string> = {
 
           <!-- ---- Memory ---- -->
           <template v-else-if="w.type === 'memory'">
-            <p class="eyebrow mb-3">Memory</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.memory') }}</p>
             <div class="flex-1 flex flex-col justify-between">
               <div class="flex items-baseline justify-between mb-3">
                 <span class="text-2xl font-bold text-muted-foreground font-figure tabular-nums leading-none">
@@ -143,16 +146,16 @@ const SMART_DOT: Record<string, string> = {
 
           <!-- ---- Network ---- -->
           <template v-else-if="w.type === 'network'">
-            <p class="eyebrow mb-3">Network</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.network') }}</p>
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <div class="space-y-0.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="text-2xs font-semibold uppercase tracking-caps text-success">↓ rx</span>
+                    <span class="text-2xs font-semibold uppercase tracking-caps text-success">{{ t('ui.home.DashboardPanel.rx') }}</span>
                     <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
                   </div>
                   <div class="flex items-center gap-1.5">
-                    <span class="text-2xs font-semibold text-primary uppercase tracking-caps">↑ tx</span>
+                    <span class="text-2xs font-semibold text-primary uppercase tracking-caps">{{ t('ui.home.DashboardPanel.tx') }}</span>
                     <span class="text-sm font-mono text-foreground">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
                   </div>
                 </div>
@@ -181,28 +184,28 @@ const SMART_DOT: Record<string, string> = {
 
           <!-- ---- Containers ---- -->
           <template v-else-if="w.type === 'containers'">
-            <p class="eyebrow mb-3">Containers</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.containers') }}</p>
             <div class="flex-1 flex items-center gap-6">
               <div class="text-center">
                 <p class="text-3xl font-bold font-figure tabular-nums leading-none text-success">{{ ctrRunning }}</p>
-                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Running</p>
+                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.home.DashboardPanel.running') }}</p>
               </div>
               <div class="text-center">
                 <p class="text-3xl font-bold text-muted-foreground font-figure tabular-nums leading-none">{{ ctrStopped }}</p>
-                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Stopped</p>
+                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.home.DashboardPanel.stopped') }}</p>
               </div>
               <div class="text-center">
                 <p class="text-3xl font-bold font-figure tabular-nums leading-none" :class="ctrError > 0 ? 'text-primary' : 'text-muted-foreground'">{{ ctrError }}</p>
-                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">Error</p>
+                <p class="text-2xs text-muted-foreground uppercase tracking-caps mt-1">{{ t('ui.home.DashboardPanel.error') }}</p>
               </div>
             </div>
           </template>
 
           <!-- ---- Storage ---- -->
           <template v-else-if="w.type === 'storage'">
-            <p class="eyebrow mb-3">Storage</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.storage') }}</p>
             <div v-if="disks.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
-              No filesystems
+              {{ t('ui.home.DashboardPanel.noFilesystems') }}
             </div>
             <div v-else class="flex-1 flex flex-col gap-3 overflow-y-auto">
               <div v-for="d in disks" :key="d.mountPoint">
@@ -223,11 +226,11 @@ const SMART_DOT: Record<string, string> = {
 
           <!-- ---- System info ---- -->
           <template v-else-if="w.type === 'sysinfo'">
-            <p class="eyebrow mb-3">System</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.system') }}</p>
             <div v-if="!sysinfo" class="flex-1 flex items-center text-xs text-muted-foreground">-</div>
             <dl v-else class="flex-1 flex flex-col justify-center gap-2 text-sm">
               <div class="flex justify-between gap-3">
-                <dt class="text-muted-foreground">Host</dt>
+                <dt class="text-muted-foreground">{{ t('ui.home.DashboardPanel.host') }}</dt>
                 <dd class="font-mono text-foreground truncate" :title="sysinfo.hostname">{{ sysinfo.hostname }}</dd>
               </div>
               <div class="flex justify-between gap-3">
@@ -235,11 +238,11 @@ const SMART_DOT: Record<string, string> = {
                 <dd class="text-foreground/80 truncate capitalize" :title="`${sysinfo.platform} ${sysinfo.release}`">{{ sysinfo.platform }} {{ sysinfo.release }}</dd>
               </div>
               <div class="flex justify-between gap-3">
-                <dt class="text-muted-foreground">CPUs</dt>
+                <dt class="text-muted-foreground">{{ t('ui.home.DashboardPanel.cpus') }}</dt>
                 <dd class="font-mono text-foreground/80">{{ sysinfo.cpuCount }}</dd>
               </div>
               <div class="flex justify-between gap-3">
-                <dt class="text-muted-foreground">Load</dt>
+                <dt class="text-muted-foreground">{{ t('ui.home.DashboardPanel.load') }}</dt>
                 <dd class="font-mono text-foreground/80 tabular-nums">
                   {{ sysinfo.loadavg.map(n => n.toFixed(2)).join('  ') }}
                 </dd>
@@ -249,9 +252,9 @@ const SMART_DOT: Record<string, string> = {
 
           <!-- ---- Disk health (SMART) ---- -->
           <template v-else-if="w.type === 'smart'">
-            <p class="eyebrow mb-3">Disk Health</p>
+            <p class="eyebrow mb-3">{{ t('ui.home.DashboardPanel.diskHealth') }}</p>
             <div v-if="smartDevices.length === 0" class="flex-1 flex items-center text-xs text-muted-foreground">
-              No drives
+              {{ t('ui.home.DashboardPanel.noDrives') }}
             </div>
             <div v-else class="flex-1 flex flex-col gap-2.5 overflow-y-auto">
               <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">

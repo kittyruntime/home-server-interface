@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import RowEditor from '../ui/RowEditor.vue'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+
+const { t } = useI18n()
 
 export interface VolumeMount { type: 'bind' | 'named' | 'place'; source: string; target: string }
 export interface Place        { id: string; name: string; path: string }
@@ -22,7 +25,7 @@ function placePath(id: string): string | null {
   <RowEditor
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    empty-text="No volumes."
+    :empty-text="t('ui.apps.VolumesTable.noVolumes')"
     add-label="Add volume"
     :new-item="(): VolumeMount => ({ type: 'bind', source: '', target: '' })"
   >
@@ -33,23 +36,23 @@ function placePath(id: string): string | null {
         @change="update({ type: ($event.target as HTMLSelectElement).value as VolumeMount['type'], source: '' })"
         class="px-2 py-1.5 text-sm"
       >
-        <NativeSelectOption value="bind">Bind</NativeSelectOption>
-        <NativeSelectOption value="named">Named</NativeSelectOption>
-        <NativeSelectOption value="place">Place</NativeSelectOption>
+        <NativeSelectOption value="bind">{{ t('ui.apps.VolumesTable.bind') }}</NativeSelectOption>
+        <NativeSelectOption value="named">{{ t('ui.apps.VolumesTable.named') }}</NativeSelectOption>
+        <NativeSelectOption value="place">{{ t('ui.apps.VolumesTable.place') }}</NativeSelectOption>
       </NativeSelect>
 
       <!-- Source -->
       <!-- bind: free-form host path -->
       <Input
         v-if="item.type === 'bind'"
-        :model-value="item.source" placeholder="/host/path"
+        :model-value="item.source" laceholder="/host/path"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
       <!-- named: container volume name -->
       <Input
         v-else-if="item.type === 'named'"
-        :model-value="item.source" placeholder="my-volume"
+        :model-value="item.source" laceholder="my-volume"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />
@@ -60,7 +63,7 @@ function placePath(id: string): string | null {
         @change="update({ source: ($event.target as HTMLSelectElement).value })"
         class="px-2 py-1.5 text-sm"
       >
-        <NativeSelectOption value="">Select a place</NativeSelectOption>
+        <NativeSelectOption value="">{{ t('ui.apps.VolumesTable.selectAPlace') }}</NativeSelectOption>
         <NativeSelectOption v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }}</NativeSelectOption>
       </NativeSelect>
 
@@ -68,7 +71,7 @@ function placePath(id: string): string | null {
 
       <!-- Target (path inside the container) -->
       <Input
-        :model-value="item.target" placeholder="/container/path"
+        :model-value="item.target" laceholder="/container/path"
         @input="update({ target: ($event.target as HTMLInputElement).value })"
         class="flex-1 px-2 py-1.5 text-sm font-mono"
       />

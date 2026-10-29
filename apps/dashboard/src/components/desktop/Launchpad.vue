@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { computed, ref } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
@@ -6,6 +7,8 @@ import { useAuth } from '../../lib/auth'
 import { useAlerts } from '../../composables/useAlerts'
 import { DialogContent, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import AppIcon from './AppIcon.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ close: [] }>()
 const { openApp } = useDesktop()
@@ -49,7 +52,7 @@ function launch(id: AppId) {
         @click.self="requestClose"
         @close-auto-focus="onClosed"
       >
-        <DialogTitle class="sr-only">Launchpad</DialogTitle>
+        <DialogTitle class="sr-only">{{ t('ui.desktop.Launchpad.launchpad') }}</DialogTitle>
         <div class="grid grid-cols-4 gap-8 p-8">
           <Button
             v-for="id in visibleApps"

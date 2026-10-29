@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { computed, onMounted, ref } from 'vue'
 import type { trpc } from '../../lib/trpc'
@@ -6,6 +7,8 @@ import { updateText } from '../../lib/app-update'
 import { appPermissions } from '../../lib/app-permissions'
 import { versionLabel } from '../../lib/store'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Entry = Awaited<ReturnType<typeof trpc.catalog.list.query>>[number]
 
@@ -29,7 +32,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
 
 <template>
   <div class="max-w-3xl space-y-4">
-    <Button variant="ghost" size="sm" ref="backButton" @click="emit('back')" @keydown.esc="emit('back')">← Back</Button>
+    <Button variant="ghost" size="sm" ref="backButton" @click="emit('back')" @keydown.esc="emit('back')">{{ t('ui.store.AppStoreDetail.back') }}</Button>
 
     <Card class="block gap-0 py-0 overflow-hidden p-5 space-y-5">
       <!-- Identity + main action -->
@@ -51,9 +54,9 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           </p>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap shrink-0">
-          <Button size="sm" v-if="!inst" @click="emit('install')">Install</Button>
-          <Button size="sm" v-if="inst?.update" :disabled="busy" @click="emit('update')">Update…</Button>
-          <Button variant="outline" size="sm" v-if="canOpen" @click="emit('open')">Open ↗</Button>
+          <Button size="sm" v-if="!inst" @click="emit('install')">{{ t('ui.store.AppStoreDetail.install') }}</Button>
+          <Button size="sm" v-if="inst?.update" :disabled="busy" @click="emit('update')">{{ t('ui.store.AppStoreDetail.update') }}</Button>
+          <Button variant="outline" size="sm" v-if="canOpen" @click="emit('open')">{{ t('ui.store.AppStoreDetail.open') }}</Button>
         </div>
       </div>
 
@@ -61,7 +64,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
       <div v-if="inst?.update || inst?.rollbackTo" class="rounded-lg border border-border p-3 space-y-2">
         <p v-if="inst?.update" class="text-xs text-warning flex items-center gap-2 flex-wrap">
           <span>{{ updateText(inst.update) }}</span>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">What's new ↗</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">{{ t('ui.store.AppStoreDetail.whatSNew') }}</a>
         </p>
         <div v-if="inst?.rollbackTo" class="flex items-center justify-between gap-2 flex-wrap">
           <p class="text-xs text-muted-foreground">The previous version, {{ inst.rollbackTo }}, is kept to roll back to.</p>
@@ -72,10 +75,10 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
 
       <!-- About -->
       <div class="space-y-2">
-        <h4 class="eyebrow">About</h4>
+        <h4 class="eyebrow">{{ t('ui.store.AppStoreDetail.about') }}</h4>
         <p class="text-sm text-foreground/80 leading-relaxed">{{ app.description }}</p>
         <div v-if="app.services?.length" class="text-xs">
-          <span class="text-muted-foreground">Installs with: </span>
+          <span class="text-muted-foreground">{{ t('ui.store.AppStoreDetail.installsWith') }} </span>
           <template v-for="(sc, i) in app.services" :key="sc.name">
             <span v-if="i" class="text-muted-foreground">, </span>
             <span class="text-foreground/80">{{ sc.label }}</span>
@@ -83,13 +86,13 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           </template>
         </div>
         <p class="text-xs flex gap-4 flex-wrap">
-          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Website ↗</a>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">Release notes ↗</a>
+          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.website') }}</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.releaseNotes') }}</a>
         </p>
       </div>
 
       <section v-if="permissions.length" class="space-y-2" aria-labelledby="perm-heading">
-        <h4 id="perm-heading" class="eyebrow">Permissions</h4>
+        <h4 id="perm-heading" class="eyebrow">{{ t('ui.store.AppStoreDetail.permissions') }}</h4>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
           <template v-for="p in permissions" :key="`${p.kind}-${p.detail}`">
             <dt class="text-muted-foreground">{{ p.kind }}</dt>

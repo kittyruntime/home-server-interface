@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { WrapTextIcon } from '@lucide/vue'
 import LoadingState from '../../ui/LoadingState.vue'
@@ -12,6 +13,8 @@ import { languages } from '@codemirror/language-data'
 import { trpc } from '../../../lib/trpc'
 import { getFormatter, formatContent } from '../../../lib/formatters'
 import { useNotifications } from '../../../lib/notifications'
+
+const { t } = useI18n()
 
 // Mirrors apps/backend/src/trpc/routers/fs.ts MAX_TEXT_PREVIEW_BYTES, used
 // here only to skip a doomed network round-trip; the backend is the real
@@ -145,7 +148,7 @@ onBeforeUnmount(() => view?.destroy())
 
     <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
-        <p>Binary file: preview not available.</p>
+        <p>{{ t('ui.files.CodeEditor.binaryFilePreviewNotAvailable') }}</p>
         <p class="status-text">{{ name }} · {{ fileSize ?? 0 }} bytes</p>
       </div>
     </div>
@@ -153,19 +156,19 @@ onBeforeUnmount(() => view?.destroy())
     <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
       <div class="text-center space-y-1">
         <p>File too large to edit here ({{ ((fileSize ?? 0) / 1024 / 1024).toFixed(1) }} MB).</p>
-        <p class="status-text">Use Download instead.</p>
+        <p class="status-text">{{ t('ui.files.CodeEditor.useDownloadInstead') }}</p>
       </div>
     </div>
 
     <div v-else-if="state === 'error'" class="flex-1 flex items-center justify-center text-primary text-sm">
-      [ERR] Failed to load file
+      {{ t('ui.files.CodeEditor.errFailedToLoadFile') }}
     </div>
 
     <div v-show="state === 'ready'" class="relative flex-1 min-h-0">
       <Button variant="ghost" size="icon-sm"
         v-if="formatter"
         type="button"
-        tooltip="Format (Shift-Alt-F)" aria-label="Format (Shift-Alt-F)"
+        :tooltip="t('ui.files.CodeEditor.formatShiftAltF')" :aria-label="t('ui.files.CodeEditor.formatShiftAltF')"
         class="absolute top-2 right-4 z-10 bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm"
         :disabled="formatting"
         @click="format"

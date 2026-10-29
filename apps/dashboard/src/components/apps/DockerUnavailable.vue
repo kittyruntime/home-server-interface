@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { computed } from 'vue'
 import { useDockerStatus } from '../../lib/docker'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 /* Full-panel notice shown instead of the apps list / App Store while Docker is
    not usable on the server. */
@@ -31,13 +34,13 @@ const command = computed(() => {
       </div>
       <h2 class="text-base font-semibold text-foreground">{{ title }}</h2>
       <p class="mt-2 text-sm text-muted-foreground">
-        Apps and the App Store run on Docker. Run this on the server, then check again:
+        {{ t('ui.apps.DockerUnavailable.appsAndTheAppStore') }}
       </p>
       <code class="mt-3 block rounded-lg bg-muted px-3 py-2 font-mono text-xs text-foreground select-all break-all">{{ command }}</code>
       <p v-if="status?.detail" class="mt-2 text-2xs text-muted-foreground break-words">{{ status.detail }}</p>
       <p class="mt-3 text-2xs text-muted-foreground">
-        Other install options:
-        <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank" rel="noopener" class="underline decoration-dotted underline-offset-2 hover:text-foreground">Docker's instructions for Ubuntu</a>
+        {{ t('ui.apps.DockerUnavailable.otherInstallOptions') }}
+        <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank" rel="noopener" class="underline decoration-dotted underline-offset-2 hover:text-foreground">{{ t('ui.apps.DockerUnavailable.dockerSInstructionsForUbuntu') }}</a>
       </p>
       <Button size="sm" type="button" class="mt-4" :disabled="checking" @click="check">
         {{ checking ? 'Checking…' : 'Check again' }}

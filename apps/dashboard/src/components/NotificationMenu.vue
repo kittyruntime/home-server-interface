@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted } from 'vue'
 import { BellIcon, CheckIcon, InfoIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
@@ -7,6 +8,8 @@ import { useNotifications } from '../lib/notifications'
 import { openJobLogs } from '../lib/jobLogs'
 import SegmentedBar from './ui/SegmentedBar.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+
+const { t } = useI18n()
 
 /* Body of the Activity popover (DashboardLayout): mounted each time it opens. */
 const emit = defineEmits<{ close: [] }>()
@@ -52,8 +55,8 @@ function formatTime(createdAt: string): string {
   <div class="flex max-h-[420px] flex-col">
         <!-- Header -->
         <div class="flex items-center justify-between px-3.5 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-foreground/80 uppercase tracking-caps">Activity</span>
-          <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Close activity panel" @click="emit('close')">
+          <span class="text-xs font-semibold text-foreground/80 uppercase tracking-caps">{{ t('ui.settings.NotificationMenu.activity') }}</span>
+          <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('ui.settings.NotificationMenu.closeActivityPanel')" @click="emit('close')">
             <XIcon />
           </Button>
         </div>
@@ -82,7 +85,7 @@ function formatTime(createdAt: string): string {
                 <span class="block text-xs text-foreground leading-snug truncate">{{ op.title }}</span>
                 <p v-if="op.detail" class="text-2xs mt-0.5 leading-snug break-words"
                   :class="op.type === 'error' ? 'text-destructive' : 'text-muted-foreground'">{{ op.detail }}</p>
-                <Button v-if="op.jobId" variant="link" class="mt-0.5 h-auto p-0 text-2xs" @click="viewLogs(op.jobId)">View logs</Button>
+                <Button v-if="op.jobId" variant="link" class="mt-0.5 h-auto p-0 text-2xs" @click="viewLogs(op.jobId)">{{ t('ui.settings.NotificationMenu.viewLogs') }}</Button>
                 <SegmentedBar
                   v-if="op.type === 'progress'"
                   class="mt-1.5"
@@ -93,7 +96,7 @@ function formatTime(createdAt: string): string {
                 />
               </div>
 
-              <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-muted-foreground" aria-label="Dismiss operation" @click="dismiss(op.id)">
+              <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-muted-foreground" :aria-label="t('ui.settings.NotificationMenu.dismissOperation')" @click="dismiss(op.id)">
                 <XIcon />
               </Button>
             </div>
@@ -127,7 +130,7 @@ function formatTime(createdAt: string): string {
           <!-- Empty state -->
           <div v-if="!hasItems && !hasOperations" class="flex flex-col items-center justify-center gap-1.5 text-muted-foreground py-10 select-none">
             <BellIcon class="size-6 opacity-25" />
-            <p class="text-xs">No notifications</p>
+            <p class="text-xs">{{ t('ui.settings.NotificationMenu.noNotifications') }}</p>
           </div>
 
         </div>
@@ -135,7 +138,7 @@ function formatTime(createdAt: string): string {
         <!-- Footer: mark all read -->
         <div v-if="hasItems" class="px-3.5 py-1.5 border-t shrink-0">
           <Button variant="ghost" size="xs" class="-ml-2 text-muted-foreground" :disabled="!hasUnread" @click="markAllRead()">
-            Mark all read
+            {{ t('ui.settings.NotificationMenu.markAllRead') }}
           </Button>
         </div>
   </div>

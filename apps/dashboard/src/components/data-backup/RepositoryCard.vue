@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
@@ -9,6 +10,8 @@ import RunHistory from './RunHistory.vue'
 import RestoreDialog from './RestoreDialog.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
+const { t } = useI18n()
 
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 type Repository = Status['repositories'][number]
@@ -79,19 +82,19 @@ async function remove() {
 
     <!-- Actions: the common ones first, the rarer ones on a second wrapping row. -->
     <div class="mt-4 flex flex-wrap gap-1">
-      <Button size="xs" @click="restoring = true">Browse and restore…</Button>
+      <Button size="xs" @click="restoring = true">{{ t('ui.backups.RepositoryCard.browseAndRestore') }}</Button>
       <Button variant="outline" size="xs" :disabled="checking || !!starting" @click="check(false)">
-        <BusyLabel :busy="starting === 'quick' || checking" :busy-label="checking ? 'Checking' : 'Starting'">Check</BusyLabel>
+        <BusyLabel :busy="starting === 'quick' || checking" :busy-label="checking ? 'Checking' : 'Starting'">{{ t('ui.backups.RepositoryCard.check') }}</BusyLabel>
       </Button>
     </div>
     <div class="mt-1 flex flex-wrap gap-1">
-      <Button variant="ghost" size="xs" :disabled="checking || !!starting" tooltip="Read every stored file back; slow on a large repository" @click="check(true)">
-        <BusyLabel :busy="starting === 'full'">Full check</BusyLabel>
+      <Button variant="ghost" size="xs" :disabled="checking || !!starting" :tooltip="t('ui.backups.RepositoryCard.readEveryStoredFileBack')" @click="check(true)">
+        <BusyLabel :busy="starting === 'full'">{{ t('ui.backups.RepositoryCard.fullCheck') }}</BusyLabel>
       </Button>
-      <Button variant="ghost" size="xs" v-if="repository.hasPassword" @click="revealing = true">Show password…</Button>
-      <Button variant="ghost" size="xs" @click="history = true">History</Button>
-      <Button variant="ghost" size="xs" @click="emit('edit')">Edit</Button>
-      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">Remove…</Button>
+      <Button variant="ghost" size="xs" v-if="repository.hasPassword" @click="revealing = true">{{ t('ui.backups.RepositoryCard.showPassword') }}</Button>
+      <Button variant="ghost" size="xs" @click="history = true">{{ t('ui.backups.RepositoryCard.history') }}</Button>
+      <Button variant="ghost" size="xs" @click="emit('edit')">{{ t('ui.backups.RepositoryCard.edit') }}</Button>
+      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">{{ t('ui.backups.RepositoryCard.remove') }}</Button>
     </div>
 
     <PasswordReveal v-if="revealing" mode="ask" :repository="repository" @close="revealing = false" />

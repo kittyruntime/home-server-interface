@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { previewUrl } from '../../../lib/file-url'
+
+const { t } = useI18n()
 
 const props = defineProps<{ path: string; kind: 'image' | 'video' | 'audio' }>()
 
@@ -19,7 +22,7 @@ onMounted(async () => {
 <template>
   <div class="h-full flex items-center justify-center bg-muted">
     <div v-if="failed" class="text-center text-muted-foreground text-sm space-y-1">
-      <p>Couldn't load this file.</p>
+      <p>{{ t('ui.files.MediaPreview.couldnTLoadThisFile') }}</p>
       <p class="status-text">[ERR] {{ path.split('/').pop() }}</p>
     </div>
 

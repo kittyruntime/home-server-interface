@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Checkbox } from '@/components/ui/checkbox'
 import { computed, ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -7,6 +8,8 @@ import Modal from '../ui/Modal.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 // A repository password, shown once after it was generated ("new"), or on
 // demand after the admin typed their own account password again ("ask").
@@ -63,34 +66,34 @@ function download() {
     </template>
 
     <div class="px-5 py-4 space-y-4">
-      <p class="text-sm text-foreground/80">Without this password the backups cannot be read, even by HSI on another server. It is also kept in the configuration backup.</p>
+      <p class="text-sm text-foreground/80">{{ t('ui.backups.PasswordReveal.withoutThisPasswordTheBackups') }}</p>
 
       <form v-if="!shown" class="space-y-3" @submit.prevent="reveal">
-        <label class="block text-xs text-foreground/80">Your account password
+        <label class="block text-xs text-foreground/80">{{ t('ui.backups.PasswordReveal.yourAccountPassword') }}
           <Input v-model="accountPassword" type="password" autocomplete="current-password" class="mt-1 w-full" required />
         </label>
         <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
         <Button size="sm" type="submit" :disabled="busy || !accountPassword">
-          <BusyLabel :busy="busy" busy-label="Verifying">Show the password</BusyLabel>
+          <BusyLabel :busy="busy" busy-label="Verifying">{{ t('ui.backups.PasswordReveal.showThePassword') }}</BusyLabel>
         </Button>
       </form>
 
       <template v-else>
-        <Input :model-value="shown" readonly class="w-full font-mono text-sm" aria-label="Repository password" @focus="($event.target as HTMLInputElement).select()" />
+        <Input :model-value="shown" readonly class="w-full font-mono text-sm" :aria-label="t('ui.backups.PasswordReveal.repositoryPassword')" @focus="($event.target as HTMLInputElement).select()" />
         <div class="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" type="button" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</Button>
-          <Button variant="outline" size="sm" type="button" @click="download">Download</Button>
+          <Button variant="outline" size="sm" type="button" @click="download">{{ t('ui.backups.PasswordReveal.download') }}</Button>
         </div>
         <label v-if="mode === 'new'" class="flex items-start gap-2 text-sm text-foreground">
           <Checkbox v-model="stored" class="mt-0.5" />
-          <span>I stored this password somewhere safe</span>
+          <span>{{ t('ui.backups.PasswordReveal.iStoredThisPasswordSomewhere') }}</span>
         </label>
       </template>
     </div>
 
     <template #footer>
       <div class="flex-1" />
-      <Button size="sm" :disabled="!canClose" @click="modal?.requestClose()">Close</Button>
+      <Button size="sm" :disabled="!canClose" @click="modal?.requestClose()">{{ t('ui.backups.PasswordReveal.close') }}</Button>
     </template>
   </Modal>
 </template>

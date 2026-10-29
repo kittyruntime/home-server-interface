@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,8 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
 import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
+
+const { t } = useI18n()
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string; icon?: string | null }
@@ -603,7 +606,7 @@ onMounted(async () => {
         <div v-if="dragOver && currentPath"
           class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-primary/10 border-2 border-dashed border-primary rounded-sm pointer-events-none select-none">
           <UploadIcon class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
-          <span class="text-sm text-primary font-medium">Drop to upload</span>
+          <span class="text-sm text-primary font-medium">{{ t('ui.files.FileBrowserPanel.dropToUpload') }}</span>
         </div>
 
         <!-- Loading -->
@@ -619,7 +622,7 @@ onMounted(async () => {
         <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-muted-foreground select-none">
           <div class="text-center space-y-2">
             <FolderIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
-            <p class="text-sm">Select a place</p>
+            <p class="text-sm">{{ t('ui.files.FileBrowserPanel.selectAPlace') }}</p>
           </div>
         </div>
 
@@ -627,12 +630,12 @@ onMounted(async () => {
         <div v-else-if="isSearchMode" class="p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm text-foreground/80">
-              <span v-if="searchLoading">Searching…</span>
+              <span v-if="searchLoading">{{ t('ui.files.FileBrowserPanel.searching') }}</span>
               <span v-else>{{ searchResults.length }} result{{ searchResults.length === 1 ? '' : 's' }} for "<span class="font-medium text-foreground">{{ searchQuery }}</span>"</span>
             </span>
           </div>
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
-          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-muted-foreground">No results found.</div>
+          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-muted-foreground">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
           <div v-else class="divide-y divide-border rounded-xl border border-border overflow-hidden">
             <Item v-for="r in searchResults" :key="r.path" as="button"
               @click="navigateToSearchResult(r)"
@@ -653,8 +656,8 @@ onMounted(async () => {
         <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-muted-foreground select-none">
           <div class="text-center space-y-2">
             <UploadIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
-            <p class="text-sm">This folder is empty.</p>
-            <p class="text-xs">Drag files here, or use <strong class="text-foreground/80">Upload</strong> / <strong class="text-foreground/80">New folder</strong> above.</p>
+            <p class="text-sm">{{ t('ui.files.FileBrowserPanel.thisFolderIsEmpty') }}</p>
+            <p class="text-xs">{{ t('ui.files.FileBrowserPanel.dragFilesHereOrUse') }} <strong class="text-foreground/80">{{ t('ui.files.FileBrowserPanel.upload') }}</strong> / <strong class="text-foreground/80">{{ t('ui.files.FileBrowserPanel.newFolder') }}</strong> above.</p>
           </div>
         </div>
 
@@ -666,8 +669,8 @@ onMounted(async () => {
             <Input
               ref="filterInput"
               v-model="filterQuery"
-              placeholder="Filter by name…"
-              aria-label="Filter by name"
+              :placeholder="t('ui.files.FileBrowserPanel.filterByName')"
+              :aria-label="t('ui.files.FileBrowserPanel.filterByName2')"
               @keydown.escape="closeFilter"
               class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
             />
@@ -731,39 +734,39 @@ onMounted(async () => {
       <ContextMenuContent class="min-w-[200px]">
         <!-- Selection-dependent actions -->
         <template v-if="selected.size > 0">
-          <ContextMenuItem @select="doCopy()"><CopyIcon /> Copy</ContextMenuItem>
-          <ContextMenuItem @select="doCut()"><ScissorsIcon /> Cut</ContextMenuItem>
+          <ContextMenuItem @select="doCopy()"><CopyIcon /> {{ t('ui.files.FileBrowserPanel.copy') }}</ContextMenuItem>
+          <ContextMenuItem @select="doCut()"><ScissorsIcon /> {{ t('ui.files.FileBrowserPanel.cut') }}</ContextMenuItem>
           <template v-if="selected.size === 1">
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="openFile(selectedEntries[0]!)"><EyeIcon /> Open</ContextMenuItem>
-            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> Rename</ContextMenuItem>
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> Download</ContextMenuItem>
-            <ContextMenuItem @select="openShare()"><Share2Icon /> Share</ContextMenuItem>
-            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> Permissions</ContextMenuItem>
-            <ContextMenuItem @select="openProperties()"><InfoIcon /> Properties</ContextMenuItem>
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="openFile(selectedEntries[0]!)"><EyeIcon /> {{ t('ui.files.FileBrowserPanel.open') }}</ContextMenuItem>
+            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> {{ t('ui.files.FileBrowserPanel.rename') }}</ContextMenuItem>
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
+            <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
+            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
+            <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}</ContextMenuItem>
           </template>
           <!-- Compress to ZIP: any selection -->
-          <ContextMenuItem @select="doZip()"><ArchiveIcon /> Compress to ZIP</ContextMenuItem>
+          <ContextMenuItem @select="doZip()"><ArchiveIcon /> {{ t('ui.files.FileBrowserPanel.compressToZip') }}</ContextMenuItem>
           <!-- Extract Here: only for a single .zip file -->
           <ContextMenuItem
             v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
             @select="doUnzip()"
-          ><PackageOpenIcon /> Extract Here</ContextMenuItem>
+          ><PackageOpenIcon /> {{ t('ui.files.FileBrowserPanel.extractHere') }}</ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem variant="destructive" @select="doDelete()"><Trash2Icon /> Delete</ContextMenuItem>
+          <ContextMenuItem variant="destructive" @select="doDelete()"><Trash2Icon /> {{ t('ui.files.FileBrowserPanel.delete') }}</ContextMenuItem>
           <ContextMenuSeparator v-if="currentPath" />
         </template>
 
         <!-- General actions -->
         <template v-if="currentPath">
-          <ContextMenuItem @select="createFolder()"><FolderPlusIcon /> New folder</ContextMenuItem>
-          <ContextMenuItem @select="createFile()"><FilePlusIcon /> New file</ContextMenuItem>
-          <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> Upload</ContextMenuItem>
+          <ContextMenuItem @select="createFolder()"><FolderPlusIcon /> {{ t('ui.files.FileBrowserPanel.newFolder') }}</ContextMenuItem>
+          <ContextMenuItem @select="createFile()"><FilePlusIcon /> {{ t('ui.files.FileBrowserPanel.newFile') }}</ContextMenuItem>
+          <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> {{ t('ui.files.FileBrowserPanel.upload') }}</ContextMenuItem>
           <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
             <ClipboardPasteIcon class="text-current" />
             Paste {{ clipboard.mode === 'cut' ? '(move)' : '' }}
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem @select="refresh()"><RefreshCwIcon /> Refresh</ContextMenuItem>
+          <ContextMenuItem @select="refresh()"><RefreshCwIcon /> {{ t('ui.files.FileBrowserPanel.refresh') }}</ContextMenuItem>
         </template>
       </ContextMenuContent>
       </ContextMenu>

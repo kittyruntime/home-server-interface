@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -23,6 +24,8 @@ import { Button } from '@/components/ui/button'
 import Tip from '../ui/Tip.vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
@@ -204,17 +207,17 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
   <div>
     <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">Volume groups</h2>
-        <p class="text-sm text-muted-foreground mt-0.5">Physical volumes, volume groups and logical volumes.</p>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.LvmSection.volumeGroups') }}</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <Tip :text="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined" wrap>
           <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')">
             <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-            Create volume group…
+            {{ t('ui.storage.LvmSection.createVolumeGroup') }}
           </Button>
         </Tip>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.LvmSection.refresh')" :aria-label="t('ui.storage.LvmSection.refresh')" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
           <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -234,7 +237,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     </div>
 
     <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-      No LVM volume groups. Create one to get resizable logical volumes from one or more physical drives.
+      {{ t('ui.storage.LvmSection.noLvmVolumeGroupsCreate') }}
     </div>
 
     <div v-else class="space-y-3">
@@ -266,21 +269,21 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <div class="flex items-center gap-1.5 shrink-0">
               <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
                 class="text-foreground/80 hover:border-purple-500/50 hover:text-purple-400">
-                + Add LV
+                {{ t('ui.storage.LvmSection.addLv') }}
               </Button>
               <!-- ⋯ menu for VG -->
               <DropdownMenu v-if="!isSystemVg(vg.name)">
                 <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Volume group actions">
+                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('ui.storage.LvmSection.volumeGroupActions')">
                     <EllipsisVerticalIcon />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="min-w-[176px]">
-                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</DropdownMenuLabel>
+                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.storage.LvmSection.dangerZone') }}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" @select="removeVgDlg = { vg, busy: false, err: '' }">
                     <Trash2Icon />
-                    Remove VG…
+                    {{ t('ui.storage.LvmSection.removeVg') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -301,7 +304,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="divide-y divide-border">
             <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
               class="px-4 py-3 text-2xs text-muted-foreground">
-              No logical volumes. Click "+ Add LV" to create one.
+              {{ t('ui.storage.LvmSection.noLogicalVolumesClickAdd') }}
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
               class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
@@ -323,15 +326,15 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <!-- LV actions: revealed on hover, hidden by default -->
               <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
                 <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">Format</Button>
+                  class="text-2xs text-muted-foreground hover:border-primary/50 hover:text-primary">{{ t('ui.storage.LvmSection.format') }}</Button>
                 <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">Mount</Button>
+                  class="text-2xs text-muted-foreground hover:border-success/50 hover:text-success">{{ t('ui.storage.LvmSection.mount') }}</Button>
                 <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">Unmount</Button>
+                  class="text-2xs text-muted-foreground hover:border-warning/50 hover:text-warning">{{ t('ui.storage.LvmSection.unmount') }}</Button>
                 <!-- Thin separator before destructive -->
                 <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
                 <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
-                  tooltip="Delete this logical volume" aria-label="Delete this logical volume"
+                  :tooltip="t('ui.storage.LvmSection.deleteThisLogicalVolume')" :aria-label="t('ui.storage.LvmSection.deleteThisLogicalVolume')"
                   class="text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10">
                   <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
                 </Button>
@@ -365,15 +368,15 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <!-- Step 1: Select devices -->
           <div v-if="lvmWiz.step === 1" class="p-5 space-y-3">
             <p class="text-sm text-foreground/80">
-              Select one or more devices to become Physical Volumes (PVs). They will be combined into a Volume Group.
+              {{ t('ui.storage.LvmSection.selectOneOrMoreDevices') }}
             </p>
             <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
               <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              All data on the selected devices will be permanently destroyed.
+              {{ t('ui.storage.LvmSection.allDataOnTheSelected') }}
             </Alert>
             <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-              No eligible devices available.<br>
-              <span class="text-xs">Devices must be unmounted, not already a PV, and not a system disk.</span>
+              {{ t('ui.storage.LvmSection.noEligibleDevicesAvailable') }}<br>
+              <span class="text-xs">{{ t('ui.storage.LvmSection.devicesMustBeUnmountedNot') }}</span>
             </div>
             <div v-else class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
               <label v-for="dev in eligibleForLvm" :key="dev.name"
@@ -395,40 +398,40 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </label>
             </div>
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="lvmWiz = null" class="flex-1 justify-center">Cancel</Button>
+              <Button variant="outline" @click="lvmWiz = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
               <Button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
                 class="flex-1 justify-center">
-                Next →
+                {{ t('ui.storage.LvmSection.next') }}
               </Button>
             </div>
           </div>
 
           <!-- Step 2: Configure VG + LV -->
           <div v-else-if="lvmWiz.step === 2" class="p-5 space-y-4">
-            <p class="text-sm text-foreground/80">Name the Volume Group and its first Logical Volume.</p>
+            <p class="text-sm text-foreground/80">{{ t('ui.storage.LvmSection.nameTheVolumeGroupAnd') }}</p>
             <div>
-              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Volume Group name</label>
-              <Input v-model="lvmWiz.vgName" type="text" placeholder="vg0"
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.LvmSection.volumeGroupName') }}</label>
+              <Input v-model="lvmWiz.vgName" type="text" laceholder="vg0"
                 class="w-full px-3 py-2 text-sm font-mono"/>
-              <p class="text-2xs text-muted-foreground mt-1">Letters, digits, underscores, hyphens. Must start with a letter.</p>
+              <p class="text-2xs text-muted-foreground mt-1">{{ t('ui.storage.LvmSection.lettersDigitsUnderscoresHyphensMust') }}</p>
             </div>
             <div>
-              <label class="block text-xs font-medium text-foreground/80 mb-1.5">First Logical Volume name</label>
-              <Input v-model="lvmWiz.lvName" type="text" placeholder="lv0"
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.LvmSection.firstLogicalVolumeName') }}</label>
+              <Input v-model="lvmWiz.lvName" type="text" laceholder="lv0"
                 class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
               <label class="block text-xs font-medium text-foreground/80 mb-1.5">
-                Size (GB) <span class="text-muted-foreground font-normal">(leave 0 to use all available space</span>
+                {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-muted-foreground font-normal">{{ t('ui.storage.LvmSection.leave0ToUseAll') }}</span>
               </label>
               <Input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
                 class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="lvmWiz.step = 1" class="flex-1 justify-center">← Back</Button>
+              <Button variant="outline" @click="lvmWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
               <Button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
                 class="flex-1 justify-center">
-                Next →
+                {{ t('ui.storage.LvmSection.next') }}
               </Button>
             </div>
           </div>
@@ -438,23 +441,23 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <Alert variant="warning" class="flex items-start gap-3 p-4" role="note">
               <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
               <div>
-                <div class="font-semibold text-warning text-sm mb-1">All data on selected devices will be erased</div>
-                <div class="text-xs text-warning/80">LVM will overwrite the beginning of each device to write PV headers.</div>
+                <div class="font-semibold text-warning text-sm mb-1">{{ t('ui.storage.LvmSection.allDataOnSelectedDevices') }}</div>
+                <div class="text-xs text-warning/80">{{ t('ui.storage.LvmSection.lvmWillOverwriteTheBeginning') }}</div>
               </div>
             </Alert>
             <div class="space-y-1 text-xs text-muted-foreground">
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">Devices</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">VG name</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">LV name</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">LV size</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.LvmSection.devices') }}</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
             </div>
             <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
             <div class="flex gap-2">
-              <Button variant="outline" @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 justify-center">← Back</Button>
+              <Button variant="outline" @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
               <Button @click="doCreateLvm" :disabled="lvmWiz.busy"
                 class="flex-1 justify-center">
-                <span v-if="lvmWiz.busy">Creating…</span>
-                <span v-else>Create volume group</span>
+                <span v-if="lvmWiz.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
+                <span v-else>{{ t('ui.storage.LvmSection.createVolumeGroup2') }}</span>
               </Button>
             </div>
           </div>
@@ -466,29 +469,29 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-border">
-            <h3 class="font-semibold text-foreground">Add logical volume</h3>
+            <h3 class="font-semibold text-foreground">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
             <p class="text-xs text-muted-foreground mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> · {{ fmtBytes(addLvDlg.vg.free) }} free</p>
           </div>
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Logical Volume name</label>
-              <Input v-model="addLvDlg.lvName" type="text" placeholder="lv0"
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.LvmSection.logicalVolumeName') }}</label>
+              <Input v-model="addLvDlg.lvName" type="text" laceholder="lv0"
                 class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <div>
               <label class="block text-xs font-medium text-foreground/80 mb-1.5">
-                Size (GB) <span class="text-muted-foreground font-normal">(0 = all remaining free space</span>
+                {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-muted-foreground font-normal">{{ t('ui.storage.LvmSection.n0AllRemainingFreeSpace') }}</span>
               </label>
               <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
                 class="w-full px-3 py-2 text-sm font-mono"/>
             </div>
             <p v-if="addLvDlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">Cancel</Button>
+              <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
               <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
                 class="flex-1 justify-center">
-                <span v-if="addLvDlg.busy">Creating…</span>
-                <span v-else>Create logical volume</span>
+                <span v-if="addLvDlg.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
+                <span v-else>{{ t('ui.storage.LvmSection.createLogicalVolume') }}</span>
               </Button>
             </div>
           </div>
@@ -497,7 +500,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- Remove LV -->
     <ConfirmDestroyDialog
       v-if="removeLvDlg"
-      title="Delete Logical Volume"
+      :title="t('ui.storage.LvmSection.deleteLogicalVolume')"
       :confirm-word="removeLvDlg.lv.name"
       action-label="Delete LV"
       busy-label="Deleting…"
@@ -506,18 +509,18 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       @confirm="doRemoveLv"
       @close="removeLvDlg = null"
     >
-      <template #warning>All data on <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> will be permanently destroyed.</template>
+      <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-foreground/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-foreground/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 
     <!-- Remove VG -->
     <ConfirmDestroyDialog
       v-if="removeVgDlg"
-      title="Remove Volume Group"
+      :title="t('ui.storage.LvmSection.removeVolumeGroup')"
       subtitle="This will delete the VG and all its Logical Volumes."
       :confirm-word="removeVgDlg.vg.name"
       action-label="Remove VG"
@@ -527,12 +530,12 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       @confirm="doRemoveVg"
       @close="removeVgDlg = null"
     >
-      <template #warning>Removing <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.</template>
+      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> will destroy all {{ removeVgDlg.vg.lvCount }} Logical Volume(s) and their data.</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-foreground/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Size</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">PVs</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">LVs</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.LvmSection.pvs') }}</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.LvmSection.lvs') }}</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
       </template>
     </ConfirmDestroyDialog>
   </div>

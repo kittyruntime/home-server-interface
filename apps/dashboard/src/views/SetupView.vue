@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
+
 /* First-run setup assistant (#12): the one-time link from the installer
    creates the administrator, then the server's identity, then next steps. */
 
@@ -212,11 +213,11 @@ const NEXT = [
   <div class="min-h-screen bg-background px-4 py-10 flex justify-center">
     <div class="w-full max-w-xl">
       <div class="mb-8 text-center">
-        <div class="eyebrow mb-1">Home Server Interface</div>
-        <h1 class="text-2xl font-semibold text-foreground">Set up your server</h1>
+        <div class="eyebrow mb-1">{{ $t('ui.views.SetupView.homeServerInterface') }}</div>
+        <h1 class="text-2xl font-semibold text-foreground">{{ $t('ui.views.SetupView.setUpYourServer') }}</h1>
       </div>
 
-      <ol class="mb-6 flex items-center justify-center gap-2 text-xs" aria-label="Setup steps">
+      <ol class="mb-6 flex items-center justify-center gap-2 text-xs" :aria-label="$t('ui.views.SetupView.setupSteps')">
         <li v-for="(s, i) in STEPS" :key="s.id" class="flex items-center gap-2">
           <span :class="['grid h-6 w-6 place-items-center rounded-full border text-2xs font-semibold',
             i < stepIndex ? 'border-success bg-success/10 text-success' : i === stepIndex ? 'border-primary text-primary' : 'border-input text-muted-foreground']"
@@ -232,44 +233,44 @@ const NEXT = [
 
         <!-- Token -->
         <form v-else-if="screen === 'token'" class="space-y-4" @submit.prevent="checkToken">
-          <h2 class="text-lg font-semibold text-foreground">Open the setup link</h2>
+          <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.openTheSetupLink') }}</h2>
           <p class="text-sm text-foreground/80">
-            The installer printed a link to finish the setup. If you no longer have it, run
-            <code class="font-mono text-xs">sudo hsi-worker setup-token</code> on the server for a new one, or read the token with
+            {{ $t('ui.views.SetupView.theInstallerPrintedALink') }}
+            <code class="font-mono text-xs">sudo hsi-worker setup-token</code> {{ $t('ui.views.SetupView.onTheServerForA') }}
             <code class="font-mono text-xs">sudo cat /etc/hsi/setup-token</code>.
           </p>
-          <label class="block text-xs text-foreground/80">Setup token
+          <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.setupToken') }}
             <Input v-model="tokenInput" class="mt-1 font-mono" autocomplete="off" spellcheck="false" />
           </label>
           <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
-          <div class="flex justify-end"><Button size="sm" :disabled="busy || !tokenInput.trim()">Continue</Button></div>
+          <div class="flex justify-end"><Button size="sm" :disabled="busy || !tokenInput.trim()">{{ $t('ui.views.SetupView.continue') }}</Button></div>
         </form>
 
         <!-- Start: a new server, or restore a configuration backup -->
         <div v-else-if="screen === 'admin'" class="space-y-4">
           <Tabs v-model="startMode">
-            <TabsList aria-label="How to start" class="w-full">
-              <TabsTrigger value="admin">New server</TabsTrigger>
-              <TabsTrigger value="restore">Restore a backup</TabsTrigger>
+            <TabsList :aria-label="$t('ui.views.SetupView.howToStart')" class="w-full">
+              <TabsTrigger value="admin">{{ $t('ui.views.SetupView.newServer') }}</TabsTrigger>
+              <TabsTrigger value="restore">{{ $t('ui.views.SetupView.restoreABackup') }}</TabsTrigger>
             </TabsList>
           </Tabs>
           <div v-if="startMode === 'restore'" class="space-y-2">
-            <p class="text-sm text-foreground/80">Rebuild a server from its HSI configuration backup: its accounts, apps and volume descriptions come back, then you sign in with one of its accounts. Connect the data disks first.</p>
+            <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.rebuildAServerFromIts') }}</p>
             <RestoreForm :auth-token="setupSession" :after-restart="afterRestore" :show-follow-ups="false" />
           </div>
         <form v-else class="space-y-4" @submit.prevent="createAdmin">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">Create the administrator</h2>
-            <p class="mt-1 text-sm text-foreground/80">This account manages the server. It is also a Linux and SMB account, so it can open the shares.</p>
+            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.createTheAdministrator') }}</h2>
+            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.thisAccountManagesTheServer') }}</p>
           </div>
-          <label class="block text-xs text-foreground/80">Username
-            <Input v-model="username" class="mt-1" autocomplete="username" placeholder="e.g. alice" spellcheck="false" required />
+          <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.username') }}
+            <Input v-model="username" class="mt-1" autocomplete="username" :placeholder="$t('ui.views.SetupView.eGAlice')" spellcheck="false" required />
           </label>
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="block text-xs text-foreground/80">Password
+            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.password') }}
               <Input v-model="password" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
-            <label class="block text-xs text-foreground/80">Confirm the password
+            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.confirmThePassword') }}
               <Input v-model="confirm" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
           </div>
@@ -285,15 +286,15 @@ const NEXT = [
         <!-- Server identity -->
         <form v-else-if="screen === 'identity'" class="space-y-4" @submit.prevent="applyIdentity">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">Name the server</h2>
-            <p class="mt-1 text-sm text-foreground/80">The name devices see on the network, and the time zone used for schedules and logs.</p>
+            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.nameTheServer') }}</h2>
+            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.theNameDevicesSeeOn') }}</p>
           </div>
           <LoadingState v-if="!current && !error" variant="compact" />
           <template v-else-if="current">
-            <label class="block text-xs text-foreground/80">Hostname
+            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.hostname') }}
               <Input v-model="hostname" class="mt-1 font-mono" spellcheck="false" />
             </label>
-            <label class="block text-xs text-foreground/80">Time zone
+            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.timeZone') }}
               <NativeSelect wrapper-class="mt-1" v-model="timezone">
                 <NativeSelectOption v-for="z in timezones" :key="z" :value="z">{{ z }}</NativeSelectOption>
               </NativeSelect>
@@ -301,7 +302,7 @@ const NEXT = [
           </template>
           <p v-if="hostnameError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
           <div class="flex justify-between">
-            <Button variant="ghost" size="sm" type="button" @click="goTo('secure', 'identity')">Skip</Button>
+            <Button variant="ghost" size="sm" type="button" @click="goTo('secure', 'identity')">{{ $t('ui.views.SetupView.skip') }}</Button>
             <Button size="sm" :disabled="!current || !!hostnameError">{{ identityChanged ? 'Apply…' : 'Continue' }}</Button>
           </div>
         </form>
@@ -309,22 +310,22 @@ const NEXT = [
         <!-- Secure access -->
         <div v-else-if="screen === 'secure'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">Secure access</h2>
-            <p class="mt-1 text-sm text-foreground/80">HTTPS encrypts passwords and files on your network.</p>
+            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.secureAccess') }}</h2>
+            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.httpsEncryptsPasswordsAndFiles') }}</p>
           </div>
-          <p v-if="restarting" role="status" class="status-text text-foreground/80">Restarting HSI…</p>
+          <p v-if="restarting" role="status" class="status-text text-foreground/80">{{ $t('ui.views.SetupView.restartingHsi') }}</p>
           <LoadingState v-else-if="!tls && !tlsError" variant="compact" />
           <template v-else-if="tls">
             <p class="text-sm text-foreground">{{ modeLabel(tls.mode) }}</p>
             <template v-if="tls.mode === 'local'">
               <div v-if="tls.authorityFingerprint">
-                <span class="text-xs text-muted-foreground">Authority fingerprint</span>
+                <span class="text-xs text-muted-foreground">{{ $t('ui.views.SetupView.authorityFingerprint') }}</span>
                 <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ tls.authorityFingerprint }}</p>
               </div>
-              <p class="text-sm text-foreground/80">Install the authority certificate on your devices so browsers trust this server.</p>
-              <Button as="a" variant="outline" size="sm" href="/ca.crt" download>Download the authority certificate</Button>
+              <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.installTheAuthorityCertificateOn') }}</p>
+              <Button as="a" variant="outline" size="sm" href="/ca.crt" download>{{ $t('ui.views.SetupView.downloadTheAuthorityCertificate') }}</Button>
               <details class="text-sm text-foreground/80">
-                <summary class="cursor-pointer text-xs text-muted-foreground">How to trust it on your devices</summary>
+                <summary class="cursor-pointer text-xs text-muted-foreground">{{ $t('ui.views.SetupView.howToTrustItOn') }}</summary>
                 <dl class="mt-2 space-y-2">
                   <div v-for="t in TRUST_STEPS" :key="t.os">
                     <dt class="text-xs font-medium text-foreground">{{ t.os }}</dt>
@@ -334,23 +335,23 @@ const NEXT = [
               </details>
             </template>
             <div v-else-if="tls.mode === 'off'" class="space-y-2">
-              <p class="text-sm text-foreground/80">HSI is served over plain HTTP. Turn HTTPS on with a local certificate authority.</p>
-              <Button size="sm" type="button" @click="turnOnHttps">Turn HTTPS on</Button>
+              <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.hsiIsServedOverPlain') }}</p>
+              <Button size="sm" type="button" @click="turnOnHttps">{{ $t('ui.views.SetupView.turnHttpsOn') }}</Button>
             </div>
-            <p class="text-xs text-muted-foreground">Import a certificate or use a reverse proxy later in Settings &gt; Secure access.</p>
+            <p class="text-xs text-muted-foreground">{{ $t('ui.views.SetupView.importACertificateOrUse') }}</p>
           </template>
           <p v-if="tlsError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
           <div class="flex justify-between">
-            <Button variant="ghost" size="sm" type="button" :disabled="restarting" @click="goTo('next', 'secure')">Skip</Button>
-            <Button size="sm" type="button" :disabled="restarting" @click="goTo('next')">Continue</Button>
+            <Button variant="ghost" size="sm" type="button" :disabled="restarting" @click="goTo('next', 'secure')">{{ $t('ui.views.SetupView.skip') }}</Button>
+            <Button size="sm" type="button" :disabled="restarting" @click="goTo('next')">{{ $t('ui.views.SetupView.continue') }}</Button>
           </div>
         </div>
 
         <!-- Next steps -->
         <div v-else-if="screen === 'next'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">Your server is ready</h2>
-            <p class="mt-1 text-sm text-foreground/80">A few things worth doing next. Everything stays available later from the dashboard.</p>
+            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.yourServerIsReady') }}</h2>
+            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.aFewThingsWorthDoing') }}</p>
           </div>
           <ul class="grid gap-2 sm:grid-cols-2">
             <li v-for="n in NEXT" :key="n.title">
@@ -360,7 +361,7 @@ const NEXT = [
               </a>
             </li>
           </ul>
-          <div class="flex justify-end"><Button size="sm" @click="goTo('done')">Go to the dashboard</Button></div>
+          <div class="flex justify-end"><Button size="sm" @click="goTo('done')">{{ $t('ui.views.SetupView.goToTheDashboard') }}</Button></div>
         </div>
       </div>
     </div>

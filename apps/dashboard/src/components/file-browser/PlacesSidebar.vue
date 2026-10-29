@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { InfoIcon } from '@lucide/vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import {
@@ -13,6 +14,8 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar'
+
+const { t } = useI18n()
 type Place = { id: string; name: string; path: string; icon?: string | null }
 
 defineProps<{
@@ -28,9 +31,9 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
     <Sidebar collapsible="none" class="h-full border-r">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Places</SidebarGroupLabel>
+          <SidebarGroupLabel>{{ t('ui.files.PlacesSidebar.places') }}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu aria-label="Places">
+            <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.places')">
               <SidebarMenuItem v-for="place in places" :key="place.id">
                 <SidebarMenuButton :is-active="activePlaceId === place.id" @click.stop="$emit('select', place)">
                   <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm" />
@@ -42,7 +45,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
               </SidebarMenuItem>
             </SidebarMenu>
             <p v-if="places.length === 0" class="text-xs text-muted-foreground px-2 py-2 leading-snug">
-              No places yet. Ask an admin to grant you access to a folder.
+              {{ t('ui.files.PlacesSidebar.noPlacesYetAskAn') }}
             </p>
           </SidebarGroupContent>
         </SidebarGroup>

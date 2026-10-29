@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, inject, ref } from 'vue'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { modalHostKey } from '../../lib/modal-host'
+
+const { t } = useI18n()
 
 /* App dialog shell on top of the shadcn-vue / Reka UI dialog. Parents keep
    the same contract as before: mount with v-if, listen to @close, which
@@ -125,8 +128,8 @@ defineExpose({ requestClose })
               variant="ghost"
               size="icon-sm"
               class="shrink-0 text-muted-foreground"
-              tooltip="Close"
-              aria-label="Close dialog"
+              :tooltip="t('ui.shared.Modal.close')"
+              :aria-label="t('ui.shared.Modal.closeDialog')"
               :disabled="preventClose"
               @click="requestClose"
             >

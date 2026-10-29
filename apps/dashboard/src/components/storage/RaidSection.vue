@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
@@ -29,6 +30,8 @@ import { Item } from '@/components/ui/item'
 import Tip from '../ui/Tip.vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
@@ -322,17 +325,17 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
   <div>
     <div v-if="!only" class="flex items-start justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">Arrays</h2>
-        <p class="text-sm text-muted-foreground mt-0.5">Manage software RAID arrays (mdadm).</p>
+        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.RaidSection.arrays') }}</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <Tip :text="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined" wrap>
           <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')">
             <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-            Create RAID…
+            {{ t('ui.storage.RaidSection.createRaid') }}
           </Button>
         </Tip>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" tooltip="Refresh" aria-label="Refresh" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.RaidSection.refresh')" :aria-label="t('ui.storage.RaidSection.refresh')" class="text-muted-foreground hover:text-foreground">
           <LoadingSpinner v-if="loading" class="text-base" />
           <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -352,7 +355,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     </div>
 
     <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-      No RAID arrays configured. Create one to combine multiple drives for redundancy or performance.
+      {{ t('ui.storage.RaidSection.noRaidArraysConfiguredCreate') }}
     </div>
 
     <div v-else class="space-y-3">
@@ -384,16 +387,16 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <!-- ⋯ menu -->
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Array actions">
+                  <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('ui.storage.RaidSection.arrayActions')">
                     <EllipsisVerticalIcon />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="min-w-[176px]">
-                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">Danger zone</DropdownMenuLabel>
+                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.storage.RaidSection.dangerZone') }}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" @select="openDestroy(r)">
                     <Trash2Icon />
-                    Destroy array…
+                    {{ t('ui.storage.RaidSection.destroyArray') }}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -450,7 +453,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <div v-if="r.resyncPercent != null" class="mb-3">
               <div class="flex justify-between text-2xs text-foreground/80 mb-1">
                 <span>{{ syncLabel(r) }}</span>
-                <span v-if="r.syncAction === 'recovery'" class="text-muted-foreground">redundancy returns when it finishes</span>
+                <span v-if="r.syncAction === 'recovery'" class="text-muted-foreground">{{ t('ui.storage.RaidSection.redundancyReturnsWhenItFinishes') }}</span>
               </div>
               <Progress class="h-1.5 rounded-full bg-muted" :model-value="r.resyncPercent" indicator-class="bg-primary transition-all" />
             </div>
@@ -466,7 +469,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   <p v-if="memberIdentity(m.name)" class="text-2xs text-muted-foreground truncate">{{ memberIdentity(m.name) }}</p>
                 </div>
                 <Button variant="ghost" size="xs" v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="shrink-0"
-                  :disabled="memberBusy !== null" @click="failMember(r, m)">Mark as failed</Button>
+                  :disabled="memberBusy !== null" @click="failMember(r, m)">{{ t('ui.storage.RaidSection.markAsFailed') }}</Button>
                 <Button variant="outline" size="xs" v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="shrink-0"
                   :disabled="memberBusy !== null" @click="removeMember(r, m)">
                   {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
@@ -479,10 +482,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
             <div class="mt-2">
               <Button variant="ghost" size="xs" v-if="addPicker !== r.name" type="button" :disabled="memberBusy !== null"
-                @click="addPicker = r.name">+ Add a disk</Button>
+                @click="addPicker = r.name">{{ t('ui.storage.RaidSection.addADisk') }}</Button>
               <div v-else class="rounded-lg border border-border p-2 space-y-1">
-                <p class="text-2xs text-muted-foreground px-1">Free disks at least as large as the smallest member:</p>
-                <p v-if="!replacementCandidates(r).length" class="text-2xs text-muted-foreground px-1 py-1">No suitable disk is free.</p>
+                <p class="text-2xs text-muted-foreground px-1">{{ t('ui.storage.RaidSection.freeDisksAtLeastAs') }}</p>
+                <p v-if="!replacementCandidates(r).length" class="text-2xs text-muted-foreground px-1 py-1">{{ t('ui.storage.RaidSection.noSuitableDiskIsFree') }}</p>
                 <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
                   class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
@@ -490,7 +493,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   <span class="text-2xs text-muted-foreground">{{ fmtBytes(d.size) }}</span>
                   <span v-if="memberIdentity(d.name)" class="text-2xs text-muted-foreground truncate">{{ memberIdentity(d.name) }}</span>
                 </Item>
-                <Button variant="ghost" size="xs" type="button" @click="addPicker = null">Cancel</Button>
+                <Button variant="ghost" size="xs" type="button" @click="addPicker = null">{{ t('ui.storage.RaidSection.cancel') }}</Button>
               </div>
             </div>
           </div>
@@ -508,22 +511,22 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   <div class="text-2xs text-muted-foreground mt-1">{{ fmtBytes(raidBlockDev(r.name)!.usageFree) }} free · {{ usagePct(raidBlockDev(r.name)!).toFixed(1) }}%</div>
                 </div>
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-muted-foreground">
-                  Formatted <span class="font-mono text-foreground/80">{{ raidBlockDev(r.name)!.fstype }}</span>, not mounted
+                  {{ t('ui.storage.RaidSection.formatted') }} <span class="font-mono text-foreground/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
                 </div>
-                <div v-else class="text-2xs text-muted-foreground">No filesystem: format before mounting</div>
+                <div v-else class="text-2xs text-muted-foreground">{{ t('ui.storage.RaidSection.noFilesystemFormatBeforeMounting') }}</div>
               </div>
               <div class="flex gap-1.5 shrink-0">
                 <Button variant="outline" size="xs" v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
                   class="text-foreground/80 hover:border-primary/50 hover:text-primary">
-                  Format
+                  {{ t('ui.storage.RaidSection.format') }}
                 </Button>
                 <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
                   class="text-foreground/80 hover:border-success/50 hover:text-success">
-                  Mount
+                  {{ t('ui.storage.RaidSection.mount') }}
                 </Button>
                 <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
                   class="text-foreground/80 hover:border-warning/50 hover:text-warning">
-                  Unmount
+                  {{ t('ui.storage.RaidSection.unmount') }}
                 </Button>
               </div>
             </div>
@@ -555,12 +558,12 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
           <!-- Step 1: Choose RAID level -->
           <div v-if="raidWiz.step === 1" class="p-5 space-y-3">
             <p class="flex items-center gap-1.5 text-sm text-muted-foreground">
-              Choose the RAID configuration that matches your needs.
+              {{ t('ui.storage.RaidSection.chooseTheRaidConfigurationThat') }}
               <Hint text="Each diagram shows how one chunk of data is placed on the drives. Same letter = identical copy. Different letters = split across drives. P = a parity block, used to rebuild data if a drive fails." />
             </p>
 
             <!-- Own container: the dialog is teleported out of the Storage panel. -->
-            <div class="@container"><div role="radiogroup" aria-label="RAID level" class="grid grid-cols-1 @md:grid-cols-2 gap-2">
+            <div class="@container"><div role="radiogroup" :aria-label="t('ui.storage.RaidSection.raidLevel')" class="grid grid-cols-1 @md:grid-cols-2 gap-2">
               <Item
                 v-for="lvl in RAID_LEVELS" :key="lvl.level"
                 as="button" type="button" variant="outline" role="radio" :aria-checked="raidWiz.level === lvl.level"
@@ -592,22 +595,22 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </Alert>
 
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">Cancel</Button>
-              <Button @click="raidWiz.step = 2" class="flex-1 justify-center">Next →</Button>
+              <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.cancel') }}</Button>
+              <Button @click="raidWiz.step = 2" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.next') }}</Button>
             </div>
           </div>
 
           <!-- Step 2: Select drives -->
           <div v-else-if="raidWiz.step === 2" class="p-5 space-y-3">
             <p class="text-sm text-foreground/80">
-              Select drives for <strong>{{ selectedRaidLevel.name }}</strong>.
+              {{ t('ui.storage.RaidSection.selectDrivesFor') }} <strong>{{ selectedRaidLevel.name }}</strong>.
               <span class="text-muted-foreground">Minimum {{ selectedRaidLevel.minDev }} required.</span>
             </p>
 
             <!-- Capacity: computed from the selected drives once there are enough -->
             <div class="px-1 space-y-0.5">
               <div v-if="wizardCapacity?.cap.valid" class="text-xs text-foreground">
-                Usable: <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
+                {{ t('ui.storage.RaidSection.usable') }} <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
                 of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)
                 · {{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}
               </div>
@@ -618,8 +621,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </div>
 
             <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-              No eligible drives available.<br>
-              <span class="text-xs">Drives must be unmounted, not already in a RAID or LVM, and not a system disk.</span>
+              {{ t('ui.storage.RaidSection.noEligibleDrivesAvailable') }}<br>
+              <span class="text-xs">{{ t('ui.storage.RaidSection.drivesMustBeUnmountedNot') }}</span>
             </div>
 
             <div v-else class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
@@ -649,21 +652,21 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
             <!-- Array name -->
             <div>
-              <label class="block text-xs font-medium text-foreground/80 mb-1.5">Array name</label>
+              <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.RaidSection.arrayName') }}</label>
               <Input
                 v-model="raidWiz.name"
                 type="text"
-                placeholder="md0"
+                laceholder="md0"
                 class="w-full px-3 py-2 text-sm font-mono"
               />
-              <p class="text-2xs text-muted-foreground mt-1">Will create <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
+              <p class="text-2xs text-muted-foreground mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
             </div>
 
             <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="raidWiz.step = 1" class="flex-1 justify-center">← Back</Button>
+              <Button variant="outline" @click="raidWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
               <Button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
                 class="flex-1 justify-center">
-                Next →
+                {{ t('ui.storage.RaidSection.next') }}
               </Button>
             </div>
           </div>
@@ -673,32 +676,32 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <Alert variant="destructive" class="flex items-start gap-3 p-4 text-foreground" role="note">
               <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
               <div>
-                <div class="font-semibold text-destructive text-sm mb-1">All data on selected drives will be erased</div>
+                <div class="font-semibold text-destructive text-sm mb-1">{{ t('ui.storage.RaidSection.allDataOnSelectedDrives') }}</div>
                 <div class="text-xs text-destructive/80">
-                  Creating this RAID array will permanently destroy all existing data on the selected drives. This cannot be undone.
+                  {{ t('ui.storage.RaidSection.creatingThisRaidArrayWill') }}
                 </div>
               </div>
             </Alert>
 
             <div class="space-y-1 text-xs text-muted-foreground">
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">Array</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">Level</span><span>{{ selectedRaidLevel.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">Drives</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-foreground/80">Capacity</span>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ selectedRaidLevel.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.drives') }}</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.capacity') }}</span>
                 <span v-if="wizardCapacity?.cap.valid">{{ fmtBytes(wizardCapacity.cap.usable) }} usable of {{ fmtBytes(wizardCapacity.cap.raw) }} raw ({{ wizardCapacity.cap.efficiency }}%)</span>
                 <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
               </div>
-              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-foreground/80">Redundancy</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
+              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.RaidSection.redundancy') }}</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
             </div>
 
             <div>
               <label class="block text-xs text-foreground/80 mb-1.5">
-                Type <span class="font-mono font-bold text-foreground">CREATE RAID</span> to confirm
+                {{ t('ui.storage.RaidSection.type') }} <span class="font-mono font-bold text-foreground">{{ t('ui.storage.RaidSection.createRaid2') }}</span> {{ t('ui.storage.RaidSection.toConfirm') }}
               </label>
               <Input
                 v-model="raidWiz.confirm"
                 type="text"
-                placeholder="CREATE RAID"
+                :placeholder="t('ui.storage.RaidSection.createRaid2')"
                 class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"
               />
             </div>
@@ -706,14 +709,14 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
 
             <div class="flex gap-2">
-              <Button variant="outline" @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 justify-center">← Back</Button>
+              <Button variant="outline" @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
               <Button variant="destructive"
                 @click="doCreateRaid"
                 :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
                 class="flex-1 justify-center"
               >
-                <span v-if="raidWiz.busy">Creating…</span>
-                <span v-else>Create RAID</span>
+                <span v-if="raidWiz.busy">{{ t('ui.storage.RaidSection.creating') }}</span>
+                <span v-else>{{ t('ui.storage.RaidSection.createRaid3') }}</span>
               </Button>
             </div>
           </div>
@@ -723,7 +726,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <!-- Destroy RAID array -->
     <ConfirmDestroyDialog
       v-if="destroyDlg"
-      title="Destroy RAID array"
+      :title="t('ui.storage.RaidSection.destroyRaidArray')"
       subtitle="This will stop the array and erase RAID metadata from all member drives."
       :confirm-word="destroyDlg.raid.name"
       action-label="Destroy array"
@@ -733,11 +736,11 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       @confirm="doDestroyRaid"
       @close="destroyDlg = null"
     >
-      <template #warning>All data on <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> will be permanently lost. Make sure you have a backup.</template>
+      <template #warning>{{ t('ui.storage.RaidSection.allDataOn') }} <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> {{ t('ui.storage.RaidSection.willBePermanentlyLostMake') }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Array</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Level</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">Members</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.RaidSection.members') }}</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

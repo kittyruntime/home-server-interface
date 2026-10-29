@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Checkbox } from '@/components/ui/checkbox'
 import BusyLabel from './BusyLabel.vue'
 import { LOADING } from '../../lib/loading'
@@ -10,6 +11,8 @@ import { confirmMatches } from '../../lib/confirm-text'
 import { planRequest, workerCodeOf, type PlanPreview, type PlanApply, type PlanStep, type AppOp, type ShareOp, type StorageOp, type UserOp } from '../../lib/plan'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 // Review then apply an operation plan (#36): the exact files, commands and
 // devices HSI is about to touch, and the result of each step.
@@ -232,12 +235,12 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                 <p class="mt-0.5 text-2xs text-muted-foreground">
                   <span class="uppercase tracking-caps">{{ kindLabel[s.kind] ?? s.kind }}</span>
                   <span class="font-mono"> · {{ s.target }}</span>
-                  <span v-if="s.onFailure === 'warn'"> · a failure here is reported, not fatal</span>
-                  <span v-if="s.background"> · runs in the background, follow it in notifications</span>
+                  <span v-if="s.onFailure === 'warn'"> {{ t('ui.shared.PlanDialog.aFailureHereIsReported') }}</span>
+                  <span v-if="s.background"> {{ t('ui.shared.PlanDialog.runsInTheBackgroundFollow') }}</span>
                 </p>
 
                 <details v-if="s.command?.length" class="mt-2">
-                  <summary class="cursor-pointer text-xs text-muted-foreground hover:text-foreground">Command</summary>
+                  <summary class="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{{ t('ui.shared.PlanDialog.command') }}</summary>
                   <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground">{{ s.command.join(' ') }}</pre>
                 </details>
                 <details v-if="s.diff" class="mt-2" :open="s.kind === 'update' && !done">
@@ -245,7 +248,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                   <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs leading-relaxed"><span v-for="(line, j) in s.diff.split('\n')" :key="j" :class="diffLineClass(line)">{{ line }}
 </span></pre>
                 </details>
-                <p v-else-if="s.deferred && s.kind !== 'later'" class="mt-1 text-2xs text-muted-foreground">The exact change is computed when the step runs and shown here afterwards.</p>
+                <p v-else-if="s.deferred && s.kind !== 'later'" class="mt-1 text-2xs text-muted-foreground">{{ t('ui.shared.PlanDialog.theExactChangeIsComputed') }}</p>
 
                 <p v-if="resultOf(i)?.error" class="status-text mt-2" :class="resultOf(i)?.status === 'failed' ? 'text-destructive' : 'text-warning'">
                   <span class="status-tag">{{ resultOf(i)?.status === 'failed' ? '[ERR]' : '[WARN]' }}</span> {{ resultOf(i)?.error }}
@@ -263,14 +266,14 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
         </p>
         <p v-if="applyError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ applyError }}</p>
         <p v-if="failedApply" role="alert" class="status-text text-destructive">
-          <span class="status-tag">[ERR]</span> The operation stopped at a failed step; later steps did not run.
+          <span class="status-tag">[ERR]</span> {{ t('ui.shared.PlanDialog.theOperationStoppedAtA') }}
         </p>
         <label v-if="planRequest.acknowledge && preview && !done && !failedApply" class="flex items-start gap-2 text-sm text-foreground">
           <Checkbox v-model="acked" class="mt-0.5" :disabled="applying" />
           <span>{{ planRequest.acknowledge }}</span>
         </label>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
-          <span class="text-xs text-foreground/80">Type <span class="font-mono text-foreground">{{ planRequest.confirmText }}</span> to confirm</span>
+          <span class="text-xs text-foreground/80">{{ t('ui.shared.PlanDialog.type') }} <span class="font-mono text-foreground">{{ planRequest.confirmText }}</span> {{ t('ui.shared.PlanDialog.toConfirm') }}</span>
           <Input v-model="typed" class="mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
         </label>
       </template>
@@ -279,11 +282,11 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
     <template #footer>
       <div class="flex-1" />
       <template v-if="failedApply || done || (loadError && !loading)">
-        <Button size="sm" @click="modal?.requestClose()">Close</Button>
+        <Button size="sm" @click="modal?.requestClose()">{{ t('ui.shared.PlanDialog.close') }}</Button>
       </template>
       <template v-else>
-        <Button variant="ghost" size="sm" :disabled="applying" @click="modal?.requestClose()">Back</Button>
-        <Button variant="outline" size="sm" v-if="stale" :disabled="loading" @click="load">Review again</Button>
+        <Button variant="ghost" size="sm" :disabled="applying" @click="modal?.requestClose()">{{ t('ui.shared.PlanDialog.back') }}</Button>
+        <Button variant="outline" size="sm" v-if="stale" :disabled="loading" @click="load">{{ t('ui.shared.PlanDialog.reviewAgain') }}</Button>
         <Button
           v-else
           size="sm"

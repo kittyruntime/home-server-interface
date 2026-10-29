@@ -4,6 +4,7 @@ import LoadingState from '../ui/LoadingState.vue'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+
 // The page of one storage object (#40): a header with the object's name, its
 // chips, its key figure and its actions, then Overview / Structure / Activity.
 
@@ -50,7 +51,7 @@ const TABS: { id: ObjectTab; label: string }[] = [
       </header>
 
       <Tabs v-model="tab">
-        <TabsList aria-label="Sections of this page" class="mb-4">
+        <TabsList :aria-label="$t('ui.storage.ObjectPage.sectionsOfThisPage')" class="mb-4">
           <TabsTrigger v-for="t in TABS" :key="t.id" :value="t.id">{{ t.label }}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><slot name="overview" /></TabsContent>

@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ref, nextTick } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { Input } from '@/components/ui/input'
+
+const { t } = useI18n()
 
 // The admin's name for a physical disk ("bay 3, top"), stored by serial so it
 // follows the disk when its kernel name changes (#32). Edited in place.
@@ -46,7 +49,7 @@ async function save() {
     <template v-if="editing">
       <Input
         ref="input" v-model="draft" maxlength="40" :disabled="saving"
-        aria-label="Disk label" placeholder="e.g. bay 3, top"
+        :aria-label="t('ui.storage.DiskLabel.diskLabel')" :placeholder="t('ui.storage.DiskLabel.eGBay3Top')"
         class="w-full py-0.5! px-1.5! text-2xs!"
         @keydown.enter.prevent="save" @keydown.esc.prevent="editing = false" @blur="save"
       />

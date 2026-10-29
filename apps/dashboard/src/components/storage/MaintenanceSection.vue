@@ -8,6 +8,7 @@ import { useToast } from '../../lib/toast'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
+
 /* Scheduled disk checks. The schedule is stored on the server and run hourly by
    a systemd timer (hsi-maintenance.timer), so it keeps running when the
    dashboard or the backend is down. Failed self-tests and RAID mismatches raise
@@ -97,10 +98,9 @@ const statusClass: Record<string, string> = {
 <template>
   <div>
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-foreground">Maintenance</h2>
+      <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.storage.MaintenanceSection.maintenance') }}</h2>
       <p class="text-sm text-muted-foreground mt-0.5">
-        Scheduled disk self-tests and RAID checks. They run on the server even when this page is closed;
-        failures raise alerts in Monitor, which notification rules can forward.
+        {{ $t('ui.storage.MaintenanceSection.scheduledDiskSelfTestsAnd') }}
       </p>
     </div>
 
@@ -109,7 +109,7 @@ const statusClass: Record<string, string> = {
 
     <template v-else-if="data && draft">
       <Alert variant="warning" v-if="!data.timerInstalled" class="block mb-4 text-foreground" role="note">
-        The maintenance timer is not installed yet: schedules are saved but only run after the next HSI update installs it.
+        {{ $t('ui.storage.MaintenanceSection.theMaintenanceTimerIsNot') }}
       </Alert>
 
       <div class="space-y-4">
@@ -119,8 +119,7 @@ const statusClass: Record<string, string> = {
               <h3 class="text-sm font-semibold text-foreground">{{ t.title }}</h3>
               <p class="text-xs text-muted-foreground mt-0.5">{{ t.desc }}</p>
               <p v-if="t.id === 'raidCheck'" class="text-2xs text-muted-foreground mt-1">
-                Ubuntu's mdadm package already runs a monthly check (<code class="font-mono">mdcheck_start.timer</code>).
-                If you schedule one here, you can disable it with <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
+                {{ $t('ui.storage.MaintenanceSection.ubuntuSMdadmPackageAlready') }}<code class="font-mono">mdcheck_start.timer</code>{{ $t('ui.storage.MaintenanceSection.ifYouScheduleOneHere') }} <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
               </p>
             </div>
             <Button variant="outline" size="xs" type="button" class="shrink-0" :disabled="running !== null" @click="runNow(t.id)">
@@ -130,10 +129,10 @@ const statusClass: Record<string, string> = {
 
           <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <NativeSelect wrapper-class="!w-auto" v-model="draft[t.id].every" class="!py-1 text-xs">
-              <NativeSelectOption value="off">Off</NativeSelectOption>
-              <NativeSelectOption value="daily">Every day</NativeSelectOption>
-              <NativeSelectOption value="weekly">Every week</NativeSelectOption>
-              <NativeSelectOption value="monthly">Every month</NativeSelectOption>
+              <NativeSelectOption value="off">{{ $t('ui.storage.MaintenanceSection.off') }}</NativeSelectOption>
+              <NativeSelectOption value="daily">{{ $t('ui.storage.MaintenanceSection.everyDay') }}</NativeSelectOption>
+              <NativeSelectOption value="weekly">{{ $t('ui.storage.MaintenanceSection.everyWeek') }}</NativeSelectOption>
+              <NativeSelectOption value="monthly">{{ $t('ui.storage.MaintenanceSection.everyMonth') }}</NativeSelectOption>
             </NativeSelect>
             <template v-if="draft[t.id].every === 'weekly'">
               <span class="text-muted-foreground">on</span>
@@ -142,7 +141,7 @@ const statusClass: Record<string, string> = {
               </NativeSelect>
             </template>
             <template v-if="draft[t.id].every === 'monthly'">
-              <span class="text-muted-foreground">on day</span>
+              <span class="text-muted-foreground">{{ $t('ui.storage.MaintenanceSection.onDay') }}</span>
               <NativeSelect wrapper-class="!w-auto" v-model.number="draft[t.id].day" class="!py-1 text-xs">
                 <NativeSelectOption v-for="d in 28" :key="d" :value="d">{{ d }}</NativeSelectOption>
               </NativeSelect>
@@ -156,8 +155,8 @@ const statusClass: Record<string, string> = {
           </div>
 
           <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-muted-foreground @2xl:max-w-md">
-            <div>Last run: <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
-            <div>Next run: <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
+            <div>{{ $t('ui.storage.MaintenanceSection.lastRun') }} <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
+            <div>{{ $t('ui.storage.MaintenanceSection.nextRun') }} <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
           <p v-if="data.tasks[t.id].postponed" class="mt-2 status-text text-warning">
             <span class="status-tag">[WARN]</span> Not run at {{ fmtWhen(data.tasks[t.id].postponed!.at) }}: {{ data.tasks[t.id].postponed!.reason }}.
@@ -173,7 +172,7 @@ const statusClass: Record<string, string> = {
             </div>
           </div>
           <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-muted-foreground">
-            Each disk runs its test on its own: Running shows how much is left, then Passed or Failed. A failed test also raises an alert in Monitor.
+            {{ $t('ui.storage.MaintenanceSection.eachDiskRunsItsTest') }}
           </p>
         </Card>
       </div>
