@@ -266,6 +266,15 @@ expect_mirror_data() {
 
 mirror_array() { vm_ssh 'lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; exit}"'; }
 
+# Waits for the mirror to be in sync on two disks: HSI refuses to reshape an
+# array during a resync or a rebuild.
+wait_clean() {
+  local md
+  md=$(mirror_array)
+  vm_ssh "for i in \$(seq 1 180); do d=\$(mdadm --detail /dev/$md); echo \"\$d\" | grep -Eq 'State : (clean|active) *\$' && echo \"\$d\" | grep -Eq 'Active Devices *: *2' && exit 0; sleep 5; done; mdadm --detail /dev/$md; exit 1" \
+    || fail "$md did not get in sync"
+}
+
 # expect_hold <blocked|back|none>: the guard's view of the mirror, which it
 # refreshes every minute.
 expect_hold() {
@@ -282,6 +291,7 @@ expand_mirror() {
   local uuid before after
   uuid=$(vm_ssh 'findmnt -no UUID /srv/vm-mirror')
   before=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
+  wait_clean
   log "Growing the mirror into the free space of its volume group"
   apply_plan volume.expand "{\"uuid\":\"$uuid\",\"mode\":\"vgFree\"}" >/dev/null
   after=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
@@ -298,8 +308,7 @@ replace_disk() {
   apply_plan raid.fail "{\"name\":\"$md\",\"device\":\"$old\"}" >/dev/null
   apply_plan raid.remove "{\"name\":\"$md\",\"device\":\"$old\"}" >/dev/null
   apply_plan raid.add "{\"name\":\"$md\",\"device\":\"$new\"}" >/dev/null
-  vm_ssh "for i in \$(seq 1 120); do d=\$(mdadm --detail /dev/$md); echo \"\$d\" | grep -Eq 'State : (clean|active) *\$' && echo \"\$d\" | grep -Eq 'Active Devices *: *2' && exit 0; sleep 5; done; mdadm --detail /dev/$md; exit 1" \
-    || fail "$md did not rebuild onto $new"
+  wait_clean
   vm_ssh "mdadm --detail /dev/$md | grep -q '/dev/$new' && ! mdadm --detail /dev/$md | grep -q '/dev/$old\$'" \
     || fail "$md does not have $new in place of $old"
   log "$md rebuilt onto $new"
