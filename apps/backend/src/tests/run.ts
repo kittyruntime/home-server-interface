@@ -1461,6 +1461,10 @@ await testSharePlans()
 
   // A Place on /srv (no volume) attaches to nothing; nested places go to the most specific volume.
   assert.ok(!o.volumes.some(v => v.usedBy.places.some(p => p.id === "p2")))
+
+  // No RAID and no LVM, as in an LXC container: no crash, no volume.
+  const bare = buildVolumes({ ...input, devices: [], raids: [], lvm: { pvs: [], vgs: [], lvs: [] }, guard: [] } as any)
+  assert.deepEqual(bare.volumes, [], "no devices: no volume")
 }
 
 // A VG spanning a mirror and a plain partition has no redundancy.

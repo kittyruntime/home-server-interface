@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Volumes inside a container**: the storage pages no longer fail with
+  "Cannot read properties of null (reading 'map')" on a server without LVM,
+  such as an LXC container (#133).
+
 ## [1.72.0] - 2026-10-29
 
 ### Added

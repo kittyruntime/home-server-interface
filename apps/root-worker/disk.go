@@ -388,7 +388,10 @@ func lvmCmd(args ...string) []byte {
 	return out
 }
 
+// The lists are never nil: without LVM (a container, no lvm2 installed) the
+// reply must carry [] and not null, which the backend maps over.
 func getLvmInfo() (pvs []lvmPV, vgs []lvmVG, lvs []lvmLV) {
+	pvs, vgs, lvs = []lvmPV{}, []lvmVG{}, []lvmLV{}
 	pvOut := lvmCmd("pvs", "--reportformat", "json", "--units", "b", "--nosuffix",
 		"-o", "pv_name,vg_name,pv_size,pv_free")
 	for _, row := range parseLvmReport(pvOut, "pv") {
