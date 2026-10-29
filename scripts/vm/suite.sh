@@ -812,8 +812,9 @@ case "$scenario" in
     vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
     install_published
     expect_running "$published"
-    # After the published release: installers before 1.73.1 ran their stage
-    # from /tmp.
+    # Installers before 1.73.1 neither flushed what they wrote nor ran their
+    # stage outside /tmp: the cuts below test the built installer.
+    vm_ssh sync
     separate_tmp
     add_data
     interrupted_update "$published"

@@ -1617,11 +1617,15 @@ fi
 # COMMON: generate JWT secret and backend .env
 # =============================================================================
 step "Generating secrets"
-if [[ -f "$ENV_FILE" ]]; then
+if grep -qs '^JWT_SECRET=.' "$ENV_FILE"; then
   warn ".env already exists, keeping existing secrets"
 else
+  # Also when a power cut left .env empty: sessions are signed again, nothing
+  # else depends on this secret.
+  [[ -s "$ENV_FILE" ]] && warn ".env has no JWT secret: generating one (everyone signs in again)"
+  sed -i '/^NODE_ENV=/d; /^JWT_SECRET=/d' "$ENV_FILE" 2>/dev/null || true
   JWT_SECRET=$(openssl rand -hex 32)
-  printf 'NODE_ENV=production\nJWT_SECRET=%s\n' "$JWT_SECRET" > "$ENV_FILE"
+  printf 'NODE_ENV=production\nJWT_SECRET=%s\n' "$JWT_SECRET" >> "$ENV_FILE"
   success "Generated JWT secret → $ENV_FILE"
 fi
 # Encrypts notification connector secrets. Added to existing installs too;
@@ -1672,7 +1676,10 @@ NATS_DATA_DIR="/var/lib/${APP_NAME}/nats"
 mkdir -p "$APP_CONF_DIR" "$NATS_DATA_DIR"
 chown nats: "$NATS_DATA_DIR"
 
-if [[ ! -f "$APP_CONF_DIR/.nats-credentials" ]]; then
+# Generated again when a power cut left the file empty or partial: everything
+# that uses these passwords is written again below from this file.
+if ! grep -qs '^NATS_BACKEND_PASS=.' "$APP_CONF_DIR/.nats-credentials" \
+  || ! grep -qs '^NATS_WORKER_PASS=.' "$APP_CONF_DIR/.nats-credentials"; then
   NATS_BACKEND_PASS=$(openssl rand -hex 32)
   NATS_WORKER_PASS=$(openssl rand -hex 32)
   printf 'NATS_BACKEND_PASS=%s\nNATS_WORKER_PASS=%s\n' \
@@ -1972,6 +1979,10 @@ ReadWritePaths=$DB_DIR $APP_DIR /tmp $CONTAINERS_DIR $BACKUP_STAGING_DIR
 WantedBy=${APP_NAME}.target
 EOF
 
+# Secrets, credentials, units and the release are on disk before anything
+# starts from them: a power cut a few seconds later must not leave them empty.
+sync
+
 # Release mode: current switches to the new release with a rename, so it is never
 # missing; until here the previous version could still start from it.
 if [[ "$FROM_SOURCE" -eq 0 ]]; then
@@ -2268,6 +2279,7 @@ fi
 # =============================================================================
 # Summary
 # =============================================================================
+sync
 echo ""
 if [[ "$IS_UPDATE" -eq 1 ]]; then
   echo -e "${BOLD}${GREEN}╔═══════════════════════════════════╗"
