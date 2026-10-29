@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt as scryptCallback } from "node:crypto"
 import { createReadStream, createWriteStream } from "node:fs"
-import { chmod, copyFile, mkdtemp, open, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises"
+import { chmod, copyFile, link, mkdtemp, open, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { once } from "node:events"
 import { pipeline } from "node:stream/promises"
@@ -197,6 +197,12 @@ async function pruneRollbackCopies(databasePath: string) {
   }
 }
 
+// Flushes a file, or a folder's entries (a rename), to the disk.
+async function fsyncPath(p: string): Promise<void> {
+  const fh = await open(p, "r")
+  try { await fh.sync() } finally { await fh.close() }
+}
+
 /**
  * Replaces the active database with `restoredFile` (validated before), keeping
  * the previous one as a rollback copy. The caller restarts HSI afterwards.
@@ -223,23 +229,33 @@ export async function swapDatabase(restoredFile: string, auditUserId: string, au
 
     const stamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z")
     const rollback = `${active}.pre-restore-${stamp}`
+    // On disk before it can replace anything: a power cut must not leave a
+    // half-written database in place.
+    await fsyncPath(local)
+    await chmod(local, 0o600)
+    // The old database's last writes go into its main file, so its WAL can
+    // be set aside with it.
+    await prisma.$queryRawUnsafe("PRAGMA wal_checkpoint(TRUNCATE)").catch(() => {})
     await prisma.$disconnect()
     disconnected = true
 
+    // The old database stays reachable under its rollback name, and a whole
+    // database is always at the active path: the restored one replaces it in
+    // a single rename. A power cut leaves the old database or the restored
+    // one, never none.
+    await link(active, rollback).catch(() => copyFile(active, rollback))
     // SQLite sidecar files belong to the database they were written for: move
     // them with the rollback copy so they are never applied to the restored one.
     const sidecars = ["-journal", "-wal", "-shm"]
-    await rename(active, rollback)
     for (const suffix of sidecars) await rename(active + suffix, rollback + suffix).catch(() => {})
     try {
       await rename(local, active)
-      await chmod(active, 0o600)
       replaced = true
     } catch (error) {
-      await rename(rollback, active).catch(() => {})
       for (const suffix of sidecars) await rename(rollback + suffix, active + suffix).catch(() => {})
       throw error
     }
+    await fsyncPath(path.dirname(active))
     await pruneRollbackCopies(active)
     return { rollback }
   } finally {
