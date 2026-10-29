@@ -21,6 +21,7 @@ const zPreferences = z.object({
   accent:       z.enum(["orange", "blue", "green", "purple"]).optional(),
   sidebarOrder: z.array(z.string()).optional(),
   locale:       z.enum(["en", "fr"]).optional(),
+  confirmFileDelete: z.boolean().optional(),
 })
 function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
   const r = zPreferences.safeParse(v ?? {})

@@ -78,5 +78,16 @@ export default {
   profile: {
     language: 'Language',
     languageHint: 'The language of the interface on every device you sign in to.',
+    confirmFileDelete: 'Confirm before deleting',
+    confirmFileDeleteHint: 'Ask before deleting files and folders in the file manager. Deletion is permanent.',
+  },
+  fileDelete: {
+    title: 'Delete permanently?',
+    confirm: 'Delete',
+    messageFile: '"{name}" will be deleted. This cannot be undone.',
+    messageFolder: 'The folder "{name}" and everything in it will be deleted. This cannot be undone.',
+    messageMany: '{count} items will be deleted, folders with everything in them. This cannot be undone.',
+    dontAskAgain: 'Don\'t ask again',
+    deleting: 'Deleting {count} item(s)',
   },
 }

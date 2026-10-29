@@ -15,6 +15,8 @@ import { useUploads, trackTransfer } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
 import { awaitJob } from '../../lib/jobs'
+import { useConfirm } from '../../lib/confirm'
+import { useDeleteConfirm } from '../../lib/delete-confirm'
 import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
@@ -38,6 +40,8 @@ const props = defineProps<{ desktopWindow?: boolean }>()
 
 const { isAdmin }    = useAuth()
 const { track, trackBatch } = useNotifications()
+const { confirm } = useConfirm()
+const { confirmFileDelete, setConfirmFileDelete } = useDeleteConfirm()
 const { clipboard, copy: clipCopy, cut: clipCut, clear: clipClear } = useClipboard()
 const uploads = useUploads()
 const { openFilePreview } = useDesktop()
@@ -387,13 +391,32 @@ async function doPaste() {
   refresh()
 }
 
+// Deletion is permanent (there is no trash): ask first, unless the user
+// turned it off.
+function deleteMessage(paths: string[]): string {
+  if (paths.length > 1) return t('fileDelete.messageMany', { count: paths.length })
+  const name = paths[0]!.split('/').pop() ?? paths[0]!
+  const isDir = entries.value.find(e => e.path === paths[0])?.type === 'dir'
+  return t(isDir ? 'fileDelete.messageFolder' : 'fileDelete.messageFile', { name })
+}
+
 async function doDelete() {
   if (!selected.value.size) return
   const paths = [...selected.value]
+  if (confirmFileDelete.value) {
+    const ok = await confirm(deleteMessage(paths), {
+      title: t('fileDelete.title'),
+      confirmLabel: t('fileDelete.confirm'),
+      danger: true,
+      optOutLabel: t('fileDelete.dontAskAgain'),
+      onOptOut: () => setConfirmFileDelete(false),
+    })
+    if (!ok) return
+  }
   pendingPaths.value = [...paths]
   try {
     await trackBatch(
-      `Deleting ${paths.length} item(s)`,
+      t('fileDelete.deleting', { count: paths.length }),
       paths.map(p => async () => {
         const { jobId } = await trpc.fs.delete.mutate({ path: p })
         await awaitJob(jobId)

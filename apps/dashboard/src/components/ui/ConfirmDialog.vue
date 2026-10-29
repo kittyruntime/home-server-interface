@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const { t } = useI18n()
 
@@ -20,10 +21,12 @@ const { t } = useI18n()
    content has unmounted (close-auto-focus), and a request that replaced this
    one re-mounts the content through :key. */
 const open = ref(false)
-watch(() => confirmState.value?.id, id => { open.value = id !== undefined }, { immediate: true })
+const optedOut = ref(false)
+watch(() => confirmState.value?.id, id => { open.value = id !== undefined; optedOut.value = false }, { immediate: true })
 
 /* Settle the promise right away so the caller proceeds. */
 function choose(v: boolean) {
+  if (v && optedOut.value) confirmState.value?.onOptOut?.()
   confirmState.value?.resolve(v)
   open.value = false
 }
@@ -46,6 +49,10 @@ function onClosed() {
         <AlertDialogTitle>{{ confirmState.title ?? 'Confirm' }}</AlertDialogTitle>
         <AlertDialogDescription>{{ confirmState.message }}</AlertDialogDescription>
       </AlertDialogHeader>
+      <label v-if="confirmState.optOutLabel" class="flex items-center gap-2 text-sm text-muted-foreground">
+        <Checkbox v-model="optedOut" />
+        {{ confirmState.optOutLabel }}
+      </label>
       <AlertDialogFooter>
         <AlertDialogCancel @click="choose(false)">{{ t('ui.shared.ConfirmDialog.cancel') }}</AlertDialogCancel>
         <AlertDialogAction

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Confirmation before deleting files**: the file manager asks before
+  deleting files or folders, since deletion is permanent. The dialog offers
+  "Don't ask again", and the confirmation can be turned back on in the
+  profile; the choice follows the account (#134).
+
 ### Fixed
 - **Volumes inside a container**: the storage pages no longer fail with
   "Cannot read properties of null (reading 'map')" on a server without LVM,
