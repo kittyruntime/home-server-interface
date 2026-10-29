@@ -86,8 +86,11 @@ async function recentLogs(container: string, lines: number): Promise<string[]> {
 
 // An app as the assistant sees it: passwords and keys in its compose file and
 // environment are masked, as in the dashboard's previews.
-export function appForAssistant<T extends { rawYaml?: string; services?: unknown }>(app: T) {
-  return { ...app, rawYaml: app.rawYaml === undefined ? undefined : maskSecrets(app.rawYaml), services: redactForAudit(app.services) }
+// Every field goes through the redaction, not only the services: the app's
+// HSI settings, unknown compose fields and Docker's view can carry secrets too.
+export function appForAssistant<T extends { rawYaml?: string }>(app: T) {
+  const { rawYaml, ...rest } = app
+  return { ...(redactForAudit(rest) as Omit<T, "rawYaml">), rawYaml: rawYaml === undefined ? undefined : maskSecrets(rawYaml) }
 }
 
 const path = z.string().min(1).describe("Absolute path on the server, inside a Place, e.g. /srv/data/Documents")

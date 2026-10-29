@@ -3032,6 +3032,19 @@ await testTelemetryChannelOptOutAndPayload()
   })
   assert.ok(!JSON.stringify(shown).includes("s3cret"), "an app's secrets never reach the assistant")
   assert.ok(JSON.stringify(shown).includes("UTC"))
+  // Shaped like listStacks(): secrets can sit in the app's settings, unknown
+  // compose fields and Docker's view as well.
+  const stack = tools.appForAssistant({
+    name: "db", rawYaml: "services:\n  db:\n    environment:\n      - API_TOKEN=t0ken\n",
+    app: { envs: [{ key: "DB_PASSWORD", value: "hunter2" }], secretKey: "k3y" },
+    unknownFields: { "x-hsi": { password: "pw1" } },
+    observed: [{ name: "db", env: [{ key: "SMTP_PASS", value: "pw2" }] }],
+    services: [],
+  })
+  for (const leak of ["t0ken", "hunter2", "k3y", "pw1", "pw2"]) {
+    assert.ok(!JSON.stringify(stack).includes(leak), `${leak} is masked everywhere in an app`)
+  }
+  assert.equal(stack.name, "db")
 
   const Fastify = (await import("fastify")).default
   const rateLimit = (await import("@fastify/rate-limit")).default
