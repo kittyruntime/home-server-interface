@@ -10,6 +10,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
 import { useTheme, useAccent, type Accent } from '../lib/theme'
+import { LOCALES, isLocale, locale, setLocale } from '../i18n'
+import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from '../lib/advanced-mode'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +32,7 @@ const meCanManage = computed(() => !!me.value && (me.value.isAdmin || me.value.i
 const { setToken } = useAuth()
 
 const { theme, setTheme } = useTheme()
+const { t } = useI18n()
 const { accent, setAccent } = useAccent()
 const { advancedMode, setAdvancedMode } = useAdvancedMode()
 
@@ -235,6 +238,22 @@ onMounted(async () => {
             </div>
           </template>
         </div>
+      </div>
+
+      <!-- ── Language ── -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('profile.language') }}</h4>
+        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row flex-wrap items-center justify-between gap-3">
+          <ToggleGroup
+            type="single" variant="outline" size="sm"
+            :model-value="locale"
+            :aria-label="t('profile.language')"
+            @update:model-value="v => { if (isLocale(v)) setLocale(v) }"
+          >
+            <ToggleGroupItem v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code" class="px-3 text-xs">{{ l.label }}</ToggleGroupItem>
+          </ToggleGroup>
+          <p class="text-xs text-muted-foreground">{{ t('profile.languageHint') }}</p>
+        </Card>
       </div>
 
       <!-- ── Theme ── -->

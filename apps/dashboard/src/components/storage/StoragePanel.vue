@@ -84,7 +84,7 @@ const ICONS: Record<SectionId, Component> = {
   volumes: ServerIcon, disks: HardDriveIcon, raid: PackageIcon, lvm: Rows3Icon,
   mounts: DatabaseIcon, maintenance: CalendarIcon,
 }
-const navItems = nav.map(n => ({ ...n, icon: ICONS[n.id] }))
+const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id], icon: ICONS[n.id] })))
 </script>
 
 <template>

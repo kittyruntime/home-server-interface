@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { ActivityIcon, ClipboardListIcon, LayoutGridIcon, MonitorIcon, TriangleAlertIcon } from '@lucide/vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Component } from 'vue'
 import OverviewSection from '../OverviewSection.vue'
 import SystemInfoSection from '../SystemInfoSection.vue'
@@ -9,16 +10,18 @@ import MonitoringSection from '../MonitoringSection.vue'
 import AlertsSection from './AlertsSection.vue'
 import AuditLogSection from '../AuditLogSection.vue'
 
+const { t } = useI18n()
+
 type SectionId = 'overview' | 'system-info' | 'monitoring' | 'alerts' | 'audit'
 
 interface NavItem { id: SectionId; label: string }
 
 const nav: NavItem[] = [
-  { id: 'overview',    label: 'Summary' },
-  { id: 'system-info', label: 'System info' },
-  { id: 'monitoring',  label: 'Monitoring' },
-  { id: 'alerts',      label: 'Alerts' },
-  { id: 'audit',       label: 'Audit log' },
+  { id: 'overview',    label: 'overview' },
+  { id: 'system-info', label: 'systemInfo' },
+  { id: 'monitoring',  label: 'monitoring' },
+  { id: 'alerts',      label: 'alerts' },
+  { id: 'audit',       label: 'audit' },
 ]
 
 const active = ref<SectionId>('overview')
@@ -27,7 +30,7 @@ const ICONS: Record<SectionId, Component> = {
   overview: LayoutGridIcon, 'system-info': MonitorIcon, monitoring: ActivityIcon,
   alerts: TriangleAlertIcon, audit: ClipboardListIcon,
 }
-const navItems = nav.map(n => ({ ...n, icon: ICONS[n.id] }))
+const navItems = computed(() => nav.map(n => ({ ...n, label: t(`monitor.nav.${n.label}`), icon: ICONS[n.id] })))
 </script>
 
 <template>

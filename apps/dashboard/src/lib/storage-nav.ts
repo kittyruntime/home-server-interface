@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 // Where the Storage app is (#40): a section, or an object shown in its
 // section. Each Storage panel keeps its own stack of locations.
 
@@ -10,9 +11,11 @@ export type StorageLocation =
   | { kind: 'array'; name: string }
   | { kind: 'vg'; name: string }
 
-export const SECTION_LABELS: Record<StorageSection, string> = {
+// English names; i18n/labels.ts puts them in the interface language.
+export const SECTION_LABELS = reactive<Record<StorageSection, string>>({
   volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance',
-}
+})
+export const NAV_TEXT = reactive({ createVolume: 'Create volume' })
 
 export function sectionOf(loc: StorageLocation): StorageSection {
   switch (loc.kind) {
@@ -30,7 +33,7 @@ export type LocationNames = Record<string, string>
 
 export function locationLabel(loc: StorageLocation, names: LocationNames = {}): string {
   if (loc.kind === 'section') return SECTION_LABELS[loc.section]
-  if (loc.kind === 'create-volume') return 'Create volume'
+  if (loc.kind === 'create-volume') return NAV_TEXT.createVolume
   const key = loc.kind === 'volume' ? loc.id : loc.name
   return names[`${loc.kind}:${key}`] ?? key
 }
