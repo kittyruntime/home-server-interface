@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.73.0] - 2026-10-29
+
 ### Added
 - **Maintenance screen**: while an update, an HSI restart or a server reboot
   runs, every open dashboard, for every user and also after a reload, is
@@ -1589,7 +1591,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.72.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.73.0...HEAD
+[1.73.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.72.0...v1.73.0
 [1.72.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.71.0...v1.72.0
 [1.71.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.70.0...v1.71.0
 [1.70.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.69.0...v1.70.0
