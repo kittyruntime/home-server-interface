@@ -296,11 +296,12 @@ add_mirror_data() {
   log "Writing files on the mirror"
   vm_ssh 'mkdir -p /srv/vm-mirror/data/nested && for i in 1 2 3 4; do head -c 8M /dev/urandom > /srv/vm-mirror/data/nested/file$i.bin; done
     chown -R 1234:1234 /srv/vm-mirror/data && chmod 0750 /srv/vm-mirror/data/nested
-    cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort > /root/mirror.sum'
+    cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort' > "$VM_DIR/mirror.sum"
 }
 
 expect_mirror_data() {
-  vm_ssh 'cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort | diff /root/mirror.sum -' \
+  # Kept on this side: the restore scenario replaces the system disk.
+  vm_ssh 'cd /srv/vm-mirror/data && { find . -type f -exec sha256sum {} +; find . -printf "%p %u %g %m\n"; } | sort' | diff "$VM_DIR/mirror.sum" - \
     || fail "files on the mirror were lost or changed"
   log "Files on the mirror intact"
 }
