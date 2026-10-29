@@ -19,9 +19,18 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router
 export const publicProcedure = t.procedure
 
-const isAuthed = t.middleware(({ ctx, next }) => {
+// What an access token (#138) may never reach, whatever its scopes: making or
+// revoking tokens, the password, signing in and out, the first-run setup.
+export function closedToApiTokens(path: string): boolean {
+  return path.startsWith("apiToken.") || path.startsWith("auth.") || path.startsWith("setup.") || path === "user.changePassword"
+}
+
+const isAuthed = t.middleware(({ ctx, path, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
+  }
+  if (ctx.apiToken && closedToApiTokens(path)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not available with an access token." })
   }
   return next({ ctx: { user: ctx.user } })
 })
@@ -139,6 +148,8 @@ const auditLog = t.middleware(async (opts) => {
         // A procedure can report a failure it returns as data (e.g. a plan
         // whose step failed).
         success: result.ok && opts.ctx.audit?.success !== false,
+        via:     opts.ctx.via,
+        tokenId: opts.ctx.apiToken?.id,
       },
     }).catch(() => {})
   }

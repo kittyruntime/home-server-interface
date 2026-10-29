@@ -20,6 +20,7 @@
     "@fastify/cors": "^11.3.1",
     "@fastify/rate-limit": "^11.2.1",
     "@fastify/static": "^10.1.7",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@nats-io/jetstream": "^3.4.0",
     "@nats-io/transport-node": "^3.4.0",
     "@prisma/client": "7.10.1",

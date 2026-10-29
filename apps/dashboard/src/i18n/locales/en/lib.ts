@@ -200,6 +200,11 @@ export default {
     apps_apply: 'Apply app change',
     storage_apply: 'Apply storage change',
     update_apply: 'Install update',
+    apiToken_create: 'Create access token',
+    apiToken_revoke: 'Revoke access token',
+    fs_readText: 'Read file',
+    fs_search: 'Search files',
+    container_logs: 'Read app logs',
   },
   loading: {
     default: 'Loading',

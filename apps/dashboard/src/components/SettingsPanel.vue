@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import SectionNav from '@/components/ui/SectionNav.vue'
-import { BellIcon, ChartNoAxesColumnIcon, NetworkIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
+import { BellIcon, BotIcon, ChartNoAxesColumnIcon, NetworkIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
 import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
 import { useAuth } from '../lib/auth'
@@ -19,12 +19,13 @@ import NotificationsSection from './NotificationsSection.vue'
 import SecureAccessSection from './SecureAccessSection.vue'
 import TelemetrySection from './TelemetrySection.vue'
 import NetworkSection from './NetworkSection.vue'
+import AiAccessSection from './AiAccessSection.vue'
 
 const { t } = useI18n()
 
 const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'network' | 'telemetry' | 'backups' | 'data-backups' | 'shares'
+type SectionId = 'profile' | 'ai' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'network' | 'telemetry' | 'backups' | 'data-backups' | 'shares'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -41,6 +42,7 @@ interface NavItem {
 const nav: NavItem[] = [
   { id: 'profile',     label: 'profile',  show: () => true,  group: 'account' },
   { id: 'shares',      label: 'shares', show: () => true, group: 'account' },
+  { id: 'ai',          label: 'ai',     show: () => true, group: 'account' },
   // Access control: who can reach what. Users is grouped here even though it's
   // gated on isUserManager (not isAdmin like the rest): a user manager
   // without full admin still needs it alongside the places/perms they manage.
@@ -71,7 +73,7 @@ function focusOn(section: SectionId) {
 defineExpose({ focusOn })
 
 const ICONS: Record<SectionId, Component> = {
-  profile: UserIcon, shares: LinkIcon, users: UsersIcon, places: FolderIcon,
+  profile: UserIcon, shares: LinkIcon, ai: BotIcon, users: UsersIcon, places: FolderIcon,
   permissions: LockIcon, groups: ShieldCheckIcon, alerting: TriangleAlertIcon,
   notifications: BellIcon, secure: LockIcon, network: NetworkIcon, updates: UploadIcon, telemetry: ChartNoAxesColumnIcon,
   backups: SaveIcon, 'data-backups': SaveIcon,
@@ -92,6 +94,7 @@ const navItems = computed(() => visibleNav.value.map(n => ({
 
         <ProfileSection     v-if="active === 'profile'" />
         <SharedLinksSection v-else-if="active === 'shares'" />
+        <AiAccessSection    v-else-if="active === 'ai'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
         <PermissionsSection v-else-if="active === 'permissions'" />

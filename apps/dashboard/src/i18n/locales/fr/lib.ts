@@ -195,6 +195,11 @@ export default {
     apps_apply: 'Appliquer un changement d’application',
     storage_apply: 'Appliquer un changement de stockage',
     update_apply: 'Installer une mise à jour',
+    apiToken_create: 'Créer un jeton d’accès',
+    apiToken_revoke: 'Révoquer un jeton d’accès',
+    fs_readText: 'Lire un fichier',
+    fs_search: 'Chercher des fichiers',
+    container_logs: 'Lire les journaux d’une app',
   },
   loading: {
     default: 'Chargement',

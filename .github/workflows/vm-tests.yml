@@ -27,6 +27,8 @@ on:
       - "apps/backend/src/services/sharing*.ts"
       - "apps/backend/src/trpc/routers/fs.ts"
       - "apps/backend/src/routes/files.ts"
+      - "apps/backend/src/mcp/**"
+      - "apps/backend/src/services/api-tokens.ts"
       - "apps/backend/src/trpc/routers/user.ts"
       - "packages/compose/**"
       - "apps/backend/src/services/config-*.ts"
