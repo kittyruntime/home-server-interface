@@ -15,6 +15,8 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 | `restore` | A configuration backup of a NAS with a mirror and an account owning files on it, then a new system disk with an unrelated account already using the old uid: HSI installed again, the backup restored (no conflict), the volume reapplied; files, owners, modes, Place and share come back, and the account gets its Samba sign-in back by setting a new password (Samba passwords are not in backups); checked again after a reboot |
 | `update` | Install of the latest published release, data added, update to the built archive, `hsi-worker update rollback` back to the published release, update again; data and ledger checked at each step |
 
+The release workflow runs every scenario on a pushed tag first and publishes
+only when they all pass (a manual republish of an existing tag skips them).
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
 and runs the scenarios in parallel: on demand, every Monday, and on pull requests
 that touch the installer, the database package, the root worker or the runtime.

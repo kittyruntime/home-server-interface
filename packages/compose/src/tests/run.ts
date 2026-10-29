@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { composeBindSources, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from "../compose.js"
+import { composeBindSources, composeNamedVolumes, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from "../compose.js"
 import { parseDocument } from "yaml"
 import { STACK_NAME_RE, type AppInput } from "../model.js"
 
@@ -287,5 +287,28 @@ function testSidecarsKeepTheMainServiceEditable() {
   assert.throws(() => withSidecars(y, "paperless", [{ name: "paperless", image: "x:1", environment: {}, volumes: [] }]), /already exists/)
 }
 testSidecarsKeepTheMainServiceEditable()
+
+// composeNamedVolumes: the Docker volumes `down --volumes` deletes (#26):
+// declared at the top level, not external, under the name Docker gives them.
+{
+  const yaml = `name: ignored
+services:
+  web:
+    image: nginx
+    volumes: [db:/var/lib/db, cache:/cache, shared:/shared, /srv/x:/x]
+volumes:
+  db:
+  cache:
+    name: my-cache
+  shared:
+    external: true
+`
+  assert.deepEqual(composeNamedVolumes(yaml, "web"), [
+    { key: "db", name: "web_db" },
+    { key: "cache", name: "my-cache" },
+  ])
+  assert.deepEqual(composeNamedVolumes("services:\n  web:\n    image: nginx\n", "web"), [])
+  assert.deepEqual(composeNamedVolumes(": not yaml [", "web"), [])
+}
 
 console.log("Compose package tests passed")

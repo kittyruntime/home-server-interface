@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **An app's address at install**: the App Store install can record where
+  the app's web port is reached behind your own reverse proxy or tunnel, with
+  HTTPS or not, so Open goes there from the start. HSI does not set up the
+  proxy (#26).
+- **Sort the App Store**: installed first, by name, or the latest added
+  first. Apps that joined the catalog in the last 60 days are marked New,
+  never ranked by popularity (#26).
+- **More about each App Store app**: its page shows the license, links to
+  the documentation and the source code, and its first steps (first sign-in,
+  where to put files, what to set up first, such as a reverse proxy with
+  HTTPS for Vaultwarden).
+  After an install, the App Store shows that page (#26).
+- **Choose what happens to an app's data when deleting it**: the deletion
+  preview names the Docker volumes it keeps (databases, caches) and the
+  folders that stay in their Places. A new option also deletes the Docker
+  volumes, and the preview then shows them as erased. Folders in Places are
+  never deleted (#26).
+
 ### Fixed
 - **Write access to shared folders**: one HSI account without a Linux account
   (removed by hand, for example) no longer takes write access away from every

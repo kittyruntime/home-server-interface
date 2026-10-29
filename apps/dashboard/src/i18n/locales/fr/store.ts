@@ -1,5 +1,9 @@
 export default {
   AppInstallWizard: {
+    reachedAt: 'Accessible à (facultatif)',
+    reachedAtPlaceholder: 'app.example.com',
+    https: 'HTTPS',
+    reachedAtHint: 'L\'adresse de votre propre proxy inverse ou tunnel devant ce port : Ouvrir l\'utilise. HSI ne met en place ni le proxy ni son certificat.',
     back: 'Retour',
     appName: 'Nom de l’application',
     useLowercaseLettersNumbersOr: 'Lettres minuscules, chiffres, « . », « _ » ou « - » (commence par une lettre ou un chiffre).',
@@ -18,6 +22,11 @@ export default {
     cancel: 'Annuler',
   },
   AppStorePanel: {
+    sortApps: 'Trier les applications',
+    installedFirst: 'Installées d\'abord',
+    byName: 'Par nom',
+    recentlyAdded: 'Ajoutées récemment',
+    new: 'Nouveau',
     back: '← Retour',
     appStore: 'App Store',
     searchApps: 'Rechercher une application…',
@@ -29,6 +38,7 @@ export default {
     open: 'Ouvrir ↗',
   },
   AppStoreDetail: {
+    new: 'Nouveau',
     back: '← Retour',
     install: 'Installer',
     update: 'Mettre à jour…',
@@ -38,6 +48,11 @@ export default {
     installsWith: 'S’installe avec :',
     website: 'Site web ↗',
     releaseNotes: 'Notes de version ↗',
+    documentation: 'Documentation ↗',
+    sourceCode: 'Code source ↗',
+    license: 'Licence',
+    gettingStarted: 'Premiers pas',
+    afterInstalling: 'Après l\'installation',
     permissions: 'Permissions',
   },
 }

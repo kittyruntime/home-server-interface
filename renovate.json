@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Only the App Store's pinned images (#26): a pull request per image, major versions held for approval on the dependency dashboard.",
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The image of an app or of one of its services",
+      "managerFilePatterns": [
+        "/^packages/app-catalog/apps/[^/]+\\.json$/"
+      ],
+      "matchStrings": [
+        "\"image\":\\s*\"(?<depName>[^\":@]+):(?<currentValue>[^\"@]+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "App Store image updates",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "app-store",
+  "additionalBranchPrefix": "app-store-",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "IT Tools tags a date and a commit: order by the date, any commit",
+      "matchPackageNames": [
+        "corentinth/it-tools"
+      ],
+      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{1,2})\\.(?<patch>\\d{1,2})-[0-9a-f]{7}$"
+    },
+    {
+      "description": "A new major version can need a migration: wait for approval",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

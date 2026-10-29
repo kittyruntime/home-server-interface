@@ -316,6 +316,25 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
 }
 
 /** Absolute host paths bind-mounted by any service (missing volume guard, #3). */
+/**
+ * The named volumes a stack declares and owns (not `external`), with the name
+ * Docker gives them: `<project>_<key>` unless the file sets one. These are
+ * what `docker compose down --volumes` deletes.
+ */
+export function composeNamedVolumes(content: string, project: string): Array<{ key: string; name: string }> {
+  let doc: any
+  try {
+    doc = parse(content)
+  } catch {
+    return []
+  }
+  const volumes = doc && typeof doc === "object" ? doc.volumes : null
+  if (!volumes || typeof volumes !== "object") return []
+  return Object.entries<any>(volumes)
+    .filter(([, v]) => !(v && typeof v === "object" && v.external))
+    .map(([key, v]) => ({ key, name: v && typeof v === "object" && typeof v.name === "string" ? v.name : `${project}_${key}` }))
+}
+
 export function composeBindSources(content: string): string[] {
   let doc: any
   try {

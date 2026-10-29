@@ -62,6 +62,16 @@ async function load() {
 // Typed confirmation (e.g. the name of a volume to remove).
 const typed = ref('')
 const acked = ref(false)
+// The plan's option (e.g. also delete the app's data): changing it changes
+// the input, so the plan is previewed again before anything can be applied.
+const optionOn = ref(false)
+function setOption(on: boolean) {
+  const req = planRequest.value
+  if (!req?.option || applying.value) return
+  optionOn.value = on
+  req.input = { ...req.input, [req.option.key]: on }
+  void load()
+}
 const confirmed = computed(() =>
   (!planRequest.value?.confirmText || confirmMatches(typed.value, planRequest.value.confirmText)) &&
   (!planRequest.value?.acknowledge || acked.value))
@@ -69,6 +79,7 @@ const confirmed = computed(() =>
 watch(() => planRequest.value?.id, id => {
   typed.value = ''
   acked.value = false
+  optionOn.value = planRequest.value?.option ? planRequest.value.input[planRequest.value.option.key] === true : false
   settled = false
   if (id !== undefined) void load()
 }, { immediate: true })
@@ -201,6 +212,14 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
     </template>
 
     <div class="px-5 py-4 space-y-4">
+      <label v-if="planRequest.option && !done" class="flex items-start gap-2 text-sm text-foreground">
+        <Checkbox :model-value="optionOn" class="mt-0.5" :disabled="applying || loading" @update:model-value="v => setOption(v === true)" />
+        <span>
+          {{ planRequest.option.label }}
+          <span v-if="planRequest.option.hint" class="block text-xs text-muted-foreground">{{ planRequest.option.hint }}</span>
+        </span>
+      </label>
+
       <LoadingState v-if="loading" variant="inline" :label="LOADING.preparingPlan" />
 
       <p v-else-if="loadError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ loadError }}</p>

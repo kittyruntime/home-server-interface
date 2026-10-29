@@ -7,8 +7,25 @@ export interface StoreApp {
   tagline: string
   description: string
   image: string
+  /** The day it joined the catalog, YYYY-MM-DD. */
+  added?: string
   installedApp: { update: unknown; image?: string | null } | null
 }
+
+/** Card order: installed first (default), by name, or the latest added first. */
+export type StoreOrder = 'default' | 'name' | 'added'
+
+const NEW_DAYS = 60
+const DAY_MS = 86_400_000
+
+/** Joined the catalog in the last 60 days: marked New, whatever its popularity. */
+export function isNew(a: StoreApp, now: Date = new Date()): boolean {
+  if (!a.added) return false
+  const age = now.getTime() - Date.parse(`${a.added}T00:00:00Z`)
+  return age >= 0 && age <= NEW_DAYS * DAY_MS
+}
+
+const byName = (a: StoreApp, b: StoreApp) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 
 export interface FilterChip { key: string; label: string; count: number }
 
@@ -33,11 +50,16 @@ export function matchesSearch(a: StoreApp, query: string): boolean {
   return !q || [a.name, a.tagline, a.description, a.category].some(s => s.toLowerCase().includes(q))
 }
 
-/** The cards to show: installed apps first under All, catalog order otherwise. */
-export function visibleApps<T extends StoreApp>(apps: T[], filter: string, query: string): T[] {
+/**
+ * The cards to show, in the chosen order. By default: installed apps first
+ * under All, catalog order otherwise.
+ */
+export function visibleApps<T extends StoreApp>(apps: T[], filter: string, query: string, order: StoreOrder = 'default'): T[] {
   const kept = apps.filter(a =>
     (filter === 'All' || (filter === 'Installed' ? isInstalled(a) : filter === 'Updates' ? hasUpdate(a) : a.category === filter))
     && matchesSearch(a, query))
+  if (order === 'name') return [...kept].sort(byName)
+  if (order === 'added') return [...kept].sort((a, b) => (b.added ?? '').localeCompare(a.added ?? '') || byName(a, b))
   return filter === 'All' ? [...kept.filter(isInstalled), ...kept.filter(a => !isInstalled(a))] : kept
 }
 
