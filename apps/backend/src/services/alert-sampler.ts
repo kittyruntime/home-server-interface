@@ -27,8 +27,9 @@ type RaidArray = {
 
 async function checkRaid(): Promise<CheckOutcome> {
   const res = await requestSync<{ raids: RaidArray[] }>("root.sys.blockdevices", {}, 15_000)
-  const checked = res.raids.map(r => r.name)
-  const found = res.raids
+  const raids = res.raids ?? []
+  const checked = raids.map(r => r.name)
+  const found = raids
     .filter(r => !((r.state === "active" || r.state === "clean") && r.active === r.total))
     .map((r): CheckResult => ({
       target: r.name,
@@ -44,7 +45,7 @@ async function checkRaid(): Promise<CheckOutcome> {
 // counts can come from swap or unwritten areas, so it is only a warning.
 async function checkRaidConsistency(): Promise<CheckOutcome> {
   const res = await requestSync<{ raids: Array<RaidArray & { mismatchCount?: number }> }>("root.sys.blockdevices", {}, 15_000)
-  const withResult = res.raids.filter(r => r.mismatchCount != null)
+  const withResult = (res.raids ?? []).filter(r => r.mismatchCount != null)
   const found = withResult
     .filter(r => (r.mismatchCount ?? 0) > 0)
     .map((r): CheckResult => ({
@@ -103,7 +104,7 @@ function deriveSmartStatus(s: SmartResult): "passed" | "warning" | "failed" | "u
 
 async function checkSmart(): Promise<CheckOutcome> {
   const { devices } = await requestSync<{ devices: BlockDevLite[] }>("root.sys.blockdevices", {}, 15_000)
-  const disks = devices.filter(d => d.type === "disk")
+  const disks = (devices ?? []).filter(d => d.type === "disk")
   const found: CheckResult[] = []
   const checked: string[] = []
   for (const d of disks) {

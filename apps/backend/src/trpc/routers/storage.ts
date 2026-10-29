@@ -279,6 +279,11 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
   }
 }
 
+// The worker can reply null for an empty LVM list (no LVM, e.g. an LXC container).
+function lvmLists(lvm: Partial<VolumeInput["lvm"]>): VolumeInput["lvm"] {
+  return { pvs: lvm.pvs ?? [], vgs: lvm.vgs ?? [], lvs: lvm.lvs ?? [] }
+}
+
 // Every data volume with its stack and what uses it (#40).
 async function loadVolumes(ctx: Context, opts: { strict?: boolean } = {}) {
   const [block, lvm, guard, holds, places, shares, apps] = await Promise.all([
@@ -293,7 +298,7 @@ async function loadVolumes(ctx: Context, opts: { strict?: boolean } = {}) {
   return buildVolumes({
     devices: block.devices ?? [],
     raids: block.raids ?? [],
-    lvm,
+    lvm: lvmLists(lvm),
     guard,
     holds,
     places,
@@ -442,7 +447,7 @@ export const storageRouter = router({
         ])
         const v = overview.volumes.find(x => x.id === input.id)
         if (!v) throw new TRPCError({ code: "NOT_FOUND", message: "This volume is no longer on the server" })
-        return expandOptions(v, { lvm, raids: block.raids ?? [], devices: (block.devices ?? []) as never, freeDisks: overview.freeDisks, expansions: pending.expansions })
+        return expandOptions(v, { lvm: lvmLists(lvm), raids: block.raids ?? [], devices: (block.devices ?? []) as never, freeDisks: overview.freeDisks, expansions: pending.expansions })
       }),
     // Storage descriptions (#37), each with how the server differs from it.
     descriptions: storageProcedure.query(async () =>

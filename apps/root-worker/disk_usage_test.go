@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -62,5 +63,17 @@ func TestClaimBlockReason(t *testing.T) {
 		if (c.want == "") != (got == "") || !strings.Contains(got, c.want) {
 			t.Errorf("%s: claimBlockReason() = %q, want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestGetLvmInfoWithoutLvmIsEmptyNotNull(t *testing.T) {
+	t.Setenv("PATH", "")
+	pvs, vgs, lvs := getLvmInfo()
+	got, err := json.Marshal(map[string]any{"pvs": pvs, "vgs": vgs, "lvs": lvs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"lvs":[],"pvs":[],"vgs":[]}`; string(got) != want {
+		t.Errorf("got %s, want %s", got, want)
 	}
 }
