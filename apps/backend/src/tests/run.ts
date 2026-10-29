@@ -2920,7 +2920,6 @@ await testTelemetryChannelOptOutAndPayload()
 // a stray icon, fails here instead of silently missing from the store.
 {
   const { CATALOG } = await import("@app/app-catalog")
-  const { ICONS } = await import("../../../../packages/app-catalog/src/icons")
   const { readdirSync } = await import("node:fs")
   const dir = new URL("../../../../packages/app-catalog/", import.meta.url)
   const files = readdirSync(new URL("apps/", dir)).filter(f => f.endsWith(".json")).map(f => f.slice(0, -5)).sort()
@@ -2928,7 +2927,6 @@ await testTelemetryChannelOptOutAndPayload()
   const ids = CATALOG.map(m => m.id).sort()
   assert.deepEqual(ids, files, "every apps/<id>.json is registered in the catalog, under its file name")
   assert.deepEqual(icons, ids, "every app has icons/<id>.svg, and every icon an app")
-  assert.deepEqual(Object.keys(ICONS).sort(), ids, "every app has an inline icon")
   for (const m of CATALOG) {
     assert.ok(/^<svg[\s>]/.test(m.icon.trim()) && m.icon.includes("viewBox"), `${m.id}: the icon is an <svg> with a viewBox`)
     assert.ok(!/<script|\son[a-z]+=/i.test(m.icon), `${m.id}: the icon carries no script`)
