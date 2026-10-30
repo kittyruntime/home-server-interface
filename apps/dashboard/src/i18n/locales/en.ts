@@ -122,6 +122,7 @@ export default {
       files: 'What are the largest folders in my Places?',
     },
     thinking: 'Thinking…',
+    running: 'The assistant is working',
     message: 'Message',
     placeholder: 'Ask the assistant…',
     send: 'Send',
