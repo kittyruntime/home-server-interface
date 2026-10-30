@@ -426,7 +426,7 @@ USER_PASSWORD="vm-user-password"
 account_feature() {
   local id
   log "Creating the account vmuser through the API"
-  id=$(api user.create "{\"username\":\"vmuser\",\"password\":\"$USER_PASSWORD\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+  id=$(apply_plan user.create "{\"username\":\"vmuser\",\"password\":\"$USER_PASSWORD\"}" user | python3 -c 'import json,sys; print(json.load(sys.stdin)["user"]["id"])')
   vm_ssh 'id vmuser && getent passwd vmuser | cut -d: -f7 | grep -q nologin' >/dev/null || fail "vmuser has no Linux account, or one with a login shell"
   vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account"
   api_query user.list | python3 -c 'import json,sys; assert any(u["username"]=="vmuser" for u in json.load(sys.stdin))' || fail "HSI does not list vmuser"
@@ -690,7 +690,7 @@ BACKUP_PASSWORD="vm-test-config-backup-password"
 # An account made through HSI (Linux and Samba), owning files on the mirror.
 add_account_data() {
   log "Creating the account vmuser and giving it files on the mirror"
-  api user.create '{"username":"vmuser","password":"vm-user-password"}' >/dev/null
+  apply_plan user.create '{"username":"vmuser","password":"vm-user-password"}' user >/dev/null
   vm_ssh 'id vmuser && mkdir -p /srv/vm-mirror/vmuser && head -c 4M /dev/urandom > /srv/vm-mirror/vmuser/own.bin && chown -R vmuser:vmuser /srv/vm-mirror/vmuser' >/dev/null \
     || fail "the account vmuser has no Linux account"
   vm_ssh 'stat -c "%u:%g" /srv/vm-mirror/vmuser/own.bin' > "$VM_DIR/vmuser.ids"
