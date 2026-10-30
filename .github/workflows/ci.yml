@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# A new push to the same branch or PR supersedes the running checks.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -30,7 +35,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/root-worker/go.mod
-          cache: false
+          cache-dependency-path: apps/root-worker/go.sum
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -52,6 +57,33 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: pnpm
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/root-worker/go.mod
+          cache-dependency-path: apps/root-worker/go.sum
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @app/database db:generate
 
       - name: Test backend and root-worker
         run: pnpm test
@@ -85,7 +117,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/root-worker/go.mod
-          cache: false
+          cache-dependency-path: apps/root-worker/go.sum
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
