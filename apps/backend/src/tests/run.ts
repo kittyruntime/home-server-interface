@@ -2969,4 +2969,118 @@ await testTelemetryChannelOptOutAndPayload()
   }
   assert.equal(new Set(CATALOG.map(m => m.name.toLowerCase())).size, CATALOG.length, "app names are unique")
 }
+// Access tokens and the MCP endpoint (#138): a token narrows its user's rights,
+// never reaches tokens, passwords or setup, and every action it makes is
+// recorded as coming from an assistant.
+{
+  const t = await import("../services/api-tokens")
+  const { secret, hash, prefix } = t.newTokenSecret()
+  assert.ok(secret.startsWith("hsi_pat_") && secret.length > 40, "a token is long and recognisable")
+  assert.equal(hash, t.hashToken(secret))
+  assert.ok(secret.startsWith(prefix) && prefix.length === 12, "only the start of the secret is kept for the list")
+  assert.deepEqual(t.parseScopes('["files:read","root:all","apps:write"]'), ["files:read", "apps:write"], "unknown scopes are dropped")
+  assert.deepEqual(t.parseScopes("not json"), [])
+  assert.ok(t.DEFAULT_SCOPES.every(s => s.endsWith(":read")), "a new token is read-only by default")
+  const now = new Date("2026-10-29T12:00:00Z")
+  assert.ok(t.tokenUsable({ revokedAt: null, expiresAt: null }, now))
+  assert.ok(!t.tokenUsable({ revokedAt: now, expiresAt: null }, now), "a revoked token stops at once")
+  assert.ok(!t.tokenUsable({ revokedAt: null, expiresAt: new Date("2026-10-29T11:59:59Z") }, now), "an expired token stops")
+  assert.equal(await t.authenticateApiToken("Bearer eyJhbGciOi.session.jwt"), null, "a session JWT is not an access token")
+  assert.equal(await t.authenticateApiToken(undefined), null)
+
+  const { router, protectedProcedure, closedToApiTokens } = await import("../trpc/index")
+  for (const p of ["apiToken.create", "apiToken.revoke", "user.changePassword", "auth.logout", "setup.createAdmin"]) {
+    assert.ok(closedToApiTokens(p), `${p} is closed to tokens`)
+  }
+  assert.ok(!closedToApiTokens("fs.list") && !closedToApiTokens("user.list"))
+  const logged: Array<Record<string, unknown>> = []
+  const r = router({
+    apiToken: router({ create: protectedProcedure.mutation(() => "made") }),
+    fs: router({ mkdir: protectedProcedure.input((v: unknown) => v as { path: string }).mutation(() => "done") }),
+  })
+  const ctx = (apiToken: { id: string; scopes: string[] } | null) => ({
+    user: { userId: "u1", isAdmin: true }, via: apiToken ? "mcp" : "dashboard", apiToken, audit: {},
+    prisma: { auditLog: { create: async ({ data }: { data: Record<string, unknown> }) => { logged.push(data); return {} } } },
+    req: { ip: "127.0.0.1", headers: {} },
+  }) as any
+  await assert.rejects(() => r.createCaller(ctx({ id: "tok1", scopes: [] })).apiToken.create(), (e: any) => e.code === "FORBIDDEN", "a token cannot make tokens")
+  assert.equal(await r.createCaller(ctx(null)).apiToken.create(), "made", "a signed-in session can")
+  await r.createCaller(ctx({ id: "tok1", scopes: ["files:write"] })).fs.mkdir({ path: "/srv/a" })
+  await new Promise(res => setImmediate(res))
+  const entry = logged.find(l => l.action === "fs.mkdir")
+  assert.equal(entry?.via, "mcp", "the audit log says the action came from an assistant")
+  assert.equal(entry?.tokenId, "tok1", "and with which token")
+
+  const tools = await import("../mcp/tools")
+  const user = (scopes: string[], over: object = {}) => ({
+    userId: "u1", jti: "pat:x", isAdmin: false, isUserManager: false, mustChangePassword: false, capabilities: [] as string[],
+    apiToken: { id: "x", scopes }, ...over,
+  }) as any
+  const byName = (n: string) => tools.READ_TOOLS.find(x => x.name === n)!
+  assert.ok(tools.toolAllowed(byName("list_files"), user(["files:read"])))
+  assert.ok(!tools.toolAllowed(byName("list_files"), user(["apps:read"])), "no scope, no tool")
+  assert.ok(!tools.toolAllowed(byName("list_apps"), user(["apps:read"])), "an admin tool is hidden from a user")
+  assert.ok(tools.toolAllowed(byName("list_apps"), user(["apps:read"], { isAdmin: true })))
+  assert.ok(tools.toolAllowed(byName("storage_overview"), user(["storage:read"], { capabilities: ["storage"] })), "the storage capability opens storage tools")
+  assert.equal(new Set(tools.READ_TOOLS.map(x => x.name)).size, tools.READ_TOOLS.length, "tool names are unique")
+  assert.ok(tools.READ_TOOLS.every(x => x.scope.endsWith(":read")), "read tools need read scopes only")
+  const cut = tools.truncateText("x".repeat(10), 4)
+  assert.deepEqual(cut, { content: "xxxx", truncated: true, totalChars: 10 })
+  const shown = tools.appForAssistant({
+    rawYaml: "services:\n  db:\n    image: postgres:17\n    environment:\n      POSTGRES_PASSWORD: s3cret\n",
+    services: [{ name: "db", environment: [{ key: "POSTGRES_PASSWORD", value: "s3cret" }, { key: "TZ", value: "UTC" }] }],
+  })
+  assert.ok(!JSON.stringify(shown).includes("s3cret"), "an app's secrets never reach the assistant")
+  assert.ok(JSON.stringify(shown).includes("UTC"))
+  // Shaped like listStacks(): secrets can sit in the app's settings, unknown
+  // compose fields and Docker's view as well.
+  const stack = tools.appForAssistant({
+    name: "db", rawYaml: "services:\n  db:\n    environment:\n      - API_TOKEN=t0ken\n",
+    app: { envs: [{ key: "DB_PASSWORD", value: "hunter2" }], secretKey: "k3y" },
+    unknownFields: { "x-hsi": { password: "pw1" } },
+    observed: [{ name: "db", env: [{ key: "SMTP_PASS", value: "pw2" }] }],
+    services: [],
+  })
+  for (const leak of ["t0ken", "hunter2", "k3y", "pw1", "pw2"]) {
+    assert.ok(!JSON.stringify(stack).includes(leak), `${leak} is masked everywhere in an app`)
+  }
+  assert.equal(stack.name, "db")
+
+  const Fastify = (await import("fastify")).default
+  const rateLimit = (await import("@fastify/rate-limit")).default
+  const { mcpRoutes } = await import("../mcp/route")
+  const app = Fastify()
+  await app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
+  await app.register(mcpRoutes)
+  const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } } }
+  const anon = await app.inject({ method: "POST", url: "/mcp", payload: init })
+  assert.equal(anon.statusCode, 401, "no token, no MCP")
+  assert.match(String(anon.headers["www-authenticate"]), /^Bearer/)
+  const jwt = await app.inject({ method: "POST", url: "/mcp", payload: init, headers: { authorization: "Bearer " + signToken("u1", true, true, [], false) } })
+  assert.equal(jwt.statusCode, 401, "a dashboard session is not accepted on /mcp")
+  assert.equal((await app.inject({ method: "GET", url: "/mcp" })).statusCode, 405)
+  await app.close()
+
+  // The protocol itself, with a token whose user and scopes are given.
+  const mcp = Fastify()
+  await mcp.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
+  await mcp.register(mcpRoutes, { authenticate: async (h?: string) => h === "Bearer hsi_pat_test" ? user(["files:read", "system:read"]) : null })
+  const rpc = async (body: object) => {
+    const res = await mcp.inject({
+      method: "POST", url: "/mcp", payload: body,
+      headers: { authorization: "Bearer hsi_pat_test", accept: "application/json, text/event-stream" },
+    })
+    assert.equal(res.statusCode, 200, res.body)
+    return res.json()
+  }
+  const hello = await rpc(init)
+  assert.equal(hello.result.serverInfo.name, "hsi")
+  assert.ok(hello.result.capabilities.tools, "the server offers tools")
+  const listed = (await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })).result.tools.map((x: { name: string }) => x.name)
+  assert.ok(listed.includes("list_files") && listed.includes("system_metrics"), "the token's scopes give their tools")
+  assert.ok(!listed.includes("list_apps") && !listed.includes("system_info"), "tools beyond the scopes or the user's rights are not offered")
+  const unknown = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "list_apps", arguments: {} } })
+  assert.ok(unknown.error || unknown.result?.isError, "a tool that is not offered cannot be called")
+  await mcp.close()
+}
 console.log("Backend security tests passed")

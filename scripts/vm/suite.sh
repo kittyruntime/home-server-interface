@@ -15,7 +15,8 @@
 #           (held, nothing written to the boot disk) and with them again
 #   features each feature checked on the host (#38): an account (Linux and
 #           Samba), the file manager as that account on a volume, SMB from a
-#           client, and an App Store app installed, changed and removed
+#           client, an AI assistant over MCP with access tokens (#138), and an
+#           App Store app installed, changed and removed
 #   restore back up the configuration of a NAS with a mirror and an account,
 #           replace the system disk, install again and restore the backup:
 #           the volume comes back with its files, owners, Place and share
@@ -486,6 +487,57 @@ app_feature() {
   log "IT Tools installed, moved and removed"
 }
 
+# mcp <access token> <json-rpc request>: the reply of HSI's MCP endpoint (#138).
+mcp() {
+  vm_ssh "curl -sk -H 'authorization: Bearer $1' -H 'accept: application/json, text/event-stream' -H 'content-type: application/json' \
+    --data-binary @- https://127.0.0.1:9001/mcp" <<<"$2"
+}
+
+# mcp_call <access token> <tool> <json arguments>: the tool's result, decoded.
+mcp_call() {
+  local out
+  out=$(mcp "$1" "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"$2\",\"arguments\":$3}}")
+  python3 -c 'import json,sys; r=json.loads(sys.argv[1])["result"]; assert not r.get("isError"), r; print(r["content"][0]["text"])' "$out" \
+    || fail "MCP $2 failed: $out"
+}
+
+# An AI assistant over MCP: an admin's token reads the storage and a file and
+# is audited; vmuser's token only sees what vmuser may; a revoked token and a
+# dashboard session are refused.
+mcp_feature() {
+  local admin user tools
+  log "MCP: access tokens and tools"
+  admin=$(api apiToken.create '{"name":"vm admin","scopes":["files:read","storage:read","system:read","apps:read","users:read"],"expiresInDays":7}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["secret"])')
+  mcp "$admin" '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"vm","version":"1"}}}' \
+    | grep -q '"serverInfo"' || fail "the MCP endpoint does not answer initialize"
+  tools=$(mcp "$admin" '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
+  grep -q '"storage_overview"' <<<"$tools" && ! grep -q '"fs_delete\|"delete_' <<<"$tools" || fail "unexpected MCP tools for a read-only admin token: $tools"
+  mcp_call "$admin" storage_overview '{}' | grep -q '/srv/vm-mirror' || fail "storage_overview does not show the mirror"
+
+  # Files as vmuser: they are read as its Linux account (the test admin has none).
+  user=$(API_TOKEN=/root/token-vmuser api apiToken.create '{"name":"vm user","scopes":["files:read","storage:read","apps:read","users:read","system:read"]}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["secret"])')
+  [[ $(mcp_call "$user" read_text_file '{"path":"/srv/vm-mirror/from-smb/hello.txt"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["content"].strip())') \
+    == "$(vm_ssh 'cat /etc/hostname')" ]] || fail "read_text_file does not return the file"
+  api_get audit.list '{"limit":20,"via":"mcp"}' | grep -q '"fs.readText"' || fail "the read through MCP is not in the audit log"
+  tools=$(mcp "$user" '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
+  grep -q '"list_files"' <<<"$tools" && ! grep -q '"storage_overview"\|"list_apps"' <<<"$tools" || fail "vmuser's token is offered tools beyond vmuser's rights: $tools"
+  mcp_call "$user" list_files '{"path":"/srv/vm-mirror/from-smb"}' | grep -q 'hello.txt' || fail "vmuser's token cannot list its Place"
+  mcp "$user" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files","arguments":{"path":"/root"}}}' | grep -q '"isError":true' \
+    || fail "vmuser's token listed a folder outside its Places"
+
+  # Only /mcp takes tokens, and /mcp only takes tokens.
+  vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -H 'authorization: Bearer $admin' https://127.0.0.1:9001/trpc/user.list" | grep -qx 401 \
+    || fail "an access token was accepted by the dashboard API"
+  [[ $(vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -X POST -H \"authorization: Bearer \$(cat /root/token)\" -H 'content-type: application/json' --data '{}' https://127.0.0.1:9001/mcp") == 401 ]] \
+    || fail "a dashboard session was accepted on /mcp"
+  api apiToken.revoke "{\"id\":\"$(api_query apiToken.list | python3 -c 'import json,sys; print(next(t["id"] for t in json.load(sys.stdin) if t["name"]=="vm admin"))')\"}" >/dev/null
+  [[ $(vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -X POST -H 'authorization: Bearer $admin' -H 'content-type: application/json' --data '{}' https://127.0.0.1:9001/mcp") == 401 ]] \
+    || fail "a revoked token still opens /mcp"
+  log "MCP: tools within each token's rights, reads audited, revocation immediate"
+}
+
 BACKUP_PASSWORD="vm-test-config-backup-password"
 
 # An account made through HSI (Linux and Samba), owning files on the mirror.
@@ -747,6 +799,7 @@ case "$scenario" in
     account_feature
     files_feature
     smb_feature
+    mcp_feature
     app_feature
     vm_reboot
     expect_running "$version"; expect_mirror

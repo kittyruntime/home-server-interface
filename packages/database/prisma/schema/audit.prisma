@@ -8,4 +8,8 @@ model AuditLog {
   ip        String?
   success   Boolean  @default(true)
   createdAt DateTime @default(now())
+  // How the action came in: "dashboard", or "mcp" for an AI assistant with an
+  // access token (#138), whose id is kept even after the token is revoked.
+  via       String   @default("dashboard")
+  tokenId   String?
 }

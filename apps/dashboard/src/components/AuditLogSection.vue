@@ -12,6 +12,8 @@ import ErrorState from './ui/ErrorState.vue'
 import EmptyState from './ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { BotIcon } from '@lucide/vue'
 
 const { t } = useI18n()
 
@@ -21,6 +23,8 @@ const PAGE_SIZE = 50
 
 const page          = ref(0)
 const filterAction  = ref('')
+// Every action, only the dashboard's, or only AI assistants' (#138).
+const filterVia     = ref<'' | 'dashboard' | 'mcp'>('')
 const loading       = ref(false)
 const error         = ref('')
 const entries       = ref<AuditEntry[]>([])
@@ -36,6 +40,7 @@ async function load() {
       page:   page.value,
       limit:  PAGE_SIZE,
       action: filterAction.value || undefined,
+      via:    filterVia.value || undefined,
     })
     entries.value = res.entries
     total.value   = res.total
@@ -51,7 +56,7 @@ async function load() {
 
 onMounted(load)
 watch([page], load)
-watch([filterAction], () => { page.value = 0; load() })
+watch([filterAction, filterVia], () => { page.value = 0; load() })
 
 
 
@@ -76,6 +81,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <Input v-model="filterAction" :placeholder="t('ui.monitor.AuditLogSection.filterByAction')"
           class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
+      <NativeSelect v-model="filterVia" wrapper-class="w-44 shrink-0" :aria-label="t('aiAccess.auditFilter')">
+        <NativeSelectOption value="">{{ t('aiAccess.auditAll') }}</NativeSelectOption>
+        <NativeSelectOption value="dashboard">{{ t('aiAccess.auditDashboard') }}</NativeSelectOption>
+        <NativeSelectOption value="mcp">{{ t('aiAccess.auditAssistant') }}</NativeSelectOption>
+      </NativeSelect>
       <Button variant="outline" size="icon" :disabled="loading" :tooltip="t('ui.monitor.AuditLogSection.refresh')" :aria-label="t('ui.monitor.AuditLogSection.refreshAuditLog')" @click="load">
         <LoadingSpinner v-if="loading" class="text-base" />
         <RefreshCwIcon v-else class="size-4" aria-hidden="true" />
@@ -91,11 +101,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <!-- Empty -->
     <EmptyState
       v-else-if="!entries.length"
-      :message="filterAction ? 'No audit entries match this filter.' : 'No audit entries yet.'"
-      :description="filterAction ? undefined : 'Actions taken by admins and privileged operations will appear here.'"
+      :message="filterAction || filterVia ? 'No audit entries match this filter.' : 'No audit entries yet.'"
+      :description="filterAction || filterVia ? undefined : 'Actions taken by admins and privileged operations will appear here.'"
     >
-      <template v-if="filterAction" #action>
-        <Button variant="outline" size="sm" @click="filterAction = ''">{{ t('ui.monitor.AuditLogSection.clearFilter') }}</Button>
+      <template v-if="filterAction || filterVia" #action>
+        <Button variant="outline" size="sm" @click="filterAction = ''; filterVia = ''">{{ t('ui.monitor.AuditLogSection.clearFilter') }}</Button>
       </template>
     </EmptyState>
 
@@ -104,7 +114,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       <div class="space-y-2 sm:hidden">
         <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-border bg-card p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
           <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-foreground/80" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-destructive'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted-foreground"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}</span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted-foreground"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}<template v-if="entry.via === 'mcp'"> · {{ t('aiAccess.auditAssistant') }}</template></span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
           <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-border pt-3"><p class="break-all font-mono text-2xs text-muted-foreground">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted p-2 text-2xs text-foreground/80">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
@@ -133,6 +143,9 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 <TableCell class="px-4 py-2.5">
                   <span v-if="entry.user" class="text-foreground font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
+                  </span>
+                  <span v-if="entry.via === 'mcp'" class="ml-1.5 inline-flex items-center gap-1 text-2xs text-violet" :title="t('aiAccess.auditAssistant')">
+                    <BotIcon class="size-3" aria-hidden="true" /><span class="sr-only">{{ t('aiAccess.auditAssistant') }}</span>
                   </span>
                   <span v-else class="text-muted-foreground text-xs">-</span>
                 </TableCell>
@@ -174,6 +187,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                       <span class="text-foreground/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
                     </div>
                     <div v-if="entry.target"><span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="font-mono text-foreground/80">{{ entry.target }}</span></div>
+                    <div v-if="entry.via === 'mcp'"><span class="text-muted-foreground">{{ t('aiAccess.auditVia') }} </span><span class="font-mono text-foreground/80">{{ entry.tokenId }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
                     <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">{{ t('ui.monitor.AuditLogSection.input') }}</div>

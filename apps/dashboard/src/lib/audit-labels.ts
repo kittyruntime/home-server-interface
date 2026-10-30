@@ -93,6 +93,12 @@ export function actionLabel(action: string): string {
     'update.execute':               'Install update',
     'update.check':                 'Check for updates',
     'user.updatePreferences':       'Update preferences',
+    // AI assistants (#138): their tokens, and what they read.
+    'apiToken.create':             'Create access token',
+    'apiToken.revoke':             'Revoke access token',
+    'fs.readText':                 'Read file',
+    'fs.search':                   'Search files',
+    'container.logs':              'Read app logs',
     'setup.createAdmin':            'Create the administrator',
     // Entries logged before these procedures were renamed from apply to execute.
     'container.app.apply':          'Apply container stack',

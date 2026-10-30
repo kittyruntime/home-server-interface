@@ -22,6 +22,7 @@ model User {
   auditLogs        AuditLog[]
   shareLinks       ShareLink[] @relation("UserShareLinks")
   capabilities     UserCapability[]
+  apiTokens        ApiToken[]
 }
 
 model UserCapability {
