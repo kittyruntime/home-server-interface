@@ -12,18 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dashboard, and the French translation, the upload hasher and the compose
   file parser load only when they are needed. The main bundle is about four
   times smaller.
-
-### Removed
-- **Unused code**: an unused dev sudo script, the former data migration
-  scripts (replaced by the update cutover), and functions, components and
-  translations nothing used anymore in the dashboard and the worker.
-
-### Changed
 - **Faster history and audit log**: the metrics history and the audit log are
   indexed by date, so the minute-by-minute cleanup of old metrics and the
   audit log pages no longer scan the whole table as they grow.
 
 ### Removed
+- **Unused code**: an unused dev sudo script, the former data migration
+  scripts (replaced by the update cutover), and functions, components and
+  translations nothing used anymore in the dashboard and the worker.
 - **Old direct storage, app, user and sharing endpoints**: the API entry
   points the dashboard stopped using when changes moved to preview and confirm
   are gone, so formatting a disk, creating an array or an account always goes
