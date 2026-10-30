@@ -16,7 +16,6 @@
     "@app/app-catalog": "workspace:*",
     "@app/compose": "workspace:*",
     "@app/database": "workspace:*",
-    "@app/shared-types": "workspace:*",
     "@fastify/cors": "^11.3.1",
     "@fastify/rate-limit": "^11.2.1",
     "@fastify/static": "^10.1.7",

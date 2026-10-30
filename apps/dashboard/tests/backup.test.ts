@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   asksOverwriteConfirm, canCloseReveal, clip, defaultRepository, latestOnly, locationSecretsRequired, poller, RESTORE_GRACE_MS, restorePollStep,
   asksRepositoryPassword, breadcrumbs, bytesLabel, commonPrefix, restorePayload, durationLabel, emptyPlanForm, emptyRepositoryForm, locationLabel, parentPath, planFormOf, planPayload,
-  pollDelay, repositoryFormOf, repositoryPayload, retentionLabel, runLabel, scheduleLabel, untilLabel,
+  pollDelay, repositoryFormOf, repositoryPayload, runLabel, scheduleLabel, untilLabel,
 } from '../src/lib/backup.ts'
 
 test('scheduleLabel names each schedule', () => {
@@ -11,11 +11,6 @@ test('scheduleLabel names each schedule', () => {
   assert.equal(scheduleLabel({ every: 'hourly', minute: 5, hour: 0, weekday: 0 }), 'Every hour at :05')
   assert.equal(scheduleLabel({ every: 'daily', minute: 30, hour: 2, weekday: 0 }), 'Every day at 02:30')
   assert.equal(scheduleLabel({ every: 'weekly', minute: 0, hour: 3, weekday: 1 }), 'Every Monday at 03:00')
-})
-
-test('retentionLabel lists only the kept periods', () => {
-  assert.equal(retentionLabel({ keepLast: 0, keepDaily: 7, keepWeekly: 4, keepMonthly: 0 }), 'Keeps 7 daily, 4 weekly')
-  assert.equal(retentionLabel({ keepLast: 10, keepDaily: 0, keepWeekly: 0, keepMonthly: 1 }), 'Keeps the last 10, 1 monthly')
 })
 
 test('locationLabel shows where a repository lives', () => {

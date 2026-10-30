@@ -50,20 +50,6 @@ func TestEnsureBootOptionsTouchesMarkedEntriesOnly(t *testing.T) {
 	}
 }
 
-func TestVolumeOwnerLongestPrefix(t *testing.T) {
-	v := []volumeEntry{{MountPoint: "/mnt/data"}, {MountPoint: "/mnt/data/sub"}, {MountPoint: "/mnt/data2"}}
-	cases := map[string]string{
-		"/mnt/data/x": "/mnt/data", "/mnt/data/sub/y": "/mnt/data/sub", "/mnt/data2/z": "/mnt/data2",
-		"/mnt/data": "/mnt/data", "/mnt/dataX": "",
-	}
-	for p, want := range cases {
-		got, ok := volumeOwner(v, p)
-		if (want == "" && ok) || (want != "" && got.MountPoint != want) {
-			t.Errorf("%s: got %q ok=%v, want %q", p, got.MountPoint, ok, want)
-		}
-	}
-}
-
 func TestVolumeState(t *testing.T) {
 	cases := []struct{ out, want string }{
 		{"", "missing"},
@@ -72,7 +58,7 @@ func TestVolumeState(t *testing.T) {
 		{`UUID="other" OPTIONS="rw"`, "wrong"},
 	}
 	for _, c := range cases {
-		if got := volumeState("aaaa-1111", c.out); got != c.want {
+		if got := volumeStateFor("aaaa-1111", "", c.out); got != c.want {
 			t.Errorf("%q: got %s want %s", c.out, got, c.want)
 		}
 	}

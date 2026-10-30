@@ -83,22 +83,6 @@ func ensureBootOptions(conf string) string {
 	return joinConf(lines)
 }
 
-// volumeOwner returns the volume a path lives on: the longest mount point
-// that is a path prefix (/mnt/data does not own /mnt/data2).
-func volumeOwner(vols []volumeEntry, path string) (volumeEntry, bool) {
-	path = filepath.Clean(path)
-	var best volumeEntry
-	found := false
-	for _, v := range vols {
-		if path == v.MountPoint || strings.HasPrefix(path, v.MountPoint+"/") {
-			if !found || len(v.MountPoint) > len(best.MountPoint) {
-				best, found = v, true
-			}
-		}
-	}
-	return best, found
-}
-
 // parseFindmnt reads `findmnt -n -P -o UUID,OPTIONS --mountpoint <mp>`.
 func parseFindmnt(out string) (mounted bool, uuid string, readOnly bool) {
 	line := strings.TrimSpace(out)
@@ -113,10 +97,6 @@ func parseFindmnt(out string) (mounted bool, uuid string, readOnly bool) {
 	}
 	opts := strings.Split(fields["OPTIONS"], ",")
 	return true, fields["UUID"], opts[0] == "ro"
-}
-
-func volumeState(expectedUUID, findmntOut string) string {
-	return volumeStateFor(expectedUUID, "", findmntOut)
 }
 
 // volumeStateFor also takes the fstab options: a volume mounted read-only on
@@ -240,12 +220,6 @@ chattr +i "$d"`
 		return stray, fmt.Errorf("%s", strings.TrimSpace(strings.ReplaceAll(string(out), "stray", "")))
 	}
 	return stray, nil
-}
-
-func unprotectMountPoint(mp string) {
-	if err := command("chattr", "-i", mp).Run(); err != nil {
-		logger.Warn("volume guard: could not clear immutable flag", "mountPoint", mp, "error", err.Error())
-	}
 }
 
 func recordGuard(mp string, stray bool, err error) {

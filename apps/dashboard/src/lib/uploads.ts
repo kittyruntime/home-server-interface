@@ -234,7 +234,7 @@ export function useUploads() {
 
 // ── Transfers: copy/move ────────────────────────────────────────────────────
 // Copy/move don't go through the chunked upload runner: each item is a
-// single tRPC mutate + pollJob call. `trackTransfer` registers the batch as
+// single tRPC mutate + pollJobResult call. `trackTransfer` registers the batch as
 // one `copy`/`move` transfer in the tray, drives it via `Promise.allSettled`,
 // and keeps the original ops around so a retry can genuinely re-issue the
 // same copy/move calls (each op is self-contained: it captures its own

@@ -26,7 +26,6 @@ type Volume = Overview['volumes'][number]
 
 const emit = defineEmits<{
   navigate: [target: StorageSection | StorageLocation]
-  create:   [kind: 'raid' | 'lvm', devices: string[]]
 }>()
 
 const overview = ref<Overview | null>(null)

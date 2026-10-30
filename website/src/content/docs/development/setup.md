@@ -144,7 +144,6 @@ packages/
 scripts/
   install.sh     Install/update on a Linux host
   release.sh     Cut a release (bump, changelog, tag, push)
-  setup-sudo.sh  Dev helper
 docs/            This documentation
 ```
 

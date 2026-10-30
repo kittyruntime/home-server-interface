@@ -21,16 +21,6 @@ export function scheduleLabel(s: Schedule): string {
   }
 }
 
-/** Only the periods that keep at least one snapshot, e.g. "Keeps 7 daily, 4 weekly". */
-export function retentionLabel(r: Retention): string {
-  const parts: string[] = []
-  if (r.keepLast > 0) parts.push(`the last ${r.keepLast}`)
-  if (r.keepDaily > 0) parts.push(`${r.keepDaily} daily`)
-  if (r.keepWeekly > 0) parts.push(`${r.keepWeekly} weekly`)
-  if (r.keepMonthly > 0) parts.push(`${r.keepMonthly} monthly`)
-  return parts.length ? tr('lib.backup.keeps', `Keeps ${parts.join(', ')}`, { p0: parts.join(', ') }) : tr('lib.backup.keepsNothing', 'Keeps nothing')
-}
-
 /** Where the repository lives, without credentials: a path, a user@host:path, a bucket path or a URL. */
 export function locationLabel(r: RepoLocation): string {
   switch (r.type) {
