@@ -61,6 +61,7 @@ export default {
     appStore: 'App Store',
     monitor: 'Supervision',
     sharing: 'Partage',
+    assistant: 'Assistant',
     settings: 'Réglages',
   },
   store: {

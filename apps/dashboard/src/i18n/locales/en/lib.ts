@@ -66,6 +66,7 @@ export default {
     appStore: 'App Store',
     monitor: 'Monitor',
     sharing: 'Sharing',
+    assistant: 'Assistant',
     settings: 'Settings',
   },
   store: {

@@ -20,6 +20,7 @@ export default defineConfig({
             "guide/install",
             "guide/secure-access",
             "guide/network",
+            "guide/assistant",
             "guide/ai-assistant",
             { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
             "guide/manage-without-hsi",

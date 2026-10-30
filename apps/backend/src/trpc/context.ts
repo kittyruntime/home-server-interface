@@ -11,8 +11,9 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
   return {
     prisma, req, res, user,
     audit: {} as { meta?: Record<string, unknown>; success?: boolean; target?: string },
-    // Set by the MCP endpoint (#138): calls made with an access token.
-    via: "dashboard" as "dashboard" | "mcp",
+    // Calls made by an AI assistant (#138): over MCP with an access token, or
+    // by the built-in chat.
+    via: "dashboard" as "dashboard" | "mcp" | "assistant",
     apiToken: null as ApiTokenAuth | null,
   }
 }

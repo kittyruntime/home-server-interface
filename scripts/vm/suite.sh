@@ -563,6 +563,76 @@ mcp_feature() {
   log "MCP: tools within each token's rights, reads audited, revocation immediate"
 }
 
+# chat <json body>: one turn of the built-in assistant, as API_TOKEN's account;
+# prints the server-sent events.
+chat() {
+  vm_ssh "curl -sNk -H \"authorization: Bearer \$(cat ${API_TOKEN:-/root/token})\" -H 'content-type: application/json' \
+    --data-binary @- https://127.0.0.1:9001/assistant/chat" <<<"$1"
+}
+
+# chat_call <conversation id or ""> <tool> <json arguments>: has the test
+# model call that tool; prints the events.
+chat_call() {
+  chat "$(python3 -c 'import json,sys; b={"message": "CALL %s %s" % (sys.argv[2], sys.argv[3])}; sys.argv[1] and b.update(conversationId=sys.argv[1]); print(json.dumps(b))' "$1" "$2" "$3")"
+}
+
+# event_field <events> <type> <field>: that field of the first event of that type.
+event_field() {
+  python3 -c '
+import json,sys
+for line in sys.argv[1].splitlines():
+    if line.startswith("data: "):
+        e = json.loads(line[6:])
+        if e["type"] == sys.argv[2]:
+            print(e[sys.argv[3]]); break' "$1" "$2" "$3"
+}
+
+# The built-in assistant, with a scripted model: it acts as the account that
+# chats, its deletions wait for approval in the chat, a decision lets it go on,
+# read-only mode offers no change, and the daily limit stops it.
+assistant_feature() {
+  local settings events conversation req
+  log "Built-in assistant: chat, approval, read-only, daily limit"
+  vm_put "$here/fake-ai-provider.py" /root/fake-ai-provider.py
+  vm_ssh 'nohup python3 /root/fake-ai-provider.py 18555 >/root/fake-ai.log 2>&1 </dev/null &'
+  vm_until 10 "the test AI provider did not start" 'curl -sf http://127.0.0.1:18555/v1/models'
+  settings='{"enabled":true,"provider":"custom","baseUrl":"http://127.0.0.1:18555/v1","model":"test/model","access":"everyone","readOnly":false,"dailyTokenLimit":null}'
+  api assistant.saveSettings "$settings" >/dev/null
+  API_TOKEN=/root/token-vmuser api_query assistant.status | grep -q '"available": true' || fail "the assistant is not available to vmuser"
+
+  # vmuser's: files are written as its Linux account.
+  events=$(API_TOKEN=/root/token-vmuser chat_call "" create_folder '{"parentPath":"/srv/vm-mirror","name":"from-chat"}')
+  conversation=$(event_field "$events" conversation id)
+  [[ $(event_field "$events" toolResult ok) == True ]] || fail "create_folder failed in the chat: $events"
+  vm_until 30 "the folder made in the chat is not on the host" 'test -d /srv/vm-mirror/from-chat'
+  [[ $(vm_ssh 'stat -c %U /srv/vm-mirror/from-chat') == vmuser ]] || fail "the chat did not act as vmuser"
+
+  events=$(API_TOKEN=/root/token-vmuser chat_call "$conversation" delete_files '{"paths":["/srv/vm-mirror/from-chat"],"reason":"vm test"}')
+  req=$(event_field "$events" approval id)
+  [[ -n $req ]] || fail "the deletion was not shown for approval: $events"
+  sleep 2
+  vm_ssh 'test -d /srv/vm-mirror/from-chat' || fail "a deletion asked in the chat ran before it was approved"
+  API_TOKEN=/root/token-vmuser api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status": "done"' || fail "approving the chat's deletion failed"
+  vm_until 30 "the approved deletion did not remove the folder" '! test -e /srv/vm-mirror/from-chat'
+  events=$(API_TOKEN=/root/token-vmuser chat "{\"conversationId\":\"$conversation\",\"resume\":true}")
+  grep -q 'approved the request' <<<"$events" || fail "the assistant was not told the decision: $events"
+  api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.delete"' || fail "the approved deletion is not in the audit log as the assistant's"
+  api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.mkdir"' || fail "the folder made in the chat is not in the audit log as the assistant's"
+
+  # Read-only: no tool that changes anything is offered.
+  api assistant.saveSettings "${settings/\"readOnly\":false/\"readOnly\":true}" >/dev/null
+  events=$(API_TOKEN=/root/token-vmuser chat_call "" create_folder '{"parentPath":"/srv/vm-mirror","name":"read-only"}')
+  [[ $(event_field "$events" toolResult ok) == False ]] || fail "read-only mode ran create_folder: $events"
+  vm_ssh '! test -e /srv/vm-mirror/read-only' || fail "read-only mode made a folder"
+
+  # The daily limit: the tokens used so far already exceed 1000.
+  api assistant.saveSettings "${settings/\"dailyTokenLimit\":null/\"dailyTokenLimit\":1000}" >/dev/null
+  [[ $(vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -H \"authorization: Bearer \$(cat /root/token-vmuser)\" -H 'content-type: application/json' \
+    --data '{\"message\":\"hello\"}' https://127.0.0.1:9001/assistant/chat") == 429 ]] || fail "the daily limit did not stop the assistant"
+  api assistant.saveSettings '{"enabled":false,"provider":"custom","baseUrl":"http://127.0.0.1:18555/v1","model":"test/model","access":"admins"}' >/dev/null
+  log "Built-in assistant: acts as the account, approvals in the chat, read-only and daily limit hold"
+}
+
 BACKUP_PASSWORD="vm-test-config-backup-password"
 
 # An account made through HSI (Linux and Samba), owning files on the mirror.
@@ -825,6 +895,7 @@ case "$scenario" in
     files_feature
     smb_feature
     mcp_feature
+    assistant_feature
     app_feature
     vm_reboot
     expect_running "$version"; expect_mirror

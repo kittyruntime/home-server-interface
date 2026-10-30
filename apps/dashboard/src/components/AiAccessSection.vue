@@ -15,6 +15,7 @@ import { useConfirm } from '../lib/confirm'
 import { formatDay } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
+import AssistantSettingsCard from './assistant/AssistantSettingsCard.vue'
 
 // Access tokens for AI assistants (#138): an MCP client acts as this account
 // with one, limited to the scopes picked here. The secret is shown once.
@@ -127,6 +128,13 @@ onMounted(load)
     <p class="text-sm text-muted-foreground mb-2 max-w-xl">{{ t('aiAccess.intro') }}</p>
     <p class="text-xs text-muted-foreground mb-6 max-w-xl">{{ t('aiAccess.privacy') }}</p>
 
+    <!-- The built-in assistant (admins set it up) -->
+    <div v-if="isAdmin" class="max-w-xl mb-8">
+      <p class="eyebrow mb-2">{{ t('assistant.settings.section') }}</p>
+      <AssistantSettingsCard />
+    </div>
+
+    <p v-if="isAdmin" class="eyebrow mb-2">{{ t('aiAccess.mcpSection') }}</p>
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" :retry-label="t('aiAccess.retry')" @retry="load" />
 

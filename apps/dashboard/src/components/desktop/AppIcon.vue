@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { ActivityIcon, FileTextIcon, FolderIcon, HardDriveIcon, LayoutGridIcon, SettingsIcon, Share2Icon, StoreIcon } from '@lucide/vue'
+import { ActivityIcon, BotIcon, FileTextIcon, FolderIcon, HardDriveIcon, LayoutGridIcon, SettingsIcon, Share2Icon, StoreIcon } from '@lucide/vue'
 import type { AppId } from '../../lib/desktop'
 
 // The glyph of an app (dock, launchpad, window title bars, sidebar), from the
@@ -13,6 +13,7 @@ const ICONS: Record<AppId, Component> = {
   store: StoreIcon,
   monitor: ActivityIcon,
   sharing: Share2Icon,
+  assistant: BotIcon,
   'file-preview': FileTextIcon,
 }
 

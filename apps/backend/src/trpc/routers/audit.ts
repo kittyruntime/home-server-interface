@@ -8,7 +8,7 @@ export const auditRouter = router({
       limit:  z.number().int().min(1).max(200).default(50),
       userId: z.string().optional(),
       action: z.string().optional(),
-      via:    z.enum(["dashboard", "mcp"]).optional(),
+      via:    z.enum(["dashboard", "mcp", "assistant"]).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const where = {

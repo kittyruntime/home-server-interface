@@ -1,12 +1,15 @@
-// A change an AI assistant asked for over MCP (#138) that waits for its user's
-// approval in the dashboard: deletions, overwrites, and every storage, app,
+// A change an AI assistant asked for, over MCP (#138) or in the built-in chat,
+// that waits for its user's approval in the dashboard: deletions, overwrites, and every storage, app,
 // account, share, permission or update plan. Approving runs exactly the
 // stored call, as that user; a plan that went stale since is refused.
 model AgentAction {
   id         String    @id @default(uuid())
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenId    String
+  // The access token of an MCP assistant; null for the built-in chat, whose
+  // conversation is set instead.
+  tokenId    String?
+  conversationId String?
   // The tool that asked, and what it said the change is for.
   tool       String
   reason     String?

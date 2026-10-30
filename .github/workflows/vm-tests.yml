@@ -28,6 +28,7 @@ on:
       - "apps/backend/src/trpc/routers/fs.ts"
       - "apps/backend/src/routes/files.ts"
       - "apps/backend/src/mcp/**"
+      - "apps/backend/src/assistant/**"
       - "apps/backend/src/services/api-tokens.ts"
       - "apps/backend/src/trpc/routers/user.ts"
       - "packages/compose/**"

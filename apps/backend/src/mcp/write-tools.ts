@@ -89,22 +89,23 @@ function needScope(ctx: ToolContext, scope: ApiScope) {
 }
 
 function planTools(family: string, f: PlanFamily): ToolDef[] {
+  const a = /^[aeiou]/.test(family) ? "an" : "a"
   const opDesc = `The operation: ${f.ops}`
   const inputDesc = "The operation's input, as the dashboard sends it"
   // Offered with any of the family's scopes; each op's own is checked per call.
   const base = f.scopes[0]
   return [
     tool({
-      name: `preview_${family}_change`, title: `Preview a ${family} change`, scope: base, anyScope: f.scopes, requires: f.requires,
+      name: `preview_${family}_change`, title: `Preview ${a} ${family} change`, scope: base, anyScope: f.scopes, requires: f.requires,
       input: { op: z.string().describe(opDesc), input: z.record(z.string(), z.unknown()).describe(inputDesc) },
-      description: `Shows the plan of a ${family} change: each step, and which ones destroy data. Nothing is changed. Show the plan to the user, then call request_${family}_change with its fingerprint.`,
+      description: `Shows the plan of ${a} ${family} change: each step, and which ones destroy data. Nothing is changed. Show the plan to the user, then call request_${family}_change with its fingerprint.`,
       run: async ({ op, input }, ctx) => {
         needScope(ctx, f.scope(op))
         return f.plan(ctx.caller, op, input)
       },
     }),
     tool({
-      name: `request_${family}_change`, title: `Ask to apply a ${family} change`, scope: base, anyScope: f.scopes, requires: f.requires,
+      name: `request_${family}_change`, title: `Ask to apply ${a} ${family} change`, scope: base, anyScope: f.scopes, requires: f.requires,
       input: {
         op: z.string().describe(opDesc), input: z.record(z.string(), z.unknown()).describe(inputDesc),
         fingerprint: z.string().min(1).describe(`The fingerprint from preview_${family}_change`), reason,

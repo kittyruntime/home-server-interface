@@ -20,6 +20,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'store',     label: tr('lib.sidebar_nav.appStore', 'App Store'), adminOnly: true },
   { id: 'monitor',   label: tr('lib.sidebar_nav.monitor', 'Monitor'),   adminOnly: true },
   { id: 'sharing',   label: tr('lib.sidebar_nav.sharing', 'Sharing'),   adminOnly: true },
+  // Shown to admins, who set it up, and to whoever may use it.
+  { id: 'assistant', label: tr('lib.sidebar_nav.assistant', 'Assistant'), adminOnly: true, capability: 'assistant' },
   { id: 'settings',  label: tr('lib.sidebar_nav.settings', 'Settings') },
 ]
 

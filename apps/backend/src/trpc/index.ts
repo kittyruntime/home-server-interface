@@ -19,20 +19,21 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router
 export const publicProcedure = t.procedure
 
-// What an access token (#138) may never reach, whatever its scopes: making or
-// revoking tokens, approving its own requests, the password, signing in and
-// out, the first-run setup.
+// What an AI assistant, over MCP with an access token (#138) or in the built-in
+// chat, may never reach: making or revoking tokens, approving its own
+// requests, its own settings, the password, signing in and out, the first-run
+// setup.
 export function closedToApiTokens(path: string): boolean {
-  return path.startsWith("apiToken.") || path.startsWith("agentAction.") || path.startsWith("auth.") ||
-    path.startsWith("setup.") || path === "user.changePassword"
+  return path.startsWith("apiToken.") || path.startsWith("agentAction.") || path.startsWith("assistant.") ||
+    path.startsWith("auth.") || path.startsWith("setup.") || path === "user.changePassword"
 }
 
 const isAuthed = t.middleware(({ ctx, path, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
   }
-  if (ctx.apiToken && closedToApiTokens(path)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Not available with an access token." })
+  if ((ctx.apiToken || ctx.via === "assistant") && closedToApiTokens(path)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not available to an AI assistant." })
   }
   return next({ ctx: { user: ctx.user } })
 })

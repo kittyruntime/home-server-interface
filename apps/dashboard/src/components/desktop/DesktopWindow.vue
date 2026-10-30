@@ -26,6 +26,7 @@ const StoragePanel = defineAsyncComponent(() => import('../storage/StoragePanel.
 const AppStorePanel = defineAsyncComponent(() => import('../store/AppStorePanel.vue'))
 const MonitorPanel = defineAsyncComponent(() => import('../monitor/MonitorPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../sharing/SharingPanel.vue'))
+const AssistantPanel = defineAsyncComponent(() => import('../assistant/AssistantPanel.vue'))
 
 const props = defineProps<{
   win: DesktopWindow
@@ -222,6 +223,7 @@ function onMaximizeClick() {
       <AppStorePanel v-else-if="win.appId === 'store'" class="h-full" />
       <MonitorPanel v-else-if="win.appId === 'monitor'" class="h-full" />
       <SharingPanel v-else-if="win.appId === 'sharing'" class="h-full" />
+      <AssistantPanel v-else-if="win.appId === 'assistant'" class="h-full" />
       <FilePreviewBody v-else-if="win.appId === 'file-preview'" ref="filePreviewRef" :entry="win.filePreview!" class="h-full" @dirty="setDirty(win.id, $event)" />
     </div>
 

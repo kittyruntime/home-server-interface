@@ -4,13 +4,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { BotIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import Modal from './ui/Modal.vue'
-import BusyLabel from './ui/BusyLabel.vue'
+import AgentRequestCard from './assistant/AgentRequestCard.vue'
 import { trpc } from '../lib/trpc'
 import { useToast } from '../lib/toast'
-import { formatDateTime } from '../lib/format-date'
+import { AGENT_DECIDED_EVENT } from '../lib/assistant'
 
-// Changes an AI assistant asked for over MCP (#138), waiting for this
-// account's approval. Nothing runs until Approve: then exactly the request is
+// Changes an AI assistant asked for, over MCP (#138) or in the built-in chat,
+// waiting for this account's approval. Nothing runs until Approve: then exactly the request is
 // run, as this account, and recorded in the audit log as the assistant's.
 
 const { t } = useI18n()
@@ -18,7 +18,6 @@ const toast = useToast()
 
 type Lists = Awaited<ReturnType<typeof trpc.agentAction.list.query>>
 type Request = Lists['pending'][number]
-type Step = { summary?: string; destructive?: boolean; kind?: string; target?: string; command?: string[]; diff?: string }
 
 const POLL_MS = 15_000
 
@@ -36,24 +35,6 @@ async function refresh() {
   } catch { /* the next poll tries again */ }
 }
 
-function steps(r: Request): Step[] {
-  const p = r.preview as { steps?: Step[] } | null
-  return Array.isArray(p?.steps) ? p.steps : []
-}
-
-// A request without a plan (files to delete, a file to replace, an access, an
-// update) shows its own details.
-function details(r: Request): string | null {
-  const p = r.preview as Record<string, unknown> | null
-  if (!p || Array.isArray(p.steps)) return null
-  // The whole new content of a replaced file: it is what gets approved.
-  if (typeof p.replace === 'string' && typeof p.content === 'string') return p.content
-  if (Array.isArray(p.delete)) {
-    return (p.delete as Array<{ path: string; type?: string }>).map(i => i.type === 'dir' ? `${i.path}/` : i.path).join('\n')
-  }
-  return JSON.stringify(p, null, 2)
-}
-
 async function decide(r: Request, approve: boolean) {
   busy.value = r.id
   try {
@@ -64,6 +45,8 @@ async function decide(r: Request, approve: boolean) {
     } else {
       await trpc.agentAction.reject.mutate({ id: r.id })
     }
+    // The built-in assistant's chat goes on with the decision.
+    if (r.conversationId) window.dispatchEvent(new CustomEvent(AGENT_DECIDED_EVENT, { detail: { conversationId: r.conversationId } }))
   } catch (e: any) {
     toast.error(e?.message ?? t('agentRequests.decideFailed'))
   } finally {
@@ -114,43 +97,11 @@ onBeforeUnmount(() => {
 
     <div class="space-y-4 px-5 py-4">
       <p v-if="!pending.length" class="text-sm text-muted-foreground">{{ t('agentRequests.none') }}</p>
-      <section
+      <AgentRequestCard
         v-for="r in pending" :key="r.id"
-        class="rounded-lg border px-4 py-3"
-        :class="r.destructive ? 'border-destructive/40' : 'border-border'"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-foreground break-words">{{ r.title }}</p>
-            <p class="mt-0.5 text-2xs text-muted-foreground">
-              {{ r.tokenName ?? t('agentRequests.unknownToken') }} · {{ formatDateTime(r.createdAt) }}
-            </p>
-          </div>
-          <span v-if="r.destructive" class="shrink-0 text-xs font-medium text-destructive">{{ t('agentRequests.destructive') }}</span>
-        </div>
-        <p v-if="r.reason" class="mt-2 text-xs text-foreground/80">
-          <span class="text-muted-foreground">{{ t('agentRequests.reason') }}</span> {{ r.reason }}
-        </p>
-
-        <ol v-if="steps(r).length" class="mt-3 divide-y divide-border rounded-md border border-border">
-          <li v-for="(s, i) in steps(r)" :key="i" class="px-3 py-2">
-            <p class="text-xs" :class="s.destructive ? 'text-destructive' : 'text-foreground'">{{ i + 1 }}. {{ s.summary }}</p>
-            <p v-if="s.target" class="mt-0.5 font-mono text-2xs text-muted-foreground">{{ s.target }}</p>
-            <details v-if="s.command?.length || s.diff" class="mt-1">
-              <summary class="cursor-pointer text-2xs text-muted-foreground hover:text-foreground">{{ t('agentRequests.exactChange') }}</summary>
-              <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-2 py-1.5 font-mono text-2xs text-foreground">{{ s.command?.join(' ') ?? s.diff }}</pre>
-            </details>
-          </li>
-        </ol>
-        <pre v-else-if="details(r)" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground whitespace-pre-wrap break-all">{{ details(r) }}</pre>
-
-        <div class="mt-3 flex justify-end gap-2">
-          <Button size="sm" variant="ghost" :disabled="busy !== null" @click="decide(r, false)">{{ t('agentRequests.reject') }}</Button>
-          <Button size="sm" :variant="r.destructive ? 'destructive' : 'default'" :disabled="busy !== null" @click="decide(r, true)">
-            <BusyLabel :busy="busy === r.id" :busy-label="t('agentRequests.running')">{{ t('agentRequests.approve') }}</BusyLabel>
-          </Button>
-        </div>
-      </section>
+        :request="r" :busy="busy === r.id" :disabled="busy !== null" source
+        @decide="approve => decide(r, approve)"
+      />
     </div>
 
     <template #footer>
