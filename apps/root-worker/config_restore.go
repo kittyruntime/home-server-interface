@@ -364,20 +364,35 @@ func copyTree(src, dst string, uid, gid int) error {
 		if strings.HasPrefix(filepath.Base(p), ".env") {
 			mode = 0o600
 		}
-		if err := os.WriteFile(target, b, mode); err != nil {
+		if err := writeFileAtomic(target, b, mode); err != nil {
 			return err
 		}
+		_ = os.Chmod(target, mode)
 		_ = os.Chown(target, uid, gid)
 		return nil
 	})
 }
 
-// keepAside renames path to path+suffix when it exists.
+// keepAside keeps a copy of path at path+suffix when it exists, with its mode
+// and owner. The file itself stays until it is replaced in one step: a power
+// cut while restoring leaves the old file or the new one, never none (a
+// missing tls.json would bring HSI back on plain HTTP).
 func keepAside(path, suffix string) error {
-	if !fileExists(path) {
+	st, err := os.Lstat(path)
+	if err != nil || !st.Mode().IsRegular() {
 		return nil
 	}
-	return os.Rename(path, path+suffix)
+	cur, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err := writeFileAtomic(path+suffix, cur, st.Mode().Perm()); err != nil {
+		return err
+	}
+	if sys, ok := st.Sys().(*syscall.Stat_t); ok {
+		_ = os.Chown(path+suffix, int(sys.Uid), int(sys.Gid))
+	}
+	return nil
 }
 
 // applyBackup restores the system part of an unpacked archive. The conflicts
@@ -490,14 +505,15 @@ func applyBackup(dir string, now time.Time) error {
 				return err
 			}
 		}
-		if err := os.WriteFile(dst, b, 0o644); err != nil {
+		// Replaced in one step: a power cut leaves the old file or the new one.
+		if err := writeFileAtomic(dst, b, 0o644); err != nil {
 			return err
 		}
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "system", "maintenance.json")); err == nil {
 		if cur, err := os.ReadFile(maintenanceConfigPath); err != nil || !bytes.Equal(cur, b) {
 			_ = keepAside(maintenanceConfigPath, ".before-restore-"+stamp)
-			if err := os.WriteFile(maintenanceConfigPath, b, 0o644); err != nil {
+			if err := writeFileAtomic(maintenanceConfigPath, b, 0o644); err != nil {
 				return err
 			}
 		}
