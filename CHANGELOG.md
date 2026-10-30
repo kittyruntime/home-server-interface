@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Faster history and audit log**: the metrics history and the audit log are
+  indexed by date, so the minute-by-minute cleanup of old metrics and the
+  audit log pages no longer scan the whole table as they grow.
+
 ### Removed
 - **Old direct storage, app, user and sharing endpoints**: the API entry
   points the dashboard stopped using when changes moved to preview and confirm
