@@ -2228,6 +2228,25 @@ await testSharePlans()
   await rm(work, { recursive: true, force: true })
 }
 
+// The startup purge removes what an earlier run left, never a preview or an
+// export this run has just started.
+{
+  const { purgeStaging } = await import("../services/config-restore")
+  const { mkdtemp: mkd, mkdir, readdir, utimes } = await import("node:fs/promises")
+  const root = await mkd(join(tmpdir(), "hsi-staging-purge-"))
+  await mkdir(join(root, "restore-old"))
+  await mkdir(join(root, "export-old"))
+  await mkdir(join(root, "restore-new"))
+  await mkdir(join(root, "other"))
+  const startedAt = Date.now()
+  const past = new Date(startedAt - 60_000)
+  for (const d of ["restore-old", "export-old", "other"]) await utimes(join(root, d), past, past)
+  await utimes(join(root, "restore-new"), new Date(startedAt + 1_000), new Date(startedAt + 1_000))
+  await purgeStaging(root, startedAt)
+  assert.deepEqual((await readdir(root)).sort(), ["other", "restore-new"])
+  await rm(root, { recursive: true, force: true })
+}
+
 // Restore from the first-run assistant (#1, #12): a setup session opens the
 // restore only while no administrator exists; a backup without one is refused.
 {

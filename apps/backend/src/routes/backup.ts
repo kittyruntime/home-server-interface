@@ -53,7 +53,8 @@ export async function backupRoutes(app: FastifyInstance) {
   // Decrypted previews never outlive 15 minutes, and none survives a restart.
   const sweep = setInterval(() => { void sweepRestores(restoreDeps) }, 60_000)
   sweep.unref()
-  setTimeout(() => { void stagingRoot().then(purgeStaging).catch(() => {}) }, 5_000).unref()
+  const startedAt = Date.now()
+  setTimeout(() => { void stagingRoot().then(root => purgeStaging(root, startedAt)).catch(() => {}) }, 5_000).unref()
 
   app.addContentTypeParser("application/vnd.hsi.config-backup", (_request, payload, done) => done(null, payload))
 
