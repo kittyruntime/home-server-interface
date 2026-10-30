@@ -26,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previewed plan runs, as your account; a plan that went stale is refused.
   An assistant can never approve its own requests (#138).
 
+### Fixed
+- **Power cut right after HSI writes its settings**: HTTPS settings and
+  certificates, mount and RAID configuration, backup settings and storage
+  descriptions now reach the disk before HSI moves on. A power cut a few
+  seconds after the first start could lose the HTTPS settings, and HSI then
+  came back on plain HTTP.
+- **Power cut while restoring a configuration**: the restored database
+  replaces the current one in a single step, once it is on disk. A power cut
+  at the wrong moment could leave no database at all.
+- **Restoring a configuration right after HSI starts**: a restore begun in
+  the first seconds after a start could fail with "Incorrect password or
+  corrupted backup", as HSI was clearing what an earlier run left behind.
+
 ## [1.74.0] - 2026-10-29
 
 ### Added

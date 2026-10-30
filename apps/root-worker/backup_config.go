@@ -133,8 +133,8 @@ func loadBackupConfig() (backupConfig, bool, error) {
 }
 
 // writeBackupFile always applies mode, unlike writeFileAtomic which keeps an existing file
-// mode. The data reaches the disk before the rename, so a power cut leaves the old file
-// or the new one, never an empty one.
+// mode. The data reaches the disk before the rename, and the rename before it returns, so a
+// power cut leaves the old file or the new one, never an empty one.
 func writeBackupFile(path string, data []byte, mode os.FileMode) error {
 	tmp := path + ".tmp"
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
@@ -159,6 +159,7 @@ func writeBackupFile(path string, data []byte, mode os.FileMode) error {
 		os.Remove(tmp)
 		return err
 	}
+	syncDir(filepath.Dir(path))
 	return nil
 }
 

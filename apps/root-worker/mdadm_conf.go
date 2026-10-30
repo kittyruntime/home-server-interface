@@ -138,7 +138,13 @@ func writeFileAtomic(path string, data []byte, defaultPerm os.FileMode) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), path)
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return err
+	}
+	// The rename itself reaches the disk too: a power cut right after must
+	// not bring back the old file, or none for a new one.
+	syncDir(filepath.Dir(path))
+	return nil
 }
 
 // updateMdadmConf applies edit to mdadm.conf and refreshes the initramfs so

@@ -68,15 +68,17 @@ export async function cancelConfigRestore(token: string) {
 
 /**
  * Removes the staged previews and exports left by an earlier run of the
- * backend: the in-memory list of previews does not survive a restart.
+ * backend: the in-memory list of previews does not survive a restart. Only
+ * what was made before `before` (this run's start) goes: a preview or an
+ * export already under way in this run is not in the list yet.
  */
-export async function purgeStaging(root: string) {
-  const { readdir } = await import("node:fs/promises")
+export async function purgeStaging(root: string, before: number) {
+  const { readdir, stat } = await import("node:fs/promises")
   const known = new Set([...pending.values()].map(p => path.basename(p.dir)))
   for (const name of await readdir(root).catch(() => [] as string[])) {
-    if ((name.startsWith("restore-") || name.startsWith("export-")) && !known.has(name)) {
-      await rm(path.join(root, name), { recursive: true, force: true })
-    }
+    if (!(name.startsWith("restore-") || name.startsWith("export-")) || known.has(name)) continue
+    const made = await stat(path.join(root, name)).then(s => s.mtimeMs, () => null)
+    if (made !== null && made < before) await rm(path.join(root, name), { recursive: true, force: true })
   }
 }
 
