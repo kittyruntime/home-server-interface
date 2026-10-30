@@ -11,6 +11,7 @@ export type ChatEvent =
   | { type: 'tool'; id: string; name: string; arguments: string }
   | { type: 'toolResult'; id: string; ok: boolean }
   | { type: 'approval'; id: string }
+  | { type: 'usage'; tokens: number }
   | { type: 'done' }
   | { type: 'error'; message: string }
 

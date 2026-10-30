@@ -26,12 +26,21 @@ Assistant app, the first time):
 - **Model**: **Check** lists the provider's models. Choose one that can call
   tools: the assistant does nothing without them.
 - **Who may use it**: administrators only (the default), or every account.
+- **Read-only**: the assistant looks at everything the account sees but
+  changes nothing: no file, app or setting.
+- **Daily limit per account**: the tokens an account may use per day (UTC),
+  to keep the provider's bill in check. Empty means no limit. Tokens are counted
+  as the provider reports them (OpenRouter, OpenAI), or estimated from the
+  length of what is sent and received.
 
 ## Chat
 
 Conversations are kept per account (the 50 latest) and can be deleted. While
-the assistant works, each tool it calls shows under its answer. **Stop** ends
-the answer at once.
+the assistant works, each step it takes shows under its answer. **Stop** ends
+the answer at once and keeps what it had written. Below the message field, the
+tokens used by the conversation and by your account today (with the limit, if
+there is one). A busy or unreachable provider is tried again twice before the
+assistant gives up.
 
 Creating folders and files, renaming, moving and copying happen at once.
 Deletions, file overwrites and every storage, app, account, share, permission

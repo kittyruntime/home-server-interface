@@ -30,6 +30,8 @@ export interface ChatReply {
   content: string
   toolCalls: ChatToolCall[]
   finishReason: string | null
+  /** Tokens of the call, when the provider reports them. */
+  usage: number | null
 }
 
 export class ProviderError extends Error {
@@ -83,6 +85,7 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
 
 interface StreamChunk {
   error?: { message?: string } | string
+  usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number } | null
   choices?: {
     delta?: {
       content?: string | null
@@ -96,6 +99,7 @@ interface StreamChunk {
 export async function collectStream(data: AsyncIterable<string>, onText: (delta: string) => void): Promise<ChatReply> {
   let content = ""
   let finishReason: string | null = null
+  let usage: number | null = null
   const calls = new Map<number, ChatToolCall>()
   for await (const payload of data) {
     if (payload === "[DONE]") break
@@ -104,6 +108,7 @@ export async function collectStream(data: AsyncIterable<string>, onText: (delta:
     if (chunk.error) {
       throw new ProviderError(`The AI provider failed: ${typeof chunk.error === "string" ? chunk.error : chunk.error.message ?? "unknown error"}`)
     }
+    if (chunk.usage) usage = chunk.usage.total_tokens ?? ((chunk.usage.prompt_tokens ?? 0) + (chunk.usage.completion_tokens ?? 0))
     const choice = chunk.choices?.[0]
     if (!choice) continue
     if (choice.delta?.content) {
@@ -121,7 +126,27 @@ export async function collectStream(data: AsyncIterable<string>, onText: (delta:
     if (choice.finish_reason) finishReason = choice.finish_reason
   }
   const toolCalls = [...calls.entries()].sort(([a], [b]) => a - b).map(([i, c]) => ({ ...c, id: c.id || `call_${i}` }))
-  return { content, toolCalls: toolCalls.filter(c => c.name), finishReason }
+  return { content, toolCalls: toolCalls.filter(c => c.name), finishReason, usage }
+}
+
+/** Whether a failed call is worth trying again: overloaded, down, or unreachable. */
+export function retryable(e: unknown): boolean {
+  if ((e as { noRetry?: boolean } | null)?.noRetry) return false
+  if (e instanceof ProviderError) return e.status === 429 || (e.status !== undefined && e.status >= 500)
+  // fetch() rejects with a TypeError when the network fails.
+  return e instanceof TypeError
+}
+
+/** Calls fn, trying again twice after a short wait when the provider is busy or unreachable. */
+export async function withRetries<T>(fn: () => Promise<T>, signal: AbortSignal, waits = [1_000, 4_000]): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (attempt >= waits.length || signal.aborted || !retryable(e)) throw e
+      await new Promise(r => setTimeout(r, waits[attempt]))
+    }
+  }
 }
 
 export async function streamChat(
@@ -130,16 +155,31 @@ export async function streamChat(
   tools: ChatTool[],
   onText: (delta: string) => void,
   signal: AbortSignal,
+  opts: { reportUsage?: boolean } = {},
 ): Promise<ChatReply> {
-  const res = await fetch(`${target.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: headers(target),
-    body: JSON.stringify({ model: target.model, messages, stream: true, ...(tools.length && { tools }) }),
-    signal,
-  })
-  if (!res.ok) throw await errorOf(res)
-  if (!res.body) throw new ProviderError("The AI provider sent an empty answer")
-  return collectStream(sseData(res.body), onText)
+  // Tried again only before any text went out: a retry would repeat it.
+  let started = false
+  return withRetries(async () => {
+    try {
+      const res = await fetch(`${target.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: headers(target),
+        body: JSON.stringify({
+          model: target.model, messages, stream: true,
+          ...(tools.length && { tools }),
+          // Asked only of providers known to take it: others may refuse an unknown field.
+          ...(opts.reportUsage && { stream_options: { include_usage: true } }),
+        }),
+        signal,
+      })
+      if (!res.ok) throw await errorOf(res)
+      if (!res.body) throw new ProviderError("The AI provider sent an empty answer")
+      return await collectStream(sseData(res.body), d => { started = true; onText(d) })
+    } catch (e) {
+      if (started) throw Object.assign(e instanceof Error ? e : new Error(String(e)), { noRetry: true })
+      throw e
+    }
+  }, signal)
 }
 
 /** The models the provider offers, to check the settings and pick one. */

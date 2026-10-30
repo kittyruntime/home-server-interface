@@ -25,6 +25,7 @@ model User {
   apiTokens        ApiToken[]
   agentActions     AgentAction[]
   assistantConversations AssistantConversation[]
+  assistantUsage AssistantUsage[]
 }
 
 model UserCapability {

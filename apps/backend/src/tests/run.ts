@@ -3229,8 +3229,8 @@ await testTelemetryChannelOptOutAndPayload()
 
   // A turn: the model calls a tool, reads its result, then answers.
   const replies = [
-    { content: "", toolCalls: [{ id: "c1", name: "list_files", arguments: '{"path":"/srv/a"}' }], finishReason: "tool_calls" },
-    { content: "There are 2 files.", toolCalls: [], finishReason: "stop" },
+    { content: "", toolCalls: [{ id: "c1", name: "list_files", arguments: '{"path":"/srv/a"}' }], finishReason: "tool_calls", usage: 120 },
+    { content: "There are 2 files.", toolCalls: [], finishReason: "stop", usage: null },
   ]
   const seen: number[] = []
   const saved: Array<{ role: string; content: string }> = []
@@ -3250,11 +3250,61 @@ await testTelemetryChannelOptOutAndPayload()
   const loop: Array<{ type: string }> = []
   let calls = 0
   await chat.runTurn("sys", [], {
-    stream: async () => { calls++; return { content: "", toolCalls: [{ id: `c${calls}`, name: "list_places", arguments: "{}" }], finishReason: "tool_calls" } },
+    stream: async () => { calls++; return { content: "", toolCalls: [{ id: `c${calls}`, name: "list_places", arguments: "{}" }], finishReason: "tool_calls", usage: null } },
     runTool: async () => ({ ok: true, content: "[]" }), save: async () => {}, emit: e => { loop.push(e) }, aborted: () => false,
   })
   assert.equal(calls, chat.MAX_ROUNDS)
   assert.equal(loop.at(-1)!.type, "error")
+
+  // Tokens: as reported, or estimated; the daily limit stops before running tools.
+  const counted: number[] = []
+  const limited: Array<{ role: string; content: string }> = []
+  const limitEvents: Array<{ type: string }> = []
+  let toolRuns = 0
+  await chat.runTurn("sys", [{ role: "user", content: "hi" }], {
+    stream: async () => ({ content: "", toolCalls: [{ id: "c1", name: "list_places", arguments: "{}" }], finishReason: "tool_calls", usage: null }),
+    runTool: async () => { toolRuns++; return { ok: true, content: "[]" } },
+    save: async m => { limited.push(m) }, emit: e => { limitEvents.push(e) }, aborted: () => false,
+    toolChars: 4000,
+    used: async t => { counted.push(t); return false },
+  })
+  assert.ok(counted[0]! > 1000, "an unreported call is estimated, tool definitions included")
+  assert.equal(toolRuns, 0, "no tool runs once the limit is reached")
+  assert.deepEqual(limited.map(m => m.role), ["assistant", "tool"], "the call is answered, so the history stays valid")
+  assert.equal(limitEvents.at(-1)!.type, "error")
+  assert.equal(chat.callTokens([], 0, { content: "", toolCalls: [], finishReason: "stop", usage: 42 }), 42, "a reported count is used as is")
+
+  // Stopped while writing: the text so far is kept.
+  const kept: Array<{ role: string; content: string }> = []
+  let stopped = false
+  await chat.runTurn("sys", [{ role: "user", content: "hi" }], {
+    stream: async (_m, onText) => { onText("Half an "); onText("answer"); stopped = true; throw new DOMException("aborted", "AbortError") },
+    runTool: async () => ({ ok: true, content: "" }), save: async m => { kept.push(m) }, emit: () => {}, aborted: () => stopped,
+  })
+  assert.deepEqual(kept, [{ role: "assistant", content: "Half an answer" }])
+
+  // Read-only: only the tools that read.
+  const ro = chat.chatTools(ALL_TOOLS, admin, true)
+  assert.ok(ro.defs.has("list_files") && ro.defs.has("storage_overview"))
+  assert.ok(![...ro.defs.keys()].some(n => /^(create_|write_|delete_|rename|move|copy|request_|preview_|start_|stop_|restart_|run_|check_)/.test(n)),
+    "nothing that changes anything is offered")
+  assert.match(chat.systemPrompt({ username: "a", isAdmin: true, version: "v", now: new Date(), readOnly: true }), /read-only/)
+
+  // A busy or unreachable provider is tried again; a refused request is not.
+  let tries = 0
+  const ctl = new AbortController()
+  assert.equal(await prov.withRetries(async () => { if (++tries < 3) throw new prov.ProviderError("busy", 429); return "ok" }, ctl.signal, [1, 1]), "ok")
+  assert.equal(tries, 3)
+  tries = 0
+  await assert.rejects(() => prov.withRetries(async () => { tries++; throw new prov.ProviderError("bad key", 401) }, ctl.signal, [1, 1]), /bad key/)
+  assert.equal(tries, 1, "a refused key is not tried again")
+  assert.ok(prov.retryable(new TypeError("fetch failed")) && prov.retryable(new prov.ProviderError("x", 503)))
+  assert.ok(!prov.retryable(Object.assign(new prov.ProviderError("x", 503), { noRetry: true })), "nor a call that already sent text")
+  const usageReply = await prov.collectStream((async function* () {
+    yield '{"choices":[{"delta":{"content":"hi"}}]}'
+    yield '{"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}'
+  })(), () => {})
+  assert.equal(usageReply.usage, 15, "the usage chunk at the end is read")
 
   // The history the model reads starts with the user, without dangling calls.
   const history = chat.historyForModel([
@@ -3283,7 +3333,7 @@ await testTelemetryChannelOptOutAndPayload()
   assert.ok(chat.titleOf("x".repeat(100)).length <= 60)
 
   // Who may use it: a model is set, and a key when the provider needs one.
-  const base = { enabled: true, provider: "openrouter" as const, baseUrl: "https://openrouter.ai/api/v1", apiKey: "k", model: "m", access: "admins" as const }
+  const base = { enabled: true, provider: "openrouter" as const, baseUrl: "https://openrouter.ai/api/v1", apiKey: "k", model: "m", access: "admins" as const, readOnly: false, dailyTokenLimit: null }
   assert.ok(settings.assistantAllowed(base, { isAdmin: true }))
   assert.ok(!settings.assistantAllowed(base, { isAdmin: false }), "admins only by default")
   assert.ok(settings.assistantAllowed({ ...base, access: "everyone" }, { isAdmin: false }))

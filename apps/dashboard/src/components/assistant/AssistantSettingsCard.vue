@@ -47,8 +47,17 @@ const apiKey = ref('')
 const removeKey = ref(false)
 const model = ref('')
 const access = ref<'admins' | 'everyone'>('admins')
+const readOnly = ref(false)
+const dailyLimit = ref('')
 const models = ref<string[]>([])
 const testResult = ref<{ ok: boolean; text: string } | null>(null)
+
+// The daily limit as typed: empty is no limit; below 1000 is refused.
+const limitValue = computed(() => {
+  const v = String(dailyLimit.value).trim()
+  return v ? Number(v) : null
+})
+const limitValid = computed(() => limitValue.value === null || (Number.isInteger(limitValue.value) && limitValue.value >= 1000))
 
 const needsKey = computed(() => !LOCAL.includes(provider.value))
 const hasKey = computed(() => !!apiKey.value.trim() || (!!stored.value?.keySet && !removeKey.value))
@@ -60,6 +69,8 @@ function fill(s: Settings) {
   baseUrl.value = s.baseUrl
   model.value = s.model
   access.value = s.access
+  readOnly.value = s.readOnly
+  dailyLimit.value = s.dailyTokenLimit === null ? '' : String(s.dailyTokenLimit)
   apiKey.value = ''
   removeKey.value = false
 }
@@ -107,6 +118,7 @@ async function save() {
     const key = apiKey.value.trim()
     fill(await trpc.assistant.saveSettings.mutate({
       enabled: enabled.value, provider: provider.value, baseUrl: baseUrl.value, model: model.value.trim(), access: access.value,
+      readOnly: readOnly.value, dailyTokenLimit: limitValue.value,
       ...(key ? { apiKey: key } : removeKey.value ? { apiKey: null } : {}),
     }))
     toast.success(t('assistant.settings.saved'))
@@ -188,10 +200,25 @@ onMounted(load)
       </NativeSelect>
     </div>
 
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-sm text-foreground">{{ t('assistant.settings.readOnly') }}</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">{{ t('assistant.settings.readOnlyHint') }}</p>
+      </div>
+      <Switch v-model="readOnly" :aria-label="t('assistant.settings.readOnly')" />
+    </div>
+
+    <div>
+      <label for="assistant-limit" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.dailyLimit') }}</label>
+      <Input id="assistant-limit" v-model="dailyLimit" type="number" min="1000" step="1000" inputmode="numeric" placeholder="200000"
+        :aria-invalid="!limitValid || undefined" class="w-full sm:w-48 px-3 py-1.5 text-sm" />
+      <p class="mt-1 text-xs text-muted-foreground">{{ t('assistant.settings.dailyLimitHint') }}</p>
+    </div>
+
     <p class="text-xs text-muted-foreground">{{ t('assistant.settings.privacy') }}</p>
 
     <div class="flex justify-end">
-      <Button size="sm" :disabled="saving || (enabled && (!model.trim() || (needsKey && !hasKey)))" @click="save">
+      <Button size="sm" :disabled="saving || !limitValid || (enabled && (!model.trim() || (needsKey && !hasKey)))" @click="save">
         <BusyLabel :busy="saving" :busy-label="t('assistant.settings.saving')">{{ t('common.save') }}</BusyLabel>
       </Button>
     </div>

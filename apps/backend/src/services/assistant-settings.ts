@@ -24,9 +24,14 @@ export interface AssistantConfig {
   apiKey: string | null
   model: string
   access: AssistantAccess
+  readOnly: boolean
+  dailyTokenLimit: number | null
 }
 
-type Row = { enabled: boolean; provider: string; baseUrl: string; apiKey: string | null; model: string; access: string }
+type Row = {
+  enabled: boolean; provider: string; baseUrl: string; apiKey: string | null; model: string; access: string
+  readOnly: boolean; dailyTokenLimit: number | null
+}
 
 function fromRow(row: Row | null): AssistantConfig {
   const provider = (row?.provider ?? "openrouter") in ASSISTANT_PROVIDERS ? (row?.provider ?? "openrouter") as AssistantProvider : "custom"
@@ -41,6 +46,8 @@ function fromRow(row: Row | null): AssistantConfig {
     apiKey,
     model: row?.model ?? "",
     access: row?.access === "everyone" ? "everyone" : "admins",
+    readOnly: row?.readOnly ?? false,
+    dailyTokenLimit: row?.dailyTokenLimit ?? null,
   }
 }
 
@@ -58,6 +65,8 @@ export async function assistantSettingsView() {
     baseUrl: config.baseUrl,
     model: config.model,
     access: config.access,
+    readOnly: config.readOnly,
+    dailyTokenLimit: config.dailyTokenLimit,
     keySet: !!row?.apiKey,
     // A key that no longer decrypts (HSI_SECRETS_KEY changed): enter it again.
     keyUnreadable: !!row?.apiKey && config.apiKey === null,
@@ -70,6 +79,8 @@ export interface AssistantSettingsInput {
   baseUrl: string
   model: string
   access: AssistantAccess
+  readOnly: boolean
+  dailyTokenLimit: number | null
   /** undefined: keep the stored key; null: remove it. */
   apiKey?: string | null
 }
@@ -78,7 +89,7 @@ export async function saveAssistantSettings(input: AssistantSettingsInput) {
   const apiKey = input.apiKey === undefined ? undefined : input.apiKey === null ? null : encryptSecret(input.apiKey)
   const data = {
     enabled: input.enabled, provider: input.provider, baseUrl: input.baseUrl.replace(/\/+$/, ""),
-    model: input.model, access: input.access,
+    model: input.model, access: input.access, readOnly: input.readOnly, dailyTokenLimit: input.dailyTokenLimit,
     ...(apiKey !== undefined && { apiKey }),
   }
   await prisma.assistantSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data })
@@ -93,4 +104,25 @@ export function assistantReady(config: AssistantConfig): boolean {
 /** Whether this account may use the assistant. */
 export function assistantAllowed(config: AssistantConfig, user: { isAdmin: boolean }): boolean {
   return assistantReady(config) && (config.access === "everyone" || user.isAdmin)
+}
+
+/** Today, as the daily limit counts it (UTC). */
+export function usageDay(now = new Date()): string {
+  return now.toISOString().slice(0, 10)
+}
+
+export async function tokensUsedToday(userId: string): Promise<number> {
+  const row = await prisma.assistantUsage.findUnique({ where: { userId_day: { userId, day: usageDay() } } })
+  return row?.tokens ?? 0
+}
+
+export async function recordUsage(userId: string, conversationId: string, tokens: number) {
+  if (tokens <= 0) return
+  const day = usageDay()
+  await prisma.assistantUsage.upsert({
+    where: { userId_day: { userId, day } },
+    create: { userId, day, tokens },
+    update: { tokens: { increment: tokens } },
+  })
+  await prisma.assistantConversation.update({ where: { id: conversationId }, data: { tokens: { increment: tokens } } }).catch(() => {})
 }

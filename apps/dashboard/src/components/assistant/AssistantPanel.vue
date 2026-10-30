@@ -22,7 +22,7 @@ import { AGENT_DECIDED_EVENT, assistantAvailable, ChatHttpError, refreshAssistan
 // that need approval show up in the chat; the conversation goes on once
 // they are decided.
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { isAdmin } = useAuth()
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -47,9 +47,28 @@ const streaming = ref(false)
 const deciding = ref<string | null>(null)
 const listOpen = ref(false)
 const scroller = ref<HTMLElement | null>(null)
+const conversationTokens = ref(0)
+const status = ref<Awaited<ReturnType<typeof trpc.assistant.status.query>> | null>(null)
 let controller: AbortController | null = null
 
 const current = computed(() => conversations.value.find(c => c.id === currentId.value) ?? null)
+
+async function loadStatus() {
+  try { status.value = await trpc.assistant.status.query() } catch { /* the footer waits */ }
+}
+
+const fmt = (n: number) => n.toLocaleString()
+const usageLine = computed(() => {
+  if (!status.value) return ''
+  const values = { conversation: fmt(conversationTokens.value), today: fmt(status.value.usedToday), limit: fmt(status.value.dailyLimit ?? 0) }
+  return status.value.dailyLimit === null ? t('assistant.usage', values) : t('assistant.usageLimit', values)
+})
+
+/** What the tool does, in the interface language; its name when unknown. */
+function toolLabel(name: string): string {
+  const key = `assistant.tools.${name}`
+  return te(key) ? t(key) : name
+}
 
 function scrollDown() {
   void nextTick(() => { if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight })
@@ -77,6 +96,7 @@ async function open(id: string) {
   items.value = []
   try {
     const c = await trpc.assistant.conversation.query({ id })
+    conversationTokens.value = c.tokens
     actions.value = Object.fromEntries(c.actions.map(a => [a.id, { ...a, conversationId: c.id }]))
     const out: Item[] = []
     const tools = new Map<string, Extract<Item, { kind: 'tool' }>>()
@@ -110,6 +130,7 @@ function startNew() {
   currentId.value = null
   items.value = []
   actions.value = {}
+  conversationTokens.value = 0
 }
 
 async function refreshActions() {
@@ -146,6 +167,10 @@ function onEvent(e: ChatEvent) {
     case 'error':
       items.value.push({ kind: 'error', text: e.message })
       break
+    case 'usage':
+      conversationTokens.value += e.tokens
+      if (status.value) status.value.usedToday += e.tokens
+      break
   }
   scrollDown()
 }
@@ -164,6 +189,7 @@ async function run(body: ChatRequest) {
     streaming.value = false
     controller = null
     void loadConversations()
+    void loadStatus()
     scrollDown()
   }
 }
@@ -237,7 +263,7 @@ const suggestions = computed(() => [t('assistant.suggest.storage'), t('assistant
 onMounted(async () => {
   window.addEventListener(AGENT_DECIDED_EVENT, onDecidedElsewhere)
   await refreshAssistantStatus()
-  if (assistantAvailable.value) await loadConversations()
+  if (assistantAvailable.value) await Promise.all([loadConversations(), loadStatus()])
   loading.value = false
 })
 onBeforeUnmount(() => {
@@ -319,7 +345,7 @@ onBeforeUnmount(() => {
 
       <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto" aria-live="polite">
         <div class="mx-auto max-w-3xl space-y-4 px-4 py-6">
-          <EmptyState v-if="!items.length" :message="t('assistant.emptyTitle')" :description="t('assistant.emptyHint')">
+          <EmptyState v-if="!items.length" :message="t('assistant.emptyTitle')" :description="status?.readOnly ? t('assistant.readOnlyNote') : t('assistant.emptyHint')">
             <template #icon><BotIcon /></template>
             <template #action>
               <div class="flex flex-wrap justify-center gap-2">
@@ -339,7 +365,7 @@ onBeforeUnmount(() => {
               <CheckIcon v-else-if="item.ok !== false" class="size-3.5 shrink-0 text-success" aria-hidden="true" />
               <CircleAlertIcon v-else class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
               <WrenchIcon class="size-3 shrink-0" aria-hidden="true" />
-              <span class="font-mono">{{ item.name }}</span>
+              <span :title="item.name">{{ toolLabel(item.name) }}</span>
               <span v-if="toolTarget(item.args)" class="min-w-0 truncate font-mono" :title="toolTarget(item.args)">{{ toolTarget(item.args) }}</span>
             </div>
             <p v-else-if="item.kind === 'event'" class="text-center text-2xs text-muted-foreground">{{ item.text }}</p>
@@ -376,7 +402,10 @@ onBeforeUnmount(() => {
             <ArrowUpIcon />
           </Button>
         </div>
-        <p class="mx-auto mt-1.5 max-w-3xl text-2xs text-muted-foreground">{{ t('assistant.disclaimer') }}</p>
+        <p class="mx-auto mt-1.5 flex max-w-3xl flex-wrap justify-between gap-x-4 gap-y-0.5 text-2xs text-muted-foreground">
+          <span>{{ t('assistant.disclaimer') }}</span>
+          <span v-if="usageLine" class="tabular-nums">{{ usageLine }}</span>
+        </p>
       </form>
     </section>
   </div>

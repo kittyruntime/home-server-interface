@@ -12,6 +12,10 @@ model AssistantSettings {
   model     String   @default("")
   // Who may use it: "admins" or "everyone".
   access    String   @default("admins")
+  // Read-only: only the tools that read are offered, nothing is changed.
+  readOnly  Boolean  @default(false)
+  // Tokens an account may use per day (UTC); null: no limit.
+  dailyTokenLimit Int?
   updatedAt DateTime @updatedAt
 }
 
@@ -20,6 +24,9 @@ model AssistantConversation {
   userId    String
   user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String             @default("")
+  // Tokens used by the model in this conversation (as the provider reported
+  // them, or estimated).
+  tokens    Int                @default(0)
   messages  AssistantMessage[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
@@ -44,4 +51,14 @@ model AssistantMessage {
   createdAt      DateTime              @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+// Tokens an account used per day (UTC), for the daily limit.
+model AssistantUsage {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day    String
+  tokens Int    @default(0)
+
+  @@id([userId, day])
 }

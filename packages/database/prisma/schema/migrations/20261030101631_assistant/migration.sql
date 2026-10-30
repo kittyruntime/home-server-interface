@@ -7,6 +7,8 @@ CREATE TABLE "AssistantSettings" (
     "apiKey" TEXT,
     "model" TEXT NOT NULL DEFAULT '',
     "access" TEXT NOT NULL DEFAULT 'admins',
+    "readOnly" BOOLEAN NOT NULL DEFAULT false,
+    "dailyTokenLimit" INTEGER,
     "updatedAt" DATETIME NOT NULL
 );
 
@@ -15,6 +17,7 @@ CREATE TABLE "AssistantConversation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
     "title" TEXT NOT NULL DEFAULT '',
+    "tokens" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "AssistantConversation_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -31,6 +34,16 @@ CREATE TABLE "AssistantMessage" (
     "toolName" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AssistantMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "AssistantConversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "AssistantUsage" (
+    "userId" TEXT NOT NULL,
+    "day" TEXT NOT NULL,
+    "tokens" INTEGER NOT NULL DEFAULT 0,
+
+    PRIMARY KEY ("userId", "day"),
+    CONSTRAINT "AssistantUsage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- RedefineTables

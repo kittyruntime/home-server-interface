@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import {
-  ASSISTANT_PROVIDERS, assistantAllowed, assistantSettingsView, loadAssistantConfig, saveAssistantSettings, type AssistantProvider,
+  ASSISTANT_PROVIDERS, assistantAllowed, assistantSettingsView, loadAssistantConfig, saveAssistantSettings, tokensUsedToday, type AssistantProvider,
 } from "../../services/assistant-settings"
 import { listModels } from "../../services/assistant-provider"
 import { SecretsError } from "../../services/secrets"
@@ -26,11 +26,17 @@ function parse(s: string | null): unknown {
 }
 
 export const assistantRouter = router({
-  // Whether this account can chat, and with which model.
+  // Whether this account can chat, with which model, and what it used today.
   status: protectedProcedure.query(async ({ ctx }) => {
     const config = await loadAssistantConfig()
     const available = assistantAllowed(config, ctx.user)
-    return { available, model: available ? config.model : null }
+    return {
+      available,
+      model: available ? config.model : null,
+      readOnly: config.readOnly,
+      usedToday: available ? await tokensUsedToday(ctx.user.userId) : 0,
+      dailyLimit: config.dailyTokenLimit,
+    }
   }),
 
   settings: adminProcedure.query(() => assistantSettingsView()),
@@ -42,6 +48,8 @@ export const assistantRouter = router({
       baseUrl,
       model: z.string().trim().max(200),
       access: z.enum(["admins", "everyone"]),
+      readOnly: z.boolean().default(false),
+      dailyTokenLimit: z.number().int().min(1_000).max(100_000_000).nullable().default(null),
       apiKey: z.string().trim().min(1).max(500).nullable().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -82,7 +90,7 @@ export const assistantRouter = router({
       const conversation = await ctx.prisma.assistantConversation.findFirst({
         where: { id: input.id, userId: ctx.user.userId },
         select: {
-          id: true, title: true,
+          id: true, title: true, tokens: true,
           messages: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, content: true, toolCalls: true, toolCallId: true, toolName: true, createdAt: true } },
         },
       })
@@ -92,6 +100,7 @@ export const assistantRouter = router({
       return {
         id: conversation.id,
         title: conversation.title,
+        tokens: conversation.tokens,
         messages: conversation.messages.map(m => {
           if (m.role !== "tool") return { ...m, toolCalls: (parse(m.toolCalls) ?? []) as { id: string; name: string; arguments: string }[], ok: true, approvalId: null }
           const result = parse(m.content) as { error?: unknown; requestId?: unknown; status?: unknown } | null
