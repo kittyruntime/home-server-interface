@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Release checks**: v1.78.0 was never published because its install tests
+  still created accounts through an endpoint that version removed. This
+  release ships the same changes as v1.78.0.
+
 ## [1.78.0] - 2026-10-30
 
 ### Changed
