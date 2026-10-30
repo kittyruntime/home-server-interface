@@ -121,13 +121,6 @@ func snapshotRel(dir, p string) (string, error) {
 	return rel, nil
 }
 
-func snapshotPath(dir, p string) string {
-	if filepath.IsAbs(p) {
-		return p
-	}
-	return filepath.Join(dir, p)
-}
-
 // snapshotConfigFiles lists what the installer rewrites: the unit files of the
 // prefix and the configuration HSI generates.
 func snapshotConfigFiles() []string {

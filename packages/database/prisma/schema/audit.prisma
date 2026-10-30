@@ -12,4 +12,6 @@ model AuditLog {
   // access token (#138), whose id is kept even after the token is revoked.
   via       String   @default("dashboard")
   tokenId   String?
+
+  @@index([createdAt])
 }

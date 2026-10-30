@@ -713,9 +713,9 @@ func handleSearch(nc *nats.Conn, msg *nats.Msg) {
 // ── JetStream task handler ────────────────────────────────────────────────────
 
 func handleTask(nc *nats.Conn, msg *nats.Msg) {
-	// Route container/network/volume subjects to the docker handler.
+	// Route container subjects to the docker handler.
 	subj := msg.Subject
-	if strings.HasPrefix(subj, "root.container.") || strings.HasPrefix(subj, "root.network.") || strings.HasPrefix(subj, "root.volume.") {
+	if strings.HasPrefix(subj, "root.container.") {
 		handleDockerTask(nc, msg, subj)
 		return
 	}

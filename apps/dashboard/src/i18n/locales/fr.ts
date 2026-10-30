@@ -7,11 +7,9 @@ import lib from './fr/lib'
 // Messages en français : mêmes clés que en.ts (un test le vérifie).
 export default {
   common: {
-    cancel: 'Annuler',
     close: 'Fermer',
     retry: 'Réessayer',
     save: 'Enregistrer',
-    loading: 'Chargement…',
     section: 'Section',
     sections: 'Sections',
   },

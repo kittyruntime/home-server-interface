@@ -18,8 +18,6 @@ type dockerState struct {
 	Detail    string `json:"detail,omitempty"`
 }
 
-func (s dockerState) ready() bool { return s.Installed && s.Running && s.Compose }
-
 type commandRunner func(name string, args ...string) ([]byte, error)
 
 func checkDocker(lookPath func(string) (string, error), run commandRunner) dockerState {
