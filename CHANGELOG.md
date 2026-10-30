@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A new Place's folder belonged to root**: a Place created in Settings, with
+  a volume, an app or from the App Store, kept its folder owned by root:root
+  until someone was given write access to it, so nobody could write in it. Its
+  folder now joins the share group at once (setgid, group-writable), like every
+  other Place.
+
 ## [1.76.0] - 2026-10-30
 
 ### Added

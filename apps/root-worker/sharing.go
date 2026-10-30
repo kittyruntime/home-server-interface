@@ -242,6 +242,37 @@ func handleSharingPlaceAccess(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
 
+// handleSharingPreparePlace gives a new Place's folder to the share group,
+// setgid and group-writable, like the Places that have writers. Only an
+// existing directory, never through a symlink: the Place's own folder.
+func handleSharingPreparePlace(nc *nats.Conn, msg *nats.Msg) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(msg.Data, &req); err != nil || !filepath.IsAbs(req.Path) {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
+		return
+	}
+	fi, err := os.Lstat(req.Path)
+	if err != nil {
+		replyErr(nc, msg.Reply, mapOsErr(err))
+		return
+	}
+	if !fi.IsDir() {
+		replyErr(nc, msg.Reply, &fsError{Code: "ENOTDIR", Message: "not a directory"})
+		return
+	}
+	if err := ensureShareGroup(); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "share group: " + err.Error()})
+		return
+	}
+	if err := prepareShareDir(req.Path); err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+		return
+	}
+	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
 func modeOctal(m os.FileMode) string {
 	o := int(m.Perm())
 	if m&os.ModeSetuid != 0 {

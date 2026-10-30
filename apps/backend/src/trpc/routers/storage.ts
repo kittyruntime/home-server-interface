@@ -9,7 +9,7 @@ import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarg
 import { expandOptions, type ExpandInput, type PendingExpansion } from "../../services/expand-options"
 import type { DescriptionStatus } from "../../services/storage-descriptions"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
-import { desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
+import { desiredShareDefs, effectiveSmbName, preparePlaceDir, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { appSources, fetchVolumes, resumeVolume, volumeStates } from "../../services/volume-guard"
@@ -274,7 +274,11 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
     } }),
     serialize: withShareLock,
     resync: () => syncSharesBestEffort(ctx.prisma),
-    createPlace: () => ctx.prisma.place.create({ data: { name: placeName, path: mp }, select: { id: true } }),
+    createPlace: async () => {
+      const place = await ctx.prisma.place.create({ data: { name: placeName, path: mp }, select: { id: true } })
+      await preparePlaceDir(mp)
+      return place
+    },
     createShare: (placeId: string) => ctx.prisma.share.create({ data: { placeId, smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false } }),
   }
 }

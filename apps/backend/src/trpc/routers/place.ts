@@ -2,7 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { requestSync } from "../../nats"
-import { syncSharesBestEffort } from "../../services/sharing.service"
+import { preparePlaceDir, syncSharesBestEffort } from "../../services/sharing.service"
 
 async function accessiblePlaceIds(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
@@ -67,7 +67,9 @@ export const placeRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Path does not exist" })
       }
 
-      return ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
+      const place = await ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
+      await preparePlaceDir(place.path)
+      return place
     }),
 
   // One emoji shown for the place instead of the folder icon; null removes it.
