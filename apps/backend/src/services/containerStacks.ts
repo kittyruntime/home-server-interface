@@ -174,11 +174,6 @@ export async function removeStackDir(name: string): Promise<void> {
   lastWritten.delete(name)
 }
 
-export async function observedNetworks(): Promise<Array<{ name: string; driver: string }>> {
-  try { return await requestSync<Array<{ name: string; driver: string }>>("root.container.networksList", {}, 10_000) }
-  catch { return [] }
-}
-
 export type DockerContainerLite = { name: string; status: string; ports?: Array<{ hostPort: number; protocol: string }> }
 let dockerCache: { at: number; list: DockerContainerLite[] } | null = null
 export async function dockerContainers(): Promise<DockerContainerLite[]> {

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
-import { userSelect, createUser, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
+import { userSelect, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
 import { requestSync } from "../../nats"
 import { desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
 import { planAuditMeta } from "../../services/storage-plan"
@@ -162,29 +162,6 @@ export const userRouter = router({
     })
   }),
 
-  // Lightweight security posture for the current account. Superseded by
-  // ctx.user.mustChangePassword (carried in the JWT, decoded client-side) for the
-  // forced-change flow, kept as a query only as a fallback for a token issued
-  // before this field existed, or one that's simply gone stale mid-session.
-  securityStatus: protectedProcedure.query(async ({ ctx }) => {
-    const user = await ctx.prisma.user.findUniqueOrThrow({
-      where: { id: ctx.user.userId },
-      select: { mustChangePassword: true },
-    })
-    return { mustChangePassword: user.mustChangePassword }
-  }),
-
-  create: userManagerProcedure
-    .input(z.object({
-      username: z.string().regex(
-        reLinuxUsername,
-        "Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.",
-      ),
-      password: z.string().min(6).max(128),
-      displayName: z.string().max(64).optional(),
-    }))
-    .mutation(({ ctx, input }) => createUser(ctx.prisma, input)),
-
   update: userManagerProcedure
     .input(z.object({
       userId: z.string(),
@@ -244,23 +221,6 @@ export const userRouter = router({
       // account immediately instead of waiting for the next login.
       const token = signToken(ctx.user.userId, ctx.user.isAdmin, ctx.user.isUserManager, ctx.user.capabilities, false)
       return { ...result, token }
-    }),
-
-  delete: userManagerProcedure
-    .input(z.object({ userId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (input.userId === ctx.user.userId)
-        throw new TRPCError({ code: "FORBIDDEN", message: "You cannot delete your own account" })
-      const target = await ctx.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { isAdmin: true },
-      })
-      if (!target) throw new TRPCError({ code: "NOT_FOUND" })
-      if (target.isAdmin && !ctx.user.isAdmin)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
-      const result = await ctx.prisma.user.delete({ where: { id: input.userId } })
-      void syncSharesBestEffort(ctx.prisma)
-      return result
     }),
 
   // Real Linux/Samba account state per user, alongside what HSI expects (see
