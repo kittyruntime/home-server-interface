@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { computed, ref } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
+import { navCapability } from '../../lib/assistant'
 import { useAlerts } from '../../composables/useAlerts'
 import { DialogContent, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import AppIcon from './AppIcon.vue'
@@ -12,7 +13,7 @@ const { t } = useI18n()
 
 const emit = defineEmits<{ close: [] }>()
 const { openApp } = useDesktop()
-const { isAdmin, hasCapability } = useAuth()
+const { isAdmin } = useAuth()
 const { alerts, hasAlerts } = useAlerts()
 
 /* Full-screen dialog: Escape and a click on the empty backdrop close it; the
@@ -28,12 +29,13 @@ const allApps: { id: AppId; adminOnly: boolean; capability?: string }[] = [
   { id: 'store',   adminOnly: true },
   { id: 'monitor', adminOnly: true },
   { id: 'sharing', adminOnly: true },
+  { id: 'assistant', adminOnly: true, capability: 'assistant' },
   { id: 'settings', adminOnly: false },
 ]
 
 const visibleApps = computed(() =>
   allApps
-    .filter(a => !a.adminOnly || isAdmin.value || (a.capability != null && hasCapability(a.capability).value))
+    .filter(a => !a.adminOnly || isAdmin.value || (a.capability != null && navCapability(a.capability)))
     .map(a => a.id)
 )
 

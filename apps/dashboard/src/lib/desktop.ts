@@ -1,7 +1,7 @@
 import { ref, reactive } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'assistant' | 'file-preview'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'groups' | 'updates' | 'alerting' | 'secure'
 
 export interface FilePreviewPayload {
@@ -30,7 +30,7 @@ export interface DesktopWindow {
 // English names; i18n/labels.ts puts them in the interface language.
 export const APP_LABEL = reactive<Record<AppId, string>>({
   files: 'Files', apps: 'Apps', settings: 'Settings', storage: 'Storage',
-  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', 'file-preview': 'Preview',
+  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview',
 })
 
 const STORAGE_KEY = 'desktop'
@@ -48,6 +48,7 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   store: { w: 900, h: 600 },
   monitor: { w: 860, h: 580 },
   sharing: { w: 860, h: 560 },
+  assistant: { w: 820, h: 600 },
   'file-preview': { w: 760, h: 560 },
 }
 

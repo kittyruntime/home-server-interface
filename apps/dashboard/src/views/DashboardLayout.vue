@@ -26,9 +26,11 @@ const AppStorePanel = defineAsyncComponent(() => import('../components/store/App
 const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/MonitorPanel.vue'))
 const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
+const AssistantPanel = defineAsyncComponent(() => import('../components/assistant/AssistantPanel.vue'))
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
 import AgentRequests from '../components/AgentRequests.vue'
+import { navCapability, refreshAssistantStatus } from '../lib/assistant'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import JobLogsDialog from '../components/JobLogsDialog.vue'
@@ -46,7 +48,7 @@ const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
-const { isAdmin, hasCapability, mustChangePassword, logout } = useAuth()
+const { isAdmin, mustChangePassword, logout } = useAuth()
 const { alerts, hasAlerts } = useAlerts()
 const { desktopMode, openApp } = useDesktop()
 const { unread } = useSystemNotifications()
@@ -99,6 +101,7 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'store') return t('uis.views.DashboardLayout.appStore')
   if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
   if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
+  if (activeApp.value === 'assistant') return t('apps.assistant')
   return t('uis.views.DashboardLayout.overview')
 })
 
@@ -107,7 +110,7 @@ function selectApp(id: string) {
 }
 
 // Data-driven, user-orderable sidebar / mobile nav (order persisted per-browser).
-const { items: navItems } = useSidebarNav(() => isAdmin.value, cap => hasCapability(cap).value)
+const { items: navItems } = useSidebarNav(() => isAdmin.value, navCapability)
 
 // The open app is in the URL (?app=storage, #90): a reload or a link opens it
 // again, and the browser's back button returns to the previous app.
@@ -214,6 +217,7 @@ onMounted(() => {
   window.addEventListener('resize', updateIsMobile)
   checkUpdateBadge()
   syncPreferences()
+  void refreshAssistantStatus()
   updateTimer = setInterval(checkUpdateBadge, 3_600_000) // hourly
 })
 onUnmounted(() => {
@@ -375,6 +379,7 @@ onUnmounted(() => {
           <AppStorePanel v-else-if="activeApp === 'store'" class="h-full" />
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
+          <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
           <div v-else class="flex items-center justify-center h-full text-muted-foreground select-none">
             <div class="text-center space-y-3">
               <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />

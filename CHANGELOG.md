@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The built-in assistant**: a new Assistant app is a chat with an AI that
+  looks after the NAS, with the same tools as MCP assistants, as the account
+  that chats. An administrator picks the AI provider in Settings > AI access:
+  OpenRouter, OpenAI, Anthropic, Mistral AI, a local Ollama or any
+  OpenAI-compatible service, with its API key (encrypted on the server) and
+  model, and who may use it. Deletions and changes to storage, apps, accounts
+  or shares wait for approval right in the chat, and the conversation goes on
+  once they are decided. Its actions are marked as the built-in assistant's in
+  the audit log.
+
 ## [1.75.0] - 2026-10-30
 
 ### Added

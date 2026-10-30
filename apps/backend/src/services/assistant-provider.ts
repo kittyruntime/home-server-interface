@@ -33,9 +33,11 @@ export interface ChatReply {
 }
 
 export class ProviderError extends Error {
-  constructor(message: string, readonly status?: number) {
+  readonly status?: number
+  constructor(message: string, status?: number) {
     super(message)
     this.name = "ProviderError"
+    this.status = status
   }
 }
 
