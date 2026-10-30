@@ -31,8 +31,12 @@ function choose(v: boolean) {
   open.value = false
 }
 
+// The action button closes the dialog itself before its own click handler
+// runs: answering "no" at once would settle the promise first and the "yes"
+// would be lost. Escape, the overlay and Cancel land here too; a click that
+// chose meanwhile has already settled it, and a second answer is ignored.
 function onOpenChange(value: boolean) {
-  if (!value) choose(false)
+  if (!value) setTimeout(() => choose(false))
 }
 
 function onClosed() {

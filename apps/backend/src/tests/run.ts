@@ -3379,6 +3379,30 @@ await testTelemetryChannelOptOutAndPayload()
   assert.ok(settings.assistantReady({ ...base, provider: "ollama", apiKey: null }), "a local model does not")
   assert.ok(!settings.assistantReady({ ...base, enabled: false }))
 
+  // Turns run apart from the request: whoever follows gets the turn so far, then the rest.
+  const runs = await import("../assistant/runs")
+  const turn = runs.startRun("conv-1", "u1")!
+  assert.ok(turn && runs.startRun("conv-1", "u1") === null, "one turn at a time in a conversation")
+  runs.emitRun(turn, { type: "text", delta: "Hel" })
+  runs.emitRun(turn, { type: "text", delta: "lo" })
+  runs.emitRun(turn, { type: "tool", id: "c1", name: "list_places", arguments: "{}" })
+  const late: Array<{ type: string; delta?: string }> = []
+  const leave = runs.subscribe(turn, e => { late.push(e) })
+  assert.deepEqual(late.map(e => e.type), ["text", "tool"], "a late follower gets what happened, text merged")
+  assert.equal(late[0]!.delta, "Hello")
+  leave()
+  runs.emitRun(turn, { type: "text", delta: " again" })
+  assert.equal(late.length, 2, "a follower that left gets nothing more")
+  assert.ok(turn.events.length === 3 && !turn.controller.signal.aborted, "and the turn goes on without it")
+  assert.ok(runs.runningConversations("u1").has("conv-1") && !runs.runningConversations("u2").has("conv-1"))
+  assert.ok(!runs.stopRun("conv-1", "u2"), "only its account stops a turn")
+  assert.ok(runs.stopRun("conv-1", "u1") && turn.controller.signal.aborted)
+  runs.finishRun(turn)
+  assert.equal(runs.getRun("conv-1"), undefined)
+  const after: string[] = []
+  runs.subscribe(turn, e => { after.push(e.type) })
+  assert.equal(after.at(-1), "done", "following a finished turn ends at once")
+
   // Places closed to AI assistants: refused before the tool runs, cleared from results.
   const ex = await import("../services/ai-exclusions")
   const { runGuarded } = await import("../mcp/context")
@@ -3414,6 +3438,8 @@ await testTelemetryChannelOptOutAndPayload()
   await app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
   await app.register(assistantRoutes)
   assert.equal((await app.inject({ method: "POST", url: "/assistant/chat", payload: { message: "hi" } })).statusCode, 401, "no session, no chat")
+  assert.equal((await app.inject({ method: "GET", url: "/assistant/chat/x/events" })).statusCode, 401, "nor following a turn")
+  assert.equal((await app.inject({ method: "POST", url: "/assistant/chat/x/stop" })).statusCode, 401, "nor stopping one")
   assert.equal((await app.inject({ method: "POST", url: "/assistant/chat", payload: { message: "hi" }, headers: { authorization: "Bearer hsi_pat_x" } })).statusCode, 401,
     "an access token cannot chat")
   await app.close()

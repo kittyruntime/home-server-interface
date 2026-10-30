@@ -183,6 +183,7 @@ export function titleOf(message: string): string {
 
 export type ChatEvent =
   | { type: "conversation"; id: string; title: string }
+  | { type: "user"; text: string }
   | { type: "text"; delta: string }
   | { type: "tool"; id: string; name: string; arguments: string }
   | { type: "toolResult"; id: string; ok: boolean }

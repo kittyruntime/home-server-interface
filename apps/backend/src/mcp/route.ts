@@ -23,7 +23,7 @@ function buildServer(req: FastifyRequest, reply: FastifyReply, user: TokenUser, 
     if (!toolAllowed(t, user)) continue
     server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.input }, async (args: unknown) => {
       try {
-        const result = await runGuarded(t, args as Record<string, unknown>, toolContext(req, reply, user, { via: "mcp", apiToken: user.apiToken }, t.name), exclusions)
+        const result = await runGuarded(t, args as Record<string, unknown>, toolContext(req, user, { via: "mcp", apiToken: user.apiToken }, t.name), exclusions)
         return { content: [{ type: "text" as const, text: JSON.stringify(result ?? null) }] }
       } catch (e) {
         return { isError: true, content: [{ type: "text" as const, text: JSON.stringify(toolErrorPayload(e)) }] }

@@ -123,6 +123,7 @@ export default {
       files: 'Quels sont les plus gros dossiers de mes Places ?',
     },
     thinking: 'Réflexion…',
+    running: 'L’assistant travaille',
     message: 'Message',
     placeholder: 'Demandez à l’assistant…',
     send: 'Envoyer',

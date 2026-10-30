@@ -44,7 +44,12 @@ a conversation stays loaded.
 
 Conversations are kept per account (the 50 latest) and can be deleted. While
 the assistant works, each step it takes shows under its answer. **Stop** ends
-the answer at once and keeps what it had written. Below the message field, the
+the answer at once and keeps what it had written. The assistant works on the
+server: leaving the chat, opening another app or closing the page does not stop
+it. Coming back to the chat opens the last conversation again and follows it
+where it is; a conversation still running is marked in the list. Once a request
+is approved or rejected, wherever it was decided, the assistant goes on with
+the decision by itself. Restarting HSI ends the turns under way. Below the message field, the
 tokens used by the conversation and by your account today (with the limit, if
 there is one). A busy or unreachable provider is tried again twice before the
 assistant gives up.

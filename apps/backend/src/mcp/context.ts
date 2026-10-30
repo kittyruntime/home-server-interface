@@ -39,12 +39,16 @@ export type ToolOrigin =
   | { via: "mcp"; apiToken: ApiTokenAuth }
   | { via: "assistant"; conversationId: string }
 
-export function toolContext(req: FastifyRequest, reply: FastifyReply, user: TokenUser, origin: ToolOrigin, tool: string): ToolContext {
+/** What the tools need of the request: the caller's address, for the audit log. */
+export type RequestLike = Pick<FastifyRequest, "ip" | "headers">
+
+export function toolContext(req: RequestLike, user: TokenUser, origin: ToolOrigin, tool: string): ToolContext {
   const apiToken = origin.via === "mcp" ? origin.apiToken : null
   const tokenId = apiToken?.id ?? null
   const conversationId = origin.via === "assistant" ? origin.conversationId : null
   const ctx = {
-    prisma, req, res: reply, user,
+    // No procedure writes to the reply; a turn of the chat runs with none.
+    prisma, req: req as FastifyRequest, res: null as unknown as FastifyReply, user,
     audit: {} as { meta?: Record<string, unknown>; success?: boolean; target?: string },
     via: origin.via,
     apiToken,
