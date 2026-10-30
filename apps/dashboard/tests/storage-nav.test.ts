@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, takeRequest, navOpen, navBack, navCrumbs, navTo, sectionOf, leavesWizard } from '../src/lib/storage-nav.ts'
+import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -11,14 +11,11 @@ test('opening a section resets the stack to it', () => {
   assert.deepEqual(nav.current, { kind: 'section', section: 'raid' })
 })
 
-test('objects push on top of their section, back pops', () => {
-  let nav = navOpen(createNav(), { kind: 'array', name: 'md0' })
+test('objects push on top of their section', () => {
+  const nav = navOpen(createNav(), { kind: 'array', name: 'md0' })
   assert.deepEqual(nav.stack.map(l => l.kind), ['section', 'array'])
   assert.equal(sectionOf(nav.current), 'raid')
   assert.deepEqual(navCrumbs(nav).map(c => c.label), ['Arrays', 'md0'])
-  nav = navBack(nav)
-  assert.deepEqual(nav.current, { kind: 'section', section: 'raid' })
-  assert.equal(navBack(nav).stack.length, 1, 'back never empties the stack')
 })
 
 test('opening the current location again does not grow the stack', () => {
@@ -45,13 +42,6 @@ test('arrays and volume groups open on their renamed sections', () => {
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'array', name: 'md0' })).map(c => c.label), ['Arrays', 'md0'])
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'vg', name: 'data' })).map(c => c.label), ['Volume groups', 'data'])
   assert.deepEqual(navCrumbs(navOpen(createNav(), { kind: 'disk', name: 'sdb' })).map(c => c.label), ['Disks', 'sdb'])
-})
-
-test('a requested location expires if no Storage panel takes it', () => {
-  const req = { loc: { kind: 'disk', name: 'sdb' } as const, at: 1000 }
-  assert.deepEqual(takeRequest(req, 5000), req.loc)
-  assert.equal(takeRequest(req, 1000 + 11_000), null)
-  assert.equal(takeRequest(null, 1000), null)
 })
 
 test('the create volume wizard opens on top of Volumes', () => {

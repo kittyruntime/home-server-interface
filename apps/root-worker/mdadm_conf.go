@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -145,29 +144,6 @@ func writeFileAtomic(path string, data []byte, defaultPerm os.FileMode) error {
 	// not bring back the old file, or none for a new one.
 	syncDir(filepath.Dir(path))
 	return nil
-}
-
-// updateMdadmConf applies edit to mdadm.conf and refreshes the initramfs so
-// the array keeps its name at boot (otherwise it may come back as md127).
-// Returns warnings for the caller to report; the array itself already exists.
-func updateMdadmConf(edit func(string) string) []string {
-	var warnings []string
-	current, err := os.ReadFile(mdadmConfPath)
-	if err != nil && !os.IsNotExist(err) {
-		return []string{fmt.Sprintf("could not read %s: %v", mdadmConfPath, err)}
-	}
-	if edit(string(current)) == string(current) {
-		return nil
-	}
-	if err := editMdadmConf(edit); err != nil {
-		return []string{err.Error()}
-	}
-	if _, err := exec.LookPath("update-initramfs"); err == nil {
-		if out, err := command("update-initramfs", "-u").CombinedOutput(); err != nil {
-			warnings = append(warnings, "update-initramfs failed: "+cmdErrMessage(out, err))
-		}
-	}
-	return warnings
 }
 
 // editMdadmConf applies edit to mdadm.conf atomically, without refreshing the

@@ -320,3 +320,10 @@ func TestCompareVersions(t *testing.T) {
 		}
 	}
 }
+
+func snapshotPath(dir, p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(dir, p)
+}

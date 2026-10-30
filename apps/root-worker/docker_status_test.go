@@ -36,7 +36,4 @@ func TestCheckDocker(t *testing.T) {
 			t.Errorf("%s: got %+v, want %+v", c.name, c.got, c.want)
 		}
 	}
-	if (dockerState{Installed: true, Running: true, Compose: true}).ready() != true || (dockerState{Installed: true}).ready() {
-		t.Error("ready() must require all three")
-	}
 }

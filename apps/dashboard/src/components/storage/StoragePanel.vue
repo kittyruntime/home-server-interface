@@ -19,8 +19,7 @@ import LvmSection from './LvmSection.vue'
 import MountsSection from './MountsSection.vue'
 import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
-import { createNav, takeRequest, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, type StorageLocation, type StorageNav, type StorageSection } from '../../lib/storage-nav'
-import { pendingStorageLocation } from '../../lib/storage-open'
+import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, type StorageLocation, type StorageNav, type StorageSection } from '../../lib/storage-nav'
 
 const { t } = useI18n()
 
@@ -60,14 +59,6 @@ function open(loc: StorageLocation) {
 function focusOn(target: SectionId | StorageLocation) {
   open(typeof target === 'string' ? { kind: 'section', section: target } : target)
 }
-
-// Opened on a location from elsewhere (openStorage).
-watch(pendingStorageLocation, req => {
-  if (!req) return
-  const loc = takeRequest(req, Date.now())
-  pendingStorageLocation.value = null
-  if (loc) open(loc)
-}, { immediate: true })
 
 // Free disks picked in Devices, handed to the RAID or LVM create wizard.
 const preselect = ref<{ kind: 'raid' | 'lvm'; devices: string[] } | null>(null)
@@ -127,7 +118,7 @@ const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id
         <VgPage v-else-if="location.current.kind === 'vg'" :name="location.current.name" @navigate="focusOn" />
         <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn"
           @named="n => { if (location.current.kind === 'disk') names = { ...names, [`disk:${location.current.name}`]: n } }" />
-        <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" @create="startCreate" />
+        <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" />
         <PhysicalDisksSection v-else-if="active === 'disks'" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
         <RaidSection          v-else-if="active === 'raid'"   @navigate="focusOn"
           :preselect="preselect?.kind === 'raid' ? preselect.devices : undefined" @preselected="preselect = null" />

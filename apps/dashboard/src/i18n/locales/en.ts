@@ -6,11 +6,9 @@ import lib from './en/lib'
 // other languages (a test checks it); text says what the UI says, nothing more.
 export default {
   common: {
-    cancel: 'Cancel',
     close: 'Close',
     retry: 'Retry',
     save: 'Save',
-    loading: 'Loading…',
     section: 'Section',
     sections: 'Sections',
   },

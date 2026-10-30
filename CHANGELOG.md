@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Unused code**: an unused dev sudo script, the former data migration
+  scripts (replaced by the update cutover), and functions, components and
+  translations nothing used anymore in the dashboard and the worker.
+
 ### Security
 - **File operations run as the right user only**: a file action done on
   behalf of a user no longer changes the identity of other operations running

@@ -200,3 +200,11 @@ func TestRunVersionsRecordsUnknownRepository(t *testing.T) {
 		t.Fatalf("%+v", runs)
 	}
 }
+
+// resetInterrupt clears an interruption; tests run several commands in one process.
+func resetInterrupt() {
+	interruptMu.Lock()
+	defer interruptMu.Unlock()
+	interrupted.Store(false)
+	interruptedCh = make(chan struct{})
+}
