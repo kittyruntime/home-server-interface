@@ -22,9 +22,13 @@ function view<T extends { preview: string; result: string | null }>(a: T) {
   return { ...a, preview: parse(a.preview), result: parse(a.result) }
 }
 
-// The built-in assistant reads the decision on its next call.
-async function tellChat(prisma: Context["prisma"], conversationId: string, note: string) {
-  await prisma.assistantMessage.create({ data: { conversationId, role: "event", content: note } }).catch(() => {})
+// The built-in assistant is told the decision, and goes on with it on the
+// server, whether or not its chat is open.
+async function tellChat(ctx: Pick<Context, "prisma" | "req"> & { user: NonNullable<Context["user"]> }, conversationId: string, note: string) {
+  await ctx.prisma.assistantMessage.create({ data: { conversationId, role: "event", content: note } }).catch(() => {})
+  const { startTurn } = await import("../../assistant/route")
+  // Refused when a turn already runs there, or the daily limit is reached: the note waits for the next one.
+  await startTurn(ctx.user, { conversationId }, ctx.req.ip).catch(() => {})
 }
 
 export const agentActionRouter = router({
@@ -86,7 +90,7 @@ export const agentActionRouter = router({
       }
       // The input can hold a password (a new account): it is not kept once run.
       const done = await ctx.prisma.agentAction.update({ where: { id: action.id }, data: { status, result, error, input: "{}" }, select: shown })
-      if (action.conversationId) await tellChat(ctx.prisma, action.conversationId, decisionNote({ title: action.title, status, error, result }))
+      if (action.conversationId) await tellChat(ctx, action.conversationId, decisionNote({ title: action.title, status, error, result }))
       ctx.audit.success = status === "done"
       return view(done)
     }),
@@ -99,7 +103,7 @@ export const agentActionRouter = router({
       ctx.audit.target = action.title
       const r = await ctx.prisma.agentAction.updateMany({ where: { id: input.id, status: "pending" }, data: { status: "rejected", decidedAt: new Date(), input: "{}" } })
       if (r.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "This request was already decided, or it expired" })
-      if (action.conversationId) await tellChat(ctx.prisma, action.conversationId, decisionNote({ title: action.title, status: "rejected", error: null, result: null }))
+      if (action.conversationId) await tellChat(ctx, action.conversationId, decisionNote({ title: action.title, status: "rejected", error: null, result: null }))
       return { ok: true }
     }),
 })

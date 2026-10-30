@@ -15,7 +15,7 @@ import { useAuth } from '../../lib/auth'
 import { useToast } from '../../lib/toast'
 import { useConfirm } from '../../lib/confirm'
 import { renderMarkdown } from '../../lib/markdown'
-import { AGENT_DECIDED_EVENT, assistantAvailable, ChatHttpError, refreshAssistantStatus, streamChat, type ChatEvent, type ChatRequest } from '../../lib/assistant'
+import { AGENT_DECIDED_EVENT, assistantAvailable, ChatHttpError, followChat, refreshAssistantStatus, stopChat, streamChat, type ChatEvent, type ChatRequest } from '../../lib/assistant'
 
 // The built-in AI assistant: conversations with a model that looks after the
 // NAS through the same tools as MCP clients (#138), as this account. Changes
@@ -89,18 +89,36 @@ function toolTarget(args: string): string {
   } catch { return '' }
 }
 
+// The conversation open last, opened again when coming back to the chat.
+const LAST_KEY = 'assistant.conversation'
+function remember(id: string | null) {
+  try { if (id) localStorage.setItem(LAST_KEY, id); else localStorage.removeItem(LAST_KEY) } catch { /* not kept */ }
+}
+
+/** Stops following the running turn, if any: the turn itself goes on. */
+function leave() {
+  controller?.abort()
+  controller = null
+  streaming.value = false
+}
+
 async function open(id: string) {
-  if (streaming.value) return
+  leave()
   listOpen.value = false
   currentId.value = id
+  remember(id)
   items.value = []
   try {
     const c = await trpc.assistant.conversation.query({ id })
+    if (currentId.value !== id) return
     conversationTokens.value = c.tokens
     actions.value = Object.fromEntries(c.actions.map(a => [a.id, { ...a, conversationId: c.id }]))
+    // A turn still running: its messages come from following it.
+    const since = c.runningSince ? new Date(c.runningSince).getTime() : null
     const out: Item[] = []
     const tools = new Map<string, Extract<Item, { kind: 'tool' }>>()
     for (const m of c.messages) {
+      if (since !== null && new Date(m.createdAt).getTime() >= since) break
       if (m.role === 'user') out.push({ kind: 'user', text: m.content })
       else if (m.role === 'event') out.push({ kind: 'event', text: m.content })
       else if (m.role === 'assistant') {
@@ -118,16 +136,20 @@ async function open(id: string) {
     }
     items.value = out
     scrollDown()
+    if (since !== null) await follow(signal => followChat(id, onEvent, signal))
   } catch (e: any) {
+    if (currentId.value !== id) return
     toast.error(e?.message ?? t('assistant.loadFailed'))
     currentId.value = null
+    remember(null)
   }
 }
 
 function startNew() {
-  if (streaming.value) return
+  leave()
   listOpen.value = false
   currentId.value = null
+  remember(null)
   items.value = []
   actions.value = {}
   conversationTokens.value = 0
@@ -141,12 +163,20 @@ async function refreshActions() {
   } catch { /* the cards keep their state */ }
 }
 
+// The message just sent, shown at once: the turn's own copy of it is skipped.
+let sentText: string | null = null
+
 function onEvent(e: ChatEvent) {
   const last = items.value[items.value.length - 1]
   switch (e.type) {
     case 'conversation':
       currentId.value = e.id
-      if (!conversations.value.some(c => c.id === e.id)) conversations.value.unshift({ id: e.id, title: e.title, updatedAt: new Date() as never })
+      remember(e.id)
+      if (!conversations.value.some(c => c.id === e.id)) conversations.value.unshift({ id: e.id, title: e.title, updatedAt: new Date() as never, running: true })
+      break
+    case 'user':
+      if (sentText === e.text) sentText = null
+      else items.value.push({ kind: 'user', text: e.text })
       break
     case 'text':
       if (last?.kind === 'assistant') last.text += e.delta
@@ -175,22 +205,27 @@ function onEvent(e: ChatEvent) {
   scrollDown()
 }
 
-async function run(body: ChatRequest) {
+/** Follows a turn until it ends, or until this chat leaves it. */
+async function follow(stream: (signal: AbortSignal) => Promise<void>) {
+  leave()
+  const mine = new AbortController()
+  controller = mine
   streaming.value = true
-  controller = new AbortController()
   try {
-    await streamChat(body, onEvent, controller.signal)
+    await stream(mine.signal)
   } catch (e: any) {
-    if (e?.name !== 'AbortError') {
+    if (e?.name !== 'AbortError' && controller === mine) {
       items.value.push({ kind: 'error', text: e instanceof ChatHttpError ? e.message : t('assistant.streamFailed') })
       if (e instanceof ChatHttpError && e.status === 403) void refreshAssistantStatus()
     }
   } finally {
-    streaming.value = false
-    controller = null
-    void loadConversations()
-    void loadStatus()
-    scrollDown()
+    if (controller === mine) {
+      streaming.value = false
+      controller = null
+      void loadConversations()
+      void loadStatus()
+      scrollDown()
+    }
   }
 }
 
@@ -199,8 +234,10 @@ async function send() {
   if (!message || streaming.value) return
   draft.value = ''
   items.value.push({ kind: 'user', text: message })
+  sentText = message
   scrollDown()
-  await run({ ...(currentId.value && { conversationId: currentId.value }), message })
+  const body: ChatRequest = { ...(currentId.value && { conversationId: currentId.value }), message }
+  await follow(signal => streamChat(body, onEvent, signal))
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -210,8 +247,9 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function stop() {
-  controller?.abort()
+// Stops the turn on the server; following it ends with it.
+async function stop() {
+  if (currentId.value) await stopChat(currentId.value)
 }
 
 async function decide(id: string, approve: boolean) {
@@ -226,11 +264,8 @@ async function decide(id: string, approve: boolean) {
     deciding.value = null
   }
   await refreshActions()
-  // The assistant reads the decision and goes on.
-  if (conversationId && conversationId === currentId.value && !streaming.value) {
-    await open(conversationId)
-    await run({ conversationId, resume: true })
-  }
+  // The server goes on with the decision: follow it.
+  if (conversationId && conversationId === currentId.value) await open(conversationId)
 }
 
 async function remove(c: Conversation) {
@@ -245,13 +280,15 @@ async function remove(c: Conversation) {
   }
 }
 
-// A request of this conversation decided in the requests panel.
+// A request of this conversation decided in the requests panel: the server
+// goes on with it, follow it.
 async function onDecidedElsewhere(e: Event) {
   const id = (e as CustomEvent<{ conversationId?: string }>).detail?.conversationId
-  if (!id || id !== currentId.value || streaming.value) return
-  await open(id)
-  await run({ conversationId: id, resume: true })
+  if (id && id === currentId.value) await open(id)
 }
+
+// While a turn runs in another conversation, its mark in the list follows it.
+let listTimer: ReturnType<typeof setInterval> | undefined
 
 async function onConfigured() {
   configuring.value = false
@@ -265,10 +302,16 @@ onMounted(async () => {
   await refreshAssistantStatus()
   if (assistantAvailable.value) await Promise.all([loadConversations(), loadStatus()])
   loading.value = false
+  listTimer = setInterval(() => { if (conversations.value.some(c => c.running && c.id !== currentId.value)) void loadConversations() }, 5_000)
+  let last: string | null = null
+  try { last = localStorage.getItem(LAST_KEY) } catch { /* none */ }
+  if (last && conversations.value.some(c => c.id === last)) void open(last)
 })
 onBeforeUnmount(() => {
   window.removeEventListener(AGENT_DECIDED_EVENT, onDecidedElsewhere)
-  controller?.abort()
+  clearInterval(listTimer)
+  // Leaving the chat only stops following: the turn goes on on the server.
+  leave()
 })
 </script>
 
@@ -299,7 +342,7 @@ onBeforeUnmount(() => {
       :aria-label="t('assistant.conversations')"
     >
       <div class="flex items-center gap-2 p-2">
-        <Button size="sm" variant="outline" class="flex-1 justify-start" :disabled="streaming" @click="startNew">
+        <Button size="sm" variant="outline" class="flex-1 justify-start" @click="startNew">
           <PlusIcon /> {{ t('assistant.new') }}
         </Button>
         <Button v-if="isAdmin" size="icon-sm" variant="ghost" :aria-label="t('assistant.settingsLabel')" @click="configuring = true">
@@ -320,14 +363,12 @@ onBeforeUnmount(() => {
             type="button"
             class="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm"
             :aria-current="c.id === currentId ? 'true' : undefined"
-            :disabled="streaming"
             @click="open(c.id)"
-          >{{ c.title || t('assistant.untitled') }}</button>
+          ><LoaderCircleIcon v-if="c.running" class="mr-1.5 inline size-3 animate-spin text-muted-foreground" :aria-label="t('assistant.running')" />{{ c.title || t('assistant.untitled') }}</button>
           <Button
             size="icon-sm" variant="ghost"
             class="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
             :aria-label="t('assistant.deleteNamed', { title: c.title || t('assistant.untitled') })"
-            :disabled="streaming"
             @click="remove(c)"
           >
             <Trash2Icon />

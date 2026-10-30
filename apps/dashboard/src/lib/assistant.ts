@@ -2,11 +2,12 @@ import { ref } from 'vue'
 import { trpc } from './trpc'
 import { useAuth } from './auth'
 
-// The built-in AI assistant: whether this account can use it, and the stream
-// of one turn of a conversation (server-sent events over a POST).
+// The built-in AI assistant: whether this account can use it, and its turns,
+// which run on the server and are followed as server-sent events.
 
 export type ChatEvent =
   | { type: 'conversation'; id: string; title: string }
+  | { type: 'user'; text: string }
   | { type: 'text'; delta: string }
   | { type: 'tool'; id: string; name: string; arguments: string }
   | { type: 'toolResult'; id: string; ok: boolean }
@@ -41,17 +42,14 @@ export class ChatHttpError extends Error {
   }
 }
 
-export type ChatRequest = { conversationId?: string; message: string } | { conversationId: string; resume: true }
+export type ChatRequest = { conversationId?: string; message: string }
 
-/** Runs one turn, calling onEvent for each event until the stream ends. */
-export async function streamChat(body: ChatRequest, onEvent: (e: ChatEvent) => void, signal: AbortSignal): Promise<void> {
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('token')
-  const res = await fetch('/assistant/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(token && { authorization: `Bearer ${token}` }) },
-    body: JSON.stringify(body),
-    signal,
-  })
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
+async function readEvents(res: Response, onEvent: (e: ChatEvent) => void): Promise<void> {
   if (!res.ok || !res.body) {
     const error = await res.json().catch(() => null) as { error?: string } | null
     throw new ChatHttpError(error?.error ?? res.statusText, res.status)
@@ -73,4 +71,28 @@ export async function streamChat(body: ChatRequest, onEvent: (e: ChatEvent) => v
     }
     if (done) break
   }
+}
+
+/**
+ * Starts a turn and follows it. The turn runs on the server: aborting the
+ * signal only stops following it (stopChat stops it).
+ */
+export async function streamChat(body: ChatRequest, onEvent: (e: ChatEvent) => void, signal: AbortSignal): Promise<void> {
+  const res = await fetch('/assistant/chat', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+    signal,
+  })
+  await readEvents(res, onEvent)
+}
+
+/** Follows the conversation's running turn from its start (ends at once when none runs). */
+export async function followChat(conversationId: string, onEvent: (e: ChatEvent) => void, signal: AbortSignal): Promise<void> {
+  const res = await fetch(`/assistant/chat/${encodeURIComponent(conversationId)}/events`, { headers: authHeaders(), signal })
+  await readEvents(res, onEvent)
+}
+
+export async function stopChat(conversationId: string): Promise<void> {
+  await fetch(`/assistant/chat/${encodeURIComponent(conversationId)}/stop`, { method: 'POST', headers: authHeaders() }).catch(() => {})
 }
