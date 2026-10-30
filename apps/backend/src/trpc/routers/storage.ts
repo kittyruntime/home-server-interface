@@ -495,82 +495,6 @@ export const storageRouter = router({
     }>("root.sys.blockdevices", {}, 15_000)
   }),
 
-  formatDisk: storageProcedure
-    .input(z.object({
-      // Bare name (sda1, md0) or relative LVM path (ubuntu-vg/ubuntu-lv)
-      device: z.string().regex(/^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/),
-      fstype: z.enum(['ext4', 'xfs', 'btrfs', 'fat32']),
-      label:  z.string().max(64).optional(),
-    }))
-    .mutation(async ({ input }) => {
-      return await requestSync("root.sys.format", input, 120_000)
-    }),
-
-  mountDevice: storageProcedure
-    .input(z.object({
-      device:     z.string().regex(/^[a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?$/),
-      // Disallow whitespace and # to prevent fstab field injection
-      mountpoint: z.string().min(2).max(255).regex(/^\/[^\s#]+$/, 'Invalid mount point'),
-      options:    z.string().max(255).regex(/^[^\n\r\t]*$/, 'Invalid mount options').optional(),
-      persist:    z.boolean().default(false),
-      // "shared": a freshly formatted volume becomes writable by the user who
-      // mounts it and the hsi-share group. "user": same, owned by ownerUserId.
-      // "keep": leave its root as root:root.
-      access:      z.enum(["shared", "user", "keep"]).default("keep"),
-      ownerUserId: z.string().optional(),
-      // Also prepare a volume that already holds data (confirmed in the UI).
-      force:       z.boolean().default(false),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const { ownerUserId, ...rest } = input
-      // Owners are HSI users only, never an arbitrary system account.
-      const ownerId = input.access === "user" ? ownerUserId : ctx.user.userId
-      if (input.access === "user" && !ownerId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Choose the user who will own the volume" })
-      }
-      const owner = ownerId
-        ? await ctx.prisma.user.findUnique({ where: { id: ownerId }, select: { username: true } })
-        : null
-      if (input.access === "user" && !owner) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown user" })
-      }
-      return await requestSync<{ ok: true; warnings?: string[] | null }>(
-        "root.sys.mount", { ...rest, ownerUser: owner?.username ?? "" }, 20_000)
-    }),
-
-  umountDevice: storageProcedure
-    .input(z.object({
-      mountpoint:      z.string().min(2),
-      removeFromFstab: z.boolean().default(false),
-    }))
-    .mutation(async ({ input }) => {
-      return await requestSync("root.sys.umount", input, 20_000)
-    }),
-
-  createRaid: storageProcedure
-    .input(z.object({
-      name:    z.string().regex(/^md[0-9]{1,3}$/),
-      level:   z.number().int().refine(n => [0, 1, 5, 10].includes(n), { message: 'Invalid RAID level' }),
-      devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(2),
-    }))
-    .mutation(async ({ input }) => {
-      return await requestSync("root.sys.raid.create", input, 120_000)
-    }),
-
-  // Replacing a failed member: fail it, remove it, add a replacement (mdadm
-  // then rebuilds). The worker refuses unsuitable devices (in use, too small).
-  failRaidMember: storageProcedure
-    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.raid.fail", input, 30_000)),
-
-  removeRaidMember: storageProcedure
-    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.raid.remove", input, 30_000)),
-
-  addRaidMember: storageProcedure
-    .input(z.object({ name: z.string().regex(/^md[0-9]{1,3}$/), device: z.string().regex(/^[a-z][a-z0-9_-]*$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.raid.add", input, 60_000)),
-
   // Scheduled disk checks (SMART self-tests, RAID consistency checks). The
   // schedule is run by a systemd timer, independently of the backend.
   maintenance: storageProcedure.query(async () => requestSync<{
@@ -599,27 +523,6 @@ export const storageRouter = router({
     vgs: Array<{ name: string; lvs: string[] }>
   }>("root.sys.import.scan", {}, 30_000)),
 
-  importAssembleRaid: storageProcedure
-    .input(z.object({
-      uuid:          z.string().regex(/^[0-9a-fA-F:]{8,64}$/),
-      name:          z.string().regex(/^md[0-9]{1,3}$/),
-      allowDegraded: z.boolean().default(false),
-    }))
-    .mutation(async ({ input }) => requestSync<{ ok: true; device: string; warnings?: string[] | null }>(
-      "root.sys.import.assemble", input, 60_000)),
-
-  importActivateVg: storageProcedure
-    .input(z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.import.activateVg", input, 60_000)),
-
-  stopRaid: storageProcedure
-    .input(z.object({
-      name: z.string().regex(/^md[0-9]{1,3}$/),
-    }))
-    .mutation(async ({ input }) => {
-      return await requestSync<{ ok: true; warnings?: string[] | null }>("root.sys.raid.stop", input, 60_000)
-    }),
-
   // Host commands each feature needs, so the dashboard can explain a missing
   // package before an action fails.
   tools: storageProcedure.query(async () => {
@@ -647,55 +550,4 @@ export const storageRouter = router({
       lvs: Array<{ name: string; vgName: string; size: number; path: string }>
     }>("root.sys.lvm.info", {}, 10_000)
   }),
-
-  createPv: storageProcedure
-    .input(z.object({ devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1) }))
-    .mutation(async ({ input }) => requestSync("root.sys.lvm.pv.create", input, 30_000)),
-
-  createVg: storageProcedure
-    .input(z.object({
-      name:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
-      devices: z.array(z.string().regex(/^[a-z][a-z0-9]+$/)).min(1),
-    }))
-    .mutation(async ({ input }) => requestSync("root.sys.lvm.vg.create", input, 30_000)),
-
-  createLv: storageProcedure
-    .input(z.object({
-      vgName:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
-      lvName:    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
-      sizeBytes: z.number().int().min(0),
-    }))
-    .mutation(async ({ input }) => requestSync("root.sys.lvm.lv.create", input, 30_000)),
-
-  removeLv: storageProcedure
-    .input(z.object({
-      vgName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
-      lvName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/),
-    }))
-    .mutation(async ({ input }) => requestSync("root.sys.lvm.lv.remove", input, 20_000)),
-
-  removeVg: storageProcedure
-    .input(z.object({ vgName: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,30}$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.lvm.vg.remove", input, 20_000)),
-
-  // ── Partitions ─────────────────────────────────────────────────────────────
-
-  initPartitionTable: storageProcedure
-    .input(z.object({ device: z.string().regex(/^[a-z][a-z0-9]+$/) }))
-    .mutation(async ({ input }) => requestSync("root.sys.part.init", input, 15_000)),
-
-  createPartition: storageProcedure
-    .input(z.object({
-      device:   z.string().regex(/^[a-z][a-z0-9]+$/),
-      startPct: z.number().int().min(0).max(99).default(0),
-      endPct:   z.number().int().min(1).max(100).default(100),
-    }))
-    .mutation(async ({ input }) => requestSync("root.sys.part.create", input, 15_000)),
-
-  deletePartition: storageProcedure
-    .input(z.object({
-      device:  z.string().regex(/^[a-z][a-z0-9]+$/),
-      partNum: z.string().regex(/^[1-9][0-9]?$/),
-    }))
-    .mutation(async ({ input }) => requestSync("root.sys.part.delete", input, 15_000)),
 })

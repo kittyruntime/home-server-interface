@@ -14,10 +14,6 @@ export const groupRouter = router({
     .input(z.object({ name: z.string().min(1).max(64) }))
     .mutation(({ ctx, input }) => ctx.prisma.group.create({ data: { name: input.name } })),
 
-  rename: adminProcedure
-    .input(z.object({ id: z.string(), name: z.string().min(1).max(64) }))
-    .mutation(({ ctx, input }) => ctx.prisma.group.update({ where: { id: input.id }, data: { name: input.name } })),
-
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

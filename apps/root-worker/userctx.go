@@ -6,7 +6,8 @@ import (
 	"os/user"
 	"runtime"
 	"strconv"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 type userCtx struct {
@@ -51,8 +52,11 @@ func resolveUser(username string) (userCtx, error) {
 // runAsUser executes fn with the effective uid/gid of the given user context.
 //
 // Implementation notes:
-//   - LockOSThread pins the goroutine to a single OS thread so that uid/gid
-//     changes (which are per-thread on Linux) do not bleed into other goroutines.
+//   - Credentials are changed with raw per-thread syscalls. The syscall
+//     package's Setresuid/Setresgid/Setgroups (and x/sys/unix's Setresuid)
+//     apply to every thread of the process since Go 1.16, which would leak
+//     the user's identity into concurrent handlers running as root.
+//   - LockOSThread pins the goroutine to the thread whose credentials change.
 //   - We intentionally do NOT call UnlockOSThread: when the goroutine exits the
 //     runtime destroys the OS thread, preventing any credential leak.
 //   - Order: set supplementary groups and gid first (while still root), then
@@ -63,17 +67,17 @@ func runAsUser(ctx userCtx, fn func() error) error {
 		runtime.LockOSThread()
 
 		// 1. Supplementary groups (requires CAP_SETGID, still root here).
-		if err := syscall.Setgroups(ctx.gids); err != nil {
+		if err := unix.Setgroups(ctx.gids); err != nil {
 			ch <- fmt.Errorf("setgroups: %w", err)
 			return
 		}
 		// 2. Primary gid (keep saved gid = 0 to allow restore).
-		if err := syscall.Setresgid(ctx.gid, ctx.gid, 0); err != nil {
+		if err := threadSetresgid(ctx.gid, ctx.gid, 0); err != nil {
 			ch <- fmt.Errorf("setresgid: %w", err)
 			return
 		}
 		// 3. Effective uid: drop root (keep real uid = 0, saved uid = 0).
-		if err := syscall.Setresuid(0, ctx.uid, 0); err != nil {
+		if err := threadSetresuid(0, ctx.uid, 0); err != nil {
 			ch <- fmt.Errorf("setresuid: %w", err)
 			return
 		}
@@ -81,12 +85,28 @@ func runAsUser(ctx userCtx, fn func() error) error {
 		err := fn()
 
 		// Restore: uid first (saved uid = 0 allows this without CAP_SETUID).
-		_ = syscall.Setresuid(0, 0, 0)
+		_ = threadSetresuid(0, 0, 0)
 		// Then gid (now euid = 0, CAP_SETGID restored).
-		_ = syscall.Setresgid(0, 0, 0)
-		_ = syscall.Setgroups([]int{0})
+		_ = threadSetresgid(0, 0, 0)
+		_ = unix.Setgroups([]int{0})
 
 		ch <- err
 	}()
 	return <-ch
+}
+
+// threadSetresuid changes the calling thread's uids only.
+func threadSetresuid(ruid, euid, suid int) error {
+	if _, _, e := unix.RawSyscall(unix.SYS_SETRESUID, uintptr(ruid), uintptr(euid), uintptr(suid)); e != 0 {
+		return e
+	}
+	return nil
+}
+
+// threadSetresgid changes the calling thread's gids only.
+func threadSetresgid(rgid, egid, sgid int) error {
+	if _, _, e := unix.RawSyscall(unix.SYS_SETRESGID, uintptr(rgid), uintptr(egid), uintptr(sgid)); e != 0 {
+		return e
+	}
+	return nil
 }

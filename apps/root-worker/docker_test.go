@@ -31,13 +31,3 @@ func TestComposeArgsAreScopedToStacksDir(t *testing.T) {
 		t.Fatalf("got %v want %v", args, want)
 	}
 }
-
-func TestNetworksListParsing(t *testing.T) {
-	out := `{"Name":"hsi-net","Driver":"bridge"}
-{"Name":"bridge","Driver":"bridge"}
-`
-	got := parseNetworksList(out)
-	if len(got) != 2 || got[0].Name != "hsi-net" || got[0].Driver != "bridge" {
-		t.Fatalf("unexpected parse: %+v", got)
-	}
-}

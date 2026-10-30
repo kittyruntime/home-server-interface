@@ -153,15 +153,6 @@ func handleImportScan(nc *nats.Conn, msg *nats.Msg) {
 
 var reUUID = regexp.MustCompile(`^[0-9a-fA-F:]{8,64}$`)
 
-// handleImportAssemble assembles one found array by UUID under /dev/<name>.
-// A degraded array (members missing) is only started when allowDegraded is
-// set: mdadm refuses by default, and forcing it silently could hide a disk
-// that is simply not plugged in.
-func handleImportAssemble(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planImportAssemble) }
-
 // Volume groups made elsewhere may use any name LVM allows (dots, plus signs),
 // unlike the stricter names HSI gives the groups it creates (reVGName).
 var reImportVGName = regexp.MustCompile(`^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$`)
-
-// handleImportActivateVG activates the logical volumes of a found volume group.
-func handleImportActivateVG(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planImportActivate) }
