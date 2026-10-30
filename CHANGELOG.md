@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.75.0] - 2026-10-30
+
 ### Added
 - **AI assistants over MCP**: HSI is now an MCP server (`/mcp`), so Claude or
   another MCP client can browse files and check apps, storage, accounts,
@@ -1669,7 +1671,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...HEAD
+[1.75.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...v1.75.0
 [1.74.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.73.0...v1.74.0
 [1.73.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.72.0...v1.73.0
 [1.72.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.71.0...v1.72.0
