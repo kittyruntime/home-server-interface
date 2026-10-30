@@ -3129,6 +3129,24 @@ await testTelemetryChannelOptOutAndPayload()
     (e: any) => e.code === "FORBIDDEN", "network settings need the system scope")
   assert.ok(tools.toolAllowed(tw("preview_storage_change"), user(["system:write"], { isAdmin: true })), "network changes are offered with the system scope alone")
   assert.ok(!tools.toolAllowed(tw("preview_storage_change"), user(["storage:read"], { isAdmin: true })))
+  // Places: created, renamed or removed once approved; a Place never overlaps another.
+  const placeList = { place: { list: async () => [{ id: "p1", name: "Photos", path: "/srv/data/photos" }] } }
+  await tw("request_create_place").run({ name: "Films", path: "/srv/data/films", createFolder: true } as never, fakeCtx(placeList))
+  assert.equal(queued.at(-1)!.procedure, "place.create")
+  assert.deepEqual(queued.at(-1)!.input, { name: "Films", path: "/srv/data/films", createFolder: true })
+  for (const bad of ["/srv/data/photos/2024", "/srv/data", "/srv/data/../etc", "/srv/data/films/", "/"]) {
+    await assert.rejects(() => tw("request_create_place").run({ name: "x", path: bad, createFolder: false } as never, fakeCtx(placeList)),
+      (e: any) => ["CONFLICT", "BAD_REQUEST"].includes(e.code), `${bad} is refused`)
+  }
+  await tw("request_remove_place").run({ placeId: "p1" } as never, fakeCtx(placeList))
+  assert.ok(queued.at(-1)!.destructive && queued.at(-1)!.procedure === "place.delete" && queued.at(-1)!.title.includes("Photos"))
+  await tw("request_rename_place").run({ placeId: "p1", name: "Pictures" } as never, fakeCtx(placeList))
+  assert.deepEqual(queued.at(-1)!.input, { id: "p1", name: "Pictures" })
+  await assert.rejects(() => tw("request_rename_place").run({ placeId: "nope", name: "x" } as never, fakeCtx(placeList)), (e: any) => e.code === "NOT_FOUND")
+  const placeCalls: string[] = []
+  const placeCaller = { place: { mkdir: async () => { placeCalls.push("mkdir") }, create: async () => { placeCalls.push("create"); return { id: "p2" } } } } as any
+  await aa.APPROVAL_PROCEDURES["place.create"](placeCaller, { name: "Films", path: "/srv/data/films", createFolder: true })
+  assert.deepEqual(placeCalls, ["mkdir", "create"], "the folder is made before the Place")
   assert.ok(aa.decidable({ status: "pending", expiresAt: new Date(Date.now() + 1000) }))
   assert.ok(!aa.decidable({ status: "pending", expiresAt: new Date(Date.now() - 1000) }), "an expired request cannot be approved")
   assert.ok(!aa.decidable({ status: "done", expiresAt: new Date(Date.now() + 1000) }), "nor one decided already")
@@ -3389,17 +3407,17 @@ await testTelemetryChannelOptOutAndPayload()
   const ex = await import("../services/ai-exclusions")
   const { runGuarded } = await import("../mcp/context")
   const closed = { ids: new Set(["p-private"]), paths: ["/srv/data/private"] }
-  const refused = (args: Record<string, unknown>, o: { changes: boolean; files: boolean }) =>
+  const refused = (args: Record<string, unknown>, o: { changes: boolean }) =>
     assert.throws(() => ex.checkArgs(args, o, closed), (e: any) => e.code === "FORBIDDEN")
-  refused({ path: "/srv/data/private/notes.txt" }, { changes: false, files: true })
-  refused({ path: "/srv/data/private/../private/x" }, { changes: false, files: true })
-  refused({ paths: ["/srv/data/a", "/srv/data/private"] }, { changes: true, files: true })
-  refused({ paths: ["/srv/data"] }, { changes: true, files: true })
-  refused({ src: "/srv/data/a", dstDir: "/srv/data/private" }, { changes: true, files: true })
-  refused({ placeId: "p-private", query: "x" }, { changes: false, files: true })
-  ex.checkArgs({ path: "/srv/data" }, { changes: false, files: true }, closed)
-  ex.checkArgs({ path: "/srv/data/privateer" }, { changes: true, files: true }, closed)
-  ex.checkArgs({ placeId: "p-private" }, { changes: false, files: false }, closed)
+  refused({ path: "/srv/data/private/notes.txt" }, { changes: false })
+  refused({ path: "/srv/data/private/../private/x" }, { changes: false })
+  refused({ paths: ["/srv/data/a", "/srv/data/private"] }, { changes: true })
+  refused({ paths: ["/srv/data"] }, { changes: true })
+  refused({ src: "/srv/data/a", dstDir: "/srv/data/private" }, { changes: true })
+  refused({ placeId: "p-private", query: "x" }, { changes: false })
+  ex.checkArgs({ path: "/srv/data" }, { changes: false }, closed)
+  ex.checkArgs({ path: "/srv/data/privateer" }, { changes: true }, closed)
+  refused({ placeId: "p-private" }, { changes: true })
   const when = new Date("2026-10-30T00:00:00Z")
   assert.deepEqual(ex.filterResult({ items: [{ path: "/srv/data/private/a", mtime: when }, { path: "/srv/data/b", mtime: when }] }, closed),
     { items: [{ path: "/srv/data/b", mtime: when }] }, "what lies in a closed Place is cleared, dates kept")

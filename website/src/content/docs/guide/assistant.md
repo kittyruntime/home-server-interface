@@ -8,7 +8,8 @@ language ("how much space is left?", "are all my apps running?", "clean up
 the duplicates in my Downloads folder") and the assistant finds the answer with
 the same tools as an [MCP assistant](/home-server-interface/guide/ai-assistant/):
 files in Places, apps, storage, accounts, shares, backups, updates and the
-audit log. It acts as the account that chats, never with more rights.
+audit log. An administrator's assistant can also create, rename and remove
+Places (removing one keeps its folder and files). It acts as the account that chats, never with more rights.
 
 ## Set it up
 
@@ -54,8 +55,8 @@ there is one). A busy or unreachable provider is tried again twice before the
 assistant gives up.
 
 Creating folders and files, renaming, moving and copying happen at once.
-Deletions, file overwrites and every storage, app, account, share, permission
-or update change wait for your approval: the request shows in the chat with
+Deletions, file overwrites and every storage, app, account, share, Place,
+permission or update change wait for your approval: the request shows in the chat with
 **Approve** and **Reject**, and the assistant goes on once you decided. The
 same requests also show in the requests panel at the bottom right of the
 dashboard.

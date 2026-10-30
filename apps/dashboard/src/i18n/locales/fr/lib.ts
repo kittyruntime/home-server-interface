@@ -204,6 +204,7 @@ export default {
     agentAction_request: 'Demande d’un assistant IA',
     agentAction_approve: 'Approuver une demande IA',
     agentAction_reject: 'Refuser une demande IA',
+    place_rename: 'Renommer une Place',
     assistant_saveSettings: 'Modifier les réglages de l’assistant IA',
     assistant_testSettings: 'Vérifier le fournisseur d’IA',
     assistant_setExcludedPlaces: 'Modifier les Places fermées à l’IA',

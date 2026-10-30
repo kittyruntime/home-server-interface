@@ -591,7 +591,7 @@ for line in sys.argv[1].splitlines():
 # chats, its deletions wait for approval in the chat, a decision lets it go on,
 # read-only mode offers no change, and the daily limit stops it.
 assistant_feature() {
-  local settings events conversation req
+  local settings events conversation req place
   log "Built-in assistant: chat, approval, read-only, closed Places, daily limit"
   vm_put "$here/fake-ai-provider.py" /root/fake-ai-provider.py
   vm_ssh 'nohup python3 /root/fake-ai-provider.py 18555 >/root/fake-ai.log 2>&1 </dev/null &'
@@ -620,6 +620,19 @@ assistant_feature() {
       || curl -sk -G -H \"authorization: Bearer \$(cat /root/token-vmuser)\" --data-urlencode 'input={\"id\":\"$conversation\"}' https://127.0.0.1:9001/trpc/assistant.conversation | grep -q 'Noted.*approved the request'"
   api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.delete"' || fail "the approved deletion is not in the audit log as the assistant's"
   api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.mkdir"' || fail "the folder made in the chat is not in the audit log as the assistant's"
+
+  # Places, as an admin: made with their folder once approved, then removed with the folder kept.
+  events=$(chat_call "" request_create_place '{"name":"From the assistant","path":"/srv/agent-place","createFolder":true}')
+  req=$(event_field "$events" approval id)
+  [[ -n $req ]] || fail "creating a Place was not shown for approval: $events"
+  api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status": "done"' || fail "approving the new Place failed"
+  vm_ssh 'test -d /srv/agent-place' || fail "the approved Place has no folder"
+  place=$(api_query place.list | python3 -c 'import json,sys; print(next((p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/agent-place"), ""))')
+  [[ -n $place ]] || fail "the approved Place is not listed"
+  events=$(chat_call "" request_remove_place "{\"placeId\":\"$place\"}")
+  api agentAction.approve "{\"id\":\"$(event_field "$events" approval id)\"}" | grep -q '"status": "done"' || fail "approving the Place's removal failed"
+  ! api_query place.list | grep -q '/srv/agent-place' || fail "the removed Place is still listed"
+  vm_ssh 'test -d /srv/agent-place' || fail "removing the Place removed its folder"
 
   # Read-only: no tool that changes anything is offered.
   api assistant.saveSettings "${settings/\"readOnly\":false/\"readOnly\":true}" >/dev/null

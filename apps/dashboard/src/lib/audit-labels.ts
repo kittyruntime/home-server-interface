@@ -102,6 +102,7 @@ export function actionLabel(action: string): string {
     'agentAction.request':         'AI assistant request',
     'agentAction.approve':         'Approve AI request',
     'agentAction.reject':          'Reject AI request',
+    'place.rename':                'Rename place',
     'assistant.saveSettings':      'Change AI assistant settings',
     'assistant.testSettings':      'Check AI provider',
     'assistant.setExcludedPlaces': 'Change Places closed to AI',
