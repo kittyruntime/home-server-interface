@@ -63,7 +63,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/root-worker/go.mod
-          cache: false
+          cache-dependency-path: apps/root-worker/go.sum
 
       # A pre-release one patch above the source version: newer than the
       # published release it updates from, never mistaken for a real one.
