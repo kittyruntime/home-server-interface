@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.78.1] - 2026-10-30
+
 ### Fixed
 - **Release checks**: v1.78.0 was never published because its install tests
   still created accounts through an endpoint that version removed. This
@@ -1755,7 +1757,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.1...HEAD
+[1.78.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.0...v1.78.1
 [1.78.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...v1.78.0
 [1.77.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...v1.77.1
 [1.77.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...v1.77.0
