@@ -9,7 +9,6 @@
 // Framework-light on purpose: no component imports, just the transfers store
 // (`lib/uploads.ts`) and a couple of small helpers (`lib/jobs.ts`, `lib/uuid.ts`,
 // `lib/auth.ts`).
-import { createSHA256 } from 'hash-wasm'
 import { useAuth } from './auth'
 import { pollJobResult } from './jobs'
 import { randomId } from './uuid'
@@ -236,6 +235,8 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
     // chunk is read and fed to the hasher (even ones the server already staged
     // from a prior attempt) so the digest is correct on resume; only the
     // not-yet-staged chunks are actually uploaded.
+    // Loaded on the first upload: the WASM hasher stays out of the main bundle.
+    const { createSHA256 } = await import('hash-wasm')
     const hasher = await createSHA256()
     for (let i = 0; i < totalChunks; i++) {
       await waitWhilePausedOrAborted(t.id, ac)

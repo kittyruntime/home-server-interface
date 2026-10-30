@@ -42,7 +42,7 @@ export async function syncPreferences() {
     if (p.theme)  setTheme(p.theme as Theme)
     if (p.accent) setAccent(p.accent as Accent)
     if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
-    if (isLocale(p.locale)) setLocale(p.locale)
+    if (isLocale(p.locale)) void setLocale(p.locale)
     if (typeof p.confirmFileDelete === 'boolean') setConfirmFileDelete(p.confirmFileDelete)
   } catch {
     // Not authenticated / offline: keep whatever localStorage already had.

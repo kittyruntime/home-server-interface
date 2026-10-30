@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Faster first load**: the sign-in page no longer downloads the whole
+  dashboard, and the French translation, the upload hasher and the compose
+  file parser load only when they are needed. The main bundle is about four
+  times smaller.
+
 ## [1.77.1] - 2026-10-30
 
 ### Security
