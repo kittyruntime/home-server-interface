@@ -62,6 +62,13 @@ export const APPROVAL_PROCEDURES: Record<string, Runner> = {
   "apps.execute": (caller, input) => caller.apps.execute(input),
   "user.execute": (caller, input) => caller.user.execute(input),
   "sharing.execute": (caller, input) => caller.sharing.execute(input),
+  // The folder first, when the Place asks for a new one.
+  "place.create": async (caller, input: { name: string; path: string; createFolder: boolean }) => {
+    if (input.createFolder) await caller.place.mkdir({ path: input.path })
+    return caller.place.create({ name: input.name, path: input.path })
+  },
+  "place.rename": (caller, input) => caller.place.rename(input),
+  "place.delete": (caller, input) => caller.place.delete(input),
   "permission.upsert": (caller, input) => caller.permission.upsert(input),
   "permission.remove": (caller, input) => caller.permission.remove(input),
   "update.execute": (caller, input) => caller.update.execute(input),

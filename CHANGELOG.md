@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI assistants manage Places**: an administrator's assistant, built-in or
+  over MCP, can create a Place (with its folder if needed), rename it or remove
+  it, each time once approved. A Place never overlaps another, and removing one
+  keeps its folder and files.
+
 ## [1.76.0] - 2026-10-30
 
 ### Added

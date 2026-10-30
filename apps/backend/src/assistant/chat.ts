@@ -31,7 +31,7 @@ export const TOOL_FAMILIES = {
   files: "Places, folders and files: list, read, search, size; create, write, rename, move, copy, delete",
   apps: "Apps (Docker): list, details, logs, App Store; start, stop, restart; install, change, update or remove",
   storage: "Disks, S.M.A.R.T., arrays, volume groups, volumes, mounts, network and HTTPS settings",
-  users: "Accounts, groups, who can access each Place, SMB shares",
+  users: "Places (create, rename, remove), accounts, groups, who can access each Place, SMB shares",
   system: "System load and information, alerts, backups, HSI updates, the audit log",
 } as const
 export type ToolFamily = keyof typeof TOOL_FAMILIES

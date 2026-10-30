@@ -79,6 +79,13 @@ export const placeRouter = router({
     .mutation(({ ctx, input }) =>
       ctx.prisma.place.update({ where: { id: input.id }, data: { icon: input.icon } })),
 
+  rename: adminProcedure
+    .input(z.object({ id: z.string(), name: z.string().trim().min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      ctx.audit.target = input.name
+      return ctx.prisma.place.update({ where: { id: input.id }, data: { name: input.name } })
+    }),
+
   mkdir: adminProcedure
     .input(z.object({ path: z.string().min(1) }))
     .mutation(async ({ input }) => {

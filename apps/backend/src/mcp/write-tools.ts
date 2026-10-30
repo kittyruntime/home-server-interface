@@ -1,3 +1,4 @@
+import path from "node:path"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import type { ApiScope } from "../services/api-tokens"
@@ -200,6 +201,56 @@ export const WRITE_TOOLS: ToolDef[] = [
 
   // ── Plans ────────────────────────────────────────────────────────────────
   ...Object.entries(FAMILIES).flatMap(([family, f]) => planTools(family, f)),
+
+  // ── Places ───────────────────────────────────────────────────────────────
+  tool({
+    name: "request_create_place", title: "Ask to create a Place", scope: "users:write", requires: "admin",
+    input: {
+      name: z.string().trim().min(1).max(100).describe("The Place's name, as people see it"),
+      path: z.string().regex(/^\/[^\0]*$/).describe("Absolute path of its folder, e.g. /srv/data/Photos"),
+      createFolder: z.boolean().default(false).describe("Make the folder too: it does not exist yet"),
+      reason,
+    },
+    description: "Asks the user to approve a new Place (a shared folder people can be given access to). Its folder joins the share group. Nobody but admins can open it until access is given (request_place_access). Follow up with check_request.",
+    run: async ({ reason, name, path: raw, createFolder }, ctx) => {
+      const p = path.posix.normalize(raw)
+      if (p !== raw.replace(/\/+$/, "") || p === "/") throw new TRPCError({ code: "BAD_REQUEST", message: "Give a plain absolute path, without .. or a trailing slash" })
+      const places = await ctx.caller.place.list()
+      const clash = places.find(pl => pl.path === p || p.startsWith(pl.path + "/") || pl.path.startsWith(p + "/"))
+      if (clash) throw new TRPCError({ code: "CONFLICT", message: `It would overlap the Place "${clash.name}" (${clash.path})` })
+      return ctx.queue({
+        procedure: "place.create", input: { name, path: p, createFolder }, title: `Create the Place "${name}" at ${p}`,
+        preview: { place: { name, path: p, newFolder: createFolder } }, destructive: false, reason,
+      })
+    },
+  }),
+  tool({
+    name: "request_rename_place", title: "Ask to rename a Place", scope: "users:write", requires: "admin",
+    input: { placeId: z.string().describe("A Place id from list_places"), name: z.string().trim().min(1).max(100), reason },
+    description: "Asks the user to approve a new name for a Place. Its folder, access and share stay as they are. Follow up with check_request.",
+    run: async ({ reason, placeId, name }, ctx) => {
+      const place = (await ctx.caller.place.list()).find(pl => pl.id === placeId)
+      if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown Place" })
+      return ctx.queue({
+        procedure: "place.rename", input: { id: placeId, name }, title: `Rename the Place "${place.name}" to "${name}"`,
+        preview: { place: { path: place.path, from: place.name, to: name } }, destructive: false, reason,
+      })
+    },
+  }),
+  tool({
+    name: "request_remove_place", title: "Ask to remove a Place", scope: "users:write", requires: "admin",
+    input: { placeId: z.string().describe("A Place id from list_places"), reason },
+    description: "Asks the user to approve removing a Place: its access rights and SMB share go, its folder and files stay on disk. Follow up with check_request.",
+    run: async ({ reason, placeId }, ctx) => {
+      const place = (await ctx.caller.place.list()).find(pl => pl.id === placeId)
+      if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown Place" })
+      return ctx.queue({
+        procedure: "place.delete", input: { id: placeId }, title: `Remove the Place "${place.name}"`,
+        preview: { place: { name: place.name, path: place.path, removed: "the Place, its access rights and its SMB share", kept: "the folder and its files" } },
+        destructive: true, reason,
+      })
+    },
+  }),
 
   // ── Access ───────────────────────────────────────────────────────────────
   tool({

@@ -58,9 +58,10 @@ const PATH_ARGS = ["path", "parentPath", "src", "dstDir"] as const
 /**
  * Refuses a call that would open an excluded Place: a path inside one, and
  * for a change, a path that holds one (deleting or moving its parent folder
- * would reach its files too). A Place named by id counts for the file tools.
+ * would reach its files too). A Place named by id is refused as well: an
+ * assistant neither searches it nor changes it or its access.
  */
-export function checkArgs(args: Record<string, unknown>, o: { changes: boolean; files: boolean }, ex: Exclusions) {
+export function checkArgs(args: Record<string, unknown>, o: { changes: boolean }, ex: Exclusions) {
   if (!ex.paths.length) return
   const paths: string[] = []
   for (const k of PATH_ARGS) if (typeof args[k] === "string") paths.push(args[k] as string)
@@ -68,7 +69,7 @@ export function checkArgs(args: Record<string, unknown>, o: { changes: boolean; 
   for (const p of paths) {
     if (isExcluded(p, ex) || (o.changes && holdsExcluded(p, ex))) throw new TRPCError({ code: "FORBIDDEN", message: EXCLUDED_MESSAGE })
   }
-  if (o.files && typeof args.placeId === "string" && ex.ids.has(args.placeId)) throw new TRPCError({ code: "FORBIDDEN", message: EXCLUDED_MESSAGE })
+  if (typeof args.placeId === "string" && ex.ids.has(args.placeId)) throw new TRPCError({ code: "FORBIDDEN", message: EXCLUDED_MESSAGE })
 }
 
 /** A tool's result without what lies in an excluded Place (list items with such a path). */

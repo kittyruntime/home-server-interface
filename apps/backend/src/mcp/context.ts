@@ -31,7 +31,7 @@ export function toolFamily(t: Pick<ToolDef, "scope" | "anyScope">): string | nul
 
 /** Runs a tool, refusing what would open a Place closed to AI assistants and clearing it from the result. */
 export async function runGuarded(def: ToolDef, args: Record<string, unknown>, ctx: ToolContext, ex: Exclusions): Promise<unknown> {
-  checkArgs(args, { changes: !def.scope?.endsWith(":read"), files: toolFamily(def) === "files" }, ex)
+  checkArgs(args, { changes: !def.scope?.endsWith(":read") }, ex)
   return filterResult(await def.run(args as never, ctx), ex)
 }
 
