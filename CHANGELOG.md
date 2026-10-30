@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **File operations run as the right user only**: a file action done on
+  behalf of a user no longer changes the identity of other operations running
+  at the same time, such as a storage change running as root.
+- **Signing out revokes the session**: the token is invalidated on the server
+  and the page fully reloads, so the next person on the same browser no longer
+  sees the previous session's notifications, alerts or uploads.
+
 ## [1.77.0] - 2026-10-30
 
 ### Added
