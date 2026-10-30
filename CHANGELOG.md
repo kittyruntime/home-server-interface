@@ -14,10 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OpenRouter, OpenAI, Anthropic, Mistral AI, a local Ollama or any
   OpenAI-compatible service, with its API key (encrypted on the server) and
   model, who may use it, a read-only mode and a daily limit of tokens per
-  account. Deletions and changes to storage, apps, accounts
+  account. The assistant loads only the tools a question needs, which keeps
+  each call small. Deletions and changes to storage, apps, accounts
   or shares wait for approval right in the chat, and the conversation goes on
   once they are decided. Its actions are marked as the built-in assistant's in
   the audit log.
+- **Places closed to AI assistants**: an administrator can pick Places that no
+  AI assistant, built-in or over MCP, may list, read or change, whatever the
+  account's rights. Their files never reach an AI provider.
 
 ## [1.75.0] - 2026-10-30
 

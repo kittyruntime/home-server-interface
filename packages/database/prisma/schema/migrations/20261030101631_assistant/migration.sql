@@ -9,6 +9,7 @@ CREATE TABLE "AssistantSettings" (
     "access" TEXT NOT NULL DEFAULT 'admins',
     "readOnly" BOOLEAN NOT NULL DEFAULT false,
     "dailyTokenLimit" INTEGER,
+    "excludedPlaceIds" TEXT NOT NULL DEFAULT '[]',
     "updatedAt" DATETIME NOT NULL
 );
 

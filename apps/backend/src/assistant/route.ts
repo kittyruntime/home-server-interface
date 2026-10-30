@@ -4,12 +4,13 @@ import { z } from "zod"
 import { prisma } from "@app/database"
 import { authenticateRequest } from "../utils/request-auth"
 import { HSI_VERSION } from "../version"
-import { ALL_TOOLS, toolContext, toolErrorPayload } from "../mcp/context"
+import { ALL_TOOLS, runGuarded, toolContext, toolErrorPayload } from "../mcp/context"
+import { loadExclusions } from "../services/ai-exclusions"
 import { assistantAllowed, loadAssistantConfig, recordUsage, tokensUsedToday } from "../services/assistant-settings"
 import { streamChat } from "../services/assistant-provider"
 import { log } from "../utils/log"
 import {
-  chatTools, chatUser, historyForModel, runToolCall, runTurn, systemPrompt, titleOf, DAILY_LIMIT_MESSAGE, HISTORY_MESSAGES, type ChatEvent,
+  chatTools, chatUser, familiesUsed, historyForModel, loadFamilies, LOAD_TOOLS, runToolCall, runTurn, systemPrompt, titleOf, DAILY_LIMIT_MESSAGE, HISTORY_MESSAGES, type ChatEvent,
 } from "./chat"
 
 // The built-in assistant's chat: one turn per request, streamed to the
@@ -93,8 +94,10 @@ export async function assistantRoutes(app: FastifyInstance) {
       emit({ type: "conversation", id: conversationId, title: conversation.title })
       if ("message" in input) await prisma.assistantMessage.create({ data: { conversationId, role: "user", content: input.message } })
       const user = chatUser(session)
-      const { defs, schemas } = chatTools(ALL_TOOLS, user, config.readOnly)
-      const toolChars = JSON.stringify(schemas).length
+      const toolset = chatTools(ALL_TOOLS, user, config.readOnly)
+      const used = await prisma.assistantMessage.findMany({ where: { conversationId, role: "tool" }, distinct: ["toolName"], select: { toolName: true } })
+      const loaded = familiesUsed(used.map(m => m.toolName), toolset.defs)
+      const exclusions = await loadExclusions()
       const account = await prisma.user.findUnique({ where: { id: session.userId }, select: { username: true } })
       const stored = await prisma.assistantMessage.findMany({
         where: { conversationId }, orderBy: { createdAt: "desc" }, take: HISTORY_MESSAGES,
@@ -105,19 +108,21 @@ export async function assistantRoutes(app: FastifyInstance) {
         systemPrompt({ username: account?.username ?? "the user", isAdmin: session.isAdmin, version: HSI_VERSION, now: new Date(), readOnly: config.readOnly }),
         historyForModel(stored.reverse()),
         {
-          stream: (messages, onText) => streamChat(target, messages, schemas, onText, controller.signal, { reportUsage: REPORTS_USAGE.has(config.provider) }),
-          toolChars,
+          stream: (messages, tools, onText) => streamChat(target, messages, tools, onText, controller.signal, { reportUsage: REPORTS_USAGE.has(config.provider) }),
+          tools: () => toolset.offered(loaded),
           used: async tokens => {
             usedToday += tokens
             await recordUsage(session.userId, conversationId, tokens)
             emit({ type: "usage", tokens })
             return limit === null || usedToday < limit
           },
-          runTool: call => runToolCall(
-            call, defs,
-            (def, args) => def.run(args as never, toolContext(req, reply, user, { via: "assistant", conversationId }, def.name)),
-            toolErrorPayload,
-          ),
+          runTool: async call => call.name === LOAD_TOOLS
+            ? loadFamilies(call.arguments, toolset.families, loaded)
+            : runToolCall(
+              call, toolset.defs,
+              (def, args) => runGuarded(def, args as Record<string, unknown>, toolContext(req, reply, user, { via: "assistant", conversationId }, def.name), exclusions),
+              toolErrorPayload,
+            ),
           save: m => prisma.assistantMessage.create({
             data: {
               conversationId, role: m.role, content: m.content,

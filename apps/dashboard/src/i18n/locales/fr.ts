@@ -177,6 +177,16 @@ export default {
     usage: 'Cette conversation : {conversation} tokens · aujourd’hui : {today}',
     usageLimit: 'Cette conversation : {conversation} tokens · aujourd’hui : {today} sur {limit}',
     readOnlyNote: 'Lecture seule : l’assistant peut regarder, pas modifier.',
+    closed: {
+      section: 'Places privées',
+      title: 'Places fermées aux assistants IA',
+      intro: 'Aucun assistant IA, intégré ou par MCP, ne peut lister, lire ou modifier ce que contiennent ces Places, quels que soient les droits du compte. Leurs fichiers n’atteignent jamais un fournisseur d’IA.',
+      none: 'Aucune Place pour l’instant.',
+      closedLabel: 'Fermée',
+      saved: 'Places fermées aux assistants IA enregistrées.',
+      saveFailed: 'Impossible d’enregistrer les Places fermées aux assistants IA.',
+      loadFailed: 'Impossible de charger les Places.',
+    },
     settings: {
       section: 'Assistant intégré',
       title: 'Assistant IA dans le tableau de bord',

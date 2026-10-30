@@ -209,6 +209,10 @@ export default {
     agentAction_request: 'AI assistant request',
     agentAction_approve: 'Approve AI request',
     agentAction_reject: 'Reject AI request',
+    assistant_saveSettings: 'Change AI assistant settings',
+    assistant_testSettings: 'Check AI provider',
+    assistant_setExcludedPlaces: 'Change Places closed to AI',
+    assistant_deleteConversation: 'Delete AI conversation',
   },
   loading: {
     default: 'Loading',

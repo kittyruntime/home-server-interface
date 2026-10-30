@@ -35,6 +35,12 @@ Assistant app, the first time):
 
 ## Chat
 
+The assistant starts with only a few tools, and loads the families a question
+needs (files, apps, storage, users, system) as it goes: sending every tool's
+description with each call would cost thousands of tokens. A family loaded in
+a conversation stays loaded.
+
+
 Conversations are kept per account (the 50 latest) and can be deleted. While
 the assistant works, each step it takes shows under its answer. **Stop** ends
 the answer at once and keeps what it had written. Below the message field, the
@@ -50,6 +56,10 @@ same requests also show in the requests panel at the bottom right of the
 dashboard.
 
 ## Privacy and safety
+
+- **Places closed to AI assistants** (Settings > AI access, administrators):
+  no assistant, built-in or over MCP, can list, read or change what they hold,
+  whatever the account's rights, so their files never reach an AI provider.
 
 - What the assistant reads, such as file contents and logs, is sent to the AI
   provider. Choose a local model to keep it on your network.
