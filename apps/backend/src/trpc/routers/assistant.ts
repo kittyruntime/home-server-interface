@@ -7,6 +7,7 @@ import {
 import { listModels } from "../../services/assistant-provider"
 import { SecretsError } from "../../services/secrets"
 import { parseIds } from "../../services/ai-exclusions"
+import { getRun, runningConversations, stopRun } from "../../assistant/runs"
 
 // The built-in assistant: its settings (administrators) and each account's
 // conversations. Closed to AI assistants themselves (closedToApiTokens).
@@ -95,10 +96,14 @@ export const assistantRouter = router({
       return { placeIds: known.map(p => p.id) }
     }),
 
-  conversations: protectedProcedure.query(({ ctx }) =>
-    ctx.prisma.assistantConversation.findMany({
+  // With the ones whose turn is still running on the server.
+  conversations: protectedProcedure.query(async ({ ctx }) => {
+    const running = runningConversations(ctx.user.userId)
+    const list = await ctx.prisma.assistantConversation.findMany({
       where: { userId: ctx.user.userId }, orderBy: { updatedAt: "desc" }, select: { id: true, title: true, updatedAt: true },
-    })),
+    })
+    return list.map(c => ({ ...c, running: running.has(c.id) }))
+  }),
 
   // A conversation as the chat shows it, with the requests it made.
   conversation: protectedProcedure
@@ -114,8 +119,11 @@ export const assistantRouter = router({
       if (!conversation) throw new TRPCError({ code: "NOT_FOUND" })
       const actions = await ctx.prisma.agentAction.findMany({ where: { conversationId: conversation.id, userId: ctx.user.userId }, select: shownAction })
       const now = new Date()
+      const run = getRun(conversation.id)
       return {
         id: conversation.id,
+        // A turn running: its messages come with its events, from this time on.
+        runningSince: run && !run.done ? run.startedAt : null,
         title: conversation.title,
         tokens: conversation.tokens,
         messages: conversation.messages.map(m => {
@@ -137,6 +145,7 @@ export const assistantRouter = router({
   deleteConversation: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      stopRun(input.id, ctx.user.userId)
       const r = await ctx.prisma.assistantConversation.deleteMany({ where: { id: input.id, userId: ctx.user.userId } })
       if (!r.count) throw new TRPCError({ code: "NOT_FOUND" })
       // Its requests still waiting are dropped with it.

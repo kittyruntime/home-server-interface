@@ -614,8 +614,10 @@ assistant_feature() {
   vm_ssh 'test -d /srv/vm-mirror/from-chat' || fail "a deletion asked in the chat ran before it was approved"
   API_TOKEN=/root/token-vmuser api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status": "done"' || fail "approving the chat's deletion failed"
   vm_until 30 "the approved deletion did not remove the folder" '! test -e /srv/vm-mirror/from-chat'
-  events=$(API_TOKEN=/root/token-vmuser chat "{\"conversationId\":\"$conversation\",\"resume\":true}")
-  grep -q 'approved the request' <<<"$events" || fail "the assistant was not told the decision: $events"
+  # The server goes on with the decision by itself; following the turn shows it.
+  vm_until 30 "the assistant did not go on after the approval" \
+    "curl -sNk -H \"authorization: Bearer \$(cat /root/token-vmuser)\" https://127.0.0.1:9001/assistant/chat/$conversation/events | grep -q 'approved the request' \
+      || curl -sk -G -H \"authorization: Bearer \$(cat /root/token-vmuser)\" --data-urlencode 'input={\"id\":\"$conversation\"}' https://127.0.0.1:9001/trpc/assistant.conversation | grep -q 'Noted.*approved the request'"
   api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.delete"' || fail "the approved deletion is not in the audit log as the assistant's"
   api_get audit.list '{"limit":50,"via":"assistant"}' | grep -q '"fs.mkdir"' || fail "the folder made in the chat is not in the audit log as the assistant's"
 
