@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.76.0] - 2026-10-30
+
 ### Added
 - **The built-in assistant**: a new Assistant app is a chat with an AI that
   looks after the NAS, with the same tools as MCP assistants, as the account
@@ -1687,7 +1689,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...HEAD
+[1.76.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...v1.76.0
 [1.75.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...v1.75.0
 [1.74.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.73.0...v1.74.0
 [1.73.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.72.0...v1.73.0
