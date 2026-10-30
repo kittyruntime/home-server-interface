@@ -905,9 +905,11 @@ case "$scenario" in
     api_setup
     create_mirror
     expect_mirror
-    # The Place made with the volume is the share group's from the start.
-    [[ $(vm_ssh 'stat -c "%G %a" /srv/vm-mirror') == "hsi-share 2775" ]] \
-      || fail "the new Place's folder is $(vm_ssh 'stat -c "%U:%G %a" /srv/vm-mirror'), expected the share group, setgid and group-writable"
+    # A Place made on a new folder is the share group's from the start.
+    api place.mkdir '{"path":"/srv/vm-mirror/new-place"}' >/dev/null
+    api place.create '{"name":"New place","path":"/srv/vm-mirror/new-place"}' >/dev/null
+    [[ $(vm_ssh 'stat -c "%G %a" /srv/vm-mirror/new-place') == "hsi-share 2775" ]] \
+      || fail "the new Place's folder is $(vm_ssh 'stat -c "%U:%G %a" /srv/vm-mirror/new-place'), expected the share group, setgid and group-writable"
     account_feature
     files_feature
     smb_feature

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 
 	nats "github.com/nats-io/nats.go"
+	"golang.org/x/sys/unix"
 )
 
 // SMB sharing handlers. The app owns /etc/nasui/samba/smb.conf and points
@@ -243,8 +245,9 @@ func handleSharingPlaceAccess(nc *nats.Conn, msg *nats.Msg) {
 }
 
 // handleSharingPreparePlace gives a new Place's folder to the share group,
-// setgid and group-writable, like the Places that have writers. Only an
-// existing directory, never through a symlink: the Place's own folder.
+// setgid and group-writable, like the Places that have writers. The folder is
+// opened once without following any symlink, on any part of the path, and
+// changed through that handle: what is changed is what was checked.
 func handleSharingPreparePlace(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
 		Path string `json:"path"`
@@ -253,24 +256,49 @@ func handleSharingPreparePlace(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request"})
 		return
 	}
-	fi, err := os.Lstat(req.Path)
-	if err != nil {
-		replyErr(nc, msg.Reply, mapOsErr(err))
-		return
-	}
-	if !fi.IsDir() {
-		replyErr(nc, msg.Reply, &fsError{Code: "ENOTDIR", Message: "not a directory"})
-		return
-	}
 	if err := ensureShareGroup(); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "share group: " + err.Error()})
 		return
 	}
-	if err := prepareShareDir(req.Path); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+	grp, err := user.LookupGroup(shareGroup)
+	if err != nil {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "share group: " + err.Error()})
+		return
+	}
+	gid, _ := strconv.Atoi(grp.Gid)
+	if err := prepareDirNoSymlinks(filepath.Clean(req.Path), gid); err != nil {
+		replyErr(nc, msg.Reply, mapOsErr(err))
 		return
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
+}
+
+// prepareDirNoSymlinks sets a directory's group and mode 2775 through a
+// handle opened without following symlinks anywhere in the path.
+func prepareDirNoSymlinks(path string, gid int) error {
+	fd, err := unix.Openat2(unix.AT_FDCWD, path, &unix.OpenHow{
+		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC,
+		Resolve: unix.RESOLVE_NO_SYMLINKS,
+	})
+	if errors.Is(err, unix.ENOSYS) {
+		// Kernels before 5.6: the last part is still never followed, and the
+		// rest of the path must already be the real one.
+		if real, rerr := filepath.EvalSymlinks(path); rerr != nil || real != path {
+			return &os.PathError{Op: "open", Path: path, Err: unix.ELOOP}
+		}
+		fd, err = unix.Open(path, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	}
+	if err != nil {
+		return &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	defer unix.Close(fd)
+	if err := unix.Fchown(fd, -1, gid); err != nil {
+		return &os.PathError{Op: "chown", Path: path, Err: err}
+	}
+	if err := unix.Fchmod(fd, 0o2775); err != nil {
+		return &os.PathError{Op: "chmod", Path: path, Err: err}
+	}
+	return nil
 }
 
 func modeOctal(m os.FileMode) string {
