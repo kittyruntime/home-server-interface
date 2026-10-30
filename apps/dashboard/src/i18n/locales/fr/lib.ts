@@ -200,6 +200,9 @@ export default {
     fs_readText: 'Lire un fichier',
     fs_search: 'Chercher des fichiers',
     container_logs: 'Lire les journaux d’une app',
+    agentAction_request: 'Demande d’un assistant IA',
+    agentAction_approve: 'Approuver une demande IA',
+    agentAction_reject: 'Refuser une demande IA',
   },
   loading: {
     default: 'Chargement',

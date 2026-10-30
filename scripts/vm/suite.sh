@@ -502,7 +502,8 @@ mcp_call() {
 }
 
 # An AI assistant over MCP: an admin's token reads the storage and a file and
-# is audited; vmuser's token only sees what vmuser may; a revoked token and a
+# is audited; vmuser's token only sees what vmuser may; a token writes files,
+# and its deletions wait for approval in the dashboard; a revoked token and a
 # dashboard session are refused.
 mcp_feature() {
   local admin user tools
@@ -526,6 +527,30 @@ mcp_feature() {
   mcp_call "$user" list_files '{"path":"/srv/vm-mirror/from-smb"}' | grep -q 'hello.txt' || fail "vmuser's token cannot list its Place"
   mcp "$user" '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files","arguments":{"path":"/root"}}}' | grep -q '"isError":true' \
     || fail "vmuser's token listed a folder outside its Places"
+
+  # Changes: reversible ones run, a deletion waits for a person.
+  local writer req
+  # vmuser's: files are written as its Linux account, which the test admin lacks.
+  writer=$(API_TOKEN=/root/token-vmuser api apiToken.create '{"name":"vm writer","scopes":["files:read","files:write"],"expiresInDays":7}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["secret"])')
+  mcp_call "$writer" create_folder '{"parentPath":"/srv/vm-mirror","name":"from-ai"}' >/dev/null
+  mcp_call "$writer" write_text_file '{"path":"/srv/vm-mirror/from-ai/a.txt","content":"from the assistant"}' >/dev/null
+  mcp_call "$writer" write_text_file '{"path":"/srv/vm-mirror/from-ai/b.txt","content":"keep me"}' >/dev/null
+  [[ $(vm_ssh 'cat /srv/vm-mirror/from-ai/a.txt') == "from the assistant" ]] || fail "the file written over MCP is not on the host"
+  mcp "$writer" '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"write_text_file","arguments":{"path":"/srv/vm-mirror/from-ai/a.txt","content":"x"}}}' \
+    | grep -q '"isError":true' || fail "an existing file was replaced without asking"
+  req=$(mcp_call "$writer" delete_files '{"paths":["/srv/vm-mirror/from-ai/a.txt"],"reason":"vm test"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["requestId"])')
+  sleep 2
+  vm_ssh 'test -f /srv/vm-mirror/from-ai/a.txt' || fail "a deletion ran before it was approved"
+  API_TOKEN=/root/token-vmuser api_query agentAction.list | grep -q "\"$req\"" || fail "the deletion does not wait in the dashboard"
+  API_TOKEN=/root/token-vmuser api agentAction.approve "{\"id\":\"$req\"}" | grep -q '"status": "done"' || fail "approving the deletion failed"
+  vm_until 30 "the approved deletion did not remove the file" '! test -e /srv/vm-mirror/from-ai/a.txt'
+  mcp_call "$writer" check_request "{\"id\":\"$req\"}" | grep -q '"status":"done"' || fail "check_request does not report the approved deletion"
+  req=$(mcp_call "$writer" delete_files '{"paths":["/srv/vm-mirror/from-ai/b.txt"]}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["requestId"])')
+  API_TOKEN=/root/token-vmuser api agentAction.reject "{\"id\":\"$req\"}" >/dev/null
+  mcp_call "$writer" check_request "{\"id\":\"$req\"}" | grep -q '"status":"rejected"' || fail "check_request does not report the rejection"
+  vm_ssh 'test -f /srv/vm-mirror/from-ai/b.txt' || fail "a rejected deletion removed the file"
+  api_get audit.list '{"limit":50,"via":"mcp"}' | grep -q '"fs.delete"' || fail "the approved deletion is not in the audit log as the assistant's"
 
   # Only /mcp takes tokens, and /mcp only takes tokens.
   vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -H 'authorization: Bearer $admin' https://127.0.0.1:9001/trpc/user.list" | grep -qx 401 \

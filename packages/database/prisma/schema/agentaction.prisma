@@ -1,0 +1,29 @@
+// A change an AI assistant asked for over MCP (#138) that waits for its user's
+// approval in the dashboard: deletions, overwrites, and every storage, app,
+// account, share, permission or update plan. Approving runs exactly the
+// stored call, as that user; a plan that went stale since is refused.
+model AgentAction {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenId    String
+  // The tool that asked, and what it said the change is for.
+  tool       String
+  reason     String?
+  // The tRPC procedure run on approval and its input (JSON).
+  procedure  String
+  input      String
+  // What the dashboard shows: a title and the plan's steps (JSON).
+  title      String
+  preview    String
+  destructive Boolean  @default(false)
+  // pending, approved (running), done, failed, rejected or expired.
+  status     String    @default("pending")
+  result     String?
+  error      String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  decidedAt  DateTime?
+
+  @@index([userId, status])
+}

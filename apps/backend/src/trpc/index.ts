@@ -20,9 +20,11 @@ export const router = t.router
 export const publicProcedure = t.procedure
 
 // What an access token (#138) may never reach, whatever its scopes: making or
-// revoking tokens, the password, signing in and out, the first-run setup.
+// revoking tokens, approving its own requests, the password, signing in and
+// out, the first-run setup.
 export function closedToApiTokens(path: string): boolean {
-  return path.startsWith("apiToken.") || path.startsWith("auth.") || path.startsWith("setup.") || path === "user.changePassword"
+  return path.startsWith("apiToken.") || path.startsWith("agentAction.") || path.startsWith("auth.") ||
+    path.startsWith("setup.") || path === "user.changePassword"
 }
 
 const isAuthed = t.middleware(({ ctx, path, next }) => {
