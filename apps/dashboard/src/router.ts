@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from './views/LoginView.vue'
-import DashboardLayout from './views/DashboardLayout.vue'
 
 function parseJwt(token: string): Record<string, unknown> {
   try {
@@ -23,7 +22,7 @@ const router = createRouter({
     { path: '/s/:token', component: () => import('./views/SharePublicView.vue') },
     {
       path: '/',
-      component: DashboardLayout,
+      component: () => import('./views/DashboardLayout.vue'),
       beforeEnter: () => {
         const token = localStorage.getItem('token')
         if (!token) return '/login'

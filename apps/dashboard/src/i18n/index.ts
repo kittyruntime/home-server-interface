@@ -1,7 +1,6 @@
 import { computed } from 'vue'
 import { createI18n } from 'vue-i18n'
 import en from './locales/en'
-import fr from './locales/fr'
 
 // Interface languages (#39). English is the source and the fallback: a key
 // missing from another language shows in English. The language follows the
@@ -33,12 +32,24 @@ export const i18n = createI18n({
   legacy: false,
   locale: initialLocale(),
   fallbackLocale: 'en',
-  messages: { en, fr },
+  // Typed with every language, though only English is loaded up front.
+  messages: { en } as Partial<Record<Locale, typeof en>>,
 })
+
+// English ships in the main bundle; the other languages load on first use.
+const loaders: Record<Exclude<Locale, 'en'>, () => Promise<{ default: typeof en }>> = {
+  fr: () => import('./locales/fr'),
+}
+
+export async function loadLocale(code: Locale): Promise<void> {
+  if (code === 'en' || i18n.global.availableLocales.includes(code)) return
+  i18n.global.setLocaleMessage(code, (await loaders[code]()).default)
+}
 
 export const locale = computed(() => i18n.global.locale.value as Locale)
 
-export function setLocale(code: Locale) {
+export async function setLocale(code: Locale) {
+  await loadLocale(code)
   i18n.global.locale.value = code
   if (typeof document !== 'undefined') document.documentElement.lang = code
   try { localStorage.setItem(STORAGE_KEY, code) } catch { /* per-browser convenience only */ }

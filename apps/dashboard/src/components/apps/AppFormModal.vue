@@ -2,8 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ref, reactive, watch, computed, onMounted } from 'vue'
-import { parse as parseYaml } from 'yaml'
+import { ref, shallowRef, reactive, watch, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { pollJobResult } from '../../lib/jobs'
 import { applyPlanned, applyPlannedJob } from '../../lib/plan'
@@ -77,10 +76,16 @@ const composeRaw             = ref('')
 const composeError           = ref('')
 const composeSelectedService = ref('')
 
+// The YAML parser loads once something is pasted: it stays out of the Apps
+// bundle for everyone who never imports a compose file.
+const parseYaml = shallowRef<typeof import('yaml')['parse'] | null>(null)
+const loadYaml = async () => (parseYaml.value ??= (await import('yaml')).parse)
+watch(composeRaw, raw => { if (raw.trim()) void loadYaml() })
+
 const composeServices = computed<string[]>(() => {
-  if (!composeRaw.value.trim()) return []
+  if (!composeRaw.value.trim() || !parseYaml.value) return []
   try {
-    const doc = parseYaml(composeRaw.value) as any
+    const doc = parseYaml.value(composeRaw.value) as any
     return Object.keys(doc?.services ?? {})
   } catch { return [] }
 })
@@ -90,11 +95,12 @@ watch(composeServices, svcs => {
     composeSelectedService.value = svcs[0] ?? ''
 })
 
-function importCompose() {
+async function importCompose() {
   composeError.value = ''
   if (!composeRaw.value.trim()) { composeError.value = t('uis.apps.AppFormModal.pasteAComposeYmlFirst'); return }
+  const parse = await loadYaml()
   let doc: any
-  try { doc = parseYaml(composeRaw.value) } catch (e: any) { composeError.value = t('uis.apps.AppFormModal.yamlParseError', { p0: e.message }); return }
+  try { doc = parse(composeRaw.value) } catch (e: any) { composeError.value = t('uis.apps.AppFormModal.yamlParseError', { p0: e.message }); return }
   const services = doc?.services
   if (!services || typeof services !== 'object') { composeError.value = t('uis.apps.AppFormModal.noServicesFound'); return }
   const svc = services[composeSelectedService.value]

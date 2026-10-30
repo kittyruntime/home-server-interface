@@ -250,7 +250,7 @@ onMounted(async () => {
             type="single" variant="outline" size="sm"
             :model-value="locale"
             :aria-label="t('profile.language')"
-            @update:model-value="v => { if (isLocale(v)) setLocale(v) }"
+            @update:model-value="v => { if (isLocale(v)) void setLocale(v) }"
           >
             <ToggleGroupItem v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code" class="px-3 text-xs">{{ l.label }}</ToggleGroupItem>
           </ToggleGroup>
