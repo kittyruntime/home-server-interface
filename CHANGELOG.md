@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI assistants manage Places**: an administrator's assistant, built-in or
+  over MCP, can create a Place (with its folder if needed), rename it or remove
+  it, each time once approved. A Place never overlaps another, and removing one
+  keeps its folder and files.
+
 ### Changed
 - **The assistant keeps working when you leave**: its turns run on the
   server. Leaving the chat or closing the page no longer stops it, coming back
@@ -15,15 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   end a turn early.
 
 ### Fixed
+- **Confirmations answered "no" even when confirmed**: deleting an assistant
+  conversation, revoking an access token, deleting a notification connector or
+  rule, and every other step that asks "are you sure?" did nothing after the
+  confirm button. The dialog closed itself before the choice was recorded.
+- **A new Place's folder belonged to root**: a Place created in Settings, for
+  an app or from the App Store kept its folder owned by root:root until someone
+  was given write access to it, so nobody could write in it. Its folder now
+  joins the share group at once (setgid, group-writable), like every other
+  Place. A Place made with a volume keeps the access chosen for the volume.
 - **Power cut while restoring a configuration, again**: the storage
   descriptions, app definitions, maintenance settings, backup and HTTPS
   settings are now replaced in one step, and the copy kept before the restore
   no longer takes the file away first. A cut at the wrong moment could leave a
   storage description unreadable, or no HTTPS settings at all.
-- **Confirmations answered "no" even when confirmed**: deleting an assistant
-  conversation, revoking an access token, deleting a notification connector or
-  rule, and every other step that asks "are you sure?" did nothing after the
-  confirm button. The dialog closed itself before the choice was recorded.
 
 ## [1.76.0] - 2026-10-30
 

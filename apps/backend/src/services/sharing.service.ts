@@ -206,6 +206,19 @@ async function syncPlaceAccessNow(prisma: PrismaClient): Promise<void> {
   await requestSync("root.sharing.placeAccess", { places: defs })
 }
 
+/**
+ * Gives a new Place's folder to the share group (setgid, group-writable),
+ * as the access layer does for Places with writers: without it, a folder
+ * HSI made stays root's and nobody can write in it. Never fails the creation.
+ */
+export async function preparePlaceDir(path: string): Promise<void> {
+  try {
+    await requestSync("root.sharing.preparePlace", { path })
+  } catch (err) {
+    log.warn({ err, path }, "sharing: could not prepare the Place's folder (non-fatal)")
+  }
+}
+
 /** For hooks riding on unrelated mutations (permission edits, role
  *  assignments…): sharing must never break those flows. Covers both the Samba
  *  config and the filesystem access layer. */

@@ -274,6 +274,7 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
     } }),
     serialize: withShareLock,
     resync: () => syncSharesBestEffort(ctx.prisma),
+    // The volume's access choice (shared, user or keep) already set its root.
     createPlace: () => ctx.prisma.place.create({ data: { name: placeName, path: mp }, select: { id: true } }),
     createShare: (placeId: string) => ctx.prisma.share.create({ data: { placeId, smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false } }),
   }
