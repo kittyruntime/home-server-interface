@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Power cut while restoring a configuration, again**: the storage
+  descriptions, app definitions, maintenance settings, backup and HTTPS
+  settings are now replaced in one step, and the copy kept before the restore
+  no longer takes the file away first. A cut at the wrong moment could leave a
+  storage description unreadable, or no HTTPS settings at all.
+
 ## [1.76.0] - 2026-10-30
 
 ### Added
