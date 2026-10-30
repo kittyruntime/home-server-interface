@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Old direct storage, app, user and sharing endpoints**: the API entry
+  points the dashboard stopped using when changes moved to preview and confirm
+  are gone, so formatting a disk, creating an array or an account always goes
+  through a preview first.
+
 ## [1.77.0] - 2026-10-30
 
 ### Added

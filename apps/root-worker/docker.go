@@ -74,11 +74,6 @@ func runCompose(name string, args ...string) error {
 	return err
 }
 
-type networkEntry struct {
-	Name   string `json:"name"`
-	Driver string `json:"driver"`
-}
-
 // handleDockerComposeValidate handles root.container.composeValidate (request-reply):
 // docker compose -f <path> config -q. A nonzero exit means the file is invalid;
 // the combined output is surfaced as the error message.
@@ -95,38 +90,6 @@ func handleDockerComposeValidate(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
-}
-
-func parseNetworksList(out string) []networkEntry {
-	var out2 []networkEntry
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if line == "" {
-			continue
-		}
-		var raw struct {
-			Name   string `json:"Name"`
-			Driver string `json:"Driver"`
-		}
-		if json.Unmarshal([]byte(line), &raw) != nil || raw.Name == "" {
-			continue
-		}
-		out2 = append(out2, networkEntry{Name: raw.Name, Driver: raw.Driver})
-	}
-	return out2
-}
-
-// handleDockerNetworksList handles root.container.networksList (request-reply).
-func handleDockerNetworksList(nc *nats.Conn, msg *nats.Msg) {
-	out, err := runDocker("network", "ls", "--format", "{{json .}}")
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-	list := parseNetworksList(out)
-	if list == nil {
-		list = []networkEntry{}
-	}
-	replyOk(nc, msg.Reply, list)
 }
 
 // ── Docker CLI runner ─────────────────────────────────────────────────────────
@@ -149,36 +112,6 @@ func runDocker(args ...string) (string, error) {
 }
 
 // ── Inspect / ListAll (sync request-reply) ────────────────────────────────────
-
-// handleDockerInspect handles root.container.inspect (request-reply).
-// Returns {"status":"running","running":true,"exitCode":0} or similar.
-func handleDockerInspect(nc *nats.Conn, msg *nats.Msg) {
-	var req struct {
-		ContainerName string `json:"containerName"`
-	}
-	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
-		return
-	}
-	if req.ContainerName == "" {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "containerName required"})
-		return
-	}
-
-	const tpl = `{"status":"{{.State.Status}}","running":{{.State.Running}},"exitCode":{{.State.ExitCode}}}`
-	out, err := runDocker("inspect", "--format", tpl, req.ContainerName)
-	if err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
-		return
-	}
-
-	var state map[string]interface{}
-	if err := json.Unmarshal([]byte(out), &state); err != nil {
-		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "parse inspect: " + err.Error()})
-		return
-	}
-	replyOk(nc, msg.Reply, state)
-}
 
 // handleDockerListAll handles root.container.listAll (request-reply).
 // Returns all Docker containers with name, image, status, ports, labels, volumes, networkNames.

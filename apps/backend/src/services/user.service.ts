@@ -50,23 +50,6 @@ export async function createUserRecord(
   })
 }
 
-export async function createUser(
-  prisma: PrismaClient,
-  input: { username: string; password: string; displayName?: string },
-) {
-  await assertCreatable(prisma, input.username)
-  const user = await createUserRecord(prisma, input)
-
-  // Provisions the backing Linux/Samba account (idempotent) and sets its
-  // password. syncSystemPassword is self-contained best-effort, so a worker
-  // hiccup here never fails user creation.
-  if (reLinuxUsername.test(input.username)) {
-    await syncSystemPassword(prisma, user.id, input.password)
-  }
-
-  return user
-}
-
 /** Whether password is the user's current one (bcrypt). */
 /** False for a wrong password, and for a user deleted while their session lives on. */
 export async function verifyPassword(prisma: PrismaClient, userId: string, password: string): Promise<boolean> {

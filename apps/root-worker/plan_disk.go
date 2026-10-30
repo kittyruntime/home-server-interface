@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	nats "github.com/nats-io/nats.go"
 )
 
 // ── Plan builders: format, partitions, LVM (#36) ─────────────────────────────
@@ -359,35 +357,4 @@ func planVgRemove(raw json.RawMessage) (*opPlan, *fsError) {
 	s := cmdStep(req.VGName, summary, []string{"vgremove", "-f", req.VGName})
 	s.Destructive = true
 	return &opPlan{Op: "vg.remove", Steps: []planStep{s}, Observed: map[string]string{"lvs": strings.Join(names, ",")}}, nil
-}
-
-// servePlanOp runs an operation through its plan without a preview: the old
-// root.sys.* subjects, kept for callers that do not use plans.
-func servePlanOp(nc *nats.Conn, msg *nats.Msg, build func(json.RawMessage) (*opPlan, *fsError)) {
-	p, fe := build(msg.Data)
-	if fe != nil {
-		replyErr(nc, msg.Reply, fe)
-		return
-	}
-	results, ok, warnings := p.execute()
-	if !ok {
-		for i, r := range results {
-			if r.Status == "failed" {
-				code := "ERR"
-				if p.Steps[i].failCode != "" {
-					code = p.Steps[i].failCode
-				}
-				replyErr(nc, msg.Reply, &fsError{Code: code, Message: r.Error})
-				return
-			}
-		}
-	}
-	out := map[string]any{"ok": true}
-	if len(warnings) > 0 {
-		out["warnings"] = warnings
-	}
-	for k, v := range p.Reply {
-		out[k] = v
-	}
-	replyOk(nc, msg.Reply, out)
 }

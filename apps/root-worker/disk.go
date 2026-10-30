@@ -292,17 +292,6 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	})
 }
 
-// handleDiskFormat formats a block device with the requested filesystem.
-// Safety: refuses to format system devices or mounted devices.
-func handleDiskFormat(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planFormat) }
-
-// handleDiskMount mounts a device at the given mount point, optionally
-// persisting the entry in /etc/fstab via UUID.
-func handleDiskMount(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planMount) }
-
-// handleDiskUmount unmounts a mount point, optionally removing its fstab entry.
-func handleDiskUmount(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planUmount) }
-
 // mountSources returns the fstab source forms of the device mounted on
 // mountPoint: its /dev path and UUID=… when it has one.
 func mountSources(mountPoint string) []string {
@@ -325,13 +314,6 @@ func mountSources(mountPoint string) []string {
 	}
 	return nil
 }
-
-// handleRaidCreate creates a Linux software RAID array using mdadm.
-func handleRaidCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planRaidCreate) }
-
-// handleRaidStop stops a RAID array and zeroes the superblocks on its members
-// so the disks can be reused individually.
-func handleRaidStop(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planRaidStop) }
 
 // ── LVM ───────────────────────────────────────────────────────────────────────
 
@@ -556,12 +538,6 @@ func handleLvmInfo(nc *nats.Conn, msg *nats.Msg) {
 
 var reVGName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
 
-func handlePvCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPvCreate) }
-
-func handleVgCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgCreate) }
-
-func handleLvCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planLvCreate) }
-
 // lvDmPath returns the /dev/mapper path the kernel actually reports in
 // /proc/mounts for an LV: mount(2) canonicalizes through devicemapper, so
 // /dev/<vg>/<lv> (what lvcreate/lvs report) never appears there; only
@@ -572,21 +548,9 @@ func lvDmPath(vgName, lvName string) string {
 	return "/dev/mapper/" + esc(vgName) + "-" + esc(lvName)
 }
 
-func handleLvRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planLvRemove) }
-
-func handleVgRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planVgRemove) }
-
 // ── Partition management ──────────────────────────────────────────────────────
 
 var rePartNum = regexp.MustCompile(`^[1-9][0-9]?$`) // 1–99
-
-// handlePartitionInit creates a fresh GPT partition table; destroys all data.
-func handlePartitionInit(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartInit) }
-
-// handlePartitionCreate adds a new partition using percentage-based placement.
-// startPct and endPct define the position within the disk (0–100).
-// endPct=0 means "extend to end of disk".
-func handlePartitionCreate(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartCreate) }
 
 // ── S.M.A.R.T. ───────────────────────────────────────────────────────────────
 
@@ -846,6 +810,3 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 
 	replyOk(nc, msg.Reply, result)
 }
-
-// handlePartitionDelete removes a partition by its number.
-func handlePartitionDelete(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planPartDelete) }
