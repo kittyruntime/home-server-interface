@@ -11,7 +11,8 @@
 #           the API and keep it, then apply a wrong address without keeping it
 #           and check NetworkManager restores the network by itself
 #   recovery grow a mirrored volume into its free space, replace a failed disk
-#           and wait for the rebuild, then boot without the volume's disks
+#           and wait for the rebuild, grow it onto larger disks (#7), then boot
+#           without the volume's disks
 #           (held, nothing written to the boot disk) and with them again
 #   features each feature checked on the host (#38): an account (Linux and
 #           Samba), the file manager as that account on a volume, SMB from a
@@ -378,6 +379,28 @@ replace_disk() {
   vm_ssh "mdadm --detail /dev/$md | grep -q '/dev/$new' && ! mdadm --detail /dev/$md | grep -q '/dev/$old\$'" \
     || fail "$md does not have $new in place of $old"
   log "$md rebuilt onto $new"
+}
+
+# grow_mirror_disks: the mirror's disks are replaced by larger ones (the VM
+# off, its virtual disks grown from 4G to 8G), then the mirror is grown to
+# their size through the API; HSI grows LVM and the filesystem once the new
+# space is synchronised (#7).
+grow_mirror_disks() {
+  local uuid before after i
+  uuid=$(vm_ssh 'findmnt -no UUID /srv/vm-mirror')
+  before=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
+  vm_poweroff
+  log "Replacing the mirror's disks by larger ones (4G to 8G)"
+  for ((i = 1; i <= VM_DATA_DISKS; i++)); do qemu-img resize -q "$VM_DIR/data$i.qcow2" 8G; done
+  vm_start
+  expect_running "$version"; expect_mirror
+  wait_clean
+  log "Growing the mirror to the size of its disks"
+  apply_plan volume.expand "{\"uuid\":\"$uuid\",\"mode\":\"mirrorGrow\"}" >/dev/null
+  vm_until 900 "the volume did not grow once its larger disks were synchronised" \
+    "test \$(findmnt -bno SIZE /srv/vm-mirror) -gt $((before * 3 / 2))"
+  after=$(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror')
+  log "Grown from $before to $after bytes on the larger disks"
 }
 
 # Booted without the mirror's disks: HSI runs, holds the volume, and nothing
@@ -901,6 +924,11 @@ case "$scenario" in
     expect_mirror; expect_mirror_data
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data
+    grow_mirror_disks
+    expect_mirror; expect_mirror_data
+    vm_reboot
+    expect_running "$version"; expect_mirror; expect_mirror_data
+    (( $(vm_ssh 'findmnt -bno SIZE /srv/vm-mirror') > 6 * 1024 * 1024 * 1024 )) || fail "the grown volume lost its size after a reboot"
     # Disk 4 alone: the mirror's disks are unplugged.
     vm_poweroff
     vm_start 4
