@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Confirmations answered "no" even when confirmed**: deleting an assistant
+  conversation, revoking an access token, deleting a notification connector or
+  rule, and every other step that asks "are you sure?" did nothing after the
+  confirm button. The dialog closed itself before the choice was recorded.
+
 ## [1.76.0] - 2026-10-30
 
 ### Added
