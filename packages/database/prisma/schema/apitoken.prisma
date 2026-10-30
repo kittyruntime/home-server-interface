@@ -1,0 +1,20 @@
+// A personal access token (#138): an AI assistant (an MCP client) acts as its
+// user with it, limited by its scopes. Only the SHA-256 of the secret is kept;
+// the secret is shown once, when the token is created.
+model ApiToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  // The start of the secret, shown in the list to tell tokens apart.
+  prefix     String
+  // JSON array of scopes, e.g. ["files:read","apps:read"].
+  scopes     String
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}

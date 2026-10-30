@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI assistants over MCP**: HSI is now an MCP server (`/mcp`), so Claude or
+  another MCP client can browse files and check apps, storage, accounts,
+  backups and the audit log in plain language, as the account that made its
+  access token. Tokens are made in Settings > AI access, read-only by default,
+  limited by scope and expiry, shown once and revoked at once; they never go
+  beyond the account's rights and work nowhere else than `/mcp`. What an
+  assistant does or reads is in the audit log, which can show only the AI
+  assistants' actions. See "Connect an AI assistant" in the documentation
+  (#138).
+
 ## [1.74.0] - 2026-10-29
 
 ### Added

@@ -16,6 +16,7 @@ import { backupRoutes } from "./routes/backup"
 import { tlsRoutes } from "./routes/tls"
 import { appRouter } from "./trpc/routers/index"
 import { createContext } from "./trpc/context"
+import { mcpRoutes } from "./mcp/route"
 import { loggerOptions, setLogger } from "./utils/log"
 export { connectNats, startEventSubscriber } from "./nats"
 
@@ -112,6 +113,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
     app.register(containerRoutes)
     app.register(backupRoutes)
     app.register(tlsRoutes)
+    app.register(mcpRoutes)
 
     app.register(fastifyTRPCPlugin, {
         prefix: "/trpc",
