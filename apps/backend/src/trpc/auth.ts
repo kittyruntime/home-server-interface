@@ -126,10 +126,15 @@ export function verifyShareToken(token: string): ShareTokenPayload {
 // Holds JTIs of logged-out tokens until they expire.
 // Lost on restart, acceptable since restarts already invalidate all jobs.
 
-const blacklist = new Set<string>()
+// Session tokens live at most 7 days (signToken): an entry older than that
+// guards a token that would be rejected as expired anyway.
+const BLACKLIST_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const blacklist = new Map<string, number>()
 
 export function blacklistToken(jti: string): void {
-  blacklist.add(jti)
+  const now = Date.now()
+  for (const [id, until] of blacklist) if (until <= now) blacklist.delete(id)
+  blacklist.set(jti, now + BLACKLIST_TTL_MS)
 }
 
 export function isTokenBlacklisted(jti: string): boolean {
