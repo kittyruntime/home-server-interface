@@ -945,7 +945,8 @@ case "$scenario" in
     vmuser_id=$(vm_ssh "python3 -c 'import sqlite3; print(sqlite3.connect(\"file:$DB?mode=ro\",uri=True).execute(\"select id from User where username=\\\"vmuser\\\"\").fetchone()[0])'")
     sign_token "$vmuser_id" false /root/token-vmuser
     API_TOKEN=/root/token-vmuser api user.changePassword '{"currentPassword":"vm-user-password","newPassword":"vm-user-password-2"}' >/dev/null
-    vm_ssh 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"' || fail "vmuser has no Samba account after setting a new password"
+    # The Samba account is updated in the background, after the reply.
+    vm_until 30 "vmuser has no Samba account after setting a new password" 'pdbedit -L 2>/dev/null | grep -q "^vmuser:"'
     # It has no access to the mirror's Place here: signing in to Samba is
     # what the new password must allow.
     vm_ssh "smbclient -L //127.0.0.1 -U 'vmuser%vm-user-password-2'" > "$VM_DIR/smb-signin.log" 2>&1 \
