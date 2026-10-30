@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.77.1] - 2026-10-30
+
+### Security
+- **File operations run as the right user only**: a file action done on
+  behalf of a user no longer changes the identity of other operations running
+  at the same time, such as a storage change running as root.
+- **Signing out revokes the session**: the token is invalidated on the server
+  and the page fully reloads, so the next person on the same browser no longer
+  sees the previous session's notifications, alerts or uploads.
 ### Removed
 - **Old direct storage, app, user and sharing endpoints**: the API entry
   points the dashboard stopped using when changes moved to preview and confirm
@@ -1726,7 +1735,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...HEAD
+[1.77.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...v1.77.1
 [1.77.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...v1.77.0
 [1.76.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...v1.76.0
 [1.75.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...v1.75.0

@@ -206,9 +206,13 @@ function goToProfile() {
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
+  // Revoke the token server side; a failure must not keep the user signed in.
+  await trpc.auth.logout.mutate().catch(() => {})
   logout()
-  router.push('/login')
+  // Full navigation, not a router push: discards every in-memory store
+  // (notifications, alerts, uploads) and poller tied to this session.
+  window.location.assign('/login')
 }
 
 let updateTimer: ReturnType<typeof setInterval>
