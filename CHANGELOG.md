@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.77.0] - 2026-10-30
+
 ### Added
 - **AI assistants manage Places**: an administrator's assistant, built-in or
   over MCP, can create a Place (with its folder if needed), rename it or remove
@@ -1718,7 +1720,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...HEAD
+[1.77.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...v1.77.0
 [1.76.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...v1.76.0
 [1.75.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...v1.75.0
 [1.74.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.73.0...v1.74.0
