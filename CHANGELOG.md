@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The assistant keeps working when you leave**: its turns run on the
+  server. Leaving the chat or closing the page no longer stops it, coming back
+  follows it where it is, and it goes on by itself once a request is approved
+  or rejected, in the chat or in the requests panel. Stop is the only way to
+  end a turn early.
+
 ### Fixed
 - **Power cut while restoring a configuration, again**: the storage
   descriptions, app definitions, maintenance settings, backup and HTTPS
   settings are now replaced in one step, and the copy kept before the restore
   no longer takes the file away first. A cut at the wrong moment could leave a
   storage description unreadable, or no HTTPS settings at all.
+- **Confirmations answered "no" even when confirmed**: deleting an assistant
+  conversation, revoking an access token, deleting a notification connector or
+  rule, and every other step that asks "are you sure?" did nothing after the
+  confirm button. The dialog closed itself before the choice was recorded.
 
 ## [1.76.0] - 2026-10-30
 
