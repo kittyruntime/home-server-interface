@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.78.0] - 2026-10-30
+
 ### Changed
 - **Faster first load**: the sign-in page no longer downloads the whole
   dashboard, and the French translation, the upload hasher and the compose
@@ -1748,7 +1750,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.0...HEAD
+[1.78.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...v1.78.0
 [1.77.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...v1.77.1
 [1.77.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...v1.77.0
 [1.76.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...v1.76.0
