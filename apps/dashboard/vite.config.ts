@@ -22,6 +22,7 @@ export default defineConfig({
       '/s/': 'http://localhost:9001',
       '/containers': 'http://localhost:9001',
       '/system': 'http://localhost:9001',
+      '/assistant': 'http://localhost:9001',
     },
   },
 })

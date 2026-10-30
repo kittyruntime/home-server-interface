@@ -3157,4 +3157,149 @@ await testTelemetryChannelOptOutAndPayload()
   assert.ok(unknown.error || unknown.result?.isError, "a tool that is not offered cannot be called")
   await mcp.close()
 }
+
+// The built-in assistant: a chat in the dashboard, with the MCP tools, as the
+// signed-in account. Its provider speaks the OpenAI-compatible API.
+{
+  const prov = await import("../services/assistant-provider")
+  const chat = await import("../assistant/chat")
+  const { ALL_TOOLS } = await import("../mcp/context")
+  const settings = await import("../services/assistant-settings")
+  const { closedToApiTokens, router, protectedProcedure } = await import("../trpc/index")
+
+  // The stream: text in pieces, a tool call whose arguments come in parts,
+  // a comment line (OpenRouter's keep-alive) and [DONE].
+  const lines = [
+    ": OPENROUTER PROCESSING",
+    'data: {"choices":[{"delta":{"content":"Let me "}}]}',
+    'data: {"choices":[{"delta":{"content":"check."}}]}',
+    'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"list_files","arguments":"{\\"path\\":"}}]}}]}',
+    'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\\"/srv/a\\"}"}}]},"finish_reason":"tool_calls"}]}',
+    "data: [DONE]",
+  ]
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      const text = new TextEncoder().encode(lines.join("\n") + "\n")
+      // Cut mid-line, as a network would.
+      c.enqueue(text.subarray(0, 50)); c.enqueue(text.subarray(50)); c.close()
+    },
+  })
+  const deltas: string[] = []
+  const reply = await prov.collectStream(prov.sseData(body), d => deltas.push(d))
+  assert.equal(reply.content, "Let me check.")
+  assert.deepEqual(deltas, ["Let me ", "check."], "text is passed on as it comes")
+  assert.deepEqual(reply.toolCalls, [{ id: "call_1", name: "list_files", arguments: '{"path":"/srv/a"}' }], "a tool call is put back together")
+  assert.equal(reply.finishReason, "tool_calls")
+  await assert.rejects(() => prov.collectStream((async function* () { yield '{"error":{"message":"rate limited"}}' })(), () => {}), /rate limited/,
+    "an error in the stream stops the turn")
+
+  // Every tool the chat offers has a JSON Schema the model can read.
+  const admin = chat.chatUser({ userId: "u1", jti: "j", isAdmin: true, isUserManager: true, mustChangePassword: false, capabilities: [] })
+  const { defs, schemas } = chat.chatTools(ALL_TOOLS, admin)
+  assert.equal(defs.size, ALL_TOOLS.length, "an admin gets every tool")
+  assert.ok(schemas.every(t => (t.function.parameters as { type?: string }).type === "object"), "each tool takes an object")
+  const plain = chat.chatTools(ALL_TOOLS, chat.chatUser({ userId: "u2", jti: "j", isAdmin: false, isUserManager: false, mustChangePassword: false, capabilities: [] }))
+  assert.ok(plain.defs.has("read_text_file") && !plain.defs.has("list_apps") && !plain.defs.has("preview_storage_change"),
+    "a user only gets the tools of their own rights")
+  for (const p of ["assistant.saveSettings", "assistant.settings", "agentAction.approve", "apiToken.create"]) {
+    assert.ok(closedToApiTokens(p), `${p} is closed to assistants`)
+  }
+  const r = router({ assistant: router({ saveSettings: protectedProcedure.mutation(() => "saved") }), fs: router({ list: protectedProcedure.query(() => "files") }) })
+  const ctx = (via: string) => ({
+    user: { userId: "u1", isAdmin: true }, via, apiToken: null, audit: {},
+    prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} },
+  }) as any
+  await assert.rejects(() => r.createCaller(ctx("assistant")).assistant.saveSettings(), (e: any) => e.code === "FORBIDDEN",
+    "the chat's tools can never change the assistant's settings")
+  assert.equal(await r.createCaller(ctx("assistant")).fs.list(), "files")
+  assert.equal(await r.createCaller(ctx("dashboard")).assistant.saveSettings(), "saved")
+
+  // Arguments are checked before a tool runs; a queued change is flagged.
+  const ran: unknown[] = []
+  const run = async (_d: unknown, args: unknown) => { ran.push(args); return { requestId: "a1", status: "pending" } }
+  const err = (e: unknown) => ({ error: String(e) })
+  assert.match((await chat.runToolCall({ id: "1", name: "nope", arguments: "{}" }, defs, run, err)).content, /Unknown tool/)
+  assert.match((await chat.runToolCall({ id: "1", name: "list_files", arguments: "{not json" }, defs, run, err)).content, /not valid JSON/)
+  assert.match((await chat.runToolCall({ id: "1", name: "list_files", arguments: '{"path":3}' }, defs, run, err)).content, /Invalid arguments/)
+  assert.equal(ran.length, 0, "no tool runs with bad arguments")
+  const ok = await chat.runToolCall({ id: "1", name: "list_files", arguments: '{"path":"/srv/a"}' }, defs, run, err)
+  assert.deepEqual(ok, { ok: true, content: '{"requestId":"a1","status":"pending"}', approvalId: "a1" })
+  const failed = await chat.runToolCall({ id: "1", name: "list_files", arguments: '{"path":"/srv/a"}' }, defs, async () => { throw new Error("EACCES") }, err)
+  assert.equal(failed.ok, false)
+
+  // A turn: the model calls a tool, reads its result, then answers.
+  const replies = [
+    { content: "", toolCalls: [{ id: "c1", name: "list_files", arguments: '{"path":"/srv/a"}' }], finishReason: "tool_calls" },
+    { content: "There are 2 files.", toolCalls: [], finishReason: "stop" },
+  ]
+  const seen: number[] = []
+  const saved: Array<{ role: string; content: string }> = []
+  const events: Array<{ type: string }> = []
+  await chat.runTurn("sys", [{ role: "user", content: "what is in /srv/a?" }], {
+    stream: async (messages, onText) => { seen.push(messages.length); const r = replies.shift()!; if (r.content) onText(r.content); return r },
+    runTool: async () => ({ ok: true, content: "x".repeat(chat.MAX_TOOL_CHARS + 10) }),
+    save: async m => { saved.push(m) },
+    emit: e => { events.push(e) },
+    aborted: () => false,
+  })
+  assert.deepEqual(seen, [2, 4], "the model sees the tool's result before answering")
+  assert.deepEqual(saved.map(m => m.role), ["assistant", "tool", "assistant"])
+  assert.ok(saved[1]!.content.length < chat.MAX_TOOL_CHARS + 200 && saved[1]!.content.includes("[cut:"), "a large result is cut")
+  assert.deepEqual(events.map(e => e.type), ["tool", "toolResult", "text"])
+  // A model that never stops calling tools is stopped.
+  const loop: Array<{ type: string }> = []
+  let calls = 0
+  await chat.runTurn("sys", [], {
+    stream: async () => { calls++; return { content: "", toolCalls: [{ id: `c${calls}`, name: "list_places", arguments: "{}" }], finishReason: "tool_calls" } },
+    runTool: async () => ({ ok: true, content: "[]" }), save: async () => {}, emit: e => { loop.push(e) }, aborted: () => false,
+  })
+  assert.equal(calls, chat.MAX_ROUNDS)
+  assert.equal(loop.at(-1)!.type, "error")
+
+  // The history the model reads starts with the user, without dangling calls.
+  const history = chat.historyForModel([
+    { role: "tool", content: "orphan", toolCalls: null, toolCallId: "c0" },
+    { role: "user", content: "hi", toolCalls: null, toolCallId: null },
+    { role: "assistant", content: "", toolCalls: JSON.stringify([{ id: "c1", name: "x", arguments: "{}" }, { id: "c2", name: "y", arguments: "{}" }]), toolCallId: null },
+    { role: "tool", content: "r1", toolCalls: null, toolCallId: "c1" },
+    { role: "event", content: "The user approved it.", toolCalls: null, toolCallId: null },
+  ])
+  assert.equal(history[0]!.role, "user", "a cut-off tool result is not sent")
+  assert.deepEqual((history[1] as any).tool_calls.map((c: any) => c.id), ["c1"], "a call that has no result is not sent")
+  assert.deepEqual(history[3], { role: "user", content: "[HSI] The user approved it." }, "a decision reaches the model as a note")
+  const raced = chat.historyForModel([
+    { role: "user", content: "delete x", toolCalls: null, toolCallId: null },
+    { role: "assistant", content: "", toolCalls: JSON.stringify([{ id: "c1", name: "delete_files", arguments: "{}" }]), toolCallId: null },
+    { role: "event", content: "The user approved it.", toolCalls: null, toolCallId: null },
+    { role: "tool", content: "pending", toolCalls: null, toolCallId: "c1" },
+  ])
+  assert.deepEqual(raced.map(m => m.role), ["user", "assistant", "tool", "user"], "a decision noted before the call's result comes after it")
+
+  const { decisionNote } = await import("../services/agent-actions")
+  assert.match(decisionNote({ title: "Delete 1 file", status: "done", error: null, result: '{"jobId":"j"}' }), /approved .* ran successfully/)
+  assert.match(decisionNote({ title: "Delete 1 file", status: "rejected", error: null, result: null }), /rejected/)
+  assert.match(decisionNote({ title: "x", status: "failed", error: "disk full", result: null }), /failed: disk full/)
+  assert.equal(chat.titleOf("  Clean   up\nmy downloads "), "Clean up my downloads")
+  assert.ok(chat.titleOf("x".repeat(100)).length <= 60)
+
+  // Who may use it: a model is set, and a key when the provider needs one.
+  const base = { enabled: true, provider: "openrouter" as const, baseUrl: "https://openrouter.ai/api/v1", apiKey: "k", model: "m", access: "admins" as const }
+  assert.ok(settings.assistantAllowed(base, { isAdmin: true }))
+  assert.ok(!settings.assistantAllowed(base, { isAdmin: false }), "admins only by default")
+  assert.ok(settings.assistantAllowed({ ...base, access: "everyone" }, { isAdmin: false }))
+  assert.ok(!settings.assistantReady({ ...base, apiKey: null }), "OpenRouter needs a key")
+  assert.ok(settings.assistantReady({ ...base, provider: "ollama", apiKey: null }), "a local model does not")
+  assert.ok(!settings.assistantReady({ ...base, enabled: false }))
+
+  const Fastify = (await import("fastify")).default
+  const rateLimit = (await import("@fastify/rate-limit")).default
+  const { assistantRoutes } = await import("../assistant/route")
+  const app = Fastify()
+  await app.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
+  await app.register(assistantRoutes)
+  assert.equal((await app.inject({ method: "POST", url: "/assistant/chat", payload: { message: "hi" } })).statusCode, 401, "no session, no chat")
+  assert.equal((await app.inject({ method: "POST", url: "/assistant/chat", payload: { message: "hi" }, headers: { authorization: "Bearer hsi_pat_x" } })).statusCode, 401,
+    "an access token cannot chat")
+  await app.close()
+}
 console.log("Backend security tests passed")

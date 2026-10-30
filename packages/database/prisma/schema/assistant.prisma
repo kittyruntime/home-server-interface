@@ -1,0 +1,47 @@
+// The built-in AI assistant: a chat in the dashboard that uses the same tools
+// as the MCP endpoint (#138), as the signed-in account. The model is reached
+// over the OpenAI-compatible Chat Completions API (OpenRouter, OpenAI, a local
+// Ollama...). A single row (id 1), set by an administrator.
+model AssistantSettings {
+  id        Int      @id @default(1)
+  enabled   Boolean  @default(false)
+  provider  String   @default("openrouter")
+  baseUrl   String   @default("https://openrouter.ai/api/v1")
+  // Encrypted with HSI_SECRETS_KEY; never sent back to the dashboard.
+  apiKey    String?
+  model     String   @default("")
+  // Who may use it: "admins" or "everyone".
+  access    String   @default("admins")
+  updatedAt DateTime @updatedAt
+}
+
+model AssistantConversation {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String             @default("")
+  messages  AssistantMessage[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+// One message of a conversation, in the order the model saw them. role is
+// user, assistant, tool (a tool's result) or event (an approval decided in
+// the dashboard, shown to the model as a note from the user).
+model AssistantMessage {
+  id             String                @id @default(uuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String                @default("")
+  // assistant: the tool calls it made (JSON [{id, name, arguments}]).
+  toolCalls      String?
+  // tool: which call it answers, and the tool's name.
+  toolCallId     String?
+  toolName       String?
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+}

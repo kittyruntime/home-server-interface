@@ -86,3 +86,11 @@ export function outcome(result: unknown): { ok: boolean; error?: string } {
   }
   return { ok: true }
 }
+
+/** The note the built-in assistant gets once the user decided on its request. */
+export function decisionNote(a: { title: string; status: string; error: string | null; result: string | null }): string {
+  const verdict = a.status === "rejected" ? "rejected" : "approved"
+  const outcome = a.status === "done" ? " It ran successfully." : a.status === "failed" ? ` It failed: ${a.error ?? "unknown error"}.` : ""
+  const result = a.status === "done" && a.result ? ` Result: ${a.result.slice(0, 4000)}` : ""
+  return `The user ${verdict} the request "${a.title}".${outcome}${result}`
+}
