@@ -16,6 +16,7 @@ import { formatDay } from '../lib/format-date'
 import LoadingState from './ui/LoadingState.vue'
 import ErrorState from './ui/ErrorState.vue'
 import AssistantSettingsCard from './assistant/AssistantSettingsCard.vue'
+import ClosedPlacesCard from './assistant/ClosedPlacesCard.vue'
 
 // Access tokens for AI assistants (#138): an MCP client acts as this account
 // with one, limited to the scopes picked here. The secret is shown once.
@@ -132,6 +133,12 @@ onMounted(load)
     <div v-if="isAdmin" class="max-w-xl mb-8">
       <p class="eyebrow mb-2">{{ t('assistant.settings.section') }}</p>
       <AssistantSettingsCard />
+    </div>
+
+    <!-- What no assistant may open, built-in or over MCP (admins) -->
+    <div v-if="isAdmin" class="max-w-xl mb-8">
+      <p class="eyebrow mb-2">{{ t('assistant.closed.section') }}</p>
+      <ClosedPlacesCard />
     </div>
 
     <p v-if="isAdmin" class="eyebrow mb-2">{{ t('aiAccess.mcpSection') }}</p>

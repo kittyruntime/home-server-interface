@@ -204,6 +204,10 @@ export default {
     agentAction_request: 'Demande d’un assistant IA',
     agentAction_approve: 'Approuver une demande IA',
     agentAction_reject: 'Refuser une demande IA',
+    assistant_saveSettings: 'Modifier les réglages de l’assistant IA',
+    assistant_testSettings: 'Vérifier le fournisseur d’IA',
+    assistant_setExcludedPlaces: 'Modifier les Places fermées à l’IA',
+    assistant_deleteConversation: 'Supprimer une conversation IA',
   },
   loading: {
     default: 'Chargement',

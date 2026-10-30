@@ -6,6 +6,7 @@ import {
 } from "../../services/assistant-settings"
 import { listModels } from "../../services/assistant-provider"
 import { SecretsError } from "../../services/secrets"
+import { parseIds } from "../../services/ai-exclusions"
 
 // The built-in assistant: its settings (administrators) and each account's
 // conversations. Closed to AI assistants themselves (closedToApiTokens).
@@ -76,6 +77,22 @@ export const assistantRouter = router({
       } catch (e) {
         return { ok: false as const, error: e instanceof Error ? e.message : String(e) }
       }
+    }),
+
+  // Places closed to every AI assistant, built-in or over MCP.
+  excludedPlaces: adminProcedure.query(async ({ ctx }) => {
+    const row = await ctx.prisma.assistantSettings.findUnique({ where: { id: 1 }, select: { excludedPlaceIds: true } })
+    return { placeIds: parseIds(row?.excludedPlaceIds) }
+  }),
+
+  setExcludedPlaces: adminProcedure
+    .input(z.object({ placeIds: z.array(z.string()).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const known = await ctx.prisma.place.findMany({ where: { id: { in: input.placeIds } }, select: { id: true, name: true } })
+      ctx.audit.target = known.map(p => p.name).join(", ") || "none"
+      const excludedPlaceIds = JSON.stringify(known.map(p => p.id))
+      await ctx.prisma.assistantSettings.upsert({ where: { id: 1 }, create: { id: 1, excludedPlaceIds }, update: { excludedPlaceIds } })
+      return { placeIds: known.map(p => p.id) }
     }),
 
   conversations: protectedProcedure.query(({ ctx }) =>

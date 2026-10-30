@@ -5,6 +5,7 @@ import { appRouter } from "../trpc/routers/index"
 import { workerErrorCode } from "../trpc/index"
 import { ACTION_TTL_MS, isQueueable } from "../services/agent-actions"
 import type { ApiTokenAuth, TokenUser } from "../services/api-tokens"
+import { checkArgs, filterResult, type Exclusions } from "../services/ai-exclusions"
 import { READ_TOOLS, type ToolContext, type ToolDef } from "./tools"
 import { CHECK_TOOL, WRITE_TOOLS } from "./write-tools"
 
@@ -20,6 +21,18 @@ export function toolErrorPayload(e: unknown) {
   const workerCode = e instanceof TRPCError ? workerErrorCode(e) : undefined
   const message = e instanceof Error ? e.message : String(e)
   return { error: message, ...(code && { code }), ...(workerCode && { workerCode }) }
+}
+
+/** A tool's family: the domain of its scope (files, apps, storage, users, system); null for check_request. */
+export function toolFamily(t: Pick<ToolDef, "scope" | "anyScope">): string | null {
+  const scope = t.scope ?? t.anyScope?.[0]
+  return scope ? scope.split(":")[0]! : null
+}
+
+/** Runs a tool, refusing what would open a Place closed to AI assistants and clearing it from the result. */
+export async function runGuarded(def: ToolDef, args: Record<string, unknown>, ctx: ToolContext, ex: Exclusions): Promise<unknown> {
+  checkArgs(args, { changes: !def.scope?.endsWith(":read"), files: toolFamily(def) === "files" }, ex)
+  return filterResult(await def.run(args as never, ctx), ex)
 }
 
 export type ToolOrigin =

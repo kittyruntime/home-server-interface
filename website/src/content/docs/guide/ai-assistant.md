@@ -113,6 +113,10 @@ files or folders per request.
 
 ## Safety
 
+An administrator can close Places to AI assistants in **Settings > AI access**:
+a tool asked to list, read or change something inside one is refused, and they
+are left out of what the tools return. See [the built-in assistant](/home-server-interface/guide/assistant/#privacy-and-safety).
+
 - **Same rights as you**: files are read as your Linux account, so a non-admin's
   assistant only sees that account's Places. A demoted account loses the matching
   tools at its next request.

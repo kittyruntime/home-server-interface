@@ -102,6 +102,10 @@ export function actionLabel(action: string): string {
     'agentAction.request':         'AI assistant request',
     'agentAction.approve':         'Approve AI request',
     'agentAction.reject':          'Reject AI request',
+    'assistant.saveSettings':      'Change AI assistant settings',
+    'assistant.testSettings':      'Check AI provider',
+    'assistant.setExcludedPlaces': 'Change Places closed to AI',
+    'assistant.deleteConversation': 'Delete AI conversation',
     'setup.createAdmin':            'Create the administrator',
     // Entries logged before these procedures were renamed from apply to execute.
     'container.app.apply':          'Apply container stack',

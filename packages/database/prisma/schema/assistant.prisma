@@ -16,6 +16,9 @@ model AssistantSettings {
   readOnly  Boolean  @default(false)
   // Tokens an account may use per day (UTC); null: no limit.
   dailyTokenLimit Int?
+  // Places no AI assistant may open, built-in or over MCP (JSON array of
+  // Place ids): their files are never read, listed or changed by one.
+  excludedPlaceIds String @default("[]")
   updatedAt DateTime @updatedAt
 }
 

@@ -176,6 +176,16 @@ export default {
     usage: 'This conversation: {conversation} tokens · today: {today}',
     usageLimit: 'This conversation: {conversation} tokens · today: {today} of {limit}',
     readOnlyNote: 'Read-only: the assistant can look, not change anything.',
+    closed: {
+      section: 'Private Places',
+      title: 'Places closed to AI assistants',
+      intro: 'No AI assistant, built-in or over MCP, can list, read or change what is in these Places, whatever the account\'s rights. Their files never reach an AI provider.',
+      none: 'No Place yet.',
+      closedLabel: 'Closed',
+      saved: 'Places closed to AI assistants saved.',
+      saveFailed: 'Could not save the Places closed to AI assistants.',
+      loadFailed: 'Could not load the Places.',
+    },
     settings: {
       section: 'Built-in assistant',
       title: 'AI assistant in the dashboard',

@@ -3138,7 +3138,10 @@ await testTelemetryChannelOptOutAndPayload()
   // The protocol itself, with a token whose user and scopes are given.
   const mcp = Fastify()
   await mcp.register(rateLimit, { max: 2000, timeWindow: "1 minute" })
-  await mcp.register(mcpRoutes, { authenticate: async (h?: string) => h === "Bearer hsi_pat_test" ? user(["files:read", "system:read"]) : null })
+  await mcp.register(mcpRoutes, {
+    authenticate: async (h?: string) => h === "Bearer hsi_pat_test" ? user(["files:read", "system:read"]) : null,
+    exclusions: async () => ({ ids: new Set(), paths: [] }),
+  })
   const rpc = async (body: object) => {
     const res = await mcp.inject({
       method: "POST", url: "/mcp", payload: body,
@@ -3195,9 +3198,25 @@ await testTelemetryChannelOptOutAndPayload()
 
   // Every tool the chat offers has a JSON Schema the model can read.
   const admin = chat.chatUser({ userId: "u1", jti: "j", isAdmin: true, isUserManager: true, mustChangePassword: false, capabilities: [] })
-  const { defs, schemas } = chat.chatTools(ALL_TOOLS, admin)
+  const adminTools = chat.chatTools(ALL_TOOLS, admin)
+  const defs = adminTools.defs
+  const everything = adminTools.offered(new Set(Object.keys(chat.TOOL_FAMILIES)))
   assert.equal(defs.size, ALL_TOOLS.length, "an admin gets every tool")
-  assert.ok(schemas.every(t => (t.function.parameters as { type?: string }).type === "object"), "each tool takes an object")
+  assert.equal(everything.length, ALL_TOOLS.length + 1, "every tool, and load_tools")
+  assert.ok(everything.every(t => (t.function.parameters as { type?: string }).type === "object"), "each tool takes an object")
+
+  // Families: only load_tools (and check_request) at first, then what was asked for.
+  const first = adminTools.offered(new Set())
+  assert.deepEqual(first.map(t => t.function.name).sort(), ["check_request", "load_tools"])
+  assert.ok(JSON.stringify(first).length * 5 < JSON.stringify(everything).length, "the first call sends a fraction of the definitions")
+  const loaded = new Set<string>()
+  const answer = chat.loadFamilies('{"families":["files","nope"]}', adminTools.families, loaded)
+  assert.ok(answer.ok && loaded.has("files") && answer.content.includes("nope"), "an unknown family is reported, the known ones load")
+  const withFiles = adminTools.offered(loaded).map(t => t.function.name)
+  assert.ok(withFiles.includes("list_files") && withFiles.includes("delete_files") && !withFiles.includes("list_apps"))
+  assert.ok(!chat.loadFamilies("{}", adminTools.families, new Set()).ok)
+  assert.deepEqual([...chat.familiesUsed(["list_apps", "check_request", null, "gone"], defs)], ["apps"], "a conversation keeps the families it used")
+  assert.deepEqual(adminTools.families, ["files", "apps", "storage", "users", "system"])
   const plain = chat.chatTools(ALL_TOOLS, chat.chatUser({ userId: "u2", jti: "j", isAdmin: false, isUserManager: false, mustChangePassword: false, capabilities: [] }))
   assert.ok(plain.defs.has("read_text_file") && !plain.defs.has("list_apps") && !plain.defs.has("preview_storage_change"),
     "a user only gets the tools of their own rights")
@@ -3236,7 +3255,7 @@ await testTelemetryChannelOptOutAndPayload()
   const saved: Array<{ role: string; content: string }> = []
   const events: Array<{ type: string }> = []
   await chat.runTurn("sys", [{ role: "user", content: "what is in /srv/a?" }], {
-    stream: async (messages, onText) => { seen.push(messages.length); const r = replies.shift()!; if (r.content) onText(r.content); return r },
+    stream: async (messages, _tools, onText) => { seen.push(messages.length); const r = replies.shift()!; if (r.content) onText(r.content); return r },
     runTool: async () => ({ ok: true, content: "x".repeat(chat.MAX_TOOL_CHARS + 10) }),
     save: async m => { saved.push(m) },
     emit: e => { events.push(e) },
@@ -3265,7 +3284,7 @@ await testTelemetryChannelOptOutAndPayload()
     stream: async () => ({ content: "", toolCalls: [{ id: "c1", name: "list_places", arguments: "{}" }], finishReason: "tool_calls", usage: null }),
     runTool: async () => { toolRuns++; return { ok: true, content: "[]" } },
     save: async m => { limited.push(m) }, emit: e => { limitEvents.push(e) }, aborted: () => false,
-    toolChars: 4000,
+    tools: () => everything,
     used: async t => { counted.push(t); return false },
   })
   assert.ok(counted[0]! > 1000, "an unreported call is estimated, tool definitions included")
@@ -3278,7 +3297,7 @@ await testTelemetryChannelOptOutAndPayload()
   const kept: Array<{ role: string; content: string }> = []
   let stopped = false
   await chat.runTurn("sys", [{ role: "user", content: "hi" }], {
-    stream: async (_m, onText) => { onText("Half an "); onText("answer"); stopped = true; throw new DOMException("aborted", "AbortError") },
+    stream: async (_m, _t, onText) => { onText("Half an "); onText("answer"); stopped = true; throw new DOMException("aborted", "AbortError") },
     runTool: async () => ({ ok: true, content: "" }), save: async m => { kept.push(m) }, emit: () => {}, aborted: () => stopped,
   })
   assert.deepEqual(kept, [{ role: "assistant", content: "Half an answer" }])
@@ -3286,6 +3305,7 @@ await testTelemetryChannelOptOutAndPayload()
   // Read-only: only the tools that read.
   const ro = chat.chatTools(ALL_TOOLS, admin, true)
   assert.ok(ro.defs.has("list_files") && ro.defs.has("storage_overview"))
+  assert.ok(!ro.offered(new Set()).some(t => t.function.name === "check_request"), "nothing to check in read-only mode")
   assert.ok(![...ro.defs.keys()].some(n => /^(create_|write_|delete_|rename|move|copy|request_|preview_|start_|stop_|restart_|run_|check_)/.test(n)),
     "nothing that changes anything is offered")
   assert.match(chat.systemPrompt({ username: "a", isAdmin: true, version: "v", now: new Date(), readOnly: true }), /read-only/)
@@ -3340,6 +3360,34 @@ await testTelemetryChannelOptOutAndPayload()
   assert.ok(!settings.assistantReady({ ...base, apiKey: null }), "OpenRouter needs a key")
   assert.ok(settings.assistantReady({ ...base, provider: "ollama", apiKey: null }), "a local model does not")
   assert.ok(!settings.assistantReady({ ...base, enabled: false }))
+
+  // Places closed to AI assistants: refused before the tool runs, cleared from results.
+  const ex = await import("../services/ai-exclusions")
+  const { runGuarded } = await import("../mcp/context")
+  const closed = { ids: new Set(["p-private"]), paths: ["/srv/data/private"] }
+  const refused = (args: Record<string, unknown>, o: { changes: boolean; files: boolean }) =>
+    assert.throws(() => ex.checkArgs(args, o, closed), (e: any) => e.code === "FORBIDDEN")
+  refused({ path: "/srv/data/private/notes.txt" }, { changes: false, files: true })
+  refused({ path: "/srv/data/private/../private/x" }, { changes: false, files: true })
+  refused({ paths: ["/srv/data/a", "/srv/data/private"] }, { changes: true, files: true })
+  refused({ paths: ["/srv/data"] }, { changes: true, files: true })
+  refused({ src: "/srv/data/a", dstDir: "/srv/data/private" }, { changes: true, files: true })
+  refused({ placeId: "p-private", query: "x" }, { changes: false, files: true })
+  ex.checkArgs({ path: "/srv/data" }, { changes: false, files: true }, closed)
+  ex.checkArgs({ path: "/srv/data/privateer" }, { changes: true, files: true }, closed)
+  ex.checkArgs({ placeId: "p-private" }, { changes: false, files: false }, closed)
+  const when = new Date("2026-10-30T00:00:00Z")
+  assert.deepEqual(ex.filterResult({ items: [{ path: "/srv/data/private/a", mtime: when }, { path: "/srv/data/b", mtime: when }] }, closed),
+    { items: [{ path: "/srv/data/b", mtime: when }] }, "what lies in a closed Place is cleared, dates kept")
+  assert.deepEqual(ex.parseIds('["a",3,"b"]'), ["a", "b"])
+  let closedRan = false
+  const readFile = ALL_TOOLS.find(x => x.name === "read_text_file")!
+  await assert.rejects(() => runGuarded({ ...readFile, run: async () => { closedRan = true } }, { path: "/srv/data/private/a.txt" }, {} as any, closed),
+    (e: any) => e.code === "FORBIDDEN")
+  assert.ok(!closedRan, "a tool never runs on a closed Place")
+  const places = ALL_TOOLS.find(x => x.name === "list_places")!
+  assert.deepEqual(await runGuarded({ ...places, run: async () => [{ id: "p-private", path: "/srv/data/private" }, { id: "p", path: "/srv/data/pub" }] }, {}, {} as any, closed),
+    [{ id: "p", path: "/srv/data/pub" }], "a closed Place is not even listed")
 
   const Fastify = (await import("fastify")).default
   const rateLimit = (await import("@fastify/rate-limit")).default

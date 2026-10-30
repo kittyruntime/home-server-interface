@@ -592,7 +592,7 @@ for line in sys.argv[1].splitlines():
 # read-only mode offers no change, and the daily limit stops it.
 assistant_feature() {
   local settings events conversation req
-  log "Built-in assistant: chat, approval, read-only, daily limit"
+  log "Built-in assistant: chat, approval, read-only, closed Places, daily limit"
   vm_put "$here/fake-ai-provider.py" /root/fake-ai-provider.py
   vm_ssh 'nohup python3 /root/fake-ai-provider.py 18555 >/root/fake-ai.log 2>&1 </dev/null &'
   vm_until 10 "the test AI provider did not start" 'curl -sf http://127.0.0.1:18555/v1/models'
@@ -625,12 +625,26 @@ assistant_feature() {
   [[ $(event_field "$events" toolResult ok) == False ]] || fail "read-only mode ran create_folder: $events"
   vm_ssh '! test -e /srv/vm-mirror/read-only' || fail "read-only mode made a folder"
 
+  # A Place closed to AI assistants: neither the chat nor an MCP token opens it.
+  local mirror token
+  mirror=$(api_query place.list | python3 -c 'import json,sys; print(next(p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/vm-mirror"))')
+  api assistant.setExcludedPlaces "{\"placeIds\":[\"$mirror\"]}" >/dev/null
+  events=$(API_TOKEN=/root/token-vmuser chat_call "" list_files '{"path":"/srv/vm-mirror/from-smb"}')
+  [[ $(event_field "$events" toolResult ok) == False ]] || fail "the chat listed a Place closed to AI assistants: $events"
+  token=$(API_TOKEN=/root/token-vmuser api apiToken.create '{"name":"vm closed","scopes":["files:read"],"expiresInDays":7}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["secret"])')
+  mcp "$token" '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"read_text_file","arguments":{"path":"/srv/vm-mirror/from-smb/hello.txt"}}}' \
+    | grep -q 'not open to AI assistants' || fail "an MCP token read a file in a Place closed to AI assistants"
+  ! mcp_call "$token" list_places '{}' | grep -q '/srv/vm-mirror' || fail "a Place closed to AI assistants is listed over MCP"
+  api assistant.setExcludedPlaces '{"placeIds":[]}' >/dev/null
+  mcp_call "$token" list_files '{"path":"/srv/vm-mirror/from-smb"}' | grep -q 'hello.txt' || fail "the reopened Place stays closed"
+
   # The daily limit: the tokens used so far already exceed 1000.
   api assistant.saveSettings "${settings/\"dailyTokenLimit\":null/\"dailyTokenLimit\":1000}" >/dev/null
   [[ $(vm_ssh "curl -sk -o /dev/null -w '%{http_code}' -H \"authorization: Bearer \$(cat /root/token-vmuser)\" -H 'content-type: application/json' \
     --data '{\"message\":\"hello\"}' https://127.0.0.1:9001/assistant/chat") == 429 ]] || fail "the daily limit did not stop the assistant"
   api assistant.saveSettings '{"enabled":false,"provider":"custom","baseUrl":"http://127.0.0.1:18555/v1","model":"test/model","access":"admins"}' >/dev/null
-  log "Built-in assistant: acts as the account, approvals in the chat, read-only and daily limit hold"
+  log "Built-in assistant: acts as the account, approvals in the chat, read-only, closed Places and daily limit hold"
 }
 
 BACKUP_PASSWORD="vm-test-config-backup-password"
