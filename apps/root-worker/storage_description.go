@@ -196,6 +196,7 @@ func saveDescription(d storageDescription) (string, error) {
 		os.Remove(tmp.Name())
 		return "", werr
 	}
+	syncDir(dir)
 	return path, nil
 }
 
