@@ -25,11 +25,8 @@ export const MAX_CONVERSATIONS = 50
 const MAX_MESSAGE_CHARS = 20_000
 const PER_USER_PER_MINUTE = 20
 
-const body = z.union([
-  z.object({ conversationId: z.string().uuid().optional(), message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS) }),
-  // Goes on after a request of the conversation was decided (its note is in).
-  z.object({ conversationId: z.string().uuid(), resume: z.literal(true) }),
-])
+// A turn goes on after a decision by itself (agentAction): a request always carries a message.
+const body = z.object({ conversationId: z.string().uuid().optional(), message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS) })
 
 // Providers that report the tokens of a streamed call when asked to.
 const REPORTS_USAGE = new Set(["openrouter", "openai"])
