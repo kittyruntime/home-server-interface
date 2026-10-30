@@ -3,29 +3,17 @@ import { composeBindSources } from "@app/compose"
 import { assertVolumeAvailable } from "../../services/volume-guard"
 import { catalogUpdateFor } from "../../services/app-update"
 import { TRPCError } from "@trpc/server"
-import { router, adminProcedure, protectedProcedure } from "../index"
+import { router, adminProcedure } from "../index"
 import { publishJob, requestSync } from "../../nats"
 import {
-  listStacks, getStack, stackExists, writeStack, observedNetworks,
+  listStacks, getStack, stackExists, writeStack,
   dockerContainers, type DockerContainerLite,
 } from "../../services/containerStacks"
 import { assertDockerReady, getDockerStatus, dockerProblem } from "../../services/docker-status"
 import {
   generateComposeYaml, parseComposeYaml,
-  zAppInput, zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, STACK_NAME_RE, type AppInput,
+  zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, STACK_NAME_RE, type AppInput,
 } from "@app/compose"
-
-// ── Error mapper ──────────────────────────────────────────────────────────────
-
-function mapWorkerError(e: any): TRPCError {
-  if (e instanceof TRPCError) return e
-  switch (e?.code) {
-    case "EACCES": return new TRPCError({ code: "FORBIDDEN",             message: "Permission denied" })
-    case "ENOENT": return new TRPCError({ code: "NOT_FOUND",             message: "Not found" })
-    case "EEXIST": return new TRPCError({ code: "CONFLICT",              message: "Already exists" })
-    default:       return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Unknown error" })
-  }
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,37 +46,6 @@ const appRouter = router({
   get: adminProcedure.input(z.object({ name: z.string() }))
     .query(async ({ input }) => ({ ...(await getStack(input.name)), id: input.name })),
 
-  create: adminProcedure.input(z.object({ data: zAppInput }))
-    .mutation(async ({ ctx, input }) => {
-      const data = input.data
-      if (await stackExists(data.name)) {
-        throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
-      }
-      const resolved = await resolvePlaceMounts(ctx.prisma, data.volumes as any[])
-      const yaml = generateComposeYaml({ ...data, volumes: resolved as any[] } as AppInput)
-      await writeStack(data.name, yaml)
-      return { name: data.name }
-    }),
-
-  update: adminProcedure.input(z.object({ name: z.string(), data: zAppInput }))
-    .mutation(async ({ ctx, input }) => {
-      const current = await getStack(input.name)
-      const resolved = await resolvePlaceMounts(ctx.prisma, input.data.volumes as any[])
-      const yaml = generateComposeYaml({ ...input.data, volumes: resolved as any[] } as AppInput, current.rawYaml)
-      await writeStack(input.name, yaml)
-      return { name: input.name }
-    }),
-
-  saveRaw: adminProcedure.input(z.object({ name: z.string(), content: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const parsed = parseComposeYaml(input.content)
-      if (parsed.services.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "The file must declare at least one service" })
-      }
-      await writeStack(input.name, input.content)
-      return { name: input.name }
-    }),
-
   importCompose: adminProcedure.input(z.object({
     name: z.string().min(1).max(64).refine(name => STACK_NAME_RE.test(name), "Invalid app name"),
     content: z.string().min(1),
@@ -110,15 +67,6 @@ const appRouter = router({
     return { name: input.name, services: parsed.services }
   }),
 
-  execute: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertDockerReady()
-      await assertAppVolumes(input.name) // also 404s early
-      await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
-      const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
-      return { jobId }
-    }),
-
   start: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
@@ -139,30 +87,10 @@ const appRouter = router({
       return { jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) }
     }),
 
-  remove: adminProcedure.input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertDockerReady()
-      return { jobId: await publishJob("container.composeDown", { name: input.name, removeFiles: true }, ctx.user.userId) }
-    }),
-
-  inspect: adminProcedure.input(z.object({ name: z.string() }))
-    .query(async ({ input }) => {
-      try {
-        return await requestSync<{ status: string; [k: string]: unknown }>(
-          "root.container.inspect", { containerName: input.name })
-      } catch (e: any) { throw mapWorkerError(e) }
-    }),
-
   /* NOTE: container logs are NOT a tRPC procedure - they are the HTTP SSE route
      in apps/backend/src/routes/containers.ts (fetched by ContainerLogsPanel.vue
      at /containers/<name>/logs). That route keeps working unchanged: it already
      addresses containers by name. Do not add a logs procedure to the router. */
-
-  listPinned: protectedProcedure.query(async () => {
-    const stacks = await listStacks()
-    return stacks.filter(s => s.app?.pinnedUrl)
-      .map(s => ({ id: s.name, name: s.name, status: s.status, pinnedUrl: s.app!.pinnedUrl! }))
-  }),
 
   pin: adminProcedure.input(z.object({ name: z.string(), pinnedUrl: z.string().url().nullable() }))
     .mutation(async ({ input }) => {
@@ -269,12 +197,6 @@ const appRouter = router({
   }),
 })
 
-// ── Network sub-router ────────────────────────────────────────────────────────
-
-const networkRouter = router({
-  list: adminProcedure.query(() => observedNetworks()),
-})
-
 // ── Main router ───────────────────────────────────────────────────────────────
 
 // An app bind-mounting a path on a missing volume must not start (#3).
@@ -290,7 +212,6 @@ export const containerRouter = router({
     return { ...status, problem: dockerProblem(status) }
   }),
   app:     appRouter,
-  network: networkRouter,
 })
 
 export type { DockerContainerLite }

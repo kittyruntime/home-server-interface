@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripts (replaced by the update cutover), and functions, components and
   translations nothing used anymore in the dashboard and the worker.
 
+### Removed
+- **Old direct storage, app, user and sharing endpoints**: the API entry
+  points the dashboard stopped using when changes moved to preview and confirm
+  are gone, so formatting a disk, creating an array or an account always goes
+  through a preview first.
+
+## [1.77.1] - 2026-10-30
+
 ### Security
 - **File operations run as the right user only**: a file action done on
   behalf of a user no longer changes the identity of other operations running
@@ -1733,7 +1741,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...HEAD
+[1.77.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...v1.77.1
 [1.77.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.76.0...v1.77.0
 [1.76.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.75.0...v1.76.0
 [1.75.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.74.0...v1.75.0

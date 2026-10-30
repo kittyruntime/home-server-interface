@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	nats "github.com/nats-io/nats.go"
 )
 
 // Replacing a failed disk: mark it failed (if the kernel has not already),
@@ -54,10 +52,6 @@ func replacementSizeProblem(device string, size int64, memberSizes []int64) stri
 	}
 	return ""
 }
-
-func handleRaidFail(nc *nats.Conn, msg *nats.Msg)   { servePlanOp(nc, msg, planRaidFail) }
-func handleRaidRemove(nc *nats.Conn, msg *nats.Msg) { servePlanOp(nc, msg, planRaidRemove) }
-func handleRaidAdd(nc *nats.Conn, msg *nats.Msg)    { servePlanOp(nc, msg, planRaidAdd) }
 
 // hostMdMemberState reads the md state of one member ("in_sync", "spare",
 // "faulty", ...).
