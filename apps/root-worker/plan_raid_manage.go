@@ -98,6 +98,9 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 	target := "/dev/" + req.Device
 	obs := map[string]string{"members": sortedJoin(members), "uuid": uuid}
 	var step planStep
+	// A removed disk still carries the array's superblock: at boot, mdadm may
+	// assemble the array on it (stale) instead of on its current members.
+	eraseRemoved := false
 	switch op {
 	case "--fail", "--remove":
 		// A disk that was unplugged or died completely has no device node and
@@ -115,6 +118,7 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 			return nil, &fsError{Code: "ERR", Message: raidDev + " has no redundancy left: failing " + target + " would stop the array"}
 		}
 		obs["target"] = arg
+		eraseRemoved = op == "--remove" && arg != "detached"
 		summary := "Mark " + target + " as failed in " + raidDev + "; the array keeps running without it until a replacement is added"
 		if op == "--remove" {
 			summary = "Remove " + target + " from " + raidDev
@@ -155,7 +159,12 @@ func planRaidMember(raw json.RawMessage, op string) (*opPlan, *fsError) {
 		step = destructive(cmdStep(raidDev, "Add "+target+" to "+raidDev+", erasing its contents; a degraded array rebuilds onto it, otherwise it becomes a spare",
 			[]string{"mdadm", "--manage", raidDev, "--add", target}), target)
 	}
-	return &opPlan{Op: "raid." + strings.TrimPrefix(op, "--"), Steps: []planStep{step}, Observed: obs, DescribeArrayUUID: uuid}, nil
+	steps := []planStep{step}
+	if eraseRemoved {
+		steps = append(steps, destructive(cmdStep(target, "Erase the RAID signature on "+target+" so it is not taken for a member of "+raidDev+" at boot",
+			[]string{"mdadm", "--zero-superblock", target}), target))
+	}
+	return &opPlan{Op: "raid." + strings.TrimPrefix(op, "--"), Steps: steps, Observed: obs, DescribeArrayUUID: uuid}, nil
 }
 
 func planRaidFail(raw json.RawMessage) (*opPlan, *fsError)   { return planRaidMember(raw, "--fail") }

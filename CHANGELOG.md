@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A replaced RAID disk no longer breaks the array at boot**: removing a disk
+  from an array now erases its RAID signature. Before, the old disk could be
+  taken for a member at the next boot and keep the array from starting.
+
 ## [1.78.1] - 2026-10-30
 
 ### Fixed

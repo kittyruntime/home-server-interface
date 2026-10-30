@@ -42,10 +42,24 @@ func TestPlanRaidFailAndRemove(t *testing.T) {
 	_, fe = build(t, planRaidRemove, `{"name":"md0","device":"sdb"}`)
 	wantErr(t, fe, "ESYS")
 
+	// A removed disk loses its RAID signature, so a reboot cannot assemble
+	// the array on it.
+	stubRaidManageHost(t)
+	p, fe = build(t, planRaidRemove, `{"name":"md0","device":"sdb"}`)
+	if fe != nil || !reflect.DeepEqual(argvs(p), [][]string{
+		{"mdadm", "--manage", "/dev/md0", "--remove", "/dev/sdb"},
+		{"mdadm", "--zero-superblock", "/dev/sdb"},
+	}) {
+		t.Fatalf("remove: %v %v", fe, argvs(p))
+	}
+	if !p.Steps[1].Destructive {
+		t.Fatalf("erasing the signature must be marked destructive: %+v", p.Steps[1])
+	}
+
 	stubRaidManageHost(t)
 	hostExists = func(string) bool { return false } // disk unplugged
 	p, fe = build(t, planRaidRemove, `{"name":"md0","device":"sdc"}`)
-	if fe != nil || !reflect.DeepEqual(argvs(p)[0], []string{"mdadm", "--manage", "/dev/md0", "--remove", "detached"}) {
+	if fe != nil || !reflect.DeepEqual(argvs(p), [][]string{{"mdadm", "--manage", "/dev/md0", "--remove", "detached"}}) {
 		t.Fatalf("remove detached: %v %v", fe, argvs(p))
 	}
 }
