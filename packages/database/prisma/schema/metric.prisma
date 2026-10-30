@@ -7,4 +7,6 @@ model MetricSnapshot {
   netRxBps  BigInt
   netTxBps  BigInt
   uptime    Int
+
+  @@index([timestamp])
 }
