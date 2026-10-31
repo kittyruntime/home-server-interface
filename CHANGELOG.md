@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.78.2] - 2026-10-31
+
 ### Fixed
 - **A replaced RAID disk no longer breaks the array at boot**: removing a disk
   from an array now erases its RAID signature. Before, the old disk could be
@@ -1762,7 +1764,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.2...HEAD
+[1.78.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.1...v1.78.2
 [1.78.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.0...v1.78.1
 [1.78.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...v1.78.0
 [1.77.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.0...v1.77.1
