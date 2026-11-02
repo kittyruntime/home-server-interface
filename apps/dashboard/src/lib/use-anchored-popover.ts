@@ -58,6 +58,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   let opener: HTMLElement | null = null
   let stopAuto: (() => void) | null = null
   let listening = false
+  let toggleEl: HTMLElement | null = null
 
   function reference(): HTMLElement | VirtualElement | null {
     if (!anchor) return null
@@ -91,6 +92,9 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
     // The UA popover styles (centered, auto margins) would fight Floating UI.
     Object.assign(el.style, { position: 'fixed', inset: 'auto', margin: '0', left: '0', top: '0', visibility: 'hidden' })
     try { el.showPopover() } catch { /* detached or already shown */ }
+    // The browser may close a hint itself (e.g. another hint opens).
+    el.addEventListener('toggle', onToggle)
+    toggleEl = el
     const ref = reference()
     if (ref) stopAuto = autoUpdate(ref, el, () => { void place() })
   }
@@ -98,6 +102,12 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   function stopPositioning() {
     stopAuto?.()
     stopAuto = null
+    toggleEl?.removeEventListener('toggle', onToggle)
+    toggleEl = null
+  }
+
+  function onToggle(event: Event) {
+    if ((event as ToggleEvent).newState === 'closed' && isOpen.value) close(false)
   }
 
   function onKeydown(event: KeyboardEvent) {

@@ -14,6 +14,8 @@ onBeforeUnmount(() => ctx.setTrigger(null))
 const bindings = computed(() => ({
   "aria-haspopup": "dialog",
   "aria-expanded": ctx.open.value,
+  // Overridden by a child that sets its own data-state.
+  "data-state": ctx.open.value ? "open" : "closed",
   "aria-controls": ctx.open.value ? ctx.contentId : undefined,
 }))
 </script>

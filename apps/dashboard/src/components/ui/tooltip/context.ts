@@ -8,6 +8,8 @@ export const tooltipProviderKey: InjectionKey<{ delayDuration: Ref<number> }> = 
 
 export interface TooltipContext {
   open: Ref<boolean>
+  /** True while the content is held closed (its `hidden` prop). */
+  suppressed: Ref<boolean>
   contentId: string
   delay: () => number
   anchor: () => HTMLElement | null

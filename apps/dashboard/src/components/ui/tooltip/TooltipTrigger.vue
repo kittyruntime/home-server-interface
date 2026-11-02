@@ -28,7 +28,7 @@ function hide() {
   clear()
   if (!ctx.open.value) return
   ctx.open.value = false
-  markTooltipClosed()
+  if (!ctx.suppressed.value) markTooltipClosed()
 }
 
 function onPointerenter(event: PointerEvent) {
@@ -46,7 +46,7 @@ function onFocus(event: FocusEvent) {
     ref="el"
     :as="props.as"
     :as-child="props.asChild"
-    :aria-describedby="ctx.open.value ? ctx.contentId : undefined"
+    :aria-describedby="ctx.open.value && !ctx.suppressed.value ? ctx.contentId : undefined"
     @pointerenter="onPointerenter"
     @pointerleave="hide"
     @pointerdown="hide"

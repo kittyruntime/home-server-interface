@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from "vue"
 import { useVModel } from "@vueuse/core"
-import { inject, provide, shallowRef, useId } from "vue"
+import { inject, provide, ref, shallowRef, useId } from "vue"
 import { DEFAULT_DELAY, tooltipKey, tooltipProviderKey } from "./context"
 
 const props = withDefaults(defineProps<{
@@ -23,8 +23,11 @@ const open = useVModel(props, "open", emit, { passive: true, defaultValue: props
 const provider = inject(tooltipProviderKey, null)
 const trigger = shallowRef<HTMLElement | null>(null)
 
+const suppressed = ref(false)
+
 provide(tooltipKey, {
   open,
+  suppressed,
   contentId: useId(),
   delay: () => props.delayDuration ?? provider?.delayDuration.value ?? DEFAULT_DELAY,
   anchor: () => trigger.value,

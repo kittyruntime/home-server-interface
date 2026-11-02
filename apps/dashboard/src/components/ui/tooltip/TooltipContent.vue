@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Placement } from "@floating-ui/dom"
 import type { HTMLAttributes } from "vue"
-import { computed, inject, watch } from "vue"
+import { computed, inject, onBeforeUnmount, watch } from "vue"
 import { popoverHintMode, useAnchoredPopover } from "@/lib/use-anchored-popover"
 import { cn } from "@/lib/utils"
 import { markTooltipClosed, tooltipKey } from "./context"
@@ -30,12 +30,15 @@ const { floating: floatingRef, open, close, isOpen } = useAnchoredPopover({
   placement,
   offset: () => props.sideOffset,
   dismiss: true,
+  captureEscape: true,
   restoreFocus: false,
   onClose: () => {
-    if (ctx.open.value) markTooltipClosed()
-    ctx.open.value = false
+    if (ctx.open.value) { ctx.open.value = false; markTooltipClosed() }
   },
 })
+
+watch(() => props.hidden, hidden => { ctx.suppressed.value = hidden }, { immediate: true })
+onBeforeUnmount(() => { ctx.suppressed.value = false })
 
 watch([ctx.open, () => props.hidden], ([value, hidden]) => {
   const anchor = ctx.anchor()
@@ -55,6 +58,7 @@ function bindFloating(el: unknown) { floatingRef.value = el as HTMLElement | nul
     v-bind="$attrs"
     :popover="mode"
     role="tooltip"
+    data-dismissable-layer
     data-slot="tooltip-content"
     :class="cn(
       'pointer-events-none z-50 w-fit max-w-xs rounded-md bg-neutral px-3 py-1.5 text-xs text-balance text-neutral-content',
