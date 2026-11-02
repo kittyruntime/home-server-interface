@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
-import { THEMES, type AccentChoice, type Density } from '../lib/appearance'
+import { THEMES, type AccentChoice, type Appearance, type Density } from '../lib/appearance'
 import { useAppearance } from '../lib/theme'
 
 const { t } = useI18n()
@@ -19,10 +18,13 @@ const ACCENTS: { value: AccentChoice; color?: string }[] = [
 
 const DENSITIES: Density[] = ['compact', 'default', 'roomy']
 
-const radius = computed({
-  get: () => appearance.value.radius,
-  set: v => setAppearance({ radius: Number(v) as 0 | 1 | 2 | 3 | 4 }),
-})
+const RADII: { value: Appearance['radius']; key: string }[] = [
+  { value: 2, key: 'theme' },
+  { value: 0, key: 'square' },
+  { value: 1, key: 'slight' },
+  { value: 3, key: 'round' },
+  { value: 4, key: 'pill' },
+]
 </script>
 
 <template>
@@ -85,14 +87,15 @@ const radius = computed({
     <div class="space-y-2">
       <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.roundness') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
-        <input
-          v-model="radius" type="range" min="0" max="4" step="1"
-          class="range range-primary range-sm w-full max-w-xs"
-          :aria-label="t('appearance.roundness')"
-        />
-        <div class="mt-1 flex w-full max-w-xs justify-between text-xs text-base-content/60" aria-hidden="true">
-          <span>{{ t('appearance.square') }}</span>
-          <span>{{ t('appearance.round') }}</span>
+        <div role="radiogroup" :aria-label="t('appearance.roundness')" class="join">
+          <input
+            v-for="r in RADII" :key="r.value"
+            type="radio" name="appearance-radius" :value="r.value"
+            class="join-item btn btn-sm"
+            :aria-label="t(`appearance.radii.${r.key}`)"
+            :checked="appearance.radius === r.value"
+            @change="setAppearance({ radius: r.value })"
+          />
         </div>
       </Card>
     </div>
