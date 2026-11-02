@@ -38,9 +38,8 @@ function onFocus(e: FocusEvent) {
       side="bottom"
       :side-offset="6"
       class="w-56 p-2.5 text-xs leading-snug text-foreground/80"
-      :trap-focus="false"
-      @open-auto-focus.prevent
-      @close-auto-focus.prevent
+      :focus-on-open="false"
+      :restore-focus="false"
     >{{ text }}</PopoverContent>
   </Popover>
 </template>

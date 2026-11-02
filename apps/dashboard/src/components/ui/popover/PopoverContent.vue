@@ -1,48 +1,80 @@
 <script setup lang="ts">
-import { useOverlayHost } from "@/lib/overlay-host"
-import type { PopoverContentEmits, PopoverContentProps } from "reka-ui"
+import type { Placement } from "@floating-ui/dom"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject, nextTick, watch } from "vue"
+import { useAnchoredPopover } from "@/lib/use-anchored-popover"
 import { cn } from "@/lib/utils"
-import {
-  PopoverContent,
-  PopoverPortal,
-  useForwardPropsEmits,
-} from "reka-ui"
+import { popoverKey } from "./context"
 
-defineOptions({
-  inheritAttrs: false,
+defineOptions({ inheritAttrs: false })
+
+const props = withDefaults(defineProps<{
+  side?: "top" | "right" | "bottom" | "left"
+  align?: "start" | "center" | "end"
+  sideOffset?: number
+  alignOffset?: number
+  /** Move focus into the popover when it opens. */
+  focusOnOpen?: boolean
+  /** Return focus to the trigger when it closes with focus inside it. */
+  restoreFocus?: boolean
+  class?: HTMLAttributes["class"]
+}>(), {
+  side: "bottom",
+  align: "center",
+  sideOffset: 4,
+  alignOffset: 0,
+  focusOnOpen: true,
+  restoreFocus: true,
 })
 
-const props = withDefaults(
-  defineProps<PopoverContentProps & { class?: HTMLAttributes["class"] }>(),
-  {
-    align: "center",
-    sideOffset: 4,
-  },
-)
-const emits = defineEmits<PopoverContentEmits>()
+const ctx = inject(popoverKey)!
 
-const delegatedProps = reactiveOmit(props, "class")
+const placement = computed(() => (props.align === "center" ? props.side : `${props.side}-${props.align}`) as Placement)
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const { floating, open, close, isOpen } = useAnchoredPopover({
+  placement,
+  offset: () => props.sideOffset,
+  alignOffset: () => props.alignOffset,
+  dismiss: true,
+  captureEscape: true,
+  restoreFocus: props.restoreFocus,
+  closeOnFocusOutside: true,
+  onClose: () => { ctx.open.value = false },
+})
 
-const overlayHost = useOverlayHost()
+watch(ctx.open, async (value) => {
+  if (!value) { close(); return }
+  const anchor = ctx.anchor()
+  if (!anchor) return
+  open(anchor)
+  if (!props.focusOnOpen) return
+  await nextTick()
+  const el = floating.value
+  if (!el) return
+  const first = el.querySelector<HTMLElement>("input:not(:disabled), button:not(:disabled), [href], select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])")
+  ;(first ?? el).focus({ preventScroll: true })
+}, { immediate: true, flush: "post" })
 </script>
 
 <template>
-  <PopoverPortal :to="overlayHost">
-    <PopoverContent
-      data-slot="popover-content"
-      v-bind="{ ...$attrs, ...forwarded }"
-      :class="
-        cn(
-          'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 max-w-(--reka-popover-content-available-width) rounded-md border p-4 shadow-md origin-(--reka-popover-content-transform-origin) outline-hidden',
-          props.class,
-        )
-      "
-    >
-      <slot />
-    </PopoverContent>
-  </PopoverPortal>
+  <div
+    v-if="isOpen"
+    :id="ctx.contentId"
+    ref="floating"
+    v-bind="$attrs"
+    popover="manual"
+    role="dialog"
+    tabindex="-1"
+    data-slot="popover-content"
+    data-dismissable-layer
+    :class="cn(
+      'bg-base-100 text-base-content z-50 w-72 max-w-[calc(100vw-1rem)] rounded-md border p-4 shadow-md outline-hidden',
+      'data-placed:animate-in data-placed:fade-in-0 data-placed:zoom-in-95 data-placed:motion-reduce:[animation:none]',
+      'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+      props.class,
+    )"
+    @click.stop
+  >
+    <slot />
+  </div>
 </template>

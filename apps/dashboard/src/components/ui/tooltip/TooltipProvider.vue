@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import type { TooltipProviderProps } from "reka-ui"
-import { TooltipProvider } from "reka-ui"
+import { provide, toRef } from "vue"
+import { DEFAULT_DELAY, tooltipProviderKey } from "./context"
 
-const props = withDefaults(defineProps<TooltipProviderProps>(), {
-  delayDuration: 0,
+/* Sets the default hover delay of the tooltips below it. Other Reka
+   provider props are accepted and ignored. */
+const props = withDefaults(defineProps<{
+  delayDuration?: number
+  skipDelayDuration?: number
+  disableHoverableContent?: boolean
+  disableClosingTrigger?: boolean
+  disabled?: boolean
+  ignoreNonKeyboardFocus?: boolean
+}>(), {
+  delayDuration: DEFAULT_DELAY,
 })
+
+provide(tooltipProviderKey, { delayDuration: toRef(props, "delayDuration") })
 </script>
 
 <template>
-  <TooltipProvider v-bind="props">
-    <slot />
-  </TooltipProvider>
+  <slot />
 </template>

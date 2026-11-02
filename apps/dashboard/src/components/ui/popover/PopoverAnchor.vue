@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import type { PopoverAnchorProps } from "reka-ui"
-import { PopoverAnchor } from "reka-ui"
+import { inject, onBeforeUnmount, onMounted, ref } from "vue"
+import type { PrimitiveProps } from "../Primitive.vue"
+import Primitive from "../Primitive.vue"
+import { popoverKey } from "./context"
 
-const props = defineProps<PopoverAnchorProps>()
+const props = defineProps<PrimitiveProps>()
+const ctx = inject(popoverKey)!
+
+const el = ref<InstanceType<typeof Primitive> | null>(null)
+onMounted(() => ctx.setAnchor((el.value?.$el as HTMLElement | undefined) ?? null))
+onBeforeUnmount(() => ctx.setAnchor(null))
 </script>
 
 <template>
-  <PopoverAnchor
-    data-slot="popover-anchor"
-    v-bind="props"
-  >
+  <Primitive ref="el" data-slot="popover-anchor" :as="props.as" :as-child="props.asChild">
     <slot />
-  </PopoverAnchor>
+  </Primitive>
 </template>

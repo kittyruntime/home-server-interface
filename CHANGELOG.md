@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside them and returns to where you were, Escape closes them (except during
   an update or a running operation), and the page behind cannot be scrolled.
   Toasts still show above an open dialog.
+- **Popovers and tooltips use the browser's popover layer**: tooltips, the
+  help hints and the activity panel are no longer clipped by windows or
+  scrolling lists and show above open dialogs. Tooltips appear on mouse hover
+  and keyboard focus only, so they never get in the way of a tap.
 
 ## [1.78.4] - 2026-11-02
 

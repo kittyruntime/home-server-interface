@@ -1,37 +1,68 @@
 <script setup lang="ts">
-import { useOverlayHost } from "@/lib/overlay-host"
-import type { TooltipContentEmits, TooltipContentProps } from "reka-ui"
+import type { Placement } from "@floating-ui/dom"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject, watch } from "vue"
+import { popoverHintMode, useAnchoredPopover } from "@/lib/use-anchored-popover"
 import { cn } from "@/lib/utils"
-import { TooltipArrow, TooltipContent, TooltipPortal, useForwardPropsEmits } from "reka-ui"
+import { markTooltipClosed, tooltipKey } from "./context"
 
-defineOptions({
-  inheritAttrs: false,
-})
+defineOptions({ inheritAttrs: false })
 
-const props = withDefaults(defineProps<TooltipContentProps & { class?: HTMLAttributes["class"] }>(), {
+const props = withDefaults(defineProps<{
+  side?: "top" | "right" | "bottom" | "left"
+  align?: "start" | "center" | "end"
+  sideOffset?: number
+  /** Keep the tooltip closed, e.g. while the trigger already shows its label. */
+  hidden?: boolean
+  class?: HTMLAttributes["class"]
+}>(), {
+  side: "top",
+  align: "center",
   sideOffset: 4,
+  hidden: false,
 })
 
-const emits = defineEmits<TooltipContentEmits>()
+const ctx = inject(tooltipKey)!
 
-const delegatedProps = reactiveOmit(props, "class")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const placement = computed(() => (props.align === "center" ? props.side : `${props.side}-${props.align}`) as Placement)
 
-const overlayHost = useOverlayHost()
+const { floating: floatingRef, open, close, isOpen } = useAnchoredPopover({
+  placement,
+  offset: () => props.sideOffset,
+  dismiss: true,
+  restoreFocus: false,
+  onClose: () => {
+    if (ctx.open.value) markTooltipClosed()
+    ctx.open.value = false
+  },
+})
+
+watch([ctx.open, () => props.hidden], ([value, hidden]) => {
+  const anchor = ctx.anchor()
+  if (value && !hidden && anchor) open(anchor)
+  else close()
+}, { immediate: true, flush: "post" })
+
+const mode = popoverHintMode()
+function bindFloating(el: unknown) { floatingRef.value = el as HTMLElement | null }
 </script>
 
 <template>
-  <TooltipPortal :to="overlayHost">
-    <TooltipContent
-      data-slot="tooltip-content"
-      v-bind="{ ...forwarded, ...$attrs }"
-      :class="cn('bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance', props.class)"
-    >
-      <slot />
-
-      <TooltipArrow class="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-xs" />
-    </TooltipContent>
-  </TooltipPortal>
+  <div
+    v-if="isOpen"
+    :id="ctx.contentId"
+    :ref="bindFloating"
+    v-bind="$attrs"
+    :popover="mode"
+    role="tooltip"
+    data-slot="tooltip-content"
+    :class="cn(
+      'pointer-events-none z-50 w-fit max-w-xs rounded-md bg-neutral px-3 py-1.5 text-xs text-balance text-neutral-content',
+      'data-placed:animate-in data-placed:fade-in-0 data-placed:zoom-in-95 data-placed:motion-reduce:[animation:none]',
+      'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+      props.class,
+    )"
+  >
+    <slot />
+  </div>
 </template>
