@@ -40,9 +40,8 @@ const stacksTestDir = await mkdtemp(join(tmpdir(), "hsi-stacks-test-"))
 process.env.HSI_CONTAINERS_DIR = stacksTestDir
 const { removeStackDir, stackExists, stackStatus, writeStack } = await import("../services/containerStacks")
 
-// Account appearance survives preference parsing, while malformed values do not erase other prefs.
-{
-  const { parsePrefs } = await import("../trpc/routers/user")
+async function testAppearancePreferences() {
+  const { parsePrefs, mergePrefs } = await import("../trpc/routers/user")
   assert.deepEqual(parsePrefs({ locale: "fr", appearance: { theme: "dracula", radius: 3 } }).appearance, { theme: "dracula", radius: 3 })
   assert.equal(parsePrefs({ locale: "fr", appearance: "garbage" }).locale, "fr")
   assert.equal(parsePrefs({ locale: "fr", appearance: { radius: 99 } }).locale, "fr")
@@ -54,7 +53,18 @@ const { removeStackDir, stackExists, stackStatus, writeStack } = await import(".
   assert.equal(invalid?.radius, undefined)
   assert.equal(invalid?.density, undefined)
   assert.equal(parsePrefs({ appearance: { radius: 1.5 } }).appearance?.radius, undefined)
+
+  assert.deepEqual(
+    mergePrefs({ locale: "fr", appearance: { theme: "dracula", radius: 3 } }, parsePrefs({ appearance: "garbage" })).appearance,
+    { theme: "dracula", radius: 3 },
+  )
+  assert.deepEqual(
+    mergePrefs({ appearance: { theme: "dracula", radius: 3 } }, parsePrefs({ appearance: { radius: 99, density: "roomy" } })).appearance,
+    { theme: "dracula", radius: 3, density: "roomy" },
+  )
+  assert.deepEqual(mergePrefs({ locale: "fr" }, { theme: "dark" }), { locale: "fr", theme: "dark" })
 }
+await testAppearancePreferences()
 
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)

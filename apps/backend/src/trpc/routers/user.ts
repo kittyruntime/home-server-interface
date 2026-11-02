@@ -29,9 +29,22 @@ const zPreferences = z.object({
     density: z.string().max(16).optional().catch(undefined),
   }).optional().catch(undefined),
 })
-export function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
+type Prefs = z.infer<typeof zPreferences>
+
+export function parsePrefs(v: unknown): Prefs {
   const r = zPreferences.safeParse(v ?? {})
   return r.success ? r.data : {}
+}
+
+export function mergePrefs(stored: Prefs, input: Prefs): Prefs {
+  const defined = <T extends object>(value: T): Partial<T> =>
+    Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as Partial<T>
+
+  const merged: Prefs = { ...stored, ...defined(input) }
+  if (input.appearance !== undefined) {
+    merged.appearance = { ...stored.appearance, ...defined(input.appearance) }
+  }
+  return merged
 }
 
 const zCreateInput = z.object({
@@ -153,7 +166,7 @@ export const userRouter = router({
         where: { id: ctx.user.userId },
         select: { preferences: true },
       })
-      const merged = { ...parsePrefs(u?.preferences), ...input }
+      const merged = mergePrefs(parsePrefs(u?.preferences), input)
       await ctx.prisma.user.update({
         where: { id: ctx.user.userId },
         data:  { preferences: merged },
