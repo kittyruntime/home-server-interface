@@ -27,6 +27,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
   let finished = false
   let disposed = false
   let escapeHitLayer = false
+  let escapeFocus: HTMLElement | null = null
   /* Where focus returns. Native close() restores it to the element focused at
      showModal(), but a menu item that is about to unmount is a dead end: fall
      back to the menu's trigger. */
@@ -39,6 +40,19 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     return el.value instanceof HTMLDialogElement ? el.value : null
   }
 
+  /* close() restores focus to the element focused at showModal(); when that
+     one is gone (a menu item), or focus is left on a node inside the closed
+     dialog, fall back to the opener or the menu's trigger. */
+  function closeAndRestoreFocus() {
+    const d = dialog()
+    if (d?.open) d.close()
+    const active = document.activeElement
+    if (!d || !active || active === document.body || d.contains(active)) {
+      const back = opener?.isConnected ? opener : menuTrigger
+      back?.focus()
+    }
+  }
+
   function requestClose() {
     if (opts.canClose && !opts.canClose()) return
     open.value = false
@@ -47,13 +61,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
   function finish() {
     if (finished) return
     finished = true
-    const d = dialog()
-    if (d?.open) d.close()
-    const active = document.activeElement
-    if (!d || !active || active === document.body || d.contains(active)) {
-      const back = opener?.isConnected ? opener : menuTrigger
-      back?.focus()
-    }
+    closeAndRestoreFocus()
     opts.onClosed()
   }
 
@@ -62,6 +70,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
      popover) inside the dialog was open at the keydown, that Escape belongs
      to the layer, which closes itself: the dialog stays. */
   function trackEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape') escapeFocus = document.activeElement as HTMLElement | null
     if (event.key === 'Escape') escapeHitLayer = !!dialog()?.querySelector('[data-dismissable-layer]')
   }
 
@@ -77,7 +86,11 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     const d = dialog()
     if (!d || !open.value || disposed) return
     if (opts.canClose && !opts.canClose()) {
-      if (d.isConnected) d.showModal()
+      if (d.isConnected) {
+        d.showModal()
+        raiseToasts()
+        if (escapeFocus && d.contains(escapeFocus)) escapeFocus.focus()
+      }
       return
     }
     open.value = false
@@ -121,7 +134,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     window.removeEventListener('keydown', trackEscape, true)
     const d = dialog()
     if (!d) return
-    if (d.open) d.close()
+    if (!finished) closeAndRestoreFocus()
   })
 
   return { open, requestClose, finish, onCancel, onNativeClose, onPointerdown, onClick }

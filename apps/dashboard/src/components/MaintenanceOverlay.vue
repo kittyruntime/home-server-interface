@@ -4,6 +4,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { CheckIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+import { raiseToasts } from '../lib/overlay-host'
 import { maintenance } from '../lib/maintenance'
 import { MAINTENANCE_STEPS, maintenanceStepState, type MaintenanceStep } from '../lib/maintenance-step'
 
@@ -28,8 +29,14 @@ const title = computed(() => {
 })
 
 /* Chrome lets a second Escape close a modal dialog without a cancel event. */
+let escapeFocus: Element | null = null
+function rememberFocus() { escapeFocus = document.activeElement }
 function reopen() {
-  if (active.value && dlg.value && !dlg.value.open) dlg.value.showModal()
+  const el = dlg.value
+  if (!active.value || !el || el.open) return
+  el.showModal()
+  raiseToasts()
+  if (escapeFocus instanceof HTMLElement && el.contains(escapeFocus)) escapeFocus.focus()
 }
 
 function reload() {
@@ -50,6 +57,7 @@ function stepLabel(step: MaintenanceStep): string {
     :aria-describedby="descId"
     class="modal overflow-y-auto bg-base-100 p-6"
     @cancel.prevent
+    @keydown.esc.capture="rememberFocus"
     @close="reopen"
   >
     <template v-if="active">

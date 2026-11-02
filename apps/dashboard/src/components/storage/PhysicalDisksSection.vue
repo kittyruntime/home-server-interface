@@ -541,7 +541,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </ConfirmDestroyDialog>
 
     <!-- Add partition -->
-    <Modal v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
+    <Modal :label="t('ui.storage.PhysicalDisksSection.addPartition')" v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
           <div class="px-5 py-4 border-b border-border">
             <h3 class="font-semibold text-foreground">{{ t('ui.storage.PhysicalDisksSection.addPartition') }}</h3>
             <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.storage.PhysicalDisksSection.createsANewPartitionSpanning') }} <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>

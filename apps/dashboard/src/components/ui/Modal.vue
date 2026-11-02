@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, inject, onMounted, ref, useId } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,8 @@ const { t } = useI18n()
 const props = withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
   panelClass?: string
+  /** Accessible name when there is no header slot to label the dialog. */
+  label?: string
   closeOnBackdrop?: boolean
   showClose?: boolean
   /** Block Escape/backdrop/X while a critical operation runs (e.g. formatting). */
@@ -44,6 +46,28 @@ const { open, requestClose, finish, onCancel, onNativeClose, onPointerdown, onCl
   onClosed: () => emit('close'),
 })
 
+/* In a window, Escape is heard on the window element (not on the document, so
+   a modal never closes from another window), and a press inside the window
+   that leaves focus on the page body brings it back to the panel. */
+function onWindowKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); requestClose() }
+}
+function onWindowPointerdown() {
+  setTimeout(() => {
+    if (panel.value && (!document.activeElement || document.activeElement === document.body)) panel.value.focus()
+  })
+}
+let windowEl: HTMLElement | null = null
+onMounted(() => {
+  windowEl = host?.value?.parentElement ?? null
+  windowEl?.addEventListener('keydown', onWindowKeydown)
+  windowEl?.addEventListener('pointerdown', onWindowPointerdown)
+})
+onBeforeUnmount(() => {
+  windowEl?.removeEventListener('keydown', onWindowKeydown)
+  windowEl?.removeEventListener('pointerdown', onWindowPointerdown)
+})
+
 /* Focus the first field rather than the header's close button. */
 onMounted(() => {
   if (!inWindow.value) return
@@ -54,7 +78,6 @@ onMounted(() => {
 function onPanelKeydown(event: KeyboardEvent) {
   const el = panel.value
   if (!inWindow.value || !el) return
-  if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); requestClose(); return }
   if (event.key !== 'Tab') return
   const focusable = [...el.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
   if (!focusable.length) { event.preventDefault(); el.focus(); return }
@@ -86,13 +109,14 @@ defineExpose({ requestClose })
         : ['modal modal-bottom sm:modal-middle justify-items-center sm:p-4 [&>:not(.modal-box)]:absolute', { 'pointer-events-none opacity-0': !open }]"
       :style="inWindow ? undefined : { transitionDuration: 'var(--dur-base)' }"
       :aria-labelledby="!inWindow && $slots.header ? titleId : undefined"
+      :aria-label="!inWindow && !$slots.header ? label : undefined"
       @cancel="onCancel"
       @close="onNativeClose"
       @pointerdown="onPointerdown"
       @click="onClick"
     >
       <Transition v-if="inWindow" name="ui-fade" appear>
-        <div v-if="open" class="pointer-events-auto absolute inset-0 -z-10 bg-black/50" @click="closeOnBackdrop && requestClose()" />
+        <div v-if="open" class="pointer-events-auto absolute inset-0 -z-10 bg-black/50" @mousedown.prevent @click="closeOnBackdrop && requestClose()" />
       </Transition>
       <Transition name="ui-pop" appear @after-leave="finish">
         <!-- v-show, not v-if: Reka portals inside the panel target this dialog,
@@ -103,6 +127,7 @@ defineExpose({ requestClose })
           :role="inWindow ? 'dialog' : undefined"
           :aria-modal="inWindow ? 'true' : undefined"
           :aria-labelledby="inWindow && $slots.header ? titleId : undefined"
+          :aria-label="inWindow && !$slots.header ? label : undefined"
           tabindex="-1"
           :class="panelClasses"
           @keydown="onPanelKeydown"

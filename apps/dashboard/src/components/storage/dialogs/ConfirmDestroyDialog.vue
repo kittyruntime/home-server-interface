@@ -32,7 +32,7 @@ const canConfirm = computed(() =>
 </script>
 
 <template>
-  <Modal panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!busy" @close="emit('close')">
+  <Modal :label="title" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!busy" @close="emit('close')">
     <div class="px-5 py-4 border-b border-border bg-destructive/5">
       <h3 class="font-semibold text-destructive">{{ title }}</h3>
       <p v-if="subtitle" class="text-xs text-muted-foreground mt-0.5">{{ subtitle }}</p>

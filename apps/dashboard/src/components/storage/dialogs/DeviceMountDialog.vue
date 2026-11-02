@@ -86,7 +86,7 @@ defineExpose({ open })
 </script>
 
 <template>
-  <Modal v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
+  <Modal :label="t('ui.storage.DeviceMountDialog.mountDevice')" v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
     <div class="px-5 py-4 border-b border-border">
       <h3 class="font-semibold text-foreground">{{ t('ui.storage.DeviceMountDialog.mountDevice') }}</h3>
       <p class="text-xs text-muted-foreground mt-0.5">

@@ -47,7 +47,7 @@ async function copy() {
 </script>
 
 <template>
-  <Modal panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
+  <Modal :label="'Share &quot;' + name + '&quot;'" panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
     <div class="p-6 space-y-4">
       <h3 class="text-base font-semibold text-foreground">Share "{{ name }}"</h3>
 

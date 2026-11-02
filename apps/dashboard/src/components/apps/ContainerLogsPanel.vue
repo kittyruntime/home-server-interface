@@ -151,6 +151,7 @@ onUnmounted(() => controller?.abort())
   <Modal
     ref="modal"
     :show-close="false"
+    :label="name"
     panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-input bg-[#0d1117]"
     @close="emit('close')"
   >
