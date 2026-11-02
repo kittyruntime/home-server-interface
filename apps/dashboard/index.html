@@ -5,11 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HSI</title>
-    <!-- Apply stored theme before first paint to avoid flash -->
+    <!-- Apply stored appearance before first paint to avoid flash -->
     <script>
       (function () {
-        var t = localStorage.getItem('theme')
-        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+        try {
+          var root = document.documentElement
+          var theme = null
+          var raw = localStorage.getItem('appearance')
+          if (raw !== null) {
+            var a = JSON.parse(raw)
+            if (a && typeof a.theme === 'string') theme = a.theme
+          } else {
+            theme = localStorage.getItem('theme')
+          }
+          if (theme && theme !== 'auto' && /^[a-z]+$/.test(theme)) root.setAttribute('data-theme', theme)
+          var vars = JSON.parse(localStorage.getItem('appearance-vars') || '{}')
+          for (var k in vars) {
+            if (k.indexOf('--') === 0 && typeof vars[k] === 'string') root.style.setProperty(k, vars[k])
+          }
+        } catch (e) { /* storage unavailable or malformed: stay in Auto */ }
       })()
     </script>
   </head>

@@ -43,6 +43,8 @@ watchEffect(() => {
   appliedVars = Object.keys(vars)
 
   writeItem(STORAGE_KEY, JSON.stringify(a))
+  // Read by the inline script in index.html to paint the right look before the bundle loads.
+  writeItem('appearance-vars', Object.keys(vars).length ? JSON.stringify(vars) : null)
   const legacy = toLegacy(a)
   writeItem('theme', legacy.theme === 'auto' ? null : legacy.theme)
   writeItem('accent', legacy.accent === 'orange' ? null : legacy.accent)
