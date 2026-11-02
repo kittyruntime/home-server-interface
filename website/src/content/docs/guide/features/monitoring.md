@@ -14,7 +14,9 @@ sidebar:
   Monitor > Alerts lists them; an alert whose condition is still true comes back
   at the next check.
 - **Audit trail**: a filterable log of privileged actions, including every
-  executed plan with the result of each step.
+  executed plan with the result of each step. Entries are kept for a year by
+  default: set `retention_days` under `[audit]` in `/etc/hsi/hsi.toml` to
+  change it, or to `0` to keep every entry. The change applies within a day.
 
 ## Notifications
 

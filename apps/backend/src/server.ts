@@ -1,5 +1,6 @@
 import { buildApp, connectNats, startEventSubscriber } from "./app"
 import { startMetricsSampler } from "./services/metrics-sampler"
+import { startAuditRetention } from "./services/audit-retention"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeGuard } from "./services/volume-guard"
 import { syncSharesBestEffort } from "./services/sharing.service"
@@ -62,6 +63,7 @@ const start = async () => {
     const app = buildApp({ https: ctx ?? undefined, trustProxy: trustProxyFn(tlsCfg) })
 
     startMetricsSampler()
+    startAuditRetention()
     startAlertSampler()
     startVolumeGuard()
     // Shares and Place access follow the database, which a configuration

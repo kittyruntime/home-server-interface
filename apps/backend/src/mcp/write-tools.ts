@@ -4,6 +4,7 @@ import { z } from "zod"
 import type { ApiScope } from "../services/api-tokens"
 import { MAX_DELETE_PATHS, MAX_OVERWRITE_CHARS, fileSignature } from "../services/agent-actions"
 import type { Caller, ToolContext, ToolDef } from "./tools"
+import { jobEndSignal } from "../nats"
 
 // The tools that change something (#138). Reversible changes run at once,
 // with the user's rights: making a folder or a new file, renaming, moving and
@@ -21,11 +22,16 @@ const JOB_WAIT_MS = 60_000
 async function waitJob(caller: Caller, jobId: string) {
   const deadline = Date.now() + JOB_WAIT_MS
   for (;;) {
-    const job = await caller.tasks.get({ jobId })
-    if (job.status === "completed") return { done: true, result: job.result }
-    if (job.status === "failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: job.error ?? "The operation failed" })
-    if (Date.now() > deadline) return { done: false, jobId, status: job.status }
-    await new Promise(r => setTimeout(r, 300))
+    const signal = jobEndSignal(jobId, deadline - Date.now())
+    try {
+      const job = await caller.tasks.get({ jobId })
+      if (job.status === "completed") return { done: true, result: job.result }
+      if (job.status === "failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: job.error ?? "The operation failed" })
+      if (Date.now() > deadline) return { done: false, jobId, status: job.status }
+      await signal.ended
+    } finally {
+      signal.cancel()
+    }
   }
 }
 

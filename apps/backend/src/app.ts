@@ -86,6 +86,13 @@ export function buildApp(opts: BuildAppOptions = {}) {
     const sensitiveAttempts = new Map<string, { count: number; resetAt: number }>()
     const SENSITIVE_MAX  = 20
     const SENSITIVE_WINDOW_MS = 60_000
+    // Sweep expired windows so the map doesn't keep one entry per IP ever seen.
+    const sweep = setInterval(() => {
+        const now = Date.now()
+        for (const [key, entry] of sensitiveAttempts) if (now >= entry.resetAt) sensitiveAttempts.delete(key)
+    }, SENSITIVE_WINDOW_MS)
+    sweep.unref()
+    app.addHook("onClose", async () => clearInterval(sweep))
 
     app.addHook("preValidation", async (req, reply) => {
         if (req.routeOptions.url !== "/trpc/:path") return

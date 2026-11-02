@@ -6,7 +6,7 @@ import { Readable } from "node:stream"
 import { join, basename, normalize } from "node:path"
 import { verifyFileToken, verifyWallpaperToken } from "../trpc/auth"
 import { prisma } from "@app/database"
-import { publishJob, requestReadChunk, requestSync, writeChunk } from "../nats"
+import { jobEndSignal, publishJob, requestReadChunk, requestSync, writeChunk } from "../nats"
 import { isWithinRoot } from "../utils/fs-guard"
 import { guessMime, isInlineSafe } from "../utils/mime"
 import {
@@ -148,15 +148,20 @@ async function finalizeUploadState(
 async function waitForCleanupCompletion(jobId: string): Promise<boolean> {
   const deadline = Date.now() + CANCEL_CLEANUP_WAIT_MS
   while (Date.now() < deadline) {
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-      select: { status: true },
-    })
-    if (job?.status === "completed") return true
-    // A failed attempt can still be redelivered by JetStream, so keep polling
-    // within the bounded window. If it never completes, the caller retains the
-    // cancelled state/tombstone and a late retry cannot hit a reused id.
-    await new Promise(resolve => setTimeout(resolve, 200))
+    const signal = jobEndSignal(jobId, deadline - Date.now())
+    try {
+      const job = await prisma.job.findUnique({
+        where: { id: jobId },
+        select: { status: true },
+      })
+      if (job?.status === "completed") return true
+      // A failed attempt can still be redelivered by JetStream, so keep waiting
+      // within the bounded window. If it never completes, the caller retains the
+      // cancelled state/tombstone and a late retry cannot hit a reused id.
+      await signal.ended
+    } finally {
+      signal.cancel()
+    }
   }
   return false
 }
