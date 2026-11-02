@@ -307,7 +307,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               {{ t('ui.storage.LvmSection.noLogicalVolumesClickAdd') }}
             </div>
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
-              class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
+              class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
               <div class="w-1.5 h-1.5 rounded-full shrink-0"
                 :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-purple-400/40'"/>
               <div class="flex-1 min-w-0">

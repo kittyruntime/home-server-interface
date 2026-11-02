@@ -51,7 +51,7 @@ function pickCustom() {
       <div class="grid grid-cols-5 gap-1">
         <Button v-for="emoji in SUGGESTIONS" :key="emoji" variant="ghost" size="icon"
           :aria-label="emoji" :aria-pressed="icon === emoji"
-          :class="['text-xl', icon === emoji && 'bg-accent']" @click="pick(emoji)">
+          :class="['text-xl', icon === emoji && 'bg-base-200']" @click="pick(emoji)">
           {{ emoji }}
         </Button>
       </div>

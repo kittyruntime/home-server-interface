@@ -48,7 +48,7 @@ function stepLabel(step: MaintenanceStep): string {
                 'flex size-10 shrink-0 items-center justify-center rounded-full transition-colors',
                 maintenanceStepState(maintenance.step, step) === 'done'   ? 'bg-success/15 text-success' :
                 maintenanceStepState(maintenance.step, step) === 'active' ? 'bg-primary/10 text-primary' :
-                'bg-accent text-muted-foreground'
+                'bg-base-200 text-muted-foreground'
               ]"
             >
               <CheckIcon v-if="maintenanceStepState(maintenance.step, step) === 'done'" class="size-5" aria-hidden="true" />

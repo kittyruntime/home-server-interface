@@ -487,7 +487,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <p class="text-2xs text-muted-foreground px-1">{{ t('ui.storage.RaidSection.freeDisksAtLeastAs') }}</p>
                 <p v-if="!replacementCandidates(r).length" class="text-2xs text-muted-foreground px-1 py-1">{{ t('ui.storage.RaidSection.noSuitableDiskIsFree') }}</p>
                 <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
-                  class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50"
+                  class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-base-200 disabled:opacity-50"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
                   <span class="font-mono text-xs text-foreground">/dev/{{ d.name }}</span>
                   <span class="text-2xs text-muted-foreground">{{ fmtBytes(d.size) }}</span>

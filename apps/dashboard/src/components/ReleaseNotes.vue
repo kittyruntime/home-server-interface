@@ -64,7 +64,7 @@ const blocks = computed(() => parse(props.source))
       <p v-if="b.k === 'h'" class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mt-3 first:mt-0">
         <template v-for="(t, j) in b.children" :key="j">
           <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-accent text-foreground/80">{{ t.v }}</code>
+          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
           <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground/80">{{ t.v }}</strong>
           <template v-else>{{ t.v }}</template>
         </template>
@@ -76,7 +76,7 @@ const blocks = computed(() => parse(props.source))
         <span>
           <template v-for="(t, j) in b.children" :key="j">
             <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-            <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-accent text-foreground/80">{{ t.v }}</code>
+            <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
             <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground">{{ t.v }}</strong>
             <template v-else>{{ t.v }}</template>
           </template>
@@ -87,7 +87,7 @@ const blocks = computed(() => parse(props.source))
       <p v-else class="text-xs text-foreground/80 leading-relaxed">
         <template v-for="(t, j) in b.children" :key="j">
           <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-accent text-foreground/80">{{ t.v }}</code>
+          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
           <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground/80">{{ t.v }}</strong>
           <template v-else>{{ t.v }}</template>
         </template>

@@ -293,7 +293,7 @@ async function unpin(app: App) {
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="app.app?.pinnedUrl ?? ''" target="_blank" rel="noopener"
-              class="group flex items-center gap-3 px-3.5 py-2.5 bg-muted border border-input rounded-xl hover:bg-accent transition-all no-underline"
+              class="group flex items-center gap-3 px-3.5 py-2.5 bg-muted border border-input rounded-xl hover:bg-base-200 transition-all no-underline"
             >
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
               <div class="min-w-0">
@@ -329,7 +329,7 @@ async function unpin(app: App) {
             <TableRow
               v-for="app in apps" :key="app.id"
               :data-app-name="app.name"
-              :class="['group transition-colors', focusedName === app.name ? 'bg-primary/10' : 'hover:bg-accent']"
+              :class="['group transition-colors', focusedName === app.name ? 'bg-primary/10' : 'hover:bg-base-200']"
             >
               <!-- Name -->
               <TableCell class="px-6 py-3.5">

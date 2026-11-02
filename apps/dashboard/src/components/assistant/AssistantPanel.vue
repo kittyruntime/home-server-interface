@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
         <div
           v-for="c in conversations" :key="c.id"
           class="group flex items-center rounded-md"
-          :class="c.id === currentId ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'"
+          :class="c.id === currentId ? 'bg-base-200 text-base-content' : 'hover:bg-base-200/60'"
         >
           <button
             type="button"

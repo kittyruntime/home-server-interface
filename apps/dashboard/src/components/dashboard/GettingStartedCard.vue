@@ -46,7 +46,7 @@ const steps: Array<{ target: 'places' | 'store' | 'backups'; title: string; desc
         <Item
           v-for="s in steps" :key="s.target"
           as="button" variant="muted"
-          class="flex-col items-start gap-1 rounded-xl border-border p-3 text-left hover:border-input hover:bg-accent"
+          class="flex-col items-start gap-1 rounded-xl border-border p-3 text-left hover:border-input hover:bg-base-200"
           @click="emit('navigate', s.target)"
         >
           <ItemTitle class="text-xs font-semibold">{{ s.title }}</ItemTitle>

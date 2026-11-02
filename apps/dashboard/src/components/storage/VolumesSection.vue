@@ -208,7 +208,7 @@ async function mount(v: Volume) {
 
         <div v-for="v in volumes" :key="v.id" class="border-b border-border last:border-b-0">
           <!-- Row (wide) -->
-          <div class="hidden @3xl/content:grid vol-grid gap-3 items-center px-4 py-3 text-xs cursor-pointer hover:bg-accent transition-colors" @click="openVolume(v)">
+          <div class="hidden @3xl/content:grid vol-grid gap-3 items-center px-4 py-3 text-xs cursor-pointer hover:bg-base-200 transition-colors" @click="openVolume(v)">
             <span class="min-w-0">
               <span class="block truncate text-sm font-medium text-foreground">{{ v.name }}</span>
               <span class="block truncate font-mono text-2xs text-muted-foreground">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
@@ -216,7 +216,7 @@ async function mount(v: Volume) {
             <span class="text-foreground/80">{{ REDUNDANCY[v.redundancy] }}</span>
             <span class="min-w-0">
               <template v-if="v.space">
-                <Progress class="h-1.5 rounded-full bg-accent" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
+                <Progress class="h-1.5 rounded-full bg-base-200" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
                 <span class="block mt-1 font-mono tabular-nums text-2xs text-foreground/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               </template>
               <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
@@ -241,7 +241,7 @@ async function mount(v: Volume) {
               </span>
             </div>
             <div v-if="v.space" class="mt-2">
-              <Progress class="h-1.5 rounded-full bg-accent" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
+              <Progress class="h-1.5 rounded-full bg-base-200" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-foreground']" />
             </div>
             <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-muted-foreground">
               <span>{{ REDUNDANCY[v.redundancy] }} · {{ usedByText(v) }}</span>

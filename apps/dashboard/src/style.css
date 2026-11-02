@@ -1,17 +1,22 @@
 @import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset, caramellatte, abyss, silk;
+  exclude: status, rootscrollgutter;
+}
 @import "tw-animate-css";
 
 /* ── Theme ───────────────────────────────────────────────────────────────────
-   shadcn-vue tokens (neutral base). Light by default; dark follows
-   prefers-color-scheme unless data-theme forces one (lib/theme.ts), so the
-   `dark:` variant used by the shadcn components follows the same rule.
+   daisyUI owns the palette (themes listed in @plugin above). The shadcn token
+   names below are aliases onto daisyUI variables, so every screen follows the
+   active data-theme. The `dark:` variant matches the dark themes below, and
+   follows prefers-color-scheme when no theme is forced (Auto mode).
    ─────────────────────────────────────────────────────────────────────────── */
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
+  &:where([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"], :is([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"]) *) {
     @slot;
   }
   @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
       @slot;
     }
   }
@@ -54,133 +59,66 @@
   }
 }
 
-/* Primary follows the user's accent picker (Settings > Appearance); the
-   default "orange" choice keeps the signal red. Destructive stays fixed so
-   dangerous actions never depend on the accent. */
+/* Legacy shadcn token names resolve to daisyUI variables. */
 :root {
-  --brand: #d71921;
-}
-:root[data-accent="orange"] { --brand: #f97316; }
-:root[data-accent="blue"]   { --brand: #3b82f6; }
-:root[data-accent="green"]  { --brand: #22c55e; }
-:root[data-accent="purple"] { --brand: #a855f7; }
-
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: var(--brand);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: var(--color-base-100);
+  --foreground: var(--color-base-content);
+  --card: var(--color-base-100);
+  --card-foreground: var(--color-base-content);
+  --popover: var(--color-base-100);
+  --popover-foreground: var(--color-base-content);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-content);
+  --secondary: var(--color-base-200);
+  --secondary-foreground: var(--color-base-content);
+  --muted: var(--color-base-200);
+  --muted-foreground: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+  --accent: var(--color-base-200);
+  --accent-foreground: var(--color-base-content);
+  --destructive: var(--color-error);
+  --border: var(--color-base-300);
+  --input: var(--color-base-300);
+  --ring: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+  --chart-1: var(--color-primary);
+  --chart-2: var(--color-secondary);
+  --chart-3: var(--color-accent);
+  --chart-4: var(--color-info);
+  --chart-5: var(--color-warning);
+  --sidebar: var(--color-base-100);
+  --sidebar-foreground: var(--color-base-content);
+  --sidebar-primary: var(--color-primary);
+  --sidebar-primary-foreground: var(--color-primary-content);
+  --sidebar-accent: var(--color-base-200);
+  --sidebar-accent-foreground: var(--color-base-content);
+  --sidebar-border: var(--color-base-300);
+  --sidebar-ring: color-mix(in oklab, var(--color-base-content) 35%, transparent);
 
   /* Status colors (not part of shadcn's palette). */
-  --success: #4a9e5c;
-  --warning: #d4a843;
-  --info:    #007aff;
-  --violet:  #a855f7;
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --info:    var(--color-info);
+  --violet:  var(--color-secondary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-    --info:   #5b9bf6;
-    --violet: #c084fc;
-  }
-}
-
-:root[data-theme="dark"] {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --info:   #5b9bf6;
-  --violet: #c084fc;
-}
+/* Temporary accent picker (Settings > Appearance), removed with the picker. */
+:root[data-accent="blue"]   { --color-primary: #3b82f6; }
+:root[data-accent="green"]  { --color-primary: #22c55e; }
+:root[data-accent="purple"] { --color-primary: #a855f7; }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: var(--radius-field);
+  --radius-md: var(--radius-field);
+  --radius-lg: var(--radius-box);
+  --radius-xl: var(--radius-box);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--color-primary-content);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -198,9 +136,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-info: var(--info);
   --color-violet: var(--violet);
 }
 

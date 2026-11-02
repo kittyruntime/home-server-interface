@@ -262,7 +262,7 @@ function formatTime(at: string | Date): string {
         <!-- Recent deliveries -->
         <Collapsible class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card" :open="deliveriesExpanded" @update:open="v => deliveriesExpanded = v">
           <CollapsibleTrigger
-            :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50', deliveriesExpanded ? 'border-b border-border' : '']"
+            :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-base-200/50 focus-visible:ring-3 focus-visible:ring-ring/50', deliveriesExpanded ? 'border-b border-border' : '']"
           >
             <span class="eyebrow">{{ $t('ui.settings.NotificationsSection.recentDeliveries') }}</span>
             <ChevronDownIcon :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />

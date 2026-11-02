@@ -61,7 +61,7 @@ function launch(id: AppId) {
             :key="id"
             variant="ghost"
             @click="launch(id)"
-            class="h-auto flex-col gap-3 p-4 rounded-xl font-normal whitespace-normal focus-visible:bg-accent"
+            class="h-auto flex-col gap-3 p-4 rounded-xl font-normal whitespace-normal focus-visible:bg-base-200"
           >
             <div class="relative size-16 rounded-xl bg-card border shadow-xs flex items-center justify-center text-foreground/80">
               <AppIcon :app="id" :stroke-width="1.5" class="size-7" />

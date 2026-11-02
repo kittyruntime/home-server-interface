@@ -135,7 +135,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
           <TableBody class="divide-y divide-border">
             <template v-for="entry in entries" :key="entry.id">
               <TableRow @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
-                :class="['cursor-pointer transition-colors hover:bg-accent/40',
+                :class="['cursor-pointer transition-colors hover:bg-base-200/40',
                   selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
                   !entry.success ? 'bg-destructive/4' : '']">
 

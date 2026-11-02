@@ -662,7 +662,7 @@ onMounted(async () => {
           <div v-else class="divide-y divide-border rounded-xl border border-border overflow-hidden">
             <Item v-for="r in searchResults" :key="r.path" as="button"
               @click="navigateToSearchResult(r)"
-              class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-accent">
+              class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
               <!-- directory icon -->
               <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
               <!-- file icon -->

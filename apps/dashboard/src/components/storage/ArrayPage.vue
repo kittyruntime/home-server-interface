@@ -98,12 +98,12 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">{{ t('ui.storage.ArrayPage.nothingYet') }}</p>
           <ul class="space-y-1.5">
             <li v-if="vg">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'vg', name: vg })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'vg', name: vg })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volumeGroup') }}</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>
             <li v-for="v in volumes" :key="v.id">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>
@@ -113,7 +113,7 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <h3 class="eyebrow mb-2">{{ t('ui.storage.ArrayPage.members') }}</h3>
           <ul class="space-y-1.5">
             <li v-for="m in members" :key="m">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-accent/50" @click="emit('navigate', { kind: 'disk', name: m })">
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'disk', name: m })">
                 <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.member') }}</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
               </Item>
             </li>

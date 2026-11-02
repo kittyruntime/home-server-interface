@@ -283,7 +283,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     <!-- Children: partitions and what they feed -->
     <div v-if="disk.children && disk.children.length > 0" class="border-t border-border divide-y divide-border">
       <template v-for="part in disk.children.filter(c => c.type !== 'swap')" :key="part.name">
-        <div class="group/part flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
+        <div class="group/part flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
           <!-- Status dot -->
           <div class="w-1.5 h-1.5 rounded-full shrink-0"
             :class="part.isSystem ? 'bg-warning/60' : part.mountpoint ? 'bg-success/70' : 'bg-muted-foreground/25'"/>

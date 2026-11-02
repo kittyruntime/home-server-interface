@@ -41,7 +41,7 @@ const emit = defineEmits<{
     <div
       v-for="t in uploadTasks"
       :key="t.id"
-      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent select-none pointer-events-none overflow-hidden"
+      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 select-none pointer-events-none overflow-hidden"
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
@@ -64,7 +64,7 @@ const emit = defineEmits<{
     </div>
 
     <!-- Ghost card while creating a folder -->
-    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
+    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
       <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFolder') }}</span>
       <!-- Centered spinner overlay -->
@@ -74,7 +74,7 @@ const emit = defineEmits<{
     </div>
 
     <!-- Ghost card while creating a file -->
-    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-accent opacity-60 select-none pointer-events-none">
+    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
       <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFile') }}</span>
       <!-- Centered spinner overlay -->
@@ -97,7 +97,7 @@ const emit = defineEmits<{
           : 'cursor-pointer',
         selected.has(entry.path) && !pendingPaths?.includes(entry.path)
           ? 'bg-primary/10 ring-1 ring-primary'
-          : 'hover:bg-accent',
+          : 'hover:bg-base-200',
       ]"
     >
       <!-- Pending overlay -->
