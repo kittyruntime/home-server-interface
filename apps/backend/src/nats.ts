@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events"
 import { connect, headers } from "@nats-io/transport-node"
 import type { NatsConnection, Subscription } from "@nats-io/transport-node"
 import { jetstream, jetstreamManager, JetStreamApiError } from "@nats-io/jetstream"
@@ -235,6 +236,31 @@ export function natsSubscribe(subject: string): Subscription {
 
 // ── Event subscriber ──────────────────────────────────────────────────────────
 
+// Jobs reported finished, by jobId, once their row is updated: waiters react
+// to the worker's event instead of polling the database.
+const jobEnded = new EventEmitter()
+jobEnded.setMaxListeners(0)
+
+// A job's end could still be missed (a backend restart in between, an event
+// lost): waiters look at the row again at least this often.
+const JOB_RECHECK_MS = 5_000
+
+/**
+ * Resolves once the worker reports jobId finished, or after ms at most.
+ * Call it before reading the job's row, so an end in between is not missed;
+ * always call cancel.
+ */
+export function jobEndSignal(jobId: string, ms: number): { ended: Promise<void>; cancel: () => void } {
+  let cancel = () => {}
+  const ended = new Promise<void>(resolve => {
+    const done = () => { clearTimeout(timer); jobEnded.off(jobId, done); resolve() }
+    const timer = setTimeout(done, Math.max(0, Math.min(ms, JOB_RECHECK_MS)))
+    jobEnded.on(jobId, done)
+    cancel = done
+  })
+  return { ended, cancel }
+}
+
 type JobEvent = {
   jobId:   string
   status:  "completed" | "failed"
@@ -266,6 +292,7 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
           error:  event.error  ?? null,
         },
       })
+      jobEnded.emit(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.
       if (event.status === "failed") {
         log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, "job failed")

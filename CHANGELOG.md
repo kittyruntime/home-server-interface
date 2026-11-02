@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Audit log retention**: entries older than a year are removed. Set
+  `retention_days` under `[audit]` in the new `/etc/hsi/hsi.toml` to keep
+  them longer, shorter, or forever (`0`).
+
+### Changed
+- **Faster app actions**: starting, restarting or pinning an app reads only
+  that app's file instead of every app's.
+
 ### Changed
 - **Steadier live usage, quieter background tabs**: the dashboard widgets and
   Monitoring share one live usage feed, so their CPU and network figures no
