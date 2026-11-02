@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Faster app actions**: starting, restarting or pinning an app reads only
   that app's file instead of every app's.
 
+### Fixed
+- **A long copy no longer delays an app**: file jobs (copies, moves,
+  archives) and app jobs (start, stop, update) run side by side, and a job
+  that takes long is no longer run a second time.
+- **Container logs**: at most 16 log views stream at once, and reopening a
+  log view no longer stops the new stream.
+
 ### Changed
 - **Steadier live usage, quieter background tabs**: the dashboard widgets and
   Monitoring share one live usage feed, so their CPU and network figures no

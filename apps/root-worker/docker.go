@@ -20,10 +20,23 @@ import (
 
 // ── Log streaming sessions ────────────────────────────────────────────────────
 
+// maxLogStreams bounds the concurrent "docker logs --follow" processes: a
+// client that vanishes without a stop leaves its stream running up to its
+// 30 minute limit.
+const maxLogStreams = 16
+
+// logStream is one running stream; a pointer, so a stream that ends only
+// forgets its own entry, not a newer stream started on the same inbox.
+type logStream struct{ cancel context.CancelFunc }
+
 var (
 	logMu      sync.Mutex
-	logCancels = map[string]context.CancelFunc{}
+	logStreams = map[string]*logStream{}
 )
+
+// reContainerName is what Docker accepts as a container name; it also keeps
+// a name from being read as a docker logs option.
+var reContainerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 
 // ── Message types ─────────────────────────────────────────────────────────────
 
@@ -254,25 +267,40 @@ func handleDockerLogs(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "containerName and inbox required"})
 		return
 	}
+	if !reContainerName.MatchString(req.ContainerName) {
+		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid container name"})
+		return
+	}
 	tail := req.Tail
 	if tail <= 0 {
 		tail = 300
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-
 	inbox := req.Inbox
 	containerName := req.ContainerName
 
 	logMu.Lock()
-	logCancels[inbox] = cancel
+	previous := logStreams[inbox]
+	if previous == nil && len(logStreams) >= maxLogStreams {
+		logMu.Unlock()
+		replyErr(nc, msg.Reply, &fsError{Code: "EBUSY", Message: "too many log streams are open: close another log view and try again"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	stream := &logStream{cancel: cancel}
+	logStreams[inbox] = stream
 	logMu.Unlock()
+	if previous != nil {
+		previous.cancel() // the same inbox asked again: the newer stream replaces it
+	}
 
 	go func() {
 		defer func() {
 			cancel()
 			logMu.Lock()
-			delete(logCancels, inbox)
+			if logStreams[inbox] == stream {
+				delete(logStreams, inbox)
+			}
 			logMu.Unlock()
 			done, _ := json.Marshal(map[string]any{"done": true})
 			_ = nc.Publish(inbox, done)
@@ -319,13 +347,13 @@ func handleDockerLogsStop(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 	logMu.Lock()
-	cancel, ok := logCancels[req.Inbox]
+	stream, ok := logStreams[req.Inbox]
 	if ok {
-		delete(logCancels, req.Inbox)
+		delete(logStreams, req.Inbox)
 	}
 	logMu.Unlock()
 	if ok {
-		cancel()
+		stream.cancel()
 	}
 	replyOk(nc, msg.Reply, map[string]any{"ok": true})
 }
