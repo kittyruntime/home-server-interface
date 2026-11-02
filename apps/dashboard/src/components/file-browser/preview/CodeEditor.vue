@@ -8,7 +8,8 @@ import { EditorView, basicSetup } from 'codemirror'
 import { EditorState, Compartment, EditorSelection } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 import { defaultKeymap, indentWithTab, history, historyKeymap } from '@codemirror/commands'
-import { LanguageDescription } from '@codemirror/language'
+import { LanguageDescription, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags as tg } from '@lezer/highlight'
 import { languages } from '@codemirror/language-data'
 import { trpc } from '../../../lib/trpc'
 import { getFormatter, formatContent } from '../../../lib/formatters'
@@ -48,12 +49,33 @@ const theme = EditorView.theme({
   '&.cm-focused': { outline: 'none' },
 })
 
+// Token colors are CSS variables, so they follow the active daisyUI theme without a rebuild.
+// Saturated theme colors are mixed toward the content color where they could fail on some themes.
+const soften = (color: string) => `color-mix(in oklab, var(${color}) 70%, var(--color-base-content))`
+const highlightStyle = HighlightStyle.define([
+  { tag: [tg.keyword, tg.modifier, tg.operatorKeyword, tg.controlKeyword], color: soften('--color-primary') },
+  { tag: [tg.string, tg.special(tg.string), tg.regexp], color: soften('--color-success') },
+  { tag: [tg.number, tg.bool, tg.null, tg.atom], color: soften('--color-warning') },
+  { tag: [tg.comment, tg.lineComment, tg.blockComment], color: 'color-mix(in oklab, var(--color-base-content) 55%, transparent)', fontStyle: 'italic' },
+  { tag: [tg.variableName, tg.name], color: 'var(--color-base-content)' },
+  { tag: [tg.typeName, tg.className, tg.namespace], color: soften('--color-secondary') },
+  { tag: [tg.function(tg.variableName), tg.function(tg.propertyName)], color: soften('--color-info') },
+  { tag: [tg.propertyName, tg.attributeName], color: soften('--color-accent') },
+  { tag: tg.operator, color: 'color-mix(in oklab, var(--color-base-content) 80%, transparent)' },
+  { tag: [tg.punctuation, tg.separator, tg.bracket], color: 'color-mix(in oklab, var(--color-base-content) 65%, transparent)' },
+  { tag: tg.heading, color: soften('--color-primary'), fontWeight: 'bold' },
+  { tag: [tg.link, tg.url], color: soften('--color-info'), textDecoration: 'underline' },
+  { tag: [tg.meta, tg.processingInstruction, tg.documentMeta], color: 'color-mix(in oklab, var(--color-base-content) 60%, transparent)' },
+  { tag: tg.invalid, color: 'var(--color-error)' },
+])
+
 function setupEditor(content: string) {
   if (!editorEl.value) return
   view = new EditorView({
     state: EditorState.create({
       doc: content,
       extensions: [
+        syntaxHighlighting(highlightStyle),
         basicSetup,
         history(),
         keymap.of([

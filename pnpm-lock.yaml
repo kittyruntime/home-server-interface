@@ -142,6 +142,9 @@ importers:
       '@fontsource/space-mono':
         specifier: ^5.3.0
         version: 5.3.0
+      '@lezer/highlight':
+        specifier: ^1.2.5
+        version: 1.2.5
       '@lucide/vue':
         specifier: ^1.56.0
         version: 1.63.0(vue@3.5.44(typescript@6.0.3))
