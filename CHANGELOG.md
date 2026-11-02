@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Rolling back an update works again**: v1.78.3 was never published because
+  rolling back from it left the previous version unable to start. File and
+  app jobs still run side by side, now without changing anything that
+  outlives the update. This release ships everything listed under v1.78.3.
+
 ## [1.78.3] - 2026-11-02
 
 ### Added
