@@ -7,7 +7,7 @@ export const THEMES = [
 ] as const
 
 export const DARK_THEMES = [
-  'dark', 'synthwave', 'halloween', 'forest', 'black', 'luxury', 'dracula',
+  'dark', 'synthwave', 'halloween', 'forest', 'aqua', 'black', 'luxury', 'dracula',
   'business', 'night', 'coffee', 'dim', 'sunset', 'abyss',
 ] as const
 
@@ -31,9 +31,9 @@ export const DEFAULT_APPEARANCE: Appearance = {
 const ACCENT_COLORS = {
   red: ['#d71921', '#ffffff'],
   orange: ['#f97316', '#1a1a1a'],
-  blue: ['#3b82f6', '#ffffff'],
+  blue: ['#3b82f6', '#1a1a1a'],
   green: ['#22c55e', '#1a1a1a'],
-  purple: ['#a855f7', '#ffffff'],
+  purple: ['#a855f7', '#1a1a1a'],
 } as const
 
 const RADIUS_STEPS = {
@@ -75,6 +75,12 @@ export function fromLegacy(theme?: string, accent?: string): Appearance {
     theme: theme === 'light' || theme === 'dark' ? theme : 'auto',
     accent: accent === 'blue' || accent === 'green' || accent === 'purple' ? accent : 'theme',
   }
+}
+
+/** Appearance for the signed-in account: never inherits radius or density from the browser's previous user. */
+export function hydrateAppearance(server: { appearance?: unknown; theme?: string; accent?: string }): Appearance {
+  if (server.appearance) return normalizeAppearance(server.appearance)
+  return fromLegacy(server.theme, server.accent)
 }
 
 export function toLegacy(a: Appearance): { theme: 'auto' | 'light' | 'dark'; accent: 'orange' | 'blue' | 'green' | 'purple' } {

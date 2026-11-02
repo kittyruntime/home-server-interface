@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { trpc } from './trpc'
 import { useAppearance } from './theme'
-import { fromLegacy, normalizeAppearance, toLegacy } from './appearance'
+import { hydrateAppearance, toLegacy } from './appearance'
 import { orderedIds, setOrder } from './sidebar-nav'
 import { isLocale, locale, setLocale } from '../i18n'
 import { useDeleteConfirm } from './delete-confirm'
@@ -39,18 +39,9 @@ export async function syncPreferences() {
 
   try {
     const p = await trpc.user.preferences.query()
-    if (p.appearance) {
-      setAppearance(normalizeAppearance(p.appearance))
-    } else {
-      // Older server data only has the legacy pair, which still wins over local values.
-      const legacy = fromLegacy(p.theme, p.accent)
-      setAppearance({
-        ...(p.theme ? { theme: legacy.theme } : {}),
-        ...(p.accent ? { accent: legacy.accent } : {}),
-      })
-    }
+    setAppearance(hydrateAppearance(p))
     if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
-    if (isLocale(p.locale)) void setLocale(p.locale)
+    if (isLocale(p.locale)) await setLocale(p.locale)
     if (typeof p.confirmFileDelete === 'boolean') setConfirmFileDelete(p.confirmFileDelete)
   } catch {
     // Not authenticated / offline: keep whatever localStorage already had.

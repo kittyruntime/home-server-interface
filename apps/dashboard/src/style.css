@@ -12,7 +12,7 @@
    follows prefers-color-scheme when no theme is forced (Auto mode).
    ─────────────────────────────────────────────────────────────────────────── */
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"], :is([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"]) *) {
+  &:where([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="aqua"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"], :is([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="aqua"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"]) *) {
     @slot;
   }
   @media (prefers-color-scheme: dark) {

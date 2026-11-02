@@ -28,7 +28,8 @@ function readStored(): Appearance {
 const appearance = ref<Appearance>(readStored())
 
 // Inline properties set on <html> by the previous run, to clear the ones that no longer apply.
-let appliedVars: string[] = []
+// Seeded from what the pre-paint script already set, so stale values are cleared on the first run.
+let appliedVars: string[] = Array.from(document.documentElement.style).filter(name => name.startsWith('--'))
 
 watchEffect(() => {
   const html = document.documentElement
