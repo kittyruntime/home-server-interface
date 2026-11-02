@@ -22,8 +22,14 @@ const zPreferences = z.object({
   sidebarOrder: z.array(z.string()).optional(),
   locale:       z.enum(["en", "fr"]).optional(),
   confirmFileDelete: z.boolean().optional(),
+  appearance: z.object({
+    theme: z.string().max(32).optional().catch(undefined),
+    accent: z.string().max(16).optional().catch(undefined),
+    radius: z.number().int().min(0).max(4).optional().catch(undefined),
+    density: z.string().max(16).optional().catch(undefined),
+  }).optional().catch(undefined),
 })
-function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
+export function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
   const r = zPreferences.safeParse(v ?? {})
   return r.success ? r.data : {}
 }
