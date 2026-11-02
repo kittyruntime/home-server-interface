@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useNarrow } from '@/lib/viewport'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -7,6 +8,8 @@ import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import { Badge } from '@/components/ui/badge'
+
+const narrow = useNarrow()
 
 const { t } = useI18n()
 
@@ -52,8 +55,8 @@ onUnmounted(() => {
     <Card v-else-if="connections.length === 0" class="block gap-0 py-0 overflow-hidden p-4"><EmptyState :message="t('ui.sharing.ConnectionsSection.noActiveSmbConnections')" :description="t('ui.sharing.ConnectionsSection.newSmbSessionsWillAppear')" /></Card>
 
     <Card v-else class="block gap-0 py-0 overflow-hidden">
-      <div class="divide-y divide-border sm:hidden"><article v-for="(c,i) in connections" :key="i" class="space-y-2 p-4"><div class="flex items-center justify-between gap-2"><strong class="truncate text-sm text-foreground">{{c.user||'guest'}}</strong><Badge variant="secondary">{{c.share}}</Badge></div><dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs"><dt class="text-muted-foreground">{{ t('ui.sharing.ConnectionsSection.client') }}</dt><dd class="truncate font-mono text-foreground/80" :title="c.client">{{c.client}}</dd><dt class="text-muted-foreground">{{ t('ui.sharing.ConnectionsSection.connected') }}</dt><dd class="font-mono text-foreground/80">{{c.connectedAt}}</dd></dl></article></div>
-      <div class="hidden sm:block">
+      <div v-if="narrow" class="divide-y divide-border"><article v-for="(c,i) in connections" :key="i" class="space-y-2 p-4"><div class="flex items-center justify-between gap-2"><strong class="truncate text-sm text-foreground">{{c.user||'guest'}}</strong><Badge variant="secondary">{{c.share}}</Badge></div><dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs"><dt class="text-muted-foreground">{{ t('ui.sharing.ConnectionsSection.client') }}</dt><dd class="truncate font-mono text-foreground/80" :title="c.client">{{c.client}}</dd><dt class="text-muted-foreground">{{ t('ui.sharing.ConnectionsSection.connected') }}</dt><dd class="font-mono text-foreground/80">{{c.connectedAt}}</dd></dl></article></div>
+      <div v-else>
       <Table class="w-full text-sm">
         <TableHeader>
           <TableRow class="border-b border-border">

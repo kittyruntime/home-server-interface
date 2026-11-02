@@ -9,7 +9,7 @@ import { useAuth } from './auth'
 export type WidgetType = 'cpu' | 'memory' | 'network' | 'containers' | 'storage' | 'sysinfo' | 'smart'
 export interface Widget { id: string; type: WidgetType; cols: 1 | 2 }
 
-interface Metrics {
+export interface Metrics {
   cpu:     number
   memory:  { total: number; used: number; percent: number }
   network: { rx: number; tx: number }

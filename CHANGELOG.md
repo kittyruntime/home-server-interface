@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Lighter lists**: the users, apps and connections lists render either as
+  cards (phone) or as a table, no longer both with one hidden, and the users
+  list works out each person's groups once instead of on every row.
+
+### Changed
 - **Steadier live usage, quieter background tabs**: the dashboard widgets and
   Monitoring share one live usage feed, so their CPU and network figures no
   longer disturb each other, and a hidden tab stops refreshing usage,

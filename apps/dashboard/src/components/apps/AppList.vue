@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useNarrow } from '@/lib/viewport'
 import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
 import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon } from '@lucide/vue'
@@ -23,6 +24,8 @@ import { updateText } from '../../lib/app-update'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+const narrow = useNarrow()
 
 const { t } = useI18n()
 
@@ -303,7 +306,7 @@ async function unpin(app: App) {
         </div>
 
         <!-- Mobile cards -->
-        <div class="space-y-2 px-3 pb-3 sm:hidden">
+        <div v-if="narrow" class="space-y-2 px-3 pb-3">
           <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-border p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-card']">
             <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">{{ t('ui.apps.AppList.blocked') }}</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">{{ t('ui.apps.AppList.changesPending') }}</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-muted-foreground" :aria-label="t('ui.apps.AppList.editContainer')" @click="openEdit(app)"><EllipsisIcon /></Button></div>
             <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">{{ t('ui.apps.AppList.start') }}</Button><Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">{{ t('ui.apps.AppList.stop') }}</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">{{ t('ui.apps.AppList.restart') }}</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" @click="openLogs(app)">{{ t('ui.apps.AppList.logs') }}</Button></div>
@@ -311,7 +314,7 @@ async function unpin(app: App) {
         </div>
 
         <!-- Desktop table -->
-        <div class="hidden overflow-x-auto sm:block">
+        <div v-else class="overflow-x-auto">
         <Table class="w-full text-sm">
           <TableHeader>
             <TableRow class="border-b border-border">

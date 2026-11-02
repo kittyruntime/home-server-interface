@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useNarrow } from '@/lib/viewport'
 import { useI18n } from 'vue-i18n'
 import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
@@ -21,6 +22,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+const narrow = useNarrow()
+
 const { t } = useI18n()
 
 type User = {
@@ -40,6 +43,19 @@ const toast = useToast()
 
 const users     = ref<User[]>([])
 const groups    = ref<Group[]>([])
+// Each user's groups, built once per group list instead of scanning every
+// group's members for every row on each render.
+const groupsByUser = computed(() => {
+  const map = new Map<string, Group[]>()
+  for (const g of groups.value) for (const m of g.members) {
+    const list = map.get(m.userId)
+    if (list) list.push(g)
+    else map.set(m.userId, [g])
+  }
+  return map
+})
+const NO_GROUPS: Group[] = []
+const groupsOf = (userId: string) => groupsByUser.value.get(userId) ?? NO_GROUPS
 const loading   = ref(true)
 const loadError = ref('')
 
@@ -233,8 +249,8 @@ onMounted(load)
 
       <!-- Table -->
       <template v-else>
-        <div class="space-y-2 sm:hidden"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><UserAvatar :username="user.username" class="size-9 text-2xs" /><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groups.filter(g=>g.members.some(m=>m.userId===user.id))" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">{{ t('ui.settings.UserListPanel.clearSearch') }}</Button></template></EmptyState></div>
-        <Card class="block gap-0 py-0 overflow-hidden hidden sm:block">
+        <div v-if="narrow" class="space-y-2"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><UserAvatar :username="user.username" class="size-9 text-2xs" /><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groupsOf(user.id)" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">{{ t('ui.settings.UserListPanel.clearSearch') }}</Button></template></EmptyState></div>
+        <Card v-else class="block gap-0 py-0 overflow-hidden">
           <Table class="w-full text-sm">
             <TableHeader>
               <TableRow class="bg-muted border-b border-border">
@@ -275,10 +291,10 @@ onMounted(load)
                 <!-- Groups -->
                 <TableCell class="px-5 py-3.5">
                   <div class="flex flex-wrap gap-1">
-                    <Badge variant="secondary" v-for="g in groups.filter(g => g.members.some(m => m.userId === user.id))" :key="g.id">
+                    <Badge variant="secondary" v-for="g in groupsOf(user.id)" :key="g.id">
                       {{ g.name }}
                     </Badge>
-                    <span v-if="!groups.some(g => g.members.some(m => m.userId === user.id))" class="text-muted-foreground text-xs">-</span>
+                    <span v-if="!groupsOf(user.id).length" class="text-muted-foreground text-xs">-</span>
                   </div>
                 </TableCell>
 
