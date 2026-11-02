@@ -10,7 +10,7 @@ import (
 // ── Plan builders: RAID create and stop (#36) ────────────────────────────────
 
 var hostMdBrief = func(dev string) (string, error) {
-	o, err := command("mdadm", "--detail", "--brief", dev).CombinedOutput()
+	o, err := probe("mdadm", "--detail", "--brief", dev).CombinedOutput()
 	return string(o), err
 }
 

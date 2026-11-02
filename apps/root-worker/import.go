@@ -118,7 +118,7 @@ func parseInactiveVGs(out string) []foundVG {
 
 func activeArrayUUIDs() map[string]bool {
 	active := map[string]bool{}
-	out, err := command("mdadm", "--detail", "--scan").Output()
+	out, err := probe("mdadm", "--detail", "--scan").Output()
 	if err != nil {
 		return active
 	}
@@ -136,7 +136,7 @@ var hostExamineScan = func() string {
 	if _, err := exec.LookPath("mdadm"); err != nil {
 		return ""
 	}
-	out, _ := command("mdadm", "--examine", "--scan", "--verbose").Output()
+	out, _ := probe("mdadm", "--examine", "--scan", "--verbose").Output()
 	return string(out)
 }
 
@@ -144,7 +144,7 @@ func handleImportScan(nc *nats.Conn, msg *nats.Msg) {
 	arrays := unassembledArrays(parseExamineScan(hostExamineScan()), activeArrayUUIDs())
 	vgs := []foundVG{}
 	if _, err := exec.LookPath("lvs"); err == nil {
-		if out, err := command("lvs", "--noheadings", "--separator", ":", "-o", "vg_name,lv_name,lv_active").Output(); err == nil {
+		if out, err := probe("lvs", "--noheadings", "--separator", ":", "-o", "vg_name,lv_name,lv_active").Output(); err == nil {
 			vgs = parseInactiveVGs(string(out))
 		}
 	}

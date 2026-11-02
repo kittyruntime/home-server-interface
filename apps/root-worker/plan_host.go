@@ -20,7 +20,7 @@ var (
 	hostDescribe   = describeDevice
 	hostSignatures = func(dev string) string { o, _ := command("wipefs", "-n", "-J", dev).Output(); return string(o) }
 	hostMdDetail   = func(dev string) (string, error) {
-		o, err := command("mdadm", "--detail", dev).CombinedOutput()
+		o, err := probe("mdadm", "--detail", dev).CombinedOutput()
 		return string(o), err
 	}
 	hostOutput = func(name string, args ...string) ([]byte, error) { return command(name, args...).Output() }

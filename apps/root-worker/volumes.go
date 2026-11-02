@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -170,9 +171,41 @@ func dirHasEntries(dir string) bool {
 	return err == nil && len(entries) > 0
 }
 
-func isMounted(mp string) bool {
-	out, _ := command("findmnt", "-n", "-o", "TARGET", "--mountpoint", mp).Output()
-	return strings.TrimSpace(string(out)) != ""
+// isMounted reads the mount table directly: it cannot hang, and a failure is
+// an error, never "not mounted" (that answer leads to a chattr +i on mp).
+func isMounted(mp string) (bool, error) {
+	data, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return false, err
+	}
+	return mountinfoHas(string(data), mp), nil
+}
+
+// mountinfoHas reports whether mp is a mount point in /proc/self/mountinfo
+// content (field 5, with spaces and the like octal-escaped).
+func mountinfoHas(mountinfo, mp string) bool {
+	for _, line := range strings.Split(mountinfo, "\n") {
+		f := strings.Fields(line)
+		if len(f) > 4 && unescapeMountinfo(f[4]) == mp {
+			return true
+		}
+	}
+	return false
+}
+
+func unescapeMountinfo(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+3 < len(s) {
+			if n, err := strconv.ParseUint(s[i+1:i+4], 8, 8); err == nil {
+				b.WriteByte(byte(n))
+				i += 3
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // protectMountPoint makes the directory under a mount point immutable, so
@@ -186,14 +219,18 @@ func protectMountPoint(mp string) (bool, error) {
 	if real, err := filepath.EvalSymlinks(mp); err == nil {
 		mp = real
 	}
-	if !isMounted(mp) {
+	mounted, err := isMounted(mp)
+	if err != nil {
+		return false, err
+	}
+	if !mounted {
 		if err := os.MkdirAll(mp, 0755); err != nil {
 			return false, err
 		}
 		stray := dirHasEntries(mp)
 		return stray, command("chattr", "+i", mp).Run()
 	}
-	parentOut, err := command("findmnt", "-n", "-o", "TARGET", "-T", filepath.Dir(mp)).Output()
+	parentOut, err := probe("findmnt", "-n", "-o", "TARGET", "-T", filepath.Dir(mp)).Output()
 	if err != nil {
 		return false, err
 	}
@@ -260,13 +297,13 @@ type volumeStatus struct {
 
 // findmntAt is findmnt's view of the mount point mp; tests swap it.
 var findmntAt = func(mp string) string {
-	o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
+	o, _ := probe("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
 	return string(o)
 }
 
 // blkidPresent tells whether a filesystem with this UUID is attached; tests swap it.
 var blkidPresent = func(uuid string) bool {
-	dev, err := command("blkid", "-U", uuid).Output()
+	dev, err := probe("blkid", "-U", uuid).Output()
 	return err == nil && strings.TrimSpace(string(dev)) != ""
 }
 
