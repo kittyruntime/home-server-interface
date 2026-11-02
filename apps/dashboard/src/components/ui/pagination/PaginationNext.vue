@@ -1,33 +1,34 @@
 <script setup lang="ts">
-import type { PaginationNextProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { ButtonVariants } from "@/components/ui/button"
 import { ChevronRightIcon } from "@lucide/vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject } from "vue"
 import { cn } from "@/lib/utils"
-import { PaginationNext, useForwardProps } from "reka-ui"
 import { buttonVariants } from "@/components/ui/button"
+import { paginationKey } from "./context"
 
-const props = withDefaults(defineProps<PaginationNextProps & {
+const props = withDefaults(defineProps<{
   size?: ButtonVariants["size"]
   class?: HTMLAttributes["class"]
 }>(), {
   size: "default",
 })
 
-const delegatedProps = reactiveOmit(props, "class", "size")
-const forwarded = useForwardProps(delegatedProps)
+const pagination = inject(paginationKey)
+const disabled = computed(() => !pagination || pagination.disabled.value || pagination?.page.value === pagination?.pageCount.value)
 </script>
 
 <template>
-  <PaginationNext
+  <button
+    type="button"
     data-slot="pagination-next"
-    :class="cn(buttonVariants({ variant: 'ghost', size }), 'gap-1 px-2.5 sm:pr-2.5', props.class)"
-    v-bind="forwarded"
+    :disabled="disabled"
+    :class="cn(buttonVariants({ variant: 'secondary', size }), 'join-item gap-1 px-2.5 sm:pr-2.5', props.class)"
+    @click="pagination?.setPage((pagination?.page.value ?? 1) + 1)"
   >
     <slot>
       <span class="hidden sm:block">Next</span>
       <ChevronRightIcon />
     </slot>
-  </PaginationNext>
+  </button>
 </template>

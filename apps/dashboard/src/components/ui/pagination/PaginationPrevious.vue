@@ -1,33 +1,34 @@
 <script setup lang="ts">
-import type { PaginationPrevProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { ButtonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon } from "@lucide/vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject } from "vue"
 import { cn } from "@/lib/utils"
-import { PaginationPrev, useForwardProps } from "reka-ui"
 import { buttonVariants } from "@/components/ui/button"
+import { paginationKey } from "./context"
 
-const props = withDefaults(defineProps<PaginationPrevProps & {
+const props = withDefaults(defineProps<{
   size?: ButtonVariants["size"]
   class?: HTMLAttributes["class"]
 }>(), {
   size: "default",
 })
 
-const delegatedProps = reactiveOmit(props, "class", "size")
-const forwarded = useForwardProps(delegatedProps)
+const pagination = inject(paginationKey)
+const disabled = computed(() => !pagination || pagination.disabled.value || pagination?.page.value === 1)
 </script>
 
 <template>
-  <PaginationPrev
+  <button
+    type="button"
     data-slot="pagination-previous"
-    :class="cn(buttonVariants({ variant: 'ghost', size }), 'gap-1 px-2.5 sm:pr-2.5', props.class)"
-    v-bind="forwarded"
+    :disabled="disabled"
+    :class="cn(buttonVariants({ variant: 'secondary', size }), 'join-item gap-1 px-2.5 sm:pr-2.5', props.class)"
+    @click="pagination?.setPage((pagination?.page.value ?? 1) - 1)"
   >
     <slot>
       <ChevronLeftIcon />
       <span class="hidden sm:block">Previous</span>
     </slot>
-  </PaginationPrev>
+  </button>
 </template>

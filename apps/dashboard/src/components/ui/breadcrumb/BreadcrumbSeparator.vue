@@ -1,11 +1,6 @@
 <script lang="ts" setup>
-import type { HTMLAttributes } from "vue"
-import { ChevronRight } from "@lucide/vue"
-import { cn } from "@/lib/utils"
-
-const props = defineProps<{
-  class?: HTMLAttributes["class"]
-}>()
+// daisyUI draws the chevron before every item that follows another one, so the
+// separator keeps its place in the callers' markup without rendering anything.
 </script>
 
 <template>
@@ -13,10 +8,6 @@ const props = defineProps<{
     data-slot="breadcrumb-separator"
     role="presentation"
     aria-hidden="true"
-    :class="cn('[&>svg]:size-3.5', props.class)"
-  >
-    <slot>
-      <ChevronRight />
-    </slot>
-  </li>
+    class="hidden"
+  />
 </template>
