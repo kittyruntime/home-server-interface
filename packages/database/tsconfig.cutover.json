@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["prisma/cutover/*.ts", "prisma/seed.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  }
+}

@@ -3444,4 +3444,24 @@ await testTelemetryChannelOptOutAndPayload()
     "an access token cannot chat")
   await app.close()
 }
+
+// The symlink-escape guard on the backend's direct file reads (fs-guard.ts).
+{
+  const { isWithinRoot } = await import("../utils/fs-guard")
+  const { mkdir, symlink } = await import("node:fs/promises")
+  const root = await mkdtemp(join(tmpdir(), "hsi-guard-root-"))
+  const outside = await mkdtemp(join(tmpdir(), "hsi-guard-out-"))
+  await mkdir(join(root, "docs"))
+  await symlink(outside, join(root, "escape"))
+  assert.equal(await isWithinRoot(join(root, "docs"), root), true)
+  assert.equal(await isWithinRoot(join(root, "docs", "not-yet"), root), true, "a destination that does not exist yet")
+  assert.equal(await isWithinRoot(root, root), true)
+  assert.equal(await isWithinRoot(join(root, "escape", "secret"), root), false, "a symlink out of the root")
+  assert.equal(await isWithinRoot(join(root, "..", "x"), root), false, ".. out of the root")
+  assert.equal(await isWithinRoot(`${root}-sibling`, root), false, "a sibling sharing the prefix")
+  assert.equal(await isWithinRoot(join(root, "docs"), join(root, "missing")), false, "an unreadable root")
+  await rm(root, { recursive: true, force: true })
+  await rm(outside, { recursive: true, force: true })
+}
+
 console.log("Backend security tests passed")
