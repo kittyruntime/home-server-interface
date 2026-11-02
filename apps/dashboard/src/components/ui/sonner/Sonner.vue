@@ -13,7 +13,7 @@ const props = defineProps<ToasterProps>()
     :style="{
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',
-      '--normal-border': 'var(--border)',
+      '--normal-border': 'var(--color-border)',
       '--border-radius': 'var(--radius)',
     }"
     v-bind="props"

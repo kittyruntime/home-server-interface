@@ -465,6 +465,6 @@ onBeforeUnmount(() => {
 .assistant-md :deep(a) { color: var(--primary); text-decoration: underline; }
 .assistant-md :deep(.md-table) { overflow-x: auto; margin: 0.5rem 0; }
 .assistant-md :deep(table) { border-collapse: collapse; font-size: 0.85em; }
-.assistant-md :deep(th), .assistant-md :deep(td) { border: 1px solid var(--border); padding: 0.3rem 0.6rem; text-align: left; }
+.assistant-md :deep(th), .assistant-md :deep(td) { border: 1px solid var(--color-border); padding: 0.3rem 0.6rem; text-align: left; }
 .assistant-md :deep(th) { background: var(--muted); font-weight: 600; }
 </style>
