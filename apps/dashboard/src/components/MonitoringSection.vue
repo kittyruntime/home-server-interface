@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { ChevronDownIcon, ChevronUpIcon, LayersIcon, LayoutTemplateIcon, WifiIcon } from '@lucide/vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -12,12 +12,15 @@ import {
 } from 'chart.js'
 import { trpc } from '../lib/trpc'
 import { subscribeMetrics } from '../lib/live-metrics'
+import { useAppearance } from '../lib/theme'
+import { resolveThemeColor } from '../lib/theme-colors'
 import LoadingState from './ui/LoadingState.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import ErrorState from './ui/ErrorState.vue'
 
 const { t } = useI18n()
+const { appearance } = useAppearance()
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -53,6 +56,28 @@ onMounted(async () => {
 })
 
 onUnmounted(() => stopMetrics?.())
+
+// ── Chart colors ──────────────────────────────────────────────────────────────
+
+function readColors() {
+  return {
+    cpu:  resolveThemeColor('--chart-1'),
+    ram:  resolveThemeColor('--chart-4'),
+    rx:   resolveThemeColor('--color-success'),
+    tx:   resolveThemeColor('--chart-5'),
+    text: resolveThemeColor('--color-base-content'),
+  }
+}
+const colors = ref(readColors())
+const refreshColors = () => { colors.value = readColors() }
+
+watch(appearance, () => { nextTick(refreshColors) }, { deep: true })
+
+// In Auto mode the system can flip light/dark without the appearance changing.
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+const onSchemeChange = () => { nextTick(refreshColors) }
+darkQuery.addEventListener('change', onSchemeChange)
+onUnmounted(() => darkQuery.removeEventListener('change', onSchemeChange))
 
 function fmtBytes(n: number, decimals = 1): string {
   if (n <= 0)         return '0 B'
@@ -101,7 +126,7 @@ function lineDataset(label: string, values: number[], color: string) {
     label,
     data: values,
     borderColor: color,
-    backgroundColor: color.replace(')', ', 0.1)').replace('rgb', 'rgba'),
+    backgroundColor: color.replace('rgb(', 'rgba(').replace(')', ', 0.1)'),
     borderWidth: 1.5,
     pointRadius: 0,
     tension: 0.3,
@@ -111,31 +136,35 @@ function lineDataset(label: string, values: number[], color: string) {
 
 const cpuChartData = computed(() => ({
   labels: chartLabels.value,
-  datasets: [lineDataset('CPU %', historyData.value.map(s => s.cpuPct), 'rgb(215, 25, 33)')],
+  datasets: [lineDataset('CPU %', historyData.value.map(s => s.cpuPct), colors.value.cpu)],
 }))
 
 const ramChartData = computed(() => ({
   labels: chartLabels.value,
-  datasets: [lineDataset('RAM GB', historyData.value.map(s => s.ramUsed / 1073741824), 'rgb(59, 130, 246)')],
+  datasets: [lineDataset('RAM GB', historyData.value.map(s => s.ramUsed / 1073741824), colors.value.ram)],
 }))
 
 const netChartData = computed(() => ({
   labels: chartLabels.value,
   datasets: [
-    lineDataset('RX MB/s', historyData.value.map(s => s.netRxBps / 1048576), 'rgb(34, 197, 94)'),
-    lineDataset('TX MB/s', historyData.value.map(s => s.netTxBps / 1048576), 'rgb(251, 146, 60)'),
+    lineDataset('RX MB/s', historyData.value.map(s => s.netRxBps / 1048576), colors.value.rx),
+    lineDataset('TX MB/s', historyData.value.map(s => s.netTxBps / 1048576), colors.value.tx),
   ],
 }))
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false }, tooltip: { mode: 'index' as const, intersect: false } },
-  scales: {
-    x: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { maxTicksLimit: 8, font: { size: 10 } } },
-    y: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { font: { size: 10 } }, beginAtZero: true },
-  },
-}
+const chartOptions = computed(() => {
+  const grid = { color: colors.value.text.replace('rgb(', 'rgba(').replace(')', ', 0.1)') }
+  const ticks = { color: colors.value.text, font: { size: 10 } }
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index' as const, intersect: false } },
+    scales: {
+      x: { grid, ticks: { ...ticks, maxTicksLimit: 8 } },
+      y: { grid, ticks, beginAtZero: true },
+    },
+  }
+})
 </script>
 
 <template>

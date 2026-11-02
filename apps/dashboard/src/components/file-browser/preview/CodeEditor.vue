@@ -43,8 +43,8 @@ const theme = EditorView.theme({
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--primary)' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent) !important' },
   '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', border: 'none', borderRight: '1px solid var(--border)' },
-  '.cm-activeLine': { backgroundColor: 'var(--accent)' },
-  '.cm-activeLineGutter': { backgroundColor: 'var(--accent)' },
+  '.cm-activeLine': { backgroundColor: 'var(--color-base-200)' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--color-base-200)' },
   '&.cm-focused': { outline: 'none' },
 })
 
