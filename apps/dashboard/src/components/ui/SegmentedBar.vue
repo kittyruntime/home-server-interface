@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { Progress } from '@/components/ui/progress'
 
-// Usage bar (disks, memory, operations): the shadcn-vue progress track with a
-// caller-chosen fill color. `segments` is kept for callers and ignored.
+// Usage bar (disks, memory, operations): a progress track with a caller-chosen
+// fill color. `segments` is kept for callers and ignored.
 const props = withDefaults(defineProps<{
   percent: number
   segments?: number
@@ -28,7 +28,7 @@ const heightClass = computed(() => ({
 <template>
   <Progress
     :model-value="indeterminate ? null : value"
-    :class="['rounded-full bg-muted', heightClass]"
+    :class="['rounded-full bg-base-200', heightClass]"
     :indicator-class="['rounded-full', indeterminate && 'w-1/3 animate-[progress-slide_1.2s_ease-in-out_infinite]']"
     :indicator-style="indeterminate ? { backgroundColor: color, transform: 'none' } : { backgroundColor: color }"
   />

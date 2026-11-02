@@ -1,42 +1,53 @@
 <script setup lang="ts">
-import type { ProgressRootProps } from "reka-ui"
 import type { HTMLAttributes, StyleValue } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed } from "vue"
 import { cn } from "@/lib/utils"
-import {
-  ProgressIndicator,
-  ProgressRoot,
-} from "reka-ui"
 
+// A native <progress> cannot take the callers' indicator classes (bg-*,
+// width, transform for the indeterminate sweep), so the bar stays a div pair.
 const props = withDefaults(
-  defineProps<ProgressRootProps & {
+  defineProps<{
+    /** Percentage of `max`. null renders the indeterminate state. */
+    modelValue?: number | null
+    max?: number
     class?: HTMLAttributes["class"]
     indicatorClass?: HTMLAttributes["class"]
     indicatorStyle?: StyleValue
   }>(),
   {
     modelValue: 0,
+    max: 100,
   },
 )
 
-const delegatedProps = reactiveOmit(props, "class", "indicatorClass", "indicatorStyle")
+const indeterminate = computed(() => props.modelValue == null)
+const percent = computed(() => {
+  if (props.modelValue == null)
+    return 0
+  return Math.max(0, Math.min(100, props.modelValue / props.max * 100))
+})
+const state = computed(() => {
+  if (indeterminate.value)
+    return "indeterminate"
+  return percent.value >= 100 ? "complete" : "loading"
+})
 </script>
 
 <template>
-  <ProgressRoot
+  <div
+    role="progressbar"
     data-slot="progress"
-    v-bind="delegatedProps"
-    :class="
-      cn(
-        'bg-primary/20 relative h-2 w-full overflow-hidden rounded-full',
-        props.class,
-      )
-    "
+    :data-state="state"
+    aria-valuemin="0"
+    :aria-valuemax="max"
+    :aria-valuenow="indeterminate ? undefined : modelValue ?? undefined"
+    :class="cn('bg-primary/20 relative h-2 w-full overflow-hidden rounded-full', props.class)"
   >
-    <ProgressIndicator
+    <div
       data-slot="progress-indicator"
+      :data-state="state"
       :class="cn('bg-primary h-full w-full flex-1 transition-all', props.indicatorClass)"
-      :style="[`transform: translateX(-${100 - (props.modelValue ?? 0)}%);`, props.indicatorStyle]"
+      :style="[`transform: translateX(-${100 - percent}%);`, props.indicatorStyle]"
     />
-  </ProgressRoot>
+  </div>
 </template>
