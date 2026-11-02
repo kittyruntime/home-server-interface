@@ -65,7 +65,7 @@ type smartSelfTestJSON struct {
 
 // hostSelfTestJSON reads a disk's self-test state without waking it up.
 var hostSelfTestJSON = func(dev string) []byte {
-	out, _ := command("smartctl", "-n", "standby", "-j", "-c", "-l", "selftest", dev).Output()
+	out, _ := probe("smartctl", "-n", "standby", "-j", "-c", "-l", "selftest", dev).Output()
 	return out
 }
 
@@ -203,7 +203,7 @@ func runSmartTests(kind string) []taskResult {
 	if _, err := exec.LookPath("smartctl"); err != nil {
 		return append(results, taskResult{Status: "error", Message: "smartctl is not installed (sudo apt install smartmontools)"})
 	}
-	out, err := command("lsblk", "-dn", "-P", "-o", "NAME,TYPE,SERIAL").Output()
+	out, err := probe("lsblk", "-dn", "-P", "-o", "NAME,TYPE,SERIAL").Output()
 	if err != nil {
 		return append(results, taskResult{Status: "error", Message: "lsblk failed: " + err.Error()})
 	}
@@ -217,7 +217,7 @@ func runSmartTests(kind string) []taskResult {
 		}
 		dev := "/dev/" + fields["NAME"]
 		count := selfTestLogCount(dev)
-		sout, serr := command("smartctl", "-n", "standby", "-t", kind, dev).CombinedOutput()
+		sout, serr := probe("smartctl", "-n", "standby", "-t", kind, dev).CombinedOutput()
 		status, msg := classifySelfTestStart(string(sout), serr)
 		r := taskResult{Device: fields["NAME"], Serial: fields["SERIAL"], Status: status, Message: msg}
 		if status == "started" {

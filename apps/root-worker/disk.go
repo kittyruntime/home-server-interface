@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,13 +52,15 @@ func systemDeviceNames() map[string]bool {
 		critDevs = append(critDevs, "/dev/"+name)
 	}
 
-	// Walk up to the parent disk via lsblk.
+	// Walk up to the parent disk via lsblk, or sysfs when lsblk fails or
+	// times out: an unknown parent would let a plan touch the system disk.
 	for _, dev := range critDevs {
-		out, err := command("lsblk", "-no", "PKNAME", dev).Output()
+		out, err := probe("lsblk", "-no", "PKNAME", dev).Output()
+		parents := strings.Fields(string(out))
 		if err != nil {
-			continue
+			parents = sysfsParents(dev)
 		}
-		for _, parent := range strings.Fields(string(out)) {
+		for _, parent := range parents {
 			if parent != "" {
 				result[parent] = true
 			}
@@ -65,6 +68,30 @@ func systemDeviceNames() map[string]bool {
 	}
 
 	return result
+}
+
+// sysfsParents names the devices under dev from sysfs, without running a
+// command: the disk of a partition, and the slaves of a dm or md device.
+func sysfsParents(dev string) []string {
+	real, err := filepath.EvalSymlinks(dev)
+	if err != nil {
+		if real, err = filepath.EvalSymlinks("/dev/mapper/" + filepath.Base(dev)); err != nil {
+			return nil
+		}
+	}
+	sys := "/sys/class/block/" + filepath.Base(real)
+	var out []string
+	if _, err := os.Stat(sys + "/partition"); err == nil {
+		if p, err := filepath.EvalSymlinks(sys); err == nil {
+			out = append(out, filepath.Base(filepath.Dir(p)))
+		}
+	}
+	if slaves, err := os.ReadDir(sys + "/slaves"); err == nil {
+		for _, s := range slaves {
+			out = append(out, s.Name())
+		}
+	}
+	return out
 }
 
 // systemMountDevices returns the lsblk names of the devices mounted at a
@@ -254,7 +281,7 @@ func propagateSystem(dev *BlockDev) {
 func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	sysDevs := systemDeviceNames()
 
-	out, err := command("lsblk", "-J", "-b", "-o",
+	out, err := probe("lsblk", "-J", "-b", "-o",
 		"NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL,UUID,RM,SERIAL,WWN,LABEL").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "lsblk failed: " + err.Error()})
@@ -268,7 +295,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	pvVG := map[string]string{}
-	if pvsOut, err := command("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
+	if pvsOut, err := probe("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
 		pvVG = parsePvs(string(pvsOut))
 	}
 
@@ -305,7 +332,7 @@ func mountSources(mountPoint string) []string {
 			continue
 		}
 		sources := []string{f[0]}
-		if out, err := command("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
+		if out, err := probe("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
 			if uuid := strings.TrimSpace(string(out)); uuid != "" {
 				sources = append(sources, "UUID="+uuid)
 			}
@@ -490,7 +517,7 @@ func claimBlockReason(nodes []blkNode) string {
 }
 
 func lsblkTree(device string) ([]blkNode, error) {
-	out, err := command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", devPathFor(device)).Output()
+	out, err := probe("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", devPathFor(device)).Output()
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +767,7 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 		args = append(args, "-n", "standby")
 	}
 	args = append(args, "/dev/"+req.Device)
-	raw, err := command(smartctlPath, args...).Output()
+	raw, err := probe(smartctlPath, args...).Output()
 	if err != nil && len(raw) == 0 {
 		replyOk(nc, msg.Reply, result)
 		return

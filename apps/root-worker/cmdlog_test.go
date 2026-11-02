@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 )
 
 // captureDebugLogs points the package logger at a buffer at debug level for
@@ -114,5 +115,20 @@ func TestCommandSkipsWorkWhenDebugDisabled(t *testing.T) {
 	}
 	if cmd.Stderr != nil {
 		t.Error("Run() should not capture stderr when debug is off")
+	}
+}
+
+// A probe stuck on the host (a dying disk, a stale mount) is killed instead of
+// blocking its NATS subject.
+func TestProbeTimesOut(t *testing.T) {
+	saved := probeTimeout
+	probeTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { probeTimeout = saved })
+	start := time.Now()
+	if err := probe("sleep", "10").Run(); err == nil {
+		t.Fatal("a probe past its timeout must fail")
+	}
+	if d := time.Since(start); d > 3*time.Second {
+		t.Fatalf("probe returned after %v, want about %v", d, probeTimeout)
 	}
 }

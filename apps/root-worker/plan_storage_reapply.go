@@ -217,7 +217,13 @@ func planStorageReapply(raw json.RawMessage) (*opPlan, *fsError) {
 		mount.run = func() (string, error) {
 			// Checked again here: an array assembled by this plan can bring
 			// a clone of the filesystem along.
-			if devs := hostDevsByUUID(uuid); len(devs) > 1 && hostBlkid(devs[0], "TYPE") != "btrfs" {
+			devs := hostDevsByUUID(uuid)
+			if len(devs) == 0 {
+				// The filesystem must be there to be mounted: none read means
+				// blkid failed or timed out, and a clone cannot be ruled out.
+				return "", fmt.Errorf("could not read which devices carry the filesystem %s: try again", uuid)
+			}
+			if len(devs) > 1 && hostBlkid(devs[0], "TYPE") != "btrfs" {
 				return "", fmt.Errorf("several devices carry the filesystem %s (%s), a clone or a snapshot: disconnect the copy, then mount it", uuid, strings.Join(devs, ", "))
 			}
 			return base()
