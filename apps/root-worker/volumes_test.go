@@ -118,3 +118,16 @@ func TestMountinfoHas(t *testing.T) {
 		}
 	}
 }
+
+func TestMountinfoEntry(t *testing.T) {
+	info := "22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n" +
+		"40 22 9:0 / /srv/data rw,relatime shared:9 - ext4 /dev/md0 rw\n" +
+		"41 40 253:0 / /srv/data ro,nosuid master:3 shared:10 - xfs /dev/mapper/vg-lv rw\n"
+	src, opts, ok := mountinfoEntry(info, "/srv/data")
+	if !ok || src != "/dev/mapper/vg-lv" || opts != "ro,nosuid" {
+		t.Fatalf("topmost mount: %q %q %v", src, opts, ok)
+	}
+	if _, _, ok := mountinfoEntry(info, "/srv"); ok {
+		t.Fatal("/srv is not a mount point")
+	}
+}

@@ -190,18 +190,74 @@ func ensureStream(js nats.JetStreamContext) error {
 	return nil
 }
 
-// ensureConsumer deletes the durable pull consumer if its filter subject is
-// stale (e.g. "root.fs.*") so that PullSubscribe can recreate it with the
-// broader "root.>" filter that covers both FS and Docker subjects.
+// jobLanes are the JetStream consumers of async jobs, each run serially. File
+// and container jobs get one each, so a copy or an archive that takes hours
+// does not hold back an app start. Their filters must not overlap (work-queue
+// stream).
+var jobLanes = []struct{ durable, filter string }{
+	{"root-worker", "root.fs.>"},
+	{"root-worker-container", "root.container.>"},
+}
+
+// ensureConsumer deletes the file lane's durable consumer while it still has
+// an older, broader filter ("root.fs.*" or "root.>", which would overlap the
+// container lane), so PullSubscribe recreates it. Pending jobs stay in the
+// work-queue stream and go to the new consumers.
 func ensureConsumer(js nats.JetStreamContext) {
-	info, err := js.ConsumerInfo("TASKS", "root-worker")
+	info, err := js.ConsumerInfo("TASKS", jobLanes[0].durable)
 	if err != nil {
 		return // doesn't exist yet: PullSubscribe will create it
 	}
-	if info.Config.FilterSubject == "root.fs.*" {
-		log.Println("Migrating pull consumer filter from root.fs.* to root.>")
-		if err := js.DeleteConsumer("TASKS", "root-worker"); err != nil {
+	if info.Config.FilterSubject != jobLanes[0].filter {
+		log.Printf("Migrating pull consumer filter from %s to %s", info.Config.FilterSubject, jobLanes[0].filter)
+		if err := js.DeleteConsumer("TASKS", jobLanes[0].durable); err != nil {
 			log.Printf("warn: delete old consumer: %v", err)
+		}
+	}
+}
+
+// jobAckWait is how long a fetched job may go without news before JetStream
+// redelivers it; keepInProgress renews it while the job runs.
+const jobAckWait = 60 * time.Second
+
+// keepInProgress tells JetStream the job is still running until stop is
+// called, so a long copy or compose pull is not redelivered mid-run.
+func keepInProgress(msg *nats.Msg) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		t := time.NewTicker(jobAckWait / 3)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				_ = msg.InProgress()
+			}
+		}
+	}()
+	return func() { close(done) }
+}
+
+// runJobLane fetches and handles one lane's jobs, one at a time.
+func runJobLane(nc *nats.Conn, sub *nats.Subscription) {
+	for {
+		msgs, err := sub.Fetch(1, nats.MaxWait(5*time.Second))
+		if err != nil {
+			if err == nats.ErrTimeout {
+				continue
+			}
+			if err == nats.ErrConnectionClosed {
+				return
+			}
+			log.Printf("fetch error: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		for _, msg := range msgs {
+			stop := keepInProgress(msg)
+			handleTask(nc, msg)
+			stop()
 		}
 	}
 }
@@ -1150,36 +1206,19 @@ func main() {
 		}
 	}()
 
-	// ── JetStream pull consumer (async jobs) ──────────────────────────────
-	sub, err := js.PullSubscribe("root.>", "root-worker",
-		nats.BindStream("TASKS"),
-		nats.MaxDeliver(3),
-		nats.AckExplicit(),
-	)
-	if err != nil {
-		log.Fatalf("pull subscribe: %v", err)
-	}
-
-	// Pull loop in background goroutine
-	go func() {
-		for {
-			msgs, err := sub.Fetch(1, nats.MaxWait(5*time.Second))
-			if err != nil {
-				if err == nats.ErrTimeout {
-					continue
-				}
-				if err == nats.ErrConnectionClosed {
-					return
-				}
-				log.Printf("fetch error: %v", err)
-				time.Sleep(time.Second)
-				continue
-			}
-			for _, msg := range msgs {
-				handleTask(nc, msg)
-			}
+	// ── JetStream pull consumers (async jobs) ─────────────────────────────
+	for _, lane := range jobLanes {
+		sub, err := js.PullSubscribe(lane.filter, lane.durable,
+			nats.BindStream("TASKS"),
+			nats.MaxDeliver(3),
+			nats.AckExplicit(),
+			nats.AckWait(jobAckWait),
+		)
+		if err != nil {
+			log.Fatalf("pull subscribe %s: %v", lane.durable, err)
 		}
-	}()
+		go runJobLane(nc, sub)
+	}
 
 	log.Println("worker ready")
 
