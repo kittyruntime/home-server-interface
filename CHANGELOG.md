@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.78.3] - 2026-11-02
+
 ### Added
 - **Audit log retention**: entries older than a year are removed. Set
   `retention_days` under `[audit]` in the new `/etc/hsi/hsi.toml` to keep
@@ -1790,7 +1792,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.3...HEAD
+[1.78.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.2...v1.78.3
 [1.78.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.1...v1.78.2
 [1.78.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.0...v1.78.1
 [1.78.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.77.1...v1.78.0
