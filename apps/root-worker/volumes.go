@@ -171,7 +171,7 @@ func dirHasEntries(dir string) bool {
 }
 
 func isMounted(mp string) bool {
-	out, _ := command("findmnt", "-n", "-o", "TARGET", "--mountpoint", mp).Output()
+	out, _ := probe("findmnt", "-n", "-o", "TARGET", "--mountpoint", mp).Output()
 	return strings.TrimSpace(string(out)) != ""
 }
 
@@ -193,7 +193,7 @@ func protectMountPoint(mp string) (bool, error) {
 		stray := dirHasEntries(mp)
 		return stray, command("chattr", "+i", mp).Run()
 	}
-	parentOut, err := command("findmnt", "-n", "-o", "TARGET", "-T", filepath.Dir(mp)).Output()
+	parentOut, err := probe("findmnt", "-n", "-o", "TARGET", "-T", filepath.Dir(mp)).Output()
 	if err != nil {
 		return false, err
 	}
@@ -260,13 +260,13 @@ type volumeStatus struct {
 
 // findmntAt is findmnt's view of the mount point mp; tests swap it.
 var findmntAt = func(mp string) string {
-	o, _ := command("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
+	o, _ := probe("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
 	return string(o)
 }
 
 // blkidPresent tells whether a filesystem with this UUID is attached; tests swap it.
 var blkidPresent = func(uuid string) bool {
-	dev, err := command("blkid", "-U", uuid).Output()
+	dev, err := probe("blkid", "-U", uuid).Output()
 	return err == nil && strings.TrimSpace(string(dev)) != ""
 }
 

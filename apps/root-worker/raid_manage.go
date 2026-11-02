@@ -27,7 +27,7 @@ func isMember(members []string, device string) bool {
 }
 
 func deviceSize(path string) (int64, error) {
-	out, err := command("blockdev", "--getsize64", path).Output()
+	out, err := probe("blockdev", "--getsize64", path).Output()
 	if err != nil {
 		return 0, err
 	}

@@ -21,14 +21,39 @@ const maxLoggedOutput = 2000
 // matters already reaches the log through the job or request error.
 //
 // Secrets must only be passed on stdin, which is never logged.
-type loggedCmd struct{ *exec.Cmd }
+type loggedCmd struct {
+	*exec.Cmd
+	cancel context.CancelFunc // set by probe, released once the command ends
+}
 
 func command(name string, args ...string) *loggedCmd {
-	return &loggedCmd{exec.Command(name, args...)}
+	return &loggedCmd{Cmd: exec.Command(name, args...)}
 }
 
 func commandContext(ctx context.Context, name string, args ...string) *loggedCmd {
-	return &loggedCmd{exec.CommandContext(ctx, name, args...)}
+	return &loggedCmd{Cmd: exec.CommandContext(ctx, name, args...)}
+}
+
+// probeTimeout bounds a read-only host query. NATS delivers a subject's
+// messages one at a time, so a probe stuck on a dying disk or a stale mount
+// would otherwise block that subject for good.
+var probeTimeout = 60 * time.Second
+
+// probe is command for quick read-only queries (lsblk, blkid, findmnt,
+// smartctl, mdadm --detail...): it is killed after probeTimeout. Commands
+// that change the host or move data use command, they can take hours.
+func probe(name string, args ...string) *loggedCmd {
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	c := &loggedCmd{Cmd: exec.CommandContext(ctx, name, args...), cancel: cancel}
+	// A child that keeps the output pipes open must not outlive the kill.
+	c.WaitDelay = 5 * time.Second
+	return c
+}
+
+func (c *loggedCmd) release() {
+	if c.cancel != nil {
+		c.cancel()
+	}
 }
 
 func debugEnabled() bool {
@@ -36,6 +61,7 @@ func debugEnabled() bool {
 }
 
 func (c *loggedCmd) Run() error {
+	defer c.release()
 	if !debugEnabled() {
 		return c.Cmd.Run()
 	}
@@ -55,6 +81,7 @@ func (c *loggedCmd) Run() error {
 }
 
 func (c *loggedCmd) Output() ([]byte, error) {
+	defer c.release()
 	if !debugEnabled() {
 		return c.Cmd.Output()
 	}
@@ -70,6 +97,7 @@ func (c *loggedCmd) Output() ([]byte, error) {
 }
 
 func (c *loggedCmd) CombinedOutput() ([]byte, error) {
+	defer c.release()
 	if !debugEnabled() {
 		return c.Cmd.CombinedOutput()
 	}

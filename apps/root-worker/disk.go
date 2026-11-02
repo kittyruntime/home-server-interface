@@ -53,7 +53,7 @@ func systemDeviceNames() map[string]bool {
 
 	// Walk up to the parent disk via lsblk.
 	for _, dev := range critDevs {
-		out, err := command("lsblk", "-no", "PKNAME", dev).Output()
+		out, err := probe("lsblk", "-no", "PKNAME", dev).Output()
 		if err != nil {
 			continue
 		}
@@ -254,7 +254,7 @@ func propagateSystem(dev *BlockDev) {
 func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	sysDevs := systemDeviceNames()
 
-	out, err := command("lsblk", "-J", "-b", "-o",
+	out, err := probe("lsblk", "-J", "-b", "-o",
 		"NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL,UUID,RM,SERIAL,WWN,LABEL").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "lsblk failed: " + err.Error()})
@@ -268,7 +268,7 @@ func handleBlockDevices(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	pvVG := map[string]string{}
-	if pvsOut, err := command("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
+	if pvsOut, err := probe("pvs", "--noheadings", "--separator", ":", "-o", "pv_name,vg_name").Output(); err == nil {
 		pvVG = parsePvs(string(pvsOut))
 	}
 
@@ -305,7 +305,7 @@ func mountSources(mountPoint string) []string {
 			continue
 		}
 		sources := []string{f[0]}
-		if out, err := command("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
+		if out, err := probe("blkid", "-s", "UUID", "-o", "value", f[0]).Output(); err == nil {
 			if uuid := strings.TrimSpace(string(out)); uuid != "" {
 				sources = append(sources, "UUID="+uuid)
 			}
@@ -490,7 +490,7 @@ func claimBlockReason(nodes []blkNode) string {
 }
 
 func lsblkTree(device string) ([]blkNode, error) {
-	out, err := command("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", devPathFor(device)).Output()
+	out, err := probe("lsblk", "-P", "-o", "NAME,FSTYPE,MOUNTPOINT", devPathFor(device)).Output()
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +740,7 @@ func handleSmartInfo(nc *nats.Conn, msg *nats.Msg) {
 		args = append(args, "-n", "standby")
 	}
 	args = append(args, "/dev/"+req.Device)
-	raw, err := command(smartctlPath, args...).Output()
+	raw, err := probe(smartctlPath, args...).Output()
 	if err != nil && len(raw) == 0 {
 		replyOk(nc, msg.Reply, result)
 		return

@@ -16,7 +16,7 @@ import (
 var (
 	// Every device carrying the UUID: a clone or a snapshot carries it too.
 	hostDevsByUUID = func(uuid string) []string {
-		out, _ := command("blkid", "-o", "device", "-t", "UUID="+uuid).Output()
+		out, _ := probe("blkid", "-o", "device", "-t", "UUID="+uuid).Output()
 		return strings.Fields(string(out))
 	}
 	hostPvs = func() []lvmPV { pvs, _, _ := getLvmInfo(); return pvs }
@@ -29,7 +29,7 @@ var (
 	}
 	hostBusy = func(mp string) []string {
 		// The PIDs go to stdout, the table to stderr.
-		out, _ := command("fuser", "-vm", mp).CombinedOutput()
+		out, _ := probe("fuser", "-vm", mp).CombinedOutput()
 		return parseFuser(string(out))
 	}
 )

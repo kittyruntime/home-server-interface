@@ -37,7 +37,7 @@ var (
 	}
 	// A whole disk: lsblk type "disk" (not a partition, md or dm device).
 	hostWholeDisk = func(name string) bool {
-		out, err := command("lsblk", "-dn", "-o", "TYPE", "/dev/"+name).Output()
+		out, err := probe("lsblk", "-dn", "-o", "TYPE", "/dev/"+name).Output()
 		return err == nil && strings.TrimSpace(string(out)) == "disk"
 	}
 	hostVgNames = func() []string {

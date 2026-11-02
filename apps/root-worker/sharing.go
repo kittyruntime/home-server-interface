@@ -322,7 +322,7 @@ func modeOctal(m os.FileMode) string {
 // account" and "couldn't tell" the same way (both mean "don't rely on it").
 func sambaAccountNames() []string {
 	names := []string{}
-	out, err := command("pdbedit", "-L").Output()
+	out, err := probe("pdbedit", "-L").Output()
 	if err != nil {
 		return names
 	}
@@ -452,7 +452,7 @@ func handleSharingStatus(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"})
 		return
 	}
-	out, err := command("smbstatus", "--json").Output()
+	out, err := probe("smbstatus", "--json").Output()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "smbstatus failed: " + err.Error()})
 		return
