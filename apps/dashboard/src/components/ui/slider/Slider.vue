@@ -1,43 +1,64 @@
 <script setup lang="ts">
-import type { SliderRootEmits, SliderRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { nextTick, onMounted, ref, watch } from "vue"
 import { cn } from "@/lib/utils"
-import { SliderRange, SliderRoot, SliderThumb, SliderTrack, useForwardPropsEmits } from "reka-ui"
 
-const props = defineProps<SliderRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<SliderRootEmits>()
+// One native range input, so a single thumb: the model is an array of one
+// number, as before.
+const props = withDefaults(defineProps<{
+  modelValue?: number[]
+  defaultValue?: number[]
+  min?: number
+  max?: number
+  step?: number
+  disabled?: boolean
+  class?: HTMLAttributes["class"]
+}>(), { modelValue: undefined, defaultValue: undefined, min: 0, max: 100, step: 1 })
 
-const delegatedProps = reactiveOmit(props, "class")
+const emits = defineEmits<{
+  "update:modelValue": [value: number[]]
+  "valueCommit": [value: number[]]
+}>()
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const el = ref<HTMLInputElement | null>(null)
+const local = ref<number[]>(props.defaultValue ?? [props.min])
+
+function current() {
+  return props.modelValue ?? local.value
+}
+
+function sync() {
+  if (el.value)
+    el.value.value = String(current()[0] ?? props.min)
+}
+
+// min, max and step first: the browser clamps value against them.
+watch(() => [props.modelValue, props.min, props.max, props.step], sync, { flush: "post", deep: true })
+onMounted(sync)
+
+function onInput(event: Event) {
+  const next = [Number((event.target as HTMLInputElement).value)]
+  local.value = next
+  emits("update:modelValue", next)
+  nextTick(sync)
+}
+
+function onChange(event: Event) {
+  emits("valueCommit", [Number((event.target as HTMLInputElement).value)])
+}
 </script>
 
 <template>
-  <SliderRoot
-    v-slot="{ modelValue }"
+  <input
+    ref="el"
+    type="range"
     data-slot="slider"
-    :class="cn(
-      'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
-      props.class,
-    )"
-    v-bind="forwarded"
+    :min="props.min"
+    :max="props.max"
+    :step="props.step"
+    :disabled="props.disabled"
+    :class="cn('range range-primary range-xs w-full disabled:opacity-50', props.class)"
+    @input="onInput"
+    @change="onChange"
   >
-    <SliderTrack
-      data-slot="slider-track"
-      class="bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
-    >
-      <SliderRange
-        data-slot="slider-range"
-        class="bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
-      />
-    </SliderTrack>
-
-    <SliderThumb
-      v-for="(_, key) in modelValue"
-      :key="key"
-      data-slot="slider-thumb"
-      class="bg-white border-primary ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
-    />
-  </SliderRoot>
 </template>

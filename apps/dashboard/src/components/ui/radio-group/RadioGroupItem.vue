@@ -1,40 +1,43 @@
 <script setup lang="ts">
-import type { RadioGroupItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { CircleIcon } from "@lucide/vue"
-import { reactiveOmit } from "@vueuse/core"
+import type { RadioValue } from "./context"
+import { inject, onMounted, ref, watchEffect } from "vue"
 import { cn } from "@/lib/utils"
-import {
-  RadioGroupIndicator,
-  RadioGroupItem,
-  useForwardProps,
-} from "reka-ui"
+import { radioGroupKey } from "./context"
 
-const props = defineProps<RadioGroupItemProps & { class?: HTMLAttributes["class"] }>()
+const props = defineProps<{
+  value: RadioValue
+  disabled?: boolean
+  class?: HTMLAttributes["class"]
+}>()
 
-const delegatedProps = reactiveOmit(props, "class")
+const group = inject(radioGroupKey, null)
+const el = ref<HTMLInputElement | null>(null)
 
-const forwardedProps = useForwardProps(delegatedProps)
+// The model may hold any scalar, so checked is compared here, not in the DOM.
+function sync() {
+  if (el.value && group)
+    el.value.checked = group.model.value === props.value
+}
+
+watchEffect(() => {
+  void group?.model.value
+  void group?.tick.value
+  sync()
+}, { flush: "post" })
+onMounted(sync)
 </script>
 
 <template>
-  <RadioGroupItem
+  <input
+    ref="el"
+    type="radio"
     data-slot="radio-group-item"
-    v-bind="forwardedProps"
-    :class="
-      cn(
-        'border-input text-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 aspect-square size-4 shrink-0 rounded-full border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
-        props.class,
-      )
-    "
+    :name="group?.name.value"
+    :value="String(props.value)"
+    :disabled="props.disabled || group?.disabled.value"
+    :required="group?.required.value"
+    :class="cn('radio radio-xs radio-primary aria-invalid:radio-error disabled:cursor-not-allowed', props.class)"
+    @change="group?.select(props.value)"
   >
-    <RadioGroupIndicator
-      data-slot="radio-group-indicator"
-      class="relative flex items-center justify-center"
-    >
-      <slot>
-        <CircleIcon class="fill-primary absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2" />
-      </slot>
-    </RadioGroupIndicator>
-  </RadioGroupItem>
 </template>
