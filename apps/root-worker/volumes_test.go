@@ -108,3 +108,13 @@ func TestMissingVolumeAction(t *testing.T) {
 		t.Errorf("unmounted: %s %v %v", s, remount, seen)
 	}
 }
+
+func TestMountinfoHas(t *testing.T) {
+	info := "22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n" +
+		"40 22 9:0 / /srv/my\\040data rw,relatime shared:9 - ext4 /dev/md0 rw\n"
+	for mp, want := range map[string]bool{"/": true, "/srv/my data": true, "/srv/my": false, "/srv": false} {
+		if got := mountinfoHas(info, mp); got != want {
+			t.Errorf("%q: got %v, want %v", mp, got, want)
+		}
+	}
+}

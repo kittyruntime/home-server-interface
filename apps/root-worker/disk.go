@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,13 +52,15 @@ func systemDeviceNames() map[string]bool {
 		critDevs = append(critDevs, "/dev/"+name)
 	}
 
-	// Walk up to the parent disk via lsblk.
+	// Walk up to the parent disk via lsblk, or sysfs when lsblk fails or
+	// times out: an unknown parent would let a plan touch the system disk.
 	for _, dev := range critDevs {
 		out, err := probe("lsblk", "-no", "PKNAME", dev).Output()
+		parents := strings.Fields(string(out))
 		if err != nil {
-			continue
+			parents = sysfsParents(dev)
 		}
-		for _, parent := range strings.Fields(string(out)) {
+		for _, parent := range parents {
 			if parent != "" {
 				result[parent] = true
 			}
@@ -65,6 +68,30 @@ func systemDeviceNames() map[string]bool {
 	}
 
 	return result
+}
+
+// sysfsParents names the devices under dev from sysfs, without running a
+// command: the disk of a partition, and the slaves of a dm or md device.
+func sysfsParents(dev string) []string {
+	real, err := filepath.EvalSymlinks(dev)
+	if err != nil {
+		if real, err = filepath.EvalSymlinks("/dev/mapper/" + filepath.Base(dev)); err != nil {
+			return nil
+		}
+	}
+	sys := "/sys/class/block/" + filepath.Base(real)
+	var out []string
+	if _, err := os.Stat(sys + "/partition"); err == nil {
+		if p, err := filepath.EvalSymlinks(sys); err == nil {
+			out = append(out, filepath.Base(filepath.Dir(p)))
+		}
+	}
+	if slaves, err := os.ReadDir(sys + "/slaves"); err == nil {
+		for _, s := range slaves {
+			out = append(out, s.Name())
+		}
+	}
+	return out
 }
 
 // systemMountDevices returns the lsblk names of the devices mounted at a
