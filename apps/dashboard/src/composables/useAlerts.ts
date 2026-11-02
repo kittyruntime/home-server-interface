@@ -19,7 +19,7 @@ export function useAlerts() {
     refCount++
     if (refCount === 1) {
       fetchAlerts()
-      timer = setInterval(fetchAlerts, 60_000)
+      timer = setInterval(() => { if (!document.hidden) void fetchAlerts() }, 60_000)
     }
   })
   onUnmounted(() => {

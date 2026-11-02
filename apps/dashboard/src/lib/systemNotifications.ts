@@ -21,7 +21,8 @@ export function useSystemNotifications() {
   if (!started) {
     started = true
     void refresh()
-    setInterval(() => { void refresh() }, 60_000)
+    // A hidden tab skips its turn; the next visible one catches up.
+    setInterval(() => { if (!document.hidden) void refresh() }, 60_000)
   }
   async function refresh() {
     try {

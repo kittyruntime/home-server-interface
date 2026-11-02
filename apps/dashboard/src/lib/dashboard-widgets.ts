@@ -1,6 +1,7 @@
 import { tr } from './tr.ts'
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { trpc } from './trpc'
+import { subscribeMetrics } from './live-metrics'
 import { type SmartResult, fetchSmartInto } from '../components/storage/smart'
 import { type BlockDev } from '../components/storage/store'
 import { useAuth } from './auth'
@@ -131,18 +132,15 @@ export function useDashboardWidgets() {
   const rxHist  = ref<number[]>([])
   const txHist  = ref<number[]>([])
 
-  let timer: ReturnType<typeof setInterval> | null = null
+  let stopMetrics: (() => void) | null = null
   let slowTimer:  ReturnType<typeof setInterval> | null = null
   let smartTimer: ReturnType<typeof setInterval> | null = null
 
-  async function fetchMetrics() {
-    try {
-      const m = await trpc.system.metrics.query()
-      metrics.value = m as Metrics
-      pushHist(cpuHist, m.cpu, HIST)
-      pushHist(rxHist,  m.network.rx, HIST)
-      pushHist(txHist,  m.network.tx, HIST)
-    } catch { /* ignore */ }
+  function onMetrics(m: Metrics) {
+    metrics.value = m
+    pushHist(cpuHist, m.cpu, HIST)
+    pushHist(rxHist,  m.network.rx, HIST)
+    pushHist(txHist,  m.network.tx, HIST)
   }
 
   async function fetchContainers() {
@@ -189,28 +187,27 @@ export function useDashboardWidgets() {
 
     if (wantSlow && !slowTimer) {
       fetchSlow()
-      slowTimer = setInterval(fetchSlow, 30_000)
+      slowTimer = setInterval(() => { if (!document.hidden) fetchSlow() }, 30_000)
     } else if (!wantSlow && slowTimer) {
       clearInterval(slowTimer); slowTimer = null
     }
 
     if (wantSmart && !smartTimer) {
       fetchSmart()
-      smartTimer = setInterval(fetchSmart, 60_000)
+      smartTimer = setInterval(() => { if (!document.hidden) void fetchSmart() }, 60_000)
     } else if (!wantSmart && smartTimer) {
       clearInterval(smartTimer); smartTimer = null
     }
   }
 
   onMounted(() => {
-    fetchMetrics()
+    stopMetrics = subscribeMetrics(onMetrics)
     if (isAdmin.value) fetchContainers()
-    timer = setInterval(fetchMetrics, 3000)
     syncTimers()
   })
 
   onUnmounted(() => {
-    if (timer) clearInterval(timer)
+    stopMetrics?.()
     if (slowTimer)  clearInterval(slowTimer)
     if (smartTimer) clearInterval(smartTimer)
   })
