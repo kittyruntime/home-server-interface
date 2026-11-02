@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
+import type { PrimitiveProps } from "../Primitive.vue"
 import type { HTMLAttributes } from "vue"
 import type { ButtonVariants } from "."
 import { computed, useAttrs } from "vue"
 import { cn } from "@/lib/utils"
-import { Primitive } from "reka-ui"
+import Primitive from "../Primitive.vue"
 import Tip from "../Tip.vue"
 import { buttonVariants } from "."
 
