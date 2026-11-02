@@ -17,7 +17,7 @@ const emits = defineEmits<{
 }>()
 
 const el = ref<HTMLInputElement | null>(null)
-const { onChange } = useCheckedModel(props, emits, el)
+const { onChange, onClick } = useCheckedModel(props, emits, el)
 </script>
 
 <template>
@@ -26,6 +26,7 @@ const { onChange } = useCheckedModel(props, emits, el)
     type="checkbox"
     data-slot="checkbox"
     :class="cn('checkbox checkbox-xs checkbox-primary aria-invalid:checkbox-error disabled:cursor-not-allowed', props.class)"
+    @click="onClick"
     @change="onChange"
   >
 </template>

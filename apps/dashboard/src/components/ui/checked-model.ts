@@ -1,5 +1,5 @@
 import type { Ref } from "vue"
-import { computed, nextTick, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 type CheckedState = boolean | "indeterminate"
 
@@ -34,5 +34,14 @@ export function useCheckedModel(
     nextTick(sync)
   }
 
-  return { onChange }
+  // A prevented click reverts the checkbox after the listeners return and
+  // fires no change event: rewrite the DOM once the browser is done.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  function onClick() {
+    clearTimeout(timer)
+    timer = setTimeout(sync, 0)
+  }
+  onBeforeUnmount(() => clearTimeout(timer))
+
+  return { onChange, onClick }
 }

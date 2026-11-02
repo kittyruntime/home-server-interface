@@ -15,7 +15,7 @@ const emits = defineEmits<{
 }>()
 
 const el = ref<HTMLInputElement | null>(null)
-const { onChange } = useCheckedModel(props, emits as (event: "update:modelValue", value: boolean | "indeterminate") => void, el)
+const { onChange, onClick } = useCheckedModel(props, emits as (event: "update:modelValue", value: boolean | "indeterminate") => void, el)
 </script>
 
 <template>
@@ -25,6 +25,7 @@ const { onChange } = useCheckedModel(props, emits as (event: "update:modelValue"
     role="switch"
     data-slot="switch"
     :class="cn('toggle toggle-sm toggle-primary disabled:cursor-not-allowed', props.class)"
+    @click="onClick"
     @change="onChange"
   >
 </template>
