@@ -295,16 +295,62 @@ type volumeStatus struct {
 	GuardError string `json:"guardError,omitempty"`
 }
 
-// findmntAt is findmnt's view of the mount point mp; tests swap it.
+// findmntAt is the mount at mp in findmnt's -P UUID,OPTIONS form, read from
+// /proc/self/mountinfo and /dev/disk/by-uuid: the volume check runs every
+// minute for every volume, and these reads start no process and cannot hang.
+// Tests swap it.
 var findmntAt = func(mp string) string {
-	o, _ := probe("findmnt", "-n", "-P", "-o", "UUID,OPTIONS", "--mountpoint", mp).Output()
-	return string(o)
+	data, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return ""
+	}
+	source, opts, ok := mountinfoEntry(string(data), mp)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("UUID=%q OPTIONS=%q", uuidOfDevice(source), opts)
 }
 
-// blkidPresent tells whether a filesystem with this UUID is attached; tests swap it.
+// blkidPresent tells whether a filesystem with this UUID is attached (udev's
+// by-uuid link); tests swap it.
 var blkidPresent = func(uuid string) bool {
-	dev, err := probe("blkid", "-U", uuid).Output()
-	return err == nil && strings.TrimSpace(string(dev)) != ""
+	_, err := os.Stat("/dev/disk/by-uuid/" + uuid)
+	return err == nil
+}
+
+// mountinfoEntry returns the source device and mount options of what is
+// mounted at mp, the topmost mount when several are stacked.
+func mountinfoEntry(mountinfo, mp string) (source, opts string, ok bool) {
+	for _, line := range strings.Split(mountinfo, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 6 || unescapeMountinfo(f[4]) != mp {
+			continue
+		}
+		// Optional fields end with "-", then fstype, source, super options.
+		for i := 6; i+2 < len(f); i++ {
+			if f[i] == "-" {
+				source, opts, ok = unescapeMountinfo(f[i+2]), f[5], true
+				break
+			}
+		}
+	}
+	return source, opts, ok
+}
+
+// uuidOfDevice finds the filesystem UUID of a device through udev's
+// /dev/disk/by-uuid links; "" when none points to it.
+func uuidOfDevice(dev string) string {
+	real, err := filepath.EvalSymlinks(dev)
+	if err != nil {
+		return ""
+	}
+	links, _ := os.ReadDir("/dev/disk/by-uuid")
+	for _, l := range links {
+		if target, err := filepath.EvalSymlinks("/dev/disk/by-uuid/" + l.Name()); err == nil && target == real {
+			return l.Name()
+		}
+	}
+	return ""
 }
 
 // volumeStatesNow reports every HSI volume as findmnt sees it, and nothing else: it
