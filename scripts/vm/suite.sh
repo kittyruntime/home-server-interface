@@ -87,6 +87,21 @@ expect_data() {
   log "Data intact"
 }
 
+# seed_preferences / expect_preferences: the administrator's per-account
+# preferences (legacy-valid theme and accent, which every release reads) must
+# come through an update and a rollback unchanged.
+seed_preferences() {
+  log "Saving the administrator's preferences"
+  api_setup
+  api user.updatePreferences '{"locale":"fr","sidebarOrder":["files","apps","monitor"],"theme":"dark","accent":"purple"}' >/dev/null
+}
+
+expect_preferences() {
+  api_query user.preferences | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p.get("locale")=="fr" and p.get("sidebarOrder")==["files","apps","monitor"] and p.get("theme")=="dark" and p.get("accent")=="purple", p' \
+    || fail "the preferences saved before the update were lost or changed"
+  log "Preferences intact"
+}
+
 # A release whose server exits at once: the installer must roll back by itself.
 broken_update() {
   local bad="v99.0.0" dir="$VM_DIR/broken"
@@ -883,13 +898,15 @@ case "$scenario" in
     install_published
     expect_running "$published"
     add_data
+    seed_preferences
     install_build
-    expect_running "$version"; expect_ledger; expect_data
+    expect_running "$version"; expect_ledger; expect_data; expect_preferences
+    api user.updatePreferences '{"appearance":{"theme":"dracula","accent":"red","radius":0,"density":"roomy"}}' >/dev/null
     log "Rolling back to $published"
     vm_ssh "echo $published | hsi-worker update rollback" > "$VM_DIR/rollback.log" 2>&1 || { tail -30 "$VM_DIR/rollback.log"; fail "rollback failed"; }
-    expect_running "$published"; expect_data
+    expect_running "$published"; expect_data; expect_preferences
     install_build
-    expect_running "$version"; expect_ledger; expect_data
+    expect_running "$version"; expect_ledger; expect_data; expect_preferences
     ;;
   storage)
     # Samba is optional for the installer; the volume's share needs it.
