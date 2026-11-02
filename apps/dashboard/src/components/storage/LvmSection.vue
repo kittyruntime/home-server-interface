@@ -353,7 +353,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- LVM CREATE WIZARD                                                    -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal label="Create volume group" v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
+    <Modal :label="t('ui.storage.LvmSection.createVolumeGroup2')" v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center border-b border-border">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
+const { t } = useI18n()
 const props = defineProps<{ path: string; name: string }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -47,9 +49,9 @@ async function copy() {
 </script>
 
 <template>
-  <Modal :label="'Share &quot;' + name + '&quot;'" panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
+  <Modal :label="t('uip.sharing.ShareLinkModal.share', { p0: name })" panel-class="w-full max-w-md" :show-close="false" @close="emit('close')">
     <div class="p-6 space-y-4">
-      <h3 class="text-base font-semibold text-foreground">Share "{{ name }}"</h3>
+      <h3 class="text-base font-semibold text-foreground">{{ t('uip.sharing.ShareLinkModal.share', { p0: name }) }}</h3>
 
       <template v-if="!url">
         <label class="flex items-center gap-2 text-sm text-foreground/80">

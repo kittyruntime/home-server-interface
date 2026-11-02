@@ -543,7 +543,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- CREATE RAID WIZARD                                                   -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal label="Create RAID array" v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
+    <Modal :label="t('ui.storage.RaidSection.createRaid3')" v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-border">

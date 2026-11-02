@@ -351,6 +351,7 @@ export default {
     goToVolumes: 'Aller aux volumes',
   },
   DeviceFormatWizard: {
+    formatDevice: 'Formater le périphérique',
     allDataWillBePermanently: 'Toutes les données seront définitivement effacées',
     formatting: 'Formater',
     willDestroyEveryFileCurrently: 'détruira tous les fichiers présents sur ce périphérique. C’est irréversible.',

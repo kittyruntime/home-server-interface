@@ -352,6 +352,7 @@ export default {
     goToVolumes: 'Go to Volumes',
   },
   DeviceFormatWizard: {
+    formatDevice: 'Format device',
     allDataWillBePermanently: 'All data will be permanently erased',
     formatting: 'Formatting',
     willDestroyEveryFileCurrently: 'will destroy every file currently on this device. This operation cannot be undone.',

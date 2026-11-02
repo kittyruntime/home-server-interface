@@ -70,7 +70,7 @@ defineExpose({ open })
 </script>
 
 <template>
-  <Modal label="Format device" v-if="wiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!wiz.busy" @close="wiz = null">
+  <Modal :label="t('ui.storage.DeviceFormatWizard.formatDevice')" v-if="wiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!wiz.busy" @close="wiz = null">
 
     <!-- Step indicator -->
     <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-border">

@@ -7,4 +7,7 @@ export default {
     user: '· {p0} user{p1}',
     warnNoLinuxAccountFor: '[WARN] No Linux account for {p0}: excluded from this share',
   },
+  ShareLinkModal: {
+    share: 'Share "{p0}"',
+  },
 }
