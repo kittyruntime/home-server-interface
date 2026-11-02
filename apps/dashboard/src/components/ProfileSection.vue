@@ -2,14 +2,13 @@
 import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
-import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+import AppearanceSection from './AppearanceSection.vue'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { CheckIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../lib/auth'
-import { useTheme, useAccent, type Accent } from '../lib/theme'
 import { LOCALES, isLocale, locale, setLocale } from '../i18n'
 import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from '../lib/advanced-mode'
@@ -32,24 +31,9 @@ const meCanManage = computed(() => !!me.value && (me.value.isAdmin || me.value.i
 
 const { setToken } = useAuth()
 
-const { theme, setTheme } = useTheme()
 const { t } = useI18n()
-const { accent, setAccent } = useAccent()
 const { advancedMode, setAdvancedMode } = useAdvancedMode()
 const { confirmFileDelete, setConfirmFileDelete } = useDeleteConfirm()
-
-const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; label: string }[] = [
-  { value: 'auto',  label: t('uis.settings.ProfileSection.auto')  },
-  { value: 'light', label: t('uis.settings.ProfileSection.light') },
-  { value: 'dark',  label: t('uis.settings.ProfileSection.dark')  },
-]
-
-const ACCENT_OPTIONS: { value: Accent; color: string; label: string }[] = [
-  { value: 'orange', color: '#f97316', label: t('uis.settings.ProfileSection.orange') },
-  { value: 'blue',   color: '#3b82f6', label: t('uis.settings.ProfileSection.blue')   },
-  { value: 'green',  color: '#22c55e', label: t('uis.settings.ProfileSection.green')  },
-  { value: 'purple', color: '#a855f7', label: t('uis.settings.ProfileSection.purple') },
-]
 
 const me      = ref<Me | null>(null)
 const loading = ref(true)
@@ -258,41 +242,7 @@ onMounted(async () => {
         </Card>
       </div>
 
-      <!-- ── Theme ── -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.theme') }}</h4>
-        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-2">
-          <ToggleGroup
-            type="single" variant="outline" size="sm"
-            :model-value="theme"
-            :aria-label="t('ui.settings.ProfileSection.theme')"
-            @update:model-value="v => { const opt = THEME_OPTIONS.find(o => o.value === v); if (opt) setTheme(opt.value) }"
-          >
-            <ToggleGroupItem v-for="opt in THEME_OPTIONS" :key="opt.value" :value="opt.value" class="px-3 text-xs">{{ opt.label }}</ToggleGroupItem>
-          </ToggleGroup>
-        </Card>
-      </div>
-
-      <!-- ── Accent color ── -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.accentColor') }}</h4>
-        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center gap-3">
-          <RadioGroupRoot
-            :model-value="accent"
-            :aria-label="t('ui.settings.ProfileSection.accentColor')"
-            class="flex items-center gap-3"
-            @update:model-value="v => { const opt = ACCENT_OPTIONS.find(o => o.value === v); if (opt) setAccent(opt.value) }"
-          >
-            <Tip v-for="opt in ACCENT_OPTIONS" :key="opt.value" :text="opt.label"><RadioGroupItem
-              :value="opt.value"
-              :aria-label="opt.label"
-              :style="{ backgroundColor: opt.color }"
-              class="size-6 rounded-full outline-none transition-all opacity-60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=checked]:opacity-100 data-[state=checked]:scale-110 data-[state=checked]:ring-2 data-[state=checked]:ring-primary data-[state=checked]:ring-offset-2 data-[state=checked]:ring-offset-card"
-            /></Tip>
-          </RadioGroupRoot>
-          <span class="text-xs text-muted-foreground ml-1">{{ ACCENT_OPTIONS.find(o => o.value === accent)?.label }}</span>
-        </Card>
-      </div>
+      <AppearanceSection />
 
       <!-- ── Delete confirmation ── -->
       <div class="space-y-2">

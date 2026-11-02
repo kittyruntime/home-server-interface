@@ -277,6 +277,18 @@ export default {
     auditVia: 'Jeton d’accès',
     state: { revoked: 'Révoqué', expired: 'Expiré', active: 'Actif' },
   },
+  appearance: {
+    theme: 'Thème',
+    auto: 'Auto',
+    accent: 'Couleur d’accent',
+    accents: { theme: 'Thème', red: 'Rouge', orange: 'Orange', blue: 'Bleu', green: 'Vert', purple: 'Violet' },
+    roundness: 'Arrondi',
+    square: 'Carré',
+    round: 'Rond',
+    density: 'Densité',
+    densities: { compact: 'Compact', default: 'Par défaut', roomy: 'Aéré' },
+    reset: 'Réinitialiser l’apparence',
+  },
   profile: {
     language: 'Langue',
     languageHint: 'La langue de l’interface sur tous les appareils où vous vous connectez.',

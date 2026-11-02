@@ -100,11 +100,6 @@
   --violet:  var(--color-secondary);
 }
 
-/* Temporary accent picker (Settings > Appearance), removed with the picker. */
-:root[data-accent="blue"]   { --color-primary: #3b82f6; }
-:root[data-accent="green"]  { --color-primary: #22c55e; }
-:root[data-accent="purple"] { --color-primary: #a855f7; }
-
 @theme inline {
   --radius-sm: var(--radius-field);
   --radius-md: var(--radius-field);
