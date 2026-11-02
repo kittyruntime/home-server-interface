@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Lighter lists**: the users, apps and connections lists render either as
+  cards (phone) or as a table, no longer both with one hidden, and the users
+  list works out each person's groups once instead of on every row.
+
 ### Added
 - **Audit log retention**: entries older than a year are removed. Set
   `retention_days` under `[audit]` in the new `/etc/hsi/hsi.toml` to keep
