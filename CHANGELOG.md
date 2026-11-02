@@ -7,19 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Lighter lists**: the users, apps and connections lists render either as
-  cards (phone) or as a table, no longer both with one hidden, and the users
-  list works out each person's groups once instead of on every row.
-
 ### Added
 - **Audit log retention**: entries older than a year are removed. Set
   `retention_days` under `[audit]` in the new `/etc/hsi/hsi.toml` to keep
   them longer, shorter, or forever (`0`).
 
 ### Changed
+- **Lighter lists**: the users, apps and connections lists render either as
+  cards (phone) or as a table, no longer both with one hidden, and the users
+  list works out each person's groups once instead of on every row.
 - **Faster app actions**: starting, restarting or pinning an app reads only
   that app's file instead of every app's.
+- **Steadier live usage, quieter background tabs**: the dashboard widgets and
+  Monitoring share one live usage feed, so their CPU and network figures no
+  longer disturb each other, and a hidden tab stops refreshing usage,
+  notifications and alerts until it is shown again.
 
 ### Fixed
 - **A long copy no longer delays an app**: file jobs (copies, moves,
@@ -27,14 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that takes long is no longer run a second time.
 - **Container logs**: at most 16 log views stream at once, and reopening a
   log view no longer stops the new stream.
-
-### Changed
-- **Steadier live usage, quieter background tabs**: the dashboard widgets and
-  Monitoring share one live usage feed, so their CPU and network figures no
-  longer disturb each other, and a hidden tab stops refreshing usage,
-  notifications and alerts until it is shown again.
-
-### Fixed
 - **A dying disk no longer freezes storage pages**: disk and mount queries
   on the host (lsblk, blkid, findmnt, smartctl, mdadm) give up after a minute
   instead of hanging, which could leave a storage page loading forever.
