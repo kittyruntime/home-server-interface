@@ -68,14 +68,16 @@ function toggle(value: string) {
 }
 
 function items(): HTMLElement[] {
-  return Array.from(el.value?.querySelectorAll<HTMLElement>("[data-slot=toggle-group-item]:not(:disabled)") ?? [])
+  return Array.from(el.value?.querySelectorAll<HTMLElement>("[data-toggle-item]:not(:disabled)") ?? [])
 }
 
 // The roving tab stop: the pressed item, else the first one, else the last focused
 const focused = ref<string | null>(null)
 const first = ref<string | null>(null)
+const present = ref<string[]>([])
 function refreshFirst() {
   first.value = items()[0]?.dataset.value ?? null
+  present.value = items().map(item => item.dataset.value ?? "")
 }
 onMounted(refreshFirst)
 onUpdated(refreshFirst)
@@ -83,19 +85,26 @@ onUpdated(refreshFirst)
 const stop = computed(() => {
   if (!props.rovingFocus)
     return null
-  if (focused.value !== null)
+  // Ignore a focused item that is gone, or every item would get tabindex -1
+  if (focused.value !== null && present.value.includes(focused.value))
     return focused.value
   return selected()[0] ?? first.value
 })
 
 function onFocusin(event: FocusEvent) {
-  const item = (event.target as HTMLElement).closest<HTMLElement>("[data-slot=toggle-group-item]")
+  const item = (event.target as HTMLElement).closest<HTMLElement>("[data-toggle-item]")
   if (item?.dataset.value !== undefined)
     focused.value = item.dataset.value
 }
 
+function onFocusout(event: FocusEvent) {
+  const next = event.relatedTarget as Node | null
+  if (!next || !el.value?.contains(next))
+    focused.value = null
+}
+
 function onKeydown(event: KeyboardEvent) {
-  if (!props.rovingFocus)
+  if (!props.rovingFocus || event.altKey || event.ctrlKey || event.metaKey)
     return
   const horizontal = props.orientation !== "vertical"
   const vertical = props.orientation !== "horizontal"
@@ -108,9 +117,9 @@ function onKeydown(event: KeyboardEvent) {
     target = index + 1
   else if ((horizontal && event.key === "ArrowLeft") || (vertical && event.key === "ArrowUp"))
     target = index - 1
-  else if (event.key === "Home")
+  else if ((event.key === "Home" || event.key === "PageUp"))
     target = 0
-  else if (event.key === "End")
+  else if ((event.key === "End" || event.key === "PageDown"))
     target = all.length - 1
   else
     return
@@ -144,6 +153,7 @@ provide(toggleGroupKey, {
     :style="spacing > 0 ? { gap: `calc(var(--spacing) * ${spacing})` } : undefined"
     :class="cn(spacing === 0 ? 'join' : 'flex w-fit items-center', props.class)"
     @focusin="onFocusin"
+    @focusout="onFocusout"
     @keydown="onKeydown"
   >
     <slot :model-value="model" />

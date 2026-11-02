@@ -27,6 +27,7 @@ const tabindex = computed(() => group?.stop.value == null ? undefined : group.st
   <button
     type="button"
     data-slot="toggle-group-item"
+    data-toggle-item
     :data-value="value"
     :data-state="on ? 'on' : 'off'"
     :data-variant="variant"
