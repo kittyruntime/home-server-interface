@@ -94,20 +94,22 @@ function observedForStack(all: ObservedContainer[], name: string, services: stri
 
 export async function listStacks() {
   const [scanned, all] = await Promise.all([scanStacks(), observedContainers()])
-  return scanned.map(s => {
-    const parsed = parseComposeYaml(s.content, s.name)
-    const observed = observedForStack(all, s.name, parsed.services)
-    const status = stackStatus(observed)
-    const pendingApply = parsed.services.length > 0 &&
-      !observed.some(c => c.labels["com.docker.compose.project"] === s.name.toLowerCase())
-    const lw = lastWritten.get(s.name)
-    return {
-      name: s.name, path: path.dirname(stackFilePath(s.name)), hash: s.hash,
-      app: parsed.app, services: parsed.services, unknownFields: parsed.unknownFields,
-      rawYaml: s.content, observed, status,
-      pendingApply, drifted: lw !== undefined && lw !== s.hash,
-    }
-  })
+  return scanned.map(s => stackView(s, all))
+}
+
+function stackView(s: { name: string; content: string; hash: string }, all: ObservedContainer[]) {
+  const parsed = parseComposeYaml(s.content, s.name)
+  const observed = observedForStack(all, s.name, parsed.services)
+  const status = stackStatus(observed)
+  const pendingApply = parsed.services.length > 0 &&
+    !observed.some(c => c.labels["com.docker.compose.project"] === s.name.toLowerCase())
+  const lw = lastWritten.get(s.name)
+  return {
+    name: s.name, path: path.dirname(stackFilePath(s.name)), hash: s.hash,
+    app: parsed.app, services: parsed.services, unknownFields: parsed.unknownFields,
+    rawYaml: s.content, observed, status,
+    pendingApply, drifted: lw !== undefined && lw !== s.hash,
+  }
 }
 
 /**
@@ -120,11 +122,19 @@ export async function stackStatusNow(name: string): Promise<string> {
   return stackStatus(observedForStack(all, name, parseComposeYaml(content).services))
 }
 
+// One app: reads its own compose file only, not every app's (it runs on each
+// start, restart and pin). Same names as scanStacks: a directory entry that
+// is not hidden.
 export async function getStack(name: string) {
-  const stacks = await listStacks()
-  const found = stacks.find(s => s.name === name)
-  if (!found) throw new TRPCError({ code: "NOT_FOUND", message: "App not found" })
-  return found
+  const notFound = () => new TRPCError({ code: "NOT_FOUND", message: "App not found" })
+  if (!name || name.startsWith(".") || name.includes("/") || name.includes("\\")) throw notFound()
+  let content: string
+  try {
+    content = await readFile(stackFilePath(name), "utf8")
+  } catch {
+    throw notFound()
+  }
+  return stackView({ name, content, hash: sha256(content) }, await observedContainers())
 }
 
 export async function stackExists(name: string): Promise<boolean> {

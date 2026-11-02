@@ -259,6 +259,16 @@ async function testFullComposeImportCreatesAndProtectsAnApp() {
 
 await testFullComposeImportCreatesAndProtectsAnApp()
 
+// getStack reads only the app asked for, and only an app directory's name.
+{
+  const { getStack } = await import("../services/containerStacks")
+  const one = await getStack("full-compose")
+  assert.deepEqual([one.name, one.services], ["full-compose", ["web", "db"]])
+  for (const name of ["missing", "", ".hidden", "../full-compose", "a/b"]) {
+    await assert.rejects(getStack(name), (e: any) => e.code === "NOT_FOUND", name)
+  }
+}
+
 await rm(stacksTestDir, { recursive: true, force: true })
 
 const { interpolateTemplate, ruleMatches, selectConnectorIds, renderWebhookRequest, SEVERITY_RANK } = await import("../services/notifications")
@@ -3462,6 +3472,29 @@ await testTelemetryChannelOptOutAndPayload()
   assert.equal(await isWithinRoot(join(root, "docs"), join(root, "missing")), false, "an unreadable root")
   await rm(root, { recursive: true, force: true })
   await rm(outside, { recursive: true, force: true })
+}
+
+// hsi.toml: audit log retention, a year by default, 0 for forever.
+{
+  const { parseHsiConfig, loadHsiConfig } = await import("../services/hsi-config")
+  const { purgeAuditLog } = await import("../services/audit-retention")
+  assert.equal(parseHsiConfig("").config.audit.retentionDays, 365)
+  assert.equal(parseHsiConfig("[audit]\nretention_days = 90\n").config.audit.retentionDays, 90)
+  assert.equal(parseHsiConfig("[audit]\nretention_days = 0\n").config.audit.retentionDays, 0)
+  for (const bad of ["[audit]\nretention_days = -1", "[audit]\nretention_days = 1.5", "[audit]\nretention_days = \"90\"", "audit = 3", "not toml ["]) {
+    const r = parseHsiConfig(bad)
+    assert.equal(r.config.audit.retentionDays, 365, bad)
+    assert.equal(r.warnings.length, 1, bad)
+  }
+  assert.equal((await loadHsiConfig(join(tmpdir(), "hsi-no-such-config.toml"))).audit.retentionDays, 365)
+
+  const cutoffs: Date[] = []
+  const db = { auditLog: { deleteMany: async ({ where }: any) => { cutoffs.push(where.createdAt.lt); return { count: 4 } } } } as any
+  const now = new Date("2026-11-02T12:00:00Z")
+  assert.equal(await purgeAuditLog(db, 365, now), 4)
+  assert.equal(cutoffs[0]!.toISOString(), "2025-11-02T12:00:00.000Z")
+  assert.equal(await purgeAuditLog(db, 0, now), 0, "0 keeps everything")
+  assert.equal(cutoffs.length, 1)
 }
 
 console.log("Backend security tests passed")

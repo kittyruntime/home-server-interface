@@ -1676,6 +1676,19 @@ NATS_DATA_DIR="/var/lib/${APP_NAME}/nats"
 mkdir -p "$APP_CONF_DIR" "$NATS_DATA_DIR"
 chown nats: "$NATS_DATA_DIR"
 
+# Settings an administrator edits by hand, read by the dashboard server.
+# Written once with the defaults; an update never overwrites it.
+if [[ ! -e "$APP_CONF_DIR/hsi.toml" ]]; then
+  cat > "$APP_CONF_DIR/hsi.toml" <<'TOML'
+# Home Server Interface settings. Changes apply within a day, no restart needed.
+
+[audit]
+# Days the audit log keeps an entry. 0 keeps every entry forever.
+retention_days = 365
+TOML
+  chmod 644 "$APP_CONF_DIR/hsi.toml"
+fi
+
 # Generated again when a power cut left the file empty or partial: everything
 # that uses these passwords is written again below from this file.
 if ! grep -qs '^NATS_BACKEND_PASS=.' "$APP_CONF_DIR/.nats-credentials" \
