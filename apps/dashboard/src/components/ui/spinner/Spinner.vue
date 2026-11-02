@@ -8,7 +8,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <!-- daisyUI stops the glyph under prefers-reduced-motion by itself -->
+  <!-- Under prefers-reduced-motion style.css swaps the glyph for a static arc -->
   <span
     role="status"
     aria-label="Loading"

@@ -33,7 +33,7 @@ function sync() {
 }
 
 // min, max and step first: the browser clamps value against them.
-watch(() => [props.modelValue, props.min, props.max, props.step], sync, { flush: "post", deep: true })
+watch(() => [props.modelValue, props.min, props.max, props.step], sync, { flush: "post" })
 onMounted(sync)
 
 function onInput(event: Event) {

@@ -11,7 +11,7 @@ const props = defineProps<{
   <nav
     aria-label="breadcrumb"
     data-slot="breadcrumb"
-    :class="cn('breadcrumbs py-0', props.class)"
+    :class="cn('breadcrumbs py-1', props.class)"
   >
     <slot />
   </nav>

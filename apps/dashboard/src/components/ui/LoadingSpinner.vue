@@ -3,7 +3,7 @@ import { Spinner } from '@/components/ui/spinner'
 
 // The one spinner of the dashboard. Glyph only by default; it takes the text
 // color and size (1em) of where it sits. A label turns it into a status line.
-// Under reduced motion the glyph stops (daisyUI) and the label blinks instead.
+// Under reduced motion the glyph is a static arc (style.css) and the label blinks instead.
 withDefaults(defineProps<{ label?: string }>(), { label: '' })
 </script>
 
