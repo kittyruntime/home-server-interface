@@ -38,6 +38,7 @@ const state = computed(() => {
     role="progressbar"
     data-slot="progress"
     :data-state="state"
+    :aria-label="indeterminate ? undefined : `${Math.round(percent)}%`"
     aria-valuemin="0"
     :aria-valuemax="max"
     :aria-valuenow="indeterminate ? undefined : modelValue ?? undefined"

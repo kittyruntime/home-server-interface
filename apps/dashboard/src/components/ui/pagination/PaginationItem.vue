@@ -23,10 +23,11 @@ const disabled = computed(() => pagination?.disabled.value ?? false)
   <button
     type="button"
     data-slot="pagination-item"
+    :aria-label="`Page ${value}`"
     :aria-current="isActive ? 'page' : undefined"
     :data-selected="isActive ? true : undefined"
     :disabled="disabled"
-    :class="cn(buttonVariants({ variant: 'secondary', size }), 'join-item', isActive && 'btn-active', props.class)"
+    :class="cn(buttonVariants({ variant: 'secondary', size }), 'join-item', isActive && 'btn-primary', props.class)"
     @click="pagination?.setPage(value)"
   >
     <slot />

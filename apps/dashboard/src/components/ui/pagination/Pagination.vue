@@ -27,7 +27,7 @@ const emits = defineEmits<{
 
 const local = ref(props.defaultPage)
 const page = computed(() => props.page ?? local.value)
-const pageCount = computed(() => Math.ceil(props.total / props.itemsPerPage))
+const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.itemsPerPage)))
 const items = computed(() => getRange(page.value, pageCount.value, props.siblingCount, props.showEdges)
   .map(value => typeof value === "number" ? { type: "page" as const, value } : { type: "ellipsis" as const }))
 

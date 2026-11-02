@@ -12,8 +12,11 @@ const variants: Record<NonNullable<ToggleVariants["variant"]>, "ghost" | "outlin
   outline: "outline",
 }
 
-// A pressed button is a daisyUI btn with aria-pressed (or aria-checked), which
-// daisyUI already draws as active.
+// A pressed button is a daisyUI btn with aria-pressed (or aria-checked). daisyUI
+// draws that as active in the button color; the primary color makes it stand out
+// from the unpressed state in every theme. Not data-state: Tip overwrites it.
+const pressed = "aria-pressed:[--btn-color:var(--color-primary)] aria-pressed:[--btn-fg:var(--color-primary-content)] aria-checked:[--btn-color:var(--color-primary)] aria-checked:[--btn-fg:var(--color-primary-content)]"
+
 export function toggleVariants({ variant = "default", size = "default" }: ToggleVariants = {}): string {
-  return buttonVariants({ variant: variants[variant], size })
+  return `${buttonVariants({ variant: variants[variant], size })} ${pressed}`
 }
