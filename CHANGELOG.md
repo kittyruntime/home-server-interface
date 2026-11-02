@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Appearance settings**: choose among 35 themes (or Auto, which follows your
+  system), an accent color, the roundness of corners and the density of the
+  interface in Settings. Your choices follow your account.
+
 ### Changed
 - **Interface colors now follow a theme palette**: every screen reads its
-  colors from daisyUI themes instead of fixed light and dark values. The look
-  stays the same for now; this prepares the theme choices coming next.
+  colors from daisyUI themes instead of fixed light and dark values. The
+  default primary color changes with it, and the rest of the interface moves
+  to daisyUI's look as screens are migrated.
 
 ## [1.78.4] - 2026-11-02
 
