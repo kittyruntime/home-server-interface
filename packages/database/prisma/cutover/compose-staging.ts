@@ -109,7 +109,8 @@ async function main() {
       ports: decodeSetting(row.ports, [], row.name, "ports", "object", settingSkip(row.name, "ports")), envs: decodeSetting(row.envs, [], row.name, "envs", "object", settingSkip(row.name, "envs")), volumes: resolved,
       networkNames: decodeSetting(row.networkNames, [], row.name, "networkNames", "string", settingSkip(row.name, "networkNames")), labels: decodeSetting(row.labels, [], row.name, "labels", "object", settingSkip(row.name, "labels")),
       capAdd: decodeSetting(row.capAdd, [], row.name, "capAdd", "string", settingSkip(row.name, "capAdd")), capDrop: decodeSetting(row.capDrop, [], row.name, "capDrop", "string", settingSkip(row.name, "capDrop")), extraHosts: decodeSetting(row.extraHosts, [], row.name, "extraHosts", "string", settingSkip(row.name, "extraHosts")),
-      restartPolicy: row.restartPolicy, hostname: row.hostname, user: row.user, command: row.command,
+      // The legacy column was validated against the same enum when written.
+      restartPolicy: row.restartPolicy as AppInput["restartPolicy"], hostname: row.hostname, user: row.user, command: row.command,
       cpuLimit: row.cpuLimit, memoryLimit: row.memoryLimit, pinnedUrl: row.pinnedUrl,
     }
     const yaml = generateComposeYaml(input) // declares named volumes at the top level

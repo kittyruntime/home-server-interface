@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "pretypecheck": "prisma generate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.cutover.json",
+    "test": "tsx --test src/client.test.ts src/cutover/preflight.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.1",

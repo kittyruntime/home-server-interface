@@ -8,13 +8,14 @@
     "pnpm": ">=10.18.0"
   },
   "scripts": {
-    "test": "pnpm test:compose && pnpm test:backend && pnpm test:dashboard && pnpm test:worker",
+    "test": "pnpm test:compose && pnpm test:database && pnpm test:backend && pnpm test:dashboard && pnpm test:worker",
     "test:compose": "pnpm --filter @app/compose test",
+    "test:database": "pnpm --filter @app/database test",
     "test:backend": "pnpm --filter @app/backend test",
     "test:dashboard": "pnpm --filter @app/dashboard test",
     "test:worker": "cd apps/root-worker && go test ./...",
     "pretypecheck": "pnpm --filter @app/database db:generate",
-    "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
+    "typecheck": "pnpm --filter @app/compose exec tsc --noEmit && pnpm --filter @app/database exec tsc --noEmit && pnpm --filter @app/database exec tsc -p tsconfig.cutover.json && pnpm --filter @app/backend exec tsc --noEmit && pnpm --filter @app/dashboard exec vue-tsc -b",
     "smoke:backend": "node scripts/smoke-backend.mjs",
     "pretest:shell": "pnpm --filter @app/database db:generate",
     "test:shell": "bash scripts/tests/restic-download.test.sh && bash scripts/tests/backup-units.test.sh && bash scripts/tests/signing-key-copies.test.sh && bash scripts/tests/install-verify.test.sh && bash scripts/tests/sign-release.test.sh && bash scripts/tests/install-layout.test.sh && bash scripts/tests/database-baseline.test.sh && bash scripts/tests/database-compose-staging.test.sh && bash scripts/tests/database-old-container.test.sh",

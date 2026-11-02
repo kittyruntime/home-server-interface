@@ -97,7 +97,6 @@ jobs:
 
       - name: Test SQLite cutover and installer
         run: |
-          pnpm --filter @app/database exec tsx --test src/cutover/preflight.test.ts
           pnpm test:shell
 
   build:
