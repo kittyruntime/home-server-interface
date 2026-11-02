@@ -14,6 +14,24 @@ test('nextIndex keeps the current index for an empty array', () => {
   assert.equal(nextIndex('ArrowDown', 3, []), 3)
 })
 
+test('ArrowUp from no focus lands on the last enabled item', () => {
+  assert.equal(nextIndex('ArrowUp', -1, [false, false, false]), 2)
+  assert.equal(nextIndex('ArrowUp', -1, [false, false, true]), 1)
+})
+
+test('ArrowDown from no focus lands on the first item', () => {
+  assert.equal(nextIndex('ArrowDown', -1, [false, false, false]), 0)
+})
+
+test('unknown keys keep the current index', () => {
+  assert.equal(nextIndex('Escape', 1, [false, false, false]), 1)
+})
+
+test('Home and End keep the current index when all items are disabled', () => {
+  assert.equal(nextIndex('Home', 1, [true, true, true]), 1)
+  assert.equal(nextIndex('End', 1, [true, true, true]), 1)
+})
+
 test('typeaheadIndex searches after current, case insensitive', () => {
   assert.equal(typeaheadIndex('d', ['Delete', 'Rename', 'Download'], 0), 2)
   assert.equal(typeaheadIndex('R', ['Delete', 'Rename'], 1), 1)
@@ -22,4 +40,8 @@ test('typeaheadIndex searches after current, case insensitive', () => {
 
 test('typeaheadIndex returns no match for an empty query', () => {
   assert.equal(typeaheadIndex('', ['Delete', 'Rename'], 0), -1)
+})
+
+test('typeaheadIndex cycles to the next match for a repeated letter', () => {
+  assert.equal(typeaheadIndex('d', ['Delete', 'Rename', 'Download'], 2), 0)
 })
