@@ -191,6 +191,11 @@ func TestReapplyMountRefusesCloneAtRun(t *testing.T) {
 	if _, err := mount.run(); err == nil || !strings.Contains(err.Error(), "clone") {
 		t.Fatalf("clone at mount time: %v", err)
 	}
+	// blkid failed or timed out: no device read, so a clone cannot be ruled out.
+	hostDevsByUUID = func(string) []string { return nil }
+	if _, err := mount.run(); err == nil || !strings.Contains(err.Error(), "could not read") {
+		t.Fatalf("unreadable devices at mount time: %v", err)
+	}
 }
 
 // A disk without a by-id link is described by its by-path link, not its

@@ -11,6 +11,7 @@ import {
   LineElement, Tooltip, Filler,
 } from 'chart.js'
 import { trpc } from '../lib/trpc'
+import { subscribeMetrics } from '../lib/live-metrics'
 import LoadingState from './ui/LoadingState.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -33,11 +34,7 @@ const error    = ref('')
 const sysinfo  = ref<Sysinfo | null>(null)
 const metrics  = ref<Metrics | null>(null)
 
-let timer: ReturnType<typeof setInterval> | null = null
-
-async function fetchMetrics() {
-  try { metrics.value = await trpc.system.metrics.query() } catch {}
-}
+let stopMetrics: (() => void) | null = null
 
 onMounted(async () => {
   try {
@@ -52,10 +49,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  timer = setInterval(fetchMetrics, 3000)
+  stopMetrics = subscribeMetrics(m => { metrics.value = m })
 })
 
-onUnmounted(() => { if (timer) clearInterval(timer) })
+onUnmounted(() => stopMetrics?.())
 
 function fmtBytes(n: number, decimals = 1): string {
   if (n <= 0)         return '0 B'

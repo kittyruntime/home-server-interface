@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Steadier live usage, quieter background tabs**: the dashboard widgets and
+  Monitoring share one live usage feed, so their CPU and network figures no
+  longer disturb each other, and a hidden tab stops refreshing usage,
+  notifications and alerts until it is shown again.
+
+### Fixed
+- **A dying disk no longer freezes storage pages**: disk and mount queries
+  on the host (lsblk, blkid, findmnt, smartctl, mdadm) give up after a minute
+  instead of hanging, which could leave a storage page loading forever.
+
 ## [1.78.2] - 2026-10-31
 
 ### Fixed
