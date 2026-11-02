@@ -2,7 +2,6 @@
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import Modal from '../ui/Modal.vue'
-import { DialogTitle } from 'reka-ui'
 import { ArrowDownIcon, XIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
@@ -162,7 +161,7 @@ onUnmounted(() => controller?.abort())
         <div class="flex items-center gap-2 flex-1 min-w-0">
           <!-- Status dot -->
           <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-muted-foreground']" />
-          <DialogTitle as="span" class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</DialogTitle>
+          <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
           <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">

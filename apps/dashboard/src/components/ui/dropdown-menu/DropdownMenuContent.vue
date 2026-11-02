@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOverlayHost } from "@/lib/overlay-host"
 import type { DropdownMenuContentEmits, DropdownMenuContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
@@ -24,10 +25,12 @@ const emits = defineEmits<DropdownMenuContentEmits>()
 const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const overlayHost = useOverlayHost()
 </script>
 
 <template>
-  <DropdownMenuPortal>
+  <DropdownMenuPortal :to="overlayHost">
     <DropdownMenuContent
       data-slot="dropdown-menu-content"
       v-bind="{ ...$attrs, ...forwarded }"

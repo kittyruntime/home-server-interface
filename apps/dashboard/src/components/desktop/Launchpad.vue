@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { useDesktop, APP_LABEL, type AppId } from '../../lib/desktop'
 import { useAuth } from '../../lib/auth'
 import { navCapability } from '../../lib/assistant'
 import { useAlerts } from '../../composables/useAlerts'
-import { DialogContent, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+import { useNativeDialog } from '../../lib/native-dialog'
 import AppIcon from './AppIcon.vue'
 
 const { t } = useI18n()
@@ -16,11 +16,15 @@ const { openApp } = useDesktop()
 const { isAdmin } = useAuth()
 const { alerts, hasAlerts } = useAlerts()
 
-/* Full-screen dialog: Escape and a click on the empty backdrop close it; the
-   parent unmounts it on @close, once the leave animation has played. */
-const visible = ref(true)
-function requestClose() { visible.value = false }
-function onClosed() { if (!visible.value) emit('close') }
+/* Full-screen native dialog: Escape and a click on the empty backdrop close
+   it; the parent unmounts it on @close, once the leave animation has played. */
+const titleId = useId()
+const el = ref<HTMLElement | null>(null)
+const { open, requestClose, finish, onCancel, onNativeClose, onPointerdown, onClick } = useNativeDialog(el, {
+  closeOnBackdrop: () => true,
+  focus: 'button:not(:disabled)',
+  onClosed: () => emit('close'),
+})
 
 const allApps: { id: AppId; adminOnly: boolean; capability?: string }[] = [
   { id: 'files',   adminOnly: false },
@@ -46,15 +50,19 @@ function launch(id: AppId) {
 </script>
 
 <template>
-  <DialogRoot :open="visible" @update:open="value => { if (!value) requestClose() }">
-    <DialogPortal>
-      <DialogContent
-        :aria-describedby="undefined"
-        class="fixed inset-0 z-50 bg-background flex items-center justify-center outline-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.97]"
-        @click.self="requestClose"
-        @close-auto-focus="onClosed"
-      >
-        <DialogTitle class="sr-only">{{ t('ui.desktop.Launchpad.launchpad') }}</DialogTitle>
+  <dialog
+    ref="el"
+    :aria-labelledby="titleId"
+    :class="['modal bg-base-100 transition-opacity', { 'pointer-events-none opacity-0': !open }]"
+    :style="{ transitionDuration: 'var(--dur-slow)' }"
+    @cancel="onCancel"
+    @close="onNativeClose"
+    @pointerdown="onPointerdown"
+    @click="onClick"
+  >
+    <Transition name="ui-pop" appear @after-leave="finish">
+      <div v-if="open" class="[--ui-dur:var(--dur-slow)]">
+        <h2 :id="titleId" class="sr-only">{{ t('ui.desktop.Launchpad.launchpad') }}</h2>
         <div class="grid grid-cols-4 gap-8 p-8">
           <Button
             v-for="id in visibleApps"
@@ -73,7 +81,7 @@ function launch(id: AppId) {
             <span class="eyebrow">{{ APP_LABEL[id] }}</span>
           </Button>
         </div>
-      </DialogContent>
-    </DialogPortal>
-  </DialogRoot>
+      </div>
+    </Transition>
+  </dialog>
 </template>

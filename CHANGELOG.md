@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   progress bars, avatars, breadcrumbs, pagination and toggle groups now take
   their look from the active theme. Tables and breadcrumbs draw their row
   borders and separators the daisyUI way.
+- **Dialogs use the browser's native dialog**: confirmations, forms, the
+  launchpad and the maintenance screen now open as native dialogs. Focus stays
+  inside them and returns to where you were, Escape closes them (except during
+  an update or a running operation), and the page behind cannot be scrolled.
+  Toasts still show above an open dialog.
 
 ## [1.78.4] - 2026-11-02
 

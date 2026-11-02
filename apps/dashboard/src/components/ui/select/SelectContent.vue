@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOverlayHost } from "@/lib/overlay-host"
 import type { SelectContentEmits, SelectContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
@@ -26,10 +27,12 @@ const emits = defineEmits<SelectContentEmits>()
 const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const overlayHost = useOverlayHost()
 </script>
 
 <template>
-  <SelectPortal>
+  <SelectPortal :to="overlayHost">
     <SelectContent
       data-slot="select-content"
       v-bind="{ ...$attrs, ...forwarded }"
