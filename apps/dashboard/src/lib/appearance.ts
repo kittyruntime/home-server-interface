@@ -84,6 +84,19 @@ export function fromLegacy(theme?: string, accent?: string): Appearance {
   }
 }
 
+/** The browser's stored appearance. Without a usable one (missing, malformed, or no string theme) the legacy keys apply, as in index.html. */
+export function resolveStored(raw: string | null, legacyTheme?: string, legacyAccent?: string): Appearance {
+  if (raw !== null) {
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed !== null && typeof parsed === 'object' && typeof (parsed as { theme?: unknown }).theme === 'string') {
+        return normalizeAppearance(parsed)
+      }
+    } catch { /* fall through to the legacy keys */ }
+  }
+  return fromLegacy(legacyTheme, legacyAccent)
+}
+
 /** Appearance for the signed-in account: never inherits radius or density from the browser's previous user. */
 export function hydrateAppearance(server: { appearance?: unknown; theme?: string; accent?: string }): Appearance {
   if (server.appearance) return normalizeAppearance(server.appearance)
