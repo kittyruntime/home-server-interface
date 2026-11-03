@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   layouts, the app store sort and the alerts source filter are now the
   browser's own select, and the group and user picker is a searchable list
   you can drive with the arrow keys.
+- **Tabs, sidebars, menus and the desktop use daisyUI**: tabs, collapsible
+  sections, the places and settings sidebars, toasts, desktop windows, the
+  dock and the launchpad take their colors and corner roundness from the
+  active theme. Closing a window now highlights in the error color.
 
 ## [1.78.4] - 2026-11-02
 

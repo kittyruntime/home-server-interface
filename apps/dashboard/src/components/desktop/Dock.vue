@@ -40,7 +40,7 @@ function onIconClick(id: string) {
       size="icon-sm"
       :tooltip="t('ui.desktop.Dock.launchpad')"
       :aria-label="t('ui.desktop.Dock.launchpad')"
-      class="relative mb-5 rounded-lg select-none"
+      class="relative mb-5 rounded-field select-none"
       @click="$emit('openLaunchpad')"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -50,10 +50,10 @@ function onIconClick(id: string) {
         <circle cx="16" cy="16" r="2.2"/>
       </svg>
       <span v-if="hasAlerts('storage.')"
-        class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
+        class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error" />
     </Button>
 
-    <div class="w-8 border-t border-border mb-3" />
+    <div class="w-8 border-t border-base-300 mb-3" />
 
     <nav class="flex flex-col items-stretch gap-1 flex-1 w-full overflow-y-auto">
       <div v-for="w in windows" :key="w.id" class="relative flex justify-center py-0.5">
@@ -68,11 +68,11 @@ function onIconClick(id: string) {
           :tooltip="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
           :aria-label="w.appId === 'file-preview' ? (w.filePreview?.name ?? APP_LABEL[w.appId]) : APP_LABEL[w.appId]"
           :class="[
-            'size-10 rounded-xl transition-all duration-150',
+            'size-10 rounded-box transition-all duration-150',
             w.minimized ? 'opacity-40' : '',
             isFocused(w.id)
               ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-base-200 hover:text-foreground',
+              : 'text-base-content/60 hover:bg-base-200 hover:text-base-content',
           ]"
         >
           <AppIcon :app="w.appId" class="w-5 h-5" />
