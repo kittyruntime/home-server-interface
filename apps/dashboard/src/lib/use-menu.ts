@@ -124,6 +124,7 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     dismiss: true,
     captureEscape: true,
     closeOnFocusOutside: true,
+    exit: true,
     /* A right-click inside the trigger moves a context menu: its contextmenu
        event reopens it, so the press must not close it first. */
     ignorePointerdown: event =>
@@ -135,7 +136,7 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     },
     onClose: () => { ctx.open.value = false },
   })
-  const { floating, open, close, isOpen } = popover
+  const { floating, open, close, present } = popover
 
   ctx.closeContent = () => close()
   onBeforeUnmount(() => { clearTimeout(queryTimer); ctx.closeContent = null })
@@ -202,5 +203,5 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     event.stopPropagation()
   }
 
-  return { floating, isOpen, onKeydown, stop, onContextmenu }
+  return { floating, present, onKeydown, stop, onContextmenu }
 }

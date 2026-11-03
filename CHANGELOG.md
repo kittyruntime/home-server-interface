@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interface in Settings. Your choices follow your account.
 
 ### Changed
+- **Menus, popovers and tooltips fade out when they close**: they mirror the
+  entry animation instead of vanishing, and stay inert while they do, so Esc,
+  focus and clicks behave as if they were already gone.
 - **Interface colors now follow a theme palette**: every screen reads its
   colors from daisyUI themes instead of fixed light and dark values. The
   default primary color changes with it, and the rest of the interface moves

@@ -26,12 +26,14 @@ const ctx = inject(tooltipKey)!
 
 const placement = computed(() => (props.align === "center" ? props.side : `${props.side}-${props.align}`) as Placement)
 
-const { floating: floatingRef, open, close, isOpen } = useAnchoredPopover({
+const { floating: floatingRef, open, close, present } = useAnchoredPopover({
   placement,
   offset: () => props.sideOffset,
   dismiss: true,
   captureEscape: true,
   restoreFocus: false,
+  exit: true,
+  exitGroup: "tooltip",
   onClose: () => {
     if (ctx.open.value) { ctx.open.value = false; markTooltipClosed() }
   },
@@ -52,7 +54,7 @@ function bindFloating(el: unknown) { floatingRef.value = el as HTMLElement | nul
 
 <template>
   <div
-    v-if="isOpen"
+    v-if="present"
     :id="ctx.contentId"
     :ref="bindFloating"
     v-bind="$attrs"

@@ -647,7 +647,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <Input
                 v-model="raidWiz.name"
                 type="text"
-                laceholder="md0"
+                placeholder="md0"
                 class="w-full px-3 py-2 text-sm font-mono"
               />
               <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>

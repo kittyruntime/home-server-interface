@@ -201,11 +201,20 @@ button:not([data-slot]):focus-visible,
 
 /* Floating layers (menus, popovers, tooltips) fade and scale in once placed.
    The direction offset comes from data-side. Shortened by the reduced motion
-   durations above. */
+   durations above. On close (use-anchored-popover) the layer keeps its place
+   in the top layer, inert, while `ui-float-out` mirrors the entry; the
+   composable unmounts it on animationend. */
 @keyframes ui-float-in {
   from { opacity: 0; transform: translate(var(--ui-float-x, 0), var(--ui-float-y, 0)) scale(0.97); }
 }
+@keyframes ui-float-out {
+  to { opacity: 0; transform: translate(var(--ui-float-x, 0), var(--ui-float-y, 0)) scale(0.97); }
+}
 .ui-float[data-placed] { animation: ui-float-in var(--dur-base) var(--ease-out); }
+.ui-float[data-closing] {
+  animation: ui-float-out var(--dur-fast) var(--ease-out) forwards;
+  pointer-events: none;
+}
 .ui-float[data-side="bottom"] { --ui-float-y: -0.5rem; }
 .ui-float[data-side="top"] { --ui-float-y: 0.5rem; }
 .ui-float[data-side="left"] { --ui-float-x: 0.5rem; }

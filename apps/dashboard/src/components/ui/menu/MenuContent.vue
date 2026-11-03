@@ -36,7 +36,7 @@ const placement = computed<Placement>(() => {
 // A dropdown or submenu is named by its button; a context menu has none.
 const labelledby = computed(() => (ctx.kind === "dropdown" || ctx.isSub ? ctx.trigger.value?.id || undefined : undefined))
 
-const { floating, isOpen, onKeydown, stop, onContextmenu } = useMenuContent(ctx, {
+const { floating, present, onKeydown, stop, onContextmenu } = useMenuContent(ctx, {
   placement,
   offset: () => (atPoint.value ? 0 : props.sideOffset),
   alignOffset: () => (atPoint.value ? 0 : props.alignOffset),
@@ -47,7 +47,7 @@ function bindFloating(el: unknown) { floating.value = el as HTMLElement | null }
 
 <template>
   <ul
-    v-if="isOpen"
+    v-if="present"
     :id="ctx.contentId"
     :ref="bindFloating"
     v-bind="$attrs"

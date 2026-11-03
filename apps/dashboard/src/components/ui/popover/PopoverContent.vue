@@ -33,7 +33,7 @@ const placement = computed(() => (props.align === "center" ? props.side : `${pro
 
 const FIRST_FOCUSABLE = "input:not(:disabled), button:not(:disabled), [href], select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])"
 
-const { floating, open, close, isOpen } = useAnchoredPopover({
+const { floating, open, close, present } = useAnchoredPopover({
   placement,
   offset: () => props.sideOffset,
   alignOffset: () => props.alignOffset,
@@ -41,6 +41,7 @@ const { floating, open, close, isOpen } = useAnchoredPopover({
   captureEscape: true,
   restoreFocus: props.restoreFocus,
   closeOnFocusOutside: true,
+  exit: true,
   onClose: () => { ctx.open.value = false },
   // The element is visible only once placed: focusing it earlier does nothing.
   onPlaced: (el) => {
@@ -58,7 +59,7 @@ watch(() => ctx.open.value && ctx.anchor(), (anchor) => {
 
 <template>
   <div
-    v-if="isOpen"
+    v-if="present"
     :id="ctx.contentId"
     :ref="(el) => { floating = el as HTMLElement | null }"
     v-bind="$attrs"
