@@ -246,10 +246,12 @@ onMounted(async () => {
 
       <!-- ── Appearance ── -->
       <Collapsible class="space-y-2">
-        <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.appearance') }}</h4>
-          <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
-        </CollapsibleTrigger>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+            {{ t('profile.appearance') }}
+            <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+          </CollapsibleTrigger>
+        </h4>
         <CollapsibleContent class="space-y-8 pt-2">
           <AppearanceSection />
         </CollapsibleContent>
@@ -257,10 +259,12 @@ onMounted(async () => {
 
       <!-- ── Advanced options ── -->
       <Collapsible class="space-y-2">
-        <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.advancedOptions') }}</h4>
-          <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
-        </CollapsibleTrigger>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+            {{ t('profile.advancedOptions') }}
+            <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+          </CollapsibleTrigger>
+        </h4>
         <CollapsibleContent class="space-y-8 pt-2">
           <!-- ── Delete confirmation ── -->
           <div class="space-y-2">

@@ -176,6 +176,7 @@ function closeFilter() {
 
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if (showShared.value) return
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
     if (tag === 'textarea') return
     if (tag === 'input' && document.activeElement !== filterInput.value?.el) return
@@ -234,7 +235,18 @@ const breadcrumbs = computed((): Crumb[] => {
 })
 
 // ── navigation ───────────────────────────────────────────────────────────────
+function openShared() {
+  handleSearch('')
+  closeFilter()
+  showShared.value = true
+  sidebarOpen.value = false
+}
+
 function selectPlace(place: Place) {
+  if (showShared.value && place.id === activePlaceId.value) {
+    showShared.value = false
+    return
+  }
   showShared.value = false
   activePlaceId.value = place.id
   selected.value = new Set()
@@ -584,7 +596,7 @@ onMounted(async () => {
       :places="allPlaces"
       :active-place-id="activePlaceId"
       :shared-active="showShared"
-      @open-shared="showShared = true; sidebarOpen = false"
+      @open-shared="openShared"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
@@ -599,7 +611,7 @@ onMounted(async () => {
             <MenuIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
-        <div class="flex-1 overflow-auto p-4 sm:p-8">
+        <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
           <SharedLinksSection class="max-w-2xl" />
         </div>
       </template>

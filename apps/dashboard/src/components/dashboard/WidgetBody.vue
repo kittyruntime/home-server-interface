@@ -197,7 +197,7 @@ const SMART_DOT: Record<string, string> = {
     <div v-else class="flex-1 flex flex-col gap-2.5 overflow-y-auto">
       <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">
         <span :class="['w-2 h-2 rounded-full shrink-0', SMART_DOT[smartStatus(smart[dev])] ?? SMART_DOT.unknown]"></span>
-        <span class="text-xs text-base-content">{{ dev }}</span>
+        <span class="font-mono text-xs text-base-content">{{ dev }}</span>
         <span class="text-2xs text-base-content/70 truncate flex-1" :title="smart[dev]?.modelName">
           {{ smart[dev]?.modelName ?? '' }}
         </span>

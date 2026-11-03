@@ -75,7 +75,7 @@ defineExpose({ load })
     <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-base-300 first:border-t-0">
       <div class="min-w-0 flex-1">
         <div class="text-sm text-base-content">
-          <span>{{ a.name || a.device }}</span>
+          <span class="font-mono">{{ a.name || a.device }}</span>
           <span class="text-xs text-base-content/70 ml-2 uppercase">{{ a.level }}</span>
         </div>
         <div class="text-2xs text-base-content/70 font-mono break-all">{{ a.members.join(' + ') }}</div>

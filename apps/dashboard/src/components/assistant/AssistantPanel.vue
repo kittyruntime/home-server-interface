@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
               <CircleAlertIcon v-else class="size-3.5 shrink-0 text-error" aria-hidden="true" />
               <WrenchIcon class="size-3 shrink-0" aria-hidden="true" />
               <span :title="item.name">{{ toolLabel(item.name) }}</span>
-              <span v-if="toolTarget(item.args)" class="min-w-0 truncate" :title="toolTarget(item.args)">{{ toolTarget(item.args) }}</span>
+              <span v-if="toolTarget(item.args)" class="min-w-0 truncate font-mono" :title="toolTarget(item.args)">{{ toolTarget(item.args) }}</span>
             </div>
             <p v-else-if="item.kind === 'event'" class="text-center text-2xs text-base-content/70">{{ item.text }}</p>
             <template v-else-if="item.kind === 'approval'">

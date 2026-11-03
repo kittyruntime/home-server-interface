@@ -233,7 +233,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
           </p>
           <ul class="mt-2 space-y-1">
             <li v-for="d in destructiveDevices" :key="d.path" class="text-xs text-base-content/80">
-              <span class="text-base-content">{{ d.path }}</span>
+              <span class="font-mono text-base-content">{{ d.path }}</span>
               <span v-for="(part, i) in deviceLine(d)" :key="i"> · <span>{{ part }}</span></span>
             </li>
           </ul>
@@ -246,7 +246,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
               <div class="min-w-0 flex-1">
                 <p class="text-sm text-base-content" :class="s.destructive ? 'text-error' : ''">{{ s.summary }}</p>
                 <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-base-content/80">
-                  <span class="text-base-content">{{ s.device.path }}</span>
+                  <span class="font-mono text-base-content">{{ s.device.path }}</span>
                   <template v-if="s.device.model"> · <span>{{ s.device.model }}</span></template>
                   <template v-if="s.device.serial"> · <span>{{ s.device.serial }}</span></template>
                   <template v-if="s.device.size"> · {{ fmtSize(s.device.size) }}</template>

@@ -376,7 +376,7 @@ async function applyNow() {
 
     <!-- Compose import panel -->
     <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-base-300 bg-base-200/60 space-y-3 shrink-0">
-      <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pasteA') }} <span>compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
+      <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pasteA') }} <span class="font-mono">compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
       <Textarea
         v-model="composeRaw"
         :placeholder="t('ui.apps.AppFormModal.version3810Services')"

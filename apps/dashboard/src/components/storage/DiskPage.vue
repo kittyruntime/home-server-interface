@@ -162,7 +162,7 @@ function manageInDevices() { emit('navigate', 'disks') }
           <ul v-else class="flex flex-wrap gap-2">
             <li v-for="v in volumes" :key="v.id">
               <Button variant="outline" size="sm" @click="emit('navigate', { kind: 'volume', id: v.id })">
-                {{ v.name }} <span v-if="v.mountPoint" class="text-xs text-base-content/70">{{ v.mountPoint }}</span> →
+                {{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-base-content/70">{{ v.mountPoint }}</span> →
               </Button>
             </li>
           </ul>

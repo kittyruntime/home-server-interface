@@ -114,8 +114,8 @@ const targets = computed(() => vgTargets({
               <component :is="volumeOf[lv.name] ? 'button' : 'div'"
                 :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm text-left', volumeOf[lv.name] && 'hover:border-base-300 transition-colors']"
                 @click="volumeOf[lv.name] && emit('navigate', { kind: 'volume', id: volumeOf[lv.name]!.id })">
-                <span class="text-xs w-28 shrink-0 truncate">{{ lv.name }}</span>
-                <span class="flex-1 min-w-0 truncate text-base-content/80">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="text-xs text-base-content/70">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
+                <span class="font-mono text-xs w-28 shrink-0 truncate">{{ lv.name }}</span>
+                <span class="flex-1 min-w-0 truncate text-base-content/80">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="font-mono text-xs text-base-content/70">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
                 <span class="tabular-nums text-xs text-base-content/70 shrink-0">{{ fmtBytes(lv.size) }}</span>
                 <span v-if="volumeOf[lv.name]" aria-hidden="true" class="text-base-content/70">→</span>
               </component>
@@ -129,7 +129,7 @@ const targets = computed(() => vgTargets({
               <component :is="pvTarget(pv.name) ? 'button' : 'div'"
                 :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-base-300 transition-colors']"
                 @click="pvTarget(pv.name) && emit('navigate', pvTarget(pv.name)!)">
-                <span class="text-xs flex-1 text-left">{{ pv.name }}</span>
+                <span class="font-mono text-xs flex-1 text-left">{{ pv.name }}</span>
                 <span class="tabular-nums text-xs text-base-content/70">{{ fmtBytes(pv.size) }}</span>
                 <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-base-content/70">→</span>
               </component>

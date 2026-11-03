@@ -36,7 +36,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
           <SidebarGroupContent>
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.places')">
               <SidebarMenuItem v-for="place in places" :key="place.id">
-                <SidebarMenuButton :is-active="!sharedActive && activePlaceId === place.id" @click.stop="$emit('select', place)">
+                <SidebarMenuButton :is-active="!sharedActive && activePlaceId === place.id" :aria-current="!sharedActive && activePlaceId === place.id ? 'page' : undefined" @click.stop="$emit('select', place)">
                   <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm" />
                   <span>{{ place.name }}</span>
                 </SidebarMenuButton>
@@ -52,9 +52,9 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.sharedLinksMenu')">
               <SidebarMenuItem>
-                <SidebarMenuButton :is-active="sharedActive" @click.stop="$emit('openShared')">
+                <SidebarMenuButton :is-active="sharedActive" :aria-current="sharedActive ? 'page' : undefined" @click.stop="$emit('openShared')">
                   <LinkIcon class="size-4" aria-hidden="true" />
                   <span>{{ t('ui.files.PlacesSidebar.sharedLinks') }}</span>
                 </SidebarMenuButton>

@@ -96,9 +96,9 @@ defineExpose({ open })
       </Alert>
 
       <div class="space-y-1 text-xs text-base-content/70">
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span>/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.currentFs') }}</span><span>{{ wiz.dev.fstype }}</span></div>
+        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.currentFs') }}</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
         <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.model') }}</span><span>{{ wiz.dev.model }}</span></div>
       </div>
 
@@ -159,9 +159,9 @@ defineExpose({ open })
     <!-- Step 3: Confirm -->
     <div v-else-if="wiz.step === 3" class="p-6 space-y-4">
       <div class="space-y-1 text-xs text-base-content/70">
-        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span>/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.filesystem') }}</span><span>{{ wiz.fstype }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.filesystem') }}</span><span class="font-mono">{{ wiz.fstype }}</span></div>
         <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.label') }}</span><span>{{ wiz.label }}</span></div>
       </div>
 

@@ -251,8 +251,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="flex items-center gap-3 px-4 py-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <Button variant="link" v-if="!only" class="h-auto p-0 font-semibold text-base-content" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
-                <span v-else class="text-sm font-semibold text-base-content">{{ vg.name }}</span>
+                <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-base-content" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
+                <span v-else class="font-mono text-sm font-semibold text-base-content">{{ vg.name }}</span>
                 <span class="text-2xs text-base-content/70">{{ fmtBytes(vg.size) }}</span>
                 <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-secondary/10 text-secondary shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
                 <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
@@ -312,7 +312,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'"/>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs text-base-content/80">{{ lv.path }}</span>
+                  <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
                   <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(lv.size) }}</span>
                   <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 uppercase">{{ lv2bd(lv).fstype }}</span>
                   <span v-else class="text-2xs text-base-content/70">{{ t('ui.storage.LvmSection.unformatted') }}</span>
@@ -390,7 +390,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                   <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <span class="text-sm text-base-content">/dev/{{ dev.name }}</span>
+                  <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
                   <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">RAID</span>
                   <span v-else-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
                 </div>
@@ -446,9 +446,9 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </div>
             </Alert>
             <div class="space-y-1 text-xs text-base-content/70">
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.devices') }}</span><span>{{ lvmWiz.pvDevs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span>{{ lvmWiz.vgName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span>{{ lvmWiz.lvName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.devices') }}</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : t('ui.storage.LvmSection.allFreeSpace') }}</span></div>
             </div>
             <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
@@ -511,8 +511,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     >
       <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">LV</span><span>{{ removeLvDlg.lv.path }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span>{{ removeLvDlg.lv.vgName }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
@@ -532,7 +532,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     >
       <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span>{{ removeVgDlg.vg.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.pvs') }}</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.lvs') }}</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>

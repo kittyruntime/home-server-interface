@@ -169,7 +169,7 @@ const statusClass: Record<string, string> = {
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-base-300 divide-y divide-base-300">
             <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">
               <span class="shrink-0 rounded-sm px-1.5 py-0.5 font-semibold uppercase" :class="statusClass[r.status]">{{ r.status }}</span>
-              <span class="shrink-0 text-base-content">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
+              <span :class="['shrink-0 text-base-content', r.device && 'font-mono']">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
               <span v-if="r.serial" class="shrink-0 text-base-content/70">{{ r.serial }}</span>
               <span class="min-w-0 break-words text-base-content/70">{{ r.message }}</span>
             </div>

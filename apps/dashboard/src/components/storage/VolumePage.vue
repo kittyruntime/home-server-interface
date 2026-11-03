@@ -221,7 +221,7 @@ async function afterChange() { await refreshDevices(); await load() }
         </div>
 
         <p class="text-xs text-base-content/70">
-          <span v-if="volume.fstype">{{ volume.fstype }}</span>
+          <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
           <template v-if="volume.tolerates"> {{ t('uip.storage.VolumePage.survivesFailed', { p0: volume.tolerates, p1: volume.tolerates === 1 ? 'disk' : 'disks' }) }}</template>
           <template v-else-if="volume.state !== 'missing'"> {{ t('ui.storage.VolumePage.aFailedDiskLosesThis') }}</template>
         </p>

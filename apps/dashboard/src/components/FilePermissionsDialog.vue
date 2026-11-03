@@ -149,8 +149,8 @@ async function save() {
               </div>
             </div>
             <div v-else class="flex gap-4 text-sm">
-              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</span><span class="text-base-content/80">{{ owner }}</span></div>
-              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</span><span class="text-base-content/80">{{ group }}</span></div>
+              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</span><span class="font-mono text-base-content/80">{{ owner }}</span></div>
+              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</span><span class="font-mono text-base-content/80">{{ group }}</span></div>
             </div>
 
       </div>

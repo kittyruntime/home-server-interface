@@ -83,7 +83,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <template v-for="(sc, i) in app.services" :key="sc.name">
             <span v-if="i" class="text-base-content/70">, </span>
             <span class="text-base-content/80">{{ sc.label }}</span>
-            <span class="text-base-content/70"> ({{ sc.image }})</span>
+            <span class="font-mono text-base-content/70"> ({{ sc.image }})</span>
           </template>
         </div>
         <p class="text-xs flex gap-4 flex-wrap">

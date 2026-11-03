@@ -239,7 +239,7 @@ function formatTime(at: string | Date): string {
                   <Badge variant="outline" :class="severityClass(r.minSeverity)">{{ r.minSeverity }}</Badge>
                 </div>
                 <p class="text-xs text-base-content/70 mt-0.5">
-                  <span v-if="r.sourcePrefix">{{ r.sourcePrefix }}</span>
+                  <span v-if="r.sourcePrefix" class="font-mono">{{ r.sourcePrefix }}</span>
                   <span v-else>{{ $t('ui.settings.NotificationsSection.allSources') }}</span>
                 </p>
                 <div class="flex flex-wrap gap-1.5 mt-1.5">

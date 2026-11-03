@@ -222,7 +222,7 @@ function removeExtraHost(h: string) {
         >{{ t('ui.apps.AdvancedSection.add') }}</Button>
       </div>
       <p v-if="extraHostError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
-      <p class="text-xs text-base-content/70">{{ t('ui.apps.AdvancedSection.adds') }} <span>--add-host</span> {{ t('ui.apps.AdvancedSection.entriesMapsTo') }} <span>/etc/hosts</span> {{ t('ui.apps.AdvancedSection.insideTheContainer') }}</p>
+      <p class="text-xs text-base-content/70">{{ t('ui.apps.AdvancedSection.adds') }} <span class="font-mono">--add-host</span> {{ t('ui.apps.AdvancedSection.entriesMapsTo') }} <span class="font-mono">/etc/hosts</span> {{ t('ui.apps.AdvancedSection.insideTheContainer') }}</p>
     </div>
 
     <!-- Restart policy -->

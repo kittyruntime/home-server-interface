@@ -104,7 +104,7 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
             </li>
             <li v-for="v in volumes" :key="v.id">
               <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-base-100 px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
-                <span class="text-xs text-base-content/70 w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="text-xs text-base-content/70">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-base-content/70">→</span>
+                <span class="text-xs text-base-content/70 w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-base-content/70">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-base-content/70">→</span>
               </Item>
             </li>
           </ul>

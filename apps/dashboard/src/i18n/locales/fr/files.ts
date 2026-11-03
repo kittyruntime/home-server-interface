@@ -41,6 +41,7 @@ export default {
   },
   PlacesSidebar: {
     sharedLinks: 'Liens partagés',
+    sharedLinksMenu: 'Menu des liens partagés',
     places: 'Emplacements',
     noPlacesYetAskAn: 'Aucun emplacement pour l’instant. Demandez à un administrateur l’accès à un dossier.',
   },

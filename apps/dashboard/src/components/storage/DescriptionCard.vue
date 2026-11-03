@@ -64,12 +64,12 @@ defineExpose({ load })
     <ul v-if="status.items.length > 1" class="list-disc pl-5 space-y-0.5 text-base-content/80">
       <li v-for="(i, n) in status.items" :key="n">{{ i.text }}</li>
     </ul>
-    <p class="text-xs text-base-content/70">{{ t('ui.storage.DescriptionCard.describedIn') }} <span>{{ status.file }}</span>{{ t('ui.storage.DescriptionCard.hsiDoesNotChangeAnything') }}</p>
+    <p class="text-xs text-base-content/70">{{ t('ui.storage.DescriptionCard.describedIn') }} <span class="font-mono">{{ status.file }}</span>{{ t('ui.storage.DescriptionCard.hsiDoesNotChangeAnything') }}</p>
     <p v-if="err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ err }}</p>
     <div v-if="status.mountPoint" class="flex flex-wrap gap-2 pt-1">
       <Button variant="outline" size="sm" v-if="!unreadable" :disabled="busy" @click="run('reapply')">{{ t('ui.storage.DescriptionCard.reapply') }}</Button>
       <Button variant="outline" size="sm" :disabled="busy" @click="run('accept')">{{ t('ui.storage.DescriptionCard.acceptCurrentState') }}</Button>
     </div>
   </Alert>
-  <p v-else-if="status" class="text-xs text-base-content/70">{{ t('ui.storage.DescriptionCard.describedIn') }} <span>{{ status.file }}</span></p>
+  <p v-else-if="status" class="text-xs text-base-content/70">{{ t('ui.storage.DescriptionCard.describedIn') }} <span class="font-mono">{{ status.file }}</span></p>
 </template>
