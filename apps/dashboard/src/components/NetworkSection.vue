@@ -142,8 +142,8 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.NetworkSection.network') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6 max-w-xl">
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.settings.NetworkSection.network') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6 max-w-xl">
       {{ t('ui.settings.NetworkSection.howThisServerGetsIts') }}
     </p>
 
@@ -152,13 +152,13 @@ onUnmounted(() => clearInterval(timer))
 
     <div v-else-if="status" class="space-y-4 max-w-2xl">
       <Alert v-if="status.unavailable" variant="info" role="status">
-        <AlertDescription class="text-foreground/80">{{ status.unavailable }}</AlertDescription>
+        <AlertDescription class="text-base-content/80">{{ status.unavailable }}</AlertDescription>
       </Alert>
 
       <!-- The change just applied from this page -->
       <Alert v-if="pending" variant="warning" role="status" class="block space-y-2">
         <p class="font-medium">{{ t('ui.settings.NetworkSection.keepTheNewNetworkSettings') }}</p>
-        <p class="text-foreground/80">{{ t('uip.settings.NetworkSection.ifYouCanReadThis', { p0: secondsLeft }) }}</p>
+        <p class="text-base-content/80">{{ t('uip.settings.NetworkSection.ifYouCanReadThis', { p0: secondsLeft }) }}</p>
         <div class="flex gap-2">
           <Button size="sm" @click="keep(pending.checkpoint)">{{ t('ui.settings.NetworkSection.keep') }}</Button>
           <Button size="sm" variant="outline" @click="undo(pending.checkpoint)">{{ t('ui.settings.NetworkSection.undoNow') }}</Button>
@@ -168,7 +168,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- A change applied elsewhere (the old address), still waiting -->
       <Alert v-for="c in waiting" :key="c" variant="warning" role="status" class="block space-y-2">
         <p class="font-medium">{{ t('ui.settings.NetworkSection.aNetworkChangeIsWaiting') }}</p>
-        <p class="text-foreground/80">{{ t('ui.settings.NetworkSection.itWasAppliedAMoment') }}</p>
+        <p class="text-base-content/80">{{ t('ui.settings.NetworkSection.itWasAppliedAMoment') }}</p>
         <div class="flex gap-2">
           <Button size="sm" @click="keep(c)">{{ t('ui.settings.NetworkSection.keep') }}</Button>
           <Button size="sm" variant="outline" @click="undo(c)">{{ t('ui.settings.NetworkSection.undoNow') }}</Button>
@@ -179,25 +179,25 @@ onUnmounted(() => clearInterval(timer))
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="font-mono text-sm font-semibold text-foreground">{{ i.device }}</span>
+              <span class="font-mono text-sm font-semibold text-base-content">{{ i.device }}</span>
               <Badge variant="secondary">{{ i.type }}</Badge>
               <Badge v-if="i.method" variant="outline">{{ i.method === 'manual' ? 'Manual' : 'DHCP' }}</Badge>
-              <span class="text-xs text-muted-foreground">{{ i.state }}</span>
+              <span class="text-xs text-base-content/70">{{ i.state }}</span>
             </div>
-            <p v-if="i.connection" class="text-xs text-muted-foreground mt-0.5">{{ i.connection }}</p>
+            <p v-if="i.connection" class="text-xs text-base-content/70 mt-0.5">{{ i.connection }}</p>
           </div>
           <Button v-if="i.managed && editing !== i.device && !status.unavailable" variant="outline" size="sm" @click="edit(i)">{{ t('ui.settings.NetworkSection.change') }}</Button>
         </div>
 
         <dl class="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-          <dt class="text-muted-foreground">{{ t('ui.settings.NetworkSection.address') }}</dt>
-          <dd class="font-mono text-foreground/80">{{ i.addresses.join(', ') || 'none' }}</dd>
-          <dt class="text-muted-foreground">{{ t('ui.settings.NetworkSection.gateway') }}</dt>
-          <dd class="font-mono text-foreground/80">{{ i.gateway || 'none' }}</dd>
-          <dt class="text-muted-foreground">DNS</dt>
-          <dd class="font-mono text-foreground/80">{{ i.dns.join(', ') || 'none' }}</dd>
+          <dt class="text-base-content/70">{{ t('ui.settings.NetworkSection.address') }}</dt>
+          <dd class="font-mono text-base-content/80">{{ i.addresses.join(', ') || 'none' }}</dd>
+          <dt class="text-base-content/70">{{ t('ui.settings.NetworkSection.gateway') }}</dt>
+          <dd class="font-mono text-base-content/80">{{ i.gateway || 'none' }}</dd>
+          <dt class="text-base-content/70">DNS</dt>
+          <dd class="font-mono text-base-content/80">{{ i.dns.join(', ') || 'none' }}</dd>
         </dl>
-        <p v-if="!i.managed" class="mt-2 text-xs text-muted-foreground">{{ t('ui.settings.NetworkSection.networkmanagerDoesNotManageThis') }}</p>
+        <p v-if="!i.managed" class="mt-2 text-xs text-base-content/70">{{ t('ui.settings.NetworkSection.networkmanagerDoesNotManageThis') }}</p>
 
         <form v-if="editing === i.device" class="mt-4 space-y-3 border-t pt-4" @submit.prevent="apply(i)">
           <ToggleGroup type="single" variant="outline" size="sm" :model-value="form.method" :aria-label="t('ui.settings.NetworkSection.addressing')"
@@ -223,7 +223,7 @@ onUnmounted(() => clearInterval(timer))
             {{ t('ui.settings.NetworkSection.theDashboardWillMoveTo') }} <span class="font-mono">{{ newAddress(i) }}</span>{{ t('ui.settings.NetworkSection.open') }}
             <span class="font-mono">{{ newUrl(newAddress(i)!) }}</span> {{ t('ui.settings.NetworkSection.andKeepTheChangeThere') }}
           </Alert>
-          <p v-if="formError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ formError }}</p>
+          <p v-if="formError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ formError }}</p>
           <div class="flex gap-2">
             <Button type="submit" size="sm">{{ t('ui.settings.NetworkSection.review') }}</Button>
             <Button type="button" variant="ghost" size="sm" @click="editing = null">{{ t('ui.settings.NetworkSection.cancel') }}</Button>
@@ -231,7 +231,7 @@ onUnmounted(() => clearInterval(timer))
         </form>
       </Card>
 
-      <p v-if="!status.unavailable && !status.interfaces.length" class="text-sm text-muted-foreground">{{ t('ui.settings.NetworkSection.noNetworkInterfaceFound') }}</p>
+      <p v-if="!status.unavailable && !status.interfaces.length" class="text-sm text-base-content/70">{{ t('ui.settings.NetworkSection.noNetworkInterfaceFound') }}</p>
     </div>
   </div>
 </template>

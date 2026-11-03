@@ -31,7 +31,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
   <div class="space-y-6">
     <!-- ── Theme ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.theme') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.theme') }}</h4>
       <Card class="gap-0 py-0 shadow-none p-3">
         <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
           <label
@@ -66,7 +66,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Accent color ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.accent') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.accent') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.accent')" class="flex flex-wrap gap-x-4 gap-y-2">
           <label v-for="opt in ACCENTS" :key="opt.value" class="flex cursor-pointer items-center gap-2 text-sm">
@@ -85,7 +85,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Roundness ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.roundness') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.roundness') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.roundness')" class="join">
           <input
@@ -102,7 +102,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Density ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.density') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.density') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.density')" class="join">
           <input

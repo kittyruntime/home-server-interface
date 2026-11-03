@@ -129,8 +129,8 @@ onUnmounted(() => clearInterval(timer))
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.UpdateSection.updates') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.settings.UpdateSection.manageSoftwareUpdatesForThis') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.settings.UpdateSection.updates') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">{{ t('ui.settings.UpdateSection.manageSoftwareUpdatesForThis') }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
 
@@ -144,10 +144,10 @@ onUnmounted(() => clearInterval(timer))
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-row items-center justify-between gap-6">
         <div>
           <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.currentVersion') }}</p>
-          <p class="font-figure text-xl text-foreground">{{ status.current }}</p>
+          <p class="font-figure text-xl text-base-content">{{ status.current }}</p>
         </div>
         <template v-if="status.hasUpdate">
-          <ArrowRightIcon class="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          <ArrowRightIcon class="w-4 h-4 text-base-content/70 shrink-0" aria-hidden="true" />
           <div class="text-right">
             <p class="eyebrow mb-1">{{ t('ui.settings.UpdateSection.available') }}</p>
             <p class="font-figure text-xl text-primary">{{ status.latest }}</p>
@@ -164,9 +164,9 @@ onUnmounted(() => clearInterval(timer))
       <!-- Last update result and the version it left behind -->
       <Card v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="block gap-0 py-0 overflow-hidden p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
-           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-destructive' : 'text-foreground/80']">
+           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-error' : 'text-base-content/80']">
           {{ lastResultText(status.lastResult) }}
-          <span class="text-xs text-muted-foreground">{{ formatDateTime(status.lastResult.at) }}</span>
+          <span class="text-xs text-base-content/70">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>
         <div v-if="status.lastResult?.skippedSettings?.length" class="space-y-2 text-sm text-warning">
           <p>{{ t('ui.settings.UpdateSection.theUpdateIsCompleteThese') }}</p>
@@ -177,15 +177,15 @@ onUnmounted(() => clearInterval(timer))
             </li>
           </ul>
         </div>
-        <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-foreground/80">
+        <p v-if="previousVersionText(status.rollbackTarget, status.current, formatDay)" class="text-sm text-base-content/80">
           {{ previousVersionText(status.rollbackTarget, status.current, formatDay) }}
-          <code class="font-mono text-xs text-foreground">{{ rollbackCommand(status.rollbackCommand) }}</code>
+          <code class="font-mono text-xs text-base-content">{{ rollbackCommand(status.rollbackCommand) }}</code>
         </p>
       </Card>
 
       <!-- Release notes -->
       <Card v-if="status.hasUpdate && status.releaseNotes" class="block gap-0 py-0 overflow-hidden">
-        <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+        <div class="px-4 py-3 border-b border-base-300 flex items-center justify-between gap-3">
           <p class="eyebrow">{{ t('uip.settings.UpdateSection.whatSNewIn', { p0: status.latest }) }}</p>
           <a
             :href="`${status.repoUrl}/releases/tag/${status.latest}`"
@@ -203,24 +203,24 @@ onUnmounted(() => clearInterval(timer))
 
       <!-- Pre-flight checks -->
       <Card v-if="status.hasUpdate && preflight" class="block gap-0 py-0 overflow-hidden">
-        <div class="px-4 py-3 border-b border-border">
+        <div class="px-4 py-3 border-b border-base-300">
           <p class="eyebrow">{{ t('ui.settings.UpdateSection.preFlightChecks') }}</p>
         </div>
-        <ul class="divide-y divide-border">
+        <ul class="divide-y divide-base-300">
           <li v-for="c in preflight.checks" :key="c.id" class="px-4 py-2.5 flex items-center gap-3">
             <span
               class="w-2 h-2 rounded-full shrink-0"
-              :class="c.status === 'ok' ? 'bg-success' : c.status === 'warn' ? 'bg-warning' : 'bg-destructive'"
+              :class="c.status === 'ok' ? 'bg-success' : c.status === 'warn' ? 'bg-warning' : 'bg-error'"
             />
-            <span class="text-sm text-foreground flex-1 min-w-0">{{ c.label }}</span>
-            <span v-if="c.detail" class="text-xs text-muted-foreground truncate">{{ c.detail }}</span>
+            <span class="text-sm text-base-content flex-1 min-w-0">{{ c.label }}</span>
+            <span v-if="c.detail" class="text-xs text-base-content/70 truncate">{{ c.detail }}</span>
           </li>
         </ul>
       </Card>
 
       <!-- Install CTA -->
       <div v-if="status.hasUpdate" class="flex items-center justify-between gap-4">
-        <p class="text-xs text-muted-foreground">
+        <p class="text-xs text-base-content/70">
           <template v-if="preflight && !preflight.canApply">{{ t('ui.settings.UpdateSection.aPreFlightCheckIs') }}</template>
           <template v-else>{{ t('ui.settings.UpdateSection.theServerWillRestartAfter') }}</template>
         </p>
@@ -235,9 +235,9 @@ onUnmounted(() => clearInterval(timer))
       </div>
 
       <!-- Footer: last checked + manual check -->
-      <div class="flex items-center justify-between pt-1 border-t border-border">
+      <div class="flex items-center justify-between pt-1 border-t border-base-300">
         <div>
-          <p class="text-xs text-muted-foreground">
+          <p class="text-xs text-base-content/70">
             <template v-if="status.checkedAt">{{ t('uip.settings.UpdateSection.lastChecked', { p0: formatDateTime(status.checkedAt) }) }}</template>
             <template v-else>{{ t('ui.settings.UpdateSection.neverCheckedRunsDailyVia') }}</template>
           </p>
@@ -262,8 +262,8 @@ onUnmounted(() => clearInterval(timer))
 
       <Card class="gap-0 py-0 overflow-hidden p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.restartHsi') }}</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartTheApplicationBackendWithout') }}</p>
+          <p class="text-sm font-medium text-base-content">{{ t('ui.settings.UpdateSection.restartHsi') }}</p>
+          <p class="mt-1 text-xs leading-5 text-base-content/70">{{ t('ui.settings.UpdateSection.restartTheApplicationBackendWithout') }}</p>
         </div>
         <Button variant="outline" size="sm"
           @click="restartSoftware"
@@ -276,10 +276,10 @@ onUnmounted(() => clearInterval(timer))
         </Button>
       </Card>
 
-      <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 border-destructive/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden p-5 border-error/25 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UpdateSection.rebootServer') }}</p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('ui.settings.UpdateSection.restartThePhysicalHostAnd') }}</p>
+          <p class="text-sm font-medium text-base-content">{{ t('ui.settings.UpdateSection.rebootServer') }}</p>
+          <p class="mt-1 text-xs leading-5 text-base-content/70">{{ t('ui.settings.UpdateSection.restartThePhysicalHostAnd') }}</p>
         </div>
         <Button variant="destructive" size="sm"
           @click="rebootHost"

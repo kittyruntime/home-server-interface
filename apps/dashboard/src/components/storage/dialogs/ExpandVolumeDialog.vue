@@ -81,30 +81,30 @@ defineExpose({ open })
 
 <template>
   <Modal :label="t('uip.storage.ExpandVolumeDialog.expand', { p0: dlg.name })" v-if="dlg" panel-class="w-full max-w-md" :show-close="false" :prevent-close="dlg.busy" @close="dlg = null">
-    <div class="px-5 py-4 border-b border-border">
-      <h3 class="font-semibold text-foreground">{{ t('uip.storage.ExpandVolumeDialog.expand', { p0: dlg.name }) }}</h3>
+    <div class="px-5 py-4 border-b border-base-300">
+      <h3 class="font-semibold text-base-content">{{ t('uip.storage.ExpandVolumeDialog.expand', { p0: dlg.name }) }}</h3>
     </div>
     <div class="p-5 space-y-4">
-      <p v-if="dlg.loading" class="text-sm text-muted-foreground">{{ t('ui.storage.ExpandVolumeDialog.lookingAtWhatThisVolume') }}</p>
-      <p v-else-if="!dlg.options.length" class="text-sm text-foreground/80">{{ dlg.reason || 'Nothing to grow into right now.' }}</p>
+      <p v-if="dlg.loading" class="text-sm text-base-content/70">{{ t('ui.storage.ExpandVolumeDialog.lookingAtWhatThisVolume') }}</p>
+      <p v-else-if="!dlg.options.length" class="text-sm text-base-content/80">{{ dlg.reason || 'Nothing to grow into right now.' }}</p>
       <div v-else class="space-y-2">
         <RadioGroup :model-value="dlg.mode" class="gap-2" @update:model-value="mode => pick(mode as ExpandMode)">
-          <label v-for="o in dlg.options" :key="o.mode" class="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2 cursor-pointer"
+          <label v-for="o in dlg.options" :key="o.mode" class="flex items-start gap-2.5 rounded-lg border border-base-300 px-3 py-2 cursor-pointer"
             :class="dlg.mode === o.mode ? 'border-primary' : ''">
             <RadioGroupItem :value="o.mode" class="mt-0.5" />
-            <span class="text-sm text-foreground">{{ optionLabel(o.mode as ExpandMode, o.gain) }}</span>
+            <span class="text-sm text-base-content">{{ optionLabel(o.mode as ExpandMode, o.gain) }}</span>
           </label>
         </RadioGroup>
         <div v-if="chosen?.disks?.length" class="pt-1">
-          <label class="text-xs text-foreground/80" for="expand-disk">{{ t('ui.storage.ExpandVolumeDialog.diskToAddEverythingOn') }}</label>
+          <label class="text-xs text-base-content/80" for="expand-disk">{{ t('ui.storage.ExpandVolumeDialog.diskToAddEverythingOn') }}</label>
           <NativeSelect wrapper-class="mt-1 w-full" id="expand-disk" v-model="dlg.disk" class="font-mono">
             <NativeSelectOption v-for="d in chosen.disks" :key="d.name" :value="d.name">/dev/{{ d.name }} · {{ fmtBytes(d.size) }}</NativeSelectOption>
           </NativeSelect>
         </div>
         <p v-if="dlg.mode === 'addDisk'" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ t('ui.storage.ExpandVolumeDialog.theVolumeWillDependOn') }}</p>
-        <p v-if="dlg.mode === 'raidAddDisk' || dlg.mode === 'mirrorGrow'" class="text-xs text-muted-foreground">{{ t('ui.storage.ExpandVolumeDialog.theArrayIsRewrittenIn') }}</p>
+        <p v-if="dlg.mode === 'raidAddDisk' || dlg.mode === 'mirrorGrow'" class="text-xs text-base-content/70">{{ t('ui.storage.ExpandVolumeDialog.theArrayIsRewrittenIn') }}</p>
       </div>
-      <p v-if="dlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
+      <p v-if="dlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
         <Button variant="outline" class="flex-1 justify-center" @click="dlg = null">{{ t('ui.storage.ExpandVolumeDialog.cancel') }}</Button>
         <Button class="flex-1 justify-center" :disabled="dlg.busy || !dlg.mode" @click="expand">{{ t('ui.storage.ExpandVolumeDialog.reviewThePlan') }}</Button>

@@ -28,25 +28,25 @@ const steps: Array<{ target: 'places' | 'store' | 'backups'; title: string; desc
   <Transition name="ui-fade">
     <div
       v-if="!dismissed"
-      class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mx-4 mt-4 border-input bg-card p-4 sm:mx-6 sm:mt-5"
+      class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden relative mx-4 mt-4 border-base-300 bg-base-100 p-4 sm:mx-6 sm:mt-5"
     >
       <Button variant="ghost" size="icon-xs"
         :tooltip="t('ui.home.GettingStartedCard.dismiss')"
         :aria-label="t('ui.home.GettingStartedCard.dismissGettingStarted')"
-        class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        class="absolute right-3 top-3 text-base-content/70 hover:text-base-content"
         @click="dismiss"
       >
         <XIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
 
-      <h3 class="text-sm font-semibold text-foreground">{{ t('ui.home.GettingStartedCard.gettingStarted') }}</h3>
-      <p class="mt-0.5 text-xs text-muted-foreground">{{ t('ui.home.GettingStartedCard.aFewThingsWorthSetting') }}</p>
+      <h3 class="text-sm font-semibold text-base-content">{{ t('ui.home.GettingStartedCard.gettingStarted') }}</h3>
+      <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.home.GettingStartedCard.aFewThingsWorthSetting') }}</p>
 
       <div class="mt-3 grid gap-2 sm:grid-cols-3">
         <Item
           v-for="s in steps" :key="s.target"
           as="button" variant="muted"
-          class="flex-col items-start gap-1 rounded-xl border-border p-3 text-left hover:border-input hover:bg-base-200"
+          class="flex-col items-start gap-1 rounded-xl border-base-300 p-3 text-left hover:border-base-300 hover:bg-base-200"
           @click="emit('navigate', s.target)"
         >
           <ItemTitle class="text-xs font-semibold">{{ s.title }}</ItemTitle>

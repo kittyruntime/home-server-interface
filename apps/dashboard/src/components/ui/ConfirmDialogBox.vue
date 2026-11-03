@@ -49,9 +49,9 @@ function choose(v: boolean) {
       <div v-if="open && confirmState" class="modal-box flex w-full flex-col gap-4 sm:max-w-sm">
         <div class="flex flex-col gap-2">
           <h2 :id="titleId" class="text-lg font-semibold">{{ confirmState.title ?? 'Confirm' }}</h2>
-          <p :id="descId" class="text-sm text-muted-foreground">{{ confirmState.message }}</p>
+          <p :id="descId" class="text-sm text-base-content/70">{{ confirmState.message }}</p>
         </div>
-        <label v-if="confirmState.optOutLabel" class="flex items-center gap-2 text-sm text-muted-foreground">
+        <label v-if="confirmState.optOutLabel" class="flex items-center gap-2 text-sm text-base-content/70">
           <Checkbox v-model="optedOut" />
           {{ confirmState.optOutLabel }}
         </label>

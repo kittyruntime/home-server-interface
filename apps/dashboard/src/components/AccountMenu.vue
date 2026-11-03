@@ -35,11 +35,11 @@ const initials = computed(() => (currentUsername.value ?? 'U').slice(0, 2).toUpp
     <DropdownMenuContent :side="side ?? 'right'" align="end" :side-offset="8" class="w-56">
       <DropdownMenuLabel class="flex items-center gap-3 py-2 font-normal">
         <Avatar class="size-8 text-xs">
-          <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+          <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
         </Avatar>
         <span class="min-w-0">
-          <span class="block truncate text-sm font-medium text-foreground">{{ currentUsername }}</span>
-          <span class="block text-xs text-muted-foreground">{{ isAdmin ? t('account.administrator') : t('account.user') }}</span>
+          <span class="block truncate text-sm font-medium text-base-content">{{ currentUsername }}</span>
+          <span class="block text-xs text-base-content/70">{{ isAdmin ? t('account.administrator') : t('account.user') }}</span>
         </span>
       </DropdownMenuLabel>
       <DropdownMenuSeparator />

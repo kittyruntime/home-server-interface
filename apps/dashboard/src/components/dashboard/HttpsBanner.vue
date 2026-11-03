@@ -34,17 +34,17 @@ onMounted(async () => {
   <Transition name="ui-fade">
     <div
       v-if="show"
-      class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative mx-4 mt-4 border-input bg-card p-4 pr-12 sm:mx-6 sm:mt-5"
+      class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden relative mx-4 mt-4 border-base-300 bg-base-100 p-4 pr-12 sm:mx-6 sm:mt-5"
     >
       <Button variant="ghost" size="icon-xs"
         :tooltip="t('ui.home.HttpsBanner.dismiss')"
         :aria-label="t('ui.home.HttpsBanner.dismissTheHttpsNotice')"
-        class="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        class="absolute right-3 top-3 text-base-content/70 hover:text-base-content"
         @click="dismiss"
       >
         <XIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
-      <p class="text-sm text-foreground/80">{{ t('ui.home.HttpsBanner.thisServerIsReachedOver') }}</p>
+      <p class="text-sm text-base-content/80">{{ t('ui.home.HttpsBanner.thisServerIsReachedOver') }}</p>
       <Button size="sm" class="mt-3" @click="emit('navigate', 'secure')">{{ t('ui.home.HttpsBanner.openSecureAccess') }}</Button>
     </div>
   </Transition>

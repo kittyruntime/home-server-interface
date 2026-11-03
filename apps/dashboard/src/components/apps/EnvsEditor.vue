@@ -48,7 +48,7 @@ watch(() => props.modelValue, () => {
     <div class="flex justify-end">
       <Button variant="outline" size="xs"
         @click="toggleMode"
-        class="text-muted-foreground hover:text-foreground"
+        class="text-base-content/70 hover:text-base-content"
       >
         {{ mode === 'table' ? 'Raw' : 'Table' }}
       </Button>
@@ -69,7 +69,7 @@ watch(() => props.modelValue, () => {
             @input="update({ key: ($event.target as HTMLInputElement).value })"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
-          <span class="text-muted-foreground text-sm">=</span>
+          <span class="text-base-content/70 text-sm">=</span>
           <Input
             :model-value="item.value" laceholder="value"
             @input="update({ value: ($event.target as HTMLInputElement).value })"

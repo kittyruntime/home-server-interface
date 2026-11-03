@@ -105,7 +105,7 @@ async function toggleMember(userId: string) {
       <!-- Back -->
       <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
-        class="text-muted-foreground hover:text-foreground shrink-0"
+        class="text-base-content/70 hover:text-base-content shrink-0"
         :tooltip="t('ui.settings.GroupEditor.backToGroups')" :aria-label="t('ui.settings.GroupEditor.backToGroups')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
@@ -113,36 +113,36 @@ async function toggleMember(userId: string) {
 
       <!-- Name -->
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <span class="text-base font-semibold text-foreground truncate">{{ group.name }}</span>
+        <span class="text-base font-semibold text-base-content truncate">{{ group.name }}</span>
       </div>
 
       <!-- Delete -->
       <template v-if="!deleteConfirm">
         <Button variant="ghost" size="icon-sm"
           @click="deleteConfirm = true"
-          class="text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
+          class="text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
           :tooltip="t('ui.settings.GroupEditor.deleteGroup')" :aria-label="t('ui.settings.GroupEditor.deleteGroup')"
         >
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
         </Button>
       </template>
       <template v-else>
-        <span class="text-xs text-destructive shrink-0">{{ t('ui.settings.GroupEditor.delete') }}</span>
+        <span class="text-xs text-error shrink-0">{{ t('ui.settings.GroupEditor.delete') }}</span>
         <Button variant="destructive" size="xs" :disabled="deleteBusy" @click="deleteGroup">{{ t('ui.settings.GroupEditor.yes') }}</Button>
         <Button variant="ghost" size="xs" @click="deleteConfirm = false">{{ t('ui.settings.GroupEditor.no') }}</Button>
       </template>
     </div>
 
-    <p v-if="error" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="px-0.5 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- ── Members ─────────────────────────────────────────────────────────── -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-0.5">
-        <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.GroupEditor.members') }}</h4>
-        <span class="text-xs text-muted-foreground">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
+        <h4 class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.GroupEditor.members') }}</h4>
+        <span class="text-xs text-base-content/70">{{ sortedUsers.filter(u => isMember(u)).length }} / {{ users.length }}</span>
       </div>
 
-      <p v-if="users.length === 0" class="text-xs text-muted-foreground px-0.5">{{ t('ui.settings.GroupEditor.noUsers') }}</p>
+      <p v-if="users.length === 0" class="text-xs text-base-content/70 px-0.5">{{ t('ui.settings.GroupEditor.noUsers') }}</p>
 
       <GroupPicker
         v-else

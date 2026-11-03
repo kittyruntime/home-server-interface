@@ -41,8 +41,8 @@ function dirWritable(s: ShareDiag): boolean {
   <div class="space-y-5">
     <div class="flex items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.sharing.DiagnosticsSection.shareDiagnostics') }}</h2>
-        <p class="text-sm text-muted-foreground mt-0.5">
+        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.sharing.DiagnosticsSection.shareDiagnostics') }}</h2>
+        <p class="text-sm text-base-content/70 mt-0.5">
           {{ t('ui.sharing.DiagnosticsSection.whoCanActuallyReadWrite') }}
         </p>
       </div>
@@ -51,15 +51,15 @@ function dirWritable(s: ShareDiag): boolean {
 
     <LoadingState v-if="loading" variant="compact" :label="LOADING.analyzing" />
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
-    <div v-else-if="shares.length === 0" class="text-sm text-muted-foreground">{{ t('ui.sharing.DiagnosticsSection.noActiveShares') }}</div>
+    <div v-else-if="shares.length === 0" class="text-sm text-base-content/70">{{ t('ui.sharing.DiagnosticsSection.noActiveShares') }}</div>
 
     <div v-else class="space-y-3">
       <Card v-for="s in shares" :key="s.id" class="block gap-0 py-0 overflow-hidden p-4 space-y-3">
         <!-- Header -->
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <span class="text-sm font-medium text-foreground">{{ s.name }}</span>
-            <span class="block text-xs text-muted-foreground font-mono truncate">{{ s.path }}</span>
+            <span class="text-sm font-medium text-base-content">{{ s.name }}</span>
+            <span class="block text-xs text-base-content/70 font-mono truncate">{{ s.path }}</span>
           </div>
           <Badge
             variant="secondary"
@@ -77,10 +77,10 @@ function dirWritable(s: ShareDiag): boolean {
           <div class="eyebrow">{{ t('ui.sharing.DiagnosticsSection.write') }}</div>
           <div class="flex flex-wrap gap-1.5">
             <span v-for="w in s.writers" :key="w.linuxUsername"
-              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-muted border border-border">
-              <span class="w-1.5 h-1.5 rounded-full" :class="w.hasSamba ? 'bg-success' : 'bg-destructive'" />
+              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-base-200 border border-base-300">
+              <span class="w-1.5 h-1.5 rounded-full" :class="w.hasSamba ? 'bg-success' : 'bg-error'" />
               {{ w.linuxUsername }}
-              <span v-if="!w.hasSamba" class="text-destructive">{{ t('ui.sharing.DiagnosticsSection.noSambaPassword') }}</span>
+              <span v-if="!w.hasSamba" class="text-error">{{ t('ui.sharing.DiagnosticsSection.noSambaPassword') }}</span>
             </span>
           </div>
         </div>
@@ -90,8 +90,8 @@ function dirWritable(s: ShareDiag): boolean {
           <div class="eyebrow">{{ t('ui.sharing.DiagnosticsSection.readOnly') }}</div>
           <div class="flex flex-wrap gap-1.5">
             <span v-for="r in s.readers" :key="r.linuxUsername"
-              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-muted border border-border text-foreground/80">
-              <span class="w-1.5 h-1.5 rounded-full" :class="r.hasSamba ? 'bg-success' : 'bg-destructive'" />
+              class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg bg-base-200 border border-base-300 text-base-content/80">
+              <span class="w-1.5 h-1.5 rounded-full" :class="r.hasSamba ? 'bg-success' : 'bg-error'" />
               {{ r.linuxUsername }}
             </span>
           </div>
@@ -106,10 +106,10 @@ function dirWritable(s: ShareDiag): boolean {
         </div>
 
         <!-- Guest note -->
-        <p v-if="s.guestOk" class="text-2xs text-muted-foreground">{{ t('ui.sharing.DiagnosticsSection.guestAccessEnabledReadOnly') }}</p>
+        <p v-if="s.guestOk" class="text-2xs text-base-content/70">{{ t('ui.sharing.DiagnosticsSection.guestAccessEnabledReadOnly') }}</p>
 
         <!-- Dir detail -->
-        <p v-if="s.dir" class="text-2xs text-muted-foreground font-mono">
+        <p v-if="s.dir" class="text-2xs text-base-content/70 font-mono">
           {{ t('uip.sharing.DiagnosticsSection.groupMode', { p0: s.dir.group || '-', p1: s.dir.mode }) }}<span v-if="!s.dir.exists"> {{ t('ui.sharing.DiagnosticsSection.notFound') }}</span>
         </p>
       </Card>

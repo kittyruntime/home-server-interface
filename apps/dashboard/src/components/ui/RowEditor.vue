@@ -22,12 +22,12 @@ function update(i: number, patch: Partial<T>) {
 
 <template>
   <div class="space-y-2">
-    <div v-if="modelValue.length === 0" class="text-sm text-muted-foreground py-2">{{ emptyText }}</div>
+    <div v-if="modelValue.length === 0" class="text-sm text-base-content/70 py-2">{{ emptyText }}</div>
 
     <div v-for="(item, i) in modelValue" :key="i" class="space-y-1">
       <div class="flex items-center gap-2">
         <slot name="row" :item="item" :index="i" :update="(patch: Partial<T>) => update(i, patch)" />
-        <Button variant="ghost" size="icon-sm" class="shrink-0 text-muted-foreground hover:text-destructive" :aria-label="t('ui.shared.RowEditor.remove')" @click="remove(i)">
+        <Button variant="ghost" size="icon-sm" class="shrink-0 text-base-content/70 hover:text-error" :aria-label="t('ui.shared.RowEditor.remove')" @click="remove(i)">
           <XIcon />
         </Button>
       </div>

@@ -70,28 +70,28 @@ async function remove() {
 </script>
 
 <template>
-  <article class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+  <article class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden p-5 bg-base-100">
     <!-- Full width: long source paths wrap at the card's width, never in a squeezed column. -->
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
-        <h3 class="min-w-0 break-words text-sm font-medium text-foreground">{{ plan.name }}</h3>
+        <h3 class="min-w-0 break-words text-sm font-medium text-base-content">{{ plan.name }}</h3>
         <Badge variant="secondary">{{ plan.type === 'sync' ? 'Sync' : 'Versions' }}</Badge>
         <Badge variant="secondary" v-if="!plan.enabled">{{ t('ui.backups.PlanCard.paused') }}</Badge>
       </div>
-      <p class="mt-1 font-mono text-2xs text-muted-foreground [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
+      <p class="mt-1 font-mono text-2xs text-base-content/70 [overflow-wrap:anywhere]" :title="route">{{ route }}</p>
     </div>
 
     <div v-if="plan.progress" class="mt-3 flex items-center gap-3">
-      <Progress class="h-1.5 flex-1 rounded-full bg-muted" :model-value="percent" indicator-class="rounded-full bg-primary transition-all duration-700" />
-      <span class="text-2xs tabular-nums text-foreground/80">{{ percent }}%</span>
+      <Progress class="h-1.5 flex-1 rounded-full bg-base-200" :model-value="percent" indicator-class="rounded-full bg-primary transition-all duration-700" />
+      <span class="text-2xs tabular-nums text-base-content/80">{{ percent }}%</span>
     </div>
 
-    <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
+    <div class="mt-3 grid gap-2 text-2xs text-base-content/70 sm:grid-cols-3">
       <span>{{ scheduleLabel(plan.schedule as Schedule) }}</span>
       <span>{{ t('uip.backups.PlanCard.nextRun', { p0: plan.enabled ? untilLabel(plan.nextRun) : 'Paused' }) }}</span>
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
     </div>
-    <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <div class="mt-4 flex flex-wrap gap-1">
       <Button size="xs" :disabled="running || starting" @click="runNow">
@@ -99,7 +99,7 @@ async function remove() {
       </Button>
       <Button variant="ghost" size="xs" @click="emit('edit')">{{ t('ui.backups.PlanCard.edit') }}</Button>
       <Button variant="ghost" size="xs" @click="history = true">{{ t('ui.backups.PlanCard.history') }}</Button>
-      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">{{ t('ui.backups.PlanCard.remove') }}</Button>
+      <Button variant="ghost" size="xs" class="text-error" @click="remove">{{ t('ui.backups.PlanCard.remove') }}</Button>
     </div>
 
     <RunHistory v-if="history" kind="runs" :id="plan.id" :title="`History of ${plan.name}`" @close="history = false" />

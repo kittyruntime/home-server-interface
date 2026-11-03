@@ -33,9 +33,9 @@ const state = computed(() => {
   if (!a) return { cls: '', dot: '', text: '' }
   const syncing = a.syncAction && ['recovery', 'resync', 'reshape', 'check'].includes(a.syncAction) && a.resyncPercent != null
   if (a.active < a.total && syncing) return { cls: 'text-warning', dot: 'bg-warning', text: t('uis.storage.ArrayPage.rebuilding', { p0: Math.round(a.resyncPercent!) }) }
-  if (a.active < a.total) return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.ArrayPage.degradedOfMissing', { p0: a.total - a.active, p1: a.total }) }
+  if (a.active < a.total) return { cls: 'text-error', dot: 'bg-error', text: t('uis.storage.ArrayPage.degradedOfMissing', { p0: a.total - a.active, p1: a.total }) }
   if (syncing) return { cls: 'text-warning', dot: 'bg-warning', text: `${a.syncAction === 'check' ? 'Checking' : 'Resyncing'} ${Math.round(a.resyncPercent!)}%` }
-  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.ArrayPage.healthy') }
+  return { cls: 'text-base-content/80', dot: 'bg-success', text: t('uis.storage.ArrayPage.healthy') }
 })
 
 function findDev(list: BlockDev[], name: string): BlockDev | undefined {
@@ -76,11 +76,11 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
     @back="emit('navigate', 'raid')"
   >
     <template v-if="array" #chips>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ LEVEL[array.level] ?? array.level }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-base-300 bg-base-200 text-base-content/80">{{ LEVEL[array.level] ?? array.level }}</span>
       <span class="inline-flex items-center gap-1.5 text-xs" :class="state.cls"><span class="w-1.5 h-1.5 rounded-full" :class="state.dot" />{{ state.text }}</span>
     </template>
     <template v-if="array && size" #figure>
-      <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(size) }}</span>
+      <span class="font-figure font-bold text-2xl tabular-nums text-base-content">{{ fmtBytes(size) }}</span>
     </template>
 
     <template #actions>
@@ -95,16 +95,16 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
       <div class="space-y-4 max-w-lg">
         <div>
           <h3 class="eyebrow mb-2">{{ t('ui.storage.ArrayPage.onThisArray') }}</h3>
-          <p v-if="!volumes.length && !vg" class="text-sm text-muted-foreground">{{ t('ui.storage.ArrayPage.nothingYet') }}</p>
+          <p v-if="!volumes.length && !vg" class="text-sm text-base-content/70">{{ t('ui.storage.ArrayPage.nothingYet') }}</p>
           <ul class="space-y-1.5">
             <li v-if="vg">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'vg', name: vg })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volumeGroup') }}</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-base-100 px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'vg', name: vg })">
+                <span class="text-xs text-base-content/70 w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volumeGroup') }}</span><span class="flex-1 text-left font-mono text-xs">{{ vg }}</span><span aria-hidden="true" class="text-base-content/70">→</span>
               </Item>
             </li>
             <li v-for="v in volumes" :key="v.id">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-muted-foreground">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-muted-foreground">→</span>
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-base-100 px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'volume', id: v.id })">
+                <span class="text-xs text-base-content/70 w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.volume') }}</span><span class="flex-1 text-left">{{ v.name }} <span v-if="v.mountPoint" class="font-mono text-xs text-base-content/70">{{ v.mountPoint }}</span></span><span aria-hidden="true" class="text-base-content/70">→</span>
               </Item>
             </li>
           </ul>
@@ -113,8 +113,8 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
           <h3 class="eyebrow mb-2">{{ t('ui.storage.ArrayPage.members') }}</h3>
           <ul class="space-y-1.5">
             <li v-for="m in members" :key="m">
-              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-card px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'disk', name: m })">
-                <span class="text-xs text-muted-foreground w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.member') }}</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-muted-foreground">→</span>
+              <Item as="button" variant="outline" size="sm" class="w-full flex-nowrap justify-between gap-3 bg-base-100 px-3 py-2 hover:bg-base-200/50" @click="emit('navigate', { kind: 'disk', name: m })">
+                <span class="text-xs text-base-content/70 w-28 shrink-0 text-left">{{ t('ui.storage.ArrayPage.member') }}</span><span class="flex-1 text-left font-mono text-xs">{{ m }}</span><span aria-hidden="true" class="text-base-content/70">→</span>
               </Item>
             </li>
           </ul>

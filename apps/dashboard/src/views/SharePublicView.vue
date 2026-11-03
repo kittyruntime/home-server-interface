@@ -84,7 +84,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-background p-4">
+  <div class="min-h-screen flex items-center justify-center bg-base-100 p-4">
     <Card class="block gap-0 py-0 overflow-hidden w-full max-w-lg p-6">
       <p v-if="loadError && !loading" class="text-sm text-primary mb-3">{{ loadError }}</p>
 
@@ -92,8 +92,8 @@ onMounted(async () => {
 
       <!-- Unavailable states -->
       <div v-else-if="info && info.state !== 'ok'" class="text-center py-8">
-        <h2 class="text-base font-semibold text-foreground">{{ t('ui.views.SharePublicView.linkUnavailable') }}</h2>
-        <p class="text-sm text-muted-foreground mt-1">
+        <h2 class="text-base font-semibold text-base-content">{{ t('ui.views.SharePublicView.linkUnavailable') }}</h2>
+        <p class="text-sm text-base-content/70 mt-1">
           {{ info.state === 'expired' ? 'This link has expired.'
             : info.state === 'exhausted' ? 'This link has reached its download limit.'
             : info.state === 'disabled' ? 'This link has been revoked.'
@@ -103,7 +103,7 @@ onMounted(async () => {
 
       <!-- Password gate -->
       <form v-else-if="info?.needsPassword" @submit.prevent="submitPassword" class="space-y-3">
-        <h2 class="text-base font-semibold text-foreground">{{ t('ui.views.SharePublicView.passwordRequired') }}</h2>
+        <h2 class="text-base font-semibold text-base-content">{{ t('ui.views.SharePublicView.passwordRequired') }}</h2>
         <Input v-model="password" type="password" :placeholder="t('ui.views.SharePublicView.enterPassword')" autofocus />
         <p v-if="unlockError" class="text-primary text-xs">{{ unlockError }}</p>
         <Button size="sm" type="submit">{{ t('ui.views.SharePublicView.unlock') }}</Button>
@@ -111,8 +111,8 @@ onMounted(async () => {
 
       <!-- File -->
       <div v-else-if="info && info.state === 'ok' && 'kind' in info && info.kind === 'file'" class="text-center space-y-4">
-        <h2 class="text-base font-semibold text-foreground break-all">{{ info.name }}</h2>
-        <p class="text-xs text-muted-foreground">{{ fmtBytes(info.size) }}</p>
+        <h2 class="text-base font-semibold text-base-content break-all">{{ info.name }}</h2>
+        <p class="text-xs text-base-content/70">{{ fmtBytes(info.size) }}</p>
         <Button as="a" size="sm" :href="downloadUrl('')" class="mx-auto">{{ t('ui.views.SharePublicView.download') }}</Button>
       </div>
 
@@ -134,11 +134,11 @@ onMounted(async () => {
           </Breadcrumb>
           <Button as="a" variant="outline" size="xs" :href="zipUrl()" class="shrink-0">{{ t('ui.views.SharePublicView.downloadAllAsZip') }}</Button>
         </div>
-        <ul class="divide-y divide-border">
+        <ul class="divide-y divide-base-300">
           <li v-for="e in entries" :key="e.name" class="flex items-center justify-between py-2 text-sm">
-            <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 text-left text-foreground hover:text-primary"
+            <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 text-left text-base-content hover:text-primary"
               @click="loadDir((subPath ? subPath + '/' : '') + e.name)">📁 {{ e.name }}</Button>
-            <span v-else class="text-foreground/80 truncate">{{ e.name }}</span>
+            <span v-else class="text-base-content/80 truncate">{{ e.name }}</span>
             <Button as="a" variant="outline" size="xs" v-if="e.type === 'file'" :href="downloadUrl((subPath ? subPath + '/' : '') + e.name)"
               class="shrink-0">{{ t('ui.views.SharePublicView.download') }}</Button>
           </li>

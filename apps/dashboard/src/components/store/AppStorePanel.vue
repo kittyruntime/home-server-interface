@@ -62,10 +62,10 @@ function cardState(a: Entry): CardState {
   }
 }
 const STATE_META: Record<CardState, { label: string; dot: string; text: string }> = {
-  none:       { label: t('uis.store.AppStorePanel.notInstalled'), dot: '',                                      text: 'text-muted-foreground' },
+  none:       { label: t('uis.store.AppStorePanel.notInstalled'), dot: '',                                      text: 'text-base-content/70' },
   installing: { label: t('uis.store.AppStorePanel.installing'),   dot: 'bg-warning animate-pulse',   text: 'text-warning' },
   running:    { label: t('uis.store.AppStorePanel.running'),       dot: 'bg-success',                 text: 'text-success' },
-  stopped:    { label: t('uis.store.AppStorePanel.stopped'),       dot: 'bg-muted-foreground',                  text: 'text-muted-foreground' },
+  stopped:    { label: t('uis.store.AppStorePanel.stopped'),       dot: 'bg-base-content/70',                  text: 'text-base-content/70' },
   error:      { label: t('uis.store.AppStorePanel.error'),         dot: 'bg-primary',                  text: 'text-primary' },
 }
 
@@ -169,7 +169,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
     <template v-else>
       <!-- Header -->
       <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
+        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
         <div class="flex items-center gap-2 sm:max-w-md sm:flex-1 sm:justify-end">
           <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="min-w-0 flex-1 sm:max-w-xs" />
           <NativeSelect
@@ -186,7 +186,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         </div>
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
-      <p v-if="!loading" class="text-xs text-muted-foreground mb-4">
+      <p v-if="!loading" class="text-xs text-base-content/70 mb-4">
         {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
       </p>
 
@@ -203,7 +203,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
       <LoadingState v-if="loading" />
 
       <!-- No results -->
-      <div v-else-if="filtered.length === 0" class="text-center py-16 text-muted-foreground">
+      <div v-else-if="filtered.length === 0" class="text-center py-16 text-base-content/70">
         <p class="text-sm">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
         <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
       </div>
@@ -214,7 +214,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
              over the card; the action button sits above it. -->
         <div
           v-for="a in filtered" :key="a.id"
-          class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative p-4 flex flex-col gap-3 transition-colors hover:border-input has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-primary"
+          class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden relative p-4 flex flex-col gap-3 transition-colors hover:border-base-300 has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-primary"
         >
           <!-- Identity -->
           <div class="flex gap-3 items-start min-w-0">
@@ -224,26 +224,26 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
               <div class="flex items-center gap-2">
                 <Button
                   type="button" :data-card="a.id" variant="link"
-                  class="h-auto justify-start p-0 text-sm font-medium text-foreground truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
+                  class="h-auto justify-start p-0 text-sm font-medium text-base-content truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
                   @click="openDetail(a)"
                 >{{ a.name }}</Button>
-                <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0">{{ categoryLabel(a.category) }}</span>
+                <span class="text-2xs uppercase tracking-caps text-base-content/70 shrink-0">{{ categoryLabel(a.category) }}</span>
                 <span v-if="isNew(a)" class="text-2xs uppercase tracking-caps text-primary shrink-0">{{ t('ui.store.AppStorePanel.new') }}</span>
               </div>
-              <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
+              <p class="text-xs text-base-content/70 mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
             </div>
           </div>
 
           <!-- Update available (#26) -->
           <p v-if="a.installedApp?.update" class="text-xs text-warning">{{ updateText(a.installedApp.update) }}</p>
-          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
+          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
 
           <!-- State + one action -->
           <div class="flex items-center justify-between gap-2 mt-auto pt-1">
             <span class="inline-flex items-center gap-1.5 text-xs min-w-0" :class="STATE_META[cardState(a)].text">
               <span v-if="STATE_META[cardState(a)].dot" class="w-1.5 h-1.5 rounded-full shrink-0" :class="STATE_META[cardState(a)].dot" />
               {{ STATE_META[cardState(a)].label }}
-              <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-muted-foreground font-mono truncate">· {{ catalogVersion(a.image) }}</span>
+              <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-base-content/70 font-mono truncate">· {{ catalogVersion(a.image) }}</span>
             </span>
 
             <Button size="xs" v-if="cardState(a) === 'none'" class="relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">{{ t('ui.store.AppStorePanel.install') }}</Button>

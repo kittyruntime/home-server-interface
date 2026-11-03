@@ -48,8 +48,8 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.TelemetrySection.telemetry') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6 max-w-xl">
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.settings.TelemetrySection.telemetry') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6 max-w-xl">
       {{ t('ui.settings.TelemetrySection.onceADayHsiSends') }}
     </p>
 
@@ -59,8 +59,8 @@ onMounted(load)
     <div v-else-if="status" class="space-y-4 max-w-xl">
       <Card class="flex flex-row items-center justify-between gap-4 px-4 py-3 shadow-none">
         <div class="min-w-0">
-          <p class="text-sm text-foreground">{{ t('ui.settings.TelemetrySection.sendTheDailyHeartbeat') }}</p>
-          <p v-if="status.disabledBy === 'environment'" class="text-xs text-muted-foreground mt-0.5">
+          <p class="text-sm text-base-content">{{ t('ui.settings.TelemetrySection.sendTheDailyHeartbeat') }}</p>
+          <p v-if="status.disabledBy === 'environment'" class="text-xs text-base-content/70 mt-0.5">
             {{ t('ui.settings.TelemetrySection.turnedOffOnTheServer') }} <code class="font-mono">HSI_TELEMETRY_ENABLED</code>.
           </p>
         </div>
@@ -74,11 +74,11 @@ onMounted(load)
 
       <div>
         <p class="eyebrow mb-1.5">{{ t('ui.settings.TelemetrySection.whatIsSent') }}</p>
-        <p class="text-xs text-muted-foreground mb-2">
+        <p class="text-xs text-base-content/70 mb-2">
           {{ t('ui.settings.TelemetrySection.toHaveThisInstallationS') }}
-          <span class="font-mono text-foreground/80 select-all">{{ status.payload.installation_id }}</span>{{ t('ui.settings.TelemetrySection.withYourRequest') }}
+          <span class="font-mono text-base-content/80 select-all">{{ status.payload.installation_id }}</span>{{ t('ui.settings.TelemetrySection.withYourRequest') }}
         </p>
-        <pre class="max-h-96 overflow-auto rounded-lg border bg-muted p-3 font-mono text-2xs leading-relaxed text-foreground/80 select-text">{{ payloadText }}</pre>
+        <pre class="max-h-96 overflow-auto rounded-lg border bg-base-200 p-3 font-mono text-2xs leading-relaxed text-base-content/80 select-text">{{ payloadText }}</pre>
       </div>
     </div>
   </div>

@@ -74,18 +74,18 @@ function statusLabel(t: Transfer): string {
 function statusTextClass(t: Transfer): string {
   switch (t.status) {
     case 'done':      return 'text-success'
-    case 'error':     return 'text-destructive'
-    case 'cancelled': return 'text-muted-foreground'
+    case 'error':     return 'text-error'
+    case 'cancelled': return 'text-base-content/70'
     case 'paused':    return 'text-warning'
-    default:          return 'text-muted-foreground'
+    default:          return 'text-base-content/70'
   }
 }
 
 function iconClass(t: Transfer): string {
   switch (t.status) {
     case 'done':      return 'bg-success/10 text-success'
-    case 'error':     return 'bg-destructive/10 text-destructive'
-    case 'cancelled': return 'bg-muted text-muted-foreground'
+    case 'error':     return 'bg-error/10 text-error'
+    case 'cancelled': return 'bg-base-200 text-base-content/70'
     case 'paused':    return 'bg-warning/10 text-warning'
     default:          return 'bg-primary/10 text-primary'
   }
@@ -136,17 +136,17 @@ function handleReselectPick(e: Event) {
 <template>
   <div
     v-if="uploads.tasks.value.length > 0"
-    class="shrink-0 border-t border-border bg-muted"
+    class="shrink-0 border-t border-base-300 bg-base-200"
   >
     <!-- Header -->
     <div class="flex items-center gap-3 px-3.5 py-2">
-      <Button variant="ghost" size="xs" :aria-expanded="!collapsed" class="-ml-2 shrink-0 text-foreground/80" @click="collapsed = !collapsed">
+      <Button variant="ghost" size="xs" :aria-expanded="!collapsed" class="-ml-2 shrink-0 text-base-content/80" @click="collapsed = !collapsed">
         <ChevronDownIcon class="size-3 transition-transform" :class="collapsed ? '-rotate-90' : ''" aria-hidden="true" />
         {{ $t('uip.files.TransfersTray.transfersActive', { p0: activeCount }) }}
       </Button>
 
       <!-- Mini overall progress bar -->
-      <div v-if="activeCount > 0" class="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+      <div v-if="activeCount > 0" class="flex-1 h-1 bg-base-200 rounded-full overflow-hidden">
         <div v-if="overallPct !== null" class="h-full bg-primary rounded-full transition-all" :style="{ width: overallPct + '%' }" />
         <div v-else class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
       </div>
@@ -155,14 +155,14 @@ function handleReselectPick(e: Event) {
       <Button variant="link"
         v-if="hasTerminal"
         @click="clearFinished"
-        class="h-auto p-0 text-2xs text-muted-foreground hover:text-foreground/80 uppercase tracking-caps shrink-0"
+        class="h-auto p-0 text-2xs text-base-content/70 hover:text-base-content/80 uppercase tracking-caps shrink-0"
       >
         {{ $t('ui.files.TransfersTray.clearCompleted') }}
       </Button>
     </div>
 
     <!-- Body -->
-    <div v-if="!collapsed" class="max-h-56 overflow-y-auto border-t border-border divide-y divide-border">
+    <div v-if="!collapsed" class="max-h-56 overflow-y-auto border-t border-base-300 divide-y divide-base-300">
       <div v-for="t in reversedTasks" :key="t.id" class="px-3.5 py-2.5">
         <div class="flex items-center gap-2.5 min-w-0">
           <!-- Icon -->
@@ -177,13 +177,13 @@ function handleReselectPick(e: Event) {
           <!-- Name + status + progress -->
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline justify-between gap-2">
-              <span class="text-xs text-foreground truncate" :title="t.name">{{ t.name }}</span>
+              <span class="text-xs text-base-content truncate" :title="t.name">{{ t.name }}</span>
               <span class="text-2xs tabular-nums shrink-0" :class="statusTextClass(t)">{{ statusLabel(t) }}</span>
             </div>
 
             <!-- Determinate bar (uploads: sentBytes/totalBytes) -->
             <Progress v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
-              class="mt-1.5 h-1 bg-muted rounded-full" :model-value="pct(t)" :indicator-class="['rounded-full transition-all', t.status === 'paused' ? 'bg-warning' : 'bg-primary']" />
+              class="mt-1.5 h-1 bg-base-200 rounded-full" :model-value="pct(t)" :indicator-class="['rounded-full transition-all', t.status === 'paused' ? 'bg-warning' : 'bg-primary']" />
 
             <!-- Verifying (server-side checksum before atomic rename) -->
             <div v-else-if="t.status === 'verifying'" class="mt-1">
@@ -192,18 +192,18 @@ function handleReselectPick(e: Event) {
 
             <!-- Indeterminate bar (copy/move in progress) -->
             <div v-else-if="t.kind !== 'upload' && t.status === 'running'"
-              class="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+              class="mt-1.5 h-1 bg-base-200 rounded-full overflow-hidden">
               <div class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
             </div>
 
             <!-- Speed (uploads only) -->
             <div v-if="t.kind === 'upload' && t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0"
-              class="text-2xs text-muted-foreground mt-0.5 tabular-nums">
+              class="text-2xs text-base-content/70 mt-0.5 tabular-nums">
               {{ speed(t.bytesPerSec ?? 0) }}
             </div>
 
             <!-- Full error, never truncated -->
-            <div v-if="t.status === 'error' && t.error" class="text-2xs text-destructive mt-1 whitespace-pre-wrap break-words">
+            <div v-if="t.status === 'error' && t.error" class="text-2xs text-error mt-1 whitespace-pre-wrap break-words">
               {{ t.error }}
             </div>
           </div>
@@ -211,19 +211,19 @@ function handleReselectPick(e: Event) {
           <!-- Actions -->
           <div class="flex gap-0.5 shrink-0">
             <Button variant="ghost" size="icon-xs" v-if="canPauseResume(t)" @click="togglePause(t)" :tooltip="t.status === 'paused' ? 'Resume' : 'Pause'"
-              :aria-label="t.status === 'paused' ? 'Resume' : 'Pause'" class="text-muted-foreground">
+              :aria-label="t.status === 'paused' ? 'Resume' : 'Pause'" class="text-base-content/70">
               <PlayIcon v-if="t.status === 'paused'" class="size-3" aria-hidden="true" />
               <PauseIcon v-else class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="icon-xs" v-if="canCancel(t)" @click="uploads.cancel(t.id)" :tooltip="$t('ui.files.TransfersTray.cancel')" :aria-label="$t('ui.files.TransfersTray.cancel')"
-              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+              class="text-base-content/70 hover:text-error hover:bg-error/10">
               <SquareIcon class="size-3" fill="currentColor" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="xs" v-if="canRetry(t)" @click="retryOrReselect(t)" class="h-5 px-1.5 text-2xs text-primary hover:text-primary hover:bg-primary/10">
               {{ t.interrupted ? 'Resume' : 'Retry' }}
             </Button>
             <Button variant="ghost" size="icon-xs" v-if="canRemove(t)" @click="uploads.remove(t.id)" :tooltip="$t('ui.files.TransfersTray.remove')" :aria-label="$t('ui.files.TransfersTray.remove')"
-              class="text-muted-foreground hover:text-foreground">
+              class="text-base-content/70 hover:text-base-content">
               <XIcon class="w-3 h-3" aria-hidden="true" />
             </Button>
           </div>

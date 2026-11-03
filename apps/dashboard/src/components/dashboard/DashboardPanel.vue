@@ -34,10 +34,10 @@ const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped
   <div class="flex flex-col h-full">
 
     <!-- Toolbar -->
-    <div class="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border flex-shrink-0">
+    <div class="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-base-300 flex-shrink-0">
       <div class="flex items-center gap-3">
-        <h3 class="text-sm font-semibold text-foreground">{{ t('ui.home.DashboardPanel.overview') }}</h3>
-        <span v-if="metrics" class="text-xs text-muted-foreground font-mono">{{ uptimeStr }}</span>
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.home.DashboardPanel.overview') }}</h3>
+        <span v-if="metrics" class="text-xs text-base-content/70 font-mono">{{ uptimeStr }}</span>
       </div>
 
       <!-- Add widget dropdown -->
@@ -61,15 +61,15 @@ const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped
 
     <!-- Widget grid -->
     <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+      <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-base-content/70">
         <LayoutGridIcon class="w-10 h-10 opacity-20" aria-hidden="true" />
-        <p class="text-sm">{{ t('ui.home.DashboardPanel.noWidgetsClick') }} <strong class="text-foreground/80">{{ t('ui.home.DashboardPanel.add') }}</strong> {{ t('ui.home.DashboardPanel.toGetStarted') }}</p>
+        <p class="text-sm">{{ t('ui.home.DashboardPanel.noWidgetsClick') }} <strong class="text-base-content/80">{{ t('ui.home.DashboardPanel.add') }}</strong> {{ t('ui.home.DashboardPanel.toGetStarted') }}</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           v-for="w in widgets" :key="w.id"
-          :class="['relative group/card bg-muted border border-border rounded-xl p-4 sm:p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-1 sm:col-span-2' : 'col-span-1']"
+          :class="['relative group/card bg-base-200 border border-base-300 rounded-xl p-4 sm:p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-1 sm:col-span-2' : 'col-span-1']"
         >
           <!-- Widget controls -->
           <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -77,14 +77,14 @@ const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped
               @click="toggleCols(w)"
               :tooltip="w.cols === 1 ? 'Expand' : 'Shrink'"
               :aria-label="w.cols === 1 ? 'Expand widget' : 'Shrink widget'"
-              class="text-muted-foreground"
+              class="text-base-content/70"
             >
               <component :is="w.cols === 1 ? ChevronsLeftRightIcon : ChevronsUpDownIcon" class="size-3.5" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="icon-xs"
               @click="removeWidget(w.id)"
               :tooltip="t('ui.home.DashboardPanel.remove')" :aria-label="t('ui.home.DashboardPanel.remove')"
-              class="text-muted-foreground hover:text-primary hover:bg-primary/10"
+              class="text-base-content/70 hover:text-primary hover:bg-primary/10"
             >
               <XIcon class="w-3 h-3" aria-hidden="true" />
             </Button>

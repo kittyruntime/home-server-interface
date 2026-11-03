@@ -12,7 +12,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 
 <template>
   <div class="relative">
-    <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+    <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-base-content/70 pointer-events-none" />
     <Input
       :model-value="modelValue"
       :placeholder="placeholder ?? t('uis.shared.SearchInput.search')"
@@ -25,7 +25,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
       size="icon-xs"
       :tooltip="t('ui.shared.SearchInput.clear')"
       :aria-label="t('ui.shared.SearchInput.clearSearch')"
-      class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+      class="absolute right-1.5 top-1/2 -translate-y-1/2 text-base-content/70"
       @click="$emit('update:modelValue', '')"
     >
       <XIcon />

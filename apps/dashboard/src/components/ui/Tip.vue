@@ -14,7 +14,7 @@ defineProps<{
 <template>
   <Tooltip v-if="text">
     <TooltipTrigger as-child>
-      <span v-if="wrap" tabindex="0" class="inline-flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"><slot /></span>
+      <span v-if="wrap" tabindex="0" class="inline-flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-base-content/30"><slot /></span>
       <slot v-else />
     </TooltipTrigger>
     <TooltipContent :side="side">{{ text }}</TooltipContent>

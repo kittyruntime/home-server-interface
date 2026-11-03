@@ -63,8 +63,8 @@ function stepLabel(step: MaintenanceStep): string {
     <template v-if="active">
       <div class="w-full max-w-xl space-y-10">
         <div class="space-y-3">
-          <h1 :id="titleId" class="text-3xl font-semibold text-foreground sm:text-4xl">{{ title }}</h1>
-          <p :id="descId" class="text-base text-muted-foreground">{{ t('maintenance.hint') }}</p>
+          <h1 :id="titleId" class="text-3xl font-semibold text-base-content sm:text-4xl">{{ title }}</h1>
+          <p :id="descId" class="text-base text-base-content/70">{{ t('maintenance.hint') }}</p>
         </div>
 
         <ol class="space-y-6" aria-live="polite">
@@ -74,7 +74,7 @@ function stepLabel(step: MaintenanceStep): string {
                 'flex size-10 shrink-0 items-center justify-center rounded-full transition-colors',
                 maintenanceStepState(maintenance.step, step) === 'done'   ? 'bg-success/15 text-success' :
                 maintenanceStepState(maintenance.step, step) === 'active' ? 'bg-primary/10 text-primary' :
-                'bg-base-200 text-muted-foreground'
+                'bg-base-200 text-base-content/70'
               ]"
             >
               <CheckIcon v-if="maintenanceStepState(maintenance.step, step) === 'done'" class="size-5" aria-hidden="true" />
@@ -84,7 +84,7 @@ function stepLabel(step: MaintenanceStep): string {
             <span
               :class="[
                 'text-xl transition-colors sm:text-2xl',
-                maintenanceStepState(maintenance.step, step) === 'pending' ? 'text-muted-foreground' : 'text-foreground',
+                maintenanceStepState(maintenance.step, step) === 'pending' ? 'text-base-content/70' : 'text-base-content',
                 maintenanceStepState(maintenance.step, step) === 'active' ? 'font-medium' : '',
               ]"
               :aria-current="maintenanceStepState(maintenance.step, step) === 'active' ? 'step' : undefined"
@@ -92,12 +92,12 @@ function stepLabel(step: MaintenanceStep): string {
           </li>
         </ol>
 
-        <div v-if="maintenance.result" :class="['flex items-start gap-3 text-lg', maintenance.result.problem ? 'text-destructive' : 'text-foreground']">
+        <div v-if="maintenance.result" :class="['flex items-start gap-3 text-lg', maintenance.result.problem ? 'text-error' : 'text-base-content']">
           <TriangleAlertIcon v-if="maintenance.result.problem" class="mt-1 size-5 shrink-0" aria-hidden="true" />
           <p>{{ maintenance.result.text }}</p>
         </div>
 
-        <p v-if="maintenance.countdown > 0" class="font-mono text-sm text-muted-foreground">
+        <p v-if="maintenance.countdown > 0" class="font-mono text-sm text-base-content/70">
           {{ t('maintenance.reloadingIn', { seconds: maintenance.countdown }) }}
         </p>
         <Button v-else-if="maintenance.result?.problem" size="lg" @click="reload">{{ t('maintenance.reload') }}</Button>

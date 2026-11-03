@@ -124,10 +124,10 @@ onMounted(async () => {
         <!-- Name + badges -->
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-foreground text-lg font-semibold leading-tight">
+            <span class="text-base-content text-lg font-semibold leading-tight">
               {{ me.displayName || me.username }}
             </span>
-            <span v-if="me.displayName" class="text-muted-foreground text-sm">{{ me.username }}</span>
+            <span v-if="me.displayName" class="text-base-content/70 text-sm">{{ me.username }}</span>
             <span v-if="meIsAdmin" class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
             <Badge variant="secondary" v-if="!meIsAdmin && meCanManage">manager</Badge>
           </div>
@@ -137,21 +137,21 @@ onMounted(async () => {
       <!-- ── Display name ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.displayName') }}</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.displayName') }}</h4>
           <Button variant="link" v-if="!editingName" @click="startEditName"
-            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
+            class="h-auto p-0 text-base-content/70 hover:text-base-content/80">
             {{ t('ui.settings.ProfileSection.edit') }}
           </Button>
         </div>
 
         <Card v-if="!editingName" class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between">
-          <span :class="me.displayName ? 'text-foreground text-sm' : 'text-muted-foreground text-sm'">
+          <span :class="me.displayName ? 'text-base-content text-sm' : 'text-base-content/70 text-sm'">
             {{ me.displayName || t('ui.settings.ProfileSection.notSet') }}
           </span>
           <span v-if="nameSuccess" class="text-xs text-success">{{ t('ui.settings.ProfileSection.saved') }}</span>
         </Card>
 
-        <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
+        <div v-else class="bg-base-200 border border-base-300 rounded-xl p-4 space-y-3">
           <Input
             v-model="nameValue"
             :placeholder="t('ui.settings.ProfileSection.yourFullName')"
@@ -160,13 +160,13 @@ onMounted(async () => {
             @keydown.escape="editingName = false"
             class="w-full px-3 py-1.5 text-sm"
           />
-          <p v-if="nameError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ nameError }}</p>
+          <p v-if="nameError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ nameError }}</p>
           <div class="flex gap-2">
             <Button size="sm" @click="saveName" :disabled="nameLoading">
               {{ nameLoading ? 'Saving…' : 'Save' }}
             </Button>
             <Button variant="ghost" size="sm" @click="editingName = false"
-              class="text-muted-foreground hover:text-foreground">
+              class="text-base-content/70 hover:text-base-content">
               {{ t('ui.settings.ProfileSection.cancel') }}
             </Button>
           </div>
@@ -176,18 +176,18 @@ onMounted(async () => {
       <!-- ── Change password ── -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.password') }}</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.password') }}</h4>
           <Button variant="link" v-if="!pwOpen" @click="openPassword"
-            class="h-auto p-0 text-muted-foreground hover:text-foreground/80">
+            class="h-auto p-0 text-base-content/70 hover:text-base-content/80">
             {{ t('ui.settings.ProfileSection.change') }}
           </Button>
         </div>
 
         <Card v-if="!pwOpen" class="block gap-0 py-0 shadow-none px-4 py-3">
-          <span class="text-muted-foreground text-sm tracking-widest select-none">••••••••</span>
+          <span class="text-base-content/70 text-sm tracking-widest select-none">••••••••</span>
         </Card>
 
-        <div v-else class="bg-muted border border-input rounded-xl p-4 space-y-3">
+        <div v-else class="bg-base-200 border border-base-300 rounded-xl p-4 space-y-3">
           <div v-if="pwSuccess" class="flex items-center gap-2 text-success text-sm py-1">
             <CheckIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
             {{ t('ui.settings.ProfileSection.passwordUpdatedSuccessfully') }}
@@ -195,30 +195,30 @@ onMounted(async () => {
 
           <template v-else>
             <div>
-              <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.currentPassword') }}</label>
+              <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.currentPassword') }}</label>
               <Input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
                 class="w-full px-3 py-1.5 text-sm"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.newPassword') }}</label>
+                <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.newPassword') }}</label>
                 <Input v-model="pwForm.next" type="password" :placeholder="t('ui.settings.ProfileSection.min6Chars')"
                   class="w-full px-3 py-1.5 text-sm"/>
               </div>
               <div>
-                <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.ProfileSection.confirm') }}</label>
+                <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.confirm') }}</label>
                 <Input v-model="pwForm.confirm" type="password" :placeholder="t('ui.settings.ProfileSection.repeat')"
                   @keydown.enter="submitPassword"
                   class="w-full px-3 py-1.5 text-sm"/>
               </div>
             </div>
-            <p v-if="pwError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ pwError }}</p>
+            <p v-if="pwError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ pwError }}</p>
             <div class="flex gap-2">
               <Button size="sm" @click="submitPassword" :disabled="pwLoading || !pwForm.current || !pwForm.next">
                 {{ pwLoading ? 'Saving…' : 'Update password' }}
               </Button>
               <Button variant="ghost" size="sm" @click="pwOpen = false"
-                class="text-muted-foreground hover:text-foreground">
+                class="text-base-content/70 hover:text-base-content">
                 {{ t('ui.settings.ProfileSection.cancel') }}
               </Button>
             </div>
@@ -228,7 +228,7 @@ onMounted(async () => {
 
       <!-- ── Language ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('profile.language') }}</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.language') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row flex-wrap items-center justify-between gap-3">
           <ToggleGroup
             type="single" variant="outline" size="sm"
@@ -238,7 +238,7 @@ onMounted(async () => {
           >
             <ToggleGroupItem v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code" class="px-3 text-xs">{{ l.label }}</ToggleGroupItem>
           </ToggleGroup>
-          <p class="text-xs text-muted-foreground">{{ t('profile.languageHint') }}</p>
+          <p class="text-xs text-base-content/70">{{ t('profile.languageHint') }}</p>
         </Card>
       </div>
 
@@ -246,18 +246,18 @@ onMounted(async () => {
 
       <!-- ── Delete confirmation ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('profile.confirmFileDelete') }}</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.confirmFileDelete') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-          <p class="text-xs text-muted-foreground">{{ t('profile.confirmFileDeleteHint') }}</p>
+          <p class="text-xs text-base-content/70">{{ t('profile.confirmFileDeleteHint') }}</p>
           <Switch :model-value="confirmFileDelete" :aria-label="t('profile.confirmFileDelete')" @update:model-value="setConfirmFileDelete" />
         </Card>
       </div>
 
       <!-- ── Advanced mode ── -->
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
+        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-          <p class="text-xs text-muted-foreground">
+          <p class="text-xs text-base-content/70">
             {{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}
           </p>
           <Tip text="Advanced mode"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>

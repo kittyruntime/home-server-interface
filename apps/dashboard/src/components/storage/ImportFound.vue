@@ -70,17 +70,17 @@ defineExpose({ load })
 
 <template>
   <Alert variant="info" v-if="kind === 'raid' && scan?.arrays.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.arraysFoundOnDisks') }}</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseArraysExistOnThe') }}</p>
-    <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
+    <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ImportFound.arraysFoundOnDisks') }}</h3>
+    <p class="text-xs text-base-content/70 mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseArraysExistOnThe') }}</p>
+    <div v-for="a in scan.arrays" :key="a.uuid" class="flex flex-wrap items-center gap-3 py-2 border-t border-base-300 first:border-t-0">
       <div class="min-w-0 flex-1">
-        <div class="text-sm text-foreground">
+        <div class="text-sm text-base-content">
           <span class="font-mono">{{ a.name || a.device }}</span>
-          <span class="text-xs text-muted-foreground ml-2 uppercase">{{ a.level }}</span>
+          <span class="text-xs text-base-content/70 ml-2 uppercase">{{ a.level }}</span>
         </div>
-        <div class="text-2xs text-muted-foreground font-mono break-all">{{ a.members.join(' + ') }}</div>
+        <div class="text-2xs text-base-content/70 font-mono break-all">{{ a.members.join(' + ') }}</div>
         <div v-if="a.missing > 0" class="text-2xs text-warning">{{ t('uip.storage.ImportFound.ofMembersNotFound', { p0: a.missing, p1: a.expected }) }}</div>
-        <div v-if="a.extra > 0" class="text-2xs text-destructive">
+        <div v-if="a.extra > 0" class="text-2xs text-error">
           {{ t('uip.storage.ImportFound.disksCarryThisArrayWhich', { p0: a.members.length, p1: a.expected + a.spares }) }}
         </div>
       </div>
@@ -91,12 +91,12 @@ defineExpose({ load })
   </Alert>
 
   <Alert variant="info" v-if="kind === 'lvm' && scan?.vgs.length" class="block mb-5 p-4" role="note">
-    <h3 class="text-sm font-semibold text-foreground">{{ t('ui.storage.ImportFound.inactiveVolumeGroups') }}</h3>
-    <p class="text-xs text-muted-foreground mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseVolumeGroupsExistOn') }}</p>
-    <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-border first:border-t-0">
+    <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ImportFound.inactiveVolumeGroups') }}</h3>
+    <p class="text-xs text-base-content/70 mt-0.5 mb-3">{{ t('ui.storage.ImportFound.theseVolumeGroupsExistOn') }}</p>
+    <div v-for="vg in scan.vgs" :key="vg.name" class="flex flex-wrap items-center gap-3 py-2 border-t border-base-300 first:border-t-0">
       <div class="min-w-0 flex-1">
-        <div class="text-sm font-mono text-foreground">{{ vg.name }}</div>
-        <div class="text-2xs text-muted-foreground font-mono break-all">{{ vg.lvs.join(', ') }}</div>
+        <div class="text-sm font-mono text-base-content">{{ vg.name }}</div>
+        <div class="text-2xs text-base-content/70 font-mono break-all">{{ vg.lvs.join(', ') }}</div>
       </div>
       <Button size="xs" type="button" :disabled="busy !== null" @click="activate(vg)">
         {{ busy === vg.name ? 'Activating…' : 'Activate' }}

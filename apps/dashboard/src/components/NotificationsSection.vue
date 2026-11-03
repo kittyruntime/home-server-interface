@@ -73,7 +73,7 @@ function ruleTargets(rule: Rule): string[] {
 }
 
 function severityClass(severity: string): string {
-  if (severity === 'critical') return 'bg-destructive/10 text-destructive'
+  if (severity === 'critical') return 'bg-error/10 text-error'
   if (severity === 'warning') return 'bg-warning/10 text-warning'
   return 'bg-info/10 text-info'
 }
@@ -160,7 +160,7 @@ function connectorTarget(c: Connector): string {
 
 function deliveryDot(d: Delivery): string {
   if (d.status === 'sent') return 'bg-success'
-  if (d.status === 'failed') return 'bg-destructive'
+  if (d.status === 'failed') return 'bg-error'
   return 'bg-warning'
 }
 
@@ -180,8 +180,8 @@ function formatTime(at: string | Date): string {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ $t('ui.settings.NotificationsSection.notifications') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ $t('ui.settings.NotificationsSection.notifications') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">
       {{ $t('ui.settings.NotificationsSection.routeAlertEventsToThe') }}
     </p>
 
@@ -189,63 +189,63 @@ function formatTime(at: string | Date): string {
     <ErrorState v-else-if="error" :message="error" :retry-label="$t('ui.settings.NotificationsSection.retry')" @retry="load" />
 
     <template v-else>
-      <p v-if="actionError" class="status-text text-destructive mb-4">[ERR] {{ actionError }}</p>
+      <p v-if="actionError" class="status-text text-error mb-4">[ERR] {{ actionError }}</p>
 
       <div class="space-y-6">
 
         <!-- Connectors -->
-        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+        <section class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden bg-base-100">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-base-300">
             <p class="eyebrow">{{ $t('ui.settings.NotificationsSection.connectors') }}</p>
             <Button size="xs" @click="openConnectorDialog(null)">
               <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
               {{ $t('ui.settings.NotificationsSection.addConnector') }}
             </Button>
           </div>
-          <ul v-if="connectors.length > 0" class="divide-y divide-border">
+          <ul v-if="connectors.length > 0" class="divide-y divide-base-300">
             <li v-for="c in connectors" :key="c.id" class="flex items-center gap-3 px-5 py-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-foreground truncate">{{ c.name }}</span>
+                  <span class="text-sm font-medium text-base-content truncate">{{ c.name }}</span>
                   <Badge variant="secondary">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</Badge>
-                  <Badge variant="outline" v-if="c.secretsUnreadable" class="bg-destructive/10 text-destructive">{{ $t('ui.settings.NotificationsSection.secretsUnreadable') }}</Badge>
+                  <Badge variant="outline" v-if="c.secretsUnreadable" class="bg-error/10 text-error">{{ $t('ui.settings.NotificationsSection.secretsUnreadable') }}</Badge>
                 </div>
-                <p class="text-xs text-muted-foreground font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
+                <p class="text-xs text-base-content/70 font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
               <Tip :text="c.enabled ? 'Disable connector' : 'Enable connector'"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
               <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
             </li>
           </ul>
-          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
+          <p v-else class="px-5 py-6 text-sm text-base-content/70">
             {{ $t('ui.settings.NotificationsSection.noConnectorsYetAddOne') }}
           </p>
         </section>
 
         <!-- Rules -->
-        <section class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card">
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+        <section class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden bg-base-100">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-base-300">
             <p class="eyebrow">{{ $t('ui.settings.NotificationsSection.rules') }}</p>
             <Button size="xs" @click="openRuleDialog(null)">
               <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
               {{ $t('ui.settings.NotificationsSection.addRule') }}
             </Button>
           </div>
-          <ul v-if="rules.length > 0" class="divide-y divide-border">
+          <ul v-if="rules.length > 0" class="divide-y divide-base-300">
             <li v-for="r in rules" :key="r.id" class="flex items-center gap-3 px-5 py-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-foreground">{{ r.name }}</span>
+                  <span class="text-sm font-medium text-base-content">{{ r.name }}</span>
                   <Badge variant="outline" :class="severityClass(r.minSeverity)">{{ r.minSeverity }}</Badge>
                 </div>
-                <p class="text-xs text-muted-foreground mt-0.5">
+                <p class="text-xs text-base-content/70 mt-0.5">
                   <span v-if="r.sourcePrefix" class="font-mono">{{ r.sourcePrefix }}</span>
                   <span v-else>{{ $t('ui.settings.NotificationsSection.allSources') }}</span>
                 </p>
                 <div class="flex flex-wrap gap-1.5 mt-1.5">
                   <span
                     v-for="t in ruleTargets(r)" :key="t"
-                    class="inline-flex items-center text-2xs font-mono bg-muted text-foreground/80 border border-border rounded-sm px-1.5 py-0.5"
+                    class="inline-flex items-center text-2xs font-mono bg-base-200 text-base-content/80 border border-base-300 rounded-sm px-1.5 py-0.5"
                   >{{ t }}</span>
                 </div>
               </div>
@@ -254,30 +254,30 @@ function formatTime(at: string | Date): string {
               <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
             </li>
           </ul>
-          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
+          <p v-else class="px-5 py-6 text-sm text-base-content/70">
             {{ $t('ui.settings.NotificationsSection.noRulesYetAddA') }}
           </p>
         </section>
 
         <!-- Recent deliveries -->
-        <Collapsible class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden bg-card" :open="deliveriesExpanded" @update:open="v => deliveriesExpanded = v">
+        <Collapsible class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden bg-base-100" :open="deliveriesExpanded" @update:open="v => deliveriesExpanded = v">
           <CollapsibleTrigger
-            :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-base-200/50 focus-visible:ring-3 focus-visible:ring-ring/50', deliveriesExpanded ? 'border-b border-border' : '']"
+            :class="['w-full flex items-center justify-between gap-3 px-5 py-3 outline-none hover:bg-base-200/50 focus-visible:ring-3 focus-visible:ring-base-content/30', deliveriesExpanded ? 'border-b border-base-300' : '']"
           >
             <span class="eyebrow">{{ $t('ui.settings.NotificationsSection.recentDeliveries') }}</span>
-            <ChevronDownIcon :class="['w-4 h-4 text-muted-foreground transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
+            <ChevronDownIcon :class="['w-4 h-4 text-base-content/70 transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-          <ul v-if="deliveries.length > 0" class="divide-y divide-border">
+          <ul v-if="deliveries.length > 0" class="divide-y divide-base-300">
             <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
-              <span class="font-medium text-foreground/80 shrink-0">{{ d.connectorName }}</span>
-              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'">{{ deliveryText(d) }}</span>
+              <span class="font-medium text-base-content/80 shrink-0">{{ d.connectorName }}</span>
+              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-error' : 'text-base-content/70'">{{ deliveryText(d) }}</span>
               <Badge variant="secondary" v-if="d.test" class="shrink-0">{{ $t('ui.settings.NotificationsSection.test') }}</Badge>
-              <span class="text-muted-foreground tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
+              <span class="text-base-content/70 tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
             </li>
           </ul>
-          <p v-else class="px-5 py-6 text-sm text-muted-foreground">
+          <p v-else class="px-5 py-6 text-sm text-base-content/70">
             {{ $t('ui.settings.NotificationsSection.noDeliveriesYetSendTest') }}
           </p>
           </CollapsibleContent>

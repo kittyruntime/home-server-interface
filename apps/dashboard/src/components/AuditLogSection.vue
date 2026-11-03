@@ -72,13 +72,13 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.AuditLogSection.auditLog') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.monitor.AuditLogSection.allActionsPerformedByAuthenticated') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.monitor.AuditLogSection.auditLog') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">{{ t('ui.monitor.AuditLogSection.allActionsPerformedByAuthenticated') }}</p>
 
     <!-- Filter -->
     <div class="flex gap-3 mb-5 min-w-0">
       <div class="relative flex-1 min-w-0">
-        <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+        <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/70" aria-hidden="true" />
         <Input v-model="filterAction" :placeholder="t('ui.monitor.AuditLogSection.filterByAction')"
           class="w-full pl-8 pr-3 py-2 text-sm" />
       </div>
@@ -114,16 +114,16 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
     <!-- Table -->
     <template v-else>
       <div class="space-y-2 sm:hidden">
-        <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-border bg-card p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
-          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-foreground/80" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-destructive'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted-foreground"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}<template v-if="entry.via === 'mcp'"> · {{ t('aiAccess.auditAssistant') }}</template><template v-else-if="entry.via === 'assistant'"> · {{ t('aiAccess.auditBuiltIn') }}</template></span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
-          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-border pt-3"><p class="break-all font-mono text-2xs text-muted-foreground">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted p-2 text-2xs text-foreground/80">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
+        <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-base-300 bg-base-100 p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
+          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-base-content/80" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-error'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-base-content/70"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}<template v-if="entry.via === 'mcp'"> · {{ t('aiAccess.auditAssistant') }}</template><template v-else-if="entry.via === 'assistant'"> · {{ t('aiAccess.auditBuiltIn') }}</template></span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-base-300 pt-3"><p class="break-all font-mono text-2xs text-base-content/70">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-base-200 p-2 text-2xs text-base-content/80">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
-      <div class="hidden rounded-xl border border-border overflow-hidden sm:block">
+      <div class="hidden rounded-xl border border-base-300 overflow-hidden sm:block">
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
-            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+            <TableRow class="bg-base-200 border-b border-base-300 text-base-content/70 text-xs uppercase tracking-caps">
               <TableHead class="text-left px-4 py-3 font-medium w-44">{{ t('ui.monitor.AuditLogSection.time') }}</TableHead>
               <TableHead class="text-left px-4 py-3 font-medium w-32">{{ t('ui.monitor.AuditLogSection.user') }}</TableHead>
               <TableHead class="text-left px-4 py-3 font-medium">{{ t('ui.monitor.AuditLogSection.action') }}</TableHead>
@@ -132,24 +132,24 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
               <TableHead class="text-center px-4 py-3 font-medium w-16">{{ t('ui.monitor.AuditLogSection.status') }}</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody class="divide-y divide-border">
+          <TableBody class="divide-y divide-base-300">
             <template v-for="entry in entries" :key="entry.id">
               <TableRow @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
                 :class="['cursor-pointer transition-colors hover:bg-base-200/40',
                   selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
-                  !entry.success ? 'bg-destructive/4' : '']">
+                  !entry.success ? 'bg-error/4' : '']">
 
-                <TableCell class="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                <TableCell class="px-4 py-2.5 text-xs text-base-content/70 font-mono whitespace-nowrap">
                   {{ formatDateTime(entry.createdAt, { seconds: true }) }}
                 </TableCell>
                 <TableCell class="px-4 py-2.5">
-                  <span v-if="entry.user" class="text-foreground font-medium text-xs">
+                  <span v-if="entry.user" class="text-base-content font-medium text-xs">
                     {{ entry.user.displayName || entry.user.username }}
                   </span>
-                  <span v-if="entry.via === 'mcp' || entry.via === 'assistant'" class="ml-1.5 inline-flex items-center gap-1 text-2xs text-violet" :title="viaLabel(entry.via)">
+                  <span v-if="entry.via === 'mcp' || entry.via === 'assistant'" class="ml-1.5 inline-flex items-center gap-1 text-2xs text-secondary" :title="viaLabel(entry.via)">
                     <BotIcon class="size-3" aria-hidden="true" /><span class="sr-only">{{ viaLabel(entry.via) }}</span>
                   </span>
-                  <span v-else class="text-muted-foreground text-xs">-</span>
+                  <span v-else class="text-base-content/70 text-xs">-</span>
                 </TableCell>
                 <TableCell class="px-4 py-2.5">
                   <span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">
@@ -157,12 +157,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                   </span>
                 </TableCell>
                 <TableCell class="px-4 py-2.5 max-w-0">
-                  <span v-if="entry.target" class="font-mono text-xs text-foreground/80 truncate block" :title="entry.target">
+                  <span v-if="entry.target" class="font-mono text-xs text-base-content/80 truncate block" :title="entry.target">
                     {{ entry.target }}
                   </span>
-                  <span v-else class="text-muted-foreground text-xs">-</span>
+                  <span v-else class="text-base-content/70 text-xs">-</span>
                 </TableCell>
-                <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                <TableCell class="px-4 py-2.5 font-mono text-xs text-base-content/70 whitespace-nowrap">
                   {{ entry.ip ?? '-' }}
                 </TableCell>
                 <TableCell class="px-4 py-2.5 text-center">
@@ -171,29 +171,29 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                     <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
                   </span>
                   <span v-else
-                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
-                    <span class="w-1.5 h-1.5 rounded-full bg-destructive"/>{{ t('ui.monitor.AuditLogSection.fail') }}
+                    class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-error/10 text-error">
+                    <span class="w-1.5 h-1.5 rounded-full bg-error"/>{{ t('ui.monitor.AuditLogSection.fail') }}
                   </span>
                 </TableCell>
               </TableRow>
 
               <!-- Expanded detail row -->
               <TableRow v-if="selectedEntry?.id === entry.id" :key="'detail-' + entry.id">
-                <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-muted/50">
-                  <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-2">{{ t('ui.monitor.AuditLogSection.detail') }}</div>
+                <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-base-200/50">
+                  <div class="text-2xs font-semibold uppercase tracking-caps text-base-content/70 mb-2">{{ t('ui.monitor.AuditLogSection.detail') }}</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
-                    <div><span class="text-muted-foreground">ID </span><span class="font-mono text-foreground/80">{{ entry.id }}</span></div>
-                    <div><span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.action') }} </span><span class="font-mono text-foreground/80">{{ entry.action }}</span></div>
+                    <div><span class="text-base-content/70">ID </span><span class="font-mono text-base-content/80">{{ entry.id }}</span></div>
+                    <div><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.action') }} </span><span class="font-mono text-base-content/80">{{ entry.action }}</span></div>
                     <div v-if="entry.user">
-                      <span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.user') }} </span>
-                      <span class="text-foreground/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
+                      <span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.user') }} </span>
+                      <span class="text-base-content/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
                     </div>
-                    <div v-if="entry.target"><span class="text-muted-foreground">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="font-mono text-foreground/80">{{ entry.target }}</span></div>
-                    <div v-if="entry.via === 'mcp'"><span class="text-muted-foreground">{{ t('aiAccess.auditVia') }} </span><span class="font-mono text-foreground/80">{{ entry.tokenId }}</span></div>
+                    <div v-if="entry.target"><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="font-mono text-base-content/80">{{ entry.target }}</span></div>
+                    <div v-if="entry.via === 'mcp'"><span class="text-base-content/70">{{ t('aiAccess.auditVia') }} </span><span class="font-mono text-base-content/80">{{ entry.tokenId }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
-                    <div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mb-1.5">{{ t('ui.monitor.AuditLogSection.input') }}</div>
-                    <pre class="text-2xs font-mono bg-muted border border-border rounded-lg px-3 py-2 overflow-x-auto text-foreground/80 whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
+                    <div class="text-2xs font-semibold uppercase tracking-caps text-base-content/70 mb-1.5">{{ t('ui.monitor.AuditLogSection.input') }}</div>
+                    <pre class="text-2xs font-mono bg-base-200 border border-base-300 rounded-lg px-3 py-2 overflow-x-auto text-base-content/80 whitespace-pre-wrap">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre>
                   </template>
                 </TableCell>
               </TableRow>
@@ -203,7 +203,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       </div>
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+      <div class="flex items-center justify-between mt-4 text-sm text-base-content/70">
         <span>{{ total.toLocaleString() }} entr{{ total === 1 ? 'y' : 'ies' }}</span>
         <div class="flex items-center gap-1">
           <Button variant="outline" size="xs" @click="page--" :disabled="page === 0 || loading"

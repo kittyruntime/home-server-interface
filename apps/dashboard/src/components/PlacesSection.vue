@@ -143,8 +143,8 @@ onMounted(async () => {
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.PlacesSection.places') }}</h2>
-        <p class="text-xs text-muted-foreground mt-1 max-w-md leading-relaxed">
+        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.PlacesSection.places') }}</h2>
+        <p class="text-xs text-base-content/70 mt-1 max-w-md leading-relaxed">
           {{ t('ui.settings.PlacesSection.foldersOnYourNasThat') }}
         </p>
       </div>
@@ -163,23 +163,23 @@ onMounted(async () => {
 
     <template v-else>
       <!-- Add form -->
-      <div v-if="adding" class="rounded-xl border border-input bg-card p-4 space-y-3">
+      <div v-if="adding" class="rounded-xl border border-base-300 bg-base-100 p-4 space-y-3">
         <h4 class="eyebrow">{{ t('ui.settings.PlacesSection.newPlace') }}</h4>
         <div class="flex gap-3">
           <div class="flex-1">
-            <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.settings.PlacesSection.name') }}</label>
+            <label class="block text-xs text-base-content/80 mb-1">{{ t('ui.settings.PlacesSection.name') }}</label>
             <Input v-model="newName" type="text" :placeholder="t('ui.settings.PlacesSection.media')"/>
-            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.shownToUsersInThe') }}</p>
+            <p class="text-2xs text-base-content/70 mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.shownToUsersInThe') }}</p>
           </div>
           <div class="flex-[2]">
-            <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.settings.PlacesSection.path') }}</label>
+            <label class="block text-xs text-base-content/80 mb-1">{{ t('ui.settings.PlacesSection.path') }}</label>
             <Input v-model="newPath" type="text" laceholder="/mnt/data" class="font-mono"/>
-            <p class="text-2xs text-muted-foreground mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.absolutePathToAFolder') }}</p>
+            <p class="text-2xs text-base-content/70 mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.absolutePathToAFolder') }}</p>
           </div>
         </div>
-        <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
-        <div v-if="pathMissing" class="rounded-lg bg-muted border border-border px-3 py-2">
-          <p class="text-xs text-foreground/80">{{ t('ui.settings.PlacesSection.thisFolderDoesnTExist') }}</p>
+        <p v-if="addError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addError }}</p>
+        <div v-if="pathMissing" class="rounded-lg bg-base-200 border border-base-300 px-3 py-2">
+          <p class="text-xs text-base-content/80">{{ t('ui.settings.PlacesSection.thisFolderDoesnTExist') }}</p>
           <Button variant="link" @click="createDir" :disabled="addLoading"
             class="h-auto p-0 text-primary mt-0.5">
             {{ addLoading ? 'Creating…' : 'Create it and add the place' }}
@@ -197,10 +197,10 @@ onMounted(async () => {
 
       <!-- Empty state -->
       <div v-if="places.length === 0 && !adding"
-        class="rounded-xl border border-dashed border-input bg-card px-6 py-10 text-center">
-        <FolderIcon class="w-10 h-10 mx-auto text-muted-foreground opacity-60" aria-hidden="true" />
-        <h4 class="text-sm font-medium text-foreground mt-3">{{ t('ui.settings.PlacesSection.noPlacesYet') }}</h4>
-        <p class="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">
+        class="rounded-xl border border-dashed border-base-300 bg-base-100 px-6 py-10 text-center">
+        <FolderIcon class="w-10 h-10 mx-auto text-base-content/70 opacity-60" aria-hidden="true" />
+        <h4 class="text-sm font-medium text-base-content mt-3">{{ t('ui.settings.PlacesSection.noPlacesYet') }}</h4>
+        <p class="text-xs text-base-content/70 mt-1 max-w-xs mx-auto leading-relaxed">
           {{ t('ui.settings.PlacesSection.aPlaceSharesAFolder') }}
         </p>
         <Button size="sm" @click="adding = true" class="mt-4 mx-auto">
@@ -221,30 +221,30 @@ onMounted(async () => {
             <PlaceIconPicker :icon="place.icon" :name="place.name" class="-ml-2" @change="icon => setIcon(place, icon)" />
             <Button variant="ghost" @click="togglePlace(place.id)" :aria-expanded="expandedPlace === place.id" class="h-auto flex-1 justify-start gap-3 px-0 py-0 text-left font-normal min-w-0 hover:bg-transparent">
               <div class="flex-1 min-w-0">
-                <span class="text-sm text-foreground">{{ place.name }}</span>
-                <span class="text-muted-foreground text-xs font-mono ml-3">{{ place.path }}</span>
+                <span class="text-sm text-base-content">{{ place.name }}</span>
+                <span class="text-base-content/70 text-xs font-mono ml-3">{{ place.path }}</span>
               </div>
               <!-- Expand chevron -->
-              <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
+              <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
+              class="opacity-0 group-hover:opacity-100 text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
               :tooltip="t('ui.settings.PlacesSection.remove')" :aria-label="t('ui.settings.PlacesSection.remove')">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
 
           <!-- Permissions matrix (expanded) -->
-          <div v-if="expandedPlace === place.id" class="border-t border-border">
-            <div class="px-4 py-2.5 bg-muted">
+          <div v-if="expandedPlace === place.id" class="border-t border-base-300">
+            <div class="px-4 py-2.5 bg-base-200">
               <span class="eyebrow">{{ t('ui.settings.PlacesSection.permissions') }}</span>
-              <p class="text-2xs text-muted-foreground mt-0.5 leading-relaxed">
+              <p class="text-2xs text-base-content/70 mt-0.5 leading-relaxed">
                 {{ t('ui.settings.PlacesSection.chooseWhatEachUserOr') }}
               </p>
             </div>
             <Table class="w-full text-xs">
               <TableHeader>
-                <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border bg-muted">
+                <TableRow class="text-base-content/70 uppercase tracking-caps border-b border-base-300 bg-base-200">
                   <TableHead class="px-4 py-2 text-left font-medium">{{ t('ui.settings.PlacesSection.subject') }}</TableHead>
                   <Tip text="List and download files"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.read') }}</TableHead></Tip>
                   <Tip text="Upload, rename and modify files"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.write') }}</TableHead></Tip>
@@ -252,13 +252,13 @@ onMounted(async () => {
                   <Tip text="Create public share links for this folder"><TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PlacesSection.share') }}</TableHead></Tip>
                 </TableRow>
               </TableHeader>
-              <TableBody class="divide-y divide-border">
+              <TableBody class="divide-y divide-base-300">
                 <!-- Groups -->
                 <TableRow v-for="group in groups" :key="'group-' + group.id">
                   <TableCell class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
                       <Badge variant="secondary">group</Badge>
-                      <span class="text-foreground/80">{{ group.name }}</span>
+                      <span class="text-base-content/80">{{ group.name }}</span>
                     </div>
                   </TableCell>
                   <TableCell v-for="field in (['canRead', 'canWrite', 'canDelete', 'canShare'] as const)" :key="field" class="px-3 py-2.5 text-center">
@@ -270,8 +270,8 @@ onMounted(async () => {
                 <TableRow v-for="user in users" :key="'user-' + user.id">
                   <TableCell class="px-4 py-2.5">
                     <div class="flex items-center gap-1.5">
-                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-muted text-muted-foreground">user</span>
-                      <span class="text-foreground/80">{{ user.username }}</span>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-base-200 text-base-content/70">user</span>
+                      <span class="text-base-content/80">{{ user.username }}</span>
                       <Badge v-if="user.isAdmin">admin</Badge>
                     </div>
                   </TableCell>
@@ -281,7 +281,7 @@ onMounted(async () => {
                 </TableRow>
 
                 <TableRow v-if="groups.length === 0 && users.length === 0">
-                  <TableCell colspan="5" class="px-4 py-3 text-muted-foreground">{{ t('ui.settings.PlacesSection.noGroupsOrUsersTo') }}</TableCell>
+                  <TableCell colspan="5" class="px-4 py-3 text-base-content/70">{{ t('ui.settings.PlacesSection.noGroupsOrUsersTo') }}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

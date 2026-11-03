@@ -109,12 +109,12 @@ const LAYER: Record<string, string> = {
 const health = computed(() => {
   const v = volume.value
   if (!v) return { cls: '', text: '' }
-  if (v.state === 'missing') return { cls: 'text-destructive', dot: 'bg-destructive', text: t('uis.storage.VolumePage.missing') }
+  if (v.state === 'missing') return { cls: 'text-error', dot: 'bg-error', text: t('uis.storage.VolumePage.missing') }
   const bad = v.issues.find(i => i.kind === 'degraded' || i.kind === 'blocked')
-  if (bad) return { cls: 'text-destructive', dot: 'bg-destructive', text: bad.text }
+  if (bad) return { cls: 'text-error', dot: 'bg-error', text: bad.text }
   if (v.issues.length) return { cls: 'text-warning', dot: 'bg-warning', text: v.issues[0]!.text }
-  if (v.state === 'not-mounted') return { cls: 'text-muted-foreground', dot: 'bg-muted-foreground', text: t('uis.storage.VolumePage.notMounted') }
-  return { cls: 'text-foreground/80', dot: 'bg-success', text: t('uis.storage.VolumePage.healthy') }
+  if (v.state === 'not-mounted') return { cls: 'text-base-content/70', dot: 'bg-base-content/70', text: t('uis.storage.VolumePage.notMounted') }
+  return { cls: 'text-base-content/80', dot: 'bg-success', text: t('uis.storage.VolumePage.healthy') }
 })
 const usedPct = computed(() => volume.value?.space ? Math.round((volume.value.space.used / volume.value.space.total) * 100) : 0)
 
@@ -180,10 +180,10 @@ async function afterChange() { await refreshDevices(); await load() }
     <template v-if="volume" #figure>
       <div v-if="volume.space" class="max-w-md">
         <div class="flex items-baseline gap-2">
-          <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(volume.space.used) }}</span>
-          <span class="text-xs text-muted-foreground">{{ t('uip.storage.VolumePage.usedOfFree', { p0: fmtBytes(volume.space.total), p1: fmtBytes(volume.space.free) }) }}</span>
+          <span class="font-figure font-bold text-2xl tabular-nums text-base-content">{{ fmtBytes(volume.space.used) }}</span>
+          <span class="text-xs text-base-content/70">{{ t('uip.storage.VolumePage.usedOfFree', { p0: fmtBytes(volume.space.total), p1: fmtBytes(volume.space.free) }) }}</span>
         </div>
-        <Progress class="mt-2 h-1.5 rounded-full bg-base-200" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-foreground']" />
+        <Progress class="mt-2 h-1.5 rounded-full bg-base-200" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-base-content']" />
       </div>
     </template>
 
@@ -196,16 +196,16 @@ async function afterChange() { await refreshDevices(); await load() }
     <template v-if="volume" #overview>
       <div class="space-y-4">
         <div v-if="pending" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm"
-          :class="pending.phase === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-info/30 bg-info/5'">
-          <span class="text-foreground">{{ expansionLine(pending, null) }}</span>
+          :class="pending.phase === 'failed' ? 'border-error/30 bg-error/5' : 'border-info/30 bg-info/5'">
+          <span class="text-base-content">{{ expansionLine(pending, null) }}</span>
           <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">{{ t('ui.storage.VolumePage.retry') }}</Button>
         </div>
-        <Alert variant="destructive" v-if="volume.state === 'missing'" class="block text-foreground" role="note">
+        <Alert variant="destructive" v-if="volume.state === 'missing'" class="block text-base-content" role="note">
           {{ t('ui.storage.VolumePage.hsiMountsThisVolumeAt') }} <span class="font-mono">{{ volume.mountPoint }}</span>{{ t('ui.storage.VolumePage.butItsDiskWasNot') }}
           <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">{{ t('ui.storage.VolumePage.openMounts') }}</Button>
         </Alert>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
-          <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-destructive' : 'text-warning'">
+          <li v-for="(i, n) in volume.issues" :key="n" class="status-text" :class="i.kind === 'degraded' || i.kind === 'blocked' ? 'text-error' : 'text-warning'">
             <span class="status-tag">{{ i.kind === 'degraded' || i.kind === 'blocked' ? '[ERR]' : '[WARN]' }}</span> {{ i.text }}
           </li>
         </ul>
@@ -213,49 +213,49 @@ async function afterChange() { await refreshDevices(); await load() }
 
         <div>
           <h3 class="eyebrow mb-2">{{ t('ui.storage.VolumePage.usedBy') }}</h3>
-          <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.places') }}</dt><dd class="text-foreground">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.shares') }}</dt><dd class="font-mono text-xs text-foreground self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
-            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-muted-foreground">{{ t('ui.storage.VolumePage.apps') }}</dt><dd class="text-foreground">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
+          <dl class="rounded-xl border border-base-300 bg-base-100 divide-y divide-base-300 text-sm">
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-base-content/70">{{ t('ui.storage.VolumePage.places') }}</dt><dd class="text-base-content">{{ volume.usedBy.places.map(p => p.name).join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-base-content/70">{{ t('ui.storage.VolumePage.shares') }}</dt><dd class="font-mono text-xs text-base-content self-center">{{ volume.usedBy.shares.join(', ') || '-' }}</dd></div>
+            <div class="flex gap-4 px-4 py-2.5"><dt class="w-20 shrink-0 text-base-content/70">{{ t('ui.storage.VolumePage.apps') }}</dt><dd class="text-base-content">{{ volume.usedBy.apps.join(', ') || '-' }}</dd></div>
           </dl>
         </div>
 
-        <p class="text-xs text-muted-foreground">
+        <p class="text-xs text-base-content/70">
           <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
           <template v-if="volume.tolerates"> {{ t('uip.storage.VolumePage.survivesFailed', { p0: volume.tolerates, p1: volume.tolerates === 1 ? 'disk' : 'disks' }) }}</template>
           <template v-else-if="volume.state !== 'missing'"> {{ t('ui.storage.VolumePage.aFailedDiskLosesThis') }}</template>
         </p>
 
-        <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-destructive/30 px-4 py-3">
-          <h3 class="text-sm font-semibold text-destructive">{{ t('ui.storage.VolumePage.removeThisVolume') }}</h3>
-          <p class="mt-1 text-xs text-foreground/80">
+        <section v-if="isAdmin && volume.state !== 'missing'" class="rounded-xl border border-error/30 px-4 py-3">
+          <h3 class="text-sm font-semibold text-error">{{ t('ui.storage.VolumePage.removeThisVolume') }}</h3>
+          <p class="mt-1 text-xs text-base-content/80">
             {{ t('ui.storage.VolumePage.erases') }} <template v-if="volume.space">{{ t('uip.storage.VolumePage.theItHolds', { p0: fmtBytes(volume.space.used) }) }}</template><template v-else>{{ t('ui.storage.VolumePage.itsData') }}</template>{{ t('ui.storage.VolumePage.disksUsedOnlyByThis') }}
             <template v-if="volume.usedBy.places.length">{{ t('ui.storage.VolumePage.itsPlacesAndTheirShares') }}</template>
           </p>
           <p v-if="volume.usedBy.apps.length" class="mt-2 status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ t('uip.storage.VolumePage.dataHereRemoveFirst', { p0: volume.usedBy.apps.join(', '), p1: volume.usedBy.apps.length === 1 ? 'stores' : 'store', p2: volume.usedBy.apps.length === 1 ? 'it' : 'them' }) }}
           </p>
-          <p v-if="removeError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
+          <p v-if="removeError" role="alert" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ removeError }}</p>
           <Button variant="destructive" size="sm" class="mt-3" :disabled="volume.usedBy.apps.length > 0" @click="removeVolume">{{ t('ui.storage.VolumePage.removeVolume') }}</Button>
         </section>
       </div>
     </template>
 
     <template v-if="volume" #structure>
-      <p v-if="!volume.stack.length" class="text-sm text-muted-foreground">{{ t('ui.storage.VolumePage.theDevicesOfThisVolume') }}</p>
+      <p v-if="!volume.stack.length" class="text-sm text-base-content/70">{{ t('ui.storage.VolumePage.theDevicesOfThisVolume') }}</p>
       <ol v-else class="space-y-1.5 max-w-lg">
         <li v-for="(layer, i) in volume.stack" :key="`${layer.kind}:${layer.name}`">
           <component
             :is="layer.kind === 'filesystem' ? 'div' : 'button'"
-            :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm',
-              layer.kind !== 'filesystem' && 'hover:border-input transition-colors']"
+            :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-left text-sm',
+              layer.kind !== 'filesystem' && 'hover:border-base-300 transition-colors']"
             @click="layer.kind !== 'filesystem' && openLayer(layer.kind, layer.name)"
           >
-            <span class="text-muted-foreground text-xs w-28 shrink-0">{{ LAYER[layer.kind] }}</span>
-            <span class="flex-1 min-w-0 truncate font-mono text-xs text-foreground">{{ layer.name }}</span>
-            <span v-if="layer.kind !== 'filesystem'" aria-hidden="true" class="text-muted-foreground">→</span>
+            <span class="text-base-content/70 text-xs w-28 shrink-0">{{ LAYER[layer.kind] }}</span>
+            <span class="flex-1 min-w-0 truncate font-mono text-xs text-base-content">{{ layer.name }}</span>
+            <span v-if="layer.kind !== 'filesystem'" aria-hidden="true" class="text-base-content/70">→</span>
           </component>
-          <div v-if="i < volume.stack.length - 1 && volume.stack[i + 1]!.kind !== layer.kind" aria-hidden="true" class="pl-4 text-xs leading-4 text-muted-foreground">↓</div>
+          <div v-if="i < volume.stack.length - 1 && volume.stack[i + 1]!.kind !== layer.kind" aria-hidden="true" class="pl-4 text-xs leading-4 text-base-content/70">↓</div>
         </li>
       </ol>
     </template>

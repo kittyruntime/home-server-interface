@@ -642,7 +642,7 @@ onMounted(async () => {
         </div>
 
         <!-- No place selected -->
-        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-muted-foreground select-none">
+        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-base-content/70 select-none">
           <div class="text-center space-y-2">
             <FolderIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
             <p class="text-sm">{{ t('ui.files.FileBrowserPanel.selectAPlace') }}</p>
@@ -652,53 +652,53 @@ onMounted(async () => {
         <!-- Search results -->
         <div v-else-if="isSearchMode" class="p-4">
           <div class="flex items-center justify-between mb-3">
-            <span class="text-sm text-foreground/80">
+            <span class="text-sm text-base-content/80">
               <span v-if="searchLoading">{{ t('ui.files.FileBrowserPanel.searching') }}</span>
-              <span v-else>{{ t('uip.files.FileBrowserPanel.resultFor', { p0: searchResults.length, p1: searchResults.length === 1 ? '' : 's' }) }}<span class="font-medium text-foreground">{{ searchQuery }}</span>"</span>
+              <span v-else>{{ t('uip.files.FileBrowserPanel.resultFor', { p0: searchResults.length, p1: searchResults.length === 1 ? '' : 's' }) }}<span class="font-medium text-base-content">{{ searchQuery }}</span>"</span>
             </span>
           </div>
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
-          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-muted-foreground">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
-          <div v-else class="divide-y divide-border rounded-xl border border-border overflow-hidden">
+          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-base-content/70">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
+          <div v-else class="divide-y divide-base-300 rounded-xl border border-base-300 overflow-hidden">
             <Item v-for="r in searchResults" :key="r.path" as="button"
               @click="navigateToSearchResult(r)"
               class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
               <!-- directory icon -->
               <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
               <!-- file icon -->
-              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-base-content/70" aria-hidden="true" />
               <div class="flex-1 min-w-0">
-                <div class="text-sm text-foreground font-medium truncate">{{ r.name }}</div>
-                <div class="text-xs text-muted-foreground font-mono truncate">{{ r.relativePath }}</div>
+                <div class="text-sm text-base-content font-medium truncate">{{ r.name }}</div>
+                <div class="text-xs text-base-content/70 font-mono truncate">{{ r.relativePath }}</div>
               </div>
             </Item>
           </div>
         </div>
 
         <!-- Empty directory (and no uploads in progress) -->
-        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-muted-foreground select-none">
+        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-base-content/70 select-none">
           <div class="text-center space-y-2">
             <UploadIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
             <p class="text-sm">{{ t('ui.files.FileBrowserPanel.thisFolderIsEmpty') }}</p>
-            <p class="text-xs">{{ t('ui.files.FileBrowserPanel.dragFilesHereOrUse') }} <strong class="text-foreground/80">{{ t('ui.files.FileBrowserPanel.upload') }}</strong> / <strong class="text-foreground/80">{{ t('ui.files.FileBrowserPanel.newFolder') }}</strong> above.</p>
+            <p class="text-xs">{{ t('ui.files.FileBrowserPanel.dragFilesHereOrUse') }} <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.upload') }}</strong> / <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.newFolder') }}</strong> above.</p>
           </div>
         </div>
 
         <!-- Has entries (or uploads in progress) -->
         <template v-else>
           <!-- Filter bar (Cmd/Ctrl+K) -->
-          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-background border-b border-border flex items-center gap-2">
-            <SearchIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-base-100 border-b border-base-300 flex items-center gap-2">
+            <SearchIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
             <Input
               ref="filterInput"
               v-model="filterQuery"
               :placeholder="t('ui.files.FileBrowserPanel.filterByName')"
               :aria-label="t('ui.files.FileBrowserPanel.filterByName2')"
               @keydown.escape="closeFilter"
-              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 "
             />
-            <span v-if="filterQuery" class="text-2xs text-muted-foreground">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
-            <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-muted-foreground hover:text-foreground">
+            <span v-if="filterQuery" class="text-2xs text-base-content/70">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+            <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-base-content/70 hover:text-base-content">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>

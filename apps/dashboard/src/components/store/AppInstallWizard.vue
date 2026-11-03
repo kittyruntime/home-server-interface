@@ -259,16 +259,16 @@ async function install() {
         <!-- eslint-disable-next-line vue/no-v-html -- `manifest.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
         <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="manifest.icon" />
         <div class="min-w-0">
-          <h3 class="text-sm font-semibold text-foreground">{{ manifest.name }}</h3>
-          <p class="text-xs text-muted-foreground">{{ manifest.tagline }}</p>
+          <h3 class="text-sm font-semibold text-base-content">{{ manifest.name }}</h3>
+          <p class="text-xs text-base-content/70">{{ manifest.tagline }}</p>
         </div>
       </div>
 
       <!-- Name -->
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.store.AppInstallWizard.appName') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.store.AppInstallWizard.appName') }}</label>
         <Input v-model="name" maxlength="64" laceholder="app-name" />
-        <p v-if="!nameValid" role="alert" class="status-text text-destructive">
+        <p v-if="!nameValid" role="alert" class="status-text text-error">
           <span class="status-tag">[ERR]</span> {{ t('ui.store.AppInstallWizard.useLowercaseLettersNumbersOr') }}
         </p>
       </div>
@@ -278,8 +278,8 @@ async function install() {
         <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.ports') }}</h4>
         <div v-for="p in ports" :key="`${p.container}-${p.protocol}`" class="space-y-1">
           <div class="flex items-center gap-3">
-            <span class="text-sm text-foreground flex-1">{{ p.label }}</span>
-            <span class="text-xs text-muted-foreground font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
+            <span class="text-sm text-base-content flex-1">{{ p.label }}</span>
+            <span class="text-xs text-base-content/70 font-mono shrink-0">{{ p.container }}/{{ p.protocol }}</span>
             <Input
               type="number" min="1" max="65535"
               v-model.number="p.host"
@@ -288,15 +288,15 @@ async function install() {
           </div>
           <!-- Optional (#26): the address of the admin's own reverse proxy, for Open. -->
           <div v-if="p.web" class="flex flex-wrap items-center gap-x-3 gap-y-1 pl-0 sm:pl-4">
-            <label :for="`addr-${p.container}`" class="text-xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.reachedAt') }}</label>
+            <label :for="`addr-${p.container}`" class="text-xs text-base-content/70">{{ t('ui.store.AppInstallWizard.reachedAt') }}</label>
             <Input
               :id="`addr-${p.container}`" v-model="p.domain" type="text" inputmode="url" autocomplete="off" spellcheck="false"
               :placeholder="t('ui.store.AppInstallWizard.reachedAtPlaceholder')" class="h-8 min-w-0 flex-1 font-mono text-xs"
             />
-            <label v-if="p.domain.trim()" class="flex items-center gap-1.5 text-xs text-foreground">
+            <label v-if="p.domain.trim()" class="flex items-center gap-1.5 text-xs text-base-content">
               <Checkbox v-model="p.tls" />{{ t('ui.store.AppInstallWizard.https') }}
             </label>
-            <p class="basis-full text-2xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.reachedAtHint') }}</p>
+            <p class="basis-full text-2xs text-base-content/70">{{ t('ui.store.AppInstallWizard.reachedAtHint') }}</p>
           </div>
           <p v-if="portWarnings[`${p.container}-${p.protocol}`]" class="status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ portWarnings[`${p.container}-${p.protocol}`] }}
@@ -311,8 +311,8 @@ async function install() {
       <div v-if="envRows.length" class="space-y-3">
         <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.settings') }}</h4>
         <div v-for="e in envRows" :key="e.key" class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">
-            {{ e.label }}<span v-if="e.required" class="text-destructive"> *</span>
+          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">
+            {{ e.label }}<span v-if="e.required" class="text-error"> *</span>
           </label>
           <div v-if="e.secret" class="flex gap-2">
             <Input
@@ -331,7 +331,7 @@ async function install() {
             v-model="e.value"
             :placeholder="e.key"
           />
-          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-muted-foreground">{{ t('ui.store.AppInstallWizard.noteItSomewhereSafeBefore') }}</p>
+          <p v-if="e.secret && e.shown && e.value" class="text-2xs text-base-content/70">{{ t('ui.store.AppInstallWizard.noteItSomewhereSafeBefore') }}</p>
         </div>
       </div>
 
@@ -340,11 +340,11 @@ async function install() {
         <h4 class="eyebrow">{{ t('ui.store.AppInstallWizard.storage') }}</h4>
         <div
           v-for="v in volumeRows" :key="v.target"
-          class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0"
+          class="space-y-2 pb-4 border-b border-base-300 last:border-b-0 last:pb-0"
         >
           <div class="flex items-center justify-between gap-2">
-            <span class="text-sm text-foreground">{{ v.label }}</span>
-            <span class="text-xs text-muted-foreground font-mono">{{ v.target }}</span>
+            <span class="text-sm text-base-content">{{ v.label }}</span>
+            <span class="text-xs text-base-content/70 font-mono">{{ v.target }}</span>
           </div>
 
           <NativeSelect
@@ -365,7 +365,7 @@ async function install() {
             <NativeSelectOption value="">{{ t('ui.store.AppInstallWizard.selectAPlace') }}</NativeSelectOption>
             <NativeSelectOption v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }} ({{ pl.path }})</NativeSelectOption>
           </NativeSelect>
-          <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-muted-foreground">
+          <p v-if="v.mode === 'place' && places.length === 0" class="text-xs text-base-content/70">
             {{ t('ui.store.AppInstallWizard.noPlacesYetCreateOne') }}
           </p>
 
@@ -381,8 +381,8 @@ async function install() {
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center gap-3 pt-2 border-t border-border">
-        <p v-if="installError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ installError }}</p>
+      <div class="flex items-center gap-3 pt-2 border-t border-base-300">
+        <p v-if="installError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ installError }}</p>
         <div v-else class="flex-1" />
         <Button variant="outline" size="sm" @click="emit('close')">{{ t('ui.store.AppInstallWizard.cancel') }}</Button>
         <Button size="sm" :disabled="!canInstall" @click="install">

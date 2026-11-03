@@ -73,32 +73,32 @@ defineExpose({ open })
   <Modal :label="t('ui.storage.DeviceFormatWizard.formatDevice')" v-if="wiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!wiz.busy" @close="wiz = null">
 
     <!-- Step indicator -->
-    <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-border">
+    <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-base-300">
       <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
         :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
           wiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
-          : wiz.step > i + 1  ? 'text-muted-foreground'
-          : 'text-muted-foreground/50']"
+          : wiz.step > i + 1  ? 'text-base-content/70'
+          : 'text-base-content/35']"
       >{{ i + 1 }}. {{ label }}</div>
     </div>
 
     <!-- Step 1: Warning -->
     <div v-if="wiz.step === 1" class="p-6 space-y-4">
-      <Alert variant="destructive" class="flex items-start gap-3 p-4 text-foreground" role="note">
-        <TriangleAlertIcon class="w-5 h-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
+      <Alert variant="destructive" class="flex items-start gap-3 p-4 text-base-content" role="note">
+        <TriangleAlertIcon class="w-5 h-5 text-error mt-0.5 shrink-0" aria-hidden="true" />
         <div>
-          <div class="font-semibold text-destructive text-sm mb-1">{{ t('ui.storage.DeviceFormatWizard.allDataWillBePermanently') }}</div>
-          <div class="text-xs text-destructive/80">
+          <div class="font-semibold text-error text-sm mb-1">{{ t('ui.storage.DeviceFormatWizard.allDataWillBePermanently') }}</div>
+          <div class="text-xs text-error/80">
             {{ t('ui.storage.DeviceFormatWizard.formatting') }} <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.willDestroyEveryFileCurrently') }}
           </div>
         </div>
       </Alert>
 
-      <div class="space-y-1 text-xs text-muted-foreground">
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.currentFs') }}</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
-        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.model') }}</span><span>{{ wiz.dev.model }}</span></div>
+      <div class="space-y-1 text-xs text-base-content/70">
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div v-if="wiz.dev.fstype" class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.currentFs') }}</span><span class="font-mono">{{ wiz.dev.fstype }}</span></div>
+        <div v-if="wiz.dev.model" class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.model') }}</span><span>{{ wiz.dev.model }}</span></div>
       </div>
 
       <div class="flex gap-2 pt-2">
@@ -109,7 +109,7 @@ defineExpose({ open })
 
     <!-- Step 2: Choose filesystem -->
     <div v-else-if="wiz.step === 2" class="p-6 space-y-3">
-      <p class="text-sm text-foreground/80 font-medium mb-2">{{ t('ui.storage.DeviceFormatWizard.chooseAFilesystemFor') }} <span class="font-mono text-foreground">/dev/{{ wiz.dev.name }}</span></p>
+      <p class="text-sm text-base-content/80 font-medium mb-2">{{ t('ui.storage.DeviceFormatWizard.chooseAFilesystemFor') }} <span class="font-mono text-base-content">/dev/{{ wiz.dev.name }}</span></p>
 
       <div class="space-y-2">
         <label
@@ -117,35 +117,35 @@ defineExpose({ open })
           :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
             wiz.fstype === fs.id
               ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-input']"
+              : 'border-base-300 hover:border-base-300']"
           @click="wiz.fstype = fs.id"
         >
           <div class="mt-0.5">
             <div :class="['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
-              wiz.fstype === fs.id ? 'border-primary' : 'border-input']">
+              wiz.fstype === fs.id ? 'border-primary' : 'border-base-300']">
               <div v-if="wiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-primary"/>
             </div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-foreground">{{ fs.name }}</span>
+              <span class="text-sm font-semibold text-base-content">{{ fs.name }}</span>
               <span class="text-2xs px-1.5 py-0.5 rounded-sm"
-                :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'"
+                :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-base-200 text-base-content/70'"
               >{{ fs.tag }}</span>
             </div>
-            <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ fs.desc }}</div>
+            <div class="text-xs text-base-content/70 mt-0.5 leading-relaxed">{{ fs.desc }}</div>
           </div>
         </label>
       </div>
 
       <div class="pt-1">
-        <label class="block text-xs text-foreground/80 mb-1">{{ t('ui.storage.DeviceFormatWizard.volumeLabel') }} <span class="text-muted-foreground">{{ t('ui.storage.DeviceFormatWizard.optional') }}</span></label>
+        <label class="block text-xs text-base-content/80 mb-1">{{ t('ui.storage.DeviceFormatWizard.volumeLabel') }} <span class="text-base-content/70">{{ t('ui.storage.DeviceFormatWizard.optional') }}</span></label>
         <Input
           v-model="wiz.label"
           type="text"
           :placeholder="t('ui.storage.DeviceFormatWizard.eGDataBackupMedia')"
           maxlength="64"
-          class="w-full px-3 py-2 text-sm placeholder-muted-foreground"
+          class="w-full px-3 py-2 text-sm placeholder-base-content/70"
         />
       </div>
 
@@ -157,26 +157,26 @@ defineExpose({ open })
 
     <!-- Step 3: Confirm -->
     <div v-else-if="wiz.step === 3" class="p-6 space-y-4">
-      <div class="space-y-1 text-xs text-muted-foreground">
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.filesystem') }}</span><span class="font-mono">{{ wiz.fstype }}</span></div>
-        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceFormatWizard.label') }}</span><span>{{ wiz.label }}</span></div>
+      <div class="space-y-1 text-xs text-base-content/70">
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.device') }}</span><span class="font-mono">/dev/{{ wiz.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.size') }}</span><span>{{ fmtBytes(wiz.dev.size) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.filesystem') }}</span><span class="font-mono">{{ wiz.fstype }}</span></div>
+        <div v-if="wiz.label" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceFormatWizard.label') }}</span><span>{{ wiz.label }}</span></div>
       </div>
 
       <div>
-        <label class="block text-xs text-foreground/80 mb-1.5">
-          {{ t('ui.storage.DeviceFormatWizard.type') }} <span class="font-mono font-bold text-foreground">{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.toConfirm') }}
+        <label class="block text-xs text-base-content/80 mb-1.5">
+          {{ t('ui.storage.DeviceFormatWizard.type') }} <span class="font-mono font-bold text-base-content">{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.toConfirm') }}
         </label>
         <Input
           v-model="wiz.confirm"
           type="text"
           :placeholder="wiz.dev.name"
-          class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"
+          class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"
         />
       </div>
 
-      <p v-if="wiz.err" role="alert" class="px-1 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
+      <p v-if="wiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ wiz.err }}</p>
 
       <div class="flex gap-2">
         <Button variant="outline" @click="wiz.step = 2" :disabled="wiz.busy" class="flex-1 justify-center">{{ t('ui.storage.DeviceFormatWizard.back') }}</Button>
@@ -194,8 +194,8 @@ defineExpose({ open })
     <!-- Done: a new filesystem is root-owned until it is mounted with access set up -->
     <div v-else class="p-6 space-y-4">
       <div>
-        <div class="font-semibold text-sm text-foreground">{{ t('ui.storage.DeviceFormatWizard.formatted') }}</div>
-        <p class="text-xs text-muted-foreground mt-1">
+        <div class="font-semibold text-sm text-base-content">{{ t('ui.storage.DeviceFormatWizard.formatted') }}</div>
+        <p class="text-xs text-base-content/70 mt-1">
           <span class="font-mono">/dev/{{ wiz.dev.name }}</span> {{ t('uip.storage.DeviceFormatWizard.nowHoldsAnEmptyFilesystem', { p0: wiz.fstype }) }}
         </p>
       </div>

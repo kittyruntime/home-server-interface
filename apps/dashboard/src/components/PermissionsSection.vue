@@ -82,49 +82,49 @@ onMounted(load)
 
 <template>
   <section>
-    <h3 class="text-xs font-medium uppercase tracking-caps text-muted-foreground mb-3 px-1">{{ t('ui.settings.PermissionsSection.permissions') }}</h3>
+    <h3 class="text-xs font-medium uppercase tracking-caps text-base-content/70 mb-3 px-1">{{ t('ui.settings.PermissionsSection.permissions') }}</h3>
 
-    <div v-if="places.length === 0" class="text-sm text-muted-foreground px-1">{{ t('ui.settings.PermissionsSection.noPlacesYetAddOne') }}</div>
+    <div v-if="places.length === 0" class="text-sm text-base-content/70 px-1">{{ t('ui.settings.PermissionsSection.noPlacesYetAddOne') }}</div>
 
     <div class="space-y-2">
       <Collapsible
         v-for="place in places"
         :key="place.id"
-        class="bg-card border border-border rounded-xl overflow-hidden"
+        class="bg-base-100 border border-base-300 rounded-xl overflow-hidden"
         :open="expandedPlace === place.id"
         @update:open="togglePlace(place.id)"
       >
         <!-- Place header (accordion) -->
         <CollapsibleTrigger
-          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-200 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-200 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-base-content/30"
         >
           <div class="flex items-center gap-2">
             <PlaceIcon :icon="place.icon" class="size-4 text-base text-primary" />
-            <span class="text-sm font-medium text-foreground">{{ place.name }}</span>
-            <span class="ml-2 text-xs text-muted-foreground font-mono">{{ place.path }}</span>
+            <span class="text-sm font-medium text-base-content">{{ place.name }}</span>
+            <span class="ml-2 text-xs text-base-content/70 font-mono">{{ place.path }}</span>
           </div>
-          <ChevronDownIcon :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
+          <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
         </CollapsibleTrigger>
 
         <!-- Permission matrix -->
-        <CollapsibleContent class="border-t border-border">
-          <p class="px-4 py-1.5 text-2xs text-muted-foreground leading-relaxed">{{ t('ui.settings.PermissionsSection.adminsAlwaysHaveFullAccess') }}</p>
+        <CollapsibleContent class="border-t border-base-300">
+          <p class="px-4 py-1.5 text-2xs text-base-content/70 leading-relaxed">{{ t('ui.settings.PermissionsSection.adminsAlwaysHaveFullAccess') }}</p>
           <Table class="w-full text-xs">
             <TableHeader>
-              <TableRow class="text-muted-foreground uppercase tracking-caps border-b border-border">
+              <TableRow class="text-base-content/70 uppercase tracking-caps border-b border-base-300">
                 <TableHead class="px-4 py-2 text-left font-medium">{{ t('ui.settings.PermissionsSection.subject') }}</TableHead>
                 <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.read') }}</TableHead>
                 <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.write') }}</TableHead>
                 <TableHead class="px-3 py-2 text-center font-medium w-16">{{ t('ui.settings.PermissionsSection.delete') }}</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody class="divide-y divide-border">
+            <TableBody class="divide-y divide-base-300">
               <!-- Groups -->
               <TableRow v-for="group in groups" :key="'group-' + group.id">
                 <TableCell class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
                     <Badge variant="secondary">group</Badge>
-                    <span class="text-foreground/80">{{ group.name }}</span>
+                    <span class="text-base-content/80">{{ group.name }}</span>
                   </div>
                 </TableCell>
                 <TableCell v-for="field in (['canRead', 'canWrite', 'canDelete'] as const)" :key="field" class="px-3 py-2.5 text-center">
@@ -136,8 +136,8 @@ onMounted(load)
               <TableRow v-for="user in users" :key="'user-' + user.id">
                 <TableCell class="px-4 py-2.5">
                   <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-muted text-muted-foreground">user</span>
-                    <span class="text-foreground/80">{{ user.username }}</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-base-200 text-base-content/70">user</span>
+                    <span class="text-base-content/80">{{ user.username }}</span>
                     <Badge v-if="user.isAdmin">admin</Badge>
                   </div>
                 </TableCell>
@@ -147,7 +147,7 @@ onMounted(load)
               </TableRow>
 
               <TableRow v-if="groups.length === 0 && users.length === 0">
-                <TableCell colspan="4" class="px-4 py-3 text-muted-foreground">{{ t('ui.settings.PermissionsSection.noGroupsOrUsersTo') }}</TableCell>
+                <TableCell colspan="4" class="px-4 py-3 text-base-content/70">{{ t('ui.settings.PermissionsSection.noGroupsOrUsersTo') }}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

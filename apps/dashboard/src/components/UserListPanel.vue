@@ -179,8 +179,8 @@ onMounted(load)
       <!-- Header -->
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.UserListPanel.users') }}</h2>
-          <p v-if="!loading && !loadError" class="text-xs text-muted-foreground mt-0.5">
+          <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.UserListPanel.users') }}</h2>
+          <p v-if="!loading && !loadError" class="text-xs text-base-content/70 mt-0.5">
             {{ t('uip.settings.UserListPanel.ofAccount', { p0: filteredUsers.length, p1: users.length, p2: users.length !== 1 ? 's' : '' }) }}
           </p>
         </div>
@@ -198,33 +198,33 @@ onMounted(load)
       <SearchInput v-if="!loading && !loadError" v-model="search" :placeholder="t('ui.settings.UserListPanel.searchByUsernameOrDisplay')" class="max-w-sm" />
 
       <!-- Add user form -->
-      <div v-if="addingUser" class="border border-input bg-muted rounded-xl p-4 space-y-3">
-        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">{{ t('ui.settings.UserListPanel.newUser') }}</h4>
+      <div v-if="addingUser" class="border border-base-300 bg-base-200 rounded-xl p-4 space-y-3">
+        <h4 class="text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.settings.UserListPanel.newUser') }}</h4>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.UserListPanel.username') }} <span class="text-primary">*</span></label>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.UserListPanel.username') }} <span class="text-primary">*</span></label>
             <Input v-model="newUser.username" laceholder="johndoe" autofocus/>
             <p class="text-2xs mt-1 leading-relaxed"
-              :class="newUser.username && !usernameValid ? 'text-destructive' : 'text-muted-foreground'">
+              :class="newUser.username && !usernameValid ? 'text-error' : 'text-base-content/70'">
               {{ t('ui.settings.UserListPanel.lowercaseLettersDigitsOrStart') }}
             </p>
           </div>
           <div>
-            <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.UserListPanel.displayName') }}</label>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.UserListPanel.displayName') }}</label>
             <Input v-model="newUser.displayName" :placeholder="t('ui.settings.UserListPanel.johnDoe')"/>
           </div>
           <div>
-            <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.UserListPanel.password') }} <span class="text-primary">*</span></label>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.UserListPanel.password') }} <span class="text-primary">*</span></label>
             <Input v-model="newUser.password" type="password" :placeholder="t('ui.settings.UserListPanel.min6Chars')"/>
           </div>
           <div>
-            <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.UserListPanel.confirmPassword') }} <span class="text-primary">*</span></label>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.UserListPanel.confirmPassword') }} <span class="text-primary">*</span></label>
             <Input v-model="newUser.confirmPassword" type="password" :placeholder="t('ui.settings.UserListPanel.repeat')"/>
           </div>
         </div>
 
-        <p v-if="addError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ addError }}</p>
+        <p v-if="addError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addError }}</p>
 
         <div class="flex items-center gap-2 pt-1">
           <Button size="sm"
@@ -249,26 +249,26 @@ onMounted(load)
 
       <!-- Table -->
       <template v-else>
-        <div v-if="narrow" class="space-y-2"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-border bg-card p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><UserAvatar :username="user.username" class="size-9 text-2xs" /><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-foreground">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-muted-foreground">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-muted-foreground">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groupsOf(user.id)" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">{{ t('ui.settings.UserListPanel.clearSearch') }}</Button></template></EmptyState></div>
+        <div v-if="narrow" class="space-y-2"><article v-for="user in paged" :key="user.id" class="rounded-xl border border-base-300 bg-base-100 p-3" @click="isUserManager&&openDetail(user)"><div class="flex items-center gap-3"><UserAvatar :username="user.username" class="size-9 text-2xs" /><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-1.5"><strong class="truncate text-sm text-base-content">{{user.username}}</strong><Badge v-if="user.isAdmin">admin</Badge><Badge variant="secondary" v-if="user.isUserManager">manager</Badge></div><p v-if="user.displayName" class="truncate text-xs text-base-content/70">{{user.displayName}}</p></div><span v-if="isUserManager" aria-hidden="true" class="text-base-content/70">›</span></div><div class="mt-2 flex flex-wrap gap-1"><Badge variant="secondary" v-for="g in groupsOf(user.id)" :key="g.id">{{g.name}}</Badge></div></article><EmptyState v-if="filteredUsers.length===0" :message="users.length===0?'No users yet.':'No users match your search.'"><template v-if="users.length&&search" #action><Button variant="outline" size="sm" @click="search=''">{{ t('ui.settings.UserListPanel.clearSearch') }}</Button></template></EmptyState></div>
         <Card v-else class="block gap-0 py-0 overflow-hidden">
           <Table class="w-full text-sm">
             <TableHeader>
-              <TableRow class="bg-muted border-b border-border">
-                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+              <TableRow class="bg-base-200 border-b border-base-300">
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70">
                   <SortableHeader :active="sortKey === 'username'" :dir="sortDir" @click="toggleSort('username')">{{ t('ui.settings.UserListPanel.user') }}</SortableHeader>
                 </TableHead>
-                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.UserListPanel.groups') }}</TableHead>
-                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.UserListPanel.groups') }}</TableHead>
+                <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70 hidden sm:table-cell">
                   <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">{{ t('ui.settings.UserListPanel.created') }}</SortableHeader>
                 </TableHead>
                 <TableHead v-if="isUserManager" class="px-4 py-3 w-16"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody class="divide-y divide-border">
+            <TableBody class="divide-y divide-base-300">
               <TableRow
                 v-for="user in paged"
                 :key="user.id"
-                class="bg-background hover:bg-card transition-colors"
+                class="bg-base-100 hover:bg-base-100 transition-colors"
               >
                 <!-- User -->
                 <TableCell class="px-5 py-3.5">
@@ -276,14 +276,14 @@ onMounted(load)
                     <UserAvatar :username="user.username" class="size-8 text-2xs" />
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="font-medium text-foreground">{{ user.username }}</span>
+                        <span class="font-medium text-base-content">{{ user.username }}</span>
                         <span v-if="user.id === currentUserId"
-                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-input text-muted-foreground">you</span>
+                          class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-base-300 text-base-content/70">you</span>
                         <span v-if="user.isAdmin"
                           class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
                         <Badge variant="secondary" v-if="user.isUserManager">manager</Badge>
                       </div>
-                      <div v-if="user.displayName" class="text-xs text-muted-foreground truncate mt-0.5">{{ user.displayName }}</div>
+                      <div v-if="user.displayName" class="text-xs text-base-content/70 truncate mt-0.5">{{ user.displayName }}</div>
                     </div>
                   </div>
                 </TableCell>
@@ -294,12 +294,12 @@ onMounted(load)
                     <Badge variant="secondary" v-for="g in groupsOf(user.id)" :key="g.id">
                       {{ g.name }}
                     </Badge>
-                    <span v-if="!groupsOf(user.id).length" class="text-muted-foreground text-xs">-</span>
+                    <span v-if="!groupsOf(user.id).length" class="text-base-content/70 text-xs">-</span>
                   </div>
                 </TableCell>
 
                 <!-- Created -->
-                <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+                <TableCell class="px-5 py-3.5 hidden sm:table-cell text-base-content/70 text-xs tabular-nums">
                   {{ formatDay(user.createdAt) }}
                 </TableCell>
 
@@ -308,7 +308,7 @@ onMounted(load)
                   <Button variant="ghost" size="icon-sm"
                     @click="openDetail(user)"
                     :tooltip="t('ui.settings.UserListPanel.editUser')" :aria-label="t('ui.settings.UserListPanel.editUser')"
-                    class="text-muted-foreground hover:text-foreground"
+                    class="text-base-content/70 hover:text-base-content"
                   >
                     <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -317,7 +317,7 @@ onMounted(load)
 
               <!-- Empty state -->
               <TableRow v-if="filteredUsers.length === 0">
-                <TableCell :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-muted-foreground">
+                <TableCell :colspan="isUserManager ? 4 : 3" class="px-5 py-10 text-center text-sm text-base-content/70">
                   <span>{{ users.length === 0 ? 'No users yet.' : 'No users match your search.' }}</span>
                   <Button variant="outline" size="xs" v-if="users.length && search" class="ml-2" @click="search = ''">{{ t('ui.settings.UserListPanel.clearSearch') }}</Button>
                 </TableCell>

@@ -55,14 +55,14 @@ function formatTime(createdAt: string): string {
   <div class="flex max-h-[420px] flex-col">
         <!-- Header -->
         <div class="flex items-center justify-between px-3.5 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-foreground/80 uppercase tracking-caps">{{ t('ui.settings.NotificationMenu.activity') }}</span>
-          <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('ui.settings.NotificationMenu.closeActivityPanel')" @click="emit('close')">
+          <span class="text-xs font-semibold text-base-content/80 uppercase tracking-caps">{{ t('ui.settings.NotificationMenu.activity') }}</span>
+          <Button variant="ghost" size="icon-xs" class="text-base-content/70" :aria-label="t('ui.settings.NotificationMenu.closeActivityPanel')" @click="emit('close')">
             <XIcon />
           </Button>
         </div>
 
         <!-- Persisted notification list -->
-        <div class="flex-1 overflow-y-auto divide-y divide-border">
+        <div class="flex-1 overflow-y-auto divide-y divide-base-300">
 
           <!-- Operations in progress / recently finished -->
           <div
@@ -73,8 +73,8 @@ function formatTime(createdAt: string): string {
             <div class="flex items-start gap-2.5 min-w-0">
               <div class="shrink-0 w-5 h-5 rounded-md flex items-center justify-center"
                 :class="op.type === 'success' ? 'bg-success/10 text-success'
-                      : op.type === 'error'   ? 'bg-destructive/10 text-destructive'
-                      :                         'bg-muted text-muted-foreground'">
+                      : op.type === 'error'   ? 'bg-error/10 text-error'
+                      :                         'bg-base-200 text-base-content/70'">
                 <LoadingSpinner v-if="op.type === 'progress'" class="text-current" />
                 <CheckIcon v-else-if="op.type === 'success'" class="size-3" />
                 <XIcon v-else-if="op.type === 'error'" class="size-3" />
@@ -82,9 +82,9 @@ function formatTime(createdAt: string): string {
               </div>
 
               <div class="flex-1 min-w-0">
-                <span class="block text-xs text-foreground leading-snug truncate">{{ op.title }}</span>
+                <span class="block text-xs text-base-content leading-snug truncate">{{ op.title }}</span>
                 <p v-if="op.detail" class="text-2xs mt-0.5 leading-snug break-words"
-                  :class="op.type === 'error' ? 'text-destructive' : 'text-muted-foreground'">{{ op.detail }}</p>
+                  :class="op.type === 'error' ? 'text-error' : 'text-base-content/70'">{{ op.detail }}</p>
                 <Button v-if="op.jobId" variant="link" class="mt-0.5 h-auto p-0 text-2xs" @click="viewLogs(op.jobId)">{{ t('ui.settings.NotificationMenu.viewLogs') }}</Button>
                 <SegmentedBar
                   v-if="op.type === 'progress'"
@@ -92,11 +92,11 @@ function formatTime(createdAt: string): string {
                   :percent="op.progress ?? 0"
                   :indeterminate="op.progress === -1 || op.progress == null"
                   height="compact"
-                  color="var(--primary)"
+                  color="var(--color-primary)"
                 />
               </div>
 
-              <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-muted-foreground" :aria-label="t('ui.settings.NotificationMenu.dismissOperation')" @click="dismiss(op.id)">
+              <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :aria-label="t('ui.settings.NotificationMenu.dismissOperation')" @click="dismiss(op.id)">
                 <XIcon />
               </Button>
             </div>
@@ -111,24 +111,24 @@ function formatTime(createdAt: string): string {
               <!-- Severity dot -->
               <span
                 class="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full"
-                :class="n.severity === 'critical' ? 'bg-destructive'
+                :class="n.severity === 'critical' ? 'bg-error'
                      : n.severity === 'warning'  ? 'bg-warning'
-                     :                             'bg-muted-foreground'"
+                     :                             'bg-base-content/70'"
               />
 
               <!-- Title + detail -->
               <div class="flex-1 min-w-0">
-                <span class="block text-xs text-foreground leading-snug truncate">{{ itemTitle(n) }}</span>
-                <p class="text-2xs text-muted-foreground mt-0.5 leading-snug truncate">{{ n.message }}</p>
+                <span class="block text-xs text-base-content leading-snug truncate">{{ itemTitle(n) }}</span>
+                <p class="text-2xs text-base-content/70 mt-0.5 leading-snug truncate">{{ n.message }}</p>
               </div>
 
               <!-- Time -->
-              <span class="shrink-0 text-2xs text-muted-foreground leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
+              <span class="shrink-0 text-2xs text-base-content/70 leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
             </div>
           </div>
 
           <!-- Empty state -->
-          <div v-if="!hasItems && !hasOperations" class="flex flex-col items-center justify-center gap-1.5 text-muted-foreground py-10 select-none">
+          <div v-if="!hasItems && !hasOperations" class="flex flex-col items-center justify-center gap-1.5 text-base-content/70 py-10 select-none">
             <BellIcon class="size-6 opacity-25" />
             <p class="text-xs">{{ t('ui.settings.NotificationMenu.noNotifications') }}</p>
           </div>
@@ -137,7 +137,7 @@ function formatTime(createdAt: string): string {
 
         <!-- Footer: mark all read -->
         <div v-if="hasItems" class="px-3.5 py-1.5 border-t shrink-0">
-          <Button variant="ghost" size="xs" class="-ml-2 text-muted-foreground" :disabled="!hasUnread" @click="markAllRead()">
+          <Button variant="ghost" size="xs" class="-ml-2 text-base-content/70" :disabled="!hasUnread" @click="markAllRead()">
             {{ t('ui.settings.NotificationMenu.markAllRead') }}
           </Button>
         </div>

@@ -168,7 +168,7 @@ async function removeShare(s: ShareRow) {
     <div class="flex items-center justify-between mb-6">
       <div>
         <p class="eyebrow mb-1">{{ t('ui.sharing.SharesSection.networkSharing') }}</p>
-        <h2 class="text-lg font-semibold text-foreground">{{ t('ui.sharing.SharesSection.smbShares') }}</h2>
+        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.sharing.SharesSection.smbShares') }}</h2>
       </div>
       <Button size="sm"
         v-if="prereq?.smbdInstalled && availablePlaces.length > 0"
@@ -178,17 +178,17 @@ async function removeShare(s: ShareRow) {
       </Button>
     </div>
 
-    <p v-if="error" class="status-text text-destructive mb-4">[ERR] {{ error }}</p>
+    <p v-if="error" class="status-text text-error mb-4">[ERR] {{ error }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Samba missing: guide, never a cryptic error -->
     <Card v-else-if="prereq && !prereq.smbdInstalled" class="block gap-0 py-0 overflow-hidden p-6">
-      <h3 class="text-sm font-semibold text-foreground mb-2">{{ t('ui.sharing.SharesSection.sambaIsNotInstalled') }}</h3>
-      <p class="text-sm text-foreground/80 mb-4">
+      <h3 class="text-sm font-semibold text-base-content mb-2">{{ t('ui.sharing.SharesSection.sambaIsNotInstalled') }}</h3>
+      <p class="text-sm text-base-content/80 mb-4">
         {{ t('ui.sharing.SharesSection.smbSharingNeedsTheSamba') }}
       </p>
-      <code class="inline-block px-3 py-2 rounded-lg bg-muted border border-input text-sm font-mono text-foreground">
+      <code class="inline-block px-3 py-2 rounded-lg bg-base-200 border border-base-300 text-sm font-mono text-base-content">
         sudo apt install samba
       </code>
       <div class="mt-4">
@@ -196,7 +196,7 @@ async function removeShare(s: ShareRow) {
       </div>
     </Card>
 
-    <Card v-else-if="shares.length === 0" class="block gap-0 py-0 overflow-hidden p-6 text-sm text-muted-foreground">
+    <Card v-else-if="shares.length === 0" class="block gap-0 py-0 overflow-hidden p-6 text-sm text-base-content/70">
       {{ t('ui.sharing.SharesSection.noSharesYetShareAn') }}
     </Card>
 
@@ -205,15 +205,15 @@ async function removeShare(s: ShareRow) {
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-semibold text-foreground">{{ s.effectiveName }}</span>
+              <span class="text-sm font-semibold text-base-content">{{ s.effectiveName }}</span>
               <Badge :variant="s.enabled ? 'default' : 'secondary'">
                 {{ s.enabled ? 'Active' : 'Disabled' }}
               </Badge>
               <Badge variant="secondary" v-if="s.readOnly">{{ t('ui.sharing.SharesSection.readOnly') }}</Badge>
               <Badge variant="secondary" v-if="s.guestOk">{{ t('ui.sharing.SharesSection.guest') }}</Badge>
-              <Tip v-if="holdForPath(s.placePath)" :text="holdLabel(holdForPath(s.placePath)!)"><Badge variant="outline" class="bg-destructive/10 text-destructive">{{ t('ui.sharing.SharesSection.unavailable') }}</Badge></Tip>
+              <Tip v-if="holdForPath(s.placePath)" :text="holdLabel(holdForPath(s.placePath)!)"><Badge variant="outline" class="bg-error/10 text-error">{{ t('ui.sharing.SharesSection.unavailable') }}</Badge></Tip>
             </div>
-            <p class="text-xs text-muted-foreground mt-1">
+            <p class="text-xs text-base-content/70 mt-1">
               {{ s.placeName }} · <span class="font-mono">{{ s.placePath }}</span> {{ t('uip.sharing.SharesSection.user', { p0: s.userCount, p1: s.userCount === 1 ? '' : 's' }) }}
             </p>
             <p v-if="s.excludedUsernames.length > 0" class="status-text text-warning mt-2">
@@ -236,7 +236,7 @@ async function removeShare(s: ShareRow) {
     <!-- Create / edit modal -->
     <Modal v-if="editor" panel-class="w-full max-w-sm" @close="editor = null">
       <template #header>
-        <h3 class="text-sm font-semibold text-foreground">
+        <h3 class="text-sm font-semibold text-base-content">
           {{ editor.id === null ? 'New share' : 'Edit share' }}
         </h3>
       </template>
@@ -259,19 +259,19 @@ async function removeShare(s: ShareRow) {
             :placeholder="t('ui.sharing.SharesSection.defaultsToThePlaceName')"
             class="w-full font-mono"
           />
-          <p class="text-xs text-muted-foreground mt-1">{{ t('ui.sharing.SharesSection.lettersDigitsDotsDashesUnderscores') }}</p>
+          <p class="text-xs text-base-content/70 mt-1">{{ t('ui.sharing.SharesSection.lettersDigitsDotsDashesUnderscores') }}</p>
         </div>
 
-        <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+        <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
           <Checkbox v-model="editor.readOnly" />
           {{ t('ui.sharing.SharesSection.readOnlyIgnoreWritePermissions') }}
         </label>
-        <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+        <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
           <Checkbox v-model="editor.guestOk" />
           {{ t('ui.sharing.SharesSection.allowGuestAccessNoAuthentication') }}
         </label>
 
-        <p v-if="editorError" class="status-text text-destructive">[ERR] {{ editorError }}</p>
+        <p v-if="editorError" class="status-text text-error">[ERR] {{ editorError }}</p>
       </div>
 
       <template #footer>

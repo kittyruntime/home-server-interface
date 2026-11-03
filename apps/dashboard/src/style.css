@@ -5,23 +5,6 @@
 }
 @import "tw-animate-css";
 
-/* ── Theme ───────────────────────────────────────────────────────────────────
-   daisyUI owns the palette (themes listed in @plugin above). The shadcn token
-   names below are aliases onto daisyUI variables, so every screen follows the
-   active data-theme. The `dark:` variant matches the dark themes below, and
-   follows prefers-color-scheme when no theme is forced (Auto mode).
-   ─────────────────────────────────────────────────────────────────────────── */
-@custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="aqua"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"], :is([data-theme="dark"], [data-theme="synthwave"], [data-theme="halloween"], [data-theme="forest"], [data-theme="aqua"], [data-theme="black"], [data-theme="luxury"], [data-theme="dracula"], [data-theme="business"], [data-theme="night"], [data-theme="coffee"], [data-theme="dim"], [data-theme="sunset"], [data-theme="abyss"]) *) {
-    @slot;
-  }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
-      @slot;
-    }
-  }
-}
-
 /* Type: Inter for the interface; JetBrains Mono carries dense data (paths,
    devices, sizes, code); Space Mono carries key figures. Fonts are
    self-hosted (main.ts): no Google Fonts request, same rendering on a server
@@ -67,44 +50,13 @@
   }
 }
 
-/* Legacy shadcn token names resolve to daisyUI variables. */
+/* Chart tokens used by dashboard charts. */
 :root {
-  --background: var(--color-base-100);
-  --foreground: var(--color-base-content);
-  --card: var(--color-base-100);
-  --card-foreground: var(--color-base-content);
-  --popover: var(--color-base-100);
-  --popover-foreground: var(--color-base-content);
-  --primary: var(--color-primary);
-  --primary-foreground: var(--color-primary-content);
-  --secondary: var(--color-base-200);
-  --secondary-foreground: var(--color-base-content);
-  --muted: var(--color-base-200);
-  --muted-foreground: color-mix(in oklab, var(--color-base-content) 62%, transparent);
-  --accent: var(--color-base-200);
-  --accent-foreground: var(--color-base-content);
-  --destructive: var(--color-error);
-  --input: var(--color-base-300);
-  --ring: color-mix(in oklab, var(--color-base-content) 35%, transparent);
   --chart-1: var(--color-primary);
   --chart-2: var(--color-secondary);
   --chart-3: var(--color-accent);
   --chart-4: var(--color-info);
   --chart-5: var(--color-warning);
-  --sidebar: var(--color-base-100);
-  --sidebar-foreground: var(--color-base-content);
-  --sidebar-primary: var(--color-primary);
-  --sidebar-primary-foreground: var(--color-primary-content);
-  --sidebar-accent: var(--color-base-200);
-  --sidebar-accent-foreground: var(--color-base-content);
-  --sidebar-border: var(--color-base-300);
-  --sidebar-ring: color-mix(in oklab, var(--color-base-content) 35%, transparent);
-
-  /* Status colors (not part of shadcn's palette). */
-  --success: var(--color-success);
-  --warning: var(--color-warning);
-  --info:    var(--color-info);
-  --violet:  var(--color-secondary);
 }
 
 @theme inline {
@@ -112,41 +64,20 @@
   --radius-md: var(--radius-field);
   --radius-lg: var(--radius-box);
   --radius-xl: var(--radius-box);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary-foreground: var(--color-primary-content);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--color-base-300);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-violet: var(--violet);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-base-300 outline-base-content/15;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-base-100 text-base-content;
   }
 }
 
@@ -190,7 +121,7 @@ select:not(:disabled),
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
-  color: var(--muted-foreground);
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
 }
 
 /* Inline status text: replaces toast popups. Space Mono bracket tags. */
@@ -218,7 +149,7 @@ select:not(:disabled),
 button:not([data-slot]):focus-visible,
 [role="button"]:not([data-slot]):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-base-content) 15%, transparent);
 }
 
 } /* @layer components */

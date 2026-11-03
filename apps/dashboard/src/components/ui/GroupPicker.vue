@@ -101,8 +101,8 @@ function onKeydown(event: KeyboardEvent) {
         <span v-else class="size-1.5 rounded-full bg-primary shrink-0" />
 
         <span class="flex-1 min-w-0 flex items-baseline gap-2">
-          <span class="text-sm font-medium text-foreground truncate">{{ item.label }}</span>
-          <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
+          <span class="text-sm font-medium text-base-content truncate">{{ item.label }}</span>
+          <span v-if="item.sublabel" class="text-2xs text-base-content/70 uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
         </span>
 
         <Button
@@ -112,8 +112,8 @@ function onKeydown(event: KeyboardEvent) {
           :title="item.disabled ? 'Cannot remove' : 'Remove'"
           :aria-label="`Remove ${item.label}`"
           :class="[
-            'shrink-0 text-muted-foreground',
-            item.disabled ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-destructive',
+            'shrink-0 text-base-content/70',
+            item.disabled ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-error',
           ]"
           @click="emit('remove', item.id)"
         >
@@ -121,7 +121,7 @@ function onKeydown(event: KeyboardEvent) {
         </Button>
       </div>
     </div>
-    <p v-else class="text-xs text-muted-foreground px-3">{{ t('ui.shared.GroupPicker.noneAssigned') }}</p>
+    <p v-else class="text-xs text-base-content/70 px-3">{{ t('ui.shared.GroupPicker.noneAssigned') }}</p>
 
     <template v-if="available.length > 0">
       <Button
@@ -181,7 +181,7 @@ function onKeydown(event: KeyboardEvent) {
                 <AvatarFallback :class="['bg-gradient-to-br font-bold text-white', item.avatarClass]">{{ item.avatarText }}</AvatarFallback>
               </Avatar>
               <span class="truncate flex-1">{{ item.label }}</span>
-              <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
+              <span v-if="item.sublabel" class="text-2xs text-base-content/70 uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
             </button>
           </li>
         </ul>

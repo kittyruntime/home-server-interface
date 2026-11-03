@@ -22,7 +22,7 @@ defineExpose({ openNew })
 </script>
 
 <template>
-  <div v-if="!isAdmin" class="flex items-center justify-center w-full h-full text-muted-foreground text-sm">
+  <div v-if="!isAdmin" class="flex items-center justify-center w-full h-full text-base-content/70 text-sm">
     {{ t('ui.apps.AppsPanel.administratorAccessRequired') }}
   </div>
 

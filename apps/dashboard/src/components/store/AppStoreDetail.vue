@@ -41,17 +41,17 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
         <span class="w-14 h-14 shrink-0 grid place-items-center" v-html="app.icon" />
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
-            <h3 class="text-base font-semibold text-foreground">{{ app.name }}</h3>
-            <span class="text-2xs uppercase tracking-caps text-muted-foreground">{{ categoryLabel(app.category) }}</span>
+            <h3 class="text-base font-semibold text-base-content">{{ app.name }}</h3>
+            <span class="text-2xs uppercase tracking-caps text-base-content/70">{{ categoryLabel(app.category) }}</span>
             <span v-if="isNew(app)" class="text-2xs uppercase tracking-caps text-primary">{{ t('ui.store.AppStoreDetail.new') }}</span>
           </div>
-          <p class="text-sm text-foreground/80 mt-0.5">{{ app.tagline }}</p>
+          <p class="text-sm text-base-content/80 mt-0.5">{{ app.tagline }}</p>
           <p class="text-xs mt-2 flex items-center gap-3 flex-wrap">
             <span class="inline-flex items-center gap-1.5" :class="state.text">
               <span v-if="state.dot" class="w-1.5 h-1.5 rounded-full" :class="state.dot" />
               {{ state.label }}
             </span>
-            <span v-if="version" class="text-muted-foreground font-mono">{{ version }}</span>
+            <span v-if="version" class="text-base-content/70 font-mono">{{ version }}</span>
           </p>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap shrink-0">
@@ -62,43 +62,43 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
       </div>
 
       <!-- Update / rollback -->
-      <div v-if="inst?.update || inst?.rollbackTo" class="rounded-lg border border-border p-3 space-y-2">
+      <div v-if="inst?.update || inst?.rollbackTo" class="rounded-lg border border-base-300 p-3 space-y-2">
         <p v-if="inst?.update" class="text-xs text-warning flex items-center gap-2 flex-wrap">
           <span>{{ updateText(inst.update) }}</span>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">{{ t('ui.store.AppStoreDetail.whatSNew') }}</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline hover:text-base-content">{{ t('ui.store.AppStoreDetail.whatSNew') }}</a>
         </p>
         <div v-if="inst?.rollbackTo" class="flex items-center justify-between gap-2 flex-wrap">
-          <p class="text-xs text-muted-foreground">{{ t('uip.store.AppStoreDetail.thePreviousVersionIsKept', { p0: inst.rollbackTo }) }}</p>
+          <p class="text-xs text-base-content/70">{{ t('uip.store.AppStoreDetail.thePreviousVersionIsKept', { p0: inst.rollbackTo }) }}</p>
           <Button variant="outline" size="xs" :disabled="busy" @click="emit('rollback')">{{ t('uip.store.AppStoreDetail.rollBackTo', { p0: inst.rollbackTo }) }}</Button>
         </div>
       </div>
-      <p v-if="error" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
       <!-- About -->
       <div class="space-y-2">
         <h4 class="eyebrow">{{ t('ui.store.AppStoreDetail.about') }}</h4>
-        <p class="text-sm text-foreground/80 leading-relaxed">{{ app.description }}</p>
+        <p class="text-sm text-base-content/80 leading-relaxed">{{ app.description }}</p>
         <div v-if="app.services?.length" class="text-xs">
-          <span class="text-muted-foreground">{{ t('ui.store.AppStoreDetail.installsWith') }} </span>
+          <span class="text-base-content/70">{{ t('ui.store.AppStoreDetail.installsWith') }} </span>
           <template v-for="(sc, i) in app.services" :key="sc.name">
-            <span v-if="i" class="text-muted-foreground">, </span>
-            <span class="text-foreground/80">{{ sc.label }}</span>
-            <span class="font-mono text-muted-foreground"> ({{ sc.image }})</span>
+            <span v-if="i" class="text-base-content/70">, </span>
+            <span class="text-base-content/80">{{ sc.label }}</span>
+            <span class="font-mono text-base-content/70"> ({{ sc.image }})</span>
           </template>
         </div>
         <p class="text-xs flex gap-4 flex-wrap">
-          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.website') }}</a>
-          <a v-if="app.docs" :href="app.docs" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.documentation') }}</a>
-          <a v-if="app.source" :href="app.source" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.sourceCode') }}</a>
-          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-muted-foreground hover:text-foreground">{{ t('ui.store.AppStoreDetail.releaseNotes') }}</a>
-          <span v-if="app.license" class="text-muted-foreground">{{ t('ui.store.AppStoreDetail.license') }} <span class="font-mono text-foreground/80">{{ app.license }}</span></span>
+          <a v-if="app.website" :href="app.website" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.website') }}</a>
+          <a v-if="app.docs" :href="app.docs" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.documentation') }}</a>
+          <a v-if="app.source" :href="app.source" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.sourceCode') }}</a>
+          <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.releaseNotes') }}</a>
+          <span v-if="app.license" class="text-base-content/70">{{ t('ui.store.AppStoreDetail.license') }} <span class="font-mono text-base-content/80">{{ app.license }}</span></span>
         </p>
       </div>
 
       <!-- First steps (#26): read before installing, and the page an install lands on. -->
       <section v-if="app.postInstall?.length" class="space-y-2" aria-labelledby="start-heading">
         <h4 id="start-heading" class="eyebrow">{{ inst ? t('ui.store.AppStoreDetail.gettingStarted') : t('ui.store.AppStoreDetail.afterInstalling') }}</h4>
-        <ol class="list-decimal pl-5 space-y-1 text-sm text-foreground/80 leading-relaxed">
+        <ol class="list-decimal pl-5 space-y-1 text-sm text-base-content/80 leading-relaxed">
           <li v-for="(step, i) in app.postInstall" :key="i">{{ step }}</li>
         </ol>
       </section>
@@ -107,17 +107,17 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
         <h4 id="perm-heading" class="eyebrow">{{ t('ui.store.AppStoreDetail.permissions') }}</h4>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
           <template v-for="p in permissions" :key="`${p.kind}-${p.detail}`">
-            <dt class="text-muted-foreground">{{ p.kind }}</dt>
-            <dd class="text-foreground/80 break-words">
+            <dt class="text-base-content/70">{{ p.kind }}</dt>
+            <dd class="text-base-content/80 break-words">
               {{ p.title }}
-              <span class="font-mono text-muted-foreground">{{ p.detail }}</span>
-              <span v-if="p.note" class="text-2xs uppercase tracking-caps text-muted-foreground">{{ p.note }}</span>
+              <span class="font-mono text-base-content/70">{{ p.detail }}</span>
+              <span v-if="p.note" class="text-2xs uppercase tracking-caps text-base-content/70">{{ p.note }}</span>
             </dd>
           </template>
         </dl>
       </section>
 
-      <p class="text-2xs text-muted-foreground font-mono break-all">{{ app.image }}</p>
+      <p class="text-2xs text-base-content/70 font-mono break-all">{{ app.image }}</p>
     </Card>
   </div>
 </template>
