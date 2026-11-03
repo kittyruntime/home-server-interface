@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Theme picker no longer scrolls the page**: choosing a theme from the lower part
+  of the list used to jump the page down, and now it stays where it is.
+
 ## [1.79.0] - 2026-11-03
 
 ### Added
