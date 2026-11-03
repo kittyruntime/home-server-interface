@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOverlayHost } from "@/lib/overlay-host"
 import type { ContextMenuContentEmits, ContextMenuContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
@@ -19,10 +20,12 @@ const emits = defineEmits<ContextMenuContentEmits>()
 const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const overlayHost = useOverlayHost()
 </script>
 
 <template>
-  <ContextMenuPortal>
+  <ContextMenuPortal :to="overlayHost">
     <ContextMenuContent
       data-slot="context-menu-content"
       v-bind="{ ...$attrs, ...forwarded }"

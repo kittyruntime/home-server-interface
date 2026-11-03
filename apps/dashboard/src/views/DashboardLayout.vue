@@ -30,6 +30,7 @@ import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
 import AgentRequests from '../components/AgentRequests.vue'
 import { navCapability, refreshAssistantStatus } from '../lib/assistant'
+import { raiseToasts } from '../lib/overlay-host'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import JobLogsDialog from '../components/JobLogsDialog.vue'
@@ -210,6 +211,7 @@ async function handleLogout() {
 let updateTimer: ReturnType<typeof setInterval>
 
 onMounted(() => {
+  raiseToasts()
   window.addEventListener('resize', updateIsMobile)
   checkUpdateBadge()
   syncPreferences()
@@ -455,7 +457,11 @@ onUnmounted(() => {
   </div>
 
   <!-- Nothing to report while the server is away (#132). -->
-  <Toaster v-if="!maintenance.kind" position="top-right" close-button />
+  <!-- A popover is promoted to the top layer, so toasts stay visible above an
+       open native dialog (raiseToasts re-shows it whenever one opens). -->
+  <div popover="manual" data-toast-layer class="toast-layer">
+    <Toaster v-if="!maintenance.kind" position="top-right" close-button />
+  </div>
   <ConfirmDialog />
   <AgentRequests v-if="!maintenance.kind" />
   <PlanDialog />

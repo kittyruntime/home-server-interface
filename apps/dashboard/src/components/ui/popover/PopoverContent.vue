@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOverlayHost } from "@/lib/overlay-host"
 import type { PopoverContentEmits, PopoverContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
@@ -25,10 +26,12 @@ const emits = defineEmits<PopoverContentEmits>()
 const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const overlayHost = useOverlayHost()
 </script>
 
 <template>
-  <PopoverPortal>
+  <PopoverPortal :to="overlayHost">
     <PopoverContent
       data-slot="popover-content"
       v-bind="{ ...$attrs, ...forwarded }"

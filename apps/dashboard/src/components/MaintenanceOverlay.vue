@@ -1,23 +1,43 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { CheckIcon, TriangleAlertIcon } from '@lucide/vue'
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
+import { raiseToasts } from '../lib/overlay-host'
 import { maintenance } from '../lib/maintenance'
 import { MAINTENANCE_STEPS, maintenanceStepState, type MaintenanceStep } from '../lib/maintenance-step'
 
 const { t } = useI18n()
 
 // Covers the whole app while an update, a restart or a reboot runs (#132).
-// An alert dialog that nothing closes: focus stays in it, the page under it is
-// inert, Escape and clicks outside do nothing.
+// A native modal dialog that nothing closes: focus stays in it, the page under
+// it is inert, Escape (cancel) and clicks outside do nothing.
+const dlg = ref<HTMLDialogElement | null>(null)
+const titleId = useId()
+const descId = useId()
+const active = computed(() => maintenance.kind !== null)
+watch([dlg, active], ([el, on]) => {
+  if (!el) return
+  if (on && !el.open) el.showModal()
+  else if (!on && el.open) el.close()
+}, { flush: 'post', immediate: true })
 
 const title = computed(() => {
   if (maintenance.kind === 'update') return maintenance.target ? t('maintenance.titleUpdateTo', { version: maintenance.target }) : t('maintenance.titleUpdate')
   return maintenance.kind === 'reboot' ? t('maintenance.titleReboot') : t('maintenance.titleRestart')
 })
+
+/* Chrome lets a second Escape close a modal dialog without a cancel event. */
+let escapeFocus: Element | null = null
+function rememberFocus() { escapeFocus = document.activeElement }
+function reopen() {
+  const el = dlg.value
+  if (!active.value || !el || el.open) return
+  el.showModal()
+  raiseToasts()
+  if (escapeFocus instanceof HTMLElement && el.contains(escapeFocus)) escapeFocus.focus()
+}
 
 function reload() {
   window.location.reload()
@@ -30,15 +50,21 @@ function stepLabel(step: MaintenanceStep): string {
 </script>
 
 <template>
-  <AlertDialog :open="maintenance.kind !== null">
-    <AlertDialogContent
-      class="inset-0 top-0 left-0 z-[100] flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-0 p-6 shadow-none sm:max-w-none"
-      @escape-key-down.prevent
-    >
+  <dialog
+    ref="dlg"
+    role="alertdialog"
+    :aria-labelledby="titleId"
+    :aria-describedby="descId"
+    class="modal overflow-y-auto bg-base-100 p-6"
+    @cancel.prevent
+    @keydown.esc.capture="rememberFocus"
+    @close="reopen"
+  >
+    <template v-if="active">
       <div class="w-full max-w-xl space-y-10">
         <div class="space-y-3">
-          <AlertDialogTitle class="text-3xl font-semibold text-foreground sm:text-4xl">{{ title }}</AlertDialogTitle>
-          <AlertDialogDescription class="text-base text-muted-foreground">{{ t('maintenance.hint') }}</AlertDialogDescription>
+          <h1 :id="titleId" class="text-3xl font-semibold text-foreground sm:text-4xl">{{ title }}</h1>
+          <p :id="descId" class="text-base text-muted-foreground">{{ t('maintenance.hint') }}</p>
         </div>
 
         <ol class="space-y-6" aria-live="polite">
@@ -76,6 +102,6 @@ function stepLabel(step: MaintenanceStep): string {
         </p>
         <Button v-else-if="maintenance.result?.problem" size="lg" @click="reload">{{ t('maintenance.reload') }}</Button>
       </div>
-    </AlertDialogContent>
-  </AlertDialog>
+    </template>
+  </dialog>
 </template>

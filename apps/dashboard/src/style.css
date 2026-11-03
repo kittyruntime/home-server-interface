@@ -228,6 +228,21 @@ button:not([data-slot]):focus-visible,
   .touch-target { min-width: 2.75rem; min-height: 2.75rem; }
 }
 
+/* Toast host: a manual popover (top layer) that adds no box of its own, so
+   vue-sonner's fixed-position toasts show above native dialogs. */
+.toast-layer {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+}
+
 /* ── Named Vue transitions ───────────────────────────────────────────────────
    <Transition name="ui-fade|ui-pop|ui-slide-up">. Duration defaults to
    --dur-base; override with --ui-dur on the element.

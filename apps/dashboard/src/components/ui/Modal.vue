@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, inject, ref } from 'vue'
-import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+import { computed, inject, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { modalHostKey } from '../../lib/modal-host'
+import { useNativeDialog } from '../../lib/native-dialog'
 
 const { t } = useI18n()
 
-/* App dialog shell on top of the shadcn-vue / Reka UI dialog. Parents keep
-   the same contract as before: mount with v-if, listen to @close, which
-   fires once the leave animation has finished. */
+/* App dialog shell on a native <dialog> (daisyUI modal). Parents keep the
+   same contract as before: mount with v-if, listen to @close, which fires
+   once the leave animation has finished. */
 const props = withDefaults(defineProps<{
   /** Tailwind width/max-width classes for the dialog panel. */
   panelClass?: string
+  /** Accessible name when there is no header slot to label the dialog. */
+  label?: string
   closeOnBackdrop?: boolean
   showClose?: boolean
   /** Block Escape/backdrop/X while a critical operation runs (e.g. formatting). */
@@ -28,45 +30,55 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
-const open = ref(true)
-const panel = ref<InstanceType<typeof DialogContent> | null>(null)
-
-function requestClose() {
-  if (props.preventClose) return
-  open.value = false
-}
-
 /* Inside a desktop window the modal stays within the window frame and only
-   blocks that window: the dialog is non-modal for Reka (other windows stay
-   usable) and draws its own backdrop over the window body. */
+   blocks that window: it is a positioned div (not the top layer, so other
+   windows stay usable) that draws its own backdrop over the window body and
+   traps Tab itself. */
 const host = inject(modalHostKey, null)
 const inWindow = computed(() => !!host?.value)
-const teleportTarget = computed(() => host?.value ?? 'body')
+const titleId = useId()
+const panel = ref<HTMLElement | null>(null)
 
-function onOutside(event: Event) {
-  if (inWindow.value || !props.closeOnBackdrop || props.preventClose) event.preventDefault()
-}
+const root = ref<HTMLElement | null>(null)
+const { open, requestClose, finish, onCancel, onNativeClose, onPointerdown, onClick } = useNativeDialog(root, {
+  canClose: () => !props.preventClose,
+  closeOnBackdrop: () => props.closeOnBackdrop,
+  onClosed: () => emit('close'),
+})
 
-function onEscape(event: KeyboardEvent) {
-  if (props.preventClose) event.preventDefault()
+/* In a window, Escape is heard on the window element (not on the document, so
+   a modal never closes from another window), and a press inside the window
+   that leaves focus on the page body brings it back to the panel. */
+function onWindowKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); requestClose() }
 }
-
-function panelEl(): HTMLElement | null {
-  return (panel.value?.$el as HTMLElement | undefined) ?? null
+function onWindowPointerdown() {
+  setTimeout(() => {
+    if (panel.value && (!document.activeElement || document.activeElement === document.body)) panel.value.focus()
+  })
 }
+let windowEl: HTMLElement | null = null
+onMounted(() => {
+  windowEl = host?.value?.parentElement ?? null
+  windowEl?.addEventListener('keydown', onWindowKeydown)
+  windowEl?.addEventListener('pointerdown', onWindowPointerdown)
+})
+onBeforeUnmount(() => {
+  windowEl?.removeEventListener('keydown', onWindowKeydown)
+  windowEl?.removeEventListener('pointerdown', onWindowPointerdown)
+})
 
 /* Focus the first field rather than the header's close button. */
-function onOpenAutoFocus(event: Event) {
-  event.preventDefault()
-  const el = panelEl()
-  const target = el?.querySelector<HTMLElement>('[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [data-slot="dialog-body"] button:not(:disabled), [data-slot="dialog-footer"] button:not(:disabled), [href]')
-  ;(target ?? el)?.focus()
-}
+onMounted(() => {
+  if (!inWindow.value) return
+  const target = panel.value?.querySelector<HTMLElement>('[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [data-slot="dialog-body"] button:not(:disabled), [data-slot="dialog-footer"] button:not(:disabled), [href]')
+  ;(target ?? panel.value)?.focus()
+})
 
-/* A non-modal dialog does not trap focus: keep Tab inside the panel. */
-function onKeydown(event: KeyboardEvent) {
-  const el = panelEl()
-  if (!inWindow.value || event.key !== 'Tab' || !el) return
+function onPanelKeydown(event: KeyboardEvent) {
+  const el = panel.value
+  if (!inWindow.value || !el) return
+  if (event.key !== 'Tab') return
   const focusable = [...el.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
   if (!focusable.length) { event.preventDefault(); el.focus(); return }
   const first = focusable[0]!, last = focusable[focusable.length - 1]!
@@ -74,11 +86,13 @@ function onKeydown(event: KeyboardEvent) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
 }
 
-/* Fires when the panel unmounts, after its leave animation. Only a close we
-   asked for is reported: a parent unmounting us directly already knows. */
-function onClosed() {
-  if (!open.value) emit('close')
-}
+const panelClasses = computed(() => cn(
+  'pointer-events-auto flex flex-col bg-base-100 text-foreground border outline-none',
+  inWindow.value
+    ? 'rounded-xl shadow-lg max-h-[90%]'
+    : 'modal-box p-0 max-h-[92dvh] sm:max-h-[90dvh]',
+  props.panelClass,
+))
 
 /* Lets wrappers close with the leave animation instead of unmounting
    abruptly via their own v-if. */
@@ -86,43 +100,42 @@ defineExpose({ requestClose })
 </script>
 
 <template>
-  <DialogRoot :open="open" :modal="!inWindow" @update:open="value => { if (!value) requestClose() }">
-    <DialogPortal :to="teleportTarget">
-      <DialogOverlay
-        v-if="!inWindow"
-        class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-      />
-      <Transition name="ui-fade" appear>
-        <div v-if="inWindow && open" class="absolute inset-0 z-50 bg-black/50" @click="closeOnBackdrop && requestClose()" />
+  <Teleport :to="inWindow ? host : 'body'">
+    <component
+      :is="inWindow ? 'div' : 'dialog'"
+      ref="root"
+      :class="inWindow
+        ? 'pointer-events-none absolute inset-0 z-50 flex items-center justify-center p-4'
+        : ['modal modal-bottom sm:modal-middle justify-items-center sm:p-4 [&>:not(.modal-box)]:absolute', { 'pointer-events-none opacity-0': !open }]"
+      :style="inWindow ? undefined : { transitionDuration: 'var(--dur-base)' }"
+      :aria-labelledby="!inWindow && $slots.header ? titleId : undefined"
+      :aria-label="!inWindow && !$slots.header ? label : undefined"
+      @cancel="onCancel"
+      @close="onNativeClose"
+      @pointerdown="onPointerdown"
+      @click="onClick"
+    >
+      <Transition v-if="inWindow" name="ui-fade" appear>
+        <div v-if="open" class="pointer-events-auto absolute inset-0 -z-10 bg-black/50" @mousedown.prevent @click="closeOnBackdrop && requestClose()" />
       </Transition>
-      <!-- Positioning layer: centers the panel (bottom sheet under 640px in
-           fullscreen mode); clicks fall through to the backdrop. -->
-      <div
-        :class="[
-          inWindow ? 'absolute items-center p-4' : 'fixed items-end p-0 sm:items-center sm:p-4',
-          'pointer-events-none inset-0 z-50 flex justify-center',
-        ]"
-      >
-        <DialogContent
+      <Transition name="ui-pop" appear @after-leave="finish">
+        <!-- v-show, not v-if: Reka portals inside the panel target this dialog,
+             and unmounting them mid-leave breaks Vue's insertion anchor. -->
+        <div
+          v-show="open"
           ref="panel"
-          :aria-describedby="undefined"
-          :class="cn(
-            'pointer-events-auto flex flex-col bg-background text-foreground border shadow-lg outline-none',
-            'rounded-t-xl sm:rounded-xl max-h-[92dvh] sm:max-h-[90%]',
-            'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-            panelClass,
-          )"
-          @open-auto-focus="onOpenAutoFocus"
-          @close-auto-focus="onClosed"
-          @escape-key-down="onEscape"
-          @pointer-down-outside="onOutside"
-          @interact-outside="onOutside"
-          @keydown="onKeydown"
+          :role="inWindow ? 'dialog' : undefined"
+          :aria-modal="inWindow ? 'true' : undefined"
+          :aria-labelledby="inWindow && $slots.header ? titleId : undefined"
+          :aria-label="inWindow && !$slots.header ? label : undefined"
+          tabindex="-1"
+          :class="panelClasses"
+          @keydown="onPanelKeydown"
         >
           <div v-if="$slots.header || showClose" class="flex items-center justify-between gap-3 px-6 py-4 border-b shrink-0">
-            <DialogTitle as="div" class="flex-1 min-w-0 flex items-center justify-between gap-3">
+            <div :id="titleId" class="flex-1 min-w-0 flex items-center justify-between gap-3">
               <slot name="header" />
-            </DialogTitle>
+            </div>
             <Button
               v-if="showClose"
               variant="ghost"
@@ -149,8 +162,8 @@ defineExpose({ requestClose })
           <div v-if="$slots.footer" data-slot="dialog-footer" class="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t flex flex-wrap items-center gap-2 shrink-0">
             <slot name="footer" />
           </div>
-        </DialogContent>
-      </div>
-    </DialogPortal>
-  </DialogRoot>
+        </div>
+      </Transition>
+    </component>
+  </Teleport>
 </template>

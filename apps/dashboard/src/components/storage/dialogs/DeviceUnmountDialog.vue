@@ -46,7 +46,7 @@ defineExpose({ open })
 </script>
 
 <template>
-  <Modal v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
+  <Modal :label="t('ui.storage.DeviceUnmountDialog.unmountDevice')" v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
     <div class="px-5 py-4 border-b border-border">
       <h3 class="font-semibold text-foreground">{{ t('ui.storage.DeviceUnmountDialog.unmountDevice') }}</h3>
     </div>

@@ -353,7 +353,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- LVM CREATE WIZARD                                                    -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
+    <Modal :label="t('ui.storage.LvmSection.createVolumeGroup2')" v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
 
           <!-- Step indicator -->
           <div class="flex items-center border-b border-border">
@@ -467,7 +467,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- ADD LV DIALOG                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
+    <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-border">
             <h3 class="font-semibold text-foreground">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
             <p class="text-xs text-muted-foreground mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>

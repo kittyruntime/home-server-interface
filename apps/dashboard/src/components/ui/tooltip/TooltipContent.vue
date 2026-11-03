@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOverlayHost } from "@/lib/overlay-host"
 import type { TooltipContentEmits, TooltipContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
@@ -17,10 +18,12 @@ const emits = defineEmits<TooltipContentEmits>()
 
 const delegatedProps = reactiveOmit(props, "class")
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const overlayHost = useOverlayHost()
 </script>
 
 <template>
-  <TooltipPortal>
+  <TooltipPortal :to="overlayHost">
     <TooltipContent
       data-slot="tooltip-content"
       v-bind="{ ...forwarded, ...$attrs }"
