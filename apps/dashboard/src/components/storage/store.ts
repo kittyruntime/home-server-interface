@@ -101,8 +101,8 @@ export function usagePct(dev: BlockDev | { total: number; used: number }): numbe
 }
 
 export function usageBarClass(pct: number): string {
-  if (pct >= 90) return 'bg-red-500'
-  if (pct >= 75) return 'bg-yellow-500'
+  if (pct >= 90) return 'bg-error'
+  if (pct >= 75) return 'bg-warning'
   return 'bg-primary'
 }
 

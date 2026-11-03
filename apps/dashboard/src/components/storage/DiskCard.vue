@@ -301,7 +301,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </Button>
               <!-- Role: LVM PV -->
               <Button variant="outline" size="xs" v-if="memberOwner(part, 'lvm')" @click="emit('navigate', { kind: 'vg', name: memberOwner(part, 'lvm')! })"
-                class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
+                class="text-2xs bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20">
                 {{ t('uip.storage.DiskCard.lvm', { p0: memberOwner(part, 'lvm') }) }}
               </Button>
               <!-- Role: member of an array/VG that is not active -->
@@ -317,7 +317,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             <div v-if="memberOwner(part, 'lvm') && lvsOfVg(memberOwner(part, 'lvm')!).length" class="mt-1.5 space-y-1">
               <div v-for="lv in lvsOfVg(memberOwner(part, 'lvm')!)" :key="lv.path" class="flex items-center gap-2 text-2xs">
                 <span class="text-base-content/35">└─</span>
-                <span class="font-mono text-purple-400">{{ lv.vgName }}/{{ lv.name }}</span>
+                <span class="font-mono text-secondary">{{ lv.vgName }}/{{ lv.name }}</span>
                 <span class="text-base-content/70 tabular-nums">{{ fmtBytes(lv.size) }}</span>
                 <span v-if="lvMountpoint(lv)" class="font-mono text-base-content/70">↳ {{ lvMountpoint(lv) }}</span>
               </div>

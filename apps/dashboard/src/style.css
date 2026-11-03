@@ -227,3 +227,30 @@ html, body, #app {
   width: 100%;
   font-family: var(--font-sans);
 }
+
+/* Colored text on the page background. daisyUI role colors are tuned for
+   fills: as text on a light surface, success or warning fall under 2:1, and
+   wireframe or black make primary near invisible. Pull the text form halfway
+   toward the content color so it stays readable in every theme; the hue
+   still reads. Link buttons get the same treatment. Fills (bg-*, badge-*, btn-*) are
+   untouched. The doubled
+   selector outranks the plain utility, which is emitted later. */
+@layer utilities {
+  .text-primary.text-primary,
+  .text-secondary.text-secondary,
+  .text-accent.text-accent,
+  .text-success.text-success,
+  .text-warning.text-warning,
+  .text-error.text-error,
+  .text-info.text-info {
+    color: color-mix(in oklab, var(--text-role) 50%, var(--color-base-content));
+  }
+  .text-primary.text-primary { --text-role: var(--color-primary); }
+  .text-secondary.text-secondary { --text-role: var(--color-secondary); }
+  .text-accent.text-accent { --text-role: var(--color-accent); }
+  .text-success.text-success { --text-role: var(--color-success); }
+  .text-warning.text-warning { --text-role: var(--color-warning); }
+  .text-error.text-error { --text-role: var(--color-error); }
+  .text-info.text-info { --text-role: var(--color-info); }
+  .btn-link.btn-link { --btn-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content)); }
+}

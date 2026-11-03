@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The interface no longer depends on shadcn-vue or Reka UI**: every
   component is now built on daisyUI. Menus, popovers and tooltips share one short fade-in that follows
   the reduced motion setting.
+- **Colored text stays readable in every theme**: success, warning, error and
+  link text is drawn closer to the theme's text color, so labels no longer
+  fade out on light themes or on wireframe and black. The storage volume
+  list headers line up with their columns, and the storage badges use the
+  theme palette.
 
 ## [1.78.4] - 2026-11-02
 

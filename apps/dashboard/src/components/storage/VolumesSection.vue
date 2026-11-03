@@ -199,10 +199,10 @@ async function mount(v: Volume) {
       <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
         <!-- Header (wide) -->
         <div class="hidden @3xl/content:grid vol-grid gap-3 px-4 py-2 border-b border-base-300 bg-base-200 text-2xs font-medium text-base-content/70">
-          <Button variant="link" class="h-auto p-0 text-left hover:text-base-content" :class="sortKey === 'name' && 'text-base-content'" @click="sortKey = 'name'">{{ t('ui.storage.VolumesSection.volume') }}</Button>
+          <Button variant="link" class="h-auto min-h-0 justify-start p-0 text-left no-underline hover:text-base-content hover:underline" :class="sortKey === 'name' ? 'text-base-content' : 'text-base-content/70'" @click="sortKey = 'name'">{{ t('ui.storage.VolumesSection.volume') }}</Button>
           <span>{{ t('ui.storage.VolumesSection.redundancy') }}</span>
-          <Button variant="link" class="h-auto p-0 text-left hover:text-base-content" :class="sortKey === 'space' && 'text-base-content'" @click="sortKey = 'space'">{{ t('ui.storage.VolumesSection.space') }}</Button>
-          <Button variant="link" class="h-auto p-0 text-left hover:text-base-content" :class="sortKey === 'health' && 'text-base-content'" @click="sortKey = 'health'">{{ t('ui.storage.VolumesSection.health') }}</Button>
+          <Button variant="link" class="h-auto min-h-0 justify-start p-0 text-left no-underline hover:text-base-content hover:underline" :class="sortKey === 'space' ? 'text-base-content' : 'text-base-content/70'" @click="sortKey = 'space'">{{ t('ui.storage.VolumesSection.space') }}</Button>
+          <Button variant="link" class="h-auto min-h-0 justify-start p-0 text-left no-underline hover:text-base-content hover:underline" :class="sortKey === 'health' ? 'text-base-content' : 'text-base-content/70'" @click="sortKey = 'health'">{{ t('ui.storage.VolumesSection.health') }}</Button>
           <span>{{ t('ui.storage.VolumesSection.usedBy') }}</span>
         </div>
 

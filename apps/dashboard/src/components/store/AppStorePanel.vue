@@ -196,7 +196,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         class="mb-4 flex-wrap">
         <ToggleGroupItem v-for="c in chips" :key="c.key" :value="c.key"
           :class="['h-7 px-2.5 text-xs', c.key === 'Updates' && category !== c.key && 'text-warning']">
-          {{ c.label }} <span class="opacity-60 tabular-nums">{{ c.count }}</span>
+          {{ c.label }} <span class="opacity-80 tabular-nums">{{ c.count }}</span>
         </ToggleGroupItem>
       </ToggleGroup>
 

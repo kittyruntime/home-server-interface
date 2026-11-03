@@ -47,7 +47,7 @@ const stages = [
       <div class="mt-3 flex flex-col @2xl:flex-row @2xl:items-center gap-2 @2xl:gap-1">
         <template v-for="(s, i) in stages" :key="s.title">
           <div class="flex-1 min-w-0 rounded-xl border border-base-300 bg-base-200 p-3">
-            <p class="text-xs font-semibold text-purple-400">{{ s.title }}</p>
+            <p class="text-xs font-semibold text-secondary">{{ s.title }}</p>
             <p class="mt-1 text-xs text-base-content/70 leading-snug">{{ s.caption }}</p>
           </div>
           <div v-if="i < stages.length - 1" class="flex items-center justify-center shrink-0 text-base-content/70">

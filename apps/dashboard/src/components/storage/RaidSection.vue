@@ -381,7 +381,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
               <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
-                class="text-2xs bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20">
+                class="text-2xs bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20">
                 {{ t('uip.storage.RaidSection.lvm', { p0: raidPvVg(r.name) }) }}
               </Button>
               <!-- ⋯ menu -->

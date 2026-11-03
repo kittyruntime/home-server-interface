@@ -245,7 +245,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
         class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
         :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-base-300'">
         <!-- Left stripe -->
-        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-purple-500/50'"/>
+        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-secondary/50'"/>
         <div class="flex-1 min-w-0">
           <!-- VG header -->
           <div class="flex items-center gap-3 px-4 py-3">
@@ -254,7 +254,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-base-content" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
                 <span v-else class="font-mono text-sm font-semibold text-base-content">{{ vg.name }}</span>
                 <span class="text-2xs text-base-content/70">{{ fmtBytes(vg.size) }}</span>
-                <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-secondary/10 text-secondary shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
                 <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
                   <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
                   SYSTEM
@@ -262,13 +262,13 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               </div>
               <!-- Capacity bar -->
               <div class="mt-2 flex items-center gap-2">
-                <Progress class="flex-1 h-1 bg-base-200 rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-purple-400/70" />
+                <Progress class="flex-1 h-1 bg-base-200 rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-secondary/70" />
                 <span class="text-2xs text-base-content/70 tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
               <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
-                class="text-base-content/80 hover:border-purple-500/50 hover:text-purple-400">
+                class="text-base-content/80 hover:border-secondary/50 hover:text-secondary">
                 {{ t('ui.storage.LvmSection.addLv') }}
               </Button>
               <!-- ⋯ menu for VG -->
@@ -309,7 +309,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
               class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
               <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-purple-400/40'"/>
+                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'"/>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
@@ -359,7 +359,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
           <div class="flex items-center border-b border-base-300">
             <div v-for="(label, i) in ['Select Devices', 'Configure', 'Confirm']" :key="i"
               :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-                lvmWiz.step === i + 1 ? 'text-purple-400 border-b-2 border-purple-400'
+                lvmWiz.step === i + 1 ? 'text-secondary border-b-2 border-secondary'
                 : lvmWiz.step > i + 1  ? 'text-base-content/70'
                 : 'text-base-content/35']"
             >{{ i + 1 }}. {{ label }}</div>
@@ -382,11 +382,11 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <label v-for="dev in eligibleForLvm" :key="dev.name"
                 :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
                   lvmWiz.pvDevs.includes(dev.name)
-                    ? 'border-purple-400 bg-purple-400/5'
+                    ? 'border-secondary bg-secondary/5'
                     : 'border-base-300 hover:border-base-300']"
                 @click="toggleLvmDev(dev.name)">
                 <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  lvmWiz.pvDevs.includes(dev.name) ? 'border-purple-400 bg-purple-400' : 'border-base-300']">
+                  lvmWiz.pvDevs.includes(dev.name) ? 'border-secondary bg-secondary' : 'border-base-300']">
                   <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
@@ -470,7 +470,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-base-300">
             <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
-            <p class="text-xs text-base-content/70 mt-0.5">VG <span class="font-mono text-purple-400">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">VG <span class="font-mono text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
           </div>
           <div class="p-5 space-y-4">
             <div>

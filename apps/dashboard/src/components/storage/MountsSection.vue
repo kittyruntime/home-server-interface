@@ -191,7 +191,7 @@ const unmounted = computed<UnmountedEntry[]>(() => {
 const sourceBadgeClass: Record<MountSource, string> = {
   disk:  'bg-base-200 text-base-content/70 border-base-300 hover:border-base-300',
   raid:  'bg-info/10 text-info border-info/20 hover:bg-info/20',
-  lvm:   'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20',
+  lvm:   'bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20',
 }
 
 // ── Format wizard ─────────────────────────────────────────────────────────────

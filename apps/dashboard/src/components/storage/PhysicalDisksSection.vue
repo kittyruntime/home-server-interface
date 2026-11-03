@@ -172,8 +172,8 @@ function toggleExpanded(name: string) {
 const ROLE_CLASS: Record<DiskRole, string> = {
   system:    'bg-warning/10 text-warning border-warning/20',
   raid:      'bg-info/10 text-info border-info/20',
-  lvm:       'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  mounted:   'bg-teal-500/10 text-teal-500 border-teal-500/20',
+  lvm:       'bg-secondary/10 text-secondary border-secondary/20',
+  mounted:   'bg-accent/10 text-accent border-accent/20',
   free:      'bg-success/10 text-success border-success/20',
   unmounted: 'bg-base-200 text-base-content/70 border-base-300',
 }
