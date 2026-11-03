@@ -82,10 +82,13 @@ const addPicker = ref<string | null>(null) // array name whose picker is open
 async function runMemberOp(r: RaidArray, device: string, op: 'fail' | 'remove' | 'add') {
   memberBusy.value = `${r.name}:${device}`
   try {
-    const title = op === 'fail' ? `Mark /dev/${device} as failed in /dev/${r.name}`
-      : op === 'remove' ? `Remove /dev/${device} from /dev/${r.name}`
-      : `Add /dev/${device} to /dev/${r.name}`
-    const actionLabel = op === 'fail' ? 'Mark as failed' : op === 'remove' ? 'Remove' : `Add /dev/${device}`
+    const ids = { p0: device, p1: r.name }
+    const title = op === 'fail' ? t('uis.storage.RaidSection.markFailedTitle', ids)
+      : op === 'remove' ? t('uis.storage.RaidSection.removeMemberTitle', ids)
+      : t('uis.storage.RaidSection.addMemberTitle', ids)
+    const actionLabel = op === 'fail' ? t('uis.storage.RaidSection.markAsFailed')
+      : op === 'remove' ? t('uis.storage.RaidSection.remove')
+      : t('uis.storage.RaidSection.addDevice', { p0: device })
     await applyPlanned(`raid.${op}`, { name: r.name, device }, { title, actionLabel, danger: op === 'fail' })
     addPicker.value = null
     await refresh()
@@ -112,8 +115,8 @@ async function addMember(r: RaidArray, d: BlockDev) {
 
 function syncLabel(r: RaidArray): string {
   if (r.resyncPercent == null) return r.state
-  const what = r.syncAction === 'recovery' ? 'Rebuilding' : r.syncAction === 'check' ? 'Checking' : r.syncAction === 'reshape' ? 'Reshaping' : 'Syncing'
-  return `${what}: ${r.resyncPercent.toFixed(1)}%`
+  const key = r.syncAction === 'recovery' ? 'syncRebuilding' : r.syncAction === 'check' ? 'syncChecking' : r.syncAction === 'reshape' ? 'syncReshaping' : 'syncSyncing'
+  return t(`uis.storage.RaidSection.${key}`, { p0: r.resyncPercent.toFixed(1) })
 }
 
 // Refresh while an array rebuilds so progress moves without a reload.
@@ -155,36 +158,19 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
 // ── Create RAID wizard ────────────────────────────────────────────────────────
 
-const RAID_LEVELS = [
-  {
-    level: 0, name: 'RAID 0', sub: 'Striping', minDev: 2,
-    redundancy: 'None',
-    desc: 'All drives are combined into one large volume. Maximum capacity and speed.',
-    danger: 'No redundancy: if ANY single drive fails, ALL data on the array is lost permanently.',
-    capacityHint: 'Capacity = total of all drives',
-  },
-  {
-    level: 1, name: 'RAID 1', sub: 'Mirroring', minDev: 2,
-    redundancy: '1 drive',
-    desc: 'Data is written identically to every drive. Very safe, reads can be distributed.',
-    danger: 'Usable space equals the size of ONE drive, regardless of how many drives you add.',
-    capacityHint: 'Capacity = size of smallest drive',
-  },
-  {
-    level: 5, name: 'RAID 5', sub: 'Parity', minDev: 3,
-    redundancy: '1 drive',
-    desc: 'Parity information is distributed across all drives. Good balance of capacity and safety.',
-    danger: 'Requires at least 3 drives. Rebuilding after a drive failure is slow and stresses surviving drives.',
-    capacityHint: 'Capacity = (N − 1) × drive size',
-  },
-  {
-    level: 10, name: 'RAID 10', sub: 'Mirror + Stripe', minDev: 4,
-    redundancy: '1 per mirror pair',
-    desc: 'Pairs of mirrored drives, then striped together. Best performance and redundancy.',
-    danger: 'Requires minimum 4 drives (even number). Uses 50% of total drive capacity.',
-    capacityHint: 'Capacity = 50% of total drives',
-  },
-]
+const LEVEL_MIN_DEVICES = { 0: 2, 1: 2, 5: 3, 10: 4 } as const
+
+const RAID_LEVELS = computed(() => (Object.keys(LEVEL_MIN_DEVICES).map(Number) as (keyof typeof LEVEL_MIN_DEVICES)[]).map(level => {
+  const k = (field: string) => t(`uis.storage.RaidSection.level${level}${field}`)
+  return {
+    level, name: `RAID ${level}`, sub: k('Sub'), minDev: LEVEL_MIN_DEVICES[level],
+    redundant: level !== 0,
+    redundancy: k('Redundancy'),
+    desc: k('Desc'),
+    danger: k('Danger'),
+    capacityHint: k('Capacity'),
+  }
+}))
 
 function nextMdName(): string {
   const used = new Set(raids.value.map(r => r.name))
@@ -215,7 +201,7 @@ watch(() => props.preselect, devs => {
 }, { immediate: true })
 
 const selectedRaidLevel = computed(() =>
-  RAID_LEVELS.find(l => l.level === raidWiz.value?.level) ?? RAID_LEVELS[1]!
+  RAID_LEVELS.value.find(l => l.level === raidWiz.value?.level) ?? RAID_LEVELS.value[1]!
 )
 
 function toggleRaidDev(name: string) {
@@ -239,8 +225,8 @@ const wizardCapacity = computed(() => {
 
 function toleranceText(n: number, max: number): string {
   if (n === 0) return t('uis.storage.RaidSection.noDriveFailureTolerated')
-  const base = `survives ${n} drive failure${n > 1 ? 's' : ''}`
-  return max > n ? `${base} (up to ${max} if they hit different mirrors)` : base
+  const base = n === 1 ? t('uis.storage.RaidSection.survivesOne') : t('uis.storage.RaidSection.survivesMany', { p0: n })
+  return max > n ? t('uis.storage.RaidSection.survivesUpTo', { p0: base, p1: max }) : base
 }
 
 // Usable vs raw size and remaining tolerance of an existing array.
@@ -250,9 +236,15 @@ function arrayCapacityLine(r: RaidArray): string {
   const raw = memberSizes.reduce((a, b) => a + b, 0)
   const usable = md?.size ?? raidCapacity(r.level, memberSizes).usable
   const parts: string[] = []
-  if (usable > 0) parts.push(raw > 0 ? `${fmtBytes(usable)} usable of ${fmtBytes(raw)} raw (${Math.round(usable / raw * 100)}%)` : `${fmtBytes(usable)} usable`)
+  if (usable > 0) {
+    parts.push(raw > 0
+      ? t('uis.storage.RaidSection.usableOfRaw', { p0: fmtBytes(usable), p1: fmtBytes(raw), p2: Math.round(usable / raw * 100) })
+      : t('uis.storage.RaidSection.usableOnly', { p0: fmtBytes(usable) }))
+  }
   const left = remainingFaultTolerance(r.level, r.total, r.active)
-  parts.push(left === 0 ? 'no failure tolerated right now' : `can lose ${left} more drive${left > 1 ? 's' : ''}`)
+  parts.push(left === 0 ? t('uis.storage.RaidSection.noFailureTolerated')
+    : left === 1 ? t('uis.storage.RaidSection.canLoseOne')
+    : t('uis.storage.RaidSection.canLoseMany', { p0: left }))
   return parts.join(' · ')
 }
 
@@ -329,7 +321,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
       </div>
       <div class="flex items-center gap-2">
-        <Tip :text="isMissing('mdadm') ? 'mdadm is not installed: sudo apt install mdadm' : undefined" wrap>
+        <Tip :text="isMissing('mdadm') ? t('ui.storage.RaidSection.toolsNotInstalled') : undefined" wrap>
           <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')">
             <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
             {{ t('ui.storage.RaidSection.createRaid') }}
@@ -374,10 +366,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
             <span v-else class="font-mono text-sm text-base-content">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
-              <span class="text-2xs text-base-content/70">{{ r.active }}/{{ r.total }} drives</span>
+              <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
               <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'"/>
-                {{ isRaidHealthy(r) ? 'Healthy' : syncLabel(r) }}
+                {{ isRaidHealthy(r) ? t('ui.storage.RaidSection.healthy') : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
               <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
@@ -442,7 +434,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <ZapIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
                 <div>
                   <div class="text-2xs font-semibold text-base-content/80">{{ raidLevelLabel(r.level) }}</div>
-                  <div class="text-2xs text-base-content/70 font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : 'not mounted') }}</div>
+                  <div class="text-2xs text-base-content/70 font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : t('ui.storage.RaidSection.notMountedShort')) }}</div>
                 </div>
               </div>
             </div>
@@ -461,7 +453,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
                 <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
                   :class="m.role === 'faulty' ? 'bg-error/10 text-error' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
-                  {{ m.role === 'faulty' ? 'Failed' : m.role === 'spare' ? 'Spare' : m.role === 'rebuilding' ? 'Rebuilding' : 'Active' }}
+                  {{ m.role === 'faulty' ? t('ui.storage.RaidSection.memberFailed') : m.role === 'spare' ? t('ui.storage.RaidSection.memberSpare') : m.role === 'rebuilding' ? t('ui.storage.RaidSection.memberRebuilding') : t('ui.storage.RaidSection.memberActive') }}
                 </span>
                 <div class="min-w-0 flex-1">
                   <span class="font-mono text-xs text-base-content">/dev/{{ m.name }}</span>
@@ -472,7 +464,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   :disabled="memberBusy !== null" @click="failMember(r, m)">{{ t('ui.storage.RaidSection.markAsFailed') }}</Button>
                 <Button variant="outline" size="xs" v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="shrink-0"
                   :disabled="memberBusy !== null" @click="removeMember(r, m)">
-                  {{ memberBusy === `${r.name}:${m.name}` ? 'Removing…' : 'Remove' }}
+                  {{ memberBusy === `${r.name}:${m.name}` ? t('ui.storage.RaidSection.removing') : t('ui.storage.RaidSection.remove') }}
                 </Button>
               </div>
               <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-error">
@@ -547,7 +539,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
           <!-- Step indicator -->
           <div class="flex items-center gap-0 border-b border-base-300">
-            <div v-for="(label, i) in ['RAID Level', 'Select Drives', 'Confirm']" :key="i"
+            <div v-for="(label, i) in [t('ui.storage.RaidSection.stepRaidLevel'), t('ui.storage.RaidSection.stepSelectDrives'), t('ui.storage.RaidSection.stepConfirm')]" :key="i"
               :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
                 raidWiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
                 : raidWiz.step > i + 1  ? 'text-base-content/70'
@@ -559,7 +551,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
           <div v-if="raidWiz.step === 1" class="p-5 space-y-3">
             <p class="flex items-center gap-1.5 text-sm text-base-content/70">
               {{ t('ui.storage.RaidSection.chooseTheRaidConfigurationThat') }}
-              <Hint text="Each diagram shows how one chunk of data is placed on the drives. Same letter = identical copy. Different letters = split across drives. P = a parity block, used to rebuild data if a drive fails." />
+              <Hint :text="t('ui.storage.RaidSection.levelDiagramHint')" />
             </p>
 
             <!-- Own container: the dialog is teleported out of the Storage panel. -->
@@ -580,7 +572,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <div class="text-2xs text-base-content/70 leading-relaxed">{{ lvl.desc }}</div>
                 <div class="flex items-center gap-3 mt-2 text-2xs">
                   <span class="text-base-content/70">{{ t('uip.storage.RaidSection.minDrives', { p0: lvl.minDev }) }}</span>
-                  <span :class="lvl.redundancy === 'None' ? 'text-error' : 'text-success'">
+                  <span :class="lvl.redundant ? 'text-success' : 'text-error'">
                     {{ t('uip.storage.RaidSection.redundancy', { p0: lvl.redundancy }) }}
                   </span>
                 </div>
@@ -676,7 +668,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <TriangleAlertIcon class="w-5 h-5 text-error mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-error text-sm mb-1">{{ t('ui.storage.RaidSection.allDataOnSelectedDrives') }}</div>
-                <div class="text-xs text-error/80">
+                <div class="text-xs text-error">
                   {{ t('ui.storage.RaidSection.creatingThisRaidArrayWill') }}
                 </div>
               </div>
@@ -726,10 +718,10 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <ConfirmDestroyDialog
       v-if="destroyDlg"
       :title="t('ui.storage.RaidSection.destroyRaidArray')"
-      subtitle="This will stop the array and erase RAID metadata from all member drives."
+      :subtitle="t('ui.storage.RaidSection.destroySubtitle')"
       :confirm-word="destroyDlg.raid.name"
-      action-label="Destroy array"
-      busy-label="Destroying…"
+      :action-label="t('ui.storage.RaidSection.destroyAction')"
+      :busy-label="t('ui.storage.RaidSection.destroying')"
       :busy="destroyDlg.busy"
       :error="destroyDlg.err"
       @confirm="doDestroyRaid"

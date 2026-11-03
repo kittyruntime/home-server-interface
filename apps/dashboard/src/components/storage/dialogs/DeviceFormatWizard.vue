@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { TriangleAlertIcon } from '@lucide/vue'
 import { applyPlanned } from '../../../lib/plan'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { fmtBytes, type BlockDev } from '../store'
 import Modal from '../../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,13 @@ const emit = defineEmits<{ done: []; mount: [dev: BlockDev] }>()
 
 type FsType = 'ext4' | 'xfs' | 'btrfs' | 'fat32'
 
-const FS_OPTIONS: { id: FsType; name: string; tag: string; desc: string }[] = [
-  { id: 'ext4',  name: 'ext4',  tag: 'Recommended', desc: 'Stable, journaled filesystem. Widely supported on Linux. Best for general use and NAS data.' },
-  { id: 'xfs',   name: 'XFS',   tag: 'Large files',  desc: 'High-performance filesystem. Excellent for large media files and backups. Cannot be shrunk once created.' },
-  { id: 'btrfs', name: 'Btrfs', tag: 'Advanced',    desc: 'Modern copy-on-write filesystem with built-in checksums and snapshot support. More complex to manage.' },
-  { id: 'fat32', name: 'FAT32', tag: 'Cross-platform', desc: 'Compatible with Windows and macOS without drivers. No file permissions, 4 GB file size limit. For USB/external drives only.' },
-]
+const FS_NAMES: Record<FsType, string> = { ext4: 'ext4', xfs: 'XFS', btrfs: 'Btrfs', fat32: 'FAT32' }
+const FS_OPTIONS = computed(() => (Object.keys(FS_NAMES) as FsType[]).map(id => ({
+  id,
+  name: FS_NAMES[id],
+  tag: t(`uis.storage.DeviceFormatWizard.${id}Tag`),
+  desc: t(`uis.storage.DeviceFormatWizard.${id}Desc`),
+})))
 
 const wiz = ref<{
   dev:     BlockDev
@@ -74,7 +75,7 @@ defineExpose({ open })
 
     <!-- Step indicator -->
     <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-base-300">
-      <div v-for="(label, i) in ['Warning', 'Filesystem', 'Confirm']" :key="i"
+      <div v-for="(label, i) in [t('ui.storage.DeviceFormatWizard.stepWarning'), t('ui.storage.DeviceFormatWizard.filesystem'), t('ui.storage.DeviceFormatWizard.stepConfirm')]" :key="i"
         :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
           wiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
           : wiz.step > i + 1  ? 'text-base-content/70'
@@ -88,7 +89,7 @@ defineExpose({ open })
         <TriangleAlertIcon class="w-5 h-5 text-error mt-0.5 shrink-0" aria-hidden="true" />
         <div>
           <div class="font-semibold text-error text-sm mb-1">{{ t('ui.storage.DeviceFormatWizard.allDataWillBePermanently') }}</div>
-          <div class="text-xs text-error/80">
+          <div class="text-xs text-error">
             {{ t('ui.storage.DeviceFormatWizard.formatting') }} <span class="font-mono font-bold">/dev/{{ wiz.dev.name }}</span> {{ t('ui.storage.DeviceFormatWizard.willDestroyEveryFileCurrently') }}
           </div>
         </div>
@@ -130,7 +131,7 @@ defineExpose({ open })
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-base-content">{{ fs.name }}</span>
               <span class="text-2xs px-1.5 py-0.5 rounded-sm"
-                :class="fs.tag === 'Recommended' ? 'bg-success/15 text-success' : 'bg-base-200 text-base-content/70'"
+                :class="fs.id === 'ext4' ? 'bg-success/15 text-success' : 'bg-base-200 text-base-content/70'"
               >{{ fs.tag }}</span>
             </div>
             <div class="text-xs text-base-content/70 mt-0.5 leading-relaxed">{{ fs.desc }}</div>

@@ -52,6 +52,7 @@ export default {
     unusedOnDevDrivesAre: '{p0} unused on /dev/{p1} (drives are used at the size of the smallest one)',
     requiresAtLeastDrivesSelected: '{p0} requires at least {p1} drives ({p2} selected).',
     usableOfRaw: '{p0} usable of {p1} raw ({p2}%)',
+    drivesActive: '{p0}/{p1} drives',
   },
   StoragePanel: {
     someStorageToolsAreNot: 'Some storage tools are not installed on the server, so these features are unavailable: {p0}.',

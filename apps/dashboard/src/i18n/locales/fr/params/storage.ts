@@ -49,6 +49,7 @@ export default {
     unusedOnDevDrivesAre: '{p0} inutilisés sur /dev/{p1} (les disques sont utilisés à la taille du plus petit)',
     requiresAtLeastDrivesSelected: '{p0} demande au moins {p1} disques ({p2} sélectionnés).',
     usableOfRaw: '{p0} utilisables sur {p1} bruts ({p2} %)',
+    drivesActive: '{p0}/{p1} disques',
   },
   StoragePanel: {
     someStorageToolsAreNot: 'Des outils de stockage ne sont pas installés sur le serveur, ces fonctions sont donc indisponibles : {p0}.',

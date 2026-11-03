@@ -22,4 +22,8 @@ export default {
     stopSharingClientsLoseAccess: 'Stop sharing {p0}; clients lose access',
     stopSharing: 'Stop sharing',
   },
+  ShareLinkModal: {
+    noPermission: 'You do not have permission to share this folder.',
+    failedToCreate: 'Failed to create link',
+  },
 }

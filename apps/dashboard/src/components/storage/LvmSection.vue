@@ -211,7 +211,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
       </div>
       <div class="flex items-center gap-2">
-        <Tip :text="isMissing('pvcreate') ? 'LVM tools are not installed: sudo apt install lvm2' : undefined" wrap>
+        <Tip :text="isMissing('pvcreate') ? t('ui.storage.LvmSection.toolsNotInstalled') : undefined" wrap>
           <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')">
             <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
             {{ t('ui.storage.LvmSection.createVolumeGroup') }}
@@ -315,7 +315,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                   <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
                   <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(lv.size) }}</span>
                   <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 uppercase">{{ lv2bd(lv).fstype }}</span>
-                  <span v-else class="text-2xs text-base-content/70">unformatted</span>
+                  <span v-else class="text-2xs text-base-content/70">{{ t('ui.storage.LvmSection.unformatted') }}</span>
                 </div>
                 <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-base-content/70 mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
@@ -357,7 +357,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
           <!-- Step indicator -->
           <div class="flex items-center border-b border-base-300">
-            <div v-for="(label, i) in ['Select Devices', 'Configure', 'Confirm']" :key="i"
+            <div v-for="(label, i) in [t('ui.storage.LvmSection.stepSelectDevices'), t('ui.storage.LvmSection.stepConfigure'), t('ui.storage.LvmSection.stepConfirm')]" :key="i"
               :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
                 lvmWiz.step === i + 1 ? 'text-secondary border-b-2 border-secondary'
                 : lvmWiz.step > i + 1  ? 'text-base-content/70'
@@ -442,14 +442,14 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
               <div>
                 <div class="font-semibold text-warning text-sm mb-1">{{ t('ui.storage.LvmSection.allDataOnSelectedDevices') }}</div>
-                <div class="text-xs text-warning/80">{{ t('ui.storage.LvmSection.lvmWillOverwriteTheBeginning') }}</div>
+                <div class="text-xs text-warning">{{ t('ui.storage.LvmSection.lvmWillOverwriteTheBeginning') }}</div>
               </div>
             </Alert>
             <div class="space-y-1 text-xs text-base-content/70">
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.devices') }}</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : 'All free space' }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : t('ui.storage.LvmSection.allFreeSpace') }}</span></div>
             </div>
             <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
             <div class="flex gap-2">
@@ -502,8 +502,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       v-if="removeLvDlg"
       :title="t('ui.storage.LvmSection.deleteLogicalVolume')"
       :confirm-word="removeLvDlg.lv.name"
-      action-label="Delete LV"
-      busy-label="Deleting…"
+      :action-label="t('ui.storage.LvmSection.deleteLvAction')"
+      :busy-label="t('ui.storage.LvmSection.deleting')"
       :busy="removeLvDlg.busy"
       :error="removeLvDlg.err"
       @confirm="doRemoveLv"
@@ -521,10 +521,10 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <ConfirmDestroyDialog
       v-if="removeVgDlg"
       :title="t('ui.storage.LvmSection.removeVolumeGroup')"
-      subtitle="This will delete the VG and all its Logical Volumes."
+      :subtitle="t('ui.storage.LvmSection.removeVgSubtitle')"
       :confirm-word="removeVgDlg.vg.name"
-      action-label="Remove VG"
-      busy-label="Removing…"
+      :action-label="t('ui.storage.LvmSection.removeVgAction')"
+      :busy-label="t('ui.storage.LvmSection.removingBusy')"
       :busy="removeVgDlg.busy"
       :error="removeVgDlg.err"
       @confirm="doRemoveVg"
