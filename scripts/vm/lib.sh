@@ -23,6 +23,22 @@ vm_ssh() {
     root@127.0.0.1 "$@"
 }
 
+# Installs packages in the VM. Debian mirrors sometimes drop a download
+# (TLS "unexpected eof"), which used to fail a whole scenario before HSI was
+# even installed: apt retries each file, and the install itself is retried
+# after refreshing the package index.
+vm_apt_install() {
+  local attempt
+  for attempt in 1 2 3; do
+    vm_ssh "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq -o Acquire::Retries=5 $* >/dev/null" && return 0
+    [ "$attempt" -lt 3 ] || break
+    log "apt-get install $* failed (attempt $attempt), retrying"
+    sleep $((attempt * 10))
+    vm_ssh 'apt-get update -qq >/dev/null' || true
+  done
+  return 1
+}
+
 vm_put() {
   scp -q -i "$VM_DIR/id_ed25519" -P "$VM_SSH_PORT" \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
