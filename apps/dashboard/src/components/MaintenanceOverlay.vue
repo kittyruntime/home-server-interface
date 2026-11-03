@@ -4,7 +4,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { CheckIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
-import { raiseToasts } from '../lib/overlay-host'
+import { raiseToasts } from '../lib/toast-layer'
 import { maintenance } from '../lib/maintenance'
 import { MAINTENANCE_STEPS, maintenanceStepState, type MaintenanceStep } from '../lib/maintenance-step'
 

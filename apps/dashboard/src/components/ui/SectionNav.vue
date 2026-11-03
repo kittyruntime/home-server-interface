@@ -2,7 +2,7 @@
 import type { SectionNavItem } from './section-nav'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +18,7 @@ import {
 const { t } = useI18n()
 
 // Section navigation of a panel (Settings, Storage, Monitor, Sharing): the
-// shadcn-vue sidebar on wide layouts, a select on narrow ones. `container`
+// shadcn-vue sidebar on wide layouts, a native select on narrow ones. `container`
 // switches on the panel's width (a desktop window) instead of the screen's.
 const props = defineProps<{
   items: SectionNavItem<T>[]
@@ -39,14 +39,13 @@ const groups = computed(() => {
 
 <template>
   <div :class="['shrink-0 border-b bg-sidebar px-4 py-2.5', container ? '@2xl:hidden' : 'sm:hidden']">
-    <Select v-model="active">
-      <SelectTrigger class="w-full" :aria-label="t('common.section')">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem v-for="item in items" :key="item.id" :value="item.id">{{ item.label }}</SelectItem>
-      </SelectContent>
-    </Select>
+    <NativeSelect
+      :model-value="active"
+      :aria-label="t('common.section')"
+      @update:model-value="active = $event as T"
+    >
+      <NativeSelectOption v-for="item in items" :key="item.id" :value="item.id">{{ item.label }}</NativeSelectOption>
+    </NativeSelect>
   </div>
 
   <SidebarProvider

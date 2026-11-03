@@ -1,19 +1,26 @@
 <script setup lang="ts">
-import type { DropdownMenuRootEmits, DropdownMenuRootProps } from "reka-ui"
-import { DropdownMenuRoot, useForwardPropsEmits } from "reka-ui"
+import type { Ref } from "vue"
+import { useVModel } from "@vueuse/core"
+import { useMenu } from "@/lib/use-menu"
 
-const props = defineProps<DropdownMenuRootProps>()
-const emits = defineEmits<DropdownMenuRootEmits>()
+const props = withDefaults(defineProps<{
+  open?: boolean
+  defaultOpen?: boolean
+  /** Accepted for compatibility: a menu never blocks the page. */
+  modal?: boolean
+  dir?: "ltr" | "rtl"
+}>(), {
+  open: undefined,
+  defaultOpen: false,
+  modal: true,
+  dir: undefined,
+})
+const emit = defineEmits<{ "update:open": [value: boolean] }>()
 
-const forwarded = useForwardPropsEmits(props, emits)
+const open = useVModel(props, "open", emit, { passive: true, defaultValue: props.defaultOpen }) as Ref<boolean>
+useMenu({ kind: "dropdown", open })
 </script>
 
 <template>
-  <DropdownMenuRoot
-    v-slot="slotProps"
-    data-slot="dropdown-menu"
-    v-bind="forwarded"
-  >
-    <slot v-bind="slotProps" />
-  </DropdownMenuRoot>
+  <slot :open="open" />
 </template>

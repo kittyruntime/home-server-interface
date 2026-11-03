@@ -12,7 +12,7 @@ import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
 import { catalogVersion, filterChips, isNew, keptFilter, visibleApps, categoryLabel, type StoreOrder } from '../../lib/store'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -172,16 +172,17 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         <h2 class="text-lg font-semibold text-foreground">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
         <div class="flex items-center gap-2 sm:max-w-md sm:flex-1 sm:justify-end">
           <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="min-w-0 flex-1 sm:max-w-xs" />
-          <Select v-model="order">
-            <SelectTrigger size="sm" class="h-9 shrink-0 text-xs" :aria-label="t('ui.store.AppStorePanel.sortApps')">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">{{ t('ui.store.AppStorePanel.installedFirst') }}</SelectItem>
-              <SelectItem value="name">{{ t('ui.store.AppStorePanel.byName') }}</SelectItem>
-              <SelectItem value="added">{{ t('ui.store.AppStorePanel.recentlyAdded') }}</SelectItem>
-            </SelectContent>
-          </Select>
+          <NativeSelect
+            :model-value="order"
+            wrapper-class="w-auto shrink-0"
+            class="select-sm h-9 w-auto text-xs"
+            :aria-label="t('ui.store.AppStorePanel.sortApps')"
+            @update:model-value="order = $event as StoreOrder"
+          >
+            <NativeSelectOption value="default">{{ t('ui.store.AppStorePanel.installedFirst') }}</NativeSelectOption>
+            <NativeSelectOption value="name">{{ t('ui.store.AppStorePanel.byName') }}</NativeSelectOption>
+            <NativeSelectOption value="added">{{ t('ui.store.AppStorePanel.recentlyAdded') }}</NativeSelectOption>
+          </NativeSelect>
         </div>
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
