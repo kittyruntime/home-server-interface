@@ -69,14 +69,14 @@ function launch(id: AppId) {
             :key="id"
             variant="ghost"
             @click="launch(id)"
-            class="h-auto flex-col gap-3 p-4 rounded-xl font-normal whitespace-normal focus-visible:bg-base-200"
+            class="h-auto flex-col gap-3 p-4 rounded-box font-normal whitespace-normal focus-visible:bg-base-200"
           >
-            <div class="relative size-16 rounded-xl bg-card border shadow-xs flex items-center justify-center text-foreground/80">
+            <div class="relative size-16 rounded-box bg-base-100 border border-base-300 shadow-xs flex items-center justify-center text-base-content/80">
               <AppIcon :app="id" :stroke-width="1.5" class="size-7" />
               <span v-if="id === 'storage' && hasAlerts('storage.')"
-                class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
+                class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
               <span v-else-if="id === 'monitor' && alerts.length"
-                class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
+                class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
             </div>
             <span class="eyebrow">{{ APP_LABEL[id] }}</span>
           </Button>

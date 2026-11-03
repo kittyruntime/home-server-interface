@@ -1,48 +1,25 @@
 <script setup lang="ts">
-import type { Component } from "vue"
-import type { SidebarMenuButtonProps } from "./SidebarMenuButtonChild.vue"
-import { reactiveOmit } from "@vueuse/core"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import SidebarMenuButtonChild from "./SidebarMenuButtonChild.vue"
-import { useSidebar } from "./utils"
+import type { HTMLAttributes } from "vue"
+import { cn } from "@/lib/utils"
 
-defineOptions({
-  inheritAttrs: false,
-})
-
-const props = withDefaults(defineProps<SidebarMenuButtonProps & {
-  tooltip?: string | Component
-}>(), {
-  as: "button",
-  variant: "default",
-  size: "default",
-})
-
-const { isMobile, state } = useSidebar()
-
-const delegatedProps = reactiveOmit(props, "tooltip")
+const props = defineProps<{
+  isActive?: boolean
+  class?: HTMLAttributes["class"]
+}>()
 </script>
 
 <template>
-  <SidebarMenuButtonChild v-if="!tooltip" v-bind="{ ...delegatedProps, ...$attrs }">
+  <button
+    type="button"
+    data-slot="sidebar-menu-button"
+    :data-active="isActive"
+    :class="cn(
+      'gap-2 text-left focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+      'group-has-data-[slot=sidebar-menu-action]/menu-item:pr-8',
+      isActive && 'menu-active font-medium',
+      props.class,
+    )"
+  >
     <slot />
-  </SidebarMenuButtonChild>
-
-  <Tooltip v-else>
-    <TooltipTrigger as-child>
-      <SidebarMenuButtonChild v-bind="{ ...delegatedProps, ...$attrs }">
-        <slot />
-      </SidebarMenuButtonChild>
-    </TooltipTrigger>
-    <TooltipContent
-      side="right"
-      align="center"
-      :hidden="state !== 'collapsed' || isMobile"
-    >
-      <template v-if="typeof tooltip === 'string'">
-        {{ tooltip }}
-      </template>
-      <component :is="tooltip" v-else />
-    </TooltipContent>
-  </Tooltip>
+  </button>
 </template>

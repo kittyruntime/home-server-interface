@@ -152,32 +152,33 @@ function onMaximizeClick() {
 
 <template>
   <div
-    class="absolute flex flex-col rounded-xl overflow-hidden bg-card border"
-    :class="focused ? 'border-primary' : 'border-input'"
+    class="absolute flex flex-col rounded-box overflow-hidden bg-base-100 border"
+    :class="focused ? 'border-primary shadow-2xl' : 'border-base-300 shadow-sm'"
     :style="{ left: win.x + 'px', top: win.y + 'px', width: win.w + 'px', height: win.h + 'px', zIndex: win.zIndex }"
     @pointerdown="focusWindow(win.id)"
     @contextmenu.stop
   >
     <div
-      class="h-9 flex items-center justify-between px-3 border-b border-border bg-muted flex-shrink-0 select-none cursor-default"
+      class="h-9 flex items-center justify-between px-3 border-b border-base-300 flex-shrink-0 select-none cursor-default"
+      :class="focused ? 'bg-base-100' : 'bg-base-200'"
       @pointerdown="startDrag"
       @dblclick="onMaximizeClick"
     >
       <div v-if="win.appId === 'file-preview'" class="flex items-center gap-2 min-w-0">
-        <span class="text-xs text-foreground truncate" :title="win.filePreview?.name">{{ win.filePreview?.name }}</span>
+        <span class="text-xs text-base-content truncate" :title="win.filePreview?.name">{{ win.filePreview?.name }}</span>
         <Badge variant="secondary" v-if="filePreviewExt" class="shrink-0">{{ filePreviewExt }}</Badge>
         <span v-if="win.dirty" class="status-text text-warning shrink-0 text-2xs">[UNSAVED]</span>
       </div>
       <div v-else class="flex items-center gap-2 min-w-0">
-        <AppIcon :app="win.appId" :stroke-width="2" class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span class="eyebrow truncate">{{ APP_LABEL[win.appId] }}</span>
+        <AppIcon :app="win.appId" :stroke-width="2" class="w-3.5 h-3.5 text-base-content/75 shrink-0" />
+        <span class="eyebrow truncate text-base-content">{{ APP_LABEL[win.appId] }}</span>
       </div>
       <div class="flex items-center gap-1 shrink-0" @pointerdown.stop>
         <Button variant="ghost" size="icon-xs"
           v-if="win.appId === 'apps' && isAdmin"
           @click="appsPanelRef?.openNew()"
           :tooltip="t('ui.desktop.DesktopWindow.newApp')" :aria-label="t('ui.desktop.DesktopWindow.newApp')"
-          class="text-muted-foreground hover:text-foreground"
+          class="text-base-content/75 hover:text-base-content"
         >
           <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
@@ -185,7 +186,7 @@ function onMaximizeClick() {
           v-if="win.appId === 'file-preview' && win.dirty"
           @click="filePreviewRef?.save()"
           :tooltip="t('ui.desktop.DesktopWindow.save')" :aria-label="t('ui.desktop.DesktopWindow.save')"
-          class="text-muted-foreground hover:text-foreground"
+          class="text-base-content/75 hover:text-base-content"
         >
           <CheckIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
@@ -198,18 +199,18 @@ function onMaximizeClick() {
           :download="win.filePreview!.name"
           :tooltip="t('ui.desktop.DesktopWindow.download')"
           :aria-label="t('ui.desktop.DesktopWindow.download')"
-          class="text-muted-foreground"
+          class="text-base-content/75"
         >
           <DownloadIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" :tooltip="t('ui.desktop.DesktopWindow.minimize')" :aria-label="t('ui.desktop.DesktopWindow.minimize')" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-xs" @click="onMinimizeClick" :tooltip="t('ui.desktop.DesktopWindow.minimize')" :aria-label="t('ui.desktop.DesktopWindow.minimize')" class="text-base-content/75 hover:text-base-content">
           <MinusIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :tooltip="win.maximized ? 'Restore' : 'Maximize'" :aria-label="win.maximized ? 'Restore' : 'Maximize'" class="text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon-xs" @click="onMaximizeClick" :tooltip="win.maximized ? 'Restore' : 'Maximize'" :aria-label="win.maximized ? 'Restore' : 'Maximize'" class="text-base-content/75 hover:text-base-content">
           <CopyIcon v-if="win.maximized" class="w-3.5 h-3.5" aria-hidden="true" />
           <SquareIcon v-else class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-xs" @click="onCloseClick" :tooltip="t('ui.desktop.DesktopWindow.close')" :aria-label="t('ui.desktop.DesktopWindow.close')" class="text-muted-foreground hover:text-primary hover:bg-primary/10">
+        <Button variant="ghost" size="icon-xs" @click="onCloseClick" :tooltip="t('ui.desktop.DesktopWindow.close')" :aria-label="t('ui.desktop.DesktopWindow.close')" class="text-base-content/75 hover:text-error hover:bg-error/10">
           <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
       </div>

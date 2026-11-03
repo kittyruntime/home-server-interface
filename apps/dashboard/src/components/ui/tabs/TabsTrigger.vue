@@ -1,26 +1,66 @@
 <script setup lang="ts">
-import type { TabsTriggerProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import type { PrimitiveProps } from "../Primitive.vue"
+import { computed, inject, onMounted, onUnmounted, onUpdated } from "vue"
 import { cn } from "@/lib/utils"
-import { TabsTrigger, useForwardProps } from "reka-ui"
+import Primitive from "../Primitive.vue"
+import { makeId, tabsKey } from "./context"
 
-const props = defineProps<TabsTriggerProps & { class?: HTMLAttributes["class"] }>()
+interface TabsTriggerProps extends PrimitiveProps {
+  value: string
+  disabled?: boolean
+  class?: HTMLAttributes["class"]
+}
 
-const delegatedProps = reactiveOmit(props, "class")
+const props = withDefaults(defineProps<TabsTriggerProps>(), { as: "button", disabled: false })
 
-const forwardedProps = useForwardProps(delegatedProps)
+const ctx = inject(tabsKey)!
+const active = computed(() => ctx.model.value === props.value)
+
+onMounted(ctx.refresh)
+onUpdated(ctx.refresh)
+onUnmounted(ctx.refresh)
+
+function onFocus() {
+  ctx.focused.value = props.value
+  if (ctx.activationMode.value === "automatic" && !props.disabled)
+    ctx.select(props.value)
+}
+
+function onMousedown(event: MouseEvent) {
+  // Like a native tab: a left press selects, and a disabled one does not take focus
+  if (props.disabled)
+    event.preventDefault()
+}
+
+function onClick() {
+  if (!props.disabled)
+    ctx.select(props.value)
+}
 </script>
 
 <template>
-  <TabsTrigger
+  <Primitive
+    :as="props.as"
+    :as-child="props.asChild"
+    :type="props.as === 'button' ? 'button' : undefined"
+    role="tab"
     data-slot="tabs-trigger"
-    :class="cn(
-      `data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-3 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
-      props.class,
-    )"
-    v-bind="forwardedProps"
+    data-tab-trigger
+    :data-value="value"
+    :id="makeId(ctx.baseId, 'trigger', value)"
+    :aria-selected="active"
+    :aria-controls="makeId(ctx.baseId, 'content', value)"
+    :data-state="active ? 'active' : 'inactive'"
+    :data-orientation="ctx.orientation.value"
+    :data-disabled="disabled ? '' : undefined"
+    :disabled="disabled"
+    :tabindex="ctx.stop.value === value ? 0 : -1"
+    :class="cn('tab flex-1 gap-1.5 whitespace-nowrap', active ? 'tab-active' : 'text-base-content/90', props.class)"
+    @focus="onFocus"
+    @mousedown="onMousedown"
+    @click="onClick"
   >
     <slot />
-  </TabsTrigger>
+  </Primitive>
 </template>

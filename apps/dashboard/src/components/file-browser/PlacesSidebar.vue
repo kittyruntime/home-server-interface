@@ -28,7 +28,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
 
 <template>
   <SidebarProvider class="min-h-0 w-auto shrink-0" :style="{ '--sidebar-width': '11rem' }">
-    <Sidebar collapsible="none" class="h-full border-r">
+    <Sidebar class="h-full border-r">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{{ t('ui.files.PlacesSidebar.places') }}</SidebarGroupLabel>

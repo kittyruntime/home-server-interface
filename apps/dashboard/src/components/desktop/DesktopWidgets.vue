@@ -31,7 +31,7 @@ defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
     <div
       v-for="w in widgets" :key="w.id"
-      :class="['relative bg-muted/90 border border-border rounded-xl p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
+      :class="['relative bg-base-200/90 border border-base-300 rounded-box p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
       @contextmenu="$emit('contextmenu-widget', w, $event)"
     >
       <WidgetBody :w="w" v-bind="body" />

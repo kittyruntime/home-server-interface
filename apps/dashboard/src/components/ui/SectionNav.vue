@@ -38,7 +38,7 @@ const groups = computed(() => {
 </script>
 
 <template>
-  <div :class="['shrink-0 border-b bg-sidebar px-4 py-2.5', container ? '@2xl:hidden' : 'sm:hidden']">
+  <div :class="['shrink-0 border-b bg-base-100 px-4 py-2.5', container ? '@2xl:hidden' : 'sm:hidden']">
     <NativeSelect
       :model-value="active"
       :aria-label="t('common.section')"
@@ -52,7 +52,7 @@ const groups = computed(() => {
     :class="['min-h-0 w-auto shrink-0', container ? 'hidden @2xl:flex' : 'hidden sm:flex']"
     :style="{ '--sidebar-width': '14rem' }"
   >
-    <Sidebar collapsible="none" class="h-full border-r">
+    <Sidebar class="h-full border-r">
       <SidebarContent class="py-3">
         <SidebarGroup v-for="(group, i) in groups" :key="group.label ?? i" class="py-1">
           <SidebarGroupLabel v-if="group.label">{{ group.label }}</SidebarGroupLabel>

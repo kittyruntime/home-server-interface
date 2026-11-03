@@ -76,7 +76,7 @@ function isFocused(id: string): boolean {
     <ContextMenuTrigger as-child>
       <div
         ref="rootRef"
-        class="relative isolate w-full h-full overflow-hidden bg-background"
+        class="relative isolate w-full h-full overflow-hidden bg-base-100"
         :style="backgroundStyle"
         @contextmenu.capture="ctxWidget = null"
       >
@@ -115,7 +115,7 @@ function isFocused(id: string): boolean {
           {{ t('ui.desktop.DesktopShell.changeWallpaper') }}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-muted-foreground">{{ t('ui.desktop.DesktopShell.addWidget') }}</ContextMenuLabel>
+        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-base-content/60">{{ t('ui.desktop.DesktopShell.addWidget') }}</ContextMenuLabel>
         <ContextMenuItem
           v-for="cat in widgetsRef?.addableTypes ?? []" :key="cat.type"
           @select="addWidgetFromMenu(cat.type)"

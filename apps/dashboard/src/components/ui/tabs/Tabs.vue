@@ -1,24 +1,92 @@
 <script setup lang="ts">
-import type { TabsRootEmits, TabsRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import type { PrimitiveProps } from "../Primitive.vue"
+import { computed, provide, ref, useId } from "vue"
 import { cn } from "@/lib/utils"
-import { TabsRoot, useForwardPropsEmits } from "reka-ui"
+import Primitive from "../Primitive.vue"
+import { tabsKey } from "./context"
 
-const props = defineProps<TabsRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<TabsRootEmits>()
+type TabValue = string | undefined
 
-const delegatedProps = reactiveOmit(props, "class")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+interface TabsProps extends PrimitiveProps {
+  modelValue?: TabValue
+  defaultValue?: TabValue
+  orientation?: "horizontal" | "vertical"
+  activationMode?: "automatic" | "manual"
+  class?: HTMLAttributes["class"]
+}
+
+const props = withDefaults(defineProps<TabsProps>(), {
+  modelValue: undefined,
+  defaultValue: undefined,
+  orientation: "horizontal",
+  activationMode: "automatic",
+  as: "div",
+})
+
+const emits = defineEmits<{
+  "update:modelValue": [value: string]
+}>()
+
+const baseId = `tabs-${useId()}`
+const local = ref<TabValue>(props.defaultValue)
+const model = computed(() => props.modelValue !== undefined ? props.modelValue : local.value)
+
+function select(value: string) {
+  if (value === model.value)
+    return
+  local.value = value
+  emits("update:modelValue", value)
+}
+
+// Triggers found in the tablist: the enabled ones in order, and every value
+const listEl = ref<HTMLElement | null>(null)
+const first = ref<string | null>(null)
+const enabled = ref<string[]>([])
+const focused = ref<string | null>(null)
+
+function refresh() {
+  const all = Array.from(listEl.value?.querySelectorAll<HTMLElement>("[data-tab-trigger]:not(:disabled)") ?? [])
+  const values = all.map(item => item.dataset.value ?? "")
+  if (values.join("\u0000") !== enabled.value.join("\u0000"))
+    enabled.value = values
+  const head = values[0] ?? null
+  if (head !== first.value)
+    first.value = head
+}
+
+// The tab stop: the focused trigger, else the selected one, else the first.
+// A value that is gone or disabled is ignored, or no trigger would be reachable.
+const stop = computed(() => {
+  if (focused.value !== null && enabled.value.includes(focused.value))
+    return focused.value
+  const current = model.value
+  if (current !== undefined && enabled.value.includes(current))
+    return current
+  return first.value
+})
+
+provide(tabsKey, {
+  baseId,
+  orientation: computed(() => props.orientation),
+  activationMode: computed(() => props.activationMode),
+  model,
+  select,
+  listEl,
+  stop,
+  focused,
+  refresh,
+})
 </script>
 
 <template>
-  <TabsRoot
-    v-slot="slotProps"
+  <Primitive
+    :as="props.as"
+    :as-child="props.asChild"
     data-slot="tabs"
-    v-bind="forwarded"
+    :data-orientation="orientation"
     :class="cn('flex flex-col gap-2', props.class)"
   >
-    <slot v-bind="slotProps" />
-  </TabsRoot>
+    <slot :model-value="model" />
+  </Primitive>
 </template>
