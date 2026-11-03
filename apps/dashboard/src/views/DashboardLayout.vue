@@ -39,7 +39,7 @@ import { maintenance } from '../lib/maintenance'
 import Dock from '../components/desktop/Dock.vue'
 import Launchpad from '../components/desktop/Launchpad.vue'
 import DesktopShell from '../components/desktop/DesktopShell.vue'
-import { ArrowRightIcon, BellIcon, EllipsisIcon, LayoutGridIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
+import { BellIcon, EllipsisIcon, LayoutGridIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -237,13 +237,6 @@ onUnmounted(() => {
         <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
       </template>
       <template v-else>
-        <!-- Brand mark -->
-        <div class="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-content mb-5 select-none">
-          <ArrowRightIcon class="size-4" />
-        </div>
-
-        <div class="w-8 border-t border-base-300 mb-3" />
-
         <!-- App nav (drag an icon to reorder, persisted per browser) -->
         <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
           <div

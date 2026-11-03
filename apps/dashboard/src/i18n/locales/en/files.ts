@@ -42,7 +42,7 @@ export default {
   },
   PlacesSidebar: {
     sharedLinks: 'Shared links',
-    sharedLinksMenu: 'Shared links menu',
+    settings: 'Settings',
     places: 'Places',
     noPlacesYetAskAn: 'No places yet. Ask an admin to grant you access to a folder.',
   },

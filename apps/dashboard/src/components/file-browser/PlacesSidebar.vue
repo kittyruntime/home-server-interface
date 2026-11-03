@@ -50,9 +50,11 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
             </p>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
+        <!-- File manager settings, kept apart from the places at the bottom. -->
+        <SidebarGroup class="mt-auto border-t border-base-300">
+          <SidebarGroupLabel>{{ t('ui.files.PlacesSidebar.settings') }}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.sharedLinksMenu')">
+            <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.settings')">
               <SidebarMenuItem>
                 <SidebarMenuButton :is-active="sharedActive" :aria-current="sharedActive ? 'page' : undefined" @click.stop="$emit('openShared')">
                   <LinkIcon class="size-4" aria-hidden="true" />
