@@ -115,7 +115,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             class="text-2xs bg-info/10 text-info border-info/20 hover:bg-info/20">{{ roleLabel(roleOf(disk)!) }} →</Button>
         </div>
         <div v-if="disk.byId" class="text-2xs font-mono text-base-content/70 mt-0.5 truncate" :title="`/dev/disk/by-id/${disk.byId}: stable name, unlike /dev/${disk.name}`">/dev/disk/by-id/{{ disk.byId }}</div>
-        <div v-if="disk.isSystem" class="text-2xs text-warning/70 mt-0.5">{{ t('ui.storage.DiskCard.operatingSystemDiskNoModifications') }}</div>
+        <div v-if="disk.isSystem" class="text-2xs text-warning mt-0.5">{{ t('ui.storage.DiskCard.operatingSystemDiskNoModifications') }}</div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Health badge -->
@@ -269,7 +269,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
                     <TableCell class="px-2.5 py-1.5 text-center">
                       <CircleXIcon v-if="attr.failed" class="w-3 h-3 text-error mx-auto" aria-hidden="true" />
                       <TriangleAlertIcon v-else-if="attr.isCritical && attr.raw > 0" class="w-3 h-3 text-warning mx-auto" aria-hidden="true" />
-                      <CircleCheckIcon v-else-if="attr.isCritical" class="w-3 h-3 text-success/60 mx-auto" aria-hidden="true" />
+                      <CircleCheckIcon v-else-if="attr.isCritical" class="w-3 h-3 text-success mx-auto" aria-hidden="true" />
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -381,12 +381,12 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
       </CollapsibleTrigger>
       <CollapsibleContent class="px-4 pb-3 pt-0.5">
         <Alert variant="destructive" class="flex items-start gap-3 p-3 text-base-content" role="note">
-          <TriangleAlertIcon class="w-3.5 h-3.5 text-error/70 mt-0.5 shrink-0" aria-hidden="true" />
+          <TriangleAlertIcon class="w-3.5 h-3.5 text-error mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-2xs text-base-content/80 font-medium mb-0.5">{{ t('ui.storage.DiskCard.wipeAndCreateANew') }}</p>
             <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span class="font-mono">/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
             <Button variant="outline" size="xs" @click="emit('partInit', disk)"
-              class="mt-2 text-2xs border-error/30 text-error/80 hover:border-error/60 hover:text-error hover:bg-error/10">
+              class="mt-2 text-2xs border-error/30 text-error hover:border-error/60 hover:text-error hover:bg-error/10">
               {{ t('ui.storage.DiskCard.createPartitionTable') }}
             </Button>
           </div>

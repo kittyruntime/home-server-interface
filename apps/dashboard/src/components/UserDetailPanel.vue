@@ -332,7 +332,7 @@ async function deleteUser() {
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-error/70">{{ t('ui.settings.UserDetailPanel.dangerZone') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-error">{{ t('ui.settings.UserDetailPanel.dangerZone') }}</h4>
 
       <Alert variant="destructive" class="block p-4 text-base-content" role="note">
         <div class="flex items-start justify-between gap-4">

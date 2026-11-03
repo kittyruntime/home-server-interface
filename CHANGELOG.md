@@ -47,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fade out on light themes or on wireframe and black. The storage volume
   list headers line up with their columns, and the storage badges use the
   theme palette.
+- **Storage and sharing dialogs are translated**: the logical volume and RAID
+  screens, the format wizard and the share link dialog no longer show English
+  in a French interface (step names, action and busy labels, RAID level
+  descriptions, share options). Inactive dock icons are easier to read, the focused
+  window has a stronger outline and chart tooltips follow the theme.
 
 ## [1.78.4] - 2026-11-02
 

@@ -664,7 +664,7 @@ onMounted(async () => {
               @click="navigateToSearchResult(r)"
               class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
               <!-- directory icon -->
-              <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary/70" aria-hidden="true" />
+              <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
               <!-- file icon -->
               <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-base-content/70" aria-hidden="true" />
               <div class="flex-1 min-w-0">
