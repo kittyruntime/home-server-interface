@@ -41,6 +41,7 @@ export default {
     remove: 'Remove',
   },
   PlacesSidebar: {
+    sharedLinks: 'Shared links',
     places: 'Places',
     noPlacesYetAskAn: 'No places yet. Ask an admin to grant you access to a folder.',
   },

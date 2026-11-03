@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { InfoIcon } from '@lucide/vue'
+import { InfoIcon, LinkIcon } from '@lucide/vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import {
   Sidebar,
@@ -21,9 +21,10 @@ type Place = { id: string; name: string; path: string; icon?: string | null }
 defineProps<{
   places: Place[]
   activePlaceId: string | null
+  sharedActive?: boolean
 }>()
 
-defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
+defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared: [] }>()
 </script>
 
 <template>
@@ -35,7 +36,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
           <SidebarGroupContent>
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.places')">
               <SidebarMenuItem v-for="place in places" :key="place.id">
-                <SidebarMenuButton :is-active="activePlaceId === place.id" @click.stop="$emit('select', place)">
+                <SidebarMenuButton :is-active="!sharedActive && activePlaceId === place.id" @click.stop="$emit('select', place)">
                   <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm" />
                   <span>{{ place.name }}</span>
                 </SidebarMenuButton>
@@ -47,6 +48,18 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
             <p v-if="places.length === 0" class="text-xs text-base-content/70 px-2 py-2 leading-snug">
               {{ t('ui.files.PlacesSidebar.noPlacesYetAskAn') }}
             </p>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton :is-active="sharedActive" @click.stop="$emit('openShared')">
+                  <LinkIcon class="size-4" aria-hidden="true" />
+                  <span>{{ t('ui.files.PlacesSidebar.sharedLinks') }}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

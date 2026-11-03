@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Settings are tidier**: Appearance and a new Advanced options group (confirm
+  before deleting, advanced mode) are collapsed sections, closed by default, and
+  the language is picked from a list.
+- **Shared links moved to the file manager**: they now sit under the places in the
+  file manager's sidebar instead of in Settings.
+
 ### Fixed
 - **Theme picker no longer scrolls the page**: choosing a theme from the lower part
   of the list used to jump the page down, and now it stays where it is.

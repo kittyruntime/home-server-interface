@@ -40,6 +40,7 @@ export default {
     remove: 'Retirer',
   },
   PlacesSidebar: {
+    sharedLinks: 'Liens partagés',
     places: 'Emplacements',
     noPlacesYetAskAn: 'Aucun emplacement pour l’instant. Demandez à un administrateur l’accès à un dossier.',
   },

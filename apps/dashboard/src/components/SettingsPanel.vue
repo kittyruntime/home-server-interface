@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import SectionNav from '@/components/ui/SectionNav.vue'
-import { BellIcon, BotIcon, ChartNoAxesColumnIcon, NetworkIcon, FolderIcon, LinkIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
+import { BellIcon, BotIcon, ChartNoAxesColumnIcon, NetworkIcon, FolderIcon, LockIcon, SaveIcon, ShieldCheckIcon, TriangleAlertIcon, UploadIcon, UserIcon, UsersIcon } from '@lucide/vue'
 import { ref, computed, watch } from 'vue'
 import type { Component } from 'vue'
 import { useAuth } from '../lib/auth'
@@ -11,7 +11,6 @@ import PlacesSection from './PlacesSection.vue'
 import GroupsSection from './GroupsSection.vue'
 import UpdateSection from './UpdateSection.vue'
 import PermissionsSection from './PermissionsSection.vue'
-import SharedLinksSection from './SharedLinksSection.vue'
 import BackupSection from './BackupSection.vue'
 import DataBackupSection from './DataBackupSection.vue'
 import AlertingSection from './AlertingSection.vue'
@@ -25,7 +24,7 @@ const { t } = useI18n()
 
 const { isAdmin, isUserManager } = useAuth()
 
-type SectionId = 'profile' | 'ai' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'network' | 'telemetry' | 'backups' | 'data-backups' | 'shares'
+type SectionId = 'profile' | 'ai' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure' | 'network' | 'telemetry' | 'backups' | 'data-backups'
 
 const props = defineProps<{ focusSection?: SectionId | null }>()
 
@@ -41,7 +40,6 @@ interface NavItem {
 
 const nav: NavItem[] = [
   { id: 'profile',     label: 'profile',  show: () => true,  group: 'account' },
-  { id: 'shares',      label: 'shares', show: () => true, group: 'account' },
   { id: 'ai',          label: 'ai',     show: () => true, group: 'account' },
   // Access control: who can reach what. Users is grouped here even though it's
   // gated on isUserManager (not isAdmin like the rest): a user manager
@@ -73,7 +71,7 @@ function focusOn(section: SectionId) {
 defineExpose({ focusOn })
 
 const ICONS: Record<SectionId, Component> = {
-  profile: UserIcon, shares: LinkIcon, ai: BotIcon, users: UsersIcon, places: FolderIcon,
+  profile: UserIcon, ai: BotIcon, users: UsersIcon, places: FolderIcon,
   permissions: LockIcon, groups: ShieldCheckIcon, alerting: TriangleAlertIcon,
   notifications: BellIcon, secure: LockIcon, network: NetworkIcon, updates: UploadIcon, telemetry: ChartNoAxesColumnIcon,
   backups: SaveIcon, 'data-backups': SaveIcon,
@@ -93,7 +91,6 @@ const navItems = computed(() => visibleNav.value.map(n => ({
       <div :class="['p-4 sm:p-8', ['users','groups','permissions'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
         <ProfileSection     v-if="active === 'profile'" />
-        <SharedLinksSection v-else-if="active === 'shares'" />
         <AiAccessSection    v-else-if="active === 'ai'" />
         <UserListPanel      v-else-if="active === 'users'" />
         <PlacesSection      v-else-if="active === 'places'" />
