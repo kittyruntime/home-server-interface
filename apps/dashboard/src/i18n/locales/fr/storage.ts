@@ -80,10 +80,10 @@ export default {
     stepConfigure: 'Configuration',
     stepConfirm: 'Confirmation',
     allFreeSpace: 'Tout l\'espace libre',
-    deleteLvAction: 'Supprimer le LV',
+    deleteLvAction: 'Supprimer le VL',
     deleting: 'Suppression…',
-    removeVgSubtitle: 'Cela supprimera le VG et tous ses volumes logiques.',
-    removeVgAction: 'Supprimer le VG',
+    removeVgSubtitle: 'Cela supprimera le GV et tous ses volumes logiques.',
+    removeVgAction: 'Supprimer le GV',
     removingBusy: 'Suppression…',
   },
   VgPage: {

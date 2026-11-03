@@ -386,7 +386,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             <p class="text-2xs text-base-content/80 font-medium mb-0.5">{{ t('ui.storage.DiskCard.wipeAndCreateANew') }}</p>
             <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span class="font-mono">/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
             <Button variant="outline" size="xs" @click="emit('partInit', disk)"
-              class="mt-2 text-2xs border-error/30 text-error hover:border-error/60 hover:text-error hover:bg-error/10">
+              class="mt-2 text-2xs border-error/30 text-error hover:border-error/60 hover:bg-error/10">
               {{ t('ui.storage.DiskCard.createPartitionTable') }}
             </Button>
           </div>

@@ -3,6 +3,7 @@ export default {
   LvmSection: {
     volumeGroup: '{p0} groupe{p1} de volumes',
     free: '· {p0} libres',
+    freeSpace: '{p0} libres',
     willDestroyAllLogicalVolume: 'détruira les {p0} volume(s) logique(s) et leurs données.',
   },
   VolumePage: {
@@ -39,6 +40,7 @@ export default {
     lvm: 'LVM {p0} →',
   },
   RaidSection: {
+    arrayCount: '{count} grappe | {count} grappes',
     lvm: 'LVM {p0} →',
     emptySlotAddAReplacement: '{p0} emplacement{p1} vide : ajoutez un disque de remplacement pour retrouver la redondance.',
     free: '{p0} libres · {p1} %',

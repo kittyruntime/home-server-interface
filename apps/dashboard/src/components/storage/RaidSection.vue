@@ -342,7 +342,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <!-- RAID arrays list -->
     <div v-if="!only" class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ raids.length }} array{{ raids.length !== 1 ? 's' : '' }}</span>
+        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ t('uip.storage.RaidSection.arrayCount', { count: raids.length }, raids.length) }}</span>
       </div>
     </div>
 

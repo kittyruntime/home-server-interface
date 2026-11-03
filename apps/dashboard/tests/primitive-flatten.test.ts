@@ -27,5 +27,10 @@ test('flatten tolerates a fragment without children and empty values', () => {
 test('flatten keeps text vnodes and flattens nested arrays', () => {
   const text = createTextVNode('x')
   const el = createVNode('p')
-  assert.deepEqual(flatten([text, [el, 'y']]).length, 3)
+  const out = flatten([text, [el, 'y']])
+  assert.equal(out.length, 3)
+  assert.equal(out[0], text)
+  assert.equal(out[1], el)
+  assert.equal(out[2].type, Text)
+  assert.equal(out[2].children, 'y')
 })

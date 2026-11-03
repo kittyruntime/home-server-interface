@@ -263,7 +263,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
               <!-- Capacity bar -->
               <div class="mt-2 flex items-center gap-2">
                 <Progress class="flex-1 h-1 bg-base-200 rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-secondary/70" />
-                <span class="text-2xs text-base-content/70 tabular-nums shrink-0">{{ fmtBytes(vg.free) }} free</span>
+                <span class="text-2xs text-base-content/70 tabular-nums shrink-0">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(vg.free) }) }}</span>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
@@ -320,7 +320,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-base-content/70 mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
                 <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
                   <Progress class="w-24 h-0.5 bg-base-200 rounded-full" :model-value="usagePct(lv2bd(lv))" :indicator-class="['rounded-full', usageBarClass(usagePct(lv2bd(lv)))]" />
-                  <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(lv2bd(lv).usageFree) }} free</span>
+                  <span class="text-2xs text-base-content/70 tabular-nums">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(lv2bd(lv).usageFree) }) }}</span>
                 </div>
               </div>
               <!-- LV actions: revealed on hover, hidden by default -->
