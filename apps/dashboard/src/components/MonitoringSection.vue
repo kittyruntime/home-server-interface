@@ -290,13 +290,13 @@ const chartOptions = computed(() => {
     <div v-else-if="viewMode === 'history'">
       <!-- Period selector -->
       <ToggleGroup
-        type="single" variant="outline" size="sm"
+        type="single" variant="tabs" size="sm"
         class="mb-5"
         :model-value="period"
         :aria-label="t('ui.monitor.MonitoringSection.historyPeriod')"
         @update:model-value="v => { if (typeof v === 'string' && v) { period = v as Period; loadHistory() } }"
       >
-        <ToggleGroupItem v-for="p in (['1h','6h','24h','7d'] as const)" :key="p" :value="p" class="px-3 text-xs">{{ p }}</ToggleGroupItem>
+        <ToggleGroupItem v-for="p in (['1h','6h','24h','7d'] as const)" :key="p" :value="p">{{ p }}</ToggleGroupItem>
       </ToggleGroup>
 
       <LoadingState v-if="historyLoading" />

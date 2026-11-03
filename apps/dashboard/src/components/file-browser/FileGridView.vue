@@ -110,7 +110,7 @@ const emit = defineEmits<{
       <Checkbox
         :model-value="selected.has(entry.path)"
         :aria-label="`Select ${entry.name}`"
-        :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 focus-visible:opacity-100']"
+        :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100']"
         @click.stop.prevent="emit('selectEntry', entry, $event)"
       />
 

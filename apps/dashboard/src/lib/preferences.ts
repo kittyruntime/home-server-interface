@@ -37,14 +37,22 @@ export async function syncPreferences() {
   if (started) return
   started = true
 
-  try {
-    const p = await trpc.user.preferences.query()
-    setAppearance(hydrateAppearance(p))
-    if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
-    if (isLocale(p.locale)) await setLocale(p.locale)
-    if (typeof p.confirmFileDelete === 'boolean') setConfirmFileDelete(p.confirmFileDelete)
-  } catch {
-    // Not authenticated / offline: keep whatever localStorage already had.
+  // Until the account's prefs are read, localStorage may hold the previous
+  // account's look: pushing it would overwrite this account's. So nothing is
+  // pushed before a successful read, which is retried while it fails.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const p = await trpc.user.preferences.query()
+      setAppearance(hydrateAppearance(p))
+      if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
+      if (isLocale(p.locale)) await setLocale(p.locale)
+      if (typeof p.confirmFileDelete === 'boolean') setConfirmFileDelete(p.confirmFileDelete)
+      break
+    } catch {
+      // Offline or restarting: keep the local look and try again later.
+      if (attempt >= 5 || !localStorage.getItem('token')) return
+      await new Promise(resolve => setTimeout(resolve, 1000 * 2 ** attempt))
+    }
   }
 
   // Register AFTER hydration so applying server values above doesn't echo back.

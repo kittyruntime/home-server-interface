@@ -90,7 +90,7 @@ function fileExt(name: string): string {
     >
       <div
         @click.stop="emit('selectEntry', entry, $event)"
-        :class="['touch-target -m-2 grid shrink-0 place-items-center', selected.has(entry.path) ? '' : 'opacity-50']"
+        class="touch-target -m-2 grid shrink-0 place-items-center"
         :aria-label="`Select ${entry.name}`"
       >
         <Checkbox :model-value="selected.has(entry.path)" tabindex="-1" aria-hidden="true" class="pointer-events-none" />
@@ -130,7 +130,7 @@ function fileExt(name: string): string {
           <Checkbox
             :model-value="selected.size > 0 && selected.size < entries.length ? 'indeterminate' : selected.size === entries.length && entries.length > 0"
             :aria-label="$t('ui.files.FileListView.selectAll')"
-            class="opacity-60 hover:opacity-100 transition-opacity"
+           
             @click.stop
             @update:model-value="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
           />
@@ -208,7 +208,7 @@ function fileExt(name: string): string {
           <Checkbox
             :model-value="selected.has(entry.path)"
             :aria-label="`Select ${entry.name}`"
-            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-50 focus-visible:opacity-100']"
+            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100']"
             @click.prevent="emit('selectEntry', entry, $event)"
           />
         </TableCell>

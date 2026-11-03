@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
-import Tip from './ui/Tip.vue'
 import AppearanceSection from './AppearanceSection.vue'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -247,7 +246,7 @@ onMounted(async () => {
       <!-- ── Appearance ── -->
       <Collapsible class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
-          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
             {{ t('profile.appearance') }}
             <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>
@@ -260,31 +259,29 @@ onMounted(async () => {
       <!-- ── Advanced options ── -->
       <Collapsible class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
-          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
             {{ t('profile.advancedOptions') }}
             <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>
         </h4>
-        <CollapsibleContent class="space-y-8 pt-2">
-          <!-- ── Delete confirmation ── -->
-          <div class="space-y-2">
-            <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.confirmFileDelete') }}</h4>
-            <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-              <p class="text-xs text-base-content/70">{{ t('profile.confirmFileDeleteHint') }}</p>
-              <Switch :model-value="confirmFileDelete" :aria-label="t('profile.confirmFileDelete')" @update:model-value="setConfirmFileDelete" />
-            </Card>
-          </div>
-
-          <!-- ── Advanced mode ── -->
-          <div class="space-y-2">
-            <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
-            <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-              <p class="text-xs text-base-content/70">
-                {{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}
-              </p>
-              <Tip :text="t('ui.settings.ProfileSection.advancedMode')"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>
-            </Card>
-          </div>
+        <CollapsibleContent class="pt-2">
+          <!-- One row per option: name and hint on the left, the switch on the right; the whole row toggles it. -->
+          <Card class="gap-0 py-0 shadow-none divide-y divide-base-300">
+            <label class="flex cursor-pointer items-center justify-between gap-4 px-4 py-3">
+              <span class="space-y-0.5">
+                <span class="block text-sm font-medium">{{ t('profile.confirmFileDelete') }}</span>
+                <span class="block text-xs text-base-content/70">{{ t('profile.confirmFileDeleteHint') }}</span>
+              </span>
+              <Switch :model-value="confirmFileDelete" @update:model-value="setConfirmFileDelete" />
+            </label>
+            <label class="flex cursor-pointer items-center justify-between gap-4 px-4 py-3">
+              <span class="space-y-0.5">
+                <span class="block text-sm font-medium">{{ t('ui.settings.ProfileSection.advancedMode') }}</span>
+                <span class="block text-xs text-base-content/70">{{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}</span>
+              </span>
+              <Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" />
+            </label>
+          </Card>
         </CollapsibleContent>
       </Collapsible>
 

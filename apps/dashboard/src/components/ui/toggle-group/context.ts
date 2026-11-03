@@ -1,8 +1,11 @@
 import type { ComputedRef, InjectionKey } from "vue"
 import type { ToggleVariants } from "../toggle"
 
+/** "tabs" draws the group as a daisyUI tabs-box, the segmented control for one choice. */
+export type ToggleGroupVariant = ToggleVariants["variant"] | "tabs"
+
 export interface ToggleGroupContext {
-  variant: ComputedRef<ToggleVariants["variant"]>
+  variant: ComputedRef<ToggleGroupVariant>
   size: ComputedRef<ToggleVariants["size"]>
   spacing: ComputedRef<number>
   single: ComputedRef<boolean>

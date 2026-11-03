@@ -1,4 +1,4 @@
-import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import { createTRPCClient, httpBatchLink, httpLink, splitLink } from '@trpc/client'
 import type { AppRouter } from '@app/shared-types'
 
 // When a stored session token is rejected (expired or revoked), tear down the
@@ -19,22 +19,33 @@ function onSessionInvalid() {
 
 export const MAINTENANCE_EVENT = 'hsi:maintenance'
 
+const linkOptions = {
+  url: import.meta.env.VITE_API_URL ?? '/trpc',
+  headers() {
+    const token = localStorage.getItem('token')
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  },
+  async fetch(input: RequestInfo | URL, init?: RequestInit) {
+    const res = await fetch(input, init)
+    if (res.status === 401) onSessionInvalid()
+    // A change refused during an update or a restart (#132): lib/maintenance
+    // listens, without importing this client back.
+    if (res.status === 503) window.dispatchEvent(new Event(MAINTENANCE_EVENT))
+    return res
+  },
+}
+
+// A batch answers only once its slowest call is done (metrics, containers...).
+// The account's preferences go on their own, so its look applies right after
+// sign-in instead of keeping the previous account's theme for seconds.
+const UNBATCHED = new Set(['user.preferences'])
+
 export const trpc = createTRPCClient<AppRouter>({
   links: [
-    httpBatchLink({
-      url: import.meta.env.VITE_API_URL ?? '/trpc',
-      headers() {
-        const token = localStorage.getItem('token')
-        return token ? { Authorization: `Bearer ${token}` } : {}
-      },
-      async fetch(input, init) {
-        const res = await fetch(input, init)
-        if (res.status === 401) onSessionInvalid()
-        // A change refused during an update or a restart (#132): lib/maintenance
-        // listens, without importing this client back.
-        if (res.status === 503) window.dispatchEvent(new Event(MAINTENANCE_EVENT))
-        return res
-      },
+    splitLink({
+      condition: op => UNBATCHED.has(op.path),
+      true: httpLink(linkOptions),
+      false: httpBatchLink(linkOptions),
     }),
   ],
 })
