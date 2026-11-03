@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Updated glob and minimatch**: fixes a file search that could keep running after
+  being cancelled (GHSA-3g3m-2fjr-6pw4) and a pattern that could make matching very
+  slow (GHSA-g3hv-75wg-m249).
+
 ## [1.79.2] - 2026-11-03
 
 ### Changed
