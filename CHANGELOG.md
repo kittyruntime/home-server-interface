@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   help hints and the activity panel are no longer clipped by windows or
   scrolling lists and show above open dialogs. Tooltips appear on mouse hover
   and keyboard focus only, so they never get in the way of a tap.
+- **Selects and pickers use native controls**: the section selector on narrow
+  layouts, the app store sort and the alerts source filter are now the
+  browser's own select, and the group and user picker is a searchable list
+  you can drive with the arrow keys. Focus returns to the right place when a
+  context menu action opens a dialog.
 
 ## [1.78.4] - 2026-11-02
 

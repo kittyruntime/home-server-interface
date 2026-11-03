@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { formatDateTime } from '../../lib/format-date'
 import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -105,15 +105,17 @@ onMounted(load)
           {{ t('uip.monitor.AlertsSection.active', { p0: filteredAlerts.length }) }}
         </span>
         <div class="flex items-center gap-3">
-          <Select v-if="sourcePrefixes.length > 1" v-model="sourceFilter">
-            <SelectTrigger size="sm" class="h-7 text-xs" :aria-label="t('ui.monitor.AlertsSection.filterBySource')">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{{ t('ui.monitor.AlertsSection.allSources') }}</SelectItem>
-              <SelectItem v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</SelectItem>
-            </SelectContent>
-          </Select>
+          <NativeSelect
+            v-if="sourcePrefixes.length > 1"
+            :model-value="sourceFilter"
+            wrapper-class="w-auto"
+            class="select-sm w-auto text-xs"
+            :aria-label="t('ui.monitor.AlertsSection.filterBySource')"
+            @update:model-value="sourceFilter = String($event)"
+          >
+            <NativeSelectOption value="all">{{ t('ui.monitor.AlertsSection.allSources') }}</NativeSelectOption>
+            <NativeSelectOption v-for="p in sourcePrefixes" :key="p" :value="p">{{ p.replace(/\.$/, '') }}</NativeSelectOption>
+          </NativeSelect>
           <Button variant="ghost" size="xs" v-if="alerts.length" type="button" :disabled="clearing" @click="clearAll">
             {{ clearing ? 'Clearing…' : 'Clear all' }}
           </Button>

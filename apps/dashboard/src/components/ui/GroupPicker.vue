@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ref } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { PlusIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { nextIndex } from '@/lib/menu-navigation'
+import { useAnchoredPopover } from '@/lib/use-anchored-popover'
 
 const { t } = useI18n()
 
@@ -25,15 +25,58 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ add: [id: string]; remove: [id: string] }>()
 
-const open = ref(false)
-
 function isBusy(id: string) {
   return props.busy?.[id] ?? false
 }
 
+const listId = useId()
+const input = ref<HTMLInputElement | null>(null)
+const query = ref('')
+const active = ref(-1)
+
+const { floating, open, close, isOpen } = useAnchoredPopover({
+  placement: 'bottom-start',
+  dismiss: true,
+  captureEscape: true,
+  closeOnFocusOutside: true,
+  onPlaced: () => input.value?.focus({ preventScroll: true }),
+})
+
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return props.available
+  return props.available.filter(item => `${item.label} ${item.sublabel ?? ''}`.toLowerCase().includes(q))
+})
+
+watch([query, isOpen], () => { active.value = filtered.value.length > 0 ? 0 : -1 })
+
+function optionId(index: number) {
+  return `${listId}-${index}`
+}
+
+function toggle(event: MouseEvent) {
+  if (isOpen.value) { close(); return }
+  query.value = ''
+  open(event.currentTarget as HTMLElement)
+}
+
 function pick(id: string) {
   emit('add', id)
-  open.value = false
+  close()
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault()
+    active.value = nextIndex(event.key, active.value, filtered.value.map(() => false))
+    void nextTick(() => document.getElementById(optionId(active.value))?.scrollIntoView({ block: 'nearest' }))
+    return
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    const item = filtered.value[active.value]
+    if (item) pick(item.id)
+  }
 }
 </script>
 
@@ -73,33 +116,68 @@ function pick(id: string) {
     </div>
     <p v-else class="text-xs text-muted-foreground px-3">{{ t('ui.shared.GroupPicker.noneAssigned') }}</p>
 
-    <Popover v-if="available.length > 0" v-model:open="open">
-      <PopoverTrigger as-child>
-        <Button variant="ghost" size="xs" class="ml-1 text-primary hover:text-primary">
-          <PlusIcon />
-          {{ t('ui.shared.GroupPicker.add') }}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" class="w-64 p-0">
-        <Command>
-          <CommandInput :placeholder="t('ui.shared.GroupPicker.search')" />
-          <CommandList class="max-h-48">
-            <CommandEmpty>{{ t('ui.shared.GroupPicker.noMatches') }}</CommandEmpty>
-            <CommandItem
-              v-for="item in available"
-              :key="item.id"
-              :value="item.id"
-              @select="pick(item.id)"
+    <template v-if="available.length > 0">
+      <Button
+        variant="ghost"
+        size="xs"
+        class="ml-1 text-primary hover:text-primary"
+        aria-haspopup="listbox"
+        :aria-expanded="isOpen"
+        :aria-controls="isOpen ? `${listId}-box` : undefined"
+        @click="toggle"
+      >
+        <PlusIcon />
+        {{ t('ui.shared.GroupPicker.add') }}
+      </Button>
+      <div
+        v-if="isOpen"
+        :id="`${listId}-box`"
+        :ref="(el) => { floating = el as HTMLElement | null }"
+        popover="manual"
+        data-dismissable-layer
+        class="bg-base-100 text-base-content z-50 w-64 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 shadow-md"
+      >
+        <div class="border-b border-base-300 p-2">
+          <input
+            ref="input"
+            v-model="query"
+            type="text"
+            role="combobox"
+            aria-expanded="true"
+            aria-autocomplete="list"
+            :aria-controls="listId"
+            :aria-activedescendant="active >= 0 ? optionId(active) : undefined"
+            :aria-label="t('ui.shared.GroupPicker.search')"
+            :placeholder="t('ui.shared.GroupPicker.search')"
+            class="input input-sm w-full"
+            @keydown="onKeydown"
+          >
+        </div>
+        <ul :id="listId" role="listbox" class="menu max-h-48 w-full flex-nowrap overflow-y-auto p-1">
+          <li v-if="filtered.length === 0" role="none" class="menu-disabled">
+            <span class="justify-center">{{ t('ui.shared.GroupPicker.noMatches') }}</span>
+          </li>
+          <li v-for="(item, index) in filtered" :key="item.id" role="none">
+            <button
+              :id="optionId(index)"
+              type="button"
+              role="option"
+              tabindex="-1"
+              :aria-selected="index === active"
+              :class="['flex items-center gap-2', index === active ? 'bg-base-content/10' : '']"
+              @pointermove="active = index"
+              @mousedown.prevent
+              @click="pick(item.id)"
             >
               <Avatar v-if="item.avatarText" class="size-5 text-2xs">
                 <AvatarFallback :class="['bg-gradient-to-br font-bold text-white', item.avatarClass]">{{ item.avatarText }}</AvatarFallback>
               </Avatar>
               <span class="truncate flex-1">{{ item.label }}</span>
               <span v-if="item.sublabel" class="text-2xs text-muted-foreground uppercase tracking-caps shrink-0">{{ item.sublabel }}</span>
-            </CommandItem>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </template>
   </div>
 </template>

@@ -1,5 +1,6 @@
 import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
-import { raiseToasts } from './overlay-host'
+import { raiseToasts } from './toast-layer'
+import { popoverOpener } from './use-anchored-popover'
 
 const FIELDS = '[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [data-slot="dialog-body"] button:not(:disabled), [data-slot="dialog-footer"] button:not(:disabled), [href]'
 
@@ -35,6 +36,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
   const menu = opener?.closest('[role="menu"]')
   const triggerId = menu?.getAttribute('aria-labelledby')
   const menuTrigger = triggerId ? document.getElementById(triggerId) : null
+  const menuOpener = popoverOpener(menu ?? null)
 
   function dialog(): HTMLDialogElement | null {
     return el.value instanceof HTMLDialogElement ? el.value : null
@@ -48,7 +50,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     if (d?.open) d.close()
     const active = document.activeElement
     if (!d || !active || active === document.body || d.contains(active)) {
-      const back = opener?.isConnected ? opener : menuTrigger
+      const back = opener?.isConnected ? opener : menuTrigger ?? (menuOpener?.isConnected ? menuOpener : null)
       back?.focus()
     }
   }
@@ -66,9 +68,9 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
   }
 
   /* Esc: always routed through requestClose so the leave transition plays
-     and preventClose is honoured. When a Reka layer (dropdown, select,
-     popover) inside the dialog was open at the keydown, that Escape belongs
-     to the layer, which closes itself: the dialog stays. */
+     and preventClose is honoured. When a popover layer (menu, popover)
+     inside the dialog was open at the keydown, that Escape belongs to the
+     layer, which closes itself: the dialog stays. */
   function trackEscape(event: KeyboardEvent) {
     if (event.key === 'Escape') escapeFocus = document.activeElement as HTMLElement | null
     if (event.key === 'Escape') escapeHitLayer = !!dialog()?.querySelector('[data-dismissable-layer]')
@@ -97,7 +99,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     finish()
   }
 
-  /* A click that starts and ends on the backdrop. A Reka layer open inside
+  /* A click that starts and ends on the backdrop. A popover layer open inside
      the dialog dismisses itself on the same press: leave the dialog alone. */
   function onPointerdown(event: PointerEvent) {
     const d = dialog()

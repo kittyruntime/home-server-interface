@@ -119,8 +119,8 @@ defineExpose({ requestClose })
         <div v-if="open" class="pointer-events-auto absolute inset-0 -z-10 bg-black/50" @mousedown.prevent @click="closeOnBackdrop && requestClose()" />
       </Transition>
       <Transition name="ui-pop" appear @after-leave="finish">
-        <!-- v-show, not v-if: Reka portals inside the panel target this dialog,
-             and unmounting them mid-leave breaks Vue's insertion anchor. -->
+        <!-- v-show, not v-if: the panel keeps its content through the leave
+             transition, and unmounting it mid-leave breaks Vue's insertion anchor. -->
         <div
           v-show="open"
           ref="panel"

@@ -37,6 +37,13 @@ export function popoverHintMode(): 'hint' | 'manual' {
   return hintSupported ? 'hint' : 'manual'
 }
 
+/* Element focused before each open popover opened (or its anchor, if any), for
+   code that must return focus once the popover and its items are gone. */
+const openers = new WeakMap<HTMLElement, HTMLElement>()
+export function popoverOpener(el: Element | null): HTMLElement | null {
+  return (el instanceof HTMLElement && openers.get(el)) || null
+}
+
 /* Open dismissable popovers, topmost last: Esc closes one at a time. */
 const stack: symbol[] = []
 
@@ -95,6 +102,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   function show() {
     const el = floating.value
     if (!el || !isOpen.value || el.matches(':popover-open')) return
+    if (opener) openers.set(el, opener)
     // The UA popover styles (centered, auto margins) would fight Floating UI.
     Object.assign(el.style, { position: 'fixed', inset: 'auto', margin: '0', left: '0', top: '0', visibility: 'hidden' })
     try { el.showPopover() } catch { /* detached or already shown */ }
@@ -171,8 +179,8 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
 
   function open(target: PopoverAnchor) {
     anchor = target
-    opener = document.activeElement as HTMLElement | null
     if (isOpen.value) { void place(); return }
+    opener = document.activeElement as HTMLElement | null
     isOpen.value = true
     listen()
   }
