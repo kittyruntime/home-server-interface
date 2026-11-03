@@ -152,7 +152,7 @@ onUnmounted(() => controller?.abort())
     ref="modal"
     :show-close="false"
     :label="name"
-    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-base-300 bg-[#0d1117]"
+    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-base-300 bg-[#0d1117] [--color-base-content:#e6edf3]"
     @close="emit('close')"
   >
     <div class="flex h-full flex-col min-h-0">

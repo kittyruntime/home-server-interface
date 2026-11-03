@@ -1,6 +1,5 @@
 export { default as Alert } from "./Alert.vue"
 export { default as AlertDescription } from "./AlertDescription.vue"
-export { default as AlertTitle } from "./AlertTitle.vue"
 
 export interface AlertVariants {
   variant?: "default" | "destructive" | "warning" | "info"
@@ -8,7 +7,7 @@ export interface AlertVariants {
 
 const variants: Record<NonNullable<AlertVariants["variant"]>, string> = {
   default: "",
-  destructive: "alert-error alert-soft [&>svg]:text-error *:data-[slot=alert-description]:text-error/90",
+  destructive: "alert-error alert-soft text-error",
   warning: "alert-warning alert-soft text-base-content [&>svg]:text-warning",
   info: "alert-info alert-soft text-base-content [&>svg]:text-info",
 }

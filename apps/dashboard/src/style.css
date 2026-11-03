@@ -231,26 +231,80 @@ html, body, #app {
 /* Colored text on the page background. daisyUI role colors are tuned for
    fills: as text on a light surface, success or warning fall under 2:1, and
    wireframe or black make primary near invisible. Pull the text form halfway
-   toward the content color so it stays readable in every theme; the hue
-   still reads. Link buttons get the same treatment. Fills (bg-*, badge-*, btn-*) are
-   untouched. The doubled
-   selector outranks the plain utility, which is emitted later. */
+   toward the content color so it stays readable in every theme. The mix runs
+   in oklch with the content color's lightness only, so the hue and chroma of
+   the role survive (the oklab fallback greys them). Covers the plain,
+   hover, open and destructive forms. Link buttons get the same treatment
+   unless a color modifier is set. Fills (bg-*, badge-*, btn-*) are untouched.
+   The doubled selectors outrank the plain utility, which is emitted later. */
 @layer utilities {
   .text-primary.text-primary,
+  .hover\:text-primary.hover\:text-primary:hover,
+  .data-\[state\=open\]\:text-primary.data-\[state\=open\]\:text-primary[data-state="open"],
   .text-secondary.text-secondary,
+  .hover\:text-secondary.hover\:text-secondary:hover,
   .text-accent.text-accent,
+  .hover\:text-accent.hover\:text-accent:hover,
   .text-success.text-success,
+  .hover\:text-success.hover\:text-success:hover,
   .text-warning.text-warning,
+  .hover\:text-warning.hover\:text-warning:hover,
+  .\[\&\>svg\]\:text-warning.\[\&\>svg\]\:text-warning>svg,
   .text-error.text-error,
-  .text-info.text-info {
+  .hover\:text-error.hover\:text-error:hover,
+  .data-\[variant\=destructive\]\:text-error.data-\[variant\=destructive\]\:text-error[data-variant="destructive"],
+  .data-\[variant\=destructive\]\:focus\:text-error.data-\[variant\=destructive\]\:focus\:text-error[data-variant="destructive"]:focus,
+  .text-info.text-info,
+  .hover\:text-info.hover\:text-info:hover,
+  .\[\&\>svg\]\:text-info.\[\&\>svg\]\:text-info>svg {
     color: color-mix(in oklab, var(--text-role) 50%, var(--color-base-content));
   }
   .text-primary.text-primary { --text-role: var(--color-primary); }
+  .hover\:text-primary.hover\:text-primary:hover { --text-role: var(--color-primary); }
+  .data-\[state\=open\]\:text-primary.data-\[state\=open\]\:text-primary[data-state="open"] { --text-role: var(--color-primary); }
   .text-secondary.text-secondary { --text-role: var(--color-secondary); }
+  .hover\:text-secondary.hover\:text-secondary:hover { --text-role: var(--color-secondary); }
   .text-accent.text-accent { --text-role: var(--color-accent); }
+  .hover\:text-accent.hover\:text-accent:hover { --text-role: var(--color-accent); }
   .text-success.text-success { --text-role: var(--color-success); }
+  .hover\:text-success.hover\:text-success:hover { --text-role: var(--color-success); }
   .text-warning.text-warning { --text-role: var(--color-warning); }
+  .hover\:text-warning.hover\:text-warning:hover { --text-role: var(--color-warning); }
+  .\[\&\>svg\]\:text-warning.\[\&\>svg\]\:text-warning>svg { --text-role: var(--color-warning); }
   .text-error.text-error { --text-role: var(--color-error); }
+  .hover\:text-error.hover\:text-error:hover { --text-role: var(--color-error); }
+  .data-\[variant\=destructive\]\:text-error.data-\[variant\=destructive\]\:text-error[data-variant="destructive"] { --text-role: var(--color-error); }
+  .data-\[variant\=destructive\]\:focus\:text-error.data-\[variant\=destructive\]\:focus\:text-error[data-variant="destructive"]:focus { --text-role: var(--color-error); }
   .text-info.text-info { --text-role: var(--color-info); }
-  .btn-link.btn-link { --btn-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content)); }
+  .hover\:text-info.hover\:text-info:hover { --text-role: var(--color-info); }
+  .\[\&\>svg\]\:text-info.\[\&\>svg\]\:text-info>svg { --text-role: var(--color-info); }
+  .btn-link:not(.btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral) {
+    --btn-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+  }
+  @supports (color: oklch(from red l c h)) {
+    .text-primary.text-primary,
+    .hover\:text-primary.hover\:text-primary:hover,
+    .data-\[state\=open\]\:text-primary.data-\[state\=open\]\:text-primary[data-state="open"],
+    .text-secondary.text-secondary,
+    .hover\:text-secondary.hover\:text-secondary:hover,
+    .text-accent.text-accent,
+    .hover\:text-accent.hover\:text-accent:hover,
+    .text-success.text-success,
+    .hover\:text-success.hover\:text-success:hover,
+    .text-warning.text-warning,
+    .hover\:text-warning.hover\:text-warning:hover,
+    .\[\&\>svg\]\:text-warning.\[\&\>svg\]\:text-warning>svg,
+    .text-error.text-error,
+    .hover\:text-error.hover\:text-error:hover,
+    .data-\[variant\=destructive\]\:text-error.data-\[variant\=destructive\]\:text-error[data-variant="destructive"],
+    .data-\[variant\=destructive\]\:focus\:text-error.data-\[variant\=destructive\]\:focus\:text-error[data-variant="destructive"]:focus,
+    .text-info.text-info,
+    .hover\:text-info.hover\:text-info:hover,
+    .\[\&\>svg\]\:text-info.\[\&\>svg\]\:text-info>svg {
+      color: color-mix(in oklch, var(--text-role) 50%, oklch(from var(--color-base-content) l none none));
+    }
+    .btn-link:not(.btn-primary, .btn-secondary, .btn-accent, .btn-info, .btn-success, .btn-warning, .btn-error, .btn-neutral) {
+      --btn-color: color-mix(in oklch, var(--color-primary) 50%, oklch(from var(--color-base-content) l none none));
+    }
+  }
 }

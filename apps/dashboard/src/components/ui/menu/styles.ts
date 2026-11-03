@@ -5,7 +5,7 @@ export const menuItemClass = [
   'data-[inset]:pl-8',
   'data-[variant=destructive]:text-error data-[variant=destructive]:hover:bg-error/10 data-[variant=destructive]:focus:bg-error/10 data-[variant=destructive]:focus:text-error',
   '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4 [&_svg:not([class*=\'text-\'])]:text-base-content/60',
-  'data-[variant=destructive]:*:[svg]:text-error!',
+  'data-[variant=destructive]:[&_svg]:text-current!',
 ].join(' ')
 
 export const menuContentClass = [
