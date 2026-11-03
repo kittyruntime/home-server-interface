@@ -284,7 +284,4 @@ html, body, #app {
   height: 100%;
   width: 100%;
   font-family: var(--font-sans);
-  color-scheme: light dark;
 }
-:root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"] { color-scheme: dark; }

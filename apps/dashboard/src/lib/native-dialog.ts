@@ -1,6 +1,5 @@
 import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 import { raiseToasts } from './toast-layer'
-import { popoverOpener } from './use-anchored-popover'
 
 const FIELDS = '[autofocus], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [data-slot="dialog-body"] button:not(:disabled), [data-slot="dialog-footer"] button:not(:disabled), [href]'
 
@@ -36,7 +35,6 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
   const menu = opener?.closest('[role="menu"]')
   const triggerId = menu?.getAttribute('aria-labelledby')
   const menuTrigger = triggerId ? document.getElementById(triggerId) : null
-  const menuOpener = popoverOpener(menu ?? null)
 
   function dialog(): HTMLDialogElement | null {
     return el.value instanceof HTMLDialogElement ? el.value : null
@@ -50,7 +48,7 @@ export function useNativeDialog(el: Ref<HTMLElement | null>, opts: Options) {
     if (d?.open) d.close()
     const active = document.activeElement
     if (!d || !active || active === document.body || d.contains(active)) {
-      const back = opener?.isConnected ? opener : menuTrigger ?? (menuOpener?.isConnected ? menuOpener : null)
+      const back = opener?.isConnected ? opener : menuTrigger?.isConnected ? menuTrigger : null
       back?.focus()
     }
   }

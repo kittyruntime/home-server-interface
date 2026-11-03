@@ -27,22 +27,11 @@ function isEditable(target: EventTarget | null): boolean {
   return target instanceof Element && !!target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])")
 }
 
-/* A press on a non-focusable row leaves focus on <body>, so nothing would take
-   it back once an item opens a dialog and the menu is gone. The region itself
-   becomes the focus target (programmatic only: it stays out of the tab order). */
-function holdFocus() {
-  const region = ctx.trigger.value
-  if (!region || (document.activeElement && document.activeElement !== document.body)) return
-  if (!region.hasAttribute("tabindex")) region.setAttribute("tabindex", "-1")
-  region.focus({ preventScroll: true })
-}
-
 function onContextmenu(event: MouseEvent) {
   if (props.disabled || isEditable(event.target)) return
   event.preventDefault()
   // The Menu key also sends a contextmenu event, with no pointer position.
   if (Date.now() - keyboardOpenedAt < 100) return
-  holdFocus()
   ctx.show({ x: event.clientX, y: event.clientY }, "content")
 }
 
@@ -66,7 +55,7 @@ function onPointerdown(event: PointerEvent) {
   if (props.disabled || event.pointerType === "mouse" || isEditable(event.target)) return
   cancelPress()
   const { clientX, clientY } = event
-  pressTimer = setTimeout(() => { holdFocus(); ctx.show({ x: clientX, y: clientY }, "content") }, LONG_PRESS_MS)
+  pressTimer = setTimeout(() => ctx.show({ x: clientX, y: clientY }, "content"), LONG_PRESS_MS)
 }
 </script>
 

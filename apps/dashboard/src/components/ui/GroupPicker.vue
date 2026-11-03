@@ -5,6 +5,7 @@ import { computed, nextTick, ref, useId, watch } from 'vue'
 import { PlusIcon, XIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { nextIndex } from '@/lib/menu-navigation'
+import { matchesQuery } from '@/lib/search-match'
 import { useAnchoredPopover } from '@/lib/use-anchored-popover'
 
 const { t } = useI18n()
@@ -43,9 +44,7 @@ const { floating, open, close, isOpen } = useAnchoredPopover({
 })
 
 const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return props.available
-  return props.available.filter(item => `${item.label} ${item.sublabel ?? ''}`.toLowerCase().includes(q))
+  return props.available.filter(item => matchesQuery(query.value, item.label, item.sublabel))
 })
 
 watch([query, isOpen], () => { active.value = filtered.value.length > 0 ? 0 : -1 })
@@ -65,7 +64,15 @@ function pick(id: string) {
   close()
 }
 
+/* A press on the box's padding or text must not move focus out of the input
+   (a modal around it would treat that as leaving, and close the picker). */
+function onBoxMousedown(event: MouseEvent) {
+  if (event.target !== input.value) event.preventDefault()
+}
+
 function onKeydown(event: KeyboardEvent) {
+  // Leaving the list by Tab closes it; focus goes back to the trigger first.
+  if (event.key === 'Tab') { close(); return }
   if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
     event.preventDefault()
     active.value = nextIndex(event.key, active.value, filtered.value.map(() => false))
@@ -135,6 +142,7 @@ function onKeydown(event: KeyboardEvent) {
         :ref="(el) => { floating = el as HTMLElement | null }"
         popover="manual"
         data-dismissable-layer
+        @mousedown="onBoxMousedown"
         class="bg-base-100 text-base-content z-50 w-64 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 shadow-md"
       >
         <div class="border-b border-base-300 p-2">
@@ -153,7 +161,7 @@ function onKeydown(event: KeyboardEvent) {
             @keydown="onKeydown"
           >
         </div>
-        <ul :id="listId" role="listbox" class="menu max-h-48 w-full flex-nowrap overflow-y-auto p-1">
+        <ul :id="listId" role="listbox" tabindex="-1" class="menu max-h-48 w-full flex-nowrap overflow-y-auto p-1">
           <li v-if="filtered.length === 0" role="none" class="menu-disabled">
             <span class="justify-center">{{ t('ui.shared.GroupPicker.noMatches') }}</span>
           </li>

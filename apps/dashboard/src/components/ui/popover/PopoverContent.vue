@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Placement } from "@floating-ui/dom"
 import type { HTMLAttributes } from "vue"
-import { computed, inject, nextTick, watch } from "vue"
+import { computed, inject, watch } from "vue"
 import { useAnchoredPopover } from "@/lib/use-anchored-popover"
 import { cn } from "@/lib/utils"
 import { popoverKey } from "./context"
@@ -31,6 +31,8 @@ const ctx = inject(popoverKey)!
 
 const placement = computed(() => (props.align === "center" ? props.side : `${props.side}-${props.align}`) as Placement)
 
+const FIRST_FOCUSABLE = "input:not(:disabled), button:not(:disabled), [href], select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])"
+
 const { floating, open, close, isOpen } = useAnchoredPopover({
   placement,
   offset: () => props.sideOffset,
@@ -40,19 +42,18 @@ const { floating, open, close, isOpen } = useAnchoredPopover({
   restoreFocus: props.restoreFocus,
   closeOnFocusOutside: true,
   onClose: () => { ctx.open.value = false },
+  // The element is visible only once placed: focusing it earlier does nothing.
+  onPlaced: (el) => {
+    if (!props.focusOnOpen) return
+    ;(el.querySelector<HTMLElement>(FIRST_FOCUSABLE) ?? el).focus({ preventScroll: true })
+  },
 })
 
-watch(ctx.open, async (value) => {
+watch(ctx.open, (value) => {
   if (!value) { close(); return }
   const anchor = ctx.anchor()
   if (!anchor) return
   open(anchor)
-  if (!props.focusOnOpen) return
-  await nextTick()
-  const el = floating.value
-  if (!el) return
-  const first = el.querySelector<HTMLElement>("input:not(:disabled), button:not(:disabled), [href], select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])")
-  ;(first ?? el).focus({ preventScroll: true })
 }, { immediate: true, flush: "post" })
 </script>
 
@@ -60,7 +61,7 @@ watch(ctx.open, async (value) => {
   <div
     v-if="isOpen"
     :id="ctx.contentId"
-    ref="floating"
+    :ref="(el) => { floating = el as HTMLElement | null }"
     v-bind="$attrs"
     popover="manual"
     role="dialog"

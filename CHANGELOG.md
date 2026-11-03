@@ -34,8 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Selects and pickers use native controls**: the section selector on narrow
   layouts, the app store sort and the alerts source filter are now the
   browser's own select, and the group and user picker is a searchable list
-  you can drive with the arrow keys. Focus returns to the right place when a
-  context menu action opens a dialog.
+  you can drive with the arrow keys.
 
 ## [1.78.4] - 2026-11-02
 
