@@ -244,7 +244,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </TableRow>
           </TableHeader>
           <TableBody class="divide-y divide-border">
-            <TableRow v-for="e in mounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+            <TableRow v-for="e in mounted" :key="e.key" class="hover:bg-base-200/30 transition-colors">
               <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground">{{ e.mountpoint }}</TableCell>
               <TableCell class="px-4 py-2.5 font-mono text-xs text-muted-foreground truncate max-w-0 w-40">{{ e.device }}</TableCell>
               <TableCell class="px-4 py-2.5">
@@ -292,7 +292,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
               </TableRow>
             </TableHeader>
             <TableBody class="divide-y divide-border">
-              <TableRow v-for="e in unmounted" :key="e.key" class="hover:bg-accent/30 transition-colors">
+              <TableRow v-for="e in unmounted" :key="e.key" class="hover:bg-base-200/30 transition-colors">
                 <TableCell class="px-4 py-2.5 font-mono text-xs text-foreground/80">{{ e.device }}</TableCell>
                 <TableCell class="px-4 py-2.5">
                   <Badge as="button" variant="outline" @click="emit('navigate', e.target)" :class="['rounded-sm hover:opacity-80', sourceBadgeClass[e.source]]">

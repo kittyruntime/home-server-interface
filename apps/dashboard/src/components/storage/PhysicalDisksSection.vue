@@ -428,7 +428,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             </div>
             <div v-for="r in g.rows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-border last:border-b-0">
               <!-- Row (desktop) -->
-              <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-accent/40 transition-colors"
+              <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-base-200/40 transition-colors"
                 @click="toggleExpanded(r.disk.name)">
                 <Checkbox v-if="isSelectable(r)" :model-value="selected.has(r.disk.name)" @click.stop @update:model-value="toggleSelected(r.disk.name)" :aria-label="`Select /dev/${r.disk.name}`" />
                 <span v-else/>

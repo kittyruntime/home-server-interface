@@ -86,7 +86,7 @@ function fileExt(name: string): string {
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors',
         pendingPaths?.includes(entry.path) ? 'opacity-40 pointer-events-none' : '',
-        selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-accent']"
+        selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-base-200']"
     >
       <div
         @click.stop="emit('selectEntry', entry, $event)"
@@ -200,7 +200,7 @@ function fileExt(name: string): string {
         :class="['group transition-colors',
           pendingPaths?.includes(entry.path)
             ? 'opacity-40 pointer-events-none'
-            : entry.type === 'dir' ? 'cursor-pointer hover:bg-accent' : 'cursor-default hover:bg-accent',
+            : entry.type === 'dir' ? 'cursor-pointer hover:bg-base-200' : 'cursor-default hover:bg-base-200',
           selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '']"
       >
         <!-- Checkbox -->

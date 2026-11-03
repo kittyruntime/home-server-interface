@@ -96,7 +96,7 @@ onMounted(load)
       >
         <!-- Place header (accordion) -->
         <CollapsibleTrigger
-          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-200 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div class="flex items-center gap-2">
             <PlaceIcon :icon="place.icon" class="size-4 text-base text-primary" />

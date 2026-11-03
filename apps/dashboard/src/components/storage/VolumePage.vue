@@ -183,7 +183,7 @@ async function afterChange() { await refreshDevices(); await load() }
           <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(volume.space.used) }}</span>
           <span class="text-xs text-muted-foreground">{{ t('uip.storage.VolumePage.usedOfFree', { p0: fmtBytes(volume.space.total), p1: fmtBytes(volume.space.free) }) }}</span>
         </div>
-        <Progress class="mt-2 h-1.5 rounded-full bg-accent" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-foreground']" />
+        <Progress class="mt-2 h-1.5 rounded-full bg-base-200" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-foreground']" />
       </div>
     </template>
 

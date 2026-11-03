@@ -43,7 +43,7 @@ function pick(id: string) {
       <div
         v-for="item in assigned"
         :key="item.id"
-        class="group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
+        class="group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-colors"
       >
         <Avatar v-if="item.avatarText" class="size-6 text-2xs">
           <AvatarFallback :class="['bg-gradient-to-br font-bold text-white', item.avatarClass]">{{ item.avatarText }}</AvatarFallback>

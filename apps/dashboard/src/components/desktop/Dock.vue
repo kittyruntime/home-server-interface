@@ -72,7 +72,7 @@ function onIconClick(id: string) {
             w.minimized ? 'opacity-40' : '',
             isFocused(w.id)
               ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              : 'text-muted-foreground hover:bg-base-200 hover:text-foreground',
           ]"
         >
           <AppIcon :app="w.appId" class="w-5 h-5" />

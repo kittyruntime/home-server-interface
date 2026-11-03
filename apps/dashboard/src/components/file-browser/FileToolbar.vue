@@ -77,7 +77,7 @@ async function openSearch() {
     <!-- Mobile: places sidebar toggle -->
     <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" :tooltip="t('ui.files.FileToolbar.places')" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
       class="sm:hidden flex-shrink-0"
-      :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'">
+      :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-base-200'">
       <MenuIcon class="w-4 h-4" aria-hidden="true" />
     </Button>
 
@@ -144,7 +144,7 @@ async function openSearch() {
       <!-- New (folder / file) -->
       <DropdownMenu v-if="currentPath">
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="sm" :aria-label="t('ui.files.FileToolbar.createNewFolderOrFile')" class="gap-1 px-2 text-xs text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+          <Button variant="ghost" size="sm" :aria-label="t('ui.files.FileToolbar.createNewFolderOrFile')" class="gap-1 px-2 text-xs text-muted-foreground data-[state=open]:bg-base-200 data-[state=open]:text-foreground">
             <PlusIcon aria-hidden="true" />
             <span class="hidden sm:inline">{{ t('ui.files.FileToolbar.new') }}</span>
             <ChevronDownIcon class="hidden sm:block size-3" aria-hidden="true" />

@@ -191,7 +191,7 @@ function diskLabel(d: BlockDev): string {
       <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.CreateVolumeWizard.createVolume') }}</h2>
       <span class="text-xs text-muted-foreground">{{ t('uip.storage.CreateVolumeWizard.stepOf', { p0: step + 1, p1: STEPS.length, p2: STEPS[step] }) }}</span>
     </div>
-    <Progress class="h-0.5 rounded-full bg-accent mb-5" :model-value="((step + 1) / STEPS.length) * 100" indicator-class="rounded-full bg-primary transition-[width]" />
+    <Progress class="h-0.5 rounded-full bg-base-200 mb-5" :model-value="((step + 1) / STEPS.length) * 100" indicator-class="rounded-full bg-primary transition-[width]" />
 
     <!-- Narrow: the volume so far as one line -->
     <p class="@3xl/content:hidden mb-4 text-xs text-muted-foreground">
