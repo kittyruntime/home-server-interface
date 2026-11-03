@@ -3,8 +3,9 @@ import UserAvatar from './UserAvatar.vue'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
 import AppearanceSection from './AppearanceSection.vue'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { CheckIcon } from '@lucide/vue'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { CheckIcon, ChevronDownIcon } from '@lucide/vue'
 import LoadingState from './ui/LoadingState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trpc } from '../lib/trpc'
@@ -230,39 +231,58 @@ onMounted(async () => {
       <div class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.language') }}</h4>
         <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row flex-wrap items-center justify-between gap-3">
-          <ToggleGroup
-            type="single" variant="outline" size="sm"
+          <NativeSelect
             :model-value="locale"
             :aria-label="t('profile.language')"
+            wrapper-class="w-auto"
+            class="select-sm"
             @update:model-value="v => { if (isLocale(v)) void setLocale(v) }"
           >
-            <ToggleGroupItem v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code" class="px-3 text-xs">{{ l.label }}</ToggleGroupItem>
-          </ToggleGroup>
+            <NativeSelectOption v-for="l in LOCALES" :key="l.code" :value="l.code" :lang="l.code">{{ l.label }}</NativeSelectOption>
+          </NativeSelect>
           <p class="text-xs text-base-content/70">{{ t('profile.languageHint') }}</p>
         </Card>
       </div>
 
-      <AppearanceSection />
+      <!-- ── Appearance ── -->
+      <Collapsible class="space-y-2">
+        <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.appearance') }}</h4>
+          <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent class="space-y-8 pt-2">
+          <AppearanceSection />
+        </CollapsibleContent>
+      </Collapsible>
 
-      <!-- ── Delete confirmation ── -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.confirmFileDelete') }}</h4>
-        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-          <p class="text-xs text-base-content/70">{{ t('profile.confirmFileDeleteHint') }}</p>
-          <Switch :model-value="confirmFileDelete" :aria-label="t('profile.confirmFileDelete')" @update:model-value="setConfirmFileDelete" />
-        </Card>
-      </div>
+      <!-- ── Advanced options ── -->
+      <Collapsible class="space-y-2">
+        <CollapsibleTrigger class="group flex w-full items-center justify-between text-left outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.advancedOptions') }}</h4>
+          <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+        </CollapsibleTrigger>
+        <CollapsibleContent class="space-y-8 pt-2">
+          <!-- ── Delete confirmation ── -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('profile.confirmFileDelete') }}</h4>
+            <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
+              <p class="text-xs text-base-content/70">{{ t('profile.confirmFileDeleteHint') }}</p>
+              <Switch :model-value="confirmFileDelete" :aria-label="t('profile.confirmFileDelete')" @update:model-value="setConfirmFileDelete" />
+            </Card>
+          </div>
 
-      <!-- ── Advanced mode ── -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
-        <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
-          <p class="text-xs text-base-content/70">
-            {{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}
-          </p>
-          <Tip text="Advanced mode"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>
-        </Card>
-      </div>
+          <!-- ── Advanced mode ── -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.ProfileSection.advancedMode') }}</h4>
+            <Card class="gap-0 py-0 shadow-none px-4 py-3 flex flex-row items-center justify-between gap-4">
+              <p class="text-xs text-base-content/70">
+                {{ t('ui.settings.ProfileSection.showExtraTechnicalDetailWhere') }}
+              </p>
+              <Tip :text="t('ui.settings.ProfileSection.advancedMode')"><Switch :model-value="advancedMode" @update:model-value="setAdvancedMode" /></Tip>
+            </Card>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
     </template>
   </div>
