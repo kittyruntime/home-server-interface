@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.79.1] - 2026-11-03
+
 ### Changed
 - **Settings are tidier**: Appearance and a new Advanced options group (confirm
   before deleting, advanced mode) are collapsed sections, closed by default, and
@@ -1845,7 +1847,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.1...HEAD
+[1.79.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.0...v1.79.1
 [1.79.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.4...v1.79.0
 [1.78.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.3...v1.78.4
 [1.78.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.2...v1.78.3
