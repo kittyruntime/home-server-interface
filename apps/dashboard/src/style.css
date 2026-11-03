@@ -3,7 +3,6 @@
   themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset, caramellatte, abyss, silk;
   exclude: status, rootscrollgutter;
 }
-@import "tw-animate-css";
 
 /* Type: Inter for the interface; JetBrains Mono carries dense data (paths,
    devices, sizes, code); Space Mono carries key figures. Fonts are
@@ -109,7 +108,7 @@ select:not(:disabled),
 }
 
 /* ── Shared UI utilities ─────────────────────────────────────────────────────
-   The few typographic helpers that sit next to the shadcn-vue components in
+   The few typographic helpers that sit next to the components in
    components/ui. Wrapped in @layer components so Tailwind utilities on the
    same element always win the cascade.
    ─────────────────────────────────────────────────────────────────────────── */
@@ -144,7 +143,7 @@ select:not(:disabled),
   to   { opacity: 1; }
 }
 
-/* Plain clickable rows and cards (list items, nav rows) are not shadcn
+/* Plain clickable rows and cards (list items, nav rows) are not UI
    components: give them the same focus ring as the components. */
 button:not([data-slot]):focus-visible,
 [role="button"]:not([data-slot]):focus-visible {
@@ -199,6 +198,18 @@ button:not([data-slot]):focus-visible,
 .ui-pop-enter-from,
 .ui-pop-leave-to { opacity: 0; transform: scale(0.97); }
 .ui-pop-move { transition: transform var(--ui-dur, var(--dur-base)) var(--ease-out); }
+
+/* Floating layers (menus, popovers, tooltips) fade and scale in once placed.
+   The direction offset comes from data-side. Shortened by the reduced motion
+   durations above. */
+@keyframes ui-float-in {
+  from { opacity: 0; transform: translate(var(--ui-float-x, 0), var(--ui-float-y, 0)) scale(0.97); }
+}
+.ui-float[data-placed] { animation: ui-float-in var(--dur-base) var(--ease-out); }
+.ui-float[data-side="bottom"] { --ui-float-y: -0.5rem; }
+.ui-float[data-side="top"] { --ui-float-y: 0.5rem; }
+.ui-float[data-side="left"] { --ui-float-x: 0.5rem; }
+.ui-float[data-side="right"] { --ui-float-x: -0.5rem; }
 
 .ui-slide-up-enter-active,
 .ui-slide-up-leave-active {

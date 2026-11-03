@@ -56,7 +56,7 @@ function isOn(value: string) {
 function toggle(value: string) {
   let next: GroupValue
   if (single.value) {
-    // Pressing the pressed item releases it, as Reka did
+    // Pressing the pressed item releases it
     next = isOn(value) ? undefined : value
   }
   else {

@@ -18,7 +18,7 @@ export interface TabsContext {
 
 export const tabsKey: InjectionKey<TabsContext> = Symbol("tabs")
 
-/** Same ids as Reka UI, so aria-controls and aria-labelledby stay pairs. */
+/** Stable ids so aria-controls and aria-labelledby stay pairs. */
 export function makeId(baseId: string, kind: "trigger" | "content", value: string) {
   return `${baseId}-${kind}-${value}`
 }

@@ -695,7 +695,7 @@ onMounted(async () => {
               :placeholder="t('ui.files.FileBrowserPanel.filterByName')"
               :aria-label="t('ui.files.FileBrowserPanel.filterByName2')"
               @keydown.escape="closeFilter"
-              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 "
+              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
             />
             <span v-if="filterQuery" class="text-2xs text-base-content/70">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
             <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-base-content/70 hover:text-base-content">

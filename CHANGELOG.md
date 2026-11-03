@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sections, the places and settings sidebars, toasts, desktop windows, the
   dock and the launchpad take their colors and corner roundness from the
   active theme. Closing a window now highlights in the error color.
+- **The interface no longer depends on shadcn-vue or Reka UI**: every
+  component is now built on daisyUI. Menus, popovers and tooltips share one short fade-in that follows
+  the reduced motion setting.
 
 ## [1.78.4] - 2026-11-02
 

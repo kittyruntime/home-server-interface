@@ -172,10 +172,10 @@ onUnmounted(() => controller?.abort())
             @click="toggleFollow"
             :tooltip="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
             :aria-pressed="follow"
-            :class="['bg-transparent text-2xs ',
+            :class="['bg-transparent text-2xs',
               follow
-                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary '
-                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] ']"
+                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary'
+                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]']"
           >
             <ArrowDownIcon class="size-3" aria-hidden="true" />
             {{ t('ui.apps.ContainerLogsPanel.follow') }}
@@ -185,7 +185,7 @@ onUnmounted(() => controller?.abort())
             variant="outline" size="xs"
             @click="clear"
             :tooltip="t('ui.apps.ContainerLogsPanel.clear')"
-            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]  "
+            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]"
           >
             <XIcon class="size-3" aria-hidden="true" />
             {{ t('ui.apps.ContainerLogsPanel.clear') }}

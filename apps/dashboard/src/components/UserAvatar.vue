@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { avatarGradient } from '../lib/avatar'
 
-// A user's initials on their gradient, on the shadcn-vue avatar.
+// A user's initials on their gradient, on the avatar component.
 const props = defineProps<{ username: string; class?: HTMLAttributes['class'] }>()
 </script>
 

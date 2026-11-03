@@ -8,6 +8,7 @@ Vue 3 + TypeScript + Vite frontend.
 - [TypeScript](https://www.typescriptlang.org/)
 - [Vite](https://vitejs.dev/)
 - [Tailwind CSS v4](https://tailwindcss.com/)
+- [daisyUI 5](https://daisyui.com/) for components and themes
 - [tRPC](https://trpc.io/) client
 
 ## Development

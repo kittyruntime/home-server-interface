@@ -62,8 +62,7 @@ function bindFloating(el: unknown) { floatingRef.value = el as HTMLElement | nul
     data-slot="tooltip-content"
     :class="cn(
       'pointer-events-none z-50 w-fit max-w-xs rounded-md bg-neutral px-3 py-1.5 text-xs text-balance text-neutral-content',
-      'data-placed:animate-in data-placed:fade-in-0 data-placed:zoom-in-95 data-placed:motion-reduce:[animation:none]',
-      'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+      'ui-float',
       props.class,
     )"
   >

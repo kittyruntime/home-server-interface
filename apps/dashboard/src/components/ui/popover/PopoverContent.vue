@@ -70,8 +70,7 @@ watch(ctx.open, (value) => {
     data-dismissable-layer
     :class="cn(
       'bg-base-100 text-base-content z-50 w-72 max-w-[calc(100vw-1rem)] rounded-md border p-4 shadow-md outline-hidden',
-      'data-placed:animate-in data-placed:fade-in-0 data-placed:zoom-in-95 data-placed:motion-reduce:[animation:none]',
-      'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+      'ui-float',
       props.class,
     )"
     @click.stop
