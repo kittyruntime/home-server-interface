@@ -1,26 +1,58 @@
 <script setup lang="ts">
-import type { PaginationRootEmits, PaginationRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, provide, ref } from "vue"
 import { cn } from "@/lib/utils"
-import { PaginationRoot, useForwardPropsEmits } from "reka-ui"
+import { getRange, paginationKey } from "./context"
 
-const props = defineProps<PaginationRootProps & {
+const props = withDefaults(defineProps<{
+  page?: number
+  defaultPage?: number
+  total?: number
+  itemsPerPage?: number
+  siblingCount?: number
+  showEdges?: boolean
+  disabled?: boolean
   class?: HTMLAttributes["class"]
-}>()
-const emits = defineEmits<PaginationRootEmits>()
+}>(), {
+  page: undefined,
+  defaultPage: 1,
+  total: 0,
+  itemsPerPage: 10,
+  siblingCount: 2,
+})
 
-const delegatedProps = reactiveOmit(props, "class")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const emits = defineEmits<{
+  "update:page": [page: number]
+}>()
+
+const local = ref(props.defaultPage)
+const page = computed(() => props.page ?? local.value)
+const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.itemsPerPage)))
+const items = computed(() => getRange(page.value, pageCount.value, props.siblingCount, props.showEdges)
+  .map(value => typeof value === "number" ? { type: "page" as const, value } : { type: "ellipsis" as const }))
+
+provide(paginationKey, {
+  page,
+  pageCount,
+  items,
+  disabled: computed(() => props.disabled),
+  setPage(next) {
+    const clamped = Math.max(1, Math.min(next, pageCount.value))
+    if (clamped === page.value)
+      return
+    local.value = clamped
+    emits("update:page", clamped)
+  },
+})
 </script>
 
 <template>
-  <PaginationRoot
-    v-slot="slotProps"
+  <nav
+    role="navigation"
+    aria-label="pagination"
     data-slot="pagination"
-    v-bind="forwarded"
     :class="cn('mx-auto flex w-full justify-center', props.class)"
   >
-    <slot v-bind="slotProps" />
-  </PaginationRoot>
+    <slot :page="page" :page-count="pageCount" />
+  </nav>
 </template>

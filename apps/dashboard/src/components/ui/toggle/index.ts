@@ -1,28 +1,22 @@
-import type { VariantProps } from "class-variance-authority"
-import { cva } from "class-variance-authority"
+import { buttonVariants } from "../button"
 
 export { default as Toggle } from "./Toggle.vue"
 
-export const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-base-200 data-[state=on]:text-base-content [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap",
-  {
-    variants: {
-      variant: {
-        default: "bg-transparent",
-        outline:
-          "border border-input bg-transparent shadow-xs hover:bg-base-200 hover:text-base-content",
-      },
-      size: {
-        default: "h-9 px-2 min-w-9",
-        sm: "h-8 px-1.5 min-w-8",
-        lg: "h-10 px-2.5 min-w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-)
+export interface ToggleVariants {
+  variant?: "default" | "outline"
+  size?: "default" | "sm" | "lg"
+}
 
-export type ToggleVariants = VariantProps<typeof toggleVariants>
+const variants: Record<NonNullable<ToggleVariants["variant"]>, "ghost" | "outline"> = {
+  default: "ghost",
+  outline: "outline",
+}
+
+// A pressed button is a daisyUI btn with aria-pressed (or aria-checked). daisyUI
+// draws that as active in the button color; the primary color makes it stand out
+// from the unpressed state in every theme. Not data-state: Tip overwrites it.
+const pressed = "aria-pressed:[--btn-color:var(--color-primary)] aria-pressed:[--btn-fg:var(--color-primary-content)] aria-checked:[--btn-color:var(--color-primary)] aria-checked:[--btn-fg:var(--color-primary-content)]"
+
+export function toggleVariants({ variant = "default", size = "default" }: ToggleVariants = {}): string {
+  return `${buttonVariants({ variant: variants[variant], size })} ${pressed}`
+}

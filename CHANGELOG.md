@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   colors from daisyUI themes instead of fixed light and dark values. The
   default primary color changes with it, and the rest of the interface moves
   to daisyUI's look as screens are migrated.
+- **Buttons, form controls and display components use daisyUI**: buttons,
+  inputs, checkboxes, switches, sliders, badges, alerts, cards, tables,
+  progress bars, avatars, breadcrumbs, pagination and toggle groups now take
+  their look from the active theme. Tables and breadcrumbs draw their row
+  borders and separators the daisyUI way.
 
 ## [1.78.4] - 2026-11-02
 

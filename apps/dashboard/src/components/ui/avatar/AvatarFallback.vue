@@ -1,21 +1,34 @@
 <script setup lang="ts">
-import type { AvatarFallbackProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue"
 import { cn } from "@/lib/utils"
-import { AvatarFallback } from "reka-ui"
+import { avatarKey } from "./context"
 
-const props = defineProps<AvatarFallbackProps & { class?: HTMLAttributes["class"] }>()
+const props = defineProps<{
+  /** Wait this long (ms) before showing, so a fast image does not flash the fallback. */
+  delayMs?: number
+  class?: HTMLAttributes["class"]
+}>()
 
-const delegatedProps = reactiveOmit(props, "class")
+const avatar = inject(avatarKey, null)
+const delayed = ref(props.delayMs === undefined)
+let timer: ReturnType<typeof setTimeout> | undefined
+
+onMounted(() => {
+  if (props.delayMs !== undefined)
+    timer = setTimeout(() => { delayed.value = true }, props.delayMs)
+})
+onBeforeUnmount(() => clearTimeout(timer))
+
+const visible = computed(() => delayed.value && avatar?.status.value !== "loaded")
 </script>
 
 <template>
-  <AvatarFallback
+  <span
+    v-if="visible"
     data-slot="avatar-fallback"
-    v-bind="delegatedProps"
-    :class="cn('bg-muted flex size-full items-center justify-center rounded-full', props.class)"
+    :class="cn('bg-base-200 text-base-content flex size-full items-center justify-center rounded-full', props.class)"
   >
     <slot />
-  </AvatarFallback>
+  </span>
 </template>

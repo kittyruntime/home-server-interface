@@ -43,7 +43,7 @@ const theme = EditorView.theme({
   '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--primary)' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--primary)' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent) !important' },
-  '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', border: 'none', borderRight: '1px solid var(--border)' },
+  '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', border: 'none', borderRight: '1px solid var(--color-border)' },
   '.cm-activeLine': { backgroundColor: 'var(--color-base-200)' },
   '.cm-activeLineGutter': { backgroundColor: 'var(--color-base-200)' },
   '&.cm-focused': { outline: 'none' },

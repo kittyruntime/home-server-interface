@@ -1,35 +1,32 @@
 <script setup lang="ts">
-import type { CheckboxRootEmits, CheckboxRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { Check } from "@lucide/vue"
-import { reactiveOmit } from "@vueuse/core"
+import { ref } from "vue"
 import { cn } from "@/lib/utils"
-import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui"
+import { useCheckedModel } from "../checked-model"
 
-const props = defineProps<CheckboxRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<CheckboxRootEmits>()
+// The model is true, false or "indeterminate", which the native control shows
+// through its indeterminate property.
+const props = withDefaults(defineProps<{
+  modelValue?: boolean | "indeterminate"
+  defaultValue?: boolean | "indeterminate"
+  class?: HTMLAttributes["class"]
+}>(), { modelValue: undefined, defaultValue: undefined })
 
-const delegatedProps = reactiveOmit(props, "class")
+const emits = defineEmits<{
+  "update:modelValue": [value: boolean | "indeterminate"]
+}>()
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const el = ref<HTMLInputElement | null>(null)
+const { onChange, onClick } = useCheckedModel(props, emits, el)
 </script>
 
 <template>
-  <CheckboxRoot
-    v-slot="slotProps"
+  <input
+    ref="el"
+    type="checkbox"
     data-slot="checkbox"
-    v-bind="forwarded"
-    :class="
-      cn('peer border-input data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
-         props.class)"
+    :class="cn('checkbox checkbox-xs checkbox-primary aria-invalid:checkbox-error disabled:cursor-not-allowed', props.class)"
+    @click="onClick"
+    @change="onChange"
   >
-    <CheckboxIndicator
-      data-slot="checkbox-indicator"
-      class="grid place-content-center text-current transition-none"
-    >
-      <slot v-bind="slotProps">
-        <Check class="size-3.5" />
-      </slot>
-    </CheckboxIndicator>
-  </CheckboxRoot>
 </template>

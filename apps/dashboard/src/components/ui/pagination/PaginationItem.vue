@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { PaginationListItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { ButtonVariants } from "@/components/ui/button"
-import { reactiveOmit } from "@vueuse/core"
+import { computed, inject } from "vue"
 import { cn } from "@/lib/utils"
-import { PaginationListItem } from "reka-ui"
 import { buttonVariants } from "@/components/ui/button"
+import { paginationKey } from "./context"
 
-const props = withDefaults(defineProps<PaginationListItemProps & {
+const props = withDefaults(defineProps<{
+  value: number
   size?: ButtonVariants["size"]
   class?: HTMLAttributes["class"]
   isActive?: boolean
@@ -15,20 +15,21 @@ const props = withDefaults(defineProps<PaginationListItemProps & {
   size: "icon",
 })
 
-const delegatedProps = reactiveOmit(props, "class", "size", "isActive")
+const pagination = inject(paginationKey)
+const disabled = computed(() => pagination?.disabled.value ?? false)
 </script>
 
 <template>
-  <PaginationListItem
+  <button
+    type="button"
     data-slot="pagination-item"
-    v-bind="delegatedProps"
-    :class="cn(
-      buttonVariants({
-        variant: isActive ? 'outline' : 'ghost',
-        size,
-      }),
-      props.class)"
+    :aria-label="`Page ${value}`"
+    :aria-current="isActive ? 'page' : undefined"
+    :data-selected="isActive ? true : undefined"
+    :disabled="disabled"
+    :class="cn(buttonVariants({ variant: 'secondary', size }), 'join-item', isActive && 'btn-primary', props.class)"
+    @click="pagination?.setPage(value)"
   >
     <slot />
-  </PaginationListItem>
+  </button>
 </template>

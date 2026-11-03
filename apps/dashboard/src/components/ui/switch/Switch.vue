@@ -1,38 +1,31 @@
 <script setup lang="ts">
-import type { SwitchRootEmits, SwitchRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { ref } from "vue"
 import { cn } from "@/lib/utils"
-import {
-  SwitchRoot,
-  SwitchThumb,
-  useForwardPropsEmits,
-} from "reka-ui"
+import { useCheckedModel } from "../checked-model"
 
-const props = defineProps<SwitchRootProps & { class?: HTMLAttributes["class"] }>()
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  defaultValue?: boolean
+  class?: HTMLAttributes["class"]
+}>(), { modelValue: undefined, defaultValue: undefined })
 
-const emits = defineEmits<SwitchRootEmits>()
+const emits = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 
-const delegatedProps = reactiveOmit(props, "class")
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const el = ref<HTMLInputElement | null>(null)
+const { onChange, onClick } = useCheckedModel(props, emits as (event: "update:modelValue", value: boolean | "indeterminate") => void, el)
 </script>
 
 <template>
-  <SwitchRoot
-    v-slot="slotProps"
+  <input
+    ref="el"
+    type="checkbox"
+    role="switch"
     data-slot="switch"
-    v-bind="forwarded"
-    :class="cn(
-      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
-      props.class,
-    )"
+    :class="cn('toggle toggle-sm toggle-primary disabled:cursor-not-allowed', props.class)"
+    @click="onClick"
+    @change="onChange"
   >
-    <SwitchThumb
-      data-slot="switch-thumb"
-      :class="cn('bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0')"
-    >
-      <slot name="thumb" v-bind="slotProps" />
-    </SwitchThumb>
-  </SwitchRoot>
 </template>

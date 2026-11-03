@@ -1,25 +1,51 @@
 <script setup lang="ts">
-import type { RadioGroupRootEmits, RadioGroupRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import type { RadioValue } from "./context"
+import { computed, nextTick, provide, ref, toRef, useId } from "vue"
 import { cn } from "@/lib/utils"
-import { RadioGroupRoot, useForwardPropsEmits } from "reka-ui"
+import Primitive from "../Primitive.vue"
+import { radioGroupKey } from "./context"
 
-const props = defineProps<RadioGroupRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<RadioGroupRootEmits>()
+const props = withDefaults(defineProps<{
+  modelValue?: RadioValue
+  defaultValue?: RadioValue
+  disabled?: boolean
+  required?: boolean
+  name?: string
+  as?: string | object
+  class?: HTMLAttributes["class"]
+}>(), { modelValue: undefined, defaultValue: undefined, name: undefined, as: "div" })
 
-const delegatedProps = reactiveOmit(props, "class")
+const emits = defineEmits<{
+  "update:modelValue": [value: RadioValue]
+}>()
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const generatedName = `radio-group-${useId()}`
+const local = ref<RadioValue | undefined>(props.defaultValue)
+const model = computed(() => props.modelValue !== undefined ? props.modelValue : local.value)
+const tick = ref(0)
+
+provide(radioGroupKey, {
+  name: computed(() => props.name ?? generatedName),
+  model,
+  disabled: toRef(props, "disabled"),
+  required: toRef(props, "required"),
+  tick,
+  select(value) {
+    local.value = value
+    emits("update:modelValue", value)
+    nextTick(() => tick.value++)
+  },
+})
 </script>
 
 <template>
-  <RadioGroupRoot
-    v-slot="slotProps"
+  <Primitive
+    :as="props.as"
+    role="radiogroup"
     data-slot="radio-group"
     :class="cn('grid gap-3', props.class)"
-    v-bind="forwarded"
   >
-    <slot v-bind="slotProps" />
-  </RadioGroupRoot>
+    <slot :model-value="model" />
+  </Primitive>
 </template>

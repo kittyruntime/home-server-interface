@@ -59,6 +59,14 @@
   }
 }
 
+/* daisyUI only slows the loading glyph under reduced motion (its SMIL animation
+   lives inside the mask image, CSS cannot stop it). Swap in a static arc. */
+@media (prefers-reduced-motion: reduce) {
+  .loading {
+    mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' stroke='black' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='9.5' fill='none' stroke-width='3' stroke-linecap='round' stroke-dasharray='42,150'/%3E%3C/svg%3E");
+  }
+}
+
 /* Legacy shadcn token names resolve to daisyUI variables. */
 :root {
   --background: var(--color-base-100);
@@ -76,7 +84,6 @@
   --accent: var(--color-base-200);
   --accent-foreground: var(--color-base-content);
   --destructive: var(--color-error);
-  --border: var(--color-base-300);
   --input: var(--color-base-300);
   --ring: color-mix(in oklab, var(--color-base-content) 35%, transparent);
   --chart-1: var(--color-primary);
@@ -115,7 +122,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
-  --color-border: var(--border);
+  --color-border: var(--color-base-300);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
