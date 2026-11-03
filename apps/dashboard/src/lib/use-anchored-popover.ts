@@ -19,6 +19,10 @@ export interface AnchoredPopoverOptions {
   closeOnFocusOutside?: boolean
   /** Called each time the popover closes, whatever the reason. */
   onClose?: () => void
+  /** Called once per opening, when the popover is first placed and visible. */
+  onPlaced?: (el: HTMLElement) => void
+  /** Return true for a press outside that must not dismiss the popover. */
+  ignorePointerdown?: (event: PointerEvent) => boolean
 }
 
 /* `popover="hint"` is not in every browser: elsewhere fall back to "manual",
@@ -59,6 +63,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   let stopAuto: (() => void) | null = null
   let listening = false
   let toggleEl: HTMLElement | null = null
+  let announced = false
 
   function reference(): HTMLElement | VirtualElement | null {
     if (!anchor) return null
@@ -84,6 +89,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
     Object.assign(el.style, { left: `${x}px`, top: `${y}px`, visibility: '' })
     el.dataset.side = placement.split('-')[0]
     el.dataset.placed = ''
+    if (!announced) { announced = true; options.onPlaced?.(el) }
   }
 
   function show() {
@@ -100,6 +106,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   }
 
   function stopPositioning() {
+    announced = false
     stopAuto?.()
     stopAuto = null
     toggleEl?.removeEventListener('toggle', onToggle)
@@ -126,6 +133,7 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
     if (!el || !target || el.contains(target)) return
     if (anchor instanceof HTMLElement && anchor.contains(target)) return
     if (inStackedDialog(target, el)) return
+    if (options.ignorePointerdown?.(event)) return
     // After the event has reached the dialog's own handlers, which read the DOM
     // to tell whether a layer was open at the press.
     setTimeout(() => close())

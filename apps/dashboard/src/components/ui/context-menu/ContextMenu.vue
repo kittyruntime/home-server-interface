@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import type { ContextMenuRootEmits, ContextMenuRootProps } from "reka-ui"
-import { ContextMenuRoot, useForwardPropsEmits } from "reka-ui"
+import { ref, watch } from "vue"
+import { useMenu } from "@/lib/use-menu"
 
-const props = defineProps<ContextMenuRootProps>()
-const emits = defineEmits<ContextMenuRootEmits>()
+defineProps<{
+  /** Accepted for compatibility: a menu never blocks the page. */
+  modal?: boolean
+  dir?: "ltr" | "rtl"
+  pressOpenDelay?: number
+}>()
+const emit = defineEmits<{ "update:open": [value: boolean] }>()
 
-const forwarded = useForwardPropsEmits(props, emits)
+const open = ref(false)
+watch(open, value => emit("update:open", value))
+useMenu({ kind: "context", open })
 </script>
 
 <template>
-  <ContextMenuRoot
-    data-slot="context-menu"
-    v-bind="forwarded"
-  >
-    <slot />
-  </ContextMenuRoot>
+  <slot />
 </template>
