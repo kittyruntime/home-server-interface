@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.79.0] - 2026-11-03
+
 ### Added
 - **Appearance settings**: choose among 35 themes (or Auto, which follows your
   system), an accent color, the roundness of corners and the density of the
@@ -1828,7 +1830,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.4...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.0...HEAD
+[1.79.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.4...v1.79.0
 [1.78.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.3...v1.78.4
 [1.78.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.2...v1.78.3
 [1.78.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.1...v1.78.2
