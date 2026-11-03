@@ -183,8 +183,6 @@ export default {
     min6Chars: '6 caractères min.',
     confirm: 'Confirmer',
     repeat: 'Répétez',
-    theme: 'Thème',
-    accentColor: 'Couleur d’accent',
     advancedMode: 'Mode avancé',
     showExtraTechnicalDetailWhere: 'Affiche des détails techniques là où ils existent : UID/GID bruts des fichiers, pour l’instant.',
   },

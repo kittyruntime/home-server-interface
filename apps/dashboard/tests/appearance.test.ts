@@ -95,3 +95,9 @@ test('hydrateAppearance falls back to the legacy pair with default radius and de
 test('hydrateAppearance gives defaults for an empty object', () => {
   assert.deepEqual(hydrateAppearance({}), DEFAULT_APPEARANCE)
 })
+
+test('normalizeAppearance rejects inherited object keys as accent or theme', () => {
+  const a = normalizeAppearance({ accent: 'toString', theme: 'constructor' })
+  assert.equal(a.accent, 'theme')
+  assert.equal(a.theme, 'auto')
+})
