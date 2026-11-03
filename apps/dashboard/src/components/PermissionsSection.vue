@@ -101,7 +101,7 @@ onMounted(load)
           <div class="flex items-center gap-2">
             <PlaceIcon :icon="place.icon" class="size-4 text-base text-primary" />
             <span class="text-sm font-medium text-base-content">{{ place.name }}</span>
-            <span class="ml-2 text-xs text-base-content/70 font-mono">{{ place.path }}</span>
+            <span class="ml-2 text-xs text-base-content/70">{{ place.path }}</span>
           </div>
           <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
         </CollapsibleTrigger>

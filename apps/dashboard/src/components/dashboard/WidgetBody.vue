@@ -90,11 +90,11 @@ const SMART_DOT: Record<string, string> = {
         <div class="space-y-0.5">
           <div class="flex items-center gap-1.5">
             <span class="text-2xs font-semibold uppercase tracking-caps text-success">{{ t('ui.home.DashboardPanel.rx') }}</span>
-            <span class="text-sm font-mono text-base-content">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
+            <span class="text-sm tabular-nums text-base-content">{{ metrics ? fmtBytes(metrics.network.rx) : '-' }}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="text-2xs font-semibold text-primary uppercase tracking-caps">{{ t('ui.home.DashboardPanel.tx') }}</span>
-            <span class="text-sm font-mono text-base-content">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
+            <span class="text-sm tabular-nums text-base-content">{{ metrics ? fmtBytes(metrics.network.tx) : '-' }}</span>
           </div>
         </div>
         <div class="flex-1 min-w-0 ml-4">
@@ -177,11 +177,11 @@ const SMART_DOT: Record<string, string> = {
       </div>
       <div class="flex justify-between gap-3">
         <dt class="text-base-content/70">{{ t('ui.home.DashboardPanel.cpus') }}</dt>
-        <dd class="font-mono text-base-content/80">{{ sysinfo.cpuCount }}</dd>
+        <dd class="tabular-nums text-base-content/80">{{ sysinfo.cpuCount }}</dd>
       </div>
       <div class="flex justify-between gap-3">
         <dt class="text-base-content/70">{{ t('ui.home.DashboardPanel.load') }}</dt>
-        <dd class="font-mono text-base-content/80 tabular-nums">
+        <dd class="text-base-content/80 tabular-nums">
           {{ sysinfo.loadavg.map(n => n.toFixed(2)).join('  ') }}
         </dd>
       </div>
@@ -197,7 +197,7 @@ const SMART_DOT: Record<string, string> = {
     <div v-else class="flex-1 flex flex-col gap-2.5 overflow-y-auto">
       <div v-for="dev in smartDevices" :key="dev" class="flex items-center gap-2.5">
         <span :class="['w-2 h-2 rounded-full shrink-0', SMART_DOT[smartStatus(smart[dev])] ?? SMART_DOT.unknown]"></span>
-        <span class="text-xs font-mono text-base-content">{{ dev }}</span>
+        <span class="text-xs text-base-content">{{ dev }}</span>
         <span class="text-2xs text-base-content/70 truncate flex-1" :title="smart[dev]?.modelName">
           {{ smart[dev]?.modelName ?? '' }}
         </span>

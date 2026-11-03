@@ -90,7 +90,7 @@ defineExpose({ open })
     <div class="px-5 py-4 border-b border-base-300">
       <h3 class="font-semibold text-base-content">{{ t('ui.storage.DeviceMountDialog.mountDevice') }}</h3>
       <p class="text-xs text-base-content/70 mt-0.5">
-        <span class="font-mono">{{ dlg.dev.path }}</span>
+        <span>{{ dlg.dev.path }}</span>
         <span v-if="dlg.dev.fstype"> · {{ dlg.dev.fstype }}</span>
         · {{ fmtBytes(dlg.dev.size) }}
       </p>

@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Theme picker no longer scrolls the page**: choosing a theme from the lower part
   of the list used to jump the page down, and now it stays where it is.
+- **One font per line of text**: disk names, sizes, paths and counts inside a
+  sentence or next to a label no longer switch to the monospace font (for example
+  the free disks line in Volumes). Code, logs and identifiers shown on their own
+  keep it.
 
 ## [1.79.0] - 2026-11-03
 

@@ -47,7 +47,7 @@ const canConfirm = computed(() =>
       </div>
       <div v-if="confirmWord != null">
         <label class="block text-xs text-base-content/80 mb-1.5">
-          {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-mono font-bold text-base-content">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
+          {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-bold text-base-content">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
         </label>
         <Input v-model="typed" type="text" :placeholder="confirmWord"
           class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"/>

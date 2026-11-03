@@ -70,7 +70,7 @@ function toggle(id: string) {
         </Button>
         <ol v-if="open.has(e.id)" class="mt-1.5 ml-4.5 space-y-1">
           <li v-for="(s, i) in e.steps" :key="i" class="flex items-start gap-2 text-xs">
-            <span class="font-mono tabular-nums text-base-content/70 w-4 text-right shrink-0">{{ i + 1 }}</span>
+            <span class="tabular-nums text-base-content/70 w-4 text-right shrink-0">{{ i + 1 }}</span>
             <span class="flex-1 text-base-content/80">{{ s.summary }}</span>
             <span class="shrink-0" :class="s.status === 'failed' ? 'text-error' : s.status === 'done' || s.status === 'started' ? 'text-base-content/70' : 'text-warning'">{{ s.status }}</span>
           </li>

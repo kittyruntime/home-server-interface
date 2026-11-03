@@ -109,7 +109,7 @@ function dirWritable(s: ShareDiag): boolean {
         <p v-if="s.guestOk" class="text-2xs text-base-content/70">{{ t('ui.sharing.DiagnosticsSection.guestAccessEnabledReadOnly') }}</p>
 
         <!-- Dir detail -->
-        <p v-if="s.dir" class="text-2xs text-base-content/70 font-mono">
+        <p v-if="s.dir" class="text-2xs text-base-content/70">
           {{ t('uip.sharing.DiagnosticsSection.groupMode', { p0: s.dir.group || '-', p1: s.dir.mode }) }}<span v-if="!s.dir.exists"> {{ t('ui.sharing.DiagnosticsSection.notFound') }}</span>
         </p>
       </Card>

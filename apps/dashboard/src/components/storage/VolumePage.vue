@@ -201,7 +201,7 @@ async function afterChange() { await refreshDevices(); await load() }
           <Button variant="outline" size="sm" v-if="pending.phase === 'failed' && isAdmin" :disabled="retrying" @click="retryExpansion">{{ t('ui.storage.VolumePage.retry') }}</Button>
         </div>
         <Alert variant="destructive" v-if="volume.state === 'missing'" class="block text-base-content" role="note">
-          {{ t('ui.storage.VolumePage.hsiMountsThisVolumeAt') }} <span class="font-mono">{{ volume.mountPoint }}</span>{{ t('ui.storage.VolumePage.butItsDiskWasNot') }}
+          {{ t('ui.storage.VolumePage.hsiMountsThisVolumeAt') }} <span>{{ volume.mountPoint }}</span>{{ t('ui.storage.VolumePage.butItsDiskWasNot') }}
           <Button variant="link" class="h-auto p-0 ml-1" @click="emit('navigate', 'mounts')">{{ t('ui.storage.VolumePage.openMounts') }}</Button>
         </Alert>
         <ul v-else-if="volume.issues.length" class="space-y-1.5">
@@ -221,7 +221,7 @@ async function afterChange() { await refreshDevices(); await load() }
         </div>
 
         <p class="text-xs text-base-content/70">
-          <span v-if="volume.fstype" class="font-mono">{{ volume.fstype }}</span>
+          <span v-if="volume.fstype">{{ volume.fstype }}</span>
           <template v-if="volume.tolerates"> {{ t('uip.storage.VolumePage.survivesFailed', { p0: volume.tolerates, p1: volume.tolerates === 1 ? 'disk' : 'disks' }) }}</template>
           <template v-else-if="volume.state !== 'missing'"> {{ t('ui.storage.VolumePage.aFailedDiskLosesThis') }}</template>
         </p>

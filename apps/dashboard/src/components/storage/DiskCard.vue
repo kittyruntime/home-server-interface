@@ -101,7 +101,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
     <div class="flex items-center gap-3 px-4 py-3">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-mono text-sm font-semibold text-base-content">/dev/{{ disk.name }}</span>
+          <span class="text-sm font-semibold text-base-content">/dev/{{ disk.name }}</span>
           <span v-if="disk.model" class="text-2xs text-base-content/70 truncate">{{ disk.model }}</span>
           <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(disk.size) }}</span>
           <span v-if="disk.isSystem" class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
@@ -200,8 +200,8 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <!-- Device info row -->
           <div v-if="sc.serialNumber || sc.firmware" class="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-base-content/70 border-b border-base-300">
             <span v-if="sc.modelFamily"><span class="text-base-content/80">{{ t('ui.storage.DiskCard.family') }}</span> {{ sc.modelFamily }}</span>
-            <span v-if="sc.serialNumber"><span class="text-base-content/80">S/N</span> <span class="font-mono">{{ sc.serialNumber }}</span></span>
-            <span v-if="sc.firmware"><span class="text-base-content/80">FW</span> <span class="font-mono">{{ sc.firmware }}</span></span>
+            <span v-if="sc.serialNumber"><span class="text-base-content/80">S/N</span> <span>{{ sc.serialNumber }}</span></span>
+            <span v-if="sc.firmware"><span class="text-base-content/80">FW</span> <span>{{ sc.firmware }}</span></span>
           </div>
 
           <!-- NVMe health log -->
@@ -226,11 +226,11 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </div>
               <div v-if="sc.nvme.dataReadTiB > 0" class="flex justify-between gap-2">
                 <span class="text-base-content/70">{{ t('ui.storage.DiskCard.dataRead') }}</span>
-                <span class="text-base-content/80 font-mono">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
+                <span class="text-base-content/80">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
               </div>
               <div v-if="sc.nvme.dataWrittenTiB > 0" class="flex justify-between gap-2">
                 <span class="text-base-content/70">{{ t('ui.storage.DiskCard.dataWritten') }}</span>
-                <span class="text-base-content/80 font-mono">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
+                <span class="text-base-content/80">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
               </div>
             </div>
           </div>
@@ -290,7 +290,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <!-- Info -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="font-mono text-xs text-base-content/80">/dev/{{ part.name }}</span>
+              <span class="text-xs text-base-content/80">/dev/{{ part.name }}</span>
               <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(part.size) }}</span>
               <span v-if="part.fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 uppercase border border-base-300">{{ part.fstype }}</span>
               <span v-else-if="!roleOf(part)" class="text-2xs text-base-content/40">unformatted</span>
@@ -384,7 +384,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <TriangleAlertIcon class="w-3.5 h-3.5 text-error mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-2xs text-base-content/80 font-medium mb-0.5">{{ t('ui.storage.DiskCard.wipeAndCreateANew') }}</p>
-            <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span class="font-mono">/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
+            <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span>/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
             <Button variant="outline" size="xs" @click="emit('partInit', disk)"
               class="mt-2 text-2xs border-error/30 text-error hover:border-error/60 hover:bg-error/10">
               {{ t('ui.storage.DiskCard.createPartitionTable') }}

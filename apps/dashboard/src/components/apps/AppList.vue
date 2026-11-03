@@ -458,7 +458,7 @@ async function unpin(app: App) {
   <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">
     <template #header>
       <h3 class="text-sm font-semibold text-base-content">
-        {{ t('ui.apps.AppList.pin') }} <span class="font-mono text-primary">{{ pinDialog.name }}</span> {{ t('ui.apps.AppList.toQuickAccess') }}
+        {{ t('ui.apps.AppList.pin') }} <span class="text-primary">{{ pinDialog.name }}</span> {{ t('ui.apps.AppList.toQuickAccess') }}
       </h3>
     </template>
 

@@ -52,11 +52,11 @@ defineExpose({ open })
     </div>
     <div class="p-5 space-y-4">
       <Alert variant="warning" class="block p-3 text-xs text-warning" role="note">
-        {{ t('ui.storage.DeviceUnmountDialog.makeSureNoApplicationIs') }} <span class="font-mono font-bold">{{ dlg.dev.mountpoint }}</span> {{ t('ui.storage.DeviceUnmountDialog.beforeUnmountingOrTheOperation') }}
+        {{ t('ui.storage.DeviceUnmountDialog.makeSureNoApplicationIs') }} <span class="font-bold">{{ dlg.dev.mountpoint }}</span> {{ t('ui.storage.DeviceUnmountDialog.beforeUnmountingOrTheOperation') }}
       </Alert>
       <div class="space-y-1 text-xs text-base-content/70">
-        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.device') }}</span><span class="font-mono">/dev/{{ dlg.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.mountPoint') }}</span><span class="font-mono">{{ dlg.dev.mountpoint }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.device') }}</span><span>/dev/{{ dlg.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.mountPoint') }}</span><span>{{ dlg.dev.mountpoint }}</span></div>
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
         <Checkbox v-model="dlg.rmFstab" class="mt-0.5" />

@@ -281,7 +281,7 @@ onUnmounted(() => {
       <template v-else-if="result">
         <p v-if="result.status === 'failed'" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
         <p v-else class="text-sm text-success">{{ t('uip.backups.RestoreDialog.filesRestored', { p0: result.files ?? 0 }) }}</p>
-        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-base-content/80">{{ t('ui.backups.RestoreDialog.restoredTo') }} <span class="font-mono">{{ result.target }}</span></p>
+        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-base-content/80">{{ t('ui.backups.RestoreDialog.restoredTo') }} <span>{{ result.target }}</span></p>
         <div v-if="result.warnings?.length">
           <p class="eyebrow mb-1">{{ t('ui.backups.RestoreDialog.notRestoredAsSavedOn') }}</p>
           <p v-for="w in result.warnings" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>

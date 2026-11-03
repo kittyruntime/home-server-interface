@@ -363,8 +363,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'">
               {{ raidLevelLabel(r.level) }}
             </span>
-            <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
-            <span v-else class="font-mono text-sm text-base-content">/dev/{{ r.name }}</span>
+            <Button variant="link" v-if="!only" class="h-auto p-0 text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
+            <span v-else class="text-sm text-base-content">/dev/{{ r.name }}</span>
             <div class="ml-auto flex items-center gap-3 shrink-0">
               <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
               <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
@@ -456,7 +456,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   {{ m.role === 'faulty' ? t('ui.storage.RaidSection.memberFailed') : m.role === 'spare' ? t('ui.storage.RaidSection.memberSpare') : m.role === 'rebuilding' ? t('ui.storage.RaidSection.memberRebuilding') : t('ui.storage.RaidSection.memberActive') }}
                 </span>
                 <div class="min-w-0 flex-1">
-                  <span class="font-mono text-xs text-base-content">/dev/{{ m.name }}</span>
+                  <span class="text-xs text-base-content">/dev/{{ m.name }}</span>
                   <span v-if="memberSize(m.name)" class="text-2xs text-base-content/70 ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
                   <p v-if="memberIdentity(m.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(m.name) }}</p>
                 </div>
@@ -481,7 +481,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
                   class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-base-200 disabled:opacity-50"
                   :disabled="memberBusy !== null" @click="addMember(r, d)">
-                  <span class="font-mono text-xs text-base-content">/dev/{{ d.name }}</span>
+                  <span class="text-xs text-base-content">/dev/{{ d.name }}</span>
                   <span class="text-2xs text-base-content/70">{{ fmtBytes(d.size) }}</span>
                   <span v-if="memberIdentity(d.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(d.name) }}</span>
                 </Item>
@@ -503,7 +503,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   <div class="text-2xs text-base-content/70 mt-1">{{ t('uip.storage.RaidSection.free', { p0: fmtBytes(raidBlockDev(r.name)!.usageFree), p1: usagePct(raidBlockDev(r.name)!).toFixed(1) }) }}</div>
                 </div>
                 <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-base-content/70">
-                  {{ t('ui.storage.RaidSection.formatted') }} <span class="font-mono text-base-content/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
+                  {{ t('ui.storage.RaidSection.formatted') }} <span class="text-base-content/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
                 </div>
                 <div v-else class="text-2xs text-base-content/70">{{ t('ui.storage.RaidSection.noFilesystemFormatBeforeMounting') }}</div>
               </div>
@@ -630,7 +630,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                   <CheckIcon v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <span class="text-sm font-mono text-base-content">/dev/{{ dev.name }}</span>
+                  <span class="text-sm text-base-content">/dev/{{ dev.name }}</span>
                   <span v-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
                 </div>
                 <span class="text-xs text-base-content/70 shrink-0">{{ fmtBytes(dev.size) }}</span>
@@ -650,7 +650,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                 placeholder="md0"
                 class="w-full px-3 py-2 text-sm font-mono"
               />
-              <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span class="font-mono">/dev/{{ raidWiz.name || 'md0' }}</span></p>
+              <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span>/dev/{{ raidWiz.name || 'md0' }}</span></p>
             </div>
 
             <div class="flex gap-2 pt-1">
@@ -675,9 +675,9 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             </Alert>
 
             <div class="space-y-1 text-xs text-base-content/70">
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span>/dev/{{ raidWiz.name }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ selectedRaidLevel.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.drives') }}</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
+              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.drives') }}</span><span>{{ raidWiz.devs.join(', ') }}</span></div>
               <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.capacity') }}</span>
                 <span v-if="wizardCapacity?.cap.valid">{{ t('uip.storage.RaidSection.usableOfRaw', { p0: fmtBytes(wizardCapacity.cap.usable), p1: fmtBytes(wizardCapacity.cap.raw), p2: wizardCapacity.cap.efficiency }) }}</span>
                 <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
@@ -687,7 +687,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
             <div>
               <label class="block text-xs text-base-content/80 mb-1.5">
-                {{ t('ui.storage.RaidSection.type') }} <span class="font-mono font-bold text-base-content">{{ t('ui.storage.RaidSection.createRaid2') }}</span> {{ t('ui.storage.RaidSection.toConfirm') }}
+                {{ t('ui.storage.RaidSection.type') }} <span class="font-bold text-base-content">{{ t('ui.storage.RaidSection.createRaid2') }}</span> {{ t('ui.storage.RaidSection.toConfirm') }}
               </label>
               <Input
                 v-model="raidWiz.confirm"
@@ -727,11 +727,11 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       @confirm="doDestroyRaid"
       @close="destroyDlg = null"
     >
-      <template #warning>{{ t('ui.storage.RaidSection.allDataOn') }} <span class="font-mono font-bold">/dev/{{ destroyDlg.raid.name }}</span> {{ t('ui.storage.RaidSection.willBePermanentlyLostMake') }}</template>
+      <template #warning>{{ t('ui.storage.RaidSection.allDataOn') }} <span class="font-bold">/dev/{{ destroyDlg.raid.name }}</span> {{ t('ui.storage.RaidSection.willBePermanentlyLostMake') }}</template>
       <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span>/dev/{{ destroyDlg.raid.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.members') }}</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
+        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.members') }}</span><span>{{ destroyDlg.raid.devices.join(', ') }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

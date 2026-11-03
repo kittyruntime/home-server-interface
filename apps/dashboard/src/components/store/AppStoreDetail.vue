@@ -83,7 +83,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <template v-for="(sc, i) in app.services" :key="sc.name">
             <span v-if="i" class="text-base-content/70">, </span>
             <span class="text-base-content/80">{{ sc.label }}</span>
-            <span class="font-mono text-base-content/70"> ({{ sc.image }})</span>
+            <span class="text-base-content/70"> ({{ sc.image }})</span>
           </template>
         </div>
         <p class="text-xs flex gap-4 flex-wrap">
@@ -91,7 +91,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
           <a v-if="app.docs" :href="app.docs" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.documentation') }}</a>
           <a v-if="app.source" :href="app.source" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.sourceCode') }}</a>
           <a v-if="app.changelog" :href="app.changelog" target="_blank" rel="noopener noreferrer" class="underline text-base-content/70 hover:text-base-content">{{ t('ui.store.AppStoreDetail.releaseNotes') }}</a>
-          <span v-if="app.license" class="text-base-content/70">{{ t('ui.store.AppStoreDetail.license') }} <span class="font-mono text-base-content/80">{{ app.license }}</span></span>
+          <span v-if="app.license" class="text-base-content/70">{{ t('ui.store.AppStoreDetail.license') }} <span class="text-base-content/80">{{ app.license }}</span></span>
         </p>
       </div>
 
@@ -110,7 +110,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
             <dt class="text-base-content/70">{{ p.kind }}</dt>
             <dd class="text-base-content/80 break-words">
               {{ p.title }}
-              <span class="font-mono text-base-content/70">{{ p.detail }}</span>
+              <span class="text-base-content/70">{{ p.detail }}</span>
               <span v-if="p.note" class="text-2xs uppercase tracking-caps text-base-content/70">{{ p.note }}</span>
             </dd>
           </template>

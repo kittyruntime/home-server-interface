@@ -116,7 +116,7 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
       <div class="space-y-2 sm:hidden">
         <article v-for="entry in entries" :key="entry.id" class="rounded-xl border border-base-300 bg-base-100 p-3" @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry">
           <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span :class="['inline-flex text-2xs font-semibold px-2 py-0.5 rounded-sm border', categoryClass[actionCategory(entry.action)]]">{{ actionLabel(entry.action) }}</span><p v-if="entry.target" class="mt-1.5 truncate font-mono text-xs text-base-content/80" :title="entry.target">{{ entry.target }}</p></div><span :class="entry.success ? 'text-success' : 'text-error'" class="shrink-0 text-xs font-semibold">{{ entry.success ? 'OK' : 'Fail' }}</span></div>
-          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-base-content/70"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}<template v-if="entry.via === 'mcp'"> · {{ t('aiAccess.auditAssistant') }}</template><template v-else-if="entry.via === 'assistant'"> · {{ t('aiAccess.auditBuiltIn') }}</template></span><span class="font-mono">{{ entry.ip ?? '-' }}</span></div>
+          <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-base-content/70"><span>{{ formatDateTime(entry.createdAt, { seconds: true }) }}</span><span>{{ entry.user?.displayName || entry.user?.username || 'System' }}<template v-if="entry.via === 'mcp'"> · {{ t('aiAccess.auditAssistant') }}</template><template v-else-if="entry.via === 'assistant'"> · {{ t('aiAccess.auditBuiltIn') }}</template></span><span>{{ entry.ip ?? '-' }}</span></div>
           <div v-if="selectedEntry?.id === entry.id" class="mt-3 border-t border-base-300 pt-3"><p class="break-all font-mono text-2xs text-base-content/70">{{ entry.action }}</p><pre v-if="parseMeta(entry.meta)" class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-base-200 p-2 text-2xs text-base-content/80">{{ JSON.stringify(parseMeta(entry.meta), null, 2) }}</pre></div>
         </article>
       </div>
@@ -182,14 +182,14 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 <TableCell colspan="6" class="px-4 pb-4 pt-2 bg-base-200/50">
                   <div class="text-2xs font-semibold uppercase tracking-caps text-base-content/70 mb-2">{{ t('ui.monitor.AuditLogSection.detail') }}</div>
                   <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs mb-3">
-                    <div><span class="text-base-content/70">ID </span><span class="font-mono text-base-content/80">{{ entry.id }}</span></div>
-                    <div><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.action') }} </span><span class="font-mono text-base-content/80">{{ entry.action }}</span></div>
+                    <div><span class="text-base-content/70">ID </span><span class="text-base-content/80">{{ entry.id }}</span></div>
+                    <div><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.action') }} </span><span class="text-base-content/80">{{ entry.action }}</span></div>
                     <div v-if="entry.user">
                       <span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.user') }} </span>
                       <span class="text-base-content/80">{{ entry.user.displayName || entry.user.username }} ({{ entry.userId }})</span>
                     </div>
-                    <div v-if="entry.target"><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="font-mono text-base-content/80">{{ entry.target }}</span></div>
-                    <div v-if="entry.via === 'mcp'"><span class="text-base-content/70">{{ t('aiAccess.auditVia') }} </span><span class="font-mono text-base-content/80">{{ entry.tokenId }}</span></div>
+                    <div v-if="entry.target"><span class="text-base-content/70">{{ t('ui.monitor.AuditLogSection.target') }} </span><span class="text-base-content/80">{{ entry.target }}</span></div>
+                    <div v-if="entry.via === 'mcp'"><span class="text-base-content/70">{{ t('aiAccess.auditVia') }} </span><span class="text-base-content/80">{{ entry.tokenId }}</span></div>
                   </div>
                   <template v-if="parseMeta(entry.meta)">
                     <div class="text-2xs font-semibold uppercase tracking-caps text-base-content/70 mb-1.5">{{ t('ui.monitor.AuditLogSection.input') }}</div>

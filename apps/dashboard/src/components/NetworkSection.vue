@@ -220,8 +220,8 @@ onUnmounted(() => clearInterval(timer))
             <Input :id="`dns-${i.device}`" v-model="form.dns" placeholder="1.1.1.1, 9.9.9.9" class="font-mono" />
           </div>
           <Alert v-if="newAddress(i)" variant="warning" role="note" class="block text-xs">
-            {{ t('ui.settings.NetworkSection.theDashboardWillMoveTo') }} <span class="font-mono">{{ newAddress(i) }}</span>{{ t('ui.settings.NetworkSection.open') }}
-            <span class="font-mono">{{ newUrl(newAddress(i)!) }}</span> {{ t('ui.settings.NetworkSection.andKeepTheChangeThere') }}
+            {{ t('ui.settings.NetworkSection.theDashboardWillMoveTo') }} <span>{{ newAddress(i) }}</span>{{ t('ui.settings.NetworkSection.open') }}
+            <span>{{ newUrl(newAddress(i)!) }}</span> {{ t('ui.settings.NetworkSection.andKeepTheChangeThere') }}
           </Alert>
           <p v-if="formError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ formError }}</p>
           <div class="flex gap-2">

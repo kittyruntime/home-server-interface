@@ -205,7 +205,7 @@ onMounted(load)
         <Card v-for="token in tokens" :key="token.id" class="gap-2 px-4 py-3 shadow-none" :class="state(token) !== 'active' && 'opacity-60'">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm text-base-content truncate">{{ token.name }} <span class="font-mono text-xs text-base-content/70">{{ token.prefix }}…</span></p>
+              <p class="text-sm text-base-content truncate">{{ token.name }} <span class="text-xs text-base-content/70">{{ token.prefix }}…</span></p>
               <p class="text-xs text-base-content/70">
                 {{ t('aiAccess.createdOn', { date: formatDay(token.createdAt) }) }}
                 · {{ token.lastUsedAt ? t('aiAccess.lastUsed', { date: formatDay(token.lastUsedAt) }) : t('aiAccess.neverUsed') }}
@@ -226,7 +226,7 @@ onMounted(load)
         <p class="eyebrow">{{ t('aiAccess.otherTokens') }}</p>
         <Card v-for="token in others" :key="token.id" class="flex flex-row items-center justify-between gap-3 px-4 py-3 shadow-none">
           <p class="text-sm text-base-content min-w-0 truncate">
-            {{ token.user.username }} · {{ token.name }} <span class="font-mono text-xs text-base-content/70">{{ token.prefix }}…</span>
+            {{ token.user.username }} · {{ token.name }} <span class="text-xs text-base-content/70">{{ token.prefix }}…</span>
           </p>
           <Button size="sm" variant="outline" @click="revoke(token)">{{ t('aiAccess.revoke') }}</Button>
         </Card>

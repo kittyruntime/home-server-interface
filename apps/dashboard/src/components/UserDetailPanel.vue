@@ -295,7 +295,7 @@ async function deleteUser() {
           </div>
           <div class="text-right shrink-0">
             <template v-if="identity.linuxExists">
-              <div class="text-xs font-mono text-base-content/80">{{ t('uip.settings.UserDetailPanel.uidGid', { p0: identity.uid, p1: identity.gid }) }}</div>
+              <div class="text-xs text-base-content/80">{{ t('uip.settings.UserDetailPanel.uidGid', { p0: identity.uid, p1: identity.gid }) }}</div>
               <div v-if="identity.groups?.length" class="text-2xs text-base-content/70 mt-0.5">{{ identity.groups.join(', ') }}</div>
             </template>
             <span v-else class="text-xs text-error">{{ t('ui.settings.UserDetailPanel.missing') }}</span>
