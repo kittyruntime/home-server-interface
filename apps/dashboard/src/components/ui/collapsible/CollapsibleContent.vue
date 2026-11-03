@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import type { CollapsibleContentProps } from "reka-ui"
-import { CollapsibleContent } from "reka-ui"
+import type { PrimitiveProps } from "../Primitive.vue"
+import { inject } from "vue"
+import Primitive from "../Primitive.vue"
+import { collapsibleKey } from "./context"
 
-const props = defineProps<CollapsibleContentProps>()
+interface CollapsibleContentProps extends PrimitiveProps {
+  /** Keep the content mounted, hidden, while closed. */
+  forceMount?: boolean
+}
+
+const props = withDefaults(defineProps<CollapsibleContentProps>(), { forceMount: false, as: "div" })
+const ctx = inject(collapsibleKey)!
 </script>
 
 <template>
-  <CollapsibleContent
+  <Primitive
+    v-if="ctx.open.value || forceMount"
+    :as="props.as"
+    :as-child="props.asChild"
+    :id="ctx.contentId"
     data-slot="collapsible-content"
-    v-bind="props"
+    :data-state="ctx.open.value ? 'open' : 'closed'"
+    :data-disabled="ctx.disabled.value ? '' : undefined"
+    :hidden="ctx.open.value ? undefined : true"
   >
     <slot />
-  </CollapsibleContent>
+  </Primitive>
 </template>
