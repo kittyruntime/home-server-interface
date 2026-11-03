@@ -30,6 +30,10 @@ const props = defineProps<ToasterProps>()
       '--error-bg': 'var(--color-base-100)',
       '--error-text': 'var(--color-base-content)',
       '--error-border': 'var(--color-error)',
+      '--gray2': 'var(--color-base-200)',
+      '--gray5': 'var(--color-base-300)',
+      '--normal-bg-hover': 'var(--color-base-200)',
+      '--normal-border-hover': 'var(--color-base-300)',
       '--border-radius': 'var(--radius-box)',
     }"
     v-bind="props"

@@ -14,7 +14,7 @@ const props = defineProps<{
     data-slot="sidebar-menu-button"
     :data-active="isActive"
     :class="cn(
-      'gap-2 text-left focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-primary [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+      'gap-2 text-left focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
       'group-has-data-[slot=sidebar-menu-action]/menu-item:pr-8',
       isActive && 'menu-active font-medium',
       props.class,

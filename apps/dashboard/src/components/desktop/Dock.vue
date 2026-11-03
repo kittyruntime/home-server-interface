@@ -59,7 +59,7 @@ function onIconClick(id: string) {
       <div v-for="w in windows" :key="w.id" class="relative flex justify-center py-0.5">
         <span
           v-if="isFocused(w.id)"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-base-content rounded-r-full"
         />
         <Button
           variant="ghost"
@@ -71,7 +71,7 @@ function onIconClick(id: string) {
             'size-10 rounded-box transition-all duration-150',
             w.minimized ? 'opacity-40' : '',
             isFocused(w.id)
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary text-primary-content'
               : 'text-base-content/60 hover:bg-base-200 hover:text-base-content',
           ]"
         >

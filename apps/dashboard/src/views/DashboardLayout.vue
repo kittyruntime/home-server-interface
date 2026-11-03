@@ -274,7 +274,7 @@ onUnmounted(() => {
                   :class="[
                     'relative rounded-xl [&_svg:not([class*=size-])]:size-5',
                     isActive(item.id)
-                      ? 'bg-sidebar-accent text-primary hover:bg-sidebar-accent hover:text-primary'
+                      ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
                       : 'text-muted-foreground hover:text-sidebar-accent-foreground',
                   ]"
                 >

@@ -56,7 +56,7 @@ function onClick() {
     :data-disabled="disabled ? '' : undefined"
     :disabled="disabled"
     :tabindex="ctx.stop.value === value ? 0 : -1"
-    :class="cn('tab flex-1 gap-1.5 whitespace-nowrap', active && 'tab-active', props.class)"
+    :class="cn('tab flex-1 gap-1.5 whitespace-nowrap', active ? 'tab-active' : 'text-base-content/90', props.class)"
     @focus="onFocus"
     @mousedown="onMousedown"
     @click="onClick"
