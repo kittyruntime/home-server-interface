@@ -276,6 +276,17 @@ export default {
     auditVia: 'Access token',
     state: { revoked: 'Revoked', expired: 'Expired', active: 'Active' },
   },
+  appearance: {
+    theme: 'Theme',
+    auto: 'Auto',
+    accent: 'Accent color',
+    accents: { theme: 'Theme', red: 'Red', orange: 'Orange', blue: 'Blue', green: 'Green', purple: 'Purple' },
+    roundness: 'Roundness',
+    radii: { theme: 'Theme', square: 'Square', slight: 'Slight', round: 'Round', pill: 'Pill' },
+    density: 'Density',
+    densities: { compact: 'Compact', default: 'Default', roomy: 'Roomy' },
+    reset: 'Reset appearance',
+  },
   profile: {
     language: 'Language',
     languageHint: 'The language of the interface on every device you sign in to.',

@@ -22,10 +22,29 @@ const zPreferences = z.object({
   sidebarOrder: z.array(z.string()).optional(),
   locale:       z.enum(["en", "fr"]).optional(),
   confirmFileDelete: z.boolean().optional(),
+  appearance: z.object({
+    theme: z.string().max(32).optional().catch(undefined),
+    accent: z.string().max(16).optional().catch(undefined),
+    radius: z.number().int().min(0).max(4).optional().catch(undefined),
+    density: z.string().max(16).optional().catch(undefined),
+  }).optional().catch(undefined),
 })
-function parsePrefs(v: unknown): z.infer<typeof zPreferences> {
+type Prefs = z.infer<typeof zPreferences>
+
+export function parsePrefs(v: unknown): Prefs {
   const r = zPreferences.safeParse(v ?? {})
   return r.success ? r.data : {}
+}
+
+export function mergePrefs(stored: Prefs, input: Prefs): Prefs {
+  const defined = <T extends object>(value: T): Partial<T> =>
+    Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as Partial<T>
+
+  const merged: Prefs = { ...stored, ...defined(input) }
+  if (input.appearance !== undefined) {
+    merged.appearance = { ...stored.appearance, ...defined(input.appearance) }
+  }
+  return merged
 }
 
 const zCreateInput = z.object({
@@ -147,7 +166,7 @@ export const userRouter = router({
         where: { id: ctx.user.userId },
         select: { preferences: true },
       })
-      const merged = { ...parsePrefs(u?.preferences), ...input }
+      const merged = mergePrefs(parsePrefs(u?.preferences), input)
       await ctx.prisma.user.update({
         where: { id: ctx.user.userId },
         data:  { preferences: merged },

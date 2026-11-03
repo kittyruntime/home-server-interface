@@ -1,18 +1,18 @@
 import { watch } from 'vue'
 import { trpc } from './trpc'
-import { useTheme, useAccent, type Theme, type Accent } from './theme'
+import { useAppearance } from './theme'
+import { hydrateAppearance, toLegacy } from './appearance'
 import { orderedIds, setOrder } from './sidebar-nav'
 import { isLocale, locale, setLocale } from '../i18n'
 import { useDeleteConfirm } from './delete-confirm'
 
-// Per-account preference sync. The individual stores (theme/accent/sidebar order)
+// Per-account preference sync. The individual stores (appearance/sidebar order)
 // remain localStorage-backed for instant, offline-friendly reads; this layer
 // hydrates them from the server on login and pushes local changes back, so the
 // same account carries its look and sidebar order across browsers/devices.
 // Device-specific prefs (e.g. desktop mode) are intentionally NOT synced.
 
-const { theme, setTheme } = useTheme()
-const { accent, setAccent } = useAccent()
+const { appearance, setAppearance } = useAppearance()
 const { confirmFileDelete, setConfirmFileDelete } = useDeleteConfirm()
 
 let pushTimer: ReturnType<typeof setTimeout> | undefined
@@ -20,8 +20,8 @@ function schedulePush() {
   clearTimeout(pushTimer)
   pushTimer = setTimeout(() => {
     trpc.user.updatePreferences.mutate({
-      theme:        theme.value,
-      accent:       accent.value,
+      ...toLegacy(appearance.value),
+      appearance:   appearance.value,
       sidebarOrder: [...orderedIds.value],
       locale:       locale.value,
       confirmFileDelete: confirmFileDelete.value,
@@ -39,15 +39,14 @@ export async function syncPreferences() {
 
   try {
     const p = await trpc.user.preferences.query()
-    if (p.theme)  setTheme(p.theme as Theme)
-    if (p.accent) setAccent(p.accent as Accent)
+    setAppearance(hydrateAppearance(p))
     if (Array.isArray(p.sidebarOrder) && p.sidebarOrder.length) setOrder(p.sidebarOrder)
-    if (isLocale(p.locale)) void setLocale(p.locale)
+    if (isLocale(p.locale)) await setLocale(p.locale)
     if (typeof p.confirmFileDelete === 'boolean') setConfirmFileDelete(p.confirmFileDelete)
   } catch {
     // Not authenticated / offline: keep whatever localStorage already had.
   }
 
   // Register AFTER hydration so applying server values above doesn't echo back.
-  watch([theme, accent, orderedIds, locale, confirmFileDelete], schedulePush)
+  watch([appearance, orderedIds, locale, confirmFileDelete], schedulePush)
 }

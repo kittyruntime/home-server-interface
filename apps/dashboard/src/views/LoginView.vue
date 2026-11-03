@@ -54,9 +54,9 @@ async function handleLogin() {
   <div class="login-root min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden">
     <!-- Ambient backdrop -->
     <div class="ambient" aria-hidden="true">
-      <span class="glow glow-a"></span>
-      <span class="glow glow-b"></span>
-      <span class="glow glow-c"></span>
+      <span class="glow glow-a opacity-28 dark:opacity-50"></span>
+      <span class="glow glow-b opacity-20 dark:opacity-35"></span>
+      <span class="glow glow-c opacity-14 dark:opacity-25"></span>
     </div>
 
     <div :class="['relative z-10 w-full max-w-sm login-card', mounted && 'is-in']">
@@ -136,6 +136,7 @@ async function handleLogin() {
 </template>
 
 <style scoped>
+/* Glow opacity lives in the template (opacity-* / dark:opacity-*): softer on light themes. */
 .ambient {
   position: absolute;
   inset: 0;
@@ -147,7 +148,6 @@ async function handleLogin() {
   position: absolute;
   border-radius: 9999px;
   filter: blur(80px);
-  opacity: 0.5;
   will-change: transform;
 }
 .glow-a {
@@ -160,21 +160,14 @@ async function handleLogin() {
   width: 380px; height: 380px;
   bottom: -140px; right: -80px;
   background: var(--primary);
-  opacity: 0.35;
   animation: drift-b 32s ease-in-out infinite;
 }
 .glow-c {
   width: 300px; height: 300px;
   top: 40%; right: 20%;
   background: var(--info);
-  opacity: 0.25;
   animation: drift-c 30s ease-in-out infinite;
 }
-/* Softer in light theme */
-:root:not([data-theme="dark"]) .glow { opacity: 0.28; }
-:root:not([data-theme="dark"]) .glow-b { opacity: 0.2; }
-:root:not([data-theme="dark"]) .glow-c { opacity: 0.14; }
-
 .login-card {
   opacity: 0;
   transform: scale(0.98) translateY(6px);
