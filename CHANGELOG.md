@@ -13,48 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interface in Settings. Your choices follow your account.
 
 ### Changed
-- **Menus, popovers and tooltips fade out when they close**: they mirror the
-  entry animation instead of vanishing, and stay inert while they do, so Esc,
-  focus and clicks behave as if they were already gone.
-- **Interface colors now follow a theme palette**: every screen reads its
-  colors from daisyUI themes instead of fixed light and dark values. The
-  default primary color changes with it, and the rest of the interface moves
-  to daisyUI's look as screens are migrated.
-- **Buttons, form controls and display components use daisyUI**: buttons,
-  inputs, checkboxes, switches, sliders, badges, alerts, cards, tables,
-  progress bars, avatars, breadcrumbs, pagination and toggle groups now take
-  their look from the active theme. Tables and breadcrumbs draw their row
-  borders and separators the daisyUI way.
-- **Dialogs use the browser's native dialog**: confirmations, forms, the
-  launchpad and the maintenance screen now open as native dialogs. Focus stays
-  inside them and returns to where you were, Escape closes them (except during
-  an update or a running operation), and the page behind cannot be scrolled.
-  Toasts still show above an open dialog.
-- **Popovers and tooltips use the browser's popover layer**: tooltips, the
-  help hints and the activity panel are no longer clipped by windows or
-  scrolling lists and show above open dialogs. Tooltips appear on mouse hover
-  and keyboard focus only, so they never get in the way of a tap.
+- **New look built on daisyUI**: every screen now takes its colors, corner
+  roundness and density from the active theme, and the default primary color
+  is the theme's own. Buttons, forms, tables, tabs, sidebars, windows, the dock
+  and the launchpad all follow it. Active items, focus rings and colored text
+  stay readable in every theme.
+- **Dialogs use the browser's native dialog**: focus stays inside and returns
+  to where you were, Escape closes them (except during an update or a running
+  operation), the page behind cannot be scrolled, and toasts still show above.
+- **Menus, popovers and tooltips are no longer clipped**: they show above
+  windows, scrolling lists and open dialogs, fade in and out, and follow the
+  reduced motion setting. Tooltips appear on hover and keyboard focus only, so
+  they never get in the way of a tap. Tab now leaves a menu or popover and
+  closes it, and inputs keep the browser's own context menu.
 - **Selects and pickers use native controls**: the section selector on narrow
-  layouts, the app store sort and the alerts source filter are now the
-  browser's own select, and the group and user picker is a searchable list
-  you can drive with the arrow keys.
-- **Tabs, sidebars, menus and the desktop use daisyUI**: tabs, collapsible
-  sections, the places and settings sidebars, toasts, desktop windows, the
-  dock and the launchpad take their colors and corner roundness from the
-  active theme. Closing a window now highlights in the error color.
-- **The interface no longer depends on shadcn-vue or Reka UI**: every
-  component is now built on daisyUI. Menus, popovers and tooltips share one short fade-in that follows
-  the reduced motion setting.
-- **Colored text stays readable in every theme**: success, warning, error and
-  link text is drawn closer to the theme's text color, so labels no longer
-  fade out on light themes or on wireframe and black. The storage volume
-  list headers line up with their columns, and the storage badges use the
-  theme palette.
+  layouts, the app store sort and the alerts source filter are the browser's
+  own select, and the group and user picker is a searchable list driven with
+  the arrow keys. Its search ignores accents.
+- **Charts and the code editor follow the theme**, including chart tooltips.
 - **Storage and sharing dialogs are translated**: the logical volume and RAID
   screens, the format wizard and the share link dialog no longer show English
-  in a French interface (step names, action and busy labels, RAID level
-  descriptions, share options). Inactive dock icons are easier to read, the focused
-  window has a stronger outline and chart tooltips follow the theme.
+  in a French interface.
 
 ## [1.78.4] - 2026-11-02
 
