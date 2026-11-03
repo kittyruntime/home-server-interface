@@ -43,7 +43,7 @@ export const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('menu-radio
 export interface GroupContext {
   labelId: Ref<string | undefined>
 }
-const groupKey: InjectionKey<GroupContext> = Symbol('menu-group')
+const groupKey: InjectionKey<GroupContext | null> = Symbol('menu-group')
 
 export function provideMenuGroup(): Ref<string | undefined> {
   const labelId = ref<string>()
@@ -81,6 +81,8 @@ export function useMenu(init: { kind?: MenuContext['kind'], open: Ref<boolean>, 
   }
   ctx.root = init.isSub && parent ? parent.root : ctx
   provide(menuKey, ctx)
+  // A submenu is its own level: a label inside it must not name the group around its trigger.
+  if (ctx.isSub) provide(groupKey, null)
   return ctx
 }
 

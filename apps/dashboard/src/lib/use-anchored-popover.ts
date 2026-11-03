@@ -54,13 +54,20 @@ const openLayers = new Map<symbol, { el: () => HTMLElement | null, close: () => 
 /* Layers fading out, by group, to end them at once when a sibling opens. */
 const exiting = new Map<string, Set<() => void>>()
 
-/* The exit is a CSS animation (`ui-float-out`). Longest of its duration and
-   delay, in ms, or 0 when the element has none. */
+/* The exit is a CSS animation (`ui-float-out`). Its duration plus its delay,
+   in ms, or 0 when the element has none. The longhands are lists in step with
+   `animation-name` (repeated when shorter), so read them at its index. */
 function exitDuration(el: HTMLElement): number {
   const style = getComputedStyle(el)
-  if (!style.animationName.split(',').includes('ui-float-out')) return 0
+  const list = (value: string) => value.split(',').map(item => item.trim())
+  const at = list(style.animationName).indexOf('ui-float-out')
+  if (at === -1) return 0
+  const pick = (value: string) => {
+    const items = list(value)
+    return items[at % items.length] ?? ''
+  }
   const ms = (value: string) => (value.endsWith('ms') ? parseFloat(value) : parseFloat(value) * 1000) || 0
-  return ms(style.animationDuration) + ms(style.animationDelay)
+  return ms(pick(style.animationDuration)) + ms(pick(style.animationDelay))
 }
 
 /* A dialog opened above the popover (not one that contains it) owns the
@@ -73,10 +80,11 @@ function inStackedDialog(target: EventTarget | null, floating: HTMLElement): boo
 
 /* Anchored overlay on the Popover API. The element bound to `floating` must
    carry a `popover` attribute and be rendered while `present` is true (or
-   `isOpen`, without an exit, or always); it is shown in the top layer, so no desktop window or scrolling
-   container clips it, and it stays a DOM descendant of where it is declared
-   (an open modal <dialog> therefore does not make it inert). Placement is
-   computed by Floating UI with fixed positioning. */
+   `isOpen`, without an exit, or always); it is shown in the top layer, so no
+   desktop window or scrolling container clips it, and it stays a DOM
+   descendant of where it is declared (an open modal <dialog> therefore does
+   not make it inert). Placement is computed by Floating UI with fixed
+   positioning; it stops when the layer closes, so the exit plays in place. */
 export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   const floating = ref<HTMLElement | null>(null)
   const isOpen = ref(false)
@@ -122,6 +130,9 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
   function show() {
     const el = floating.value
     if (!el || !isOpen.value) return
+    // Opened inside a layer that has closed meanwhile: it leaves with it
+    // rather than staying in the Esc stack.
+    if (el.closest('[data-closing]')) { close(false, true); return }
     // A reopening during the exit finds the element still shown: only the
     // positioning needs to start again.
     if (!el.matches(':popover-open')) {
@@ -251,7 +262,11 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
       clearTimeout(timer)
       el!.removeEventListener('animationend', onEnd)
       document.removeEventListener('keydown', onEsc, true)
-      if (group) exiting.get(group)?.delete(finish)
+      if (group) {
+        const ending = exiting.get(group)
+        ending?.delete(finish)
+        if (ending && ending.size === 0) exiting.delete(group)
+      }
       endExit = null
       cancelExit = null
     }
