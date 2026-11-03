@@ -394,7 +394,7 @@ async function applyNow() {
           </NativeSelect>
         </div>
         <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-base-content/70">
-          {{ t('ui.apps.AppFormModal.service') }} <span class="font-mono text-base-content/80">{{ composeServices[0] }}</span>
+          {{ t('ui.apps.AppFormModal.service') }} <span class="text-base-content/80">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
         <p v-if="composeError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
@@ -481,7 +481,7 @@ async function applyNow() {
 
       <!-- Networks -->
       <div v-else-if="activeTab === 'networks'" class="space-y-3">
-        <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span class="font-mono">bridge</span>, <span class="font-mono">host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
+        <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span>bridge</span>, <span>host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
         <div class="flex gap-2">
           <Input
             v-model="networkInput" :placeholder="t('ui.apps.AppFormModal.networkName')"

@@ -21,13 +21,14 @@ import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
 import FilePermissionsDialog from '../FilePermissionsDialog.vue'
 import ShareLinkModal from '../share/ShareLinkModal.vue'
 import PlacesSidebar from './PlacesSidebar.vue'
+import SharedLinksSection from '../SharedLinksSection.vue'
 import FileToolbar from './FileToolbar.vue'
 import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
@@ -69,6 +70,7 @@ const dragOver        = ref(false)
 let   dragDepth = 0
 const fileInput = ref<HTMLInputElement | null>(null)
 const sidebarOpen = ref(false)
+const showShared = ref(false)
 const previewEntry = ref<Entry | null>(null)
 
 // ── search ────────────────────────────────────────────────────────────────────
@@ -174,6 +176,7 @@ function closeFilter() {
 
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if (showShared.value) return
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
     if (tag === 'textarea') return
     if (tag === 'input' && document.activeElement !== filterInput.value?.el) return
@@ -232,7 +235,19 @@ const breadcrumbs = computed((): Crumb[] => {
 })
 
 // ── navigation ───────────────────────────────────────────────────────────────
+function openShared() {
+  handleSearch('')
+  closeFilter()
+  showShared.value = true
+  sidebarOpen.value = false
+}
+
 function selectPlace(place: Place) {
+  if (showShared.value && place.id === activePlaceId.value) {
+    showShared.value = false
+    return
+  }
+  showShared.value = false
   activePlaceId.value = place.id
   selected.value = new Set()
   navigate(place.path)
@@ -580,12 +595,28 @@ onMounted(async () => {
       ]"
       :places="allPlaces"
       :active-place-id="activePlaceId"
+      :shared-active="showShared"
+      @open-shared="openShared"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
 
     <div class="flex-1 flex flex-col min-w-0">
 
+      <!-- Shared links replace the files while selected -->
+      <template v-if="showShared">
+        <div class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11 sm:hidden" @click.stop>
+          <Button variant="ghost" size="icon-sm" @click="sidebarOpen = !sidebarOpen" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
+            :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-base-content/70 hover:text-base-content hover:bg-base-200'">
+            <MenuIcon class="w-4 h-4" aria-hidden="true" />
+          </Button>
+        </div>
+        <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
+          <SharedLinksSection class="max-w-2xl" />
+        </div>
+      </template>
+
+      <template v-else>
       <FileToolbar
         :current-path="currentPath"
         :breadcrumbs="breadcrumbs"
@@ -793,6 +824,7 @@ onMounted(async () => {
         </template>
       </ContextMenuContent>
       </ContextMenu>
+      </template>
 
       <TransfersTray />
     </div>

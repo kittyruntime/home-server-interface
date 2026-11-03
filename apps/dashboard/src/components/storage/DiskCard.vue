@@ -226,11 +226,11 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
               </div>
               <div v-if="sc.nvme.dataReadTiB > 0" class="flex justify-between gap-2">
                 <span class="text-base-content/70">{{ t('ui.storage.DiskCard.dataRead') }}</span>
-                <span class="text-base-content/80 font-mono">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
+                <span class="text-base-content/80">{{ fmtTiB(sc.nvme.dataReadTiB) }}</span>
               </div>
               <div v-if="sc.nvme.dataWrittenTiB > 0" class="flex justify-between gap-2">
                 <span class="text-base-content/70">{{ t('ui.storage.DiskCard.dataWritten') }}</span>
-                <span class="text-base-content/80 font-mono">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
+                <span class="text-base-content/80">{{ fmtTiB(sc.nvme.dataWrittenTiB) }}</span>
               </div>
             </div>
           </div>
@@ -384,7 +384,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
           <TriangleAlertIcon class="w-3.5 h-3.5 text-error mt-0.5 shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-2xs text-base-content/80 font-medium mb-0.5">{{ t('ui.storage.DiskCard.wipeAndCreateANew') }}</p>
-            <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span class="font-mono">/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
+            <p class="text-2xs text-base-content/70">{{ t('ui.storage.DiskCard.permanentlyDestroysAllExistingPartitions') }} <span>/dev/{{ disk.name }}</span>{{ t('ui.storage.DiskCard.cannotBeUndone') }}</p>
             <Button variant="outline" size="xs" @click="emit('partInit', disk)"
               class="mt-2 text-2xs border-error/30 text-error hover:border-error/60 hover:bg-error/10">
               {{ t('ui.storage.DiskCard.createPartitionTable') }}

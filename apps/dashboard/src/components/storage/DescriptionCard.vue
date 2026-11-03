@@ -59,7 +59,7 @@ defineExpose({ load })
 
 <template>
   <Alert variant="warning" v-if="status && status.items.length" class="block space-y-2" role="note">
-    <h3 class="font-semibold text-base-content"><span v-if="titled" class="font-mono">{{ mountPoint }}</span><template v-if="titled"> {{ t('ui.storage.DescriptionCard.differsFromItsDescription') }}</template><template v-else>{{ t('ui.storage.DescriptionCard.differsFromItsDescription2') }}</template></h3>
+    <h3 class="font-semibold text-base-content"><span v-if="titled">{{ mountPoint }}</span><template v-if="titled"> {{ t('ui.storage.DescriptionCard.differsFromItsDescription') }}</template><template v-else>{{ t('ui.storage.DescriptionCard.differsFromItsDescription2') }}</template></h3>
     <p class="text-base-content/80">{{ driftTitle(status.items) }}</p>
     <ul v-if="status.items.length > 1" class="list-disc pl-5 space-y-0.5 text-base-content/80">
       <li v-for="(i, n) in status.items" :key="n">{{ i.text }}</li>

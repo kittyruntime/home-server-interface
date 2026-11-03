@@ -37,7 +37,7 @@ const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped
     <div class="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-base-300 flex-shrink-0">
       <div class="flex items-center gap-3">
         <h3 class="text-sm font-semibold text-base-content">{{ t('ui.home.DashboardPanel.overview') }}</h3>
-        <span v-if="metrics" class="text-xs text-base-content/70 font-mono">{{ uptimeStr }}</span>
+        <span v-if="metrics" class="text-xs tabular-nums text-base-content/70">{{ uptimeStr }}</span>
       </div>
 
       <!-- Add widget dropdown -->

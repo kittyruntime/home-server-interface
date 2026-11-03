@@ -234,7 +234,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
           <ul class="mt-2 space-y-1">
             <li v-for="d in destructiveDevices" :key="d.path" class="text-xs text-base-content/80">
               <span class="font-mono text-base-content">{{ d.path }}</span>
-              <span v-for="(part, i) in deviceLine(d)" :key="i"> · <span :class="i === 1 ? 'font-mono' : ''">{{ part }}</span></span>
+              <span v-for="(part, i) in deviceLine(d)" :key="i"> · <span>{{ part }}</span></span>
             </li>
           </ul>
         </section>
@@ -247,13 +247,13 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
                 <p class="text-sm text-base-content" :class="s.destructive ? 'text-error' : ''">{{ s.summary }}</p>
                 <p v-if="s.device && !s.destructive" class="mt-1 text-xs text-base-content/80">
                   <span class="font-mono text-base-content">{{ s.device.path }}</span>
-                  <template v-if="s.device.model"> · <span class="font-mono">{{ s.device.model }}</span></template>
-                  <template v-if="s.device.serial"> · <span class="font-mono">{{ s.device.serial }}</span></template>
+                  <template v-if="s.device.model"> · <span>{{ s.device.model }}</span></template>
+                  <template v-if="s.device.serial"> · <span>{{ s.device.serial }}</span></template>
                   <template v-if="s.device.size"> · {{ fmtSize(s.device.size) }}</template>
                 </p>
                 <p class="mt-0.5 text-2xs text-base-content/70">
                   <span class="uppercase tracking-caps">{{ kindLabel[s.kind] ?? s.kind }}</span>
-                  <span class="font-mono"> · {{ s.target }}</span>
+                  <span> · {{ s.target }}</span>
                   <span v-if="s.onFailure === 'warn'"> {{ t('ui.shared.PlanDialog.aFailureHereIsReported') }}</span>
                   <span v-if="s.background"> {{ t('ui.shared.PlanDialog.runsInTheBackgroundFollow') }}</span>
                 </p>
@@ -292,7 +292,7 @@ const failedApply = computed(() => applied.value !== null && !applied.value.ok)
           <span>{{ planRequest.acknowledge }}</span>
         </label>
         <label v-if="planRequest.confirmText && preview && !done && !failedApply" class="block">
-          <span class="text-xs text-base-content/80">{{ t('ui.shared.PlanDialog.type') }} <span class="font-mono text-base-content">{{ planRequest.confirmText }}</span> {{ t('ui.shared.PlanDialog.toConfirm') }}</span>
+          <span class="text-xs text-base-content/80">{{ t('ui.shared.PlanDialog.type') }} <span class="text-base-content">{{ planRequest.confirmText }}</span> {{ t('ui.shared.PlanDialog.toConfirm') }}</span>
           <Input v-model="typed" class="mt-1 w-full font-mono" autocomplete="off" spellcheck="false" :disabled="applying" @keydown.enter="confirmed && apply()" />
         </label>
       </template>

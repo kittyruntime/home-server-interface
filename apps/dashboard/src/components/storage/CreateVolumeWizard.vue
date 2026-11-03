@@ -195,8 +195,8 @@ function diskLabel(d: BlockDev): string {
 
     <!-- Narrow: the volume so far as one line -->
     <p class="@3xl/content:hidden mb-4 text-xs text-base-content/70">
-      <span class="font-figure font-bold text-sm text-base-content">{{ fmtBytes(usable) }}</span> {{ t('uip.storage.CreateVolumeWizard.usable', { p0: LEVEL_TEXT[s.level].title }) }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
-      <span class="font-mono">{{ s.mountpoint }}</span>
+      <span class="font-bold tabular-nums text-sm text-base-content">{{ fmtBytes(usable) }}</span> {{ t('uip.storage.CreateVolumeWizard.usable', { p0: LEVEL_TEXT[s.level].title }) }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
+      <span>{{ s.mountpoint }}</span>
     </p>
 
     <p v-if="notice" role="status" class="mb-4 status-text text-warning"><span class="status-tag">[WARN]</span> {{ notice }}</p>
@@ -213,9 +213,9 @@ function diskLabel(d: BlockDev): string {
                 <Checkbox :model-value="s.disks.has(d.name)" @update:model-value="toggleDisk(d.name)" />
                 <span class="font-mono text-sm text-base-content w-20 shrink-0">/dev/{{ d.name }}</span>
                 <span class="flex-1 min-w-0 text-xs text-base-content/80 truncate">
-                  {{ d.model || 'Unknown model' }}<span v-if="d.serial" class="font-mono"> · {{ d.serial }}</span><span v-if="diskLabel(d)"> · {{ diskLabel(d) }}</span>
+                  {{ d.model || 'Unknown model' }}<span v-if="d.serial"> · {{ d.serial }}</span><span v-if="diskLabel(d)"> · {{ diskLabel(d) }}</span>
                 </span>
-                <span class="font-mono tabular-nums text-xs text-base-content/80 shrink-0">{{ fmtBytes(d.size) }}</span>
+                <span class="tabular-nums text-xs text-base-content/80 shrink-0">{{ fmtBytes(d.size) }}</span>
               </label>
             </li>
           </ul>
@@ -318,8 +318,8 @@ function diskLabel(d: BlockDev): string {
           <dl class="rounded-xl border border-base-300 bg-base-100 divide-y divide-base-300 text-sm max-w-lg">
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.disks') }}</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.redundancy') }}</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="font-mono text-xs self-center">{{ t('uip.storage.CreateVolumeWizard.ext4', { p0: s.label }) }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">LVM</dt><dd class="text-xs self-center"><span class="font-mono">{{ s.vg }}/{{ s.lv }}</span> · <span class="tabular-nums">{{ s.lvPercent }}%</span></dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="text-xs self-center">{{ t('uip.storage.CreateVolumeWizard.ext4', { p0: s.label }) }}</dd></div>
             <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.folder') }}</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
             <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.place') }}</dt><dd>{{ s.placeName }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.sharedAs') }} <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
           </dl>

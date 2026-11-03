@@ -114,7 +114,7 @@ function fileExt(name: string): string {
       </template>
       <div v-else class="min-w-0 flex-1">
         <div class="truncate text-sm select-none" :class="entry.type === 'dir' ? 'text-base-content' : 'text-base-content/80'">{{ entry.name }}</div>
-        <div v-if="entry.type === 'file'" class="text-2xs text-base-content/70 font-mono tabular-nums">
+        <div v-if="entry.type === 'file'" class="text-2xs text-base-content/70 tabular-nums">
           {{ formatSize(entry.size) }} · {{ formatDay(entry.mtime) }}
         </div>
       </div>
@@ -259,7 +259,7 @@ function fileExt(name: string): string {
           </div>
         </TableCell>
 
-        <TableCell class="px-3 py-2.5 text-right text-base-content/70 font-mono text-xs tabular-nums">
+        <TableCell class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">
           <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm ml-auto text-base-content/70" />
           <template v-else>{{ formatSize(entry.size) }}</template>
         </TableCell>

@@ -38,7 +38,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
       <Card class="gap-0 py-0 shadow-none p-3">
         <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
           <label
-            class="flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
+            class="relative flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
           >
             <input
               type="radio" name="appearance-theme" value="auto" class="sr-only"
@@ -48,7 +48,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
           </label>
           <label
             v-for="name in THEMES" :key="name" :data-theme="name"
-            class="flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
+            class="relative flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
           >
             <input
               type="radio" name="appearance-theme" :value="name" class="sr-only"

@@ -222,7 +222,7 @@ onMounted(async () => {
             <Button variant="ghost" @click="togglePlace(place.id)" :aria-expanded="expandedPlace === place.id" class="h-auto flex-1 justify-start gap-3 px-0 py-0 text-left font-normal min-w-0 hover:bg-transparent">
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-base-content">{{ place.name }}</span>
-                <span class="text-base-content/70 text-xs font-mono ml-3">{{ place.path }}</span>
+                <span class="font-mono text-base-content/70 text-xs ml-3">{{ place.path }}</span>
               </div>
               <!-- Expand chevron -->
               <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />

@@ -217,7 +217,7 @@ async function mount(v: Volume) {
             <span class="min-w-0">
               <template v-if="v.space">
                 <Progress class="h-1.5 rounded-full bg-base-200" :model-value="usedPct(v)" :indicator-class="['rounded-full', usedPct(v) > 90 ? 'bg-warning' : 'bg-base-content']" />
-                <span class="block mt-1 font-mono tabular-nums text-2xs text-base-content/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
+                <span class="block mt-1 tabular-nums text-2xs text-base-content/80">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               </template>
               <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
               <span v-else class="text-base-content/70">-</span>
@@ -245,7 +245,7 @@ async function mount(v: Volume) {
             </div>
             <div class="mt-1.5 flex items-center justify-between gap-2 text-2xs text-base-content/70">
               <span>{{ REDUNDANCY[v.redundancy] }} · {{ usedByText(v) }}</span>
-              <span v-if="v.space" class="font-mono tabular-nums">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
+              <span v-if="v.space" class="tabular-nums">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
             </div>
           </div>
@@ -255,11 +255,11 @@ async function mount(v: Volume) {
       <div class="mt-4 space-y-1.5 text-xs text-base-content/70">
         <p v-if="overview.freeDisks.length">
           {{ t('ui.storage.VolumesSection.freeDisks') }}
-          <span class="font-mono text-base-content/80">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
+          <span class="text-base-content/80">{{ overview.freeDisks.map(d => `${d.name} ${fmtBytes(d.size)}`).join(' · ') }}</span>
           <Button variant="link" class="h-auto p-0 ml-1.5 text-base-content" @click="createVolume">{{ t('ui.storage.VolumesSection.createVolume2') }}</Button>
         </p>
         <p v-if="overview.system">
-          {{ t('ui.storage.VolumesSection.system') }} <span class="font-mono text-base-content/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
+          {{ t('ui.storage.VolumesSection.system') }} <span class="text-base-content/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
         </p>
       </div>
     </template>

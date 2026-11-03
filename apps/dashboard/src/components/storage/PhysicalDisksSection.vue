@@ -472,7 +472,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
                     <span v-if="r.kind" class="text-base-content/70"> · {{ r.kind }}</span>
                   </div>
                   <div class="text-2xs text-base-content/70 truncate">
-                    {{ r.disk.model }}<span v-if="r.disk.serial" class="font-mono"> · {{ r.disk.serial }}</span>
+                    {{ r.disk.model }}<span v-if="r.disk.serial"> · {{ r.disk.serial }}</span>
                   </div>
                   <DiskLabel :serial="r.disk.serial" :label="r.label" @saved="l => setLabel(r.disk.serial, l)" />
                 </div>
@@ -531,7 +531,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
       @confirm="doPartInit"
       @close="partInitDlg = null"
     >
-      <template #warning>{{ t('ui.storage.PhysicalDisksSection.allPartitionsAndDataOn') }} <span class="font-mono font-bold">/dev/{{ partInitDlg.disk.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willBePermanentlyDestroyedThis') }}</template>
+      <template #warning>{{ t('ui.storage.PhysicalDisksSection.allPartitionsAndDataOn') }} <span class="font-bold">/dev/{{ partInitDlg.disk.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willBePermanentlyDestroyedThis') }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.disk') }}</span><span class="font-mono">/dev/{{ partInitDlg.disk.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.size') }}</span><span>{{ fmtBytes(partInitDlg.disk.size) }}</span></div>
@@ -544,7 +544,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     <Modal :label="t('ui.storage.PhysicalDisksSection.addPartition')" v-if="partCreateDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!partCreateDlg.busy" @close="partCreateDlg = null">
           <div class="px-5 py-4 border-b border-base-300">
             <h3 class="font-semibold text-base-content">{{ t('ui.storage.PhysicalDisksSection.addPartition') }}</h3>
-            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.storage.PhysicalDisksSection.createsANewPartitionSpanning') }} <span class="font-mono">/dev/{{ partCreateDlg.disk.name }}</span>.</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.storage.PhysicalDisksSection.createsANewPartitionSpanning') }} <span>/dev/{{ partCreateDlg.disk.name }}</span>.</p>
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-base-200 border border-base-300 text-xs text-base-content/70">
@@ -578,14 +578,14 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
       @confirm="doPartDelete"
       @close="partDeleteDlg = null"
     >
-      <template #warning>{{ t('ui.storage.PhysicalDisksSection.deleting') }} <span class="font-mono font-bold">/dev/{{ partDeleteDlg.part.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willPermanentlyDestroyAllData') }}</template>
+      <template #warning>{{ t('ui.storage.PhysicalDisksSection.deleting') }} <span class="font-bold">/dev/{{ partDeleteDlg.part.name }}</span> {{ t('ui.storage.PhysicalDisksSection.willPermanentlyDestroyAllData') }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.partition') }}</span><span class="font-mono">/dev/{{ partDeleteDlg.part.name }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.size') }}</span><span>{{ fmtBytes(partDeleteDlg.part.size) }}</span></div>
         <div v-if="partDeleteDlg.part.fstype" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.filesystem') }}</span><span class="font-mono">{{ partDeleteDlg.part.fstype }}</span></div>
         <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.disk') }}</span><span class="font-mono">/dev/{{ partDeleteDlg.disk.name }}</span><span v-if="partDeleteDlg.disk.model" class="text-base-content/70">{{ partDeleteDlg.disk.model }}</span></div>
         <div v-if="partDeleteDlg.disk.serial" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.serial') }}</span><span class="font-mono">{{ partDeleteDlg.disk.serial }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.partition2') }}</span><span class="font-mono">{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.PhysicalDisksSection.partition2') }}</span><span>{{ partNumOf(partDeleteDlg.disk.name, partDeleteDlg.part.name) }}</span></div>
       </template>
     </ConfirmDestroyDialog>
 

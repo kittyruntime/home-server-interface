@@ -97,7 +97,7 @@ function stepLabel(step: MaintenanceStep): string {
           <p>{{ maintenance.result.text }}</p>
         </div>
 
-        <p v-if="maintenance.countdown > 0" class="font-mono text-sm text-base-content/70">
+        <p v-if="maintenance.countdown > 0" class="tabular-nums text-sm text-base-content/70">
           {{ t('maintenance.reloadingIn', { seconds: maintenance.countdown }) }}
         </p>
         <Button v-else-if="maintenance.result?.problem" size="lg" @click="reload">{{ t('maintenance.reload') }}</Button>

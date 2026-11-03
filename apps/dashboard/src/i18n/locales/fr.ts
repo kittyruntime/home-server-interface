@@ -28,7 +28,6 @@ export default {
     groups: { account: 'Compte', access: 'Accès', system: 'Système', backup: 'Sauvegardes' },
     nav: {
       profile: 'Mon profil',
-      shares: 'Liens partagés',
       ai: 'Accès IA',
       users: 'Utilisateurs',
       places: 'Emplacements',
@@ -289,6 +288,8 @@ export default {
     reset: 'Réinitialiser l’apparence',
   },
   profile: {
+    appearance: 'Apparence',
+    advancedOptions: 'Options avancées',
     language: 'Langue',
     languageHint: 'La langue de l’interface sur tous les appareils où vous vous connectez.',
     confirmFileDelete: 'Confirmer avant de supprimer',

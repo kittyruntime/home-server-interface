@@ -27,7 +27,6 @@ export default {
     groups: { account: 'Account', access: 'Access control', system: 'System', backup: 'Backups' },
     nav: {
       profile: 'My profile',
-      shares: 'Shared links',
       ai: 'AI access',
       users: 'Users',
       places: 'Places',
@@ -288,6 +287,8 @@ export default {
     reset: 'Reset appearance',
   },
   profile: {
+    appearance: 'Appearance',
+    advancedOptions: 'Advanced options',
     language: 'Language',
     languageHint: 'The language of the interface on every device you sign in to.',
     confirmFileDelete: 'Confirm before deleting',

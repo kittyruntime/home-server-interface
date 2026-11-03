@@ -390,7 +390,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                   <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <span class="text-sm font-mono text-base-content">/dev/{{ dev.name }}</span>
+                  <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
                   <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">RAID</span>
                   <span v-else-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
                 </div>
@@ -470,7 +470,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
           <div class="px-5 py-4 border-b border-base-300">
             <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
-            <p class="text-xs text-base-content/70 mt-0.5">VG <span class="font-mono text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">VG <span class="text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
           </div>
           <div class="p-5 space-y-4">
             <div>
@@ -509,7 +509,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       @confirm="doRemoveLv"
       @close="removeLvDlg = null"
     >
-      <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-mono font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
+      <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
@@ -530,7 +530,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       @confirm="doRemoveVg"
       @close="removeVgDlg = null"
     >
-      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-mono font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
+      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
       <template #details>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
         <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>

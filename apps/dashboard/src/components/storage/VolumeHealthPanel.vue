@@ -73,7 +73,7 @@ async function resume(mp: string) {
           <p class="text-xs text-base-content font-medium">{{ t('uip.storage.VolumeHealthPanel.volumeIsBack', { p0: v.mountPoint }) }}</p>
           <p class="text-xs text-base-content/80">
             {{ t('ui.storage.VolumeHealthPanel.checkTheDiskSmartRaid') }}
-            <template v-if="v.hold.stoppedApps.length">{{ t('ui.storage.VolumeHealthPanel.appsToRestart') }} <span class="font-mono">{{ v.hold.stoppedApps.join(', ') }}</span>.</template>
+            <template v-if="v.hold.stoppedApps.length">{{ t('ui.storage.VolumeHealthPanel.appsToRestart') }} <span>{{ v.hold.stoppedApps.join(', ') }}</span>.</template>
           </p>
           <p v-if="v.hold.strayFiles" class="text-xs text-warning">
             {{ t('uip.storage.VolumeHealthPanel.filesWereWrittenToThe', { p0: v.mountPoint }) }} <span class="font-mono">chattr -i {{ v.mountPoint }}</span>.
