@@ -4,7 +4,7 @@ import type { PrimitiveProps } from "../Primitive.vue"
 import { computed, provide, ref, useId } from "vue"
 import { cn } from "@/lib/utils"
 import Primitive from "../Primitive.vue"
-import { tabsKey } from "./context"
+import { keepFocused, tabsKey } from "./context"
 
 type TabValue = string | undefined
 
@@ -50,6 +50,8 @@ function refresh() {
   const values = all.map(item => item.dataset.value ?? "")
   if (values.join("\u0000") !== enabled.value.join("\u0000"))
     enabled.value = values
+  // Include the disabled ones: a trigger that merely became disabled is still there.
+  focused.value = keepFocused(focused.value, Array.from(listEl.value?.querySelectorAll<HTMLElement>("[data-tab-trigger]") ?? [], item => item.dataset.value ?? ""))
   const head = values[0] ?? null
   if (head !== first.value)
     first.value = head

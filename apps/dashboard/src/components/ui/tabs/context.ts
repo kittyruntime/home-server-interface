@@ -18,7 +18,12 @@ export interface TabsContext {
 
 export const tabsKey: InjectionKey<TabsContext> = Symbol("tabs")
 
-/** Stable ids so aria-controls and aria-labelledby stay pairs. */
+/** Stable ids so aria-controls and aria-labelledby stay pairs. The value is encoded: an id holds no space. */
 export function makeId(baseId: string, kind: "trigger" | "content", value: string) {
-  return `${baseId}-${kind}-${value}`
+  return `${baseId}-${kind}-${encodeURIComponent(value)}`
+}
+
+/** The focused value to keep once the triggers are rescanned: null when its trigger is gone. */
+export function keepFocused(focused: string | null, values: readonly string[]): string | null {
+  return focused !== null && values.includes(focused) ? focused : null
 }

@@ -1,5 +1,5 @@
 import type { Placement } from '@floating-ui/dom'
-import { inject, onBeforeUnmount, provide, shallowRef, useId, watch, type InjectionKey, type MaybeRefOrGetter, type Ref, type ShallowRef } from 'vue'
+import { inject, onBeforeUnmount, provide, ref, shallowRef, useId, watch, type InjectionKey, type MaybeRefOrGetter, type Ref, type ShallowRef } from 'vue'
 import { nextIndex, typeaheadIndex } from './menu-navigation'
 import { useAnchoredPopover, type PopoverAnchor } from './use-anchored-popover'
 
@@ -38,6 +38,22 @@ export interface RadioGroupContext {
   select: (value: string) => void
 }
 export const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('menu-radio-group')
+
+/* A group names itself through the label rendered inside it. */
+export interface GroupContext {
+  labelId: Ref<string | undefined>
+}
+const groupKey: InjectionKey<GroupContext> = Symbol('menu-group')
+
+export function provideMenuGroup(): Ref<string | undefined> {
+  const labelId = ref<string>()
+  provide(groupKey, { labelId })
+  return labelId
+}
+
+export function useMenuGroupLabel(): GroupContext | null {
+  return inject(groupKey, null)
+}
 
 export function useMenu(init: { kind?: MenuContext['kind'], open: Ref<boolean>, isSub?: boolean }): MenuContext {
   const parent = inject(menuKey, null)
@@ -124,9 +140,12 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
   ctx.closeContent = () => close()
   onBeforeUnmount(() => { clearTimeout(queryTimer); ctx.closeContent = null })
 
-  watch([ctx.open, ctx.anchor], ([value, anchor]) => {
-    if (!value || !anchor) { close(); return }
-    open(anchor)
+  /* Opened through the `open` prop rather than show(): there is no anchor yet,
+     so a dropdown or submenu opens against its trigger once that has mounted. */
+  watch([ctx.open, ctx.anchor, ctx.trigger], ([value, anchor, trigger]) => {
+    const target = anchor ?? (ctx.kind === 'dropdown' || ctx.isSub ? trigger : null)
+    if (!value || !target) { close(); return }
+    open(target)
   }, { immediate: true, flush: 'post' })
 
   function focusItem(item: HTMLElement | undefined) {

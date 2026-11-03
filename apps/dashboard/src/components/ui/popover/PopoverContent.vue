@@ -49,10 +49,9 @@ const { floating, open, close, isOpen } = useAnchoredPopover({
   },
 })
 
-watch(ctx.open, (value) => {
-  if (!value) { close(); return }
-  const anchor = ctx.anchor()
-  if (!anchor) return
+// Also re-runs once the trigger registers: a popover that starts open has no anchor on first run.
+watch(() => ctx.open.value && ctx.anchor(), (anchor) => {
+  if (!anchor) { close(); return }
   open(anchor)
 }, { immediate: true, flush: "post" })
 </script>
