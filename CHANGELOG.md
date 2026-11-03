@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.79.2] - 2026-11-03
+
 ### Changed
 - **Shared links have their own Settings group** at the bottom of the file
   manager's sidebar, apart from the places.
@@ -1866,7 +1868,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.2...HEAD
+[1.79.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.1...v1.79.2
 [1.79.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.0...v1.79.1
 [1.79.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.4...v1.79.0
 [1.78.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.3...v1.78.4
