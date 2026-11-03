@@ -13,7 +13,7 @@ import {
 import { trpc } from '../lib/trpc'
 import { subscribeMetrics } from '../lib/live-metrics'
 import { useAppearance } from '../lib/theme'
-import { resolveThemeColor } from '../lib/theme-colors'
+import { resolveThemeColor, withAlpha } from '../lib/theme-colors'
 import LoadingState from './ui/LoadingState.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -66,6 +66,8 @@ function readColors() {
     rx:   resolveThemeColor('--color-success'),
     tx:   resolveThemeColor('--chart-5'),
     text: resolveThemeColor('--color-base-content'),
+    surface: resolveThemeColor('--color-base-100'),
+    border: resolveThemeColor('--color-base-300'),
   }
 }
 const colors = ref(readColors())
@@ -74,10 +76,10 @@ const refreshColors = () => { colors.value = readColors() }
 watch(appearance, () => { nextTick(refreshColors) }, { deep: true })
 
 // In Auto mode the system can flip light/dark without the appearance changing.
-const darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+const darkQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 const onSchemeChange = () => { nextTick(refreshColors) }
-darkQuery.addEventListener('change', onSchemeChange)
-onUnmounted(() => darkQuery.removeEventListener('change', onSchemeChange))
+darkQuery?.addEventListener('change', onSchemeChange)
+onUnmounted(() => darkQuery?.removeEventListener('change', onSchemeChange))
 
 function fmtBytes(n: number, decimals = 1): string {
   if (n <= 0)         return '0 B'
@@ -126,7 +128,7 @@ function lineDataset(label: string, values: number[], color: string) {
     label,
     data: values,
     borderColor: color,
-    backgroundColor: color.replace('rgb(', 'rgba(').replace(')', ', 0.1)'),
+    backgroundColor: withAlpha(color, 0.1),
     borderWidth: 1.5,
     pointRadius: 0,
     tension: 0.3,
@@ -153,12 +155,23 @@ const netChartData = computed(() => ({
 }))
 
 const chartOptions = computed(() => {
-  const grid = { color: colors.value.text.replace('rgb(', 'rgba(').replace(')', ', 0.1)') }
+  const grid = { color: withAlpha(colors.value.text, 0.1) }
   const ticks = { color: colors.value.text, font: { size: 10 } }
   return {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { mode: 'index' as const, intersect: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: colors.value.surface,
+        titleColor: colors.value.text,
+        bodyColor: colors.value.text,
+        borderColor: colors.value.border,
+        borderWidth: 1,
+      },
+    },
     scales: {
       x: { grid, ticks: { ...ticks, maxTicksLimit: 8 } },
       y: { grid, ticks, beginAtZero: true },
