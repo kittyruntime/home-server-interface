@@ -256,7 +256,7 @@ expect_mirror() {
 # manages the interface. Run detached: SSH drops while the network switches.
 network_to_networkmanager() {
   log "Handing the network to NetworkManager"
-  vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq network-manager >/dev/null' || fail "could not install NetworkManager"
+  vm_apt_install network-manager || fail "could not install NetworkManager"
   vm_ssh 'cat > /root/to-nm.sh <<"SH"
 set -x
 nic=$(ip -o -4 route show default | awk "{print \$5; exit}")
@@ -910,7 +910,7 @@ case "$scenario" in
     ;;
   storage)
     # Samba is optional for the installer; the volume's share needs it.
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
@@ -928,7 +928,7 @@ case "$scenario" in
     expect_running "$version"
     ;;
   recovery)
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
@@ -958,7 +958,7 @@ case "$scenario" in
     expect_mirror; expect_mirror_data
     ;;
   features)
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient docker.io docker-compose >/dev/null && docker compose version' \
+    { vm_apt_install samba smbclient docker.io docker-compose && vm_ssh 'docker compose version'; } \
       || fail "could not install Samba and Docker"
     install_build
     expect_running "$version"
@@ -981,7 +981,7 @@ case "$scenario" in
     vm_ssh 'id vmuser >/dev/null && test -f /srv/vm-mirror/from-smb/hello.txt' || fail "vmuser or its files are gone after a reboot"
     ;;
   restore)
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
@@ -996,7 +996,7 @@ case "$scenario" in
     # An unrelated account first: ids the new system hands out by default no
     # longer match the old ones, so only a restore that keeps them passes.
     vm_ssh 'useradd -M -u 1500 squatter' || fail "could not add an account"
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba smbclient || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
@@ -1020,7 +1020,7 @@ case "$scenario" in
     expect_running "$version"; expect_mirror; expect_mirror_data; expect_account_data
     ;;
   faults)
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup
@@ -1038,7 +1038,7 @@ case "$scenario" in
     expect_running "$version"; expect_mirror; expect_mirror_data
     ;;
   interrupted)
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_published
     expect_running "$published"
     # Installers before 1.73.1 neither flushed what they wrote nor ran their
@@ -1060,7 +1060,7 @@ case "$scenario" in
     vm_new_system
     vm_start
     separate_tmp
-    vm_ssh 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba >/dev/null' || fail "could not install Samba"
+    vm_apt_install samba || fail "could not install Samba"
     install_build
     expect_running "$version"
     api_setup

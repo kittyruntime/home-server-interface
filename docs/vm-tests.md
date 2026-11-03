@@ -20,8 +20,9 @@ disks; the VM and its disks are deleted with `$VM_DIR`.
 The release workflow runs every scenario on a pushed tag first and publishes
 only when they all pass (a manual republish of an existing tag skips them).
 The `VM tests` workflow builds a pre-release archive (`<next patch>-vmtest.<run>`)
-and runs the scenarios in parallel: on demand, every Monday, and on pull requests
-that touch the installer, the database package, the root worker or the runtime.
+and runs the scenarios in parallel: on demand and on pull requests that touch
+the installer, the database package, the root worker or the runtime. Package
+installs inside the VM retry when a Debian mirror drops a download.
 Logs (install, rollback, console, `hsi-server` journal) are kept as artifacts.
 
 Run it locally on a Linux host with KVM, QEMU and `cloud-image-utils`:
