@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.79.3] - 2026-11-03
+
 ### Security
 - **Updated glob and minimatch**: fixes a file search that could keep running after
   being cancelled (GHSA-3g3m-2fjr-6pw4) and a pattern that could make matching very
@@ -1873,7 +1875,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.3...HEAD
+[1.79.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.2...v1.79.3
 [1.79.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.1...v1.79.2
 [1.79.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.0...v1.79.1
 [1.79.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.78.4...v1.79.0
