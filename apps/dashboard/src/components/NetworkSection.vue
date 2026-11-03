@@ -200,10 +200,10 @@ onUnmounted(() => clearInterval(timer))
         <p v-if="!i.managed" class="mt-2 text-xs text-base-content/70">{{ t('ui.settings.NetworkSection.networkmanagerDoesNotManageThis') }}</p>
 
         <form v-if="editing === i.device" class="mt-4 space-y-3 border-t pt-4" @submit.prevent="apply(i)">
-          <ToggleGroup type="single" variant="outline" size="sm" :model-value="form.method" :aria-label="t('ui.settings.NetworkSection.addressing')"
+          <ToggleGroup type="single" variant="tabs" size="sm" :model-value="form.method" :aria-label="t('ui.settings.NetworkSection.addressing')"
             @update:model-value="v => { if (v === 'auto' || v === 'manual') form.method = v }">
-            <ToggleGroupItem value="auto" class="px-3 text-xs">DHCP</ToggleGroupItem>
-            <ToggleGroupItem value="manual" class="px-3 text-xs">{{ t('ui.settings.NetworkSection.manual') }}</ToggleGroupItem>
+            <ToggleGroupItem value="auto">DHCP</ToggleGroupItem>
+            <ToggleGroupItem value="manual">{{ t('ui.settings.NetworkSection.manual') }}</ToggleGroupItem>
           </ToggleGroup>
           <div v-if="form.method === 'manual'" class="grid gap-3 sm:grid-cols-2">
             <div class="space-y-1">

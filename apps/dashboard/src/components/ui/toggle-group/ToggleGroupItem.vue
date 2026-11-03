@@ -19,6 +19,7 @@ const group = inject(toggleGroupKey, null)
 const on = computed(() => group?.isOn(props.value) ?? false)
 const single = computed(() => group?.single.value ?? false)
 const variant = computed(() => group?.variant.value ?? props.variant)
+const toggleVariant = computed(() => variant.value === "tabs" ? undefined : variant.value)
 const size = computed(() => group?.size.value ?? props.size)
 const tabindex = computed(() => group?.stop.value == null ? undefined : group.stop.value === props.value ? 0 : -1)
 </script>
@@ -38,8 +39,8 @@ const tabindex = computed(() => group?.stop.value == null ? undefined : group.st
     :aria-pressed="single ? undefined : on"
     :tabindex="tabindex"
     :disabled="disabled || group?.disabled.value"
-    :class="cn(
-      toggleVariants({ variant, size }),
+    :class="variant === 'tabs' ? cn('tab gap-1.5', on && 'tab-active', props.class) : cn(
+      toggleVariants({ variant: toggleVariant, size }),
       group?.spacing.value === 0 && 'join-item',
       'w-auto min-w-0 shrink-0 px-3',
       props.class)"

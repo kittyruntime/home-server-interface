@@ -379,12 +379,12 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <Checkbox v-model="prefs.grouped" /> {{ t('ui.storage.PhysicalDisksSection.groupByRole') }}
           </label>
           <ToggleGroup
-            type="single" variant="outline" size="sm"
+            type="single" variant="tabs" size="sm"
             :model-value="view"
             :aria-label="t('ui.storage.PhysicalDisksSection.view')"
             @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
           >
-            <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v" class="px-2.5 text-xs">
+            <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v">
               {{ v === 'table' ? 'Table' : 'Details' }}
             </ToggleGroupItem>
           </ToggleGroup>

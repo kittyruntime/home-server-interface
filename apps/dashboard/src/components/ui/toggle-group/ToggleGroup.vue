@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "vue"
 import type { ToggleVariants } from "../toggle"
 import { computed, onMounted, onUpdated, provide, ref } from "vue"
 import { cn } from "@/lib/utils"
-import { toggleGroupKey } from "./context"
+import { toggleGroupKey, type ToggleGroupVariant } from "./context"
 
 type GroupValue = string | string[] | undefined
 
@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{
   loop?: boolean
   orientation?: "horizontal" | "vertical"
   class?: HTMLAttributes["class"]
-  variant?: ToggleVariants["variant"]
+  variant?: ToggleGroupVariant
   size?: ToggleVariants["size"]
   spacing?: number
 }>(), {
@@ -151,7 +151,10 @@ provide(toggleGroupKey, {
     :data-variant="variant"
     :data-spacing="spacing"
     :style="spacing > 0 ? { gap: `calc(var(--spacing) * ${spacing})` } : undefined"
-    :class="cn(spacing === 0 ? 'join' : 'flex w-fit items-center', props.class)"
+    :class="cn(
+      variant === 'tabs' ? ['tabs tabs-box w-fit', size === 'sm' ? 'tabs-sm' : size === 'lg' ? 'tabs-lg' : '']
+      : spacing === 0 ? 'join' : 'flex w-fit items-center',
+      props.class)"
     @focusin="onFocusin"
     @focusout="onFocusout"
     @keydown="onKeydown"

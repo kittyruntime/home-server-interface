@@ -87,11 +87,11 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
     <div class="space-y-2">
       <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.roundness') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
-        <div role="radiogroup" :aria-label="t('appearance.roundness')" class="join">
+        <div role="radiogroup" :aria-label="t('appearance.roundness')" class="tabs tabs-box tabs-sm w-fit">
           <input
             v-for="r in RADII" :key="r.value"
             type="radio" name="appearance-radius" :value="r.value"
-            class="join-item btn btn-sm"
+            class="tab"
             :aria-label="t(`appearance.radii.${r.key}`)"
             v-model="radius"
           />
@@ -103,11 +103,11 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
     <div class="space-y-2">
       <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.density') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
-        <div role="radiogroup" :aria-label="t('appearance.density')" class="join">
+        <div role="radiogroup" :aria-label="t('appearance.density')" class="tabs tabs-box tabs-sm w-fit">
           <input
             v-for="d in DENSITIES" :key="d"
             type="radio" name="appearance-density" :value="d"
-            class="join-item btn btn-sm"
+            class="tab"
             :aria-label="t(`appearance.densities.${d}`)"
             v-model="density"
           />

@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manager's sidebar, apart from the places.
 - **Sidebar header cleaned up**: the arrow badge at the top of the app sidebar is
   gone.
+- **Segmented choices are tabs**: the file manager's list/grid switch, the history
+  period, the disk view, the network addressing, roundness and density use one
+  tab-style control.
+- **Cleaner Advanced options**: each option is one row with its name, a short hint
+  and its switch, and the whole row toggles it.
+- **Selection checkboxes are easier to see**: slightly larger, and no longer faded
+  in the file manager.
 
 ### Fixed
 - **Your theme comes back right after signing in**: the account's look no longer

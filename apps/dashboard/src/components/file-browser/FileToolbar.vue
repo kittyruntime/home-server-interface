@@ -190,16 +190,16 @@ async function openSearch() {
 
       <!-- View toggle -->
       <ToggleGroup
-        type="single" variant="outline" size="sm"
+        type="single" variant="tabs" size="sm"
         :model-value="viewMode"
         :aria-label="t('ui.files.FileToolbar.viewMode')"
         @update:model-value="v => { if (v === 'list' || v === 'grid') emit('update:viewMode', v) }"
       >
-        <Tip text="List view"><ToggleGroupItem value="list" :aria-label="t('ui.files.FileToolbar.listView')">
-          <ListIcon aria-hidden="true" />
+        <Tip :text="t('ui.files.FileToolbar.listView')"><ToggleGroupItem value="list" :aria-label="t('ui.files.FileToolbar.listView')">
+          <ListIcon class="size-4" aria-hidden="true" />
         </ToggleGroupItem></Tip>
-        <Tip text="Grid view"><ToggleGroupItem value="grid" :aria-label="t('ui.files.FileToolbar.gridView')">
-          <LayoutGridIcon aria-hidden="true" />
+        <Tip :text="t('ui.files.FileToolbar.gridView')"><ToggleGroupItem value="grid" :aria-label="t('ui.files.FileToolbar.gridView')">
+          <LayoutGridIcon class="size-4" aria-hidden="true" />
         </ToggleGroupItem></Tip>
       </ToggleGroup>
 

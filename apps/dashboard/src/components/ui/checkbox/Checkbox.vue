@@ -25,7 +25,7 @@ const { onChange, onClick } = useCheckedModel(props, emits, el)
     ref="el"
     type="checkbox"
     data-slot="checkbox"
-    :class="cn('checkbox checkbox-xs checkbox-primary aria-invalid:checkbox-error disabled:cursor-not-allowed', props.class)"
+    :class="cn('checkbox checkbox-sm checkbox-primary aria-invalid:checkbox-error disabled:cursor-not-allowed', props.class)"
     @click="onClick"
     @change="onChange"
   >
