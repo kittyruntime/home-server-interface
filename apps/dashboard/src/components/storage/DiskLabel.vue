@@ -53,14 +53,14 @@ async function save() {
         class="w-full py-0.5! px-1.5! text-2xs!"
         @keydown.enter.prevent="save" @keydown.esc.prevent="editing = false" @blur="save"
       />
-      <span v-if="error" role="alert" class="status-text block text-2xs text-destructive">{{ error }}</span>
+      <span v-if="error" role="alert" class="status-text block text-2xs text-error">{{ error }}</span>
     </template>
     <Button
       v-else-if="serial"
       type="button"
       variant="ghost"
-      :class="['h-auto max-w-full justify-start truncate p-0 text-left text-2xs font-normal rounded-sm hover:bg-transparent hover:text-foreground focus-visible:text-foreground',
-        label ? 'text-foreground/80' : 'text-muted-foreground @2xl:opacity-0 @2xl:group-hover:opacity-100 focus-visible:opacity-100']"
+      :class="['h-auto max-w-full justify-start truncate p-0 text-left text-2xs font-normal rounded-sm hover:bg-transparent hover:text-base-content focus-visible:text-base-content',
+        label ? 'text-base-content/80' : 'text-base-content/70 @2xl:opacity-0 @2xl:group-hover:opacity-100 focus-visible:opacity-100']"
       :tooltip="label ? 'Rename this disk' : 'Name this disk, for example by its bay'"
       @click="start"
     >{{ label || 'Add label' }}</Button>

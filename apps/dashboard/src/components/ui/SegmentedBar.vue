@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   segments: 24,
   height: 'compact',
-  color: 'var(--primary)',
+  color: 'var(--color-primary)',
 })
 
 const value = computed(() => Math.max(0, Math.min(100, props.percent)))

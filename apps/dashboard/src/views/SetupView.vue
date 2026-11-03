@@ -213,39 +213,39 @@ const NEXT = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-background px-4 py-10 flex justify-center">
+  <div class="min-h-screen bg-base-100 px-4 py-10 flex justify-center">
     <div class="w-full max-w-xl">
       <div class="mb-8 text-center">
         <div class="eyebrow mb-1">{{ $t('ui.views.SetupView.homeServerInterface') }}</div>
-        <h1 class="text-2xl font-semibold text-foreground">{{ $t('ui.views.SetupView.setUpYourServer') }}</h1>
+        <h1 class="text-2xl font-semibold text-base-content">{{ $t('ui.views.SetupView.setUpYourServer') }}</h1>
       </div>
 
       <ol class="mb-6 flex items-center justify-center gap-2 text-xs" :aria-label="$t('ui.views.SetupView.setupSteps')">
         <li v-for="(s, i) in STEPS" :key="s.id" class="flex items-center gap-2">
           <span :class="['grid h-6 w-6 place-items-center rounded-full border text-2xs font-semibold',
-            i < stepIndex ? 'border-success bg-success/10 text-success' : i === stepIndex ? 'border-primary text-primary' : 'border-input text-muted-foreground']"
+            i < stepIndex ? 'border-success bg-success/10 text-success' : i === stepIndex ? 'border-primary text-primary' : 'border-base-300 text-base-content/70']"
             :aria-current="i === stepIndex ? 'step' : undefined">{{ i + 1 }}</span>
-          <span :class="i === stepIndex ? 'text-foreground' : 'text-muted-foreground'">{{ s.label }}</span>
-          <span v-if="i < STEPS.length - 1" aria-hidden="true" class="mx-1 h-px w-6 bg-input" />
+          <span :class="i === stepIndex ? 'text-base-content' : 'text-base-content/70'">{{ s.label }}</span>
+          <span v-if="i < STEPS.length - 1" aria-hidden="true" class="mx-1 h-px w-6 bg-base-300" />
         </li>
       </ol>
 
-      <div class="rounded-xl border border-input bg-card p-6 space-y-4">
+      <div class="rounded-xl border border-base-300 bg-base-100 p-6 space-y-4">
         <LoadingState v-if="!status && !loadError" variant="compact" />
-        <p v-else-if="loadError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
+        <p v-else-if="loadError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ loadError }}</p>
 
         <!-- Token -->
         <form v-else-if="screen === 'token'" class="space-y-4" @submit.prevent="checkToken">
-          <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.openTheSetupLink') }}</h2>
-          <p class="text-sm text-foreground/80">
+          <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.views.SetupView.openTheSetupLink') }}</h2>
+          <p class="text-sm text-base-content/80">
             {{ $t('ui.views.SetupView.theInstallerPrintedALink') }}
             <code class="font-mono text-xs">sudo hsi-worker setup-token</code> {{ $t('ui.views.SetupView.onTheServerForA') }}
             <code class="font-mono text-xs">sudo cat /etc/hsi/setup-token</code>.
           </p>
-          <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.setupToken') }}
+          <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.setupToken') }}
             <Input v-model="tokenInput" class="mt-1 font-mono" autocomplete="off" spellcheck="false" />
           </label>
-          <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+          <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
           <div class="flex justify-end"><Button size="sm" :disabled="busy || !tokenInput.trim()">{{ $t('ui.views.SetupView.continue') }}</Button></div>
         </form>
 
@@ -258,26 +258,26 @@ const NEXT = [
             </TabsList>
           </Tabs>
           <div v-if="startMode === 'restore'" class="space-y-2">
-            <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.rebuildAServerFromIts') }}</p>
+            <p class="text-sm text-base-content/80">{{ $t('ui.views.SetupView.rebuildAServerFromIts') }}</p>
             <RestoreForm :auth-token="setupSession" :after-restart="afterRestore" :show-follow-ups="false" />
           </div>
         <form v-else class="space-y-4" @submit.prevent="createAdmin">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.createTheAdministrator') }}</h2>
-            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.thisAccountManagesTheServer') }}</p>
+            <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.views.SetupView.createTheAdministrator') }}</h2>
+            <p class="mt-1 text-sm text-base-content/80">{{ $t('ui.views.SetupView.thisAccountManagesTheServer') }}</p>
           </div>
-          <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.username') }}
+          <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.username') }}
             <Input v-model="username" class="mt-1" autocomplete="username" :placeholder="$t('ui.views.SetupView.eGAlice')" spellcheck="false" required />
           </label>
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.password') }}
+            <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.password') }}
               <Input v-model="password" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
-            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.confirmThePassword') }}
+            <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.confirmThePassword') }}
               <Input v-model="confirm" type="password" class="mt-1" autocomplete="new-password" required />
             </label>
           </div>
-          <p v-if="adminError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ adminError || error }}</p>
+          <p v-if="adminError || error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ adminError || error }}</p>
           <div class="flex justify-end">
             <Button size="sm" :disabled="busy || !!adminError || !username || !password || password !== confirm">
               {{ busy ? 'Creating…' : 'Create the administrator' }}
@@ -289,21 +289,21 @@ const NEXT = [
         <!-- Server identity -->
         <form v-else-if="screen === 'identity'" class="space-y-4" @submit.prevent="applyIdentity">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.nameTheServer') }}</h2>
-            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.theNameDevicesSeeOn') }}</p>
+            <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.views.SetupView.nameTheServer') }}</h2>
+            <p class="mt-1 text-sm text-base-content/80">{{ $t('ui.views.SetupView.theNameDevicesSeeOn') }}</p>
           </div>
           <LoadingState v-if="!current && !error" variant="compact" />
           <template v-else-if="current">
-            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.hostname') }}
+            <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.hostname') }}
               <Input v-model="hostname" class="mt-1 font-mono" spellcheck="false" />
             </label>
-            <label class="block text-xs text-foreground/80">{{ $t('ui.views.SetupView.timeZone') }}
+            <label class="block text-xs text-base-content/80">{{ $t('ui.views.SetupView.timeZone') }}
               <NativeSelect wrapper-class="mt-1" v-model="timezone">
                 <NativeSelectOption v-for="z in timezones" :key="z" :value="z">{{ z }}</NativeSelectOption>
               </NativeSelect>
             </label>
           </template>
-          <p v-if="hostnameError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
+          <p v-if="hostnameError || error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ hostnameError || error }}</p>
           <div class="flex justify-between">
             <Button variant="ghost" size="sm" type="button" @click="goTo('secure', 'identity')">{{ $t('ui.views.SetupView.skip') }}</Button>
             <Button size="sm" :disabled="!current || !!hostnameError">{{ identityChanged ? 'Apply…' : 'Continue' }}</Button>
@@ -313,37 +313,37 @@ const NEXT = [
         <!-- Secure access -->
         <div v-else-if="screen === 'secure'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.secureAccess') }}</h2>
-            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.httpsEncryptsPasswordsAndFiles') }}</p>
+            <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.views.SetupView.secureAccess') }}</h2>
+            <p class="mt-1 text-sm text-base-content/80">{{ $t('ui.views.SetupView.httpsEncryptsPasswordsAndFiles') }}</p>
           </div>
-          <p v-if="restarting" role="status" class="status-text text-foreground/80">{{ $t('ui.views.SetupView.restartingHsi') }}</p>
+          <p v-if="restarting" role="status" class="status-text text-base-content/80">{{ $t('ui.views.SetupView.restartingHsi') }}</p>
           <LoadingState v-else-if="!tls && !tlsError" variant="compact" />
           <template v-else-if="tls">
-            <p class="text-sm text-foreground">{{ modeLabel(tls.mode) }}</p>
+            <p class="text-sm text-base-content">{{ modeLabel(tls.mode) }}</p>
             <template v-if="tls.mode === 'local'">
               <div v-if="tls.authorityFingerprint">
-                <span class="text-xs text-muted-foreground">{{ $t('ui.views.SetupView.authorityFingerprint') }}</span>
-                <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ tls.authorityFingerprint }}</p>
+                <span class="text-xs text-base-content/70">{{ $t('ui.views.SetupView.authorityFingerprint') }}</span>
+                <p class="font-mono break-all text-xs text-base-content/80 mt-1">{{ tls.authorityFingerprint }}</p>
               </div>
-              <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.installTheAuthorityCertificateOn') }}</p>
+              <p class="text-sm text-base-content/80">{{ $t('ui.views.SetupView.installTheAuthorityCertificateOn') }}</p>
               <Button as="a" variant="outline" size="sm" href="/ca.crt" download>{{ $t('ui.views.SetupView.downloadTheAuthorityCertificate') }}</Button>
-              <details class="text-sm text-foreground/80">
-                <summary class="cursor-pointer text-xs text-muted-foreground">{{ $t('ui.views.SetupView.howToTrustItOn') }}</summary>
+              <details class="text-sm text-base-content/80">
+                <summary class="cursor-pointer text-xs text-base-content/70">{{ $t('ui.views.SetupView.howToTrustItOn') }}</summary>
                 <dl class="mt-2 space-y-2">
                   <div v-for="t in TRUST_STEPS" :key="t.os">
-                    <dt class="text-xs font-medium text-foreground">{{ t.os }}</dt>
+                    <dt class="text-xs font-medium text-base-content">{{ t.os }}</dt>
                     <dd class="text-xs">{{ t.steps }}</dd>
                   </div>
                 </dl>
               </details>
             </template>
             <div v-else-if="tls.mode === 'off'" class="space-y-2">
-              <p class="text-sm text-foreground/80">{{ $t('ui.views.SetupView.hsiIsServedOverPlain') }}</p>
+              <p class="text-sm text-base-content/80">{{ $t('ui.views.SetupView.hsiIsServedOverPlain') }}</p>
               <Button size="sm" type="button" @click="turnOnHttps">{{ $t('ui.views.SetupView.turnHttpsOn') }}</Button>
             </div>
-            <p class="text-xs text-muted-foreground">{{ $t('ui.views.SetupView.importACertificateOrUse') }}</p>
+            <p class="text-xs text-base-content/70">{{ $t('ui.views.SetupView.importACertificateOrUse') }}</p>
           </template>
-          <p v-if="tlsError || error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
+          <p v-if="tlsError || error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ tlsError || error }}</p>
           <div class="flex justify-between">
             <Button variant="ghost" size="sm" type="button" :disabled="restarting" @click="goTo('next', 'secure')">{{ $t('ui.views.SetupView.skip') }}</Button>
             <Button size="sm" type="button" :disabled="restarting" @click="goTo('next')">{{ $t('ui.views.SetupView.continue') }}</Button>
@@ -353,14 +353,14 @@ const NEXT = [
         <!-- Next steps -->
         <div v-else-if="screen === 'next'" class="space-y-4">
           <div>
-            <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.views.SetupView.yourServerIsReady') }}</h2>
-            <p class="mt-1 text-sm text-foreground/80">{{ $t('ui.views.SetupView.aFewThingsWorthDoing') }}</p>
+            <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.views.SetupView.yourServerIsReady') }}</h2>
+            <p class="mt-1 text-sm text-base-content/80">{{ $t('ui.views.SetupView.aFewThingsWorthDoing') }}</p>
           </div>
           <ul class="grid gap-2 sm:grid-cols-2">
             <li v-for="n in NEXT" :key="n.title">
-              <a :href="n.href" class="block h-full rounded-lg border border-border px-3 py-2.5 hover:border-input transition-colors" @click.prevent="trpc.setup.progress.mutate({ step: 'done' }).finally(() => router.replace(n.href))">
-                <span class="block text-sm font-medium text-foreground">{{ n.title }}</span>
-                <span class="mt-0.5 block text-xs text-muted-foreground">{{ n.text }}</span>
+              <a :href="n.href" class="block h-full rounded-lg border border-base-300 px-3 py-2.5 hover:border-base-300 transition-colors" @click.prevent="trpc.setup.progress.mutate({ step: 'done' }).finally(() => router.replace(n.href))">
+                <span class="block text-sm font-medium text-base-content">{{ n.title }}</span>
+                <span class="mt-0.5 block text-xs text-base-content/70">{{ n.text }}</span>
               </a>
             </li>
           </ul>

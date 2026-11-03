@@ -125,9 +125,9 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('aiAccess.title') }}</h2>
-    <p class="text-sm text-muted-foreground mb-2 max-w-xl">{{ t('aiAccess.intro') }}</p>
-    <p class="text-xs text-muted-foreground mb-6 max-w-xl">{{ t('aiAccess.privacy') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('aiAccess.title') }}</h2>
+    <p class="text-sm text-base-content/70 mb-2 max-w-xl">{{ t('aiAccess.intro') }}</p>
+    <p class="text-xs text-base-content/70 mb-6 max-w-xl">{{ t('aiAccess.privacy') }}</p>
 
     <!-- The built-in assistant (admins set it up) -->
     <div v-if="isAdmin" class="max-w-xl mb-8">
@@ -148,43 +148,43 @@ onMounted(load)
     <div v-else class="space-y-6 max-w-xl">
       <!-- The secret, once -->
       <Card v-if="created" class="gap-3 px-4 py-4 shadow-none border-primary/40">
-        <p class="text-sm font-medium text-foreground">{{ t('aiAccess.createdTitle', { name: created.name }) }}</p>
-        <p class="text-xs text-muted-foreground">{{ t('aiAccess.createdHint') }}</p>
+        <p class="text-sm font-medium text-base-content">{{ t('aiAccess.createdTitle', { name: created.name }) }}</p>
+        <p class="text-xs text-base-content/70">{{ t('aiAccess.createdHint') }}</p>
         <div class="flex items-center gap-2">
-          <code class="flex-1 min-w-0 truncate rounded-md border bg-muted px-2 py-1.5 font-mono text-xs select-all">{{ created.secret }}</code>
+          <code class="flex-1 min-w-0 truncate rounded-md border bg-base-200 px-2 py-1.5 font-mono text-xs select-all">{{ created.secret }}</code>
           <Button size="sm" variant="outline" :aria-label="t('aiAccess.copy')" @click="copy(created.secret)">
             <CheckIcon v-if="copied" class="size-4" aria-hidden="true" /><CopyIcon v-else class="size-4" aria-hidden="true" />
           </Button>
         </div>
         <div>
           <p class="eyebrow mb-1">{{ t('aiAccess.connectClaudeCode') }}</p>
-          <pre class="overflow-x-auto rounded-md border bg-muted p-2 font-mono text-2xs text-foreground/80 select-all whitespace-pre-wrap break-all">{{ claudeCommand }}</pre>
+          <pre class="overflow-x-auto rounded-md border bg-base-200 p-2 font-mono text-2xs text-base-content/80 select-all whitespace-pre-wrap break-all">{{ claudeCommand }}</pre>
         </div>
         <Button size="sm" variant="ghost" class="self-start" @click="created = null">{{ t('aiAccess.done') }}</Button>
       </Card>
 
       <!-- New token -->
-      <div v-if="creating" class="bg-muted border border-input rounded-xl p-4 space-y-4">
+      <div v-if="creating" class="bg-base-200 border border-base-300 rounded-xl p-4 space-y-4">
         <div>
-          <label for="ai-token-name" class="block text-xs text-muted-foreground mb-1">{{ t('aiAccess.name') }}</label>
+          <label for="ai-token-name" class="block text-xs text-base-content/70 mb-1">{{ t('aiAccess.name') }}</label>
           <Input id="ai-token-name" v-model="name" :placeholder="t('aiAccess.namePlaceholder')" maxlength="64" autofocus class="w-full px-3 py-1.5 text-sm" />
         </div>
         <div>
-          <p class="block text-xs text-muted-foreground mb-2">{{ t('aiAccess.scopes') }}</p>
+          <p class="block text-xs text-base-content/70 mb-2">{{ t('aiAccess.scopes') }}</p>
           <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-2 text-sm">
             <span />
-            <span class="text-xs text-muted-foreground">{{ t('aiAccess.read') }}</span>
-            <span class="text-xs text-muted-foreground">{{ t('aiAccess.write') }}</span>
+            <span class="text-xs text-base-content/70">{{ t('aiAccess.read') }}</span>
+            <span class="text-xs text-base-content/70">{{ t('aiAccess.write') }}</span>
             <template v-for="domain in DOMAINS" :key="domain">
-              <span class="text-foreground">{{ t(`aiAccess.domains.${domain}`) }}</span>
+              <span class="text-base-content">{{ t(`aiAccess.domains.${domain}`) }}</span>
               <Checkbox :model-value="scopes.has(`${domain}:read`)" :aria-label="`${t(`aiAccess.domains.${domain}`)}: ${t('aiAccess.read')}`" @update:model-value="v => toggle(`${domain}:read`, v === true)" />
               <Checkbox :model-value="scopes.has(`${domain}:write`)" :aria-label="`${t(`aiAccess.domains.${domain}`)}: ${t('aiAccess.write')}`" @update:model-value="v => toggle(`${domain}:write`, v === true)" />
             </template>
           </div>
-          <p class="text-xs text-muted-foreground mt-2">{{ t('aiAccess.scopesHint') }}</p>
+          <p class="text-xs text-base-content/70 mt-2">{{ t('aiAccess.scopesHint') }}</p>
         </div>
         <div>
-          <label for="ai-token-expiry" class="block text-xs text-muted-foreground mb-1">{{ t('aiAccess.expires') }}</label>
+          <label for="ai-token-expiry" class="block text-xs text-base-content/70 mb-1">{{ t('aiAccess.expires') }}</label>
           <NativeSelect id="ai-token-expiry" v-model="expiry" wrapper-class="w-48">
             <NativeSelectOption v-for="days in EXPIRIES" :key="days" :value="days">
               {{ days ? t('aiAccess.inDays', { days }) : t('aiAccess.never') }}
@@ -193,7 +193,7 @@ onMounted(load)
         </div>
         <div class="flex gap-2">
           <Button size="sm" :disabled="saving || !name.trim() || scopes.size === 0" @click="create">{{ t('aiAccess.create') }}</Button>
-          <Button size="sm" variant="ghost" class="text-muted-foreground" @click="creating = false">{{ t('aiAccess.cancel') }}</Button>
+          <Button size="sm" variant="ghost" class="text-base-content/70" @click="creating = false">{{ t('aiAccess.cancel') }}</Button>
         </div>
       </div>
       <Button v-else size="sm" @click="startCreate"><KeyRoundIcon class="size-4" aria-hidden="true" /> {{ t('aiAccess.newToken') }}</Button>
@@ -201,12 +201,12 @@ onMounted(load)
       <!-- Your tokens -->
       <div class="space-y-2">
         <p class="eyebrow">{{ t('aiAccess.yourTokens') }}</p>
-        <p v-if="!tokens.length" class="text-sm text-muted-foreground">{{ t('aiAccess.none') }}</p>
+        <p v-if="!tokens.length" class="text-sm text-base-content/70">{{ t('aiAccess.none') }}</p>
         <Card v-for="token in tokens" :key="token.id" class="gap-2 px-4 py-3 shadow-none" :class="state(token) !== 'active' && 'opacity-60'">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm text-foreground truncate">{{ token.name }} <span class="font-mono text-xs text-muted-foreground">{{ token.prefix }}…</span></p>
-              <p class="text-xs text-muted-foreground">
+              <p class="text-sm text-base-content truncate">{{ token.name }} <span class="font-mono text-xs text-base-content/70">{{ token.prefix }}…</span></p>
+              <p class="text-xs text-base-content/70">
                 {{ t('aiAccess.createdOn', { date: formatDay(token.createdAt) }) }}
                 · {{ token.lastUsedAt ? t('aiAccess.lastUsed', { date: formatDay(token.lastUsedAt) }) : t('aiAccess.neverUsed') }}
                 <template v-if="token.expiresAt && state(token) === 'active'"> · {{ t('aiAccess.expiresOn', { date: formatDay(token.expiresAt) }) }}</template>
@@ -225,8 +225,8 @@ onMounted(load)
       <div v-if="isAdmin && others.length" class="space-y-2">
         <p class="eyebrow">{{ t('aiAccess.otherTokens') }}</p>
         <Card v-for="token in others" :key="token.id" class="flex flex-row items-center justify-between gap-3 px-4 py-3 shadow-none">
-          <p class="text-sm text-foreground min-w-0 truncate">
-            {{ token.user.username }} · {{ token.name }} <span class="font-mono text-xs text-muted-foreground">{{ token.prefix }}…</span>
+          <p class="text-sm text-base-content min-w-0 truncate">
+            {{ token.user.username }} · {{ token.name }} <span class="font-mono text-xs text-base-content/70">{{ token.prefix }}…</span>
           </p>
           <Button size="sm" variant="outline" @click="revoke(token)">{{ t('aiAccess.revoke') }}</Button>
         </Card>

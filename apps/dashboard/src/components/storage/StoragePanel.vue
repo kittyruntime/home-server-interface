@@ -94,10 +94,10 @@ const navItems = computed(() => nav.map(n => ({ ...n, label: SECTION_LABELS[n.id
       <div class="p-4 @2xl:p-8 max-w-5xl">
         <Alert variant="warning" v-if="missingTools.length" role="status"
           class="block mb-5">
-          <p class="text-foreground">
+          <p class="text-base-content">
             {{ t('uip.storage.StoragePanel.someStorageToolsAreNot', { p0: missingTools.map(t => `${t.feature} (${t.command})`).join(', ') }) }}
           </p>
-          <p class="mt-1 text-muted-foreground">{{ t('ui.storage.StoragePanel.installThemWith') }} <code class="font-mono text-foreground/80">{{ installCommand }}</code></p>
+          <p class="mt-1 text-base-content/70">{{ t('ui.storage.StoragePanel.installThemWith') }} <code class="font-mono text-base-content/80">{{ installCommand }}</code></p>
         </Alert>
         <Breadcrumb v-if="crumbs.length > 1" class="mb-4">
           <BreadcrumbList class="text-xs sm:gap-1.5">

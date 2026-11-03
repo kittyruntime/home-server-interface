@@ -185,7 +185,7 @@ async function deleteUser() {
     <div class="flex items-center gap-3">
       <Button variant="ghost" size="icon-sm"
         @click="$emit('back')"
-        class="text-muted-foreground hover:text-foreground shrink-0"
+        class="text-base-content/70 hover:text-base-content shrink-0"
         :tooltip="t('ui.settings.UserDetailPanel.backToUsers')" :aria-label="t('ui.settings.UserDetailPanel.backToUsers')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
@@ -195,24 +195,24 @@ async function deleteUser() {
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-base font-semibold text-foreground">{{ user.username }}</span>
+          <span class="text-base font-semibold text-base-content">{{ user.username }}</span>
           <span v-if="isSelf"
-            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-input text-muted-foreground">you</span>
+            class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium border border-base-300 text-base-content/70">you</span>
           <span v-if="user.isAdmin"
             class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-2xs font-medium bg-primary/10 text-primary">admin</span>
           <Badge variant="secondary" v-if="user.isUserManager">manager</Badge>
         </div>
-        <div v-if="user.displayName" class="text-xs text-muted-foreground mt-0.5">{{ user.displayName }}</div>
+        <div v-if="user.displayName" class="text-xs text-base-content/70 mt-0.5">{{ user.displayName }}</div>
       </div>
     </div>
 
     <!-- ── Profile fields ──────────────────────────────────────────────────── -->
     <div class="space-y-4">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.UserDetailPanel.profile') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.UserDetailPanel.profile') }}</h4>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">{{ t('ui.settings.UserDetailPanel.displayName') }}</label>
+          <label class="block text-xs text-base-content/70">{{ t('ui.settings.UserDetailPanel.displayName') }}</label>
           <Input
             v-model="form.displayName"
             :placeholder="t('ui.settings.UserDetailPanel.fullName')"
@@ -220,7 +220,7 @@ async function deleteUser() {
         </div>
       </div>
 
-      <p v-if="saveError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
 
       <div class="flex items-center gap-3">
         <Button size="sm"
@@ -241,75 +241,75 @@ async function deleteUser() {
 
     <!-- ── Account (admin only) ──────────────────────────────────────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.UserDetailPanel.account') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.UserDetailPanel.account') }}</h4>
 
-      <Card class="block gap-0 py-0 shadow-none divide-y divide-border">
+      <Card class="block gap-0 py-0 shadow-none divide-y divide-base-300">
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.admin') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.settings.UserDetailPanel.fullAccessToEveryPlace') }}</p>
+            <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.admin') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.settings.UserDetailPanel.fullAccessToEveryPlace') }}</p>
           </div>
           <Checkbox :model-value="user.isAdmin" :disabled="isSelf || accountBusy.isAdmin" @update:model-value="toggleAccountFlag('isAdmin')" class="shrink-0" />
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.userManager') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.settings.UserDetailPanel.canCreateEditAndDelete') }}</p>
+            <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.userManager') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.settings.UserDetailPanel.canCreateEditAndDelete') }}</p>
           </div>
           <Checkbox :model-value="user.isUserManager" :disabled="isSelf || accountBusy.isUserManager" @update:model-value="toggleAccountFlag('isUserManager')" class="shrink-0" />
         </label>
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.storageAdmin') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.settings.UserDetailPanel.canManageDisksRaidLvm') }}</p>
+            <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.storageAdmin') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.settings.UserDetailPanel.canManageDisksRaidLvm') }}</p>
           </div>
           <Checkbox :model-value="userHasCapability('storage')" :disabled="isSelf || capabilityBusy.storage" @update:model-value="toggleCapability('storage')" class="shrink-0" />
         </label>
       </Card>
 
-      <p class="text-xs text-muted-foreground px-0.5">{{ t('ui.settings.UserDetailPanel.accessChangesApplyImmediatelyBut') }}</p>
-      <p v-if="isSelf" class="text-xs text-muted-foreground px-0.5">{{ t('ui.settings.UserDetailPanel.youCanTChangeYour') }}</p>
-      <p v-if="accountError" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ accountError }}</p>
-      <p v-if="capabilityError" role="alert" class="px-0.5 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ capabilityError }}</p>
+      <p class="text-xs text-base-content/70 px-0.5">{{ t('ui.settings.UserDetailPanel.accessChangesApplyImmediatelyBut') }}</p>
+      <p v-if="isSelf" class="text-xs text-base-content/70 px-0.5">{{ t('ui.settings.UserDetailPanel.youCanTChangeYour') }}</p>
+      <p v-if="accountError" role="alert" class="px-0.5 status-text text-error"><span class="status-tag">[ERR]</span> {{ accountError }}</p>
+      <p v-if="capabilityError" role="alert" class="px-0.5 status-text text-error"><span class="status-tag">[ERR]</span> {{ capabilityError }}</p>
     </div>
 
     <!-- ── Identity (Linux + Samba, as the OS actually sees it) ─────────────── -->
     <div v-if="isAdmin" class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.UserDetailPanel.identity') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.UserDetailPanel.identity') }}</h4>
 
       <LoadingState v-if="identityLoading" variant="inline" class="text-xs" />
-      <p v-else-if="identityError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
+      <p v-else-if="identityError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ identityError }}</p>
 
-      <Card v-else-if="identity" class="block gap-0 py-0 shadow-none divide-y divide-border">
+      <Card v-else-if="identity" class="block gap-0 py-0 shadow-none divide-y divide-base-300">
         <!-- HSI identity -->
         <div class="flex items-center justify-between gap-4 px-4 py-3">
-          <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.hsiIdentity') }}</p>
-          <span class="text-xs font-mono text-foreground/80">{{ user.username }}</span>
+          <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.hsiIdentity') }}</p>
+          <span class="text-xs font-mono text-base-content/80">{{ user.username }}</span>
         </div>
 
         <!-- Linux identity -->
         <div class="flex items-start justify-between gap-4 px-4 py-3">
           <div>
-            <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.linuxIdentity') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.settings.UserDetailPanel.backsFilesystemOwnershipForThis') }}</p>
+            <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.linuxIdentity') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.settings.UserDetailPanel.backsFilesystemOwnershipForThis') }}</p>
           </div>
           <div class="text-right shrink-0">
             <template v-if="identity.linuxExists">
-              <div class="text-xs font-mono text-foreground/80">{{ t('uip.settings.UserDetailPanel.uidGid', { p0: identity.uid, p1: identity.gid }) }}</div>
-              <div v-if="identity.groups?.length" class="text-2xs text-muted-foreground mt-0.5">{{ identity.groups.join(', ') }}</div>
+              <div class="text-xs font-mono text-base-content/80">{{ t('uip.settings.UserDetailPanel.uidGid', { p0: identity.uid, p1: identity.gid }) }}</div>
+              <div v-if="identity.groups?.length" class="text-2xs text-base-content/70 mt-0.5">{{ identity.groups.join(', ') }}</div>
             </template>
-            <span v-else class="text-xs text-destructive">{{ t('ui.settings.UserDetailPanel.missing') }}</span>
+            <span v-else class="text-xs text-error">{{ t('ui.settings.UserDetailPanel.missing') }}</span>
           </div>
         </div>
 
         <!-- Samba identity -->
         <label class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': isSelf }">
           <div>
-            <p class="text-sm text-foreground">{{ t('ui.settings.UserDetailPanel.sambaIdentity') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">
+            <p class="text-sm text-base-content">{{ t('ui.settings.UserDetailPanel.sambaIdentity') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">
               {{ t('ui.settings.UserDetailPanel.whetherThisAccountShouldBe') }}
               <span v-if="identity.sambaExists" class="text-success">{{ t('ui.settings.UserDetailPanel.accountExists') }}</span>
-              <span v-else class="text-muted-foreground">{{ t('ui.settings.UserDetailPanel.noAccountOnTheSystem') }}</span>
+              <span v-else class="text-base-content/70">{{ t('ui.settings.UserDetailPanel.noAccountOnTheSystem') }}</span>
             </p>
           </div>
           <Checkbox :model-value="identity.sambaEnabled" :disabled="isSelf || sambaBusy" @update:model-value="toggleSamba" class="shrink-0" />
@@ -321,24 +321,24 @@ async function deleteUser() {
 
     <!-- ── Groups (read-only) ───────────────────────────────────────────────── -->
     <div class="space-y-3">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.settings.UserDetailPanel.groups') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.settings.UserDetailPanel.groups') }}</h4>
 
       <div class="flex flex-wrap gap-1.5">
         <Badge variant="secondary" v-for="g in memberGroups" :key="g.id">{{ g.name }}</Badge>
-        <span v-if="memberGroups.length === 0" class="text-muted-foreground text-xs">{{ t('ui.settings.UserDetailPanel.noGroups') }}</span>
+        <span v-if="memberGroups.length === 0" class="text-base-content/70 text-xs">{{ t('ui.settings.UserDetailPanel.noGroups') }}</span>
       </div>
-      <p class="text-xs text-muted-foreground">{{ t('ui.settings.UserDetailPanel.groupMembershipIsManagedFrom') }}</p>
+      <p class="text-xs text-base-content/70">{{ t('ui.settings.UserDetailPanel.groupMembershipIsManagedFrom') }}</p>
     </div>
 
     <!-- ── Danger zone ─────────────────────────────────────────────────────── -->
     <div v-if="!isSelf" class="space-y-3 pt-2">
-      <h4 class="text-2xs font-semibold uppercase tracking-caps text-destructive/70">{{ t('ui.settings.UserDetailPanel.dangerZone') }}</h4>
+      <h4 class="text-2xs font-semibold uppercase tracking-caps text-error">{{ t('ui.settings.UserDetailPanel.dangerZone') }}</h4>
 
-      <Alert variant="destructive" class="block p-4 text-foreground" role="note">
+      <Alert variant="destructive" class="block p-4 text-base-content" role="note">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="text-sm font-medium text-foreground">{{ t('ui.settings.UserDetailPanel.deleteAccount') }}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ t('ui.settings.UserDetailPanel.removeThisUserFromHsi') }}</p>
+            <p class="text-sm font-medium text-base-content">{{ t('ui.settings.UserDetailPanel.deleteAccount') }}</p>
+            <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.settings.UserDetailPanel.removeThisUserFromHsi') }}</p>
           </div>
 
           <Button variant="destructive" size="sm"
@@ -347,7 +347,7 @@ async function deleteUser() {
             class="shrink-0"
           >{{ t('ui.settings.UserDetailPanel.delete') }}</Button>
         </div>
-        <p v-if="deleteError" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
+        <p v-if="deleteError" role="alert" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ deleteError }}</p>
       </Alert>
     </div>
 

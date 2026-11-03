@@ -86,13 +86,13 @@ const targets = computed(() => vgTargets({
     @back="emit('navigate', 'lvm')"
   >
     <template v-if="vg" #chips>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>
-      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-border bg-muted text-foreground/80">{{ vg.lvCount }} {{ vg.lvCount === 1 ? 'logical volume' : 'logical volumes' }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-base-300 bg-base-200 text-base-content/80">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>
+      <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-base-300 bg-base-200 text-base-content/80">{{ vg.lvCount }} {{ vg.lvCount === 1 ? 'logical volume' : 'logical volumes' }}</span>
     </template>
     <template v-if="vg" #figure>
       <div class="flex items-baseline gap-2">
-        <span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(vg.size) }}</span>
-        <span class="text-xs text-muted-foreground">{{ vg.free > 0 ? `${fmtBytes(vg.free)} free` : "no free space" }}</span>
+        <span class="font-figure font-bold text-2xl tabular-nums text-base-content">{{ fmtBytes(vg.size) }}</span>
+        <span class="text-xs text-base-content/70">{{ vg.free > 0 ? `${fmtBytes(vg.free)} free` : "no free space" }}</span>
       </div>
     </template>
 
@@ -108,16 +108,16 @@ const targets = computed(() => vgTargets({
       <div class="space-y-4 max-w-lg">
         <div>
           <h3 class="eyebrow mb-2">{{ t('ui.storage.VgPage.logicalVolumes') }}</h3>
-          <p v-if="!lvs.length" class="text-sm text-muted-foreground">{{ t('ui.storage.VgPage.noneYet') }}</p>
+          <p v-if="!lvs.length" class="text-sm text-base-content/70">{{ t('ui.storage.VgPage.noneYet') }}</p>
           <ul class="space-y-1.5">
             <li v-for="lv in lvs" :key="lv.name">
               <component :is="volumeOf[lv.name] ? 'button' : 'div'"
-                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-left', volumeOf[lv.name] && 'hover:border-input transition-colors']"
+                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm text-left', volumeOf[lv.name] && 'hover:border-base-300 transition-colors']"
                 @click="volumeOf[lv.name] && emit('navigate', { kind: 'volume', id: volumeOf[lv.name]!.id })">
                 <span class="font-mono text-xs w-28 shrink-0 truncate">{{ lv.name }}</span>
-                <span class="flex-1 min-w-0 truncate text-foreground/80">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="font-mono text-xs text-muted-foreground">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
-                <span class="tabular-nums text-xs text-muted-foreground shrink-0">{{ fmtBytes(lv.size) }}</span>
-                <span v-if="volumeOf[lv.name]" aria-hidden="true" class="text-muted-foreground">→</span>
+                <span class="flex-1 min-w-0 truncate text-base-content/80">{{ volumeOf[lv.name] ? volumeOf[lv.name]!.name : 'No filesystem' }} <span v-if="volumeOf[lv.name]?.mountPoint" class="font-mono text-xs text-base-content/70">{{ volumeOf[lv.name]!.mountPoint }}</span></span>
+                <span class="tabular-nums text-xs text-base-content/70 shrink-0">{{ fmtBytes(lv.size) }}</span>
+                <span v-if="volumeOf[lv.name]" aria-hidden="true" class="text-base-content/70">→</span>
               </component>
             </li>
           </ul>
@@ -127,11 +127,11 @@ const targets = computed(() => vgTargets({
           <ul class="space-y-1.5">
             <li v-for="pv in pvs" :key="pv.name">
               <component :is="pvTarget(pv.name) ? 'button' : 'div'"
-                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-input transition-colors']"
+                :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm', pvTarget(pv.name) && 'hover:border-base-300 transition-colors']"
                 @click="pvTarget(pv.name) && emit('navigate', pvTarget(pv.name)!)">
                 <span class="font-mono text-xs flex-1 text-left">{{ pv.name }}</span>
-                <span class="tabular-nums text-xs text-muted-foreground">{{ fmtBytes(pv.size) }}</span>
-                <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-muted-foreground">→</span>
+                <span class="tabular-nums text-xs text-base-content/70">{{ fmtBytes(pv.size) }}</span>
+                <span v-if="pvTarget(pv.name)" aria-hidden="true" class="text-base-content/70">→</span>
               </component>
             </li>
           </ul>

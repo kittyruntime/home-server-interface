@@ -62,17 +62,17 @@ function download() {
 <template>
   <Modal ref="modal" panel-class="w-full max-w-md" :show-close="canClose" :close-on-backdrop="canClose" :prevent-close="!canClose" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground truncate">{{ t('uip.backups.PasswordReveal.passwordOf', { p0: repository.name }) }}</h3>
+      <h3 class="text-sm font-semibold text-base-content truncate">{{ t('uip.backups.PasswordReveal.passwordOf', { p0: repository.name }) }}</h3>
     </template>
 
     <div class="px-5 py-4 space-y-4">
-      <p class="text-sm text-foreground/80">{{ t('ui.backups.PasswordReveal.withoutThisPasswordTheBackups') }}</p>
+      <p class="text-sm text-base-content/80">{{ t('ui.backups.PasswordReveal.withoutThisPasswordTheBackups') }}</p>
 
       <form v-if="!shown" class="space-y-3" @submit.prevent="reveal">
-        <label class="block text-xs text-foreground/80">{{ t('ui.backups.PasswordReveal.yourAccountPassword') }}
+        <label class="block text-xs text-base-content/80">{{ t('ui.backups.PasswordReveal.yourAccountPassword') }}
           <Input v-model="accountPassword" type="password" autocomplete="current-password" class="mt-1 w-full" required />
         </label>
-        <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+        <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
         <Button size="sm" type="submit" :disabled="busy || !accountPassword">
           <BusyLabel :busy="busy" busy-label="Verifying">{{ t('ui.backups.PasswordReveal.showThePassword') }}</BusyLabel>
         </Button>
@@ -84,7 +84,7 @@ function download() {
           <Button variant="outline" size="sm" type="button" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</Button>
           <Button variant="outline" size="sm" type="button" @click="download">{{ t('ui.backups.PasswordReveal.download') }}</Button>
         </div>
-        <label v-if="mode === 'new'" class="flex items-start gap-2 text-sm text-foreground">
+        <label v-if="mode === 'new'" class="flex items-start gap-2 text-sm text-base-content">
           <Checkbox v-model="stored" class="mt-0.5" />
           <span>{{ t('ui.backups.PasswordReveal.iStoredThisPasswordSomewhere') }}</span>
         </label>

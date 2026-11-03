@@ -29,8 +29,8 @@ defineExpose({ refresh })
 
 const STATE: Record<string, { label: string; cls: string }> = {
   ok:       { label: t('uis.storage.VolumeHealthPanel.mounted'),      cls: 'border-transparent bg-success/10 text-success' },
-  missing:  { label: t('uis.storage.VolumeHealthPanel.missing'),      cls: 'border-transparent bg-destructive/10 text-destructive' },
-  wrong:    { label: t('uis.storage.VolumeHealthPanel.wrongVolume'), cls: 'border-transparent bg-destructive/10 text-destructive' },
+  missing:  { label: t('uis.storage.VolumeHealthPanel.missing'),      cls: 'border-transparent bg-error/10 text-error' },
+  wrong:    { label: t('uis.storage.VolumeHealthPanel.wrongVolume'), cls: 'border-transparent bg-error/10 text-error' },
   readonly: { label: t('uis.storage.VolumeHealthPanel.readOnly'),    cls: 'border-transparent bg-warning/10 text-warning' },
   unmounted: { label: t('uis.storage.VolumeHealthPanel.unmounted'),   cls: '' },
 }
@@ -52,26 +52,26 @@ async function resume(mp: string) {
 
 <template>
   <section v-if="volumes.length" class="mb-8">
-    <h3 class="text-sm font-semibold text-foreground mb-1">{{ t('ui.storage.VolumeHealthPanel.dataVolumes') }}</h3>
-    <p class="text-xs text-muted-foreground mb-3">
+    <h3 class="text-sm font-semibold text-base-content mb-1">{{ t('ui.storage.VolumeHealthPanel.dataVolumes') }}</h3>
+    <p class="text-xs text-base-content/70 mb-3">
       {{ t('ui.storage.VolumeHealthPanel.volumesMountedByHsiWhile') }}
     </p>
     <ul class="space-y-2">
-      <li v-for="v in volumes" :key="v.mountPoint" class="rounded-xl border border-border bg-card px-4 py-3">
+      <li v-for="v in volumes" :key="v.mountPoint" class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
         <div class="flex flex-wrap items-center gap-2">
-          <span class="font-mono text-xs text-foreground">{{ v.mountPoint }}</span>
+          <span class="font-mono text-xs text-base-content">{{ v.mountPoint }}</span>
           <Badge variant="secondary" :class="STATE[v.state]?.cls">{{ STATE[v.state]?.label ?? v.state }}</Badge>
-          <Badge variant="outline" v-if="v.hold?.status === 'blocked'" class="bg-destructive/10 text-destructive">{{ t('ui.storage.VolumeHealthPanel.blocked') }}</Badge>
+          <Badge variant="outline" v-if="v.hold?.status === 'blocked'" class="bg-error/10 text-error">{{ t('ui.storage.VolumeHealthPanel.blocked') }}</Badge>
         </div>
         <p v-if="v.guardError" class="mt-1 text-2xs text-warning">{{ t('uip.storage.VolumeHealthPanel.notProtectedAgainstWritesWhile', { p0: v.guardError }) }}</p>
 
-        <p v-if="v.hold?.status === 'blocked'" class="mt-2 text-xs text-foreground/80">
+        <p v-if="v.hold?.status === 'blocked'" class="mt-2 text-xs text-base-content/80">
           {{ t('uip.storage.VolumeHealthPanel.blockedSinceAppsUsingIt', { p0: since(v.hold.since) }) }}
         </p>
 
-        <div v-if="v.hold?.status === 'back'" class="mt-2 rounded-lg border border-border bg-muted p-3 space-y-2">
-          <p class="text-xs text-foreground font-medium">{{ t('uip.storage.VolumeHealthPanel.volumeIsBack', { p0: v.mountPoint }) }}</p>
-          <p class="text-xs text-foreground/80">
+        <div v-if="v.hold?.status === 'back'" class="mt-2 rounded-lg border border-base-300 bg-base-200 p-3 space-y-2">
+          <p class="text-xs text-base-content font-medium">{{ t('uip.storage.VolumeHealthPanel.volumeIsBack', { p0: v.mountPoint }) }}</p>
+          <p class="text-xs text-base-content/80">
             {{ t('ui.storage.VolumeHealthPanel.checkTheDiskSmartRaid') }}
             <template v-if="v.hold.stoppedApps.length">{{ t('ui.storage.VolumeHealthPanel.appsToRestart') }} <span class="font-mono">{{ v.hold.stoppedApps.join(', ') }}</span>.</template>
           </p>

@@ -8,10 +8,10 @@ defineEmits<{ retry: [] }>()
 
 <template>
   <div role="alert" :class="['flex flex-col items-center text-center', compact ? 'gap-2 py-4' : 'gap-3 py-12']">
-    <span class="grid size-9 place-items-center rounded-full bg-destructive/10 text-destructive" aria-hidden="true">
+    <span class="grid size-9 place-items-center rounded-full bg-error/10 text-error" aria-hidden="true">
       <CircleAlertIcon class="size-5" />
     </span>
-    <p class="max-w-md break-words text-sm text-destructive">{{ message }}</p>
+    <p class="max-w-md break-words text-sm text-error">{{ message }}</p>
     <Button v-if="retryLabel" variant="outline" size="sm" @click="$emit('retry')">{{ retryLabel }}</Button>
   </div>
 </template>

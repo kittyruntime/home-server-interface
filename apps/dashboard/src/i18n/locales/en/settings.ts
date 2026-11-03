@@ -184,8 +184,6 @@ export default {
     min6Chars: 'Min. 6 chars',
     confirm: 'Confirm',
     repeat: 'Repeat',
-    theme: 'Theme',
-    accentColor: 'Accent color',
     advancedMode: 'Advanced mode',
     showExtraTechnicalDetailWhere: 'Show extra technical detail where it\'s available: raw UID/GID on files, for now.',
   },

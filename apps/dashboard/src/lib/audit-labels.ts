@@ -143,8 +143,8 @@ export function actionCategory(action: string): AuditCategory {
 
 export const categoryClass: Record<AuditCategory, string> = {
   auth:   'bg-info/10 text-info border-info/20',
-  fs:     'bg-violet/10 text-violet border-violet/20',
+  fs:     'bg-secondary/10 text-secondary border-secondary/20',
   system: 'bg-warning/10 text-warning border-warning/20',
   admin:  'bg-primary/10 text-primary border-primary/20',
-  other:  'bg-muted text-muted-foreground border-border',
+  other:  'bg-base-200 text-base-content/70 border-base-300',
 }

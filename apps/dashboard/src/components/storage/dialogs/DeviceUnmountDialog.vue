@@ -47,25 +47,25 @@ defineExpose({ open })
 
 <template>
   <Modal :label="t('ui.storage.DeviceUnmountDialog.unmountDevice')" v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
-    <div class="px-5 py-4 border-b border-border">
-      <h3 class="font-semibold text-foreground">{{ t('ui.storage.DeviceUnmountDialog.unmountDevice') }}</h3>
+    <div class="px-5 py-4 border-b border-base-300">
+      <h3 class="font-semibold text-base-content">{{ t('ui.storage.DeviceUnmountDialog.unmountDevice') }}</h3>
     </div>
     <div class="p-5 space-y-4">
       <Alert variant="warning" class="block p-3 text-xs text-warning" role="note">
         {{ t('ui.storage.DeviceUnmountDialog.makeSureNoApplicationIs') }} <span class="font-mono font-bold">{{ dlg.dev.mountpoint }}</span> {{ t('ui.storage.DeviceUnmountDialog.beforeUnmountingOrTheOperation') }}
       </Alert>
-      <div class="space-y-1 text-xs text-muted-foreground">
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceUnmountDialog.device') }}</span><span class="font-mono">/dev/{{ dlg.dev.name }}</span></div>
-        <div class="flex gap-2"><span class="w-20 text-foreground/80">{{ t('ui.storage.DeviceUnmountDialog.mountPoint') }}</span><span class="font-mono">{{ dlg.dev.mountpoint }}</span></div>
+      <div class="space-y-1 text-xs text-base-content/70">
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.device') }}</span><span class="font-mono">/dev/{{ dlg.dev.name }}</span></div>
+        <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.mountPoint') }}</span><span class="font-mono">{{ dlg.dev.mountpoint }}</span></div>
       </div>
       <label class="flex items-start gap-2.5 cursor-pointer">
         <Checkbox v-model="dlg.rmFstab" class="mt-0.5" />
         <div>
-          <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceUnmountDialog.removeFromEtcFstab') }}</div>
-          <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceUnmountDialog.alsoDeleteTheAutoMount') }}</div>
+          <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceUnmountDialog.removeFromEtcFstab') }}</div>
+          <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceUnmountDialog.alsoDeleteTheAutoMount') }}</div>
         </div>
       </label>
-      <p v-if="dlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
+      <p v-if="dlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
         <Button variant="outline" @click="dlg = null" class="flex-1 justify-center">{{ t('ui.storage.DeviceUnmountDialog.cancel') }}</Button>
         <Button @click="doUmount" :disabled="dlg.busy"

@@ -18,7 +18,7 @@ withDefaults(defineProps<{ label?: string; variant?: 'block' | 'compact' | 'inli
     role="status"
     aria-live="polite"
     :class="[
-      'loading-appear flex items-center text-muted-foreground',
+      'loading-appear flex items-center text-base-content/70',
       variant === 'block' ? 'justify-center gap-2.5 py-12 text-sm'
         : variant === 'compact' ? 'justify-center gap-2 py-4 text-xs'
         : 'gap-2 text-sm',

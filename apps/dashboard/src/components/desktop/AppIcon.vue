@@ -4,7 +4,7 @@ import { ActivityIcon, BotIcon, FileTextIcon, FolderIcon, HardDriveIcon, LayoutG
 import type { AppId } from '../../lib/desktop'
 
 // The glyph of an app (dock, launchpad, window title bars, sidebar), from the
-// lucide set used by the shadcn-vue components.
+// lucide set used across the interface.
 const ICONS: Record<AppId, Component> = {
   files: FolderIcon,
   apps: LayoutGridIcon,

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
-import { THEMES, type AccentChoice, type Appearance, type Density } from '../lib/appearance'
+import { ACCENT_COLORS, ACCENT_NAMES, THEMES, type AccentChoice, type Appearance, type Density } from '../lib/appearance'
 import { useAppearance } from '../lib/theme'
 
 const { t } = useI18n()
@@ -9,12 +10,14 @@ const { appearance, setAppearance, resetAppearance } = useAppearance()
 
 const ACCENTS: { value: AccentChoice; color?: string }[] = [
   { value: 'theme' },
-  { value: 'red',    color: '#d71921' },
-  { value: 'orange', color: '#f97316' },
-  { value: 'blue',   color: '#3b82f6' },
-  { value: 'green',  color: '#22c55e' },
-  { value: 'purple', color: '#a855f7' },
+  ...ACCENT_NAMES.map(value => ({ value, color: ACCENT_COLORS[value][0] })),
 ]
+
+// Each group writes through the model, so a value the store rejects or normalizes is shown as stored.
+const theme = computed({ get: () => appearance.value.theme, set: v => setAppearance({ theme: v }) })
+const accent = computed({ get: () => appearance.value.accent, set: v => setAppearance({ accent: v }) })
+const radius = computed({ get: () => appearance.value.radius, set: v => setAppearance({ radius: v }) })
+const density = computed({ get: () => appearance.value.density, set: v => setAppearance({ density: v }) })
 
 const DENSITIES: Density[] = ['compact', 'default', 'roomy']
 
@@ -31,7 +34,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
   <div class="space-y-6">
     <!-- ── Theme ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.theme') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.theme') }}</h4>
       <Card class="gap-0 py-0 shadow-none p-3">
         <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
           <label
@@ -39,8 +42,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
           >
             <input
               type="radio" name="appearance-theme" value="auto" class="sr-only"
-              :checked="appearance.theme === 'auto'"
-              @change="setAppearance({ theme: 'auto' })"
+              v-model="theme"
             />
             <span class="truncate">{{ t('appearance.auto') }}</span>
           </label>
@@ -50,8 +52,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
           >
             <input
               type="radio" name="appearance-theme" :value="name" class="sr-only"
-              :checked="appearance.theme === name"
-              @change="setAppearance({ theme: name })"
+              v-model="theme"
             />
             <span class="flex shrink-0 gap-1" aria-hidden="true">
               <span class="size-3 rounded-full bg-primary" />
@@ -66,7 +67,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Accent color ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.accent') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.accent') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.accent')" class="flex flex-wrap gap-x-4 gap-y-2">
           <label v-for="opt in ACCENTS" :key="opt.value" class="flex cursor-pointer items-center gap-2 text-sm">
@@ -74,8 +75,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
               type="radio" name="appearance-accent" :value="opt.value"
               class="radio radio-sm" :class="{ 'radio-neutral': !opt.color }"
               :style="opt.color ? { '--input-color': opt.color } : undefined"
-              :checked="appearance.accent === opt.value"
-              @change="setAppearance({ accent: opt.value })"
+              v-model="accent"
             />
             {{ t(`appearance.accents.${opt.value}`) }}
           </label>
@@ -85,7 +85,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Roundness ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.roundness') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.roundness') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.roundness')" class="join">
           <input
@@ -93,8 +93,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
             type="radio" name="appearance-radius" :value="r.value"
             class="join-item btn btn-sm"
             :aria-label="t(`appearance.radii.${r.key}`)"
-            :checked="appearance.radius === r.value"
-            @change="setAppearance({ radius: r.value })"
+            v-model="radius"
           />
         </div>
       </Card>
@@ -102,7 +101,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
 
     <!-- ── Density ── -->
     <div class="space-y-2">
-      <h4 class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('appearance.density') }}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.density') }}</h4>
       <Card class="gap-0 py-0 shadow-none px-4 py-3">
         <div role="radiogroup" :aria-label="t('appearance.density')" class="join">
           <input
@@ -110,8 +109,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
             type="radio" name="appearance-density" :value="d"
             class="join-item btn btn-sm"
             :aria-label="t(`appearance.densities.${d}`)"
-            :checked="appearance.density === d"
-            @change="setAppearance({ density: d })"
+            v-model="density"
           />
         </div>
       </Card>

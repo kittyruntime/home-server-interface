@@ -1,6 +1,7 @@
 <script lang="ts">
-import type { PropType, VNode } from "vue"
-import { cloneVNode, Comment, defineComponent, Fragment, h, mergeProps } from "vue"
+import type { PropType } from "vue"
+import { cloneVNode, Comment, defineComponent, h, mergeProps } from "vue"
+import { flatten } from "./flatten"
 
 export interface PrimitiveProps {
   /** Render the first slot vnode instead of a wrapper, merging attrs into it. */
@@ -10,12 +11,6 @@ export interface PrimitiveProps {
 }
 
 const SELF_CLOSING_TAGS = ["area", "img", "input"]
-
-function flatten(nodes: VNode[]): VNode[] {
-  return nodes.flatMap(node =>
-    node.type === Fragment ? flatten((node.children ?? []) as VNode[]) : [node],
-  )
-}
 
 export default defineComponent({
   name: "Primitive",

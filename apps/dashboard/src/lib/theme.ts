@@ -1,6 +1,6 @@
 import { ref, watchEffect } from 'vue'
 import {
-  DEFAULT_APPEARANCE, appearanceVars, fromLegacy, normalizeAppearance, toLegacy,
+  DEFAULT_APPEARANCE, appearanceVars, normalizeAppearance, resolveStored, toLegacy,
   type Appearance,
 } from './appearance'
 
@@ -18,11 +18,7 @@ function writeItem(key: string, value: string | null) {
 }
 
 function readStored(): Appearance {
-  const raw = readItem(STORAGE_KEY)
-  if (raw !== null) {
-    try { return normalizeAppearance(JSON.parse(raw)) } catch { /* fall through to legacy keys */ }
-  }
-  return fromLegacy(readItem('theme') ?? undefined, readItem('accent') ?? undefined)
+  return resolveStored(readItem(STORAGE_KEY), readItem('theme') ?? undefined, readItem('accent') ?? undefined)
 }
 
 const appearance = ref<Appearance>(readStored())

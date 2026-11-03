@@ -140,27 +140,27 @@ onMounted(load)
   <Card v-else class="gap-4 px-4 py-4 shadow-none">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <p class="text-sm font-medium text-foreground">{{ t('assistant.settings.title') }}</p>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ t('assistant.settings.intro') }}</p>
+        <p class="text-sm font-medium text-base-content">{{ t('assistant.settings.title') }}</p>
+        <p class="mt-0.5 text-xs text-base-content/70">{{ t('assistant.settings.intro') }}</p>
       </div>
       <Switch v-model="enabled" :aria-label="t('assistant.settings.enabled')" />
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2">
       <div>
-        <label for="assistant-provider" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.provider') }}</label>
+        <label for="assistant-provider" class="block text-xs text-base-content/70 mb-1">{{ t('assistant.settings.provider') }}</label>
         <NativeSelect id="assistant-provider" :model-value="provider" class="w-full" @update:model-value="v => pickProvider(v as Provider)">
           <NativeSelectOption v-for="p in PROVIDERS" :key="p" :value="p">{{ t(`assistant.settings.providers.${p}`) }}</NativeSelectOption>
         </NativeSelect>
       </div>
       <div>
-        <label for="assistant-url" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.baseUrl') }}</label>
+        <label for="assistant-url" class="block text-xs text-base-content/70 mb-1">{{ t('assistant.settings.baseUrl') }}</label>
         <Input id="assistant-url" v-model="baseUrl" placeholder="https://…/v1" class="w-full px-3 py-1.5 text-sm font-mono" />
       </div>
     </div>
 
     <div>
-      <label for="assistant-key" class="block text-xs text-muted-foreground mb-1">
+      <label for="assistant-key" class="block text-xs text-base-content/70 mb-1">
         {{ t('assistant.settings.apiKey') }}<template v-if="!needsKey"> ({{ t('assistant.settings.optional') }})</template>
       </label>
       <div class="flex items-center gap-2">
@@ -171,14 +171,14 @@ onMounted(load)
         />
         <Button v-if="stored?.keySet && !removeKey && !apiKey" size="sm" variant="ghost" @click="removeKey = true">{{ t('assistant.settings.removeKey') }}</Button>
       </div>
-      <p v-if="stored?.keyUnreadable" class="mt-1 text-xs text-destructive">{{ t('assistant.settings.keyUnreadable') }}</p>
-      <p v-else-if="removeKey" class="mt-1 text-xs text-muted-foreground">{{ t('assistant.settings.keyRemoved') }}</p>
+      <p v-if="stored?.keyUnreadable" class="mt-1 text-xs text-error">{{ t('assistant.settings.keyUnreadable') }}</p>
+      <p v-else-if="removeKey" class="mt-1 text-xs text-base-content/70">{{ t('assistant.settings.keyRemoved') }}</p>
     </div>
 
     <div>
       <div class="flex items-end gap-2">
         <div class="min-w-0 flex-1">
-          <label for="assistant-model" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.model') }}</label>
+          <label for="assistant-model" class="block text-xs text-base-content/70 mb-1">{{ t('assistant.settings.model') }}</label>
           <Input id="assistant-model" v-model="model" list="assistant-models" :placeholder="t('assistant.settings.modelPlaceholder')" class="w-full px-3 py-1.5 text-sm font-mono" />
           <datalist id="assistant-models">
             <option v-for="m in models" :key="m" :value="m" />
@@ -188,12 +188,12 @@ onMounted(load)
           <BusyLabel :busy="testing" :busy-label="t('assistant.settings.testing')">{{ t('assistant.settings.test') }}</BusyLabel>
         </Button>
       </div>
-      <p v-if="testResult" class="mt-1 text-xs break-words" :class="testResult.ok ? 'text-success' : 'text-destructive'">{{ testResult.text }}</p>
-      <p v-else class="mt-1 text-xs text-muted-foreground">{{ t('assistant.settings.modelHint') }}</p>
+      <p v-if="testResult" class="mt-1 text-xs break-words" :class="testResult.ok ? 'text-success' : 'text-error'">{{ testResult.text }}</p>
+      <p v-else class="mt-1 text-xs text-base-content/70">{{ t('assistant.settings.modelHint') }}</p>
     </div>
 
     <div>
-      <label for="assistant-access" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.access') }}</label>
+      <label for="assistant-access" class="block text-xs text-base-content/70 mb-1">{{ t('assistant.settings.access') }}</label>
       <NativeSelect id="assistant-access" v-model="access" class="w-full">
         <NativeSelectOption value="admins">{{ t('assistant.settings.accessAdmins') }}</NativeSelectOption>
         <NativeSelectOption value="everyone">{{ t('assistant.settings.accessEveryone') }}</NativeSelectOption>
@@ -202,20 +202,20 @@ onMounted(load)
 
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <p class="text-sm text-foreground">{{ t('assistant.settings.readOnly') }}</p>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ t('assistant.settings.readOnlyHint') }}</p>
+        <p class="text-sm text-base-content">{{ t('assistant.settings.readOnly') }}</p>
+        <p class="mt-0.5 text-xs text-base-content/70">{{ t('assistant.settings.readOnlyHint') }}</p>
       </div>
       <Switch v-model="readOnly" :aria-label="t('assistant.settings.readOnly')" />
     </div>
 
     <div>
-      <label for="assistant-limit" class="block text-xs text-muted-foreground mb-1">{{ t('assistant.settings.dailyLimit') }}</label>
+      <label for="assistant-limit" class="block text-xs text-base-content/70 mb-1">{{ t('assistant.settings.dailyLimit') }}</label>
       <Input id="assistant-limit" v-model="dailyLimit" type="number" min="1000" step="1000" inputmode="numeric" placeholder="200000"
         :aria-invalid="!limitValid || undefined" class="w-full sm:w-48 px-3 py-1.5 text-sm" />
-      <p class="mt-1 text-xs text-muted-foreground">{{ t('assistant.settings.dailyLimitHint') }}</p>
+      <p class="mt-1 text-xs text-base-content/70">{{ t('assistant.settings.dailyLimitHint') }}</p>
     </div>
 
-    <p class="text-xs text-muted-foreground">{{ t('assistant.settings.privacy') }}</p>
+    <p class="text-xs text-base-content/70">{{ t('assistant.settings.privacy') }}</p>
 
     <div class="flex justify-end">
       <Button size="sm" :disabled="saving || !limitValid || (enabled && (!model.trim() || (needsKey && !hasKey)))" @click="save">

@@ -188,14 +188,14 @@ function diskLabel(d: BlockDev): string {
 <template>
   <div class="max-w-4xl">
     <div class="flex items-center justify-between gap-3 mb-2">
-      <h2 class="text-lg font-semibold text-foreground">{{ t('ui.storage.CreateVolumeWizard.createVolume') }}</h2>
-      <span class="text-xs text-muted-foreground">{{ t('uip.storage.CreateVolumeWizard.stepOf', { p0: step + 1, p1: STEPS.length, p2: STEPS[step] }) }}</span>
+      <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.CreateVolumeWizard.createVolume') }}</h2>
+      <span class="text-xs text-base-content/70">{{ t('uip.storage.CreateVolumeWizard.stepOf', { p0: step + 1, p1: STEPS.length, p2: STEPS[step] }) }}</span>
     </div>
     <Progress class="h-0.5 rounded-full bg-base-200 mb-5" :model-value="((step + 1) / STEPS.length) * 100" indicator-class="rounded-full bg-primary transition-[width]" />
 
     <!-- Narrow: the volume so far as one line -->
-    <p class="@3xl/content:hidden mb-4 text-xs text-muted-foreground">
-      <span class="font-figure font-bold text-sm text-foreground">{{ fmtBytes(usable) }}</span> {{ t('uip.storage.CreateVolumeWizard.usable', { p0: LEVEL_TEXT[s.level].title }) }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
+    <p class="@3xl/content:hidden mb-4 text-xs text-base-content/70">
+      <span class="font-figure font-bold text-sm text-base-content">{{ fmtBytes(usable) }}</span> {{ t('uip.storage.CreateVolumeWizard.usable', { p0: LEVEL_TEXT[s.level].title }) }}<template v-if="chosen.length"> · {{ chosen.map(d => d.name).join(', ') }}</template> ·
       <span class="font-mono">{{ s.mountpoint }}</span>
     </p>
 
@@ -204,18 +204,18 @@ function diskLabel(d: BlockDev): string {
       <section class="min-w-0">
         <!-- 1. Disks -->
         <template v-if="step === 0">
-          <h3 class="text-sm font-semibold text-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.whichDisks') }}</h3>
-          <p v-if="!freeDisks.length" class="text-sm text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.noFreeDiskConnectA') }}</p>
+          <h3 class="text-sm font-semibold text-base-content mb-3">{{ t('ui.storage.CreateVolumeWizard.whichDisks') }}</h3>
+          <p v-if="!freeDisks.length" class="text-sm text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.noFreeDiskConnectA') }}</p>
           <ul v-else class="space-y-1.5">
             <li v-for="d in freeDisks" :key="d.name">
               <label class="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
-                :class="s.disks.has(d.name) ? 'border-foreground' : 'border-border hover:border-input'">
+                :class="s.disks.has(d.name) ? 'border-base-content' : 'border-base-300 hover:border-base-300'">
                 <Checkbox :model-value="s.disks.has(d.name)" @update:model-value="toggleDisk(d.name)" />
-                <span class="font-mono text-sm text-foreground w-20 shrink-0">/dev/{{ d.name }}</span>
-                <span class="flex-1 min-w-0 text-xs text-foreground/80 truncate">
+                <span class="font-mono text-sm text-base-content w-20 shrink-0">/dev/{{ d.name }}</span>
+                <span class="flex-1 min-w-0 text-xs text-base-content/80 truncate">
                   {{ d.model || 'Unknown model' }}<span v-if="d.serial" class="font-mono"> · {{ d.serial }}</span><span v-if="diskLabel(d)"> · {{ diskLabel(d) }}</span>
                 </span>
-                <span class="font-mono tabular-nums text-xs text-foreground/80 shrink-0">{{ fmtBytes(d.size) }}</span>
+                <span class="font-mono tabular-nums text-xs text-base-content/80 shrink-0">{{ fmtBytes(d.size) }}</span>
               </label>
             </li>
           </ul>
@@ -224,37 +224,37 @@ function diskLabel(d: BlockDev): string {
 
         <!-- 2. Redundancy -->
         <template v-else-if="step === 1">
-          <h3 class="text-sm font-semibold text-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.howShouldTheDataSurvive') }}</h3>
+          <h3 class="text-sm font-semibold text-base-content mb-3">{{ t('ui.storage.CreateVolumeWizard.howShouldTheDataSurvive') }}</h3>
           <RadioGroup v-model="s.level" class="gap-1.5" @update:model-value="levelPicked = true">
             <label v-for="l in levels" :key="l" class="flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
-              :class="s.level === l ? 'border-foreground' : 'border-border hover:border-input'">
+              :class="s.level === l ? 'border-base-content' : 'border-base-300 hover:border-base-300'">
               <RadioGroupItem :value="l" class="mt-0.5" />
               <span>
-                <span class="block text-sm font-medium" :class="l === 'none' ? 'text-destructive' : 'text-foreground'">{{ LEVEL_TEXT[l].title }}</span>
-                <span class="block text-xs text-muted-foreground">{{ LEVEL_TEXT[l].text }} {{ levelLine(l) }}</span>
+                <span class="block text-sm font-medium" :class="l === 'none' ? 'text-error' : 'text-base-content'">{{ LEVEL_TEXT[l].title }}</span>
+                <span class="block text-xs text-base-content/70">{{ LEVEL_TEXT[l].text }} {{ levelLine(l) }}</span>
               </span>
             </label>
           </RadioGroup>
-          <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-muted-foreground">{{ levelsHint(chosen.length) }}</p>
+          <p v-if="levelsHint(chosen.length)" class="mt-3 text-xs text-base-content/70">{{ levelsHint(chosen.length) }}</p>
         </template>
 
         <!-- 3. Layout -->
         <template v-else-if="step === 2">
-          <h3 class="text-sm font-semibold text-foreground mb-1">{{ t('ui.storage.CreateVolumeWizard.layout') }}</h3>
-          <p class="text-xs text-muted-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.theVolumeIsALogical') }}</p>
+          <h3 class="text-sm font-semibold text-base-content mb-1">{{ t('ui.storage.CreateVolumeWizard.layout') }}</h3>
+          <p class="text-xs text-base-content/70 mb-3">{{ t('ui.storage.CreateVolumeWizard.theVolumeIsALogical') }}</p>
           <div class="grid grid-cols-2 gap-3 max-w-md">
-            <label class="text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.volumeGroup') }}
+            <label class="text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.volumeGroup') }}
               <Input v-model.trim="s.vg" class="mt-1 font-mono" maxlength="31" />
             </label>
-            <label class="text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.logicalVolume') }}
+            <label class="text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.logicalVolume') }}
               <Input v-model.trim="s.lv" class="mt-1 font-mono" maxlength="31" />
             </label>
           </div>
-          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ t('uip.storage.CreateVolumeWizard.aVolumeGroupNamedAlready', { p0: s.vg }) }}</p>
-          <Button variant="link" class="h-auto p-0 mt-4 text-muted-foreground hover:text-foreground" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
+          <p v-if="lvmVGs.some(v => v.name === s.vg)" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ t('uip.storage.CreateVolumeWizard.aVolumeGroupNamedAlready', { p0: s.vg }) }}</p>
+          <Button variant="link" class="h-auto p-0 mt-4 text-base-content/70 hover:text-base-content" :aria-expanded="s.advanced" @click="s.advanced = !s.advanced">
             {{ s.advanced ? 'Hide advanced' : 'Advanced' }}
           </Button>
-          <div v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-muted-foreground">
+          <div v-if="s.advanced" class="mt-2 block max-w-xs text-xs text-base-content/70">
             <span id="lv-percent-label">{{ t('uip.storage.CreateVolumeWizard.useOfTheVolumeGroup', { p0: s.lvPercent }) }}</span>
             <Slider
               class="mt-2"
@@ -269,33 +269,33 @@ function diskLabel(d: BlockDev): string {
 
         <!-- 4. Filesystem -->
         <template v-else-if="step === 3">
-          <h3 class="text-sm font-semibold text-foreground mb-1">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</h3>
-          <p class="text-xs text-muted-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.ext4TheStandardLinuxFilesystem') }}</p>
-          <label class="block max-w-xs text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.label') }}
+          <h3 class="text-sm font-semibold text-base-content mb-1">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</h3>
+          <p class="text-xs text-base-content/70 mb-3">{{ t('ui.storage.CreateVolumeWizard.ext4TheStandardLinuxFilesystem') }}</p>
+          <label class="block max-w-xs text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.label') }}
             <Input v-model.trim="s.label" class="mt-1 font-mono" maxlength="16" />
           </label>
         </template>
 
         <!-- 5. Mount -->
         <template v-else-if="step === 4">
-          <h3 class="text-sm font-semibold text-foreground mb-1">{{ t('ui.storage.CreateVolumeWizard.whereShouldItAppear') }}</h3>
-          <p class="text-xs text-muted-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.theFolderTheVolumeIs') }}</p>
-          <label class="block max-w-md text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.folder') }}
+          <h3 class="text-sm font-semibold text-base-content mb-1">{{ t('ui.storage.CreateVolumeWizard.whereShouldItAppear') }}</h3>
+          <p class="text-xs text-base-content/70 mb-3">{{ t('ui.storage.CreateVolumeWizard.theFolderTheVolumeIs') }}</p>
+          <label class="block max-w-md text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.folder') }}
             <Input v-model.trim="s.mountpoint" class="mt-1 font-mono" @input="s.mountEdited = true" />
           </label>
-          <p v-if="mountError" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ mountError }}</p>
+          <p v-if="mountError" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ mountError }}</p>
         </template>
 
         <!-- 6. Access -->
         <template v-else-if="step === 5">
-          <h3 class="text-sm font-semibold text-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.whoCanUseIt') }}</h3>
+          <h3 class="text-sm font-semibold text-base-content mb-3">{{ t('ui.storage.CreateVolumeWizard.whoCanUseIt') }}</h3>
           <RadioGroup v-model="s.access" class="gap-1.5 max-w-lg">
             <label class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="shared" class="mt-0.5" />
-              <span class="text-sm text-foreground">{{ t('ui.storage.CreateVolumeWizard.youAndTheSharedGroup') }}<span class="block text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.writableByYouAndBy') }}</span></span></label>
+              <span class="text-sm text-base-content">{{ t('ui.storage.CreateVolumeWizard.youAndTheSharedGroup') }}<span class="block text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.writableByYouAndBy') }}</span></span></label>
             <label v-if="isAdmin" class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="user" class="mt-0.5" />
-              <span class="text-sm text-foreground">{{ t('ui.storage.CreateVolumeWizard.anotherUser') }}<span class="block text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.ownedByTheUserYou') }}</span></span></label>
+              <span class="text-sm text-base-content">{{ t('ui.storage.CreateVolumeWizard.anotherUser') }}<span class="block text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.ownedByTheUserYou') }}</span></span></label>
             <label class="flex items-start gap-3 cursor-pointer"><RadioGroupItem value="keep" class="mt-0.5" />
-              <span class="text-sm text-foreground">{{ t('ui.storage.CreateVolumeWizard.onlyRoot') }}<span class="block text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.leftAsRootRootFor') }}</span></span></label>
+              <span class="text-sm text-base-content">{{ t('ui.storage.CreateVolumeWizard.onlyRoot') }}<span class="block text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.leftAsRootRootFor') }}</span></span></label>
           </RadioGroup>
           <NativeSelect wrapper-class="mt-3 max-w-xs" v-if="s.access === 'user'" v-model="s.ownerUserId" :aria-label="t('ui.storage.CreateVolumeWizard.owner')">
             <NativeSelectOption value="" disabled>{{ t('ui.storage.CreateVolumeWizard.chooseAUser') }}</NativeSelectOption>
@@ -304,44 +304,44 @@ function diskLabel(d: BlockDev): string {
 
           <div v-if="isAdmin" class="mt-5 space-y-3 max-w-lg">
             <label class="flex items-start gap-3 cursor-pointer"><Checkbox class="mt-1" v-model="s.createPlace" />
-              <span class="text-sm text-foreground">{{ t('ui.storage.CreateVolumeWizard.createAPlace') }}<span class="block text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.soUsersSeeItIn') }}</span></span></label>
+              <span class="text-sm text-base-content">{{ t('ui.storage.CreateVolumeWizard.createAPlace') }}<span class="block text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.soUsersSeeItIn') }}</span></span></label>
             <Input v-if="s.createPlace" v-model="s.placeName" class="max-w-xs" :aria-label="t('ui.storage.CreateVolumeWizard.placeName')" maxlength="64" />
             <label v-if="s.createPlace" class="flex items-start gap-3 cursor-pointer"><Checkbox class="mt-1" v-model="s.share" />
-              <span class="text-sm text-foreground">{{ t('ui.storage.CreateVolumeWizard.shareItOverSmb') }}<span class="block text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.reachableFromOtherComputersOn') }}</span></span></label>
+              <span class="text-sm text-base-content">{{ t('ui.storage.CreateVolumeWizard.shareItOverSmb') }}<span class="block text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.reachableFromOtherComputersOn') }}</span></span></label>
             <Input v-if="s.createPlace && s.share" v-model.trim="s.smbName" class="max-w-xs font-mono" :aria-label="t('ui.storage.CreateVolumeWizard.shareName')" maxlength="32" />
           </div>
         </template>
 
         <!-- 7. Review -->
         <template v-else>
-          <h3 class="text-sm font-semibold text-foreground mb-3">{{ t('ui.storage.CreateVolumeWizard.review') }}</h3>
-          <dl class="rounded-xl border border-border bg-card divide-y divide-border text-sm max-w-lg">
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.disks') }}</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.redundancy') }}</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="font-mono text-xs self-center">{{ t('uip.storage.CreateVolumeWizard.ext4', { p0: s.label }) }}</dd></div>
-            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.folder') }}</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
-            <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.place') }}</dt><dd>{{ s.placeName }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.sharedAs') }} <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
+          <h3 class="text-sm font-semibold text-base-content mb-3">{{ t('ui.storage.CreateVolumeWizard.review') }}</h3>
+          <dl class="rounded-xl border border-base-300 bg-base-100 divide-y divide-base-300 text-sm max-w-lg">
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.disks') }}</dt><dd class="font-mono text-xs self-center">{{ chosen.map(d => `/dev/${d.name}`).join(', ') }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.redundancy') }}</dt><dd>{{ LEVEL_TEXT[s.level].title }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">LVM</dt><dd class="font-mono text-xs self-center">{{ s.vg }}/{{ s.lv }} · {{ s.lvPercent }}%</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.filesystem') }}</dt><dd class="font-mono text-xs self-center">{{ t('uip.storage.CreateVolumeWizard.ext4', { p0: s.label }) }}</dd></div>
+            <div class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.folder') }}</dt><dd class="font-mono text-xs self-center">{{ s.mountpoint }}</dd></div>
+            <div v-if="isAdmin && s.createPlace" class="flex gap-4 px-4 py-2"><dt class="w-28 shrink-0 text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.place') }}</dt><dd>{{ s.placeName }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.sharedAs') }} <span class="font-mono text-xs">{{ s.smbName }}</span></template></dd></div>
           </dl>
-          <p class="mt-3 text-xs text-muted-foreground">{{ t('ui.storage.CreateVolumeWizard.nextHsiShowsEveryCommand') }}</p>
-          <p v-if="error" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+          <p class="mt-3 text-xs text-base-content/70">{{ t('ui.storage.CreateVolumeWizard.nextHsiShowsEveryCommand') }}</p>
+          <p v-if="error" role="alert" class="mt-3 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
         </template>
       </section>
 
       <!-- The volume as it will be -->
-      <aside class="hidden @3xl/content:block self-start rounded-xl border border-border bg-card p-4 space-y-2">
+      <aside class="hidden @3xl/content:block self-start rounded-xl border border-base-300 bg-base-100 p-4 space-y-2">
         <p class="eyebrow">{{ t('ui.storage.CreateVolumeWizard.yourVolume') }}</p>
-        <p><span class="font-figure font-bold text-2xl tabular-nums text-foreground">{{ fmtBytes(usable) }}</span> <span class="text-xs text-muted-foreground">usable</span></p>
-        <p class="text-xs" :class="s.level === 'none' ? 'text-destructive' : 'text-foreground/80'">
+        <p><span class="font-figure font-bold text-2xl tabular-nums text-base-content">{{ fmtBytes(usable) }}</span> <span class="text-xs text-base-content/70">usable</span></p>
+        <p class="text-xs" :class="s.level === 'none' ? 'text-error' : 'text-base-content/80'">
           {{ LEVEL_TEXT[s.level].title }}<template v-if="tolerates"> {{ t('uip.storage.CreateVolumeWizard.survivesFailed', { p0: tolerates, p1: tolerates === 1 ? 'disk' : 'disks' }) }}</template>
         </p>
-        <p class="text-xs text-muted-foreground">{{ chosen.length ? chosen.map(d => d.name).join(', ') : 'No disk chosen' }}</p>
-        <p class="font-mono text-xs text-foreground/80">{{ s.mountpoint }}</p>
-        <p v-if="isAdmin && s.createPlace" class="text-xs text-muted-foreground">{{ t('uip.storage.CreateVolumeWizard.place', { p0: s.placeName }) }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.smbShare') }}</template></p>
+        <p class="text-xs text-base-content/70">{{ chosen.length ? chosen.map(d => d.name).join(', ') : 'No disk chosen' }}</p>
+        <p class="font-mono text-xs text-base-content/80">{{ s.mountpoint }}</p>
+        <p v-if="isAdmin && s.createPlace" class="text-xs text-base-content/70">{{ t('uip.storage.CreateVolumeWizard.place', { p0: s.placeName }) }}<template v-if="s.share"> {{ t('ui.storage.CreateVolumeWizard.smbShare') }}</template></p>
       </aside>
     </div>
 
-    <div class="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
+    <div class="mt-6 flex items-center justify-between gap-3 border-t border-base-300 pt-4">
       <Button variant="ghost" size="sm" v-if="step > 0" @click="step--">{{ t('ui.storage.CreateVolumeWizard.back') }}</Button>
       <Button variant="ghost" size="sm" v-else @click="emit('navigate', 'volumes')">{{ t('ui.storage.CreateVolumeWizard.cancel') }}</Button>
       <Button size="sm" v-if="step < STEPS.length - 1" :disabled="!canNext" @click="step++">{{ t('uip.storage.CreateVolumeWizard.next', { p0: STEPS[step + 1] }) }}</Button>

@@ -350,15 +350,15 @@ async function applyNow() {
   <div class="flex flex-col h-full">
 
     <!-- Header -->
-    <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-border shrink-0">
+    <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-base-300 shrink-0">
       <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
-        class="text-muted-foreground hover:text-foreground"
+        class="text-base-content/70 hover:text-base-content"
         :tooltip="t('ui.apps.AppFormModal.back')" :aria-label="t('ui.apps.AppFormModal.back')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
-      <h2 class="text-sm font-semibold text-foreground flex-1">
+      <h2 class="text-sm font-semibold text-base-content flex-1">
         {{ editName ? `Edit ${editName}` : 'New App' }}
       </h2>
       <Button
@@ -367,7 +367,7 @@ async function applyNow() {
         @click="showCompose = !showCompose"
         :tooltip="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
         :aria-pressed="showCompose"
-        :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-muted-foreground']"
+        :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-base-content/70']"
       >
         <UploadIcon class="size-3.5" aria-hidden="true" />
         <span class="hidden sm:inline">{{ t('ui.apps.AppFormModal.importCompose') }}</span><span class="sm:hidden">{{ t('ui.apps.AppFormModal.compose') }}</span>
@@ -375,8 +375,8 @@ async function applyNow() {
     </div>
 
     <!-- Compose import panel -->
-    <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-border bg-muted/60 space-y-3 shrink-0">
-      <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.pasteA') }} <span class="font-mono">compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
+    <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-base-300 bg-base-200/60 space-y-3 shrink-0">
+      <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pasteA') }} <span class="font-mono">compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
       <Textarea
         v-model="composeRaw"
         :placeholder="t('ui.apps.AppFormModal.version3810Services')"
@@ -385,7 +385,7 @@ async function applyNow() {
       />
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-          <label class="text-xs text-muted-foreground whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
+          <label class="text-xs text-base-content/70 whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
           <NativeSelect wrapper-class="flex-1"
             v-model="composeSelectedService"
             class="px-3 py-1.5 text-sm"
@@ -393,11 +393,11 @@ async function applyNow() {
             <NativeSelectOption v-for="s in composeServices" :key="s" :value="s">{{ s }}</NativeSelectOption>
           </NativeSelect>
         </div>
-        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-muted-foreground">
-          {{ t('ui.apps.AppFormModal.service') }} <span class="font-mono text-foreground/80">{{ composeServices[0] }}</span>
+        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-base-content/70">
+          {{ t('ui.apps.AppFormModal.service') }} <span class="font-mono text-base-content/80">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
-        <p v-if="composeError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
+        <p v-if="composeError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
         <Button size="sm"
           @click="importCompose"
           :disabled="!composeRaw.trim()"
@@ -409,13 +409,13 @@ async function applyNow() {
     </div>
 
     <!-- Multi-service notice -->
-    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-border bg-warning/10 shrink-0">
-      <p class="text-xs text-foreground/80">{{ t('ui.apps.AppFormModal.thisAppHasSeveralServices') }}</p>
+    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-base-300 bg-warning/10 shrink-0">
+      <p class="text-xs text-base-content/80">{{ t('ui.apps.AppFormModal.thisAppHasSeveralServices') }}</p>
     </div>
 
     <!-- Saved - apply prompt -->
-    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-border bg-primary/5 flex items-center gap-3 shrink-0">
-      <p class="text-xs text-foreground/80 flex-1">
+    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
+      <p class="text-xs text-base-content/80 flex-1">
         <template v-if="applyState === 'applied'">{{ t('ui.apps.AppFormModal.changesSavedAndApplied') }}</template>
         <template v-else-if="applyState === 'error'">{{ t('ui.apps.AppFormModal.changesSavedButApplyFailed') }} <span class="text-primary">{{ applyError }}</span></template>
         <template v-else>{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</template>
@@ -429,7 +429,7 @@ async function applyNow() {
     </div>
 
     <!-- Tabs -->
-    <Tabs :model-value="activeTab" class="shrink-0 border-b border-border px-5 py-2 overflow-x-auto" @update:model-value="v => activeTab = v as Tab">
+    <Tabs :model-value="activeTab" class="shrink-0 border-b border-base-300 px-5 py-2 overflow-x-auto" @update:model-value="v => activeTab = v as Tab">
       <TabsList>
         <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
       </TabsList>
@@ -441,26 +441,26 @@ async function applyNow() {
       <!-- Basic -->
       <div v-if="activeTab === 'basic'" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
+          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
           <Input
             v-model="form.name" laceholder="my-app" :disabled="editing"
             class="w-full px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
+          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
           <Input
             v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
             class="w-full px-3 py-2 text-sm font-mono"
           />
         </div>
-        <div class="space-y-1.5 pt-3 border-t border-border">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
+        <div class="space-y-1.5 pt-3 border-t border-base-300">
+          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
           <Input
             v-model="form.pinnedUrl" laceholder="http://192.168.1.x:8080"
             class="w-full px-3 py-2 text-sm font-mono"
           />
-          <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
+          <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
         </div>
       </div>
 
@@ -481,7 +481,7 @@ async function applyNow() {
 
       <!-- Networks -->
       <div v-else-if="activeTab === 'networks'" class="space-y-3">
-        <p class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span class="font-mono">bridge</span>, <span class="font-mono">host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
+        <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span class="font-mono">bridge</span>, <span class="font-mono">host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
         <div class="flex gap-2">
           <Input
             v-model="networkInput" :placeholder="t('ui.apps.AppFormModal.networkName')"
@@ -496,12 +496,12 @@ async function applyNow() {
         <div class="flex flex-wrap gap-1.5">
           <Badge variant="outline"
             v-for="n in form.networkNames" :key="n"
-            class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-input font-mono"
+            class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-base-300 font-mono"
           >
             {{ n }}
             <Button variant="ghost" size="icon-xs" :aria-label="`Remove network ${n}`" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></Button>
           </Badge>
-          <span v-if="form.networkNames.length === 0" class="text-xs text-muted-foreground">{{ t('ui.apps.AppFormModal.noNetworksAttached') }}</span>
+          <span v-if="form.networkNames.length === 0" class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.noNetworksAttached') }}</span>
         </div>
       </div>
 
@@ -524,8 +524,8 @@ async function applyNow() {
     </div>
 
     <!-- Footer -->
-    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-border shrink-0">
-      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-base-300 shrink-0">
+      <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
       <Button variant="ghost"
         @click="emit('close')"
@@ -536,8 +536,8 @@ async function applyNow() {
         {{ loading ? 'Saving…' : 'Save' }}
       </Button>
     </div>
-    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-border shrink-0">
-      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-base-300 shrink-0">
+      <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div v-else class="flex-1" />
       <Button variant="ghost" @click="emit('close')">{{ t('ui.apps.AppFormModal.close') }}</Button>
     </div>

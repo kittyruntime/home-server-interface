@@ -127,7 +127,7 @@ function statusColor(status: string) {
   switch (status) {
     case 'running': return 'bg-success'
     case 'exited':
-    case 'stopped': return 'bg-muted-foreground/60'
+    case 'stopped': return 'bg-base-content/40'
     default:        return 'bg-warning'
   }
 }
@@ -149,7 +149,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="border-t border-border">
+  <div class="border-t border-base-300">
 
     <!-- Header row -->
     <div class="flex items-center pl-5 pr-4">
@@ -159,15 +159,15 @@ onUnmounted(() => {
         :aria-expanded="expanded"
         @click="toggle"
       >
-        <ChevronRightIcon :class="['size-3 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
-        <span class="select-none text-2xs font-bold uppercase tracking-caps text-muted-foreground transition-colors group-hover:text-foreground">{{ t('ui.apps.UnmanagedContainers.unmanaged') }}</span>
+        <ChevronRightIcon :class="['size-3 shrink-0 text-base-content/70 transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
+        <span class="select-none text-2xs font-bold uppercase tracking-caps text-base-content/70 transition-colors group-hover:text-base-content">{{ t('ui.apps.UnmanagedContainers.unmanaged') }}</span>
         <Badge v-if="!loading && containers.length" variant="secondary" class="h-4 min-w-[18px] rounded-full px-1.5 text-2xs tabular-nums">
           {{ containers.length }}
         </Badge>
-        <LoadingSpinner v-if="loading" class="text-xs text-muted-foreground" />
+        <LoadingSpinner v-if="loading" class="text-xs text-base-content/70" />
       </Button>
 
-      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :disabled="loading" :tooltip="t('ui.apps.UnmanagedContainers.refresh')" :aria-label="t('ui.apps.UnmanagedContainers.refreshUnmanagedContainers')" @click="load">
+      <Button variant="ghost" size="icon-xs" class="text-base-content/70" :disabled="loading" :tooltip="t('ui.apps.UnmanagedContainers.refresh')" :aria-label="t('ui.apps.UnmanagedContainers.refreshUnmanagedContainers')" @click="load">
         <RefreshCwIcon class="size-3.5" aria-hidden="true" />
       </Button>
     </div>
@@ -176,9 +176,9 @@ onUnmounted(() => {
     <Transition name="ui-fade">
       <div v-if="expanded" class="px-3 pb-3">
 
-        <div class="mx-2 mb-3 rounded-lg border border-border p-3">
+        <div class="mx-2 mb-3 rounded-lg border border-base-300 p-3">
           <div class="flex items-center justify-between gap-3">
-            <span class="text-xs text-muted-foreground">{{ t('ui.apps.UnmanagedContainers.importComposeFile') }}</span>
+            <span class="text-xs text-base-content/70">{{ t('ui.apps.UnmanagedContainers.importComposeFile') }}</span>
             <Button variant="outline" size="xs" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</Button>
           </div>
           <div v-if="composeOpen" class="mt-3 grid gap-2">
@@ -186,19 +186,19 @@ onUnmounted(() => {
             <input ref="composeFile" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readComposeFile" />
             <Button variant="outline" size="xs" class="w-fit" type="button" @click="openComposeFile">{{ t('ui.apps.UnmanagedContainers.chooseYamlFile') }}</Button>
             <Textarea v-model="composeContent" class="font-mono text-xs" rows="8" spellcheck="false" :placeholder="t('ui.apps.UnmanagedContainers.servicesNWebNImage')" :aria-label="t('ui.apps.UnmanagedContainers.composeFile')" />
-            <p v-if="composeError" class="text-xs text-destructive" role="alert">{{ composeError }}</p>
+            <p v-if="composeError" class="text-xs text-error" role="alert">{{ composeError }}</p>
             <Button size="sm" class="w-fit" :disabled="composeImporting" @click="importCompose">
               {{ composeImporting ? 'Importing…' : 'Import app' }}
             </Button>
           </div>
         </div>
 
-        <div v-if="error" role="alert" class="flex items-center gap-1.5 px-2 pb-2 pt-1 text-xs text-destructive">
+        <div v-if="error" role="alert" class="flex items-center gap-1.5 px-2 pb-2 pt-1 text-xs text-error">
           <CircleAlertIcon class="size-3.5 shrink-0" aria-hidden="true" />
           {{ error }}
         </div>
 
-        <div v-else-if="!loading && containers.length === 0" class="px-2 pb-2 pt-1 text-xs text-muted-foreground">
+        <div v-else-if="!loading && containers.length === 0" class="px-2 pb-2 pt-1 text-xs text-base-content/70">
           {{ t('ui.apps.UnmanagedContainers.noUnmanagedContainers') }}
         </div>
 
@@ -206,19 +206,19 @@ onUnmounted(() => {
           <li
             v-for="c in containers"
             :key="c.name"
-            class="flex min-w-0 items-center gap-3.5 rounded-lg border border-border bg-muted px-3.5 py-2.5 transition-colors hover:border-primary/40"
+            class="flex min-w-0 items-center gap-3.5 rounded-lg border border-base-300 bg-base-200 px-3.5 py-2.5 transition-colors hover:border-primary/40"
           >
             <!-- Left: status + identity -->
             <div class="flex min-w-0 flex-1 items-center gap-2.5">
               <span :class="['size-[7px] shrink-0 rounded-full', statusColor(c.status)]" />
               <div class="flex min-w-0 flex-col gap-px">
-                <span class="truncate font-mono text-sm font-medium text-foreground/80">{{ c.name }}</span>
-                <span class="truncate font-mono text-2xs text-muted-foreground">{{ c.image }}</span>
+                <span class="truncate font-mono text-sm font-medium text-base-content/80">{{ c.name }}</span>
+                <span class="truncate font-mono text-2xs text-base-content/70">{{ c.image }}</span>
               </div>
             </div>
 
             <!-- Ports (hidden on small screens) -->
-            <span v-if="portsSummary(c)" class="hidden shrink-0 whitespace-nowrap font-mono text-2xs text-muted-foreground md:block">
+            <span v-if="portsSummary(c)" class="hidden shrink-0 whitespace-nowrap font-mono text-2xs text-base-content/70 md:block">
               {{ portsSummary(c) }}
             </span>
 

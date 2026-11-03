@@ -228,21 +228,21 @@ onUnmounted(() => {
   <!-- Single root wrapper: required so the route <Transition> in App.vue can
        animate this view and its style fallthrough (--ui-dur) merges here. -->
   <div>
-  <div class="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-background sm:flex-row">
+  <div class="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-base-100 sm:flex-row">
 
     <!-- Sidebar: 64px (desktop only) -->
-    <aside class="hidden sm:flex flex-col items-center w-16 bg-sidebar text-sidebar-foreground border-r border-sidebar-border py-4 flex-shrink-0">
+    <aside class="hidden sm:flex flex-col items-center w-16 bg-base-100 text-base-content border-r border-base-300 py-4 flex-shrink-0">
 
       <template v-if="desktopMode && !isMobile">
         <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
       </template>
       <template v-else>
         <!-- Brand mark -->
-        <div class="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground mb-5 select-none">
+        <div class="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-content mb-5 select-none">
           <ArrowRightIcon class="size-4" />
         </div>
 
-        <div class="w-8 border-t border-sidebar-border mb-3" />
+        <div class="w-8 border-t border-base-300 mb-3" />
 
         <!-- App nav (drag an icon to reorder, persisted per browser) -->
         <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
@@ -275,7 +275,7 @@ onUnmounted(() => {
                     'relative rounded-xl [&_svg:not([class*=size-])]:size-5',
                     isActive(item.id)
                       ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
-                      : 'text-muted-foreground hover:text-sidebar-accent-foreground',
+                      : 'text-base-content/70 hover:text-base-content',
                   ]"
                 >
                   <SidebarNavIcon :id="item.id" />
@@ -285,11 +285,11 @@ onUnmounted(() => {
                   />
                   <span
                     v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
-                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive"
+                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
                   />
                   <span
                     v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
-                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive"
+                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
                   />
                 </Button>
               </TooltipTrigger>
@@ -306,12 +306,12 @@ onUnmounted(() => {
           size="icon-lg"
           :aria-label="t('ui.views.DashboardLayout.activity')"
           :tooltip="t('ui.views.DashboardLayout.activity')"
-          class="relative mb-2 rounded-xl text-muted-foreground hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
+          class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />
           <span
             v-if="badgeCount > 0"
-            class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-foreground flex items-center justify-center tabular-nums leading-none"
+            class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
           >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
         </Button>
       </ActivityPopover>
@@ -325,8 +325,8 @@ onUnmounted(() => {
             :aria-label="t('ui.views.DashboardLayout.account')"
             class="group size-9 rounded-full p-0 select-none hover:bg-transparent"
           >
-            <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
-              <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+            <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
+              <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
             </Avatar>
           </Button>
         </template>
@@ -344,15 +344,15 @@ onUnmounted(() => {
         class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-warning/15 border-b text-sm flex-shrink-0"
       >
         <TriangleAlertIcon class="size-4 shrink-0 text-warning" />
-        <span class="text-foreground flex-1 min-w-0">
+        <span class="text-base-content flex-1 min-w-0">
           {{ t('ui.views.DashboardLayout.youMustChangeYourPassword') }}
-          <Button variant="link" class="h-auto p-0 font-medium text-foreground underline" @click="goToProfile">{{ t('ui.views.DashboardLayout.changeItNow') }}</Button>
+          <Button variant="link" class="h-auto p-0 font-medium text-base-content underline" @click="goToProfile">{{ t('ui.views.DashboardLayout.changeItNow') }}</Button>
         </span>
       </div>
       <DesktopShell v-if="desktopMode && !isMobile" />
       <template v-else>
         <!-- Top bar (hidden for files: FileToolbar acts as the header) -->
-        <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b flex-shrink-0 bg-muted">
+        <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b flex-shrink-0 bg-base-200">
           <span class="eyebrow">{{ activeAppLabel }}</span>
           <Button
             v-if="activeApp === 'apps' && isAdmin"
@@ -378,7 +378,7 @@ onUnmounted(() => {
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
           <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
-          <div v-else class="flex items-center justify-center h-full text-muted-foreground select-none">
+          <div v-else class="flex items-center justify-center h-full text-base-content/70 select-none">
             <div class="text-center space-y-3">
               <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
               <p class="text-sm">{{ t('ui.views.DashboardLayout.selectAnAppFromThe') }}</p>
@@ -391,7 +391,7 @@ onUnmounted(() => {
     </main>
 
     <!-- Mobile bottom nav -->
-    <nav class="flex sm:hidden w-full flex-shrink-0 items-center h-14 overflow-hidden bg-sidebar border-t border-sidebar-border px-1 pb-[env(safe-area-inset-bottom)]">
+    <nav class="flex sm:hidden w-full flex-shrink-0 items-center h-14 overflow-hidden bg-base-100 border-t border-base-300 px-1 pb-[env(safe-area-inset-bottom)]">
 
       <!-- App nav (order mirrors the sidebar; not draggable on mobile) -->
       <div v-for="item in mobilePrimaryItems" :key="item.id" class="relative flex min-w-0 flex-1 justify-center">
@@ -400,21 +400,21 @@ onUnmounted(() => {
         <Button variant="ghost" @click="selectApp(item.id)" :aria-label="item.label"
           :aria-current="isActive(item.id) ? 'page' : undefined"
           :class="['relative h-11 w-full max-w-11 rounded-xl transition-all duration-150 hover:bg-transparent [&_svg:not([class*=size-])]:size-5',
-            isActive(item.id) ? 'text-primary' : 'text-muted-foreground']">
+            isActive(item.id) ? 'text-primary' : 'text-base-content/70']">
           <SidebarNavIcon :id="item.id" />
           <span v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
             class="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning" />
           <span v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
-            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
+            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
           <span v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
-            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
+            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
         </Button>
       </div>
 
       <DropdownMenu v-if="mobileMoreItems.length">
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.moreApps')"
-            class="relative h-11 min-w-0 flex-1 rounded-xl text-muted-foreground hover:bg-transparent data-[state=open]:text-primary">
+            class="relative h-11 min-w-0 flex-1 rounded-xl text-base-content/70 hover:bg-transparent data-[state=open]:text-primary">
             <EllipsisIcon class="size-5" />
           </Button>
         </DropdownMenuTrigger>
@@ -431,10 +431,10 @@ onUnmounted(() => {
         <template #default="{ open }">
           <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
             :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
-              open ? 'text-primary' : 'text-muted-foreground']">
+              open ? 'text-primary' : 'text-base-content/70']">
             <BellIcon class="size-5" />
             <span v-if="badgeCount > 0"
-              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-foreground flex items-center justify-center tabular-nums leading-none"
+              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
             >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
           </Button>
         </template>
@@ -445,8 +445,8 @@ onUnmounted(() => {
         <template #default="{ initials }">
           <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.account')"
             class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
-            <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-sidebar">
-              <AvatarFallback class="bg-primary font-bold text-primary-foreground">{{ initials }}</AvatarFallback>
+            <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
+              <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
             </Avatar>
           </Button>
         </template>

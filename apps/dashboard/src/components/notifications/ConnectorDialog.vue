@@ -206,19 +206,19 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
 <template>
   <Modal panel-class="w-full max-w-xl" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground">
+      <h3 class="text-sm font-semibold text-base-content">
         {{ connector ? 'Edit connector' : 'Add connector' }}
       </h3>
     </template>
 
     <div class="p-5 space-y-4">
-      <p v-if="connector?.secretsUnreadable" class="text-xs text-destructive">
+      <p v-if="connector?.secretsUnreadable" class="text-xs text-error">
         Saved secrets can no longer be read (the secrets key changed). Re-enter the URL, secret headers or password.
       </p>
 
       <div class="flex gap-2">
         <div class="space-y-1.5 w-40 shrink-0">
-          <label class="block text-xs text-muted-foreground">Type</label>
+          <label class="block text-xs text-base-content/70">Type</label>
           <NativeSelect v-if="!connector" v-model="type">
             <NativeSelectOption value="webhook">Webhook</NativeSelectOption>
             <NativeSelectOption value="smtp">Email (SMTP)</NativeSelectOption>
@@ -226,39 +226,39 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
           <p v-else class="py-1.5"><Badge variant="secondary">{{ type === 'smtp' ? 'email' : 'webhook' }}</Badge></p>
         </div>
         <div class="space-y-1.5 flex-1 min-w-0">
-          <label class="block text-xs text-muted-foreground">Format</label>
+          <label class="block text-xs text-base-content/70">Format</label>
           <NativeSelect v-model="format">
             <NativeSelectOption v-for="p in formatOptions" :key="p.id" :value="p.id">{{ p.label }}</NativeSelectOption>
           </NativeSelect>
         </div>
       </div>
-      <p class="text-xs text-muted-foreground -mt-2">The format prefills the fields below; everything stays editable.</p>
-      <p v-if="formatHint" class="text-xs text-foreground/80 -mt-2">{{ formatHint }}</p>
+      <p class="text-xs text-base-content/70 -mt-2">The format prefills the fields below; everything stays editable.</p>
+      <p v-if="formatHint" class="text-xs text-base-content/80 -mt-2">{{ formatHint }}</p>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Name</label>
+        <label class="block text-xs text-base-content/70">Name</label>
         <Input v-model="name" :placeholder="type === 'smtp' ? 'Admin email' : 'My Discord channel'" />
       </div>
 
       <template v-if="type === 'webhook'">
         <div class="flex gap-2">
           <div class="space-y-1.5 w-24 shrink-0">
-            <label class="block text-xs text-muted-foreground">Method</label>
+            <label class="block text-xs text-base-content/70">Method</label>
             <NativeSelect v-model="method">
               <NativeSelectOption value="POST">POST</NativeSelectOption>
               <NativeSelectOption value="PUT">PUT</NativeSelectOption>
             </NativeSelect>
           </div>
           <div class="space-y-1.5 flex-1 min-w-0">
-            <label class="block text-xs text-muted-foreground">URL</label>
+            <label class="block text-xs text-base-content/70">URL</label>
             <Input v-model="url" placeholder="https://example.com/hook" class="font-mono" />
           </div>
         </div>
-        <p v-if="connector" class="text-xs text-muted-foreground -mt-2">The saved URL is hidden. Leave it unchanged to keep it.</p>
+        <p v-if="connector" class="text-xs text-base-content/70 -mt-2">The saved URL is hidden. Leave it unchanged to keep it.</p>
 
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
-            <label class="block text-xs text-muted-foreground">Headers</label>
+            <label class="block text-xs text-base-content/70">Headers</label>
             <Button variant="link" type="button" class="h-auto p-0 text-primary" @click="addHeaderRow">+ Add header</Button>
           </div>
           <div v-for="(row, i) in headerRows" :key="i" class="flex items-center gap-1.5">
@@ -266,35 +266,35 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
             <Input v-model="row.value" placeholder="Value" class="flex-[2] min-w-0 font-mono text-xs" />
             <Button variant="ghost" size="icon-sm"
               type="button" tooltip="Remove header" aria-label="Remove header"
-              class="text-muted-foreground hover:text-foreground shrink-0"
+              class="text-base-content/70 hover:text-base-content shrink-0"
               @click="removeHeaderRow(i)"
             >
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
-          <p v-if="headerRows.length === 0" class="text-xs text-muted-foreground">No headers.</p>
-          <p v-else-if="connector" class="text-xs text-muted-foreground">Header values other than Content-Type are hidden once saved. Leave them unchanged to keep them.</p>
+          <p v-if="headerRows.length === 0" class="text-xs text-base-content/70">No headers.</p>
+          <p v-else-if="connector" class="text-xs text-base-content/70">Header values other than Content-Type are hidden once saved. Leave them unchanged to keep them.</p>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">Body template</label>
+          <label class="block text-xs text-base-content/70">Body template</label>
           <Textarea v-model="bodyTemplate" rows="7" :placeholder="bodyPlaceholder" class="font-mono text-xs resize-none" />
-          <p class="text-xs text-muted-foreground">{{ variableHint }}</p>
+          <p class="text-xs text-base-content/70">{{ variableHint }}</p>
         </div>
       </template>
 
       <template v-else>
         <div class="flex gap-2">
           <div class="space-y-1.5 flex-1 min-w-0">
-            <label class="block text-xs text-muted-foreground">SMTP server</label>
+            <label class="block text-xs text-base-content/70">SMTP server</label>
             <Input v-model="smtp.host" placeholder="smtp.example.com" class="font-mono" />
           </div>
           <div class="space-y-1.5 w-24 shrink-0">
-            <label class="block text-xs text-muted-foreground">Port</label>
+            <label class="block text-xs text-base-content/70">Port</label>
             <Input v-model.number="smtp.port" type="number" min="1" max="65535" />
           </div>
           <div class="space-y-1.5 w-32 shrink-0">
-            <label class="block text-xs text-muted-foreground">Security</label>
+            <label class="block text-xs text-base-content/70">Security</label>
             <NativeSelect v-model="smtp.security">
               <NativeSelectOption value="starttls">STARTTLS</NativeSelectOption>
               <NativeSelectOption value="tls">TLS</NativeSelectOption>
@@ -305,11 +305,11 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
 
         <div class="flex gap-2">
           <div class="space-y-1.5 flex-1 min-w-0">
-            <label class="block text-xs text-muted-foreground">Username</label>
+            <label class="block text-xs text-base-content/70">Username</label>
             <Input v-model="smtp.username" autocomplete="off" placeholder="Optional" />
           </div>
           <div class="space-y-1.5 flex-1 min-w-0">
-            <label class="block text-xs text-muted-foreground">Password</label>
+            <label class="block text-xs text-base-content/70">Password</label>
             <Input
               v-model="smtp.password" type="password" autocomplete="new-password"
               :placeholder="passwordSet ? 'Saved, leave empty to keep' : 'Optional'"
@@ -318,61 +318,61 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">From</label>
+          <label class="block text-xs text-base-content/70">From</label>
           <Input v-model="smtp.from" placeholder="nas@example.com" />
         </div>
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">To</label>
+          <label class="block text-xs text-base-content/70">To</label>
           <Input v-model="smtp.to" placeholder="admin@example.com, other@example.com" />
-          <p class="text-xs text-muted-foreground">Separate addresses with commas.</p>
+          <p class="text-xs text-base-content/70">Separate addresses with commas.</p>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">Subject template</label>
+          <label class="block text-xs text-base-content/70">Subject template</label>
           <Input v-model="smtp.subjectTemplate" class="font-mono text-xs" />
         </div>
         <div class="space-y-1.5">
-          <label class="block text-xs text-muted-foreground">Body template</label>
+          <label class="block text-xs text-base-content/70">Body template</label>
           <Textarea v-model="smtp.bodyTemplate" rows="7" class="font-mono text-xs resize-none" />
-          <p class="text-xs text-muted-foreground">{{ variableHint }}</p>
+          <p class="text-xs text-base-content/70">{{ variableHint }}</p>
         </div>
       </template>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Max messages per minute</label>
+        <label class="block text-xs text-base-content/70">Max messages per minute</label>
         <Input v-model.number="rateLimit" type="number" min="1" max="600" class="w-24" />
-        <p class="text-xs text-muted-foreground">Extra messages wait in the queue; none are dropped.</p>
+        <p class="text-xs text-base-content/70">Extra messages wait in the queue; none are dropped.</p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Preview</label>
-        <p v-if="previewError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ previewError }}</p>
-        <div v-else-if="preview?.type === 'webhook'" class="rounded-lg border border-border bg-muted p-3 font-mono text-xs text-foreground/80 space-y-2">
-          <p class="break-all"><span class="font-bold text-foreground">{{ preview.request.method }}</span> {{ preview.request.url }}</p>
+        <label class="block text-xs text-base-content/70">Preview</label>
+        <p v-if="previewError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ previewError }}</p>
+        <div v-else-if="preview?.type === 'webhook'" class="rounded-lg border border-base-300 bg-base-200 p-3 font-mono text-xs text-base-content/80 space-y-2">
+          <p class="break-all"><span class="font-bold text-base-content">{{ preview.request.method }}</span> {{ preview.request.url }}</p>
           <div v-if="Object.keys(preview.request.headers).length > 0" class="space-y-0.5">
             <p v-for="(v, k) in preview.request.headers" :key="k" class="break-all">{{ k }}: {{ v }}</p>
           </div>
           <pre class="whitespace-pre-wrap break-all max-h-48 overflow-y-auto">{{ prettyBody }}</pre>
         </div>
-        <div v-else-if="preview?.type === 'smtp'" class="rounded-lg border border-border bg-muted p-3 font-mono text-xs text-foreground/80 space-y-2">
+        <div v-else-if="preview?.type === 'smtp'" class="rounded-lg border border-base-300 bg-base-200 p-3 font-mono text-xs text-base-content/80 space-y-2">
           <div class="space-y-0.5">
-            <p class="break-all"><span class="text-muted-foreground">From:</span> {{ preview.email.from }}</p>
-            <p class="break-all"><span class="text-muted-foreground">To:</span> {{ preview.email.to.join(', ') }}</p>
-            <p class="break-all"><span class="text-muted-foreground">Subject:</span> <span class="text-foreground">{{ preview.email.subject }}</span></p>
+            <p class="break-all"><span class="text-base-content/70">From:</span> {{ preview.email.from }}</p>
+            <p class="break-all"><span class="text-base-content/70">To:</span> {{ preview.email.to.join(', ') }}</p>
+            <p class="break-all"><span class="text-base-content/70">Subject:</span> <span class="text-base-content">{{ preview.email.subject }}</span></p>
           </div>
           <pre class="whitespace-pre-wrap break-all max-h-48 overflow-y-auto">{{ preview.email.text }}</pre>
         </div>
-        <p v-else class="text-xs text-muted-foreground">
+        <p v-else class="text-xs text-base-content/70">
           {{ type === 'smtp' ? 'Enter a server, a sender and a recipient to preview the email.' : 'Enter a URL to preview the rendered request.' }}
         </p>
       </div>
 
-      <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+      <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
         <Checkbox v-model="enabled" />
         Enabled
       </label>
 
-      <p v-if="saveError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
     </div>
 
     <template #footer>
@@ -382,7 +382,7 @@ const variableHint = 'Supports variables like {{event.source}}, {{event.severity
         </Button>
         <span
           v-if="testLine"
-          :class="['text-xs truncate', testLine.ok ? 'text-success' : 'text-destructive']"
+          :class="['text-xs truncate', testLine.ok ? 'text-success' : 'text-error']"
         >{{ testLine.text }}</span>
       </div>
       <Button variant="ghost" size="sm" type="button" @click="emit('close')">Cancel</Button>

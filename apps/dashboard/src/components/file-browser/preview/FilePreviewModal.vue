@@ -39,7 +39,7 @@ function tryClose() {
   <Modal panel-class="w-[92vw] h-[88vh] max-w-6xl flex flex-col" @close="tryClose">
     <template #header>
       <div class="flex items-center gap-2.5 min-w-0">
-        <span class="text-sm font-medium text-foreground truncate" :title="entry.name">{{ entry.name }}</span>
+        <span class="text-sm font-medium text-base-content truncate" :title="entry.name">{{ entry.name }}</span>
         <Badge variant="secondary" v-if="ext" class="shrink-0">{{ ext }}</Badge>
         <span v-if="dirty" class="status-text text-warning shrink-0">[UNSAVED]</span>
       </div>
@@ -51,7 +51,7 @@ function tryClose() {
         :download="entry.name"
         :tooltip="t('ui.files.FilePreviewModal.download')"
         :aria-label="t('ui.files.FilePreviewModal.download')"
-        class="text-muted-foreground shrink-0"
+        class="text-base-content/70 shrink-0"
       >
         <DownloadIcon class="w-4 h-4" aria-hidden="true" />
       </Button>

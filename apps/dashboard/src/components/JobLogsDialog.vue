@@ -43,9 +43,9 @@ function formatValue(v: unknown): string {
 }
 
 function levelClass(level: string): string {
-  if (level === 'error' || level === 'fatal') return 'text-destructive'
+  if (level === 'error' || level === 'fatal') return 'text-error'
   if (level === 'warn') return 'text-warning'
-  return 'text-muted-foreground'
+  return 'text-base-content/70'
 }
 
 async function copyAll() {
@@ -58,8 +58,8 @@ async function copyAll() {
   <Modal v-if="jobLogsTarget" ref="modal" :key="jobLogsTarget" panel-class="w-full max-w-3xl" @close="jobLogsTarget = null">
     <template #header>
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-foreground">{{ t('ui.settings.JobLogsDialog.operationLogs') }}</h3>
-        <p class="text-2xs font-mono text-muted-foreground truncate">{{ jobLogsTarget }}</p>
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.settings.JobLogsDialog.operationLogs') }}</h3>
+        <p class="text-2xs font-mono text-base-content/70 truncate">{{ jobLogsTarget }}</p>
       </div>
     </template>
 
@@ -70,17 +70,17 @@ async function copyAll() {
       :message="t('ui.settings.JobLogsDialog.noLogLinesForThis')"
       :description="t('ui.settings.JobLogsDialog.theyMayHaveBeenRotated')"
     />
-    <ol v-else class="divide-y divide-border font-mono text-2xs leading-relaxed">
+    <ol v-else class="divide-y divide-base-300 font-mono text-2xs leading-relaxed">
       <li v-for="(l, i) in lines" :key="i" class="px-5 py-2">
         <div class="flex items-baseline gap-2">
-          <span class="shrink-0 tabular-nums text-muted-foreground">{{ formatTime(l.time) }}</span>
+          <span class="shrink-0 tabular-nums text-base-content/70">{{ formatTime(l.time) }}</span>
           <span class="shrink-0 w-12 uppercase" :class="levelClass(l.level)">{{ l.level }}</span>
-          <span class="shrink-0 w-14 text-muted-foreground">{{ l.source }}</span>
-          <span class="text-foreground break-words min-w-0">{{ l.msg }}</span>
+          <span class="shrink-0 w-14 text-base-content/70">{{ l.source }}</span>
+          <span class="text-base-content break-words min-w-0">{{ l.msg }}</span>
         </div>
-        <dl v-if="Object.keys(l.fields).length" class="mt-0.5 sm:pl-[8.5rem] grid grid-cols-[auto_1fr] gap-x-2 text-foreground/80">
+        <dl v-if="Object.keys(l.fields).length" class="mt-0.5 sm:pl-[8.5rem] grid grid-cols-[auto_1fr] gap-x-2 text-base-content/80">
           <template v-for="(v, k) in l.fields" :key="k">
-            <dt class="text-muted-foreground">{{ k }}</dt>
+            <dt class="text-base-content/70">{{ k }}</dt>
             <dd class="whitespace-pre-wrap break-all">{{ formatValue(v) }}</dd>
           </template>
         </dl>
@@ -88,7 +88,7 @@ async function copyAll() {
     </ol>
 
     <template #footer>
-      <p class="text-2xs text-muted-foreground">{{ t('ui.settings.JobLogsDialog.fromAppLogAndRoot') }}</p>
+      <p class="text-2xs text-base-content/70">{{ t('ui.settings.JobLogsDialog.fromAppLogAndRoot') }}</p>
       <div class="flex-1" />
       <Button variant="ghost" size="sm" v-if="lines.length" @click="copyAll">{{ t('ui.settings.JobLogsDialog.copy') }}</Button>
       <Button size="sm" @click="modal?.requestClose()">{{ t('ui.settings.JobLogsDialog.close') }}</Button>

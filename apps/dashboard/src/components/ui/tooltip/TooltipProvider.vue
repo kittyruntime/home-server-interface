@@ -2,7 +2,7 @@
 import { provide, toRef } from "vue"
 import { DEFAULT_DELAY, tooltipProviderKey } from "./context"
 
-/* Sets the default hover delay of the tooltips below it. Other Reka
+/* Sets the default hover delay of the tooltips below it. Other
    provider props are accepted and ignored. */
 const props = withDefaults(defineProps<{
   delayDuration?: number

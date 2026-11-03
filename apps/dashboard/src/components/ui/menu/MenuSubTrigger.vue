@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
 import { ChevronRight } from "@lucide/vue"
-import { onMounted, ref } from "vue"
+import { onMounted, ref, watch } from "vue"
 import { useMenuContext } from "@/lib/use-menu"
 import { cn } from "@/lib/utils"
 import { menuItemClass, menuSlot } from "./styles"
@@ -18,6 +18,13 @@ const props = defineProps<{
 const ctx = useMenuContext()
 const el = ref<HTMLElement | null>(null)
 onMounted(() => { ctx.trigger.value = el.value })
+
+// After the submenu closes with the pointer still on the trigger (Esc, ArrowLeft),
+// the next pointermove must not open it again: only leaving and coming back does.
+let hoverSuppressed = false
+watch(ctx.open, (value) => {
+  if (!value && el.value?.matches(":hover")) hoverSuppressed = true
+})
 
 function openSub(focus: "first" | "content" | "none") {
   if (props.disabled || !el.value || ctx.open.value) return
@@ -38,7 +45,11 @@ function onKeydown(event: KeyboardEvent) {
 function onPointermove() {
   if (props.disabled) return
   if (document.activeElement !== el.value) el.value?.focus({ preventScroll: true })
-  openSub("none")
+  if (!hoverSuppressed) openSub("none")
+}
+
+function onPointerleave() {
+  hoverSuppressed = false
 }
 </script>
 
@@ -63,6 +74,7 @@ function onPointermove() {
     @click="onClick"
     @keydown="onKeydown"
     @pointermove="onPointermove"
+    @pointerleave="onPointerleave"
   >
     <slot />
     <ChevronRight class="ml-auto" />

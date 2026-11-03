@@ -87,9 +87,9 @@ defineExpose({ open })
 
 <template>
   <Modal :label="t('ui.storage.DeviceMountDialog.mountDevice')" v-if="dlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!dlg.busy" @close="dlg = null">
-    <div class="px-5 py-4 border-b border-border">
-      <h3 class="font-semibold text-foreground">{{ t('ui.storage.DeviceMountDialog.mountDevice') }}</h3>
-      <p class="text-xs text-muted-foreground mt-0.5">
+    <div class="px-5 py-4 border-b border-base-300">
+      <h3 class="font-semibold text-base-content">{{ t('ui.storage.DeviceMountDialog.mountDevice') }}</h3>
+      <p class="text-xs text-base-content/70 mt-0.5">
         <span class="font-mono">{{ dlg.dev.path }}</span>
         <span v-if="dlg.dev.fstype"> · {{ dlg.dev.fstype }}</span>
         · {{ fmtBytes(dlg.dev.size) }}
@@ -97,16 +97,16 @@ defineExpose({ open })
     </div>
     <div class="p-5 space-y-4">
       <div>
-        <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.mountPoint') }}</label>
+        <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.mountPoint') }}</label>
         <Input
           v-model="dlg.mp"
           type="text"
           class="w-full px-3 py-2 text-sm font-mono"
         />
-        <p class="text-2xs text-muted-foreground mt-1">{{ t('ui.storage.DeviceMountDialog.directoryWillBeCreatedIf') }}</p>
+        <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.DeviceMountDialog.directoryWillBeCreatedIf') }}</p>
       </div>
       <div>
-        <label class="block text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.mountOptions') }}</label>
+        <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.mountOptions') }}</label>
         <Input
           v-model="dlg.options"
           type="text"
@@ -117,25 +117,25 @@ defineExpose({ open })
       <label class="flex items-start gap-2.5 cursor-pointer">
         <Checkbox v-model="dlg.persist" class="mt-0.5" />
         <div>
-          <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.persistAcrossReboots') }}</div>
-          <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.addAUuidBasedEntry') }}</div>
+          <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.persistAcrossReboots') }}</div>
+          <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.addAUuidBasedEntry') }}</div>
         </div>
       </label>
       <fieldset class="space-y-2">
-        <legend class="text-xs font-medium text-foreground/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.access') }}</legend>
+        <legend class="text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.access') }}</legend>
         <RadioGroup v-model="dlg.access" class="gap-2">
         <label class="flex items-start gap-2.5 cursor-pointer">
           <RadioGroupItem value="shared" class="mt-0.5" />
           <div>
-            <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.writableByYouAndShared') }}</div>
-            <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.onANewEmptyVolume') }}</div>
+            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.writableByYouAndShared') }}</div>
+            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.onANewEmptyVolume') }}</div>
           </div>
         </label>
         <label class="flex items-start gap-2.5 cursor-pointer">
           <RadioGroupItem value="user" class="mt-0.5" />
           <div class="flex-1">
-            <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.ownedByAnotherUser') }}</div>
-            <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.sameAsAboveOwnedBy') }}</div>
+            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.ownedByAnotherUser') }}</div>
+            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.sameAsAboveOwnedBy') }}</div>
             <NativeSelect wrapper-class="mt-1.5 w-full" v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
               class="px-3 py-2 text-sm">
               <NativeSelectOption value="" disabled>{{ t('ui.storage.DeviceMountDialog.chooseAUser') }}</NativeSelectOption>
@@ -148,16 +148,16 @@ defineExpose({ open })
         <label class="flex items-start gap-2.5 cursor-pointer">
           <RadioGroupItem value="keep" class="mt-0.5" />
           <div>
-            <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.keepCurrentPermissions') }}</div>
-            <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.aNewVolumeStaysOwned') }}</div>
+            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.keepCurrentPermissions') }}</div>
+            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.aNewVolumeStaysOwned') }}</div>
           </div>
         </label>
         </RadioGroup>
         <label v-if="dlg.access !== 'keep'" class="flex items-start gap-2.5 cursor-pointer pt-1">
           <Checkbox v-model="dlg.force" class="mt-0.5" />
           <div>
-            <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.alsoApplyIfTheVolume') }}</div>
-            <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.changesTheOwnerAndMode') }}</div>
+            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.alsoApplyIfTheVolume') }}</div>
+            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.changesTheOwnerAndMode') }}</div>
           </div>
         </label>
       </fieldset>
@@ -165,14 +165,14 @@ defineExpose({ open })
         <label class="flex items-start gap-2.5 cursor-pointer">
           <Checkbox v-model="dlg.createPlace" class="mt-0.5" />
           <div>
-            <div class="text-xs font-medium text-foreground/80">{{ t('ui.storage.DeviceMountDialog.createAPlaceForThis') }}</div>
-            <div class="text-2xs text-muted-foreground">{{ t('ui.storage.DeviceMountDialog.showsItInFilesAnd') }}</div>
+            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.createAPlaceForThis') }}</div>
+            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.showsItInFilesAnd') }}</div>
           </div>
         </label>
         <Input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" :placeholder="t('ui.storage.DeviceMountDialog.placeName')"
           class="w-full px-3 py-2 text-sm"/>
       </div>
-      <p v-if="dlg.err" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
+      <p v-if="dlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">
         <Button variant="outline" @click="dlg = null" class="flex-1 justify-center">{{ t('ui.storage.DeviceMountDialog.cancel') }}</Button>
         <Button @click="doMount" :disabled="!dlg.mp || dlg.busy || (dlg.access === 'user' && !dlg.ownerUserId)"

@@ -51,7 +51,7 @@ async function reset() {
 <template>
   <Modal panel-class="w-full max-w-sm" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground">{{ t('ui.desktop.WallpaperPicker.changeWallpaper') }}</h3>
+      <h3 class="text-sm font-semibold text-base-content">{{ t('ui.desktop.WallpaperPicker.changeWallpaper') }}</h3>
     </template>
 
     <div class="p-6 space-y-5">
@@ -70,7 +70,7 @@ async function reset() {
           <input
             v-model="customColor"
             type="color"
-            class="w-8 h-8 rounded-lg border border-input cursor-pointer"
+            class="w-8 h-8 rounded-lg border border-base-300 cursor-pointer"
             @change="pickColor(customColor)"
           />
         </div>
@@ -79,7 +79,7 @@ async function reset() {
       <div>
         <p class="eyebrow mb-2">{{ t('ui.desktop.WallpaperPicker.image') }}</p>
         <Button variant="outline" size="sm"
-          class="w-full bg-muted text-foreground/80"
+          class="w-full bg-base-200 text-base-content/80"
           @click="fileInput?.click()"
         >
           {{ t('ui.desktop.WallpaperPicker.uploadImage') }}
@@ -92,7 +92,7 @@ async function reset() {
 
     <template #footer>
       <Button variant="ghost" size="sm"
-        class="text-foreground/80"
+        class="text-base-content/80"
         @click="reset"
       >
         {{ t('ui.desktop.WallpaperPicker.resetToDefault') }}

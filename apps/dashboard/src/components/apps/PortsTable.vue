@@ -63,7 +63,7 @@ async function runChecks() {
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
         class="w-24 px-2 py-1.5 text-sm"
       />
-      <span class="text-muted-foreground text-sm">:</span>
+      <span class="text-base-content/70 text-sm">:</span>
       <Input
         type="number" :placeholder="t('ui.apps.PortsTable.container')" min="1" max="65535"
         :model-value="item.containerPort"
@@ -86,14 +86,14 @@ async function runChecks() {
 
       <!-- Optional access binding: where this port is reached publicly. -->
       <div class="flex items-center gap-2 flex-wrap pl-1">
-        <span class="text-2xs uppercase tracking-caps text-muted-foreground w-14 shrink-0">{{ t('ui.apps.PortsTable.access') }}</span>
+        <span class="text-2xs uppercase tracking-caps text-base-content/70 w-14 shrink-0">{{ t('ui.apps.PortsTable.access') }}</span>
         <Input
           type="text" :placeholder="t('ui.apps.PortsTable.domainOptionalEGApp')"
           :model-value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
           class="flex-1 min-w-[12rem] px-2 py-1 text-xs"
         />
-        <label class="inline-flex items-center gap-1 text-xs text-foreground/80 cursor-pointer select-none">
+        <label class="inline-flex items-center gap-1 text-xs text-base-content/80 cursor-pointer select-none">
           <Checkbox :model-value="!!item.tls" @update:model-value="update({ tls: $event === true })" />
           HTTPS
         </label>

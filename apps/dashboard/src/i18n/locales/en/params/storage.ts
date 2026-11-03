@@ -6,6 +6,7 @@ export default {
   LvmSection: {
     volumeGroup: '{p0} volume group{p1}',
     free: '· {p0} free',
+    freeSpace: '{p0} free',
     willDestroyAllLogicalVolume: 'will destroy all {p0} Logical Volume(s) and their data.',
   },
   VolumePage: {
@@ -42,6 +43,7 @@ export default {
     lvm: 'LVM {p0} →',
   },
   RaidSection: {
+    arrayCount: '{count} array | {count} arrays',
     lvm: 'LVM {p0} →',
     emptySlotAddAReplacement: '{p0} empty slot{p1}: add a replacement disk to restore redundancy.',
     free: '{p0} free · {p1}%',
@@ -52,6 +54,7 @@ export default {
     unusedOnDevDrivesAre: '{p0} unused on /dev/{p1} (drives are used at the size of the smallest one)',
     requiresAtLeastDrivesSelected: '{p0} requires at least {p1} drives ({p2} selected).',
     usableOfRaw: '{p0} usable of {p1} raw ({p2}%)',
+    drivesActive: '{p0}/{p1} drives',
   },
   StoragePanel: {
     someStorageToolsAreNot: 'Some storage tools are not installed on the server, so these features are unavailable: {p0}.',

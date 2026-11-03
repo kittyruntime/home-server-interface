@@ -87,7 +87,7 @@ function onPanelKeydown(event: KeyboardEvent) {
 }
 
 const panelClasses = computed(() => cn(
-  'pointer-events-auto flex flex-col bg-base-100 text-foreground border outline-none',
+  'pointer-events-auto flex flex-col bg-base-100 text-base-content border outline-none',
   inWindow.value
     ? 'rounded-xl shadow-lg max-h-[90%]'
     : 'modal-box p-0 max-h-[92dvh] sm:max-h-[90dvh]',
@@ -140,7 +140,7 @@ defineExpose({ requestClose })
               v-if="showClose"
               variant="ghost"
               size="icon-sm"
-              class="shrink-0 text-muted-foreground"
+              class="shrink-0 text-base-content/70"
               :tooltip="t('ui.shared.Modal.close')"
               :aria-label="t('ui.shared.Modal.closeDialog')"
               :disabled="preventClose"

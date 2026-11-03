@@ -13,11 +13,12 @@
           var theme = null
           var raw = localStorage.getItem('appearance')
           if (raw !== null) {
-            var a = JSON.parse(raw)
-            if (a && typeof a.theme === 'string') theme = a.theme
-          } else {
-            theme = localStorage.getItem('theme')
+            try {
+              var a = JSON.parse(raw)
+              if (a && typeof a.theme === 'string') theme = a.theme
+            } catch (e) { /* malformed: use the legacy key */ }
           }
+          if (theme === null) theme = localStorage.getItem('theme')
           if (theme && theme !== 'auto' && /^[a-z]+$/.test(theme)) root.setAttribute('data-theme', theme)
           var vars = JSON.parse(localStorage.getItem('appearance-vars') || '{}')
           for (var k in vars) {

@@ -130,12 +130,12 @@ function setStandardPorts(enabled: boolean) {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ $t('ui.settings.SecureAccessSection.secureAccess') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">{{ $t('ui.settings.SecureAccessSection.serveHsiOverHttpsSo') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ $t('ui.settings.SecureAccessSection.secureAccess') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">{{ $t('ui.settings.SecureAccessSection.serveHsiOverHttpsSo') }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
     <ErrorState v-else-if="loadError" :message="loadError" :retry-label="$t('ui.settings.SecureAccessSection.retry')" compact @retry="load" />
-    <p v-else-if="restarting" role="status" class="status-text text-foreground/80">{{ $t('ui.settings.SecureAccessSection.restartingHsi') }}</p>
+    <p v-else-if="restarting" role="status" class="status-text text-base-content/80">{{ $t('ui.settings.SecureAccessSection.restartingHsi') }}</p>
 
     <template v-else-if="status">
       <!-- Status -->
@@ -143,37 +143,37 @@ function setStandardPorts(enabled: boolean) {
         <div class="eyebrow mb-3">{{ $t('ui.settings.SecureAccessSection.status') }}</div>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.mode') }}</span>
-            <span class="text-foreground">{{ modeLabel(status.mode) }}</span>
+            <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.mode') }}</span>
+            <span class="text-base-content">{{ modeLabel(status.mode) }}</span>
           </div>
           <div class="flex justify-between gap-4">
-            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.port') }}</span>
-            <span class="text-foreground tabular-nums">
+            <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.port') }}</span>
+            <span class="text-base-content tabular-nums">
               {{ status.port }}<template v-if="status.standardPorts">{{ $t('ui.settings.SecureAccessSection.also443With80Redirecting') }}</template>
             </span>
           </div>
           <template v-if="status.certificate">
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.names') }}</span>
-              <span class="text-foreground text-right break-all">{{ status.certificate.names.join(', ') }}</span>
+              <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.names') }}</span>
+              <span class="text-base-content text-right break-all">{{ status.certificate.names.join(', ') }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.issuer') }}</span>
-              <span class="text-foreground text-right break-all">{{ status.certificate.issuer }}</span>
+              <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.issuer') }}</span>
+              <span class="text-base-content text-right break-all">{{ status.certificate.issuer }}</span>
             </div>
             <div class="flex justify-between gap-4">
-              <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.certificate') }}</span>
-              <span class="text-foreground tabular-nums">expires {{ ymd(status.certificate.notAfter) }}</span>
+              <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.certificate') }}</span>
+              <span class="text-base-content tabular-nums">expires {{ ymd(status.certificate.notAfter) }}</span>
             </div>
           </template>
           <div v-if="status.authorityFingerprint">
-            <span class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.authorityFingerprint') }}</span>
-            <p class="font-mono break-all text-xs text-foreground/80 mt-1">{{ status.authorityFingerprint }}</p>
+            <span class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.authorityFingerprint') }}</span>
+            <p class="font-mono break-all text-xs text-base-content/80 mt-1">{{ status.authorityFingerprint }}</p>
           </div>
         </div>
         <p v-if="expiry?.level === 'soon'" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ $t('uip.settings.SecureAccessSection.theCertificateExpiresInDays', { p0: expiry.days }) }}</p>
-        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ $t('ui.settings.SecureAccessSection.theCertificateHasExpired') }}</p>
-        <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-muted-foreground">
+        <p v-else-if="expiry?.level === 'expired'" role="alert" class="mt-3 status-text text-error"><span class="status-tag">[ERR]</span> {{ $t('ui.settings.SecureAccessSection.theCertificateHasExpired') }}</p>
+        <p v-if="status.mode === 'proxy' && status.nginxSite" class="mt-3 text-xs text-base-content/70">
           {{ $t('ui.settings.SecureAccessSection.thisServerStillHasThe') }}
         </p>
       </Card>
@@ -189,28 +189,28 @@ function setStandardPorts(enabled: boolean) {
         </div>
 
         <form v-if="form === 'import'" class="mt-4 space-y-3" @submit.prevent="submitImport">
-          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.certificateOrFullChain') }}
+          <label class="block text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.certificateOrFullChain') }}
             <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('cert', $event)" />
           </label>
-          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.privateKeyOptionalWhenIt') }}
+          <label class="block text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.privateKeyOptionalWhenIt') }}
             <Input type="file" accept=".pem,.crt,.key" class="mt-1 text-sm" @change="onFile('key', $event)" />
           </label>
           <Button size="sm" type="submit">{{ $t('ui.settings.SecureAccessSection.reviewImport') }}</Button>
         </form>
 
         <form v-if="form === 'proxy'" class="mt-4 space-y-3" @submit.prevent="submitProxy">
-          <label class="block text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.trustedProxiesOnePerLine') }}
+          <label class="block text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.trustedProxiesOnePerLine') }}
             <Textarea v-model="proxies" rows="3" class="mt-1 w-full font-mono text-sm" />
           </label>
-          <p class="text-xs text-muted-foreground">{{ $t('ui.settings.SecureAccessSection.leaveEmptyWhenTheProxy') }}</p>
+          <p class="text-xs text-base-content/70">{{ $t('ui.settings.SecureAccessSection.leaveEmptyWhenTheProxy') }}</p>
           <Button size="sm" type="submit">{{ $t('ui.settings.SecureAccessSection.reviewChange') }}</Button>
         </form>
 
         <p v-for="w in warnings" :key="w" class="mt-3 status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
-        <p v-if="actionError" role="alert" class="mt-3 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ actionError }}</p>
+        <p v-if="actionError" role="alert" class="mt-3 status-text text-error"><span class="status-tag">[ERR]</span> {{ actionError }}</p>
 
         <div v-if="isHttps" class="mt-4 flex items-center justify-between gap-4">
-          <span class="text-sm text-foreground/80">{{ $t('ui.settings.SecureAccessSection.alsoServeOnPorts443') }}</span>
+          <span class="text-sm text-base-content/80">{{ $t('ui.settings.SecureAccessSection.alsoServeOnPorts443') }}</span>
           <Switch :model-value="status.standardPorts" @update:model-value="setStandardPorts" />
         </div>
       </Card>
@@ -218,13 +218,13 @@ function setStandardPorts(enabled: boolean) {
       <!-- Trust the authority -->
       <Card v-if="status.authorityFingerprint" class="block gap-0 py-0 overflow-hidden p-5">
         <div class="eyebrow mb-3">{{ $t('ui.settings.SecureAccessSection.trustTheAuthority') }}</div>
-        <p class="text-xs text-muted-foreground mb-3">{{ $t('ui.settings.SecureAccessSection.installTheAuthorityCertificateOn') }}</p>
+        <p class="text-xs text-base-content/70 mb-3">{{ $t('ui.settings.SecureAccessSection.installTheAuthorityCertificateOn') }}</p>
         <Button as="a" variant="outline" size="sm" href="/ca.crt" download>{{ $t('ui.settings.SecureAccessSection.downloadTheAuthorityCertificate') }}</Button>
         <details class="mt-3">
-          <summary class="cursor-pointer text-sm text-foreground/80">{{ $t('ui.settings.SecureAccessSection.howToTrustItOn') }}</summary>
+          <summary class="cursor-pointer text-sm text-base-content/80">{{ $t('ui.settings.SecureAccessSection.howToTrustItOn') }}</summary>
           <ul class="mt-2 space-y-2">
-            <li v-for="t in TRUST_STEPS" :key="t.os" class="text-xs text-muted-foreground">
-              <span class="font-semibold text-foreground">{{ t.os }}.</span> {{ t.steps }}
+            <li v-for="t in TRUST_STEPS" :key="t.os" class="text-xs text-base-content/70">
+              <span class="font-semibold text-base-content">{{ t.os }}.</span> {{ t.steps }}
             </li>
           </ul>
         </details>

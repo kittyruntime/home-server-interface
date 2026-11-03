@@ -63,8 +63,8 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.AlertingSection.alertThresholds') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.settings.AlertingSection.alertThresholds') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">
       {{ t('ui.settings.AlertingSection.backgroundHealthChecksSampledEvery') }}
     </p>
 
@@ -73,34 +73,34 @@ onMounted(load)
 
     <Card v-else class="block gap-0 py-0 overflow-hidden p-5 max-w-xl">
       <p class="eyebrow mb-4">{{ t('ui.settings.AlertingSection.diskUsage') }}</p>
-      <p class="text-xs text-muted-foreground mb-4">
+      <p class="text-xs text-base-content/70 mb-4">
         {{ t('ui.settings.AlertingSection.eachPlaceSFilesystemIs') }}
       </p>
       <div class="flex flex-wrap gap-6">
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-muted-foreground">{{ t('ui.settings.AlertingSection.warningAt') }}</span>
+          <span class="text-xs text-base-content/70">{{ t('ui.settings.AlertingSection.warningAt') }}</span>
           <div class="flex items-center gap-1.5">
             <Input
               v-model.number="form.diskUsageWarningPercent"
               type="number" min="1" max="99"
               class="w-16 px-2 py-1.5 text-sm tabular-nums"
              />
-            <span class="text-sm text-muted-foreground">%</span>
+            <span class="text-sm text-base-content/70">%</span>
           </div>
         </label>
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs text-muted-foreground">{{ t('ui.settings.AlertingSection.criticalAt') }}</span>
+          <span class="text-xs text-base-content/70">{{ t('ui.settings.AlertingSection.criticalAt') }}</span>
           <div class="flex items-center gap-1.5">
             <Input
               v-model.number="form.diskUsageCriticalPercent"
               type="number" min="1" max="99"
               class="w-16 px-2 py-1.5 text-sm tabular-nums"
              />
-            <span class="text-sm text-muted-foreground">%</span>
+            <span class="text-sm text-base-content/70">%</span>
           </div>
         </label>
       </div>
-      <p v-if="saveError" role="alert" class="mt-4 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="mt-4 status-text text-error"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
       <p v-else-if="saved && !dirty" class="text-xs text-success mt-4">{{ t('ui.settings.AlertingSection.saved') }}</p>
       <div class="mt-4">
         <Button size="sm"

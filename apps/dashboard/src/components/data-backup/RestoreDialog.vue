@@ -180,7 +180,7 @@ onUnmounted(() => {
 <template>
   <Modal panel-class="w-full max-w-3xl" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground truncate">{{ t('uip.backups.RestoreDialog.restoreFrom', { p0: repository.name }) }}</h3>
+      <h3 class="text-sm font-semibold text-base-content truncate">{{ t('uip.backups.RestoreDialog.restoreFrom', { p0: repository.name }) }}</h3>
     </template>
 
     <div class="px-5 py-4 space-y-4">
@@ -189,15 +189,15 @@ onUnmounted(() => {
         <LoadingState v-if="loading" variant="compact" />
         <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.backups.RestoreDialog.retry')" compact @retry="load" />
         <EmptyState v-else-if="!snapshots.length" :message="t('ui.backups.RestoreDialog.noSnapshotYet')" />
-        <ul v-else class="divide-y divide-border rounded-xl border border-border">
+        <ul v-else class="divide-y divide-base-300 rounded-xl border border-base-300">
           <li v-for="s in snapshots" :key="s.id">
-            <Item as="button" size="sm" class="block w-full min-w-0 rounded-none px-3 py-2 text-left hover:bg-muted" @click="pick(s)">
+            <Item as="button" size="sm" class="block w-full min-w-0 rounded-none px-3 py-2 text-left hover:bg-base-200" @click="pick(s)">
               <span class="flex flex-wrap items-center gap-2">
-                <span class="text-sm text-foreground">{{ formatDateTime(s.time) }}</span>
-                <span class="text-xs text-foreground/80">{{ planName(s) }}</span>
+                <span class="text-sm text-base-content">{{ formatDateTime(s.time) }}</span>
+                <span class="text-xs text-base-content/80">{{ planName(s) }}</span>
                 <Tip v-if="!s.consistent" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning">{{ t('ui.backups.RestoreDialog.inconsistent') }}</Badge></Tip>
               </span>
-              <span class="mt-1 block break-all font-mono text-2xs text-muted-foreground">{{ s.paths.join(', ') }}</span>
+              <span class="mt-1 block break-all font-mono text-2xs text-base-content/70">{{ s.paths.join(', ') }}</span>
             </Item>
           </li>
         </ul>
@@ -206,7 +206,7 @@ onUnmounted(() => {
       <!-- Tree and target -->
       <template v-else-if="!running && !result && !unknown">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs text-foreground/80">{{ formatDateTime(snapshot.time) }} · {{ planName(snapshot) }}</p>
+          <p class="text-xs text-base-content/80">{{ formatDateTime(snapshot.time) }} · {{ planName(snapshot) }}</p>
           <Button variant="ghost" size="xs" @click="back">{{ t('ui.backups.RestoreDialog.otherSnapshot') }}</Button>
         </div>
 
@@ -224,15 +224,15 @@ onUnmounted(() => {
 
         <ErrorState v-if="listError" :message="listError" :retry-label="t('ui.backups.RestoreDialog.retry')" compact @retry="open(dir)" />
         <LoadingState v-else-if="listing && !entries.length" variant="compact" />
-        <div v-else class="rounded-xl border border-border">
-          <Button v-if="dir !== root" variant="ghost" size="sm" class="w-full justify-start rounded-none rounded-t-xl px-3 text-xs font-normal text-foreground/80" @click="open(parentPath(dir))">..</Button>
+        <div v-else class="rounded-xl border border-base-300">
+          <Button v-if="dir !== root" variant="ghost" size="sm" class="w-full justify-start rounded-none rounded-t-xl px-3 text-xs font-normal text-base-content/80" @click="open(parentPath(dir))">..</Button>
           <EmptyState v-if="!entries.length" :message="t('ui.backups.RestoreDialog.thisFolderIsEmpty')" />
-          <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-border" :class="{ 'opacity-60': listing }">
+          <RadioGroup v-else v-model="selected" as="ul" class="gap-0 divide-y divide-base-300" :class="{ 'opacity-60': listing }">
             <li v-for="e in entries" :key="e.path" class="flex min-w-0 items-center gap-2 px-3 py-2">
               <RadioGroupItem :value="e.path" :aria-label="`Select ${e.name}`" class="shrink-0" />
-              <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 min-w-0 break-all text-left text-foreground" @click="open(e.path)">{{ e.name }}/</Button>
-              <span v-else class="min-w-0 break-all text-sm text-foreground">{{ e.name }}</span>
-              <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-muted-foreground">{{ bytesLabel(e.size) }}</span>
+              <Button variant="link" v-if="e.type === 'dir'" class="h-auto p-0 min-w-0 break-all text-left text-base-content" @click="open(e.path)">{{ e.name }}/</Button>
+              <span v-else class="min-w-0 break-all text-sm text-base-content">{{ e.name }}</span>
+              <span v-if="e.type !== 'dir'" class="ml-auto shrink-0 text-2xs tabular-nums text-base-content/70">{{ bytesLabel(e.size) }}</span>
             </li>
           </RadioGroup>
         </div>
@@ -240,11 +240,11 @@ onUnmounted(() => {
         <fieldset class="space-y-2">
           <legend class="eyebrow mb-1">{{ t('ui.backups.RestoreDialog.restoreTo') }}</legend>
           <RadioGroup :model-value="target" class="gap-2" @update:model-value="value => chooseTarget(value === 'original' ? 'original' : 'new')">
-            <label class="flex items-start gap-2 text-sm text-foreground">
+            <label class="flex items-start gap-2 text-sm text-base-content">
               <RadioGroupItem value="new" class="mt-0.5" />
               <span>{{ t('ui.backups.RestoreDialog.intoANewFolderRecommended') }}</span>
             </label>
-            <label class="flex items-start gap-2 text-sm text-foreground">
+            <label class="flex items-start gap-2 text-sm text-base-content">
               <RadioGroupItem value="original" class="mt-0.5" />
               <span>{{ t('ui.backups.RestoreDialog.overTheOriginalLocation') }}</span>
             </label>
@@ -253,13 +253,13 @@ onUnmounted(() => {
 
         <Alert variant="warning" v-if="target === 'original'" class="block space-y-2 p-3" role="note">
           <p class="text-xs text-warning">{{ t('ui.backups.RestoreDialog.filesWithTheSameName') }}</p>
-          <label class="flex items-start gap-2 text-sm text-foreground">
+          <label class="flex items-start gap-2 text-sm text-base-content">
             <Checkbox v-model="confirmOverwrite" class="mt-0.5" />
             <span>{{ t('ui.backups.RestoreDialog.replaceTheCurrentFiles') }}</span>
           </label>
-          <p v-if="confirmError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>
+          <p v-if="confirmError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ confirmError }}</p>
         </Alert>
-        <p v-if="restoreError" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
+        <p v-if="restoreError" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
 
         <div class="flex justify-end gap-2">
           <Button variant="ghost" size="sm" @click="emit('close')">{{ t('ui.backups.RestoreDialog.close') }}</Button>
@@ -271,17 +271,17 @@ onUnmounted(() => {
 
       <!-- Progress -->
       <template v-else-if="running">
-        <p class="text-sm text-foreground">{{ t('uip.backups.RestoreDialog.restoring', { p0: progress !== null ? `, ${Math.round(progress * 100)}%` : '' }) }}</p>
-        <Progress class="h-2 rounded-full bg-muted" :model-value="Math.round((progress ?? 0) * 100)" indicator-class="bg-primary transition-all" />
+        <p class="text-sm text-base-content">{{ t('uip.backups.RestoreDialog.restoring', { p0: progress !== null ? `, ${Math.round(progress * 100)}%` : '' }) }}</p>
+        <Progress class="h-2 rounded-full bg-base-200" :model-value="Math.round((progress ?? 0) * 100)" indicator-class="bg-primary transition-all" />
       </template>
 
       <p v-else-if="unknown" role="alert" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ t('ui.backups.RestoreDialog.theStatusOfThisRestore') }}</p>
 
       <!-- Result -->
       <template v-else-if="result">
-        <p v-if="result.status === 'failed'" role="alert" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
+        <p v-if="result.status === 'failed'" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ result.error || 'The restore failed' }}</p>
         <p v-else class="text-sm text-success">{{ t('uip.backups.RestoreDialog.filesRestored', { p0: result.files ?? 0 }) }}</p>
-        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-foreground/80">{{ t('ui.backups.RestoreDialog.restoredTo') }} <span class="font-mono">{{ result.target }}</span></p>
+        <p v-if="result.status === 'success' && result.target" class="break-all text-xs text-base-content/80">{{ t('ui.backups.RestoreDialog.restoredTo') }} <span class="font-mono">{{ result.target }}</span></p>
         <div v-if="result.warnings?.length">
           <p class="eyebrow mb-1">{{ t('ui.backups.RestoreDialog.notRestoredAsSavedOn') }}</p>
           <p v-for="w in result.warnings" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>

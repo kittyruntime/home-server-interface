@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interface in Settings. Your choices follow your account.
 
 ### Changed
+- **Menus, popovers and tooltips fade out when they close**: they mirror the
+  entry animation instead of vanishing, and stay inert while they do, so Esc,
+  focus and clicks behave as if they were already gone.
 - **Interface colors now follow a theme palette**: every screen reads its
   colors from daisyUI themes instead of fixed light and dark values. The
   default primary color changes with it, and the rest of the interface moves
@@ -39,6 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sections, the places and settings sidebars, toasts, desktop windows, the
   dock and the launchpad take their colors and corner roundness from the
   active theme. Closing a window now highlights in the error color.
+- **The interface no longer depends on shadcn-vue or Reka UI**: every
+  component is now built on daisyUI. Menus, popovers and tooltips share one short fade-in that follows
+  the reduced motion setting.
+- **Colored text stays readable in every theme**: success, warning, error and
+  link text is drawn closer to the theme's text color, so labels no longer
+  fade out on light themes or on wireframe and black. The storage volume
+  list headers line up with their columns, and the storage badges use the
+  theme palette.
+- **Storage and sharing dialogs are translated**: the logical volume and RAID
+  screens, the format wizard and the share link dialog no longer show English
+  in a French interface (step names, action and busy labels, RAID level
+  descriptions, share options). Inactive dock icons are easier to read, the focused
+  window has a stronger outline and chart tooltips follow the theme.
 
 ## [1.78.4] - 2026-11-02
 

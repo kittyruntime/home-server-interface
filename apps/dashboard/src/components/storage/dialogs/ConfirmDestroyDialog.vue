@@ -33,26 +33,26 @@ const canConfirm = computed(() =>
 
 <template>
   <Modal :label="title" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!busy" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-border bg-destructive/5">
-      <h3 class="font-semibold text-destructive">{{ title }}</h3>
-      <p v-if="subtitle" class="text-xs text-muted-foreground mt-0.5">{{ subtitle }}</p>
+    <div class="px-5 py-4 border-b border-base-300 bg-error/5">
+      <h3 class="font-semibold text-error">{{ title }}</h3>
+      <p v-if="subtitle" class="text-xs text-base-content/70 mt-0.5">{{ subtitle }}</p>
     </div>
     <div class="p-5 space-y-4">
       <Alert variant="destructive" class="flex items-start gap-2 p-3 text-xs" role="note">
         <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
         <span><slot name="warning" /></span>
       </Alert>
-      <div class="space-y-1 text-xs text-muted-foreground">
+      <div class="space-y-1 text-xs text-base-content/70">
         <slot name="details" />
       </div>
       <div v-if="confirmWord != null">
-        <label class="block text-xs text-foreground/80 mb-1.5">
-          {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-mono font-bold text-foreground">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
+        <label class="block text-xs text-base-content/80 mb-1.5">
+          {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-mono font-bold text-base-content">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
         </label>
         <Input v-model="typed" type="text" :placeholder="confirmWord"
-          class="w-full px-3 py-2 text-sm font-mono placeholder-muted-foreground"/>
+          class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"/>
       </div>
-      <p v-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+      <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div class="flex gap-2">
         <Button variant="outline" @click="emit('close')" class="flex-1 justify-center">{{ t('ui.storage.ConfirmDestroyDialog.cancel') }}</Button>
         <Button variant="destructive" @click="emit('confirm')" :disabled="!canConfirm"

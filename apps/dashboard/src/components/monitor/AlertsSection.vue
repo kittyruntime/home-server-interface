@@ -90,18 +90,18 @@ onMounted(load)
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.AlertsSection.alerts') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.monitor.AlertsSection.alerts') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">
       {{ t('ui.monitor.AlertsSection.backgroundHealthChecksSampledEvery') }}
-      <Button variant="link" @click="openApp('settings', 'alerting')" class="h-auto p-0 hover:text-foreground">{{ t('ui.monitor.AlertsSection.settingsAlertThresholds') }}</Button>.
+      <Button variant="link" @click="openApp('settings', 'alerting')" class="h-auto p-0 hover:text-base-content">{{ t('ui.monitor.AlertsSection.settingsAlertThresholds') }}</Button>.
     </p>
 
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.monitor.AlertsSection.retry')" @retry="load" />
 
     <Card v-else class="block gap-0 py-0 shadow-none overflow-hidden">
-      <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
-        <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+      <div class="px-4 py-3 border-b border-base-300 flex items-center justify-between gap-3">
+        <span class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">
           {{ t('uip.monitor.AlertsSection.active', { p0: filteredAlerts.length }) }}
         </span>
         <div class="flex items-center gap-3">
@@ -121,22 +121,22 @@ onMounted(load)
           </Button>
         </div>
       </div>
-      <p v-if="clearError" role="alert" class="px-4 py-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ clearError }}</p>
-      <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-muted-foreground text-center">
+      <p v-if="clearError" role="alert" class="px-4 py-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ clearError }}</p>
+      <div v-if="!filteredAlerts.length" class="px-4 py-6 text-sm text-base-content/70 text-center">
         {{ t('ui.monitor.AlertsSection.noActiveAlerts') }}
       </div>
-      <div v-else class="divide-y divide-border">
+      <div v-else class="divide-y divide-base-300">
         <div v-for="a in filteredAlerts" :key="a.id" class="px-4 py-3 flex items-start gap-3">
           <span
             class="mt-1 w-1.5 h-1.5 rounded-full shrink-0"
-            :class="isCritical(a) ? 'bg-destructive' : 'bg-warning'"
+            :class="isCritical(a) ? 'bg-error' : 'bg-warning'"
           />
           <div class="min-w-0 flex-1">
-            <div class="text-sm text-foreground font-mono truncate">{{ a.target }}</div>
-            <div class="text-xs text-muted-foreground mt-0.5">{{ a.message }}</div>
+            <div class="text-sm text-base-content font-mono truncate">{{ a.target }}</div>
+            <div class="text-xs text-base-content/70 mt-0.5">{{ a.message }}</div>
           </div>
-          <span class="text-2xs uppercase tracking-caps text-muted-foreground shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
-          <div class="text-2xs text-muted-foreground shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
+          <span class="text-2xs uppercase tracking-caps text-base-content/70 shrink-0 mt-0.5">{{ a.source.split('.')[0] }}</span>
+          <div class="text-2xs text-base-content/70 shrink-0 tabular-nums">{{ formatDateTime(a.lastSeenAt) }}</div>
           <Button variant="ghost" size="xs" type="button" class="shrink-0 -my-0.5" :tooltip="t('ui.monitor.AlertsSection.clearThisAlert')" @click="clearOne(a)">{{ t('ui.monitor.AlertsSection.clear') }}</Button>
         </div>
       </div>

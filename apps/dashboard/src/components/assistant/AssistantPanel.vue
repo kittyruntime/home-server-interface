@@ -322,10 +322,10 @@ onBeforeUnmount(() => {
   <div v-else-if="!assistantAvailable || configuring" class="h-full overflow-auto p-4 sm:p-6">
     <div class="mx-auto max-w-xl space-y-4">
       <div v-if="!configuring" class="flex items-start gap-3">
-        <BotIcon class="mt-0.5 size-5 shrink-0 text-violet" aria-hidden="true" />
+        <BotIcon class="mt-0.5 size-5 shrink-0 text-secondary" aria-hidden="true" />
         <div>
-          <h2 class="text-base font-semibold text-foreground">{{ t('assistant.setupTitle') }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ isAdmin ? t('assistant.setupAdmin') : t('assistant.setupUser') }}</p>
+          <h2 class="text-base font-semibold text-base-content">{{ t('assistant.setupTitle') }}</h2>
+          <p class="mt-1 text-sm text-base-content/70">{{ isAdmin ? t('assistant.setupAdmin') : t('assistant.setupUser') }}</p>
         </div>
       </div>
       <Button v-if="configuring" size="sm" variant="ghost" @click="configuring = false">
@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
   <div v-else class="relative flex h-full min-h-0">
     <!-- Conversations -->
     <aside
-      :class="[listOpen ? 'flex' : 'hidden', 'md:flex absolute inset-0 z-10 md:static w-full md:w-60 shrink-0 flex-col border-r bg-muted md:bg-muted/40']"
+      :class="[listOpen ? 'flex' : 'hidden', 'md:flex absolute inset-0 z-10 md:static w-full md:w-60 shrink-0 flex-col border-r bg-base-200 md:bg-base-200/40']"
       :aria-label="t('assistant.conversations')"
     >
       <div class="flex items-center gap-2 p-2">
@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
         </Button>
       </div>
       <nav class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        <p v-if="!conversations.length" class="px-2 py-3 text-xs text-muted-foreground">{{ t('assistant.noConversations') }}</p>
+        <p v-if="!conversations.length" class="px-2 py-3 text-xs text-base-content/70">{{ t('assistant.noConversations') }}</p>
         <div
           v-for="c in conversations" :key="c.id"
           class="group flex items-center rounded-md"
@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
             class="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm"
             :aria-current="c.id === currentId ? 'true' : undefined"
             @click="open(c.id)"
-          ><LoaderCircleIcon v-if="c.running" class="mr-1.5 inline size-3 animate-spin text-muted-foreground" :aria-label="t('assistant.running')" />{{ c.title || t('assistant.untitled') }}</button>
+          ><LoaderCircleIcon v-if="c.running" class="mr-1.5 inline size-3 animate-spin text-base-content/70" :aria-label="t('assistant.running')" />{{ c.title || t('assistant.untitled') }}</button>
           <Button
             size="icon-sm" variant="ghost"
             class="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
@@ -397,19 +397,19 @@ onBeforeUnmount(() => {
 
           <template v-for="(item, i) in items" :key="i">
             <div v-if="item.kind === 'user'" class="flex justify-end">
-              <p class="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ item.text }}</p>
+              <p class="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-4 py-2 text-sm text-primary-content">{{ item.text }}</p>
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -- escaped by renderMarkdown -->
-            <div v-else-if="item.kind === 'assistant'" class="assistant-md text-sm text-foreground" v-html="renderMarkdown(item.text)" />
-            <div v-else-if="item.kind === 'tool'" class="flex items-center gap-2 text-xs text-muted-foreground">
+            <div v-else-if="item.kind === 'assistant'" class="assistant-md text-sm text-base-content" v-html="renderMarkdown(item.text)" />
+            <div v-else-if="item.kind === 'tool'" class="flex items-center gap-2 text-xs text-base-content/70">
               <LoaderCircleIcon v-if="item.ok === null && streaming" class="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
               <CheckIcon v-else-if="item.ok !== false" class="size-3.5 shrink-0 text-success" aria-hidden="true" />
-              <CircleAlertIcon v-else class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
+              <CircleAlertIcon v-else class="size-3.5 shrink-0 text-error" aria-hidden="true" />
               <WrenchIcon class="size-3 shrink-0" aria-hidden="true" />
               <span :title="item.name">{{ toolLabel(item.name) }}</span>
               <span v-if="toolTarget(item.args)" class="min-w-0 truncate font-mono" :title="toolTarget(item.args)">{{ toolTarget(item.args) }}</span>
             </div>
-            <p v-else-if="item.kind === 'event'" class="text-center text-2xs text-muted-foreground">{{ item.text }}</p>
+            <p v-else-if="item.kind === 'event'" class="text-center text-2xs text-base-content/70">{{ item.text }}</p>
             <template v-else-if="item.kind === 'approval'">
               <AgentRequestCard
                 v-if="actions[item.id]"
@@ -417,11 +417,11 @@ onBeforeUnmount(() => {
                 @decide="approve => decide(item.id, approve)"
               />
             </template>
-            <p v-else class="flex items-start gap-2 rounded-md border border-destructive/40 px-3 py-2 text-xs text-destructive">
+            <p v-else class="flex items-start gap-2 rounded-md border border-error/40 px-3 py-2 text-xs text-error">
               <CircleAlertIcon class="mt-px size-3.5 shrink-0" aria-hidden="true" /><span class="break-words">{{ item.text }}</span>
             </p>
           </template>
-          <div v-if="streaming && items[items.length - 1]?.kind !== 'assistant'" class="flex items-center gap-2 text-xs text-muted-foreground">
+          <div v-if="streaming && items[items.length - 1]?.kind !== 'assistant'" class="flex items-center gap-2 text-xs text-base-content/70">
             <LoaderCircleIcon class="size-3.5 animate-spin" aria-hidden="true" /> {{ t('assistant.thinking') }}
           </div>
         </div>
@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
             <ArrowUpIcon />
           </Button>
         </div>
-        <p class="mx-auto mt-1.5 flex max-w-3xl flex-wrap justify-between gap-x-4 gap-y-0.5 text-2xs text-muted-foreground">
+        <p class="mx-auto mt-1.5 flex max-w-3xl flex-wrap justify-between gap-x-4 gap-y-0.5 text-2xs text-base-content/70">
           <span>{{ t('assistant.disclaimer') }}</span>
           <span v-if="usageLine" class="tabular-nums">{{ usageLine }}</span>
         </p>
@@ -459,12 +459,12 @@ onBeforeUnmount(() => {
 .assistant-md :deep(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.5rem 0; }
 .assistant-md :deep(ol) { list-style: decimal; padding-left: 1.25rem; margin: 0.5rem 0; }
 .assistant-md :deep(li) { margin: 0.2rem 0; }
-.assistant-md :deep(code) { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.85em; background: var(--muted); border-radius: 0.25rem; padding: 0.05rem 0.3rem; }
-.assistant-md :deep(pre) { background: var(--muted); border-radius: 0.5rem; padding: 0.6rem 0.8rem; overflow-x: auto; margin: 0.5rem 0; }
+.assistant-md :deep(code) { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.85em; background: var(--color-base-200); border-radius: 0.25rem; padding: 0.05rem 0.3rem; }
+.assistant-md :deep(pre) { background: var(--color-base-200); border-radius: 0.5rem; padding: 0.6rem 0.8rem; overflow-x: auto; margin: 0.5rem 0; }
 .assistant-md :deep(pre code) { background: none; padding: 0; }
-.assistant-md :deep(a) { color: var(--primary); text-decoration: underline; }
+.assistant-md :deep(a) { color: var(--color-primary); text-decoration: underline; }
 .assistant-md :deep(.md-table) { overflow-x: auto; margin: 0.5rem 0; }
 .assistant-md :deep(table) { border-collapse: collapse; font-size: 0.85em; }
 .assistant-md :deep(th), .assistant-md :deep(td) { border: 1px solid var(--color-border); padding: 0.3rem 0.6rem; text-align: left; }
-.assistant-md :deep(th) { background: var(--muted); font-weight: 600; }
+.assistant-md :deep(th) { background: var(--color-base-200); font-weight: 600; }
 </style>

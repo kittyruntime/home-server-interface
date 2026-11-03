@@ -375,6 +375,6 @@ export function poller(
 
 /** Text colour of a runLabel tone. */
 export const TONE_CLASS: Record<ReturnType<typeof runLabel>['tone'], string> = {
-  ok: 'text-success', warn: 'text-warning', err: 'text-destructive', muted: 'text-muted-foreground',
+  ok: 'text-success', warn: 'text-warning', err: 'text-error', muted: 'text-base-content/70',
 }
 

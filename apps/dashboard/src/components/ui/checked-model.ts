@@ -8,9 +8,9 @@ type CheckedState = boolean | "indeterminate"
  * back after every change, so a parent that refuses the new value (or lets an
  * event handler decide) always sees the control reflect its own model.
  */
-export function useCheckedModel(
-  props: { modelValue?: CheckedState, defaultValue?: CheckedState },
-  emit: (event: "update:modelValue", value: CheckedState) => void,
+export function useCheckedModel<T extends CheckedState = CheckedState>(
+  props: { modelValue?: T, defaultValue?: T },
+  emit: (event: "update:modelValue", value: T) => void,
   el: Ref<HTMLInputElement | null>,
 ) {
   const local = ref<CheckedState>(props.defaultValue ?? false)
@@ -28,9 +28,10 @@ export function useCheckedModel(
   onMounted(sync)
 
   function onChange(event: Event) {
+    // A native change event only ever yields true or false, never "indeterminate".
     const next = (event.target as HTMLInputElement).checked
     local.value = next
-    emit("update:modelValue", next)
+    emit("update:modelValue", next as T)
     nextTick(sync)
   }
 

@@ -93,17 +93,17 @@ const statusClass: Record<string, string> = {
   started: 'bg-info/10 text-info',
   running: 'bg-info/10 text-info',
   passed:  'bg-success/10 text-success',
-  skipped: 'bg-muted text-muted-foreground',
-  error:   'bg-destructive/10 text-destructive',
-  failed:  'bg-destructive/10 text-destructive',
+  skipped: 'bg-base-200 text-base-content/70',
+  error:   'bg-error/10 text-error',
+  failed:  'bg-error/10 text-error',
 }
 </script>
 
 <template>
   <div>
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-foreground">{{ $t('ui.storage.MaintenanceSection.maintenance') }}</h2>
-      <p class="text-sm text-muted-foreground mt-0.5">
+      <h2 class="text-lg font-semibold text-base-content">{{ $t('ui.storage.MaintenanceSection.maintenance') }}</h2>
+      <p class="text-sm text-base-content/70 mt-0.5">
         {{ $t('ui.storage.MaintenanceSection.scheduledDiskSelfTestsAnd') }}
       </p>
     </div>
@@ -112,7 +112,7 @@ const statusClass: Record<string, string> = {
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <template v-else-if="data && draft">
-      <Alert variant="warning" v-if="!data.timerInstalled" class="block mb-4 text-foreground" role="note">
+      <Alert variant="warning" v-if="!data.timerInstalled" class="block mb-4 text-base-content" role="note">
         {{ $t('ui.storage.MaintenanceSection.theMaintenanceTimerIsNot') }}
       </Alert>
 
@@ -120,9 +120,9 @@ const statusClass: Record<string, string> = {
         <Card v-for="t in TASKS" :key="t.id" class="block gap-0 py-0 shadow-none p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <h3 class="text-sm font-semibold text-foreground">{{ t.title }}</h3>
-              <p class="text-xs text-muted-foreground mt-0.5">{{ t.desc }}</p>
-              <p v-if="t.id === 'raidCheck'" class="text-2xs text-muted-foreground mt-1">
+              <h3 class="text-sm font-semibold text-base-content">{{ t.title }}</h3>
+              <p class="text-xs text-base-content/70 mt-0.5">{{ t.desc }}</p>
+              <p v-if="t.id === 'raidCheck'" class="text-2xs text-base-content/70 mt-1">
                 {{ $t('ui.storage.MaintenanceSection.ubuntuSMdadmPackageAlready') }}<code class="font-mono">mdcheck_start.timer</code>{{ $t('ui.storage.MaintenanceSection.ifYouScheduleOneHere') }} <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
               </p>
             </div>
@@ -139,42 +139,42 @@ const statusClass: Record<string, string> = {
               <NativeSelectOption value="monthly">{{ $t('ui.storage.MaintenanceSection.everyMonth') }}</NativeSelectOption>
             </NativeSelect>
             <template v-if="draft[t.id].every === 'weekly'">
-              <span class="text-muted-foreground">on</span>
+              <span class="text-base-content/70">on</span>
               <NativeSelect wrapper-class="!w-auto" v-model.number="draft[t.id].weekday" class="!py-1 text-xs">
                 <NativeSelectOption v-for="(d, i) in WEEKDAYS" :key="d" :value="i">{{ d }}</NativeSelectOption>
               </NativeSelect>
             </template>
             <template v-if="draft[t.id].every === 'monthly'">
-              <span class="text-muted-foreground">{{ $t('ui.storage.MaintenanceSection.onDay') }}</span>
+              <span class="text-base-content/70">{{ $t('ui.storage.MaintenanceSection.onDay') }}</span>
               <NativeSelect wrapper-class="!w-auto" v-model.number="draft[t.id].day" class="!py-1 text-xs">
                 <NativeSelectOption v-for="d in 28" :key="d" :value="d">{{ d }}</NativeSelectOption>
               </NativeSelect>
             </template>
             <template v-if="draft[t.id].every !== 'off'">
-              <span class="text-muted-foreground">at</span>
+              <span class="text-base-content/70">at</span>
               <NativeSelect wrapper-class="!w-auto" v-model.number="draft[t.id].hour" class="!py-1 text-xs">
                 <NativeSelectOption v-for="h in 24" :key="h" :value="h - 1">{{ String(h - 1).padStart(2, '0') }}:00</NativeSelectOption>
               </NativeSelect>
             </template>
           </div>
 
-          <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-muted-foreground @2xl:max-w-md">
-            <div>{{ $t('ui.storage.MaintenanceSection.lastRun') }} <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
-            <div>{{ $t('ui.storage.MaintenanceSection.nextRun') }} <span class="text-foreground/80">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
+          <div class="mt-3 grid grid-cols-2 gap-2 text-2xs text-base-content/70 @2xl:max-w-md">
+            <div>{{ $t('ui.storage.MaintenanceSection.lastRun') }} <span class="text-base-content/80">{{ fmtWhen(data.tasks[t.id].lastRun) }}</span></div>
+            <div>{{ $t('ui.storage.MaintenanceSection.nextRun') }} <span class="text-base-content/80">{{ fmtWhen(data.tasks[t.id].nextRun) }}</span></div>
           </div>
           <p v-if="data.tasks[t.id].postponed" class="mt-2 status-text text-warning">
             <span class="status-tag">[WARN]</span> {{ $t('uip.storage.MaintenanceSection.notRunAt', { p0: fmtWhen(data.tasks[t.id].postponed!.at), p1: data.tasks[t.id].postponed!.reason, p2: data.tasks[t.id].schedule.every === 'off' ? 'Run it again once that is over.' : 'HSI tries again every hour.' }) }}
           </p>
 
-          <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-border divide-y divide-border">
+          <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-base-300 divide-y divide-base-300">
             <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">
               <span class="shrink-0 rounded-sm px-1.5 py-0.5 font-semibold uppercase" :class="statusClass[r.status]">{{ r.status }}</span>
-              <span class="shrink-0 font-mono text-foreground">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
-              <span v-if="r.serial" class="shrink-0 text-muted-foreground">{{ r.serial }}</span>
-              <span class="min-w-0 break-words text-muted-foreground">{{ r.message }}</span>
+              <span class="shrink-0 font-mono text-base-content">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
+              <span v-if="r.serial" class="shrink-0 text-base-content/70">{{ r.serial }}</span>
+              <span class="min-w-0 break-words text-base-content/70">{{ r.message }}</span>
             </div>
           </div>
-          <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-muted-foreground">
+          <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-base-content/70">
             {{ $t('ui.storage.MaintenanceSection.eachDiskRunsItsTest') }}
           </p>
         </Card>

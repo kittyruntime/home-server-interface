@@ -1,5 +1,5 @@
 import type { Placement } from '@floating-ui/dom'
-import { inject, onBeforeUnmount, provide, shallowRef, useId, watch, type InjectionKey, type MaybeRefOrGetter, type Ref, type ShallowRef } from 'vue'
+import { inject, onBeforeUnmount, provide, ref, shallowRef, useId, watch, type InjectionKey, type MaybeRefOrGetter, type Ref, type ShallowRef } from 'vue'
 import { nextIndex, typeaheadIndex } from './menu-navigation'
 import { useAnchoredPopover, type PopoverAnchor } from './use-anchored-popover'
 
@@ -39,6 +39,22 @@ export interface RadioGroupContext {
 }
 export const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('menu-radio-group')
 
+/* A group names itself through the label rendered inside it. */
+export interface GroupContext {
+  labelId: Ref<string | undefined>
+}
+const groupKey: InjectionKey<GroupContext | null> = Symbol('menu-group')
+
+export function provideMenuGroup(): Ref<string | undefined> {
+  const labelId = ref<string>()
+  provide(groupKey, { labelId })
+  return labelId
+}
+
+export function useMenuGroupLabel(): GroupContext | null {
+  return inject(groupKey, null)
+}
+
 export function useMenu(init: { kind?: MenuContext['kind'], open: Ref<boolean>, isSub?: boolean }): MenuContext {
   const parent = inject(menuKey, null)
   const ctx: MenuContext = {
@@ -65,6 +81,8 @@ export function useMenu(init: { kind?: MenuContext['kind'], open: Ref<boolean>, 
   }
   ctx.root = init.isSub && parent ? parent.root : ctx
   provide(menuKey, ctx)
+  // A submenu is its own level: a label inside it must not name the group around its trigger.
+  if (ctx.isSub) provide(groupKey, null)
   return ctx
 }
 
@@ -108,6 +126,7 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     dismiss: true,
     captureEscape: true,
     closeOnFocusOutside: true,
+    exit: true,
     /* A right-click inside the trigger moves a context menu: its contextmenu
        event reopens it, so the press must not close it first. */
     ignorePointerdown: event =>
@@ -119,14 +138,17 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     },
     onClose: () => { ctx.open.value = false },
   })
-  const { floating, open, close, isOpen } = popover
+  const { floating, open, close, present } = popover
 
   ctx.closeContent = () => close()
   onBeforeUnmount(() => { clearTimeout(queryTimer); ctx.closeContent = null })
 
-  watch([ctx.open, ctx.anchor], ([value, anchor]) => {
-    if (!value || !anchor) { close(); return }
-    open(anchor)
+  /* Opened through the `open` prop rather than show(): there is no anchor yet,
+     so a dropdown or submenu opens against its trigger once that has mounted. */
+  watch([ctx.open, ctx.anchor, ctx.trigger], ([value, anchor, trigger]) => {
+    const target = anchor ?? (ctx.kind === 'dropdown' || ctx.isSub ? trigger : null)
+    if (!value || !target) { close(); return }
+    open(target)
   }, { immediate: true, flush: 'post' })
 
   function focusItem(item: HTMLElement | undefined) {
@@ -183,5 +205,5 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     event.stopPropagation()
   }
 
-  return { floating, isOpen, onKeydown, stop, onContextmenu }
+  return { floating, present, onKeydown, stop, onContextmenu }
 }

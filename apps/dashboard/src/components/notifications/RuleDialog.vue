@@ -65,50 +65,50 @@ async function save() {
 <template>
   <Modal panel-class="w-full max-w-sm" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground">
+      <h3 class="text-sm font-semibold text-base-content">
         {{ rule ? 'Edit rule' : 'Add rule' }}
       </h3>
     </template>
 
     <div class="p-5 space-y-4">
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Name</label>
+        <label class="block text-xs text-base-content/70">Name</label>
         <Input v-model="name" placeholder="All alerts" />
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Source prefix</label>
+        <label class="block text-xs text-base-content/70">Source prefix</label>
         <Input v-model="sourcePrefix" placeholder="empty = all sources, e.g. storage." class="font-mono" />
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Min severity</label>
+        <label class="block text-xs text-base-content/70">Min severity</label>
         <NativeSelect v-model="minSeverity">
           <NativeSelectOption value="info">Info</NativeSelectOption>
           <NativeSelectOption value="warning">Warning</NativeSelectOption>
           <NativeSelectOption value="critical">Critical</NativeSelectOption>
         </NativeSelect>
-        <p class="text-xs text-muted-foreground">Events below this severity are ignored.</p>
+        <p class="text-xs text-base-content/70">Events below this severity are ignored.</p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs text-muted-foreground">Targets</label>
+        <label class="block text-xs text-base-content/70">Targets</label>
         <label
           v-for="opt in options" :key="opt.id"
-          class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer"
+          class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer"
         >
           <Checkbox :model-value="selectedIds.includes(opt.id)" @update:model-value="checked => selectedIds = checked === true ? [...selectedIds, opt.id] : selectedIds.filter(id => id !== opt.id)" />
           {{ opt.name }}
         </label>
-        <p v-if="selectedIds.length === 0" class="text-xs text-destructive">Pick at least one target.</p>
+        <p v-if="selectedIds.length === 0" class="text-xs text-error">Pick at least one target.</p>
       </div>
 
-      <label class="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer">
+      <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
         <Checkbox v-model="enabled" />
         Enabled
       </label>
 
-      <p v-if="saveError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ saveError }}</p>
     </div>
 
     <template #footer>

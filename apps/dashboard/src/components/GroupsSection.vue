@@ -126,8 +126,8 @@ onMounted(load)
 
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.GroupsSection.groups') }}</h2>
-          <p class="text-xs text-muted-foreground mt-0.5">
+          <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.GroupsSection.groups') }}</h2>
+          <p class="text-xs text-base-content/70 mt-0.5">
             {{ t('uip.settings.GroupsSection.ofGroup', { p0: filteredGroups.length, p1: groups.length, p2: groups.length !== 1 ? 's' : '' }) }}
           </p>
         </div>
@@ -142,10 +142,10 @@ onMounted(load)
       </div>
 
       <!-- Add group form -->
-      <div v-if="addingGroup" class="border border-input bg-muted rounded-xl p-4 space-y-3">
-        <h4 class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps">{{ t('ui.settings.GroupsSection.newGroup') }}</h4>
+      <div v-if="addingGroup" class="border border-base-300 bg-base-200 rounded-xl p-4 space-y-3">
+        <h4 class="text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.settings.GroupsSection.newGroup') }}</h4>
         <div>
-          <label class="block text-xs text-muted-foreground mb-1">{{ t('ui.settings.GroupsSection.name') }} <span class="text-primary">*</span></label>
+          <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.GroupsSection.name') }} <span class="text-primary">*</span></label>
           <Input
             v-model="newGroupName"
             :placeholder="t('ui.settings.GroupsSection.eGEditors')"
@@ -153,7 +153,7 @@ onMounted(load)
             @keydown.enter.prevent="createGroup"
           />
         </div>
-        <p v-if="createError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ createError }}</p>
+        <p v-if="createError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ createError }}</p>
         <div class="flex items-center gap-2 pt-1">
           <Button size="sm"
             @click="createGroup"
@@ -173,35 +173,35 @@ onMounted(load)
       <Card class="block gap-0 py-0 overflow-hidden">
         <Table class="w-full text-sm">
           <TableHeader>
-            <TableRow class="bg-muted border-b border-border">
-              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+            <TableRow class="bg-base-200 border-b border-base-300">
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70">
                 <SortableHeader :active="sortKey === 'name'" :dir="sortDir" @click="toggleSort('name')">{{ t('ui.settings.GroupsSection.group') }}</SortableHeader>
               </TableHead>
-              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">{{ t('ui.settings.GroupsSection.members') }}</TableHead>
-              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-muted-foreground hidden sm:table-cell">
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70 hidden sm:table-cell">{{ t('ui.settings.GroupsSection.members') }}</TableHead>
+              <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70 hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">{{ t('ui.settings.GroupsSection.created') }}</SortableHeader>
               </TableHead>
               <TableHead class="px-4 py-3 w-16"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody class="divide-y divide-border">
+          <TableBody class="divide-y divide-base-300">
             <TableRow
               v-for="group in paged"
               :key="group.id"
-              class="bg-background hover:bg-card transition-colors"
+              class="bg-base-100 hover:bg-base-100 transition-colors"
             >
               <!-- Group -->
               <TableCell class="px-5 py-3.5">
-                <span class="font-medium text-foreground">{{ group.name }}</span>
+                <span class="font-medium text-base-content">{{ group.name }}</span>
               </TableCell>
 
               <!-- Members -->
-              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-base-content/70 text-xs tabular-nums">
                 {{ group.members.length }}
               </TableCell>
 
               <!-- Created -->
-              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-muted-foreground text-xs tabular-nums">
+              <TableCell class="px-5 py-3.5 hidden sm:table-cell text-base-content/70 text-xs tabular-nums">
                 {{ formatDay(group.createdAt) }}
               </TableCell>
 
@@ -210,7 +210,7 @@ onMounted(load)
                 <Button variant="ghost" size="icon-sm"
                   @click="openEditor(group)"
                   :tooltip="t('ui.settings.GroupsSection.editGroup')" :aria-label="t('ui.settings.GroupsSection.editGroup')"
-                  class="text-muted-foreground hover:text-foreground"
+                  class="text-base-content/70 hover:text-base-content"
                 >
                   <PencilIcon class="w-3.5 h-3.5" aria-hidden="true" />
                 </Button>
@@ -219,7 +219,7 @@ onMounted(load)
 
             <!-- Empty state -->
             <TableRow v-if="filteredGroups.length === 0">
-              <TableCell colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
+              <TableCell colspan="4" class="px-5 py-10 text-center text-sm text-base-content/70">
                 <span>{{ groups.length === 0 ? 'No groups yet.' : 'No groups match your search.' }}</span>
                 <Button variant="outline" size="xs" v-if="groups.length && search" class="ml-2" @click="search = ''">{{ t('ui.settings.GroupsSection.clearSearch') }}</Button>
               </TableCell>

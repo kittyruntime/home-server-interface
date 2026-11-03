@@ -75,13 +75,13 @@ onBeforeUnmount(() => {
   <div
     v-if="first && !open"
     role="status"
-    class="fixed bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-violet/40 bg-card p-3 shadow-lg"
+    class="fixed bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-secondary/40 bg-base-100 p-3 shadow-lg"
   >
     <div class="flex items-start gap-2.5">
-      <BotIcon class="mt-0.5 size-4 shrink-0 text-violet" aria-hidden="true" />
+      <BotIcon class="mt-0.5 size-4 shrink-0 text-secondary" aria-hidden="true" />
       <div class="min-w-0 flex-1">
-        <p class="text-sm font-medium text-foreground">{{ t('agentRequests.prompt', pending.length) }}</p>
-        <p class="truncate text-xs text-muted-foreground" :title="first.title">{{ first.title }}</p>
+        <p class="text-sm font-medium text-base-content">{{ t('agentRequests.prompt', pending.length) }}</p>
+        <p class="truncate text-xs text-base-content/70" :title="first.title">{{ first.title }}</p>
       </div>
     </div>
     <Button size="sm" class="mt-2.5 w-full" @click="open = true">{{ t('agentRequests.review') }}</Button>
@@ -90,13 +90,13 @@ onBeforeUnmount(() => {
   <Modal v-if="open" ref="modal" panel-class="w-full max-w-2xl" :prevent-close="busy !== null" @close="open = false">
     <template #header>
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-foreground">{{ t('agentRequests.title') }}</h3>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ t('agentRequests.subtitle') }}</p>
+        <h3 class="text-sm font-semibold text-base-content">{{ t('agentRequests.title') }}</h3>
+        <p class="mt-0.5 text-xs text-base-content/70">{{ t('agentRequests.subtitle') }}</p>
       </div>
     </template>
 
     <div class="space-y-4 px-5 py-4">
-      <p v-if="!pending.length" class="text-sm text-muted-foreground">{{ t('agentRequests.none') }}</p>
+      <p v-if="!pending.length" class="text-sm text-base-content/70">{{ t('agentRequests.none') }}</p>
       <AgentRequestCard
         v-for="r in pending" :key="r.id"
         :request="r" :busy="busy === r.id" :disabled="busy !== null" source

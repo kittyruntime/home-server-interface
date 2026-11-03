@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { provide } from "vue"
-import { radioGroupKey } from "@/lib/use-menu"
+import { provideMenuGroup, radioGroupKey } from "@/lib/use-menu"
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{ modelValue?: string }>()
 const emit = defineEmits<{ "update:modelValue": [value: string] }>()
+
+const labelId = provideMenuGroup()
 
 provide(radioGroupKey, {
   value: () => props.modelValue,
@@ -15,7 +17,7 @@ provide(radioGroupKey, {
 
 <template>
   <li role="none" class="contents">
-    <div role="group" class="contents" v-bind="$attrs">
+    <div role="group" class="contents" :aria-labelledby="labelId" v-bind="$attrs">
       <slot />
     </div>
   </li>

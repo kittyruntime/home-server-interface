@@ -112,11 +112,11 @@ function removeExtraHost(h: string) {
     <!-- Raw compose file (always visible in the advanced tab) -->
     <div class="space-y-2">
       <div class="flex items-center justify-between gap-2">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.composeFileRaw') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.composeFileRaw') }}</label>
         <span v-if="yamlDirty" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">{{ t('ui.apps.AdvancedSection.unsaved') }}</span>
         <span v-else-if="yamlSavedAt" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-success border-success/40">{{ t('ui.apps.AdvancedSection.saved') }}</span>
       </div>
-      <p class="text-xs text-muted-foreground">
+      <p class="text-xs text-base-content/70">
         {{ t('ui.apps.AdvancedSection.editTheFileDirectlyFields') }} <strong>{{ t('ui.apps.AdvancedSection.apply') }}</strong>.
       </p>
       <Textarea
@@ -127,7 +127,7 @@ function removeExtraHost(h: string) {
         class="w-full px-3 py-2 text-xs font-mono font-mono resize-y"
       />
       <div class="flex items-center gap-3">
-        <p v-if="yamlError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ yamlError }}</p>
+        <p v-if="yamlError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ yamlError }}</p>
         <div v-else class="flex-1" />
         <Button size="sm"
           @click="saveRawYaml"
@@ -140,23 +140,23 @@ function removeExtraHost(h: string) {
 
     <!-- Fields HSI does not manage -->
     <div v-if="unknownFields && unknownFields.length" class="space-y-2">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.fieldsHsiDoesNotManage') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.fieldsHsiDoesNotManage') }}</label>
       <div class="flex flex-wrap gap-1.5">
         <span
           v-for="f in unknownFields" :key="f"
-          class="inline-flex items-center text-xs bg-muted text-foreground/80 border border-input rounded-sm px-2 py-0.5 font-mono"
+          class="inline-flex items-center text-xs bg-base-200 text-base-content/80 border border-base-300 rounded-sm px-2 py-0.5 font-mono"
         >{{ f }}</span>
       </div>
-      <p class="text-xs text-muted-foreground">{{ t('ui.apps.AdvancedSection.preservedOnSaveEditThem') }}</p>
+      <p class="text-xs text-base-content/70">{{ t('ui.apps.AdvancedSection.preservedOnSaveEditThem') }}</p>
     </div>
 
     <!-- Cap Add -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.capAdd') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.capAdd') }}</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <Badge variant="outline"
           v-for="cap in modelValue.capAdd" :key="cap"
-          class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-input"
+          class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-base-300"
         >
           {{ cap }}
           <Button variant="ghost" size="icon-xs" :aria-label="t('ui.apps.AdvancedSection.remove')" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="removeCap('capAdd', cap)"><XIcon class="size-3" aria-hidden="true" /></Button>
@@ -176,7 +176,7 @@ function removeExtraHost(h: string) {
 
     <!-- Cap Drop -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.capDrop') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.capDrop') }}</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <Badge variant="outline"
           v-for="cap in modelValue.capDrop" :key="cap"
@@ -200,11 +200,11 @@ function removeExtraHost(h: string) {
 
     <!-- Extra Hosts -->
     <div class="space-y-2">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.extraHosts') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.extraHosts') }}</label>
       <div class="flex flex-wrap gap-1.5 mb-2">
         <Badge variant="outline"
           v-for="h in modelValue.extraHosts" :key="h"
-          class="gap-1 rounded-sm text-xs bg-muted text-foreground/80 border border-input font-mono"
+          class="gap-1 rounded-sm text-xs bg-base-200 text-base-content/80 border border-base-300 font-mono"
         >
           {{ h }}
           <Button variant="ghost" size="icon-xs" :aria-label="t('ui.apps.AdvancedSection.remove')" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="removeExtraHost(h)"><XIcon class="size-3" aria-hidden="true" /></Button>
@@ -221,13 +221,13 @@ function removeExtraHost(h: string) {
           class="bg-primary/10 text-primary"
         >{{ t('ui.apps.AdvancedSection.add') }}</Button>
       </div>
-      <p v-if="extraHostError" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
-      <p class="text-xs text-muted-foreground">{{ t('ui.apps.AdvancedSection.adds') }} <span class="font-mono">--add-host</span> {{ t('ui.apps.AdvancedSection.entriesMapsTo') }} <span class="font-mono">/etc/hosts</span> {{ t('ui.apps.AdvancedSection.insideTheContainer') }}</p>
+      <p v-if="extraHostError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ extraHostError }}</p>
+      <p class="text-xs text-base-content/70">{{ t('ui.apps.AdvancedSection.adds') }} <span class="font-mono">--add-host</span> {{ t('ui.apps.AdvancedSection.entriesMapsTo') }} <span class="font-mono">/etc/hosts</span> {{ t('ui.apps.AdvancedSection.insideTheContainer') }}</p>
     </div>
 
     <!-- Restart policy -->
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.restartPolicy') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.restartPolicy') }}</label>
       <NativeSelect wrapper-class="w-full"
         :model-value="modelValue.restartPolicy"
         @change="update('restartPolicy', ($event.target as HTMLSelectElement).value)"
@@ -243,7 +243,7 @@ function removeExtraHost(h: string) {
     <!-- Hostname / User / Command -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.hostname') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.hostname') }}</label>
         <Input
           :model-value="modelValue.hostname ?? ''" :placeholder="t('ui.apps.AdvancedSection.myContainer')"
           @input="update('hostname', ($event.target as HTMLInputElement).value || null)"
@@ -251,7 +251,7 @@ function removeExtraHost(h: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.user') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.user') }}</label>
         <Input
           :model-value="modelValue.user ?? ''" placeholder="1000:1000"
           @input="update('user', ($event.target as HTMLInputElement).value || null)"
@@ -260,7 +260,7 @@ function removeExtraHost(h: string) {
       </div>
     </div>
     <div class="space-y-1.5">
-      <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.commandOverride') }}</label>
+      <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.commandOverride') }}</label>
       <Input
         :model-value="modelValue.command ?? ''" laceholder="/bin/sh -c 'echo hello'"
         @input="update('command', ($event.target as HTMLInputElement).value || null)"
@@ -271,7 +271,7 @@ function removeExtraHost(h: string) {
     <!-- CPU / Memory -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.cpuLimit') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.cpuLimit') }}</label>
         <Input
           type="number" min="0" max="64" step="0.1"
           :model-value="modelValue.cpuLimit ?? ''" placeholder="e.g. 0.5"
@@ -280,7 +280,7 @@ function removeExtraHost(h: string) {
         />
       </div>
       <div class="space-y-1.5">
-        <label class="text-xs font-medium text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.memoryLimit') }}</label>
+        <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AdvancedSection.memoryLimit') }}</label>
         <Input
           :model-value="modelValue.memoryLimit ?? ''" placeholder="e.g. 512m, 2g"
           @input="update('memoryLimit', ($event.target as HTMLInputElement).value || null)"

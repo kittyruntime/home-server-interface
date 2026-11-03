@@ -44,7 +44,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place] }>()
                 </SidebarMenuAction>
               </SidebarMenuItem>
             </SidebarMenu>
-            <p v-if="places.length === 0" class="text-xs text-muted-foreground px-2 py-2 leading-snug">
+            <p v-if="places.length === 0" class="text-xs text-base-content/70 px-2 py-2 leading-snug">
               {{ t('ui.files.PlacesSidebar.noPlacesYetAskAn') }}
             </p>
           </SidebarGroupContent>

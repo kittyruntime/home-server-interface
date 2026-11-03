@@ -67,7 +67,7 @@ function placePath(id: string): string | null {
         <NativeSelectOption v-for="pl in places" :key="pl.id" :value="pl.id">{{ pl.name }}</NativeSelectOption>
       </NativeSelect>
 
-      <span class="text-muted-foreground text-sm shrink-0">→</span>
+      <span class="text-base-content/70 text-sm shrink-0">→</span>
 
       <!-- Target (path inside the container) -->
       <Input
@@ -80,7 +80,7 @@ function placePath(id: string): string | null {
     <template #extra="{ item }">
       <p
         v-if="item.type === 'place' && item.source && placePath(item.source)"
-        class="ml-[calc(theme(spacing.2)+5rem)] text-xs text-muted-foreground font-mono"
+        class="ml-[calc(theme(spacing.2)+5rem)] text-xs text-base-content/70 font-mono"
       >
         ↳ {{ placePath(item.source) }}
       </p>

@@ -33,19 +33,19 @@ onMounted(load)
 <template>
   <div class="space-y-4">
     <div>
-      <h2 class="text-lg font-semibold text-foreground">{{ t('ui.settings.SharedLinksSection.sharedLinks') }}</h2>
-      <p class="text-xs text-muted-foreground mt-1 max-w-md leading-relaxed">
+      <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.SharedLinksSection.sharedLinks') }}</h2>
+      <p class="text-xs text-base-content/70 mt-1 max-w-md leading-relaxed">
         {{ t('ui.settings.SharedLinksSection.publicLinksYouHaveCreated') }}
       </p>
     </div>
 
     <LoadingState v-if="loading && !links.length" variant="compact" />
-    <div v-else-if="links.length === 0" class="rounded-xl border border-dashed border-input"><EmptyState :message="t('ui.settings.SharedLinksSection.noSharedLinksYet')" :description="t('ui.settings.SharedLinksSection.shareAFileOrFolder')" /></div>
-    <Card v-else class="block gap-0 py-0 overflow-hidden divide-y divide-border">
+    <div v-else-if="links.length === 0" class="rounded-xl border border-dashed border-base-300"><EmptyState :message="t('ui.settings.SharedLinksSection.noSharedLinksYet')" :description="t('ui.settings.SharedLinksSection.shareAFileOrFolder')" /></div>
+    <Card v-else class="block gap-0 py-0 overflow-hidden divide-y divide-base-300">
       <div v-for="l in links" :key="l.id" class="flex items-center gap-3 px-4 py-3">
         <div class="flex-1 min-w-0">
-          <p class="text-sm text-foreground font-mono truncate">{{ l.path }}</p>
-          <p class="text-xs text-muted-foreground">
+          <p class="text-sm text-base-content font-mono truncate">{{ l.path }}</p>
+          <p class="text-xs text-base-content/70">
             {{ t('uip.settings.SharedLinksSection.downloads', { p0: status(l), p1: l.downloads, p2: l.maxDownloads != null ? '/' + l.maxDownloads : '' }) }}
             <template v-if="l.hasPassword"> · 🔒</template>
           </p>

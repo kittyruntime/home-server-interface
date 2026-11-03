@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { THEMES, DARK_THEMES, DEFAULT_APPEARANCE, normalizeAppearance, fromLegacy, toLegacy, appearanceVars, hydrateAppearance } from '../src/lib/appearance.ts'
+import { THEMES, DARK_THEMES, DEFAULT_APPEARANCE, normalizeAppearance, fromLegacy, toLegacy, appearanceVars, hydrateAppearance, resolveStored } from '../src/lib/appearance.ts'
 
 test('theme lists contain the supported daisyUI themes in order', () => {
   assert.deepEqual(THEMES, ['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk', 'autumn', 'business', 'acid', 'lemonade', 'night', 'coffee', 'winter', 'dim', 'nord', 'sunset', 'caramellatte', 'abyss', 'silk'])
@@ -94,4 +94,27 @@ test('hydrateAppearance falls back to the legacy pair with default radius and de
 
 test('hydrateAppearance gives defaults for an empty object', () => {
   assert.deepEqual(hydrateAppearance({}), DEFAULT_APPEARANCE)
+})
+
+test('normalizeAppearance rejects inherited object keys as accent or theme', () => {
+  const a = normalizeAppearance({ accent: 'toString', theme: 'constructor' })
+  assert.equal(a.accent, 'theme')
+  assert.equal(a.theme, 'auto')
+})
+
+test('resolveStored uses the stored appearance when it has a theme', () => {
+  assert.deepEqual(resolveStored('{"theme":"nord","accent":"blue"}', 'dark', 'red'),
+    normalizeAppearance({ theme: 'nord', accent: 'blue' }))
+})
+
+test('resolveStored falls back to the legacy keys without a string theme', () => {
+  assert.equal(resolveStored('{"accent":"blue"}', 'dark', undefined).theme, 'dark')
+  assert.equal(resolveStored('{"theme":3}', 'dark', undefined).theme, 'dark')
+  assert.equal(resolveStored('null', 'dark', undefined).theme, 'dark')
+})
+
+test('resolveStored falls back to the legacy keys on malformed or missing JSON', () => {
+  assert.equal(resolveStored('{oops', 'dark', 'blue').theme, 'dark')
+  assert.equal(resolveStored('{oops', 'dark', 'blue').accent, 'blue')
+  assert.deepEqual(resolveStored(null, undefined, undefined), DEFAULT_APPEARANCE)
 })

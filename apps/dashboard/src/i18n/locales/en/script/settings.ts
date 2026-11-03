@@ -66,13 +66,6 @@ export default {
     newPasswordMustBeAt: 'New password must be at least 6 characters',
     failedToUpdate: 'Failed to update',
     failedToChangePassword: 'Failed to change password',
-    auto: 'Auto',
-    light: 'Light',
-    dark: 'Dark',
-    orange: 'Orange',
-    blue: 'Blue',
-    green: 'Green',
-    purple: 'Purple',
   },
   SecureAccessSection: {
     chooseACertificateFile: 'Choose a certificate file',

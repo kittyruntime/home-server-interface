@@ -121,14 +121,14 @@ onMounted(async () => {
     <template #header>
       <div class="flex items-center gap-3 min-w-0">
         <!-- Place icon -->
-        <PlaceIcon v-if="isPlace" :icon="place?.icon" :root="place?.id === '__root__'" class="size-8 shrink-0 text-2xl text-muted-foreground" />
+        <PlaceIcon v-if="isPlace" :icon="place?.icon" :root="place?.id === '__root__'" class="size-8 shrink-0 text-2xl text-base-content/70" />
         <!-- Folder icon -->
-        <FileTypeIcon v-else-if="entry?.type === 'dir'" :name="displayName" dir open class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon v-else-if="entry?.type === 'dir'" :name="displayName" dir open class="w-8 h-8 shrink-0 text-base-content/70" aria-hidden="true" />
         <!-- File icon -->
-        <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0 text-base-content/70" aria-hidden="true" />
         <div class="min-w-0">
-          <div class="text-sm font-semibold text-foreground truncate">{{ displayName }}</div>
-          <div class="text-2xs text-muted-foreground font-mono truncate mt-0.5">{{ targetPath }}</div>
+          <div class="text-sm font-semibold text-base-content truncate">{{ displayName }}</div>
+          <div class="text-2xs text-base-content/70 font-mono truncate mt-0.5">{{ targetPath }}</div>
         </div>
       </div>
     </template>
@@ -137,52 +137,52 @@ onMounted(async () => {
     <LoadingState v-if="loading" variant="compact" />
 
     <!-- Error -->
-    <p v-else-if="error" role="alert" class="p-6 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-else-if="error" role="alert" class="p-6 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- Content -->
-    <div v-else class="divide-y divide-border">
+    <div v-else class="divide-y divide-base-300">
 
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.storage') }}</div>
-        <Progress class="w-full h-2 bg-muted rounded-full" :model-value="Math.min(diskUsedPct, 100)" :indicator-class="['rounded-full transition-all', diskUsedPct > 90 ? 'bg-destructive' : 'bg-primary']" />
-        <div class="flex justify-between text-xs text-muted-foreground">
-          <span><span class="text-foreground font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
-          <span><span class="text-foreground font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>
+        <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.storage') }}</div>
+        <Progress class="w-full h-2 bg-base-200 rounded-full" :model-value="Math.min(diskUsedPct, 100)" :indicator-class="['rounded-full transition-all', diskUsedPct > 90 ? 'bg-error' : 'bg-primary']" />
+        <div class="flex justify-between text-xs text-base-content/70">
+          <span><span class="text-base-content font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
+          <span><span class="text-base-content font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>
           <span>{{ fmtBytes(diskInfo.total) }} total</span>
         </div>
       </div>
 
       <!-- General -->
       <div class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.general') }}</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.general') }}</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.kind') }}</dt>
-            <dd class="text-foreground text-right truncate">{{ kindLabel }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.kind') }}</dt>
+            <dd class="text-base-content text-right truncate">{{ kindLabel }}</dd>
           </div>
           <div v-if="stat?.size != null" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.size') }}</dt>
-            <dd class="text-foreground text-right">{{ fmtBytes(stat.size) }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.size') }}</dt>
+            <dd class="text-base-content text-right">{{ fmtBytes(stat.size) }}</dd>
           </div>
           <div v-if="!isPlace" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.location') }}</dt>
-            <dd class="text-foreground/80 text-right font-mono text-xs truncate">{{ location }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.location') }}</dt>
+            <dd class="text-base-content/80 text-right font-mono text-xs truncate">{{ location }}</dd>
           </div>
         </dl>
       </div>
 
       <!-- Dates -->
       <div v-if="stat?.mtime" class="px-5 py-4 space-y-2.5">
-        <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.dates') }}</div>
+        <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.dates') }}</div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.modified') }}</dt>
-            <dd class="text-foreground text-right">{{ formatDateTime(stat.mtime) }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.modified') }}</dt>
+            <dd class="text-base-content text-right">{{ formatDateTime(stat.mtime) }}</dd>
           </div>
           <div v-if="stat.ctime" class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.changed') }}</dt>
-            <dd class="text-foreground text-right">{{ formatDateTime(stat.ctime) }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.changed') }}</dt>
+            <dd class="text-base-content text-right">{{ formatDateTime(stat.ctime) }}</dd>
           </div>
         </dl>
       </div>
@@ -190,7 +190,7 @@ onMounted(async () => {
       <!-- Permissions -->
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
-          <div class="text-xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.files.FilePropertiesModal.permissions') }}</div>
+          <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.permissions') }}</div>
           <Button variant="link"
             v-if="isAdmin"
             @click="emit('close'); emit('openPermissions')"
@@ -199,21 +199,21 @@ onMounted(async () => {
         </div>
         <dl class="space-y-1.5 text-sm">
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.mode') }}</dt>
-            <dd class="font-mono text-foreground">{{ modeSymbol }} <span class="text-muted-foreground">({{ stat.mode }})</span></dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.mode') }}</dt>
+            <dd class="font-mono text-base-content">{{ modeSymbol }} <span class="text-base-content/70">({{ stat.mode }})</span></dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.owner') }}</dt>
-            <dd class="font-mono text-foreground">{{ stat.owner }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.owner') }}</dt>
+            <dd class="font-mono text-base-content">{{ stat.owner }}</dd>
           </div>
           <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.group') }}</dt>
-            <dd class="font-mono text-foreground">{{ stat.group }}</dd>
+            <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.group') }}</dt>
+            <dd class="font-mono text-base-content">{{ stat.group }}</dd>
           </div>
           <template v-if="advancedMode">
             <div class="flex justify-between gap-4">
-              <dt class="text-muted-foreground shrink-0">{{ t('ui.files.FilePropertiesModal.uidGid') }}</dt>
-              <dd class="font-mono text-foreground">{{ stat.uid }} / {{ stat.gid }}</dd>
+              <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.uidGid') }}</dt>
+              <dd class="font-mono text-base-content">{{ stat.uid }} / {{ stat.gid }}</dd>
             </div>
           </template>
         </dl>

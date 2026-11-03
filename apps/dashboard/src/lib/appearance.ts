@@ -28,13 +28,15 @@ export const DEFAULT_APPEARANCE: Appearance = {
   density: 'default',
 }
 
-const ACCENT_COLORS = {
+export const ACCENT_COLORS = {
   red: ['#d71921', '#ffffff'],
   orange: ['#f97316', '#1a1a1a'],
   blue: ['#3b82f6', '#1a1a1a'],
   green: ['#22c55e', '#1a1a1a'],
   purple: ['#a855f7', '#1a1a1a'],
 } as const
+
+export const ACCENT_NAMES = Object.keys(ACCENT_COLORS) as (keyof typeof ACCENT_COLORS)[]
 
 const RADIUS_STEPS = {
   0: ['0rem', '0rem', '0rem'],
@@ -43,12 +45,17 @@ const RADIUS_STEPS = {
   4: ['2rem', '1rem', '2rem'],
 } as const
 
+/** `includes` on a readonly tuple only accepts the tuple's own member type, so widen it once here. */
+function isOneOf<T extends string>(list: readonly T[], value: unknown): value is T {
+  return typeof value === 'string' && (list as readonly string[]).includes(value)
+}
+
 function isTheme(value: unknown): value is Appearance['theme'] {
-  return value === 'auto' || (typeof value === 'string' && THEMES.some(theme => theme === value))
+  return value === 'auto' || isOneOf(THEMES, value)
 }
 
 function isAccent(value: unknown): value is AccentChoice {
-  return value === 'theme' || value === 'red' || value === 'orange' || value === 'blue' || value === 'green' || value === 'purple'
+  return value === 'theme' || isOneOf(ACCENT_NAMES, value)
 }
 
 function isRadius(value: unknown): value is Appearance['radius'] {
@@ -77,6 +84,19 @@ export function fromLegacy(theme?: string, accent?: string): Appearance {
   }
 }
 
+/** The browser's stored appearance. Without a usable one (missing, malformed, or no string theme) the legacy keys apply, as in index.html. */
+export function resolveStored(raw: string | null, legacyTheme?: string, legacyAccent?: string): Appearance {
+  if (raw !== null) {
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed !== null && typeof parsed === 'object' && typeof (parsed as { theme?: unknown }).theme === 'string') {
+        return normalizeAppearance(parsed)
+      }
+    } catch { /* fall through to the legacy keys */ }
+  }
+  return fromLegacy(legacyTheme, legacyAccent)
+}
+
 /** Appearance for the signed-in account: never inherits radius or density from the browser's previous user. */
 export function hydrateAppearance(server: { appearance?: unknown; theme?: string; accent?: string }): Appearance {
   if (server.appearance) return normalizeAppearance(server.appearance)
@@ -84,7 +104,7 @@ export function hydrateAppearance(server: { appearance?: unknown; theme?: string
 }
 
 export function toLegacy(a: Appearance): { theme: 'auto' | 'light' | 'dark'; accent: 'orange' | 'blue' | 'green' | 'purple' } {
-  const theme = a.theme === 'auto' ? 'auto' : DARK_THEMES.some(dark => dark === a.theme) ? 'dark' : 'light'
+  const theme = a.theme === 'auto' ? 'auto' : isOneOf(DARK_THEMES, a.theme) ? 'dark' : 'light'
   const accent = a.accent === 'blue' || a.accent === 'green' || a.accent === 'purple' ? a.accent : 'orange'
   return { theme, accent }
 }

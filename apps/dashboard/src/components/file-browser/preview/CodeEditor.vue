@@ -39,11 +39,11 @@ let view: EditorView | null = null
 const languageConf = new Compartment()
 
 const theme = EditorView.theme({
-  '&': { backgroundColor: 'var(--card)', color: 'var(--foreground)', height: '100%', fontSize: 'var(--text-control)' },
-  '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--primary)' },
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--primary)' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent) !important' },
-  '.cm-gutters': { backgroundColor: 'var(--card)', color: 'var(--muted-foreground)', border: 'none', borderRight: '1px solid var(--color-border)' },
+  '&': { backgroundColor: 'var(--color-base-100)', color: 'var(--color-base-content)', height: '100%', fontSize: 'var(--text-control)' },
+  '.cm-content': { fontFamily: 'var(--font-mono)', caretColor: 'var(--color-primary)' },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--color-primary)' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent) !important' },
+  '.cm-gutters': { backgroundColor: 'var(--color-base-100)', color: 'color-mix(in oklab, var(--color-base-content) 70%, transparent)', border: 'none', borderRight: '1px solid var(--color-border)' },
   '.cm-activeLine': { backgroundColor: 'var(--color-base-200)' },
   '.cm-activeLineGutter': { backgroundColor: 'var(--color-base-200)' },
   '&.cm-focused': { outline: 'none' },
@@ -168,14 +168,14 @@ onBeforeUnmount(() => view?.destroy())
   <div class="h-full flex flex-col min-h-0">
     <LoadingState v-if="state === 'loading'" class="flex-1" />
 
-    <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+    <div v-else-if="state === 'binary'" class="flex-1 flex items-center justify-center text-base-content/70 text-sm">
       <div class="text-center space-y-1">
         <p>{{ t('ui.files.CodeEditor.binaryFilePreviewNotAvailable') }}</p>
         <p class="status-text">{{ t('uip.files.CodeEditor.bytes', { p0: name, p1: fileSize ?? 0 }) }}</p>
       </div>
     </div>
 
-    <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+    <div v-else-if="state === 'too-large'" class="flex-1 flex items-center justify-center text-base-content/70 text-sm">
       <div class="text-center space-y-1">
         <p>{{ t('uip.files.CodeEditor.fileTooLargeToEdit', { p0: ((fileSize ?? 0) / 1024 / 1024).toFixed(1) }) }}</p>
         <p class="status-text">{{ t('ui.files.CodeEditor.useDownloadInstead') }}</p>
@@ -191,7 +191,7 @@ onBeforeUnmount(() => view?.destroy())
         v-if="formatter"
         type="button"
         :tooltip="t('ui.files.CodeEditor.formatShiftAltF')" :aria-label="t('ui.files.CodeEditor.formatShiftAltF')"
-        class="absolute top-2 right-4 z-10 bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm"
+        class="absolute top-2 right-4 z-10 bg-base-100 border border-base-300 text-base-content/70 hover:text-base-content shadow-sm"
         :disabled="formatting"
         @click="format"
       >

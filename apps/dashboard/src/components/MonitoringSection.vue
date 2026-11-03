@@ -13,7 +13,7 @@ import {
 import { trpc } from '../lib/trpc'
 import { subscribeMetrics } from '../lib/live-metrics'
 import { useAppearance } from '../lib/theme'
-import { resolveThemeColor } from '../lib/theme-colors'
+import { resolveThemeColor, withAlpha } from '../lib/theme-colors'
 import LoadingState from './ui/LoadingState.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -66,6 +66,8 @@ function readColors() {
     rx:   resolveThemeColor('--color-success'),
     tx:   resolveThemeColor('--chart-5'),
     text: resolveThemeColor('--color-base-content'),
+    surface: resolveThemeColor('--color-base-100'),
+    border: resolveThemeColor('--color-base-300'),
   }
 }
 const colors = ref(readColors())
@@ -74,10 +76,10 @@ const refreshColors = () => { colors.value = readColors() }
 watch(appearance, () => { nextTick(refreshColors) }, { deep: true })
 
 // In Auto mode the system can flip light/dark without the appearance changing.
-const darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
+const darkQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 const onSchemeChange = () => { nextTick(refreshColors) }
-darkQuery.addEventListener('change', onSchemeChange)
-onUnmounted(() => darkQuery.removeEventListener('change', onSchemeChange))
+darkQuery?.addEventListener('change', onSchemeChange)
+onUnmounted(() => darkQuery?.removeEventListener('change', onSchemeChange))
 
 function fmtBytes(n: number, decimals = 1): string {
   if (n <= 0)         return '0 B'
@@ -126,7 +128,7 @@ function lineDataset(label: string, values: number[], color: string) {
     label,
     data: values,
     borderColor: color,
-    backgroundColor: color.replace('rgb(', 'rgba(').replace(')', ', 0.1)'),
+    backgroundColor: withAlpha(color, 0.1),
     borderWidth: 1.5,
     pointRadius: 0,
     tension: 0.3,
@@ -153,12 +155,23 @@ const netChartData = computed(() => ({
 }))
 
 const chartOptions = computed(() => {
-  const grid = { color: colors.value.text.replace('rgb(', 'rgba(').replace(')', ', 0.1)') }
+  const grid = { color: withAlpha(colors.value.text, 0.1) }
   const ticks = { color: colors.value.text, font: { size: 10 } }
   return {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { mode: 'index' as const, intersect: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: colors.value.surface,
+        titleColor: colors.value.text,
+        bodyColor: colors.value.text,
+        borderColor: colors.value.border,
+        borderWidth: 1,
+      },
+    },
     scales: {
       x: { grid, ticks: { ...ticks, maxTicksLimit: 8 } },
       y: { grid, ticks, beginAtZero: true },
@@ -169,8 +182,8 @@ const chartOptions = computed(() => {
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.monitor.MonitoringSection.monitoring') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.monitor.MonitoringSection.liveUsageNowAndHistory') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.monitor.MonitoringSection.monitoring') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">{{ t('ui.monitor.MonitoringSection.liveUsageNowAndHistory') }}</p>
 
     <!-- View toggle -->
     <Tabs
@@ -193,30 +206,30 @@ const chartOptions = computed(() => {
 
           <!-- ── Processor ────────────────────────────────────────────────── -->
           <Card class="block gap-0 py-0 shadow-none overflow-hidden">
-            <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
-              <LayoutTemplateIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.processor') }}</span>
+            <div class="px-4 py-3 flex items-center gap-2 border-b border-base-300">
+              <LayoutTemplateIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
+              <span class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.monitor.MonitoringSection.processor') }}</span>
             </div>
 
             <div class="px-4 py-4 space-y-4">
               <!-- Usage bar -->
               <div class="space-y-1.5">
-                <div class="flex justify-between text-xs text-muted-foreground">
+                <div class="flex justify-between text-xs text-base-content/70">
                   <span>{{ t('ui.monitor.MonitoringSection.usage') }}</span>
                   <span class="font-medium tabular-nums"
-                    :class="metrics.cpu > 80 ? 'text-destructive' : metrics.cpu > 60 ? 'text-warning' : 'text-foreground'"
+                    :class="metrics.cpu > 80 ? 'text-error' : metrics.cpu > 60 ? 'text-warning' : 'text-base-content'"
                   >{{ metrics.cpu }}%</span>
                 </div>
-                <Progress class="w-full h-1.5 bg-muted rounded-full" :model-value="metrics.cpu" :indicator-class="['rounded-full transition-all duration-700', metrics.cpu > 80 ? 'bg-destructive' : metrics.cpu > 60 ? 'bg-warning' : 'bg-primary']" />
+                <Progress class="w-full h-1.5 bg-base-200 rounded-full" :model-value="metrics.cpu" :indicator-class="['rounded-full transition-all duration-700', metrics.cpu > 80 ? 'bg-error' : metrics.cpu > 60 ? 'bg-warning' : 'bg-primary']" />
               </div>
 
               <!-- Load averages -->
               <div class="flex items-center gap-4">
-                <span class="text-xs text-muted-foreground">{{ t('ui.monitor.MonitoringSection.loadAvg') }}</span>
+                <span class="text-xs text-base-content/70">{{ t('ui.monitor.MonitoringSection.loadAvg') }}</span>
                 <div class="flex gap-4">
                   <div v-for="(val, i) in sysinfo.loadavg" :key="i" class="text-center">
-                    <div class="text-sm font-medium text-foreground tabular-nums">{{ val.toFixed(2) }}</div>
-                    <div class="text-2xs text-muted-foreground">{{ ['1m', '5m', '15m'][i] }}</div>
+                    <div class="text-sm font-medium text-base-content tabular-nums">{{ val.toFixed(2) }}</div>
+                    <div class="text-2xs text-base-content/70">{{ ['1m', '5m', '15m'][i] }}</div>
                   </div>
                 </div>
               </div>
@@ -225,26 +238,26 @@ const chartOptions = computed(() => {
 
           <!-- ── Memory ────────────────────────────────────────────────────── -->
           <Card class="block gap-0 py-0 shadow-none overflow-hidden">
-            <div class="px-4 py-3 flex items-center gap-2 border-b border-border">
-              <LayersIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.memory') }}</span>
+            <div class="px-4 py-3 flex items-center gap-2 border-b border-base-300">
+              <LayersIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
+              <span class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.monitor.MonitoringSection.memory') }}</span>
             </div>
 
             <div class="px-4 py-4 space-y-3">
               <div class="flex justify-between items-baseline">
-                <span class="text-sm text-foreground/80">
+                <span class="text-sm text-base-content/80">
                   {{ fmtBytes(metrics.memory.used) }} used
                 </span>
-                <span class="text-xs text-muted-foreground">
+                <span class="text-xs text-base-content/70">
                   {{ fmtBytes(metrics.memory.total) }} total
                 </span>
               </div>
-              <Progress class="w-full h-2 bg-muted rounded-full" :model-value="metrics.memory.percent" :indicator-class="['rounded-full transition-all duration-700', metrics.memory.percent > 90 ? 'bg-destructive' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-primary']" />
-              <div class="flex justify-between text-2xs text-muted-foreground">
+              <Progress class="w-full h-2 bg-base-200 rounded-full" :model-value="metrics.memory.percent" :indicator-class="['rounded-full transition-all duration-700', metrics.memory.percent > 90 ? 'bg-error' : metrics.memory.percent > 75 ? 'bg-warning' : 'bg-primary']" />
+              <div class="flex justify-between text-2xs text-base-content/70">
                 <span>{{ fmtBytes(metrics.memory.total - metrics.memory.used) }} free</span>
                 <span
                   class="font-medium tabular-nums"
-                  :class="metrics.memory.percent > 90 ? 'text-destructive' : metrics.memory.percent > 75 ? 'text-warning' : ''"
+                  :class="metrics.memory.percent > 90 ? 'text-error' : metrics.memory.percent > 75 ? 'text-warning' : ''"
                 >{{ metrics.memory.percent }}%</span>
               </div>
             </div>
@@ -254,10 +267,10 @@ const chartOptions = computed(() => {
           <Card class="block gap-0 py-0 shadow-none overflow-hidden">
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <WifiIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                <span class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{{ t('ui.monitor.MonitoringSection.networkThroughput') }}</span>
+                <WifiIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
+                <span class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.monitor.MonitoringSection.networkThroughput') }}</span>
               </div>
-              <div class="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
+              <div class="flex items-center gap-3 text-xs tabular-nums text-base-content/70">
                 <span class="flex items-center gap-1">
                   <ChevronDownIcon class="w-3 h-3 text-success" aria-hidden="true" />
                   {{ fmtBytes(metrics.network.rx) }}/s
@@ -288,7 +301,7 @@ const chartOptions = computed(() => {
 
       <LoadingState v-if="historyLoading" />
       <ErrorState v-else-if="historyError" :message="historyError" :retry-label="t('ui.monitor.MonitoringSection.retry')" @retry="loadHistory" />
-      <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-muted-foreground">
+      <div v-else-if="!historyData.length" class="text-center py-12 text-sm text-base-content/70">
         {{ t('ui.monitor.MonitoringSection.noDataYetHistoryIs') }}
       </div>
       <template v-else>

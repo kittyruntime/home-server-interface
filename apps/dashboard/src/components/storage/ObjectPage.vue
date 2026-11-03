@@ -34,20 +34,20 @@ const TABS: { id: ObjectTab; label: string }[] = [
 <template>
   <div>
     <LoadingState v-if="loading" />
-    <p v-else-if="error" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
-    <Card v-else-if="gone" class="block gap-0 py-0 shadow-none px-4 py-8 text-center text-sm text-foreground/80">
+    <p v-else-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <Card v-else-if="gone" class="block gap-0 py-0 shadow-none px-4 py-8 text-center text-sm text-base-content/80">
       {{ gone.text }}
-      <Button variant="link" class="ml-1 h-auto p-0 text-foreground underline" @click="emit('back')">{{ gone.back }}</Button>
+      <Button variant="link" class="ml-1 h-auto p-0 text-base-content underline" @click="emit('back')">{{ gone.back }}</Button>
     </Card>
 
     <template v-else>
       <header class="flex flex-col @2xl/content:flex-row @2xl/content:items-start @2xl/content:justify-between gap-3 mb-4">
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="text-lg font-semibold text-foreground truncate">{{ title }}</h2>
+            <h2 class="text-lg font-semibold text-base-content truncate">{{ title }}</h2>
             <slot name="chips" />
           </div>
-          <p v-if="subtitle" class="mt-0.5 font-mono text-xs text-muted-foreground truncate">{{ subtitle }}</p>
+          <p v-if="subtitle" class="mt-0.5 font-mono text-xs text-base-content/70 truncate">{{ subtitle }}</p>
           <div class="mt-3"><slot name="figure" /></div>
         </div>
         <div class="flex items-center gap-2 shrink-0"><slot name="actions" /></div>

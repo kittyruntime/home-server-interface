@@ -152,7 +152,7 @@ onUnmounted(() => controller?.abort())
     ref="modal"
     :show-close="false"
     :label="name"
-    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-input bg-[#0d1117]"
+    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-base-300 bg-[#0d1117] [--color-base-content:#e6edf3]"
     @close="emit('close')"
   >
     <div class="flex h-full flex-col min-h-0">
@@ -161,7 +161,7 @@ onUnmounted(() => controller?.abort())
       <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
         <div class="flex items-center gap-2 flex-1 min-w-0">
           <!-- Status dot -->
-          <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-muted-foreground']" />
+          <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-base-content/70']" />
           <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
           <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
         </div>
@@ -172,10 +172,10 @@ onUnmounted(() => controller?.abort())
             @click="toggleFollow"
             :tooltip="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
             :aria-pressed="follow"
-            :class="['bg-transparent text-2xs dark:bg-transparent',
+            :class="['bg-transparent text-2xs',
               follow
-                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary dark:bg-primary/20'
-                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:border-[#30363d]']"
+                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary'
+                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]']"
           >
             <ArrowDownIcon class="size-3" aria-hidden="true" />
             {{ t('ui.apps.ContainerLogsPanel.follow') }}
@@ -185,7 +185,7 @@ onUnmounted(() => controller?.abort())
             variant="outline" size="xs"
             @click="clear"
             :tooltip="t('ui.apps.ContainerLogsPanel.clear')"
-            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3] dark:bg-transparent dark:border-[#30363d]"
+            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]"
           >
             <XIcon class="size-3" aria-hidden="true" />
             {{ t('ui.apps.ContainerLogsPanel.clear') }}
@@ -209,7 +209,7 @@ onUnmounted(() => controller?.abort())
         style="color: #e6edf3"
       >
         <!-- Error -->
-        <p v-if="error" role="alert" class="mb-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+        <p v-if="error" role="alert" class="mb-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
         <!-- Empty -->
         <div v-if="lines.length === 0 && !error && connected"

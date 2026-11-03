@@ -61,34 +61,34 @@ const blocks = computed(() => parse(props.source))
   <div class="space-y-1.5">
     <template v-for="(b, i) in blocks" :key="i">
       <!-- Heading -->
-      <p v-if="b.k === 'h'" class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground mt-3 first:mt-0">
+      <p v-if="b.k === 'h'" class="text-2xs font-semibold uppercase tracking-caps text-base-content/70 mt-3 first:mt-0">
         <template v-for="(t, j) in b.children" :key="j">
           <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
-          <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground/80">{{ t.v }}</strong>
+          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-base-content/80">{{ t.v }}</code>
+          <strong v-else-if="t.t === 'bold'" class="font-semibold text-base-content/80">{{ t.v }}</strong>
           <template v-else>{{ t.v }}</template>
         </template>
       </p>
 
       <!-- List item -->
-      <div v-else-if="b.k === 'li'" class="flex gap-2 text-xs text-foreground/80 leading-relaxed">
-        <span class="text-muted-foreground select-none mt-[3px]">•</span>
+      <div v-else-if="b.k === 'li'" class="flex gap-2 text-xs text-base-content/80 leading-relaxed">
+        <span class="text-base-content/70 select-none mt-[3px]">•</span>
         <span>
           <template v-for="(t, j) in b.children" :key="j">
             <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-            <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
-            <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground">{{ t.v }}</strong>
+            <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-base-content/80">{{ t.v }}</code>
+            <strong v-else-if="t.t === 'bold'" class="font-semibold text-base-content">{{ t.v }}</strong>
             <template v-else>{{ t.v }}</template>
           </template>
         </span>
       </div>
 
       <!-- Paragraph -->
-      <p v-else class="text-xs text-foreground/80 leading-relaxed">
+      <p v-else class="text-xs text-base-content/80 leading-relaxed">
         <template v-for="(t, j) in b.children" :key="j">
           <a v-if="t.t === 'link'" :href="t.href" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ t.v }}</a>
-          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-foreground/80">{{ t.v }}</code>
-          <strong v-else-if="t.t === 'bold'" class="font-semibold text-foreground/80">{{ t.v }}</strong>
+          <code v-else-if="t.t === 'code'" class="font-mono text-[0.95em] px-1 py-0.5 rounded bg-base-200 text-base-content/80">{{ t.v }}</code>
+          <strong v-else-if="t.t === 'bold'" class="font-semibold text-base-content/80">{{ t.v }}</strong>
           <template v-else>{{ t.v }}</template>
         </template>
       </p>

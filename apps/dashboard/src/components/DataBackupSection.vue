@@ -83,8 +83,8 @@ onUnmounted(() => polling.stop())
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-foreground mb-1">{{ t('ui.settings.DataBackupSection.dataBackups') }}</h2>
-    <p class="text-sm text-muted-foreground mb-6">{{ t('ui.settings.DataBackupSection.syncKeepsAMirrorA') }}</p>
+    <h2 class="text-lg font-semibold text-base-content mb-1">{{ t('ui.settings.DataBackupSection.dataBackups') }}</h2>
+    <p class="text-sm text-base-content/70 mb-6">{{ t('ui.settings.DataBackupSection.syncKeepsAMirrorA') }}</p>
 
     <LoadingState v-if="loading" variant="compact" />
     <ErrorState v-else-if="loadError" :message="loadError" :retry-label="t('ui.settings.DataBackupSection.retry')" compact @retry="retry" />
@@ -96,10 +96,10 @@ onUnmounted(() => polling.stop())
 
       <Card v-if="status.migrationSkipped?.length" role="alert" class="block gap-0 py-0 overflow-hidden mb-4 p-4 space-y-2">
         <p class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ t('ui.settings.DataBackupSection.theseFormerBackupPlansCould') }}</p>
-        <ul class="text-xs text-foreground/80 space-y-1">
-          <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-foreground">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
+        <ul class="text-xs text-base-content/80 space-y-1">
+          <li v-for="s in status.migrationSkipped ?? []" :key="s.name" class="break-words"><span class="font-medium text-base-content">{{ s.name || 'Unnamed plan' }}</span>: {{ s.error }}</li>
         </ul>
-        <p v-if="dismissError" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
+        <p v-if="dismissError" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ dismissError }}</p>
         <Button variant="ghost" size="xs" :disabled="dismissing" @click="dismissSkipped">{{ t('ui.settings.DataBackupSection.dismiss') }}</Button>
       </Card>
 
@@ -139,7 +139,7 @@ onUnmounted(() => polling.stop())
           <div class="eyebrow">{{ t('ui.settings.DataBackupSection.repositories') }}</div>
           <Button variant="outline" size="xs" v-if="!repoEdit" @click="repoEdit = 'new'">{{ t('ui.settings.DataBackupSection.addRepository') }}</Button>
         </div>
-        <p class="mb-3 text-xs text-muted-foreground">{{ t('ui.settings.DataBackupSection.aRepositoryStoresTheEncrypted') }}</p>
+        <p class="mb-3 text-xs text-base-content/70">{{ t('ui.settings.DataBackupSection.aRepositoryStoresTheEncrypted') }}</p>
         <RepositoryForm
           v-if="repoEdit"
           :key="repoEdit === 'new' ? 'new' : repoEdit.id"

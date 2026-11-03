@@ -53,38 +53,38 @@ function origin(): string {
 
 <template>
   <section
-    class="rounded-lg border bg-card px-4 py-3"
-    :class="request.destructive && request.status === 'pending' ? 'border-destructive/40' : 'border-border'"
+    class="rounded-lg border bg-base-100 px-4 py-3"
+    :class="request.destructive && request.status === 'pending' ? 'border-error/40' : 'border-base-300'"
   >
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <p class="text-sm font-medium text-foreground break-words">{{ request.title }}</p>
-        <p class="mt-0.5 text-2xs text-muted-foreground">
+        <p class="text-sm font-medium text-base-content break-words">{{ request.title }}</p>
+        <p class="mt-0.5 text-2xs text-base-content/70">
           <template v-if="source">{{ origin() }} · </template>{{ formatDateTime(request.createdAt) }}
         </p>
       </div>
       <span v-if="request.status !== 'pending'" class="shrink-0 text-xs font-medium"
-        :class="request.status === 'done' ? 'text-success' : request.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'">
+        :class="request.status === 'done' ? 'text-success' : request.status === 'failed' ? 'text-error' : 'text-base-content/70'">
         {{ t(`agentRequests.status.${request.status}`) }}
       </span>
-      <span v-else-if="request.destructive" class="shrink-0 text-xs font-medium text-destructive">{{ t('agentRequests.destructive') }}</span>
+      <span v-else-if="request.destructive" class="shrink-0 text-xs font-medium text-error">{{ t('agentRequests.destructive') }}</span>
     </div>
-    <p v-if="request.reason" class="mt-2 text-xs text-foreground/80">
-      <span class="text-muted-foreground">{{ t('agentRequests.reason') }}</span> {{ request.reason }}
+    <p v-if="request.reason" class="mt-2 text-xs text-base-content/80">
+      <span class="text-base-content/70">{{ t('agentRequests.reason') }}</span> {{ request.reason }}
     </p>
 
-    <ol v-if="steps().length" class="mt-3 divide-y divide-border rounded-md border border-border">
+    <ol v-if="steps().length" class="mt-3 divide-y divide-base-300 rounded-md border border-base-300">
       <li v-for="(s, i) in steps()" :key="i" class="px-3 py-2">
-        <p class="text-xs" :class="s.destructive ? 'text-destructive' : 'text-foreground'">{{ i + 1 }}. {{ s.summary }}</p>
-        <p v-if="s.target" class="mt-0.5 font-mono text-2xs text-muted-foreground">{{ s.target }}</p>
+        <p class="text-xs" :class="s.destructive ? 'text-error' : 'text-base-content'">{{ i + 1 }}. {{ s.summary }}</p>
+        <p v-if="s.target" class="mt-0.5 font-mono text-2xs text-base-content/70">{{ s.target }}</p>
         <details v-if="s.command?.length || s.diff" class="mt-1">
-          <summary class="cursor-pointer text-2xs text-muted-foreground hover:text-foreground">{{ t('agentRequests.exactChange') }}</summary>
-          <pre class="mt-1 overflow-x-auto rounded-md bg-muted px-2 py-1.5 font-mono text-2xs text-foreground">{{ s.command?.join(' ') ?? s.diff }}</pre>
+          <summary class="cursor-pointer text-2xs text-base-content/70 hover:text-base-content">{{ t('agentRequests.exactChange') }}</summary>
+          <pre class="mt-1 overflow-x-auto rounded-md bg-base-200 px-2 py-1.5 font-mono text-2xs text-base-content">{{ s.command?.join(' ') ?? s.diff }}</pre>
         </details>
       </li>
     </ol>
-    <pre v-else-if="details()" class="mt-3 max-h-96 overflow-auto rounded-md bg-muted px-3 py-2 font-mono text-2xs text-foreground whitespace-pre-wrap break-all">{{ details() }}</pre>
-    <p v-if="request.status === 'failed' && request.error" class="mt-2 text-xs text-destructive break-words">{{ request.error }}</p>
+    <pre v-else-if="details()" class="mt-3 max-h-96 overflow-auto rounded-md bg-base-200 px-3 py-2 font-mono text-2xs text-base-content whitespace-pre-wrap break-all">{{ details() }}</pre>
+    <p v-if="request.status === 'failed' && request.error" class="mt-2 text-xs text-error break-words">{{ request.error }}</p>
 
     <div v-if="request.status === 'pending'" class="mt-3 flex justify-end gap-2">
       <Button size="sm" variant="ghost" :disabled="disabled" @click="emit('decide', false)">{{ t('agentRequests.reject') }}</Button>

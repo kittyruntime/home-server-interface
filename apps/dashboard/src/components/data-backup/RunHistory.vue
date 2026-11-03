@@ -44,17 +44,17 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
 <template>
   <Modal panel-class="w-full max-w-3xl" @close="emit('close')">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground truncate">{{ title }}</h3>
+      <h3 class="text-sm font-semibold text-base-content truncate">{{ title }}</h3>
     </template>
 
     <div class="px-5 py-4">
       <LoadingState v-if="loading" variant="compact" />
       <ErrorState v-else-if="error" :message="error" :retry-label="t('ui.backups.RunHistory.retry')" compact @retry="load" />
       <EmptyState v-else-if="!runs.length" :message="t('ui.backups.RunHistory.noRunYet')" />
-      <div v-else class="overflow-x-auto rounded-xl border border-border">
+      <div v-else class="overflow-x-auto rounded-xl border border-base-300">
         <Table class="w-full text-sm border-collapse">
           <TableHeader>
-            <TableRow class="bg-muted border-b border-border text-muted-foreground text-xs uppercase tracking-caps">
+            <TableRow class="bg-base-200 border-b border-base-300 text-base-content/70 text-xs uppercase tracking-caps">
               <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.started') }}</TableHead>
               <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.duration') }}</TableHead>
               <TableHead class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.status') }}</TableHead>
@@ -62,22 +62,22 @@ const STATUS: Record<string, string> = { success: 'Succeeded', failed: 'Failed',
               <TableHead v-if="kind === 'runs'" class="text-left px-3 py-2 font-medium">{{ t('ui.backups.RunHistory.snapshot') }}</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody class="divide-y divide-border">
+          <TableBody class="divide-y divide-base-300">
             <template v-for="(r, i) in runs" :key="r.runId ?? i">
               <TableRow>
-                <TableCell class="px-3 py-2 text-xs text-foreground/80 whitespace-nowrap">{{ formatDateTime(r.start) }}</TableCell>
-                <TableCell class="px-3 py-2 text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</TableCell>
+                <TableCell class="px-3 py-2 text-xs text-base-content/80 whitespace-nowrap">{{ formatDateTime(r.start) }}</TableCell>
+                <TableCell class="px-3 py-2 text-xs text-base-content/80 tabular-nums whitespace-nowrap">{{ durationLabel(r.start, r.end) || '-' }}</TableCell>
                 <TableCell class="px-3 py-2 text-xs whitespace-nowrap">
                   <span :class="TONE_CLASS[runLabel(r).tone]">{{ STATUS[r.status] ?? r.status }}</span>
                   <Tip v-if="r.consistent === true" text="The apps were stopped during the run"><Badge variant="secondary" class="ml-2">{{ t('ui.backups.RunHistory.consistent') }}</Badge></Tip>
                   <Tip v-else-if="r.consistent === false" text="An app could not be stopped during the run"><Badge variant="outline" class="bg-warning/10 text-warning ml-2">{{ t('ui.backups.RunHistory.notConsistent') }}</Badge></Tip>
                 </TableCell>
-                <TableCell v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-foreground/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</TableCell>
-                <TableCell v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-muted-foreground">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</TableCell>
+                <TableCell v-if="kind === 'runs'" class="px-3 py-2 text-right text-xs text-base-content/80 tabular-nums whitespace-nowrap">{{ r.added !== undefined ? bytesLabel(r.added) : '-' }}</TableCell>
+                <TableCell v-if="kind === 'runs'" class="px-3 py-2 font-mono text-2xs text-base-content/70">{{ r.snapshotId ? r.snapshotId.slice(0, 8) : '-' }}</TableCell>
               </TableRow>
               <TableRow v-if="r.error || r.warnings?.length">
                 <TableCell :colspan="kind === 'runs' ? 5 : 3" class="px-3 pb-2 pt-0">
-                  <p v-if="r.error" class="status-text text-destructive break-words"><span class="status-tag">[ERR]</span> {{ r.error }}</p>
+                  <p v-if="r.error" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ r.error }}</p>
                   <p v-for="w in r.warnings ?? []" :key="w" class="status-text text-warning break-words"><span class="status-tag">[WARN]</span> {{ w }}</p>
                 </TableCell>
               </TableRow>

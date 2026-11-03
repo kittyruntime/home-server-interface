@@ -64,21 +64,21 @@ async function remove() {
 </script>
 
 <template>
-  <article class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden p-5 bg-card">
+  <article class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden p-5 bg-base-100">
     <!-- Full width: the location wraps at the card's width, never in a squeezed column. -->
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
-        <h3 class="min-w-0 break-words text-sm font-medium text-foreground">{{ repository.name }}</h3>
+        <h3 class="min-w-0 break-words text-sm font-medium text-base-content">{{ repository.name }}</h3>
         <Badge variant="secondary">{{ TYPE_LABEL[repository.type] }}</Badge>
       </div>
-      <p class="mt-1 font-mono text-2xs text-muted-foreground [overflow-wrap:anywhere]" :title="locationLabel(repository)">{{ locationLabel(repository) }}</p>
+      <p class="mt-1 font-mono text-2xs text-base-content/70 [overflow-wrap:anywhere]" :title="locationLabel(repository)">{{ locationLabel(repository) }}</p>
     </div>
 
-    <div class="mt-3 grid gap-2 text-2xs text-muted-foreground sm:grid-cols-2">
+    <div class="mt-3 grid gap-2 text-2xs text-base-content/70 sm:grid-cols-2">
       <span :class="TONE_CLASS[last.tone]" class="break-words">{{ last.text }}</span>
       <span>{{ t('uip.backups.RepositoryCard.nextCheck', { p0: repository.check.every === 'off' ? 'Off' : untilLabel(repository.nextCheck) }) }}</span>
     </div>
-    <p v-if="error" role="alert" class="mt-2 status-text text-destructive"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <p v-if="error" role="alert" class="mt-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
 
     <!-- Actions: the common ones first, the rarer ones on a second wrapping row. -->
     <div class="mt-4 flex flex-wrap gap-1">
@@ -94,7 +94,7 @@ async function remove() {
       <Button variant="ghost" size="xs" v-if="repository.hasPassword" @click="revealing = true">{{ t('ui.backups.RepositoryCard.showPassword') }}</Button>
       <Button variant="ghost" size="xs" @click="history = true">{{ t('ui.backups.RepositoryCard.history') }}</Button>
       <Button variant="ghost" size="xs" @click="emit('edit')">{{ t('ui.backups.RepositoryCard.edit') }}</Button>
-      <Button variant="ghost" size="xs" class="text-destructive" @click="remove">{{ t('ui.backups.RepositoryCard.remove') }}</Button>
+      <Button variant="ghost" size="xs" class="text-error" @click="remove">{{ t('ui.backups.RepositoryCard.remove') }}</Button>
     </div>
 
     <PasswordReveal v-if="revealing" mode="ask" :repository="repository" @close="revealing = false" />

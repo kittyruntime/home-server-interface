@@ -18,7 +18,7 @@ import {
 const { t } = useI18n()
 
 // Section navigation of a panel (Settings, Storage, Monitor, Sharing): the
-// shadcn-vue sidebar on wide layouts, a native select on narrow ones. `container`
+// daisyUI menu on wide layouts, a native select on narrow ones. `container`
 // switches on the panel's width (a desktop window) instead of the screen's.
 const props = defineProps<{
   items: SectionNavItem<T>[]

@@ -51,12 +51,12 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="login-root min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden">
+  <div class="login-root min-h-screen flex items-center justify-center bg-base-100 px-4 relative overflow-hidden">
     <!-- Ambient backdrop -->
     <div class="ambient" aria-hidden="true">
-      <span class="glow glow-a opacity-28 dark:opacity-50"></span>
-      <span class="glow glow-b opacity-20 dark:opacity-35"></span>
-      <span class="glow glow-c opacity-14 dark:opacity-25"></span>
+      <span class="glow glow-a"></span>
+      <span class="glow glow-b"></span>
+      <span class="glow glow-c"></span>
     </div>
 
     <div :class="['relative z-10 w-full max-w-sm login-card', mounted && 'is-in']">
@@ -64,18 +64,18 @@ async function handleLogin() {
         <div class="flex justify-center mb-4">
           <!-- Logo mark -->
           <svg class="w-12 h-12" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <rect x="6" y="20" width="36" height="22" rx="4" fill="var(--primary)" opacity="0.12"/>
-            <path d="M24 6 L42 20 H6 Z" fill="var(--primary)"/>
-            <rect x="20" y="28" width="8" height="14" rx="1.5" fill="var(--primary)"/>
+            <rect x="6" y="20" width="36" height="22" rx="4" fill="var(--color-primary)" opacity="0.12"/>
+            <path d="M24 6 L42 20 H6 Z" fill="var(--color-primary)"/>
+            <rect x="20" y="28" width="8" height="14" rx="1.5" fill="var(--color-primary)"/>
           </svg>
         </div>
-        <div class="text-4xl font-semibold text-foreground mb-1">{{ t('ui.views.LoginView.homeServer') }}</div>
+        <div class="text-4xl font-semibold text-base-content mb-1">{{ t('ui.views.LoginView.homeServer') }}</div>
         <div class="eyebrow">{{ t('ui.views.LoginView.homeServerInterface') }}</div>
       </div>
 
       <form
         @submit.prevent="handleLogin"
-        class="bg-card border border-input rounded-xl p-8 shadow-sm"
+        class="bg-base-100 border border-base-300 rounded-xl p-8 shadow-sm"
       >
         <div class="mb-5">
           <label for="login-username" class="eyebrow block mb-2">{{ t('login.username') }}</label>
@@ -106,7 +106,7 @@ async function handleLogin() {
               @click="showPassword = !showPassword"
               :aria-label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
               :aria-pressed="showPassword"
-              class="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+              class="absolute right-1 top-1/2 -translate-y-1/2 text-base-content/70 hover:bg-transparent"
             >
               <EyeIcon v-if="!showPassword" aria-hidden="true" />
               <EyeOffIcon v-else aria-hidden="true" />
@@ -128,7 +128,7 @@ async function handleLogin() {
         </Button>
       </form>
 
-      <p class="text-center text-xs text-muted-foreground mt-6">
+      <p class="text-center text-xs text-base-content/70 mt-6">
         {{ t('ui.views.LoginView.homeServerInterface') }}
       </p>
     </div>
@@ -136,7 +136,7 @@ async function handleLogin() {
 </template>
 
 <style scoped>
-/* Glow opacity lives in the template (opacity-* / dark:opacity-*): softer on light themes. */
+/* Follow the active theme's color-scheme for the ambient glow strength. */
 .ambient {
   position: absolute;
   inset: 0;
@@ -151,21 +151,24 @@ async function handleLogin() {
   will-change: transform;
 }
 .glow-a {
+  opacity: light-dark(0.28, 0.50);
   width: 460px; height: 460px;
   top: -120px; left: -100px;
-  background: var(--primary);
+  background: var(--color-primary);
   animation: drift-a 26s ease-in-out infinite;
 }
 .glow-b {
+  opacity: light-dark(0.20, 0.35);
   width: 380px; height: 380px;
   bottom: -140px; right: -80px;
-  background: var(--primary);
+  background: var(--color-primary);
   animation: drift-b 32s ease-in-out infinite;
 }
 .glow-c {
+  opacity: light-dark(0.14, 0.25);
   width: 300px; height: 300px;
   top: 40%; right: 20%;
-  background: var(--info);
+  background: var(--color-info);
   animation: drift-c 30s ease-in-out infinite;
 }
 .login-card {

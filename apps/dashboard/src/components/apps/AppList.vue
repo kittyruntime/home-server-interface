@@ -79,7 +79,7 @@ onUnmounted(() => {
 function statusDot(status: string) {
   switch (status) {
     case 'running':       return 'bg-success'
-    case 'stopped':       return 'bg-muted-foreground'
+    case 'stopped':       return 'bg-base-content/70'
     case 'error':         return 'bg-primary'
     case 'transitioning': return 'bg-warning animate-pulse'
     default:              return 'bg-warning'
@@ -89,10 +89,10 @@ function statusDot(status: string) {
 function statusText(status: string) {
   switch (status) {
     case 'running':       return { label: t('uis.apps.AppList.running'),  cls: 'text-success' }
-    case 'stopped':       return { label: t('uis.apps.AppList.stopped'),  cls: 'text-muted-foreground'   }
+    case 'stopped':       return { label: t('uis.apps.AppList.stopped'),  cls: 'text-base-content/70'   }
     case 'error':         return { label: t('uis.apps.AppList.error'),    cls: 'text-primary'   }
     case 'transitioning': return { label: t('uis.apps.AppList.updating'),cls: 'text-warning'  }
-    default:              return { label: t('uis.apps.AppList.unknown'),  cls: 'text-muted-foreground'   }
+    default:              return { label: t('uis.apps.AppList.unknown'),  cls: 'text-base-content/70'   }
   }
 }
 
@@ -269,8 +269,8 @@ async function unpin(app: App) {
           :description="t('ui.apps.AppList.deployYourFirstContainerTo')"
         >
           <template #icon>
-            <div class="w-16 h-16 rounded-xl bg-muted border border-border flex items-center justify-center">
-              <PackageIcon class="w-8 h-8 text-muted-foreground" aria-hidden="true" />
+            <div class="w-16 h-16 rounded-xl bg-base-200 border border-base-300 flex items-center justify-center">
+              <PackageIcon class="w-8 h-8 text-base-content/70" aria-hidden="true" />
             </div>
           </template>
           <template #action>
@@ -287,29 +287,29 @@ async function unpin(app: App) {
       <div v-else class="flex flex-col flex-1">
 
         <!-- Quick access -->
-        <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-border">
-          <p class="text-2xs font-semibold text-muted-foreground uppercase tracking-caps mb-3">{{ t('ui.apps.AppList.quickAccess') }}</p>
+        <div v-if="pinnedApps.length" class="px-6 pt-5 pb-5 border-b border-base-300">
+          <p class="text-2xs font-semibold text-base-content/70 uppercase tracking-caps mb-3">{{ t('ui.apps.AppList.quickAccess') }}</p>
           <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="app.app?.pinnedUrl ?? ''" target="_blank" rel="noopener"
-              class="group flex items-center gap-3 px-3.5 py-2.5 bg-muted border border-input rounded-xl hover:bg-base-200 transition-all no-underline"
+              class="group flex items-center gap-3 px-3.5 py-2.5 bg-base-200 border border-base-300 rounded-xl hover:bg-base-200 transition-all no-underline"
             >
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
               <div class="min-w-0">
-                <p class="text-sm font-semibold text-foreground font-mono leading-none">{{ app.name }}</p>
-                <p class="text-2xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
+                <p class="text-sm font-semibold text-base-content font-mono leading-none">{{ app.name }}</p>
+                <p class="text-2xs text-base-content/70 mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
               </div>
-              <ExternalLinkIcon class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/80 transition-colors flex-shrink-0" aria-hidden="true" />
+              <ExternalLinkIcon class="w-3.5 h-3.5 text-base-content/70 group-hover:text-base-content/80 transition-colors flex-shrink-0" aria-hidden="true" />
             </a>
           </TransitionGroup>
         </div>
 
         <!-- Mobile cards -->
         <div v-if="narrow" class="space-y-2 px-3 pb-3">
-          <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-border p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-card']">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-foreground">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-destructive/10 text-destructive">{{ t('ui.apps.AppList.blocked') }}</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">{{ t('ui.apps.AppList.changesPending') }}</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</span></div><p class="mt-1 truncate font-mono text-2xs text-muted-foreground" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-muted-foreground">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-muted-foreground" :aria-label="t('ui.apps.AppList.editContainer')" @click="openEdit(app)"><EllipsisIcon /></Button></div>
-            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-2"><Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">{{ t('ui.apps.AppList.start') }}</Button><Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">{{ t('ui.apps.AppList.stop') }}</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">{{ t('ui.apps.AppList.restart') }}</Button><Button variant="ghost" size="sm" class="touch-target text-foreground/80" @click="openLogs(app)">{{ t('ui.apps.AppList.logs') }}</Button></div>
+          <article v-for="app in apps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-base-300 p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-base-100']">
+            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span :class="['h-2 w-2 shrink-0 rounded-full',statusDot(app.status)]"/><strong class="block truncate font-mono text-sm text-base-content">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="bg-error/10 text-error">{{ t('ui.apps.AppList.blocked') }}</Badge><span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span><span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">{{ t('ui.apps.AppList.changesPending') }}</span><span v-else-if="app.drifted" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</span></div><p class="mt-1 truncate font-mono text-2xs text-base-content/70" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs" :class="statusText(app.status).cls">{{statusText(app.status).label}} · {{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-base-content/70">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-base-content/70" :aria-label="t('ui.apps.AppList.editContainer')" @click="openEdit(app)"><EllipsisIcon /></Button></div>
+            <div class="mt-3 grid grid-cols-4 gap-1 border-t border-base-300 pt-2"><Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'start')">{{ t('ui.apps.AppList.start') }}</Button><Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'stop')">{{ t('ui.apps.AppList.stop') }}</Button><Button variant="ghost" size="sm" class="touch-target text-base-content/80" :disabled="!!actionLoading[app.id]" @click="runAction(app.id,'restart')">{{ t('ui.apps.AppList.restart') }}</Button><Button variant="ghost" size="sm" class="touch-target text-base-content/80" @click="openLogs(app)">{{ t('ui.apps.AppList.logs') }}</Button></div>
           </article>
         </div>
 
@@ -317,15 +317,15 @@ async function unpin(app: App) {
         <div v-else class="overflow-x-auto">
         <Table class="w-full text-sm">
           <TableHeader>
-            <TableRow class="border-b border-border">
-              <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppList.container') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden sm:table-cell">{{ t('ui.apps.AppList.image') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps hidden md:table-cell">{{ t('ui.apps.AppList.ports') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-muted-foreground uppercase tracking-caps">{{ t('ui.apps.AppList.status') }}</TableHead>
+            <TableRow class="border-b border-base-300">
+              <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.container') }}</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden sm:table-cell">{{ t('ui.apps.AppList.image') }}</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden md:table-cell">{{ t('ui.apps.AppList.ports') }}</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.status') }}</TableHead>
               <TableHead class="px-6 py-2.5 text-right"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody class="divide-y divide-border">
+          <TableBody class="divide-y divide-base-300">
             <TableRow
               v-for="app in apps" :key="app.id"
               :data-app-name="app.name"
@@ -334,8 +334,8 @@ async function unpin(app: App) {
               <!-- Name -->
               <TableCell class="px-6 py-3.5">
                 <div class="flex items-center gap-2">
-                  <span class="font-mono text-foreground/80 text-sm font-medium">{{ app.name }}</span>
-                  <Tip v-if="holdForApp(app.name)" :text="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`"><Badge variant="outline" class="bg-destructive/10 text-destructive">{{ t('ui.apps.AppList.blocked') }}</Badge></Tip>
+                  <span class="font-mono text-base-content/80 text-sm font-medium">{{ app.name }}</span>
+                  <Tip v-if="holdForApp(app.name)" :text="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`"><Badge variant="outline" class="bg-error/10 text-error">{{ t('ui.apps.AppList.blocked') }}</Badge></Tip>
                   <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span>
                   <BookmarkIcon v-if="app.app?.pinnedUrl" class="w-3 h-3 text-primary flex-shrink-0" aria-hidden="true" />
                   <span v-if="app.pendingApply" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-primary border-primary/40">{{ t('ui.apps.AppList.changesPending') }}</span>
@@ -344,19 +344,19 @@ async function unpin(app: App) {
                 <div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5">
                   <div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5">
                     <span :class="['w-1 h-1 rounded-full', statusDot(svc.status)]" />
-                    <span class="font-mono text-2xs text-muted-foreground">{{ svc.name }}</span>
+                    <span class="font-mono text-2xs text-base-content/70">{{ svc.name }}</span>
                   </div>
                 </div>
               </TableCell>
 
               <!-- Image -->
               <TableCell class="px-3 py-3.5 hidden sm:table-cell">
-                <span class="font-mono text-muted-foreground text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
+                <span class="font-mono text-base-content/70 text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
               </TableCell>
 
               <!-- Ports -->
               <TableCell class="px-3 py-3.5 hidden md:table-cell">
-                <span class="font-mono text-muted-foreground text-xs">{{ portsSummary(app) }}</span>
+                <span class="font-mono text-base-content/70 text-xs">{{ portsSummary(app) }}</span>
               </TableCell>
 
               <!-- Status -->
@@ -384,13 +384,13 @@ async function unpin(app: App) {
 
                   <!-- Start / Stop / Restart -->
                   <ButtonGroup class="mr-1.5" :aria-label="t('ui.apps.AppList.containerActions')">
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.start')" :aria-label="t('ui.apps.AppList.start')" class="text-muted-foreground hover:text-success" @click="runAction(app.id, 'start')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.start')" :aria-label="t('ui.apps.AppList.start')" class="text-base-content/70 hover:text-success" @click="runAction(app.id, 'start')">
                       <PlayIcon class="size-3.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.stop')" :aria-label="t('ui.apps.AppList.stop')" class="text-muted-foreground hover:text-warning" @click="runAction(app.id, 'stop')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.stop')" :aria-label="t('ui.apps.AppList.stop')" class="text-base-content/70 hover:text-warning" @click="runAction(app.id, 'stop')">
                       <SquareIcon class="size-3.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.restart')" :aria-label="t('ui.apps.AppList.restart')" class="text-muted-foreground hover:text-primary" @click="runAction(app.id, 'restart')">
+                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id]" :tooltip="t('ui.apps.AppList.restart')" :aria-label="t('ui.apps.AppList.restart')" class="text-base-content/70 hover:text-primary" @click="runAction(app.id, 'restart')">
                       <RefreshCwIcon class="size-3.5" aria-hidden="true" />
                     </Button>
                   </ButtonGroup>
@@ -399,7 +399,7 @@ async function unpin(app: App) {
                   <Button variant="ghost" size="icon-sm"
                     @click="openLogs(app)"
                     :tooltip="t('ui.apps.AppList.logs')" :aria-label="t('ui.apps.AppList.logs')"
-                    class="text-muted-foreground hover:text-foreground"
+                    class="text-base-content/70 hover:text-base-content"
                   >
                     <ScrollTextIcon class="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -409,7 +409,7 @@ async function unpin(app: App) {
                     @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
                     :tooltip="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'" :aria-label="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
                     :aria-pressed="!!app.app?.pinnedUrl"
-                    :class="app.app?.pinnedUrl ? 'text-primary' : 'text-muted-foreground'"
+                    :class="app.app?.pinnedUrl ? 'text-primary' : 'text-base-content/70'"
                   >
                     <BookmarkIcon class="size-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" aria-hidden="true" />
                   </Button>
@@ -418,7 +418,7 @@ async function unpin(app: App) {
                   <Button variant="ghost" size="icon-sm"
                     @click="openEdit(app)"
                     :tooltip="t('ui.apps.AppList.edit')" :aria-label="t('ui.apps.AppList.edit')"
-                    class="text-muted-foreground hover:text-foreground"
+                    class="text-base-content/70 hover:text-base-content"
                   >
                     <SquarePenIcon class="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -428,7 +428,7 @@ async function unpin(app: App) {
                     @click="runAction(app.id, 'delete')"
                     :disabled="!!actionLoading[app.id]"
                     :tooltip="t('ui.apps.AppList.delete')" :aria-label="t('ui.apps.AppList.delete')"
-                    class="text-muted-foreground hover:text-primary"
+                    class="text-base-content/70 hover:text-primary"
                   >
                     <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
@@ -457,13 +457,13 @@ async function unpin(app: App) {
   <!-- Pin dialog -->
   <Modal v-if="pinDialog" panel-class="w-full max-w-sm" @close="pinDialog = null">
     <template #header>
-      <h3 class="text-sm font-semibold text-foreground">
+      <h3 class="text-sm font-semibold text-base-content">
         {{ t('ui.apps.AppList.pin') }} <span class="font-mono text-primary">{{ pinDialog.name }}</span> {{ t('ui.apps.AppList.toQuickAccess') }}
       </h3>
     </template>
 
     <div class="p-5 space-y-1.5">
-      <label class="text-xs text-muted-foreground">URL</label>
+      <label class="text-xs text-base-content/70">URL</label>
       <Input
         v-model="pinDialogUrl"
         laceholder="http://192.168.1.x:8080"
@@ -472,7 +472,7 @@ async function unpin(app: App) {
         autofocus
         class="w-full px-3 py-2 text-sm font-mono"
       />
-      <p v-if="pinDialogErr" role="alert" class="status-text text-destructive"><span class="status-tag">[ERR]</span> {{ pinDialogErr }}</p>
+      <p v-if="pinDialogErr" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ pinDialogErr }}</p>
     </div>
 
     <template #footer>

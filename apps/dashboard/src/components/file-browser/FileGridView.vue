@@ -45,7 +45,7 @@ const emit = defineEmits<{
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
-        <FileTypeIcon :name="t.name" class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-destructive' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
+        <FileTypeIcon :name="t.name" class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
           <LoadingSpinner class="text-xl text-primary drop-shadow" />
@@ -54,21 +54,21 @@ const emit = defineEmits<{
 
       <!-- Name -->
       <span class="text-xs leading-tight w-full text-center truncate px-1"
-        :class="t.status === 'error' ? 'text-destructive' : 'text-foreground/80'"
+        :class="t.status === 'error' ? 'text-error' : 'text-base-content/80'"
         :title="t.name">
         {{ t.name }}
       </span>
 
       <span v-if="t.status === 'paused'" class="text-2xs text-warning">{{ $t('ui.files.FileGridView.paused') }}</span>
-      <span v-else-if="t.status === 'error'" class="text-2xs text-destructive">{{ $t('ui.files.FileGridView.failed') }}</span>
+      <span v-else-if="t.status === 'error'" class="text-2xs text-error">{{ $t('ui.files.FileGridView.failed') }}</span>
     </div>
 
     <!-- Ghost card while creating a folder -->
     <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
       <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
-      <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFolder') }}</span>
+      <span class="text-xs text-base-content/70 italic">{{ $t('ui.files.FileGridView.newFolder') }}</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
+      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-base-100/30">
         <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
@@ -76,9 +76,9 @@ const emit = defineEmits<{
     <!-- Ghost card while creating a file -->
     <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
       <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
-      <span class="text-xs text-muted-foreground italic">{{ $t('ui.files.FileGridView.newFile') }}</span>
+      <span class="text-xs text-base-content/70 italic">{{ $t('ui.files.FileGridView.newFile') }}</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-background/30">
+      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-base-100/30">
         <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
@@ -102,28 +102,28 @@ const emit = defineEmits<{
     >
       <!-- Pending overlay -->
       <div v-if="pendingPaths?.includes(entry.path)"
-        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60">
-        <LoadingSpinner class="text-xl text-muted-foreground" />
+        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-base-100/60">
+        <LoadingSpinner class="text-xl text-base-content/70" />
       </div>
 
       <!-- Checkbox -->
       <Checkbox
         :model-value="selected.has(entry.path)"
         :aria-label="`Select ${entry.name}`"
-        :class="['absolute top-1.5 left-1.5 bg-background transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 focus-visible:opacity-100']"
+        :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 focus-visible:opacity-100']"
         @click.stop.prevent="emit('selectEntry', entry, $event)"
       />
 
       <!-- Icon -->
       <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
-        <FileTypeIcon :name="entry.name" class="w-9 h-11 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon :name="entry.name" class="w-9 h-11 text-base-content/70" aria-hidden="true" />
         <Button
           variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"
           :tooltip="$t('ui.files.FileGridView.preview')"
           :aria-label="`Preview ${entry.name}`"
-          class="absolute -top-1 -right-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+          class="absolute -top-1 -right-1 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
         >
           <EyeIcon class="size-4" aria-hidden="true" />
         </Button>
@@ -146,7 +146,7 @@ const emit = defineEmits<{
       <template v-else>
         <span
           @dblclick.stop="emit('startRename', entry)"
-          class="text-xs leading-tight text-foreground/80 w-full text-center truncate px-1 hover:text-foreground transition-colors"
+          class="text-xs leading-tight text-base-content/80 w-full text-center truncate px-1 hover:text-base-content transition-colors"
           :title="entry.name">
           {{ entry.name }}
         </span>

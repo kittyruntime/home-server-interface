@@ -27,7 +27,7 @@ function onFocus(e: FocusEvent) {
     <span class="relative inline-flex" @mouseenter="open = true" @mouseleave="open = false">
       <PopoverTrigger
         type="button"
-        class="grid size-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-muted-foreground ring-1 ring-inset ring-input outline-none hover:text-foreground hover:ring-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        class="grid size-4 shrink-0 place-items-center rounded-full text-2xs font-semibold leading-none text-base-content/70 ring-1 ring-inset ring-base-300 outline-none hover:text-base-content hover:ring-base-content/70 focus-visible:ring-3 focus-visible:ring-base-content/30"
         :aria-label="t('ui.shared.Hint.moreInfo')"
         @click.stop
         @focus="onFocus"
@@ -37,7 +37,7 @@ function onFocus(e: FocusEvent) {
     <PopoverContent
       side="bottom"
       :side-offset="6"
-      class="w-56 p-2.5 text-xs leading-snug text-foreground/80"
+      class="w-56 p-2.5 text-xs leading-snug text-base-content/80"
       :focus-on-open="false"
       :restore-focus="false"
     >{{ text }}</PopoverContent>

@@ -15,7 +15,7 @@ const emits = defineEmits<{
 }>()
 
 const el = ref<HTMLInputElement | null>(null)
-const { onChange, onClick } = useCheckedModel(props, emits as (event: "update:modelValue", value: boolean | "indeterminate") => void, el)
+const { onChange, onClick } = useCheckedModel(props, emits, el)
 </script>
 
 <template>

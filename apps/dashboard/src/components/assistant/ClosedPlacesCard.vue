@@ -72,20 +72,20 @@ onMounted(load)
   <ErrorState v-else-if="error" :message="error" :retry-label="t('common.retry')" @retry="load" />
   <Card v-else class="gap-3 px-4 py-4 shadow-none">
     <div>
-      <p class="text-sm font-medium text-foreground">{{ t('assistant.closed.title') }}</p>
-      <p class="mt-0.5 text-xs text-muted-foreground">{{ t('assistant.closed.intro') }}</p>
+      <p class="text-sm font-medium text-base-content">{{ t('assistant.closed.title') }}</p>
+      <p class="mt-0.5 text-xs text-base-content/70">{{ t('assistant.closed.intro') }}</p>
     </div>
-    <p v-if="!places.length" class="text-xs text-muted-foreground">{{ t('assistant.closed.none') }}</p>
-    <ul v-else class="divide-y divide-border rounded-md border border-border">
+    <p v-if="!places.length" class="text-xs text-base-content/70">{{ t('assistant.closed.none') }}</p>
+    <ul v-else class="divide-y divide-base-300 rounded-md border border-base-300">
       <li v-for="p in places" :key="p.id">
         <label class="flex cursor-pointer items-center gap-3 px-3 py-2">
           <Checkbox :model-value="closed.has(p.id)" @update:model-value="v => toggle(p.id, v === true)" />
           <PlaceIcon :icon="p.icon" class="size-4 shrink-0" />
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm text-foreground">{{ p.name }}</span>
-            <span class="block truncate font-mono text-2xs text-muted-foreground">{{ p.path }}</span>
+            <span class="block truncate text-sm text-base-content">{{ p.name }}</span>
+            <span class="block truncate font-mono text-2xs text-base-content/70">{{ p.path }}</span>
           </span>
-          <span v-if="closed.has(p.id)" class="shrink-0 text-xs text-muted-foreground">{{ t('assistant.closed.closedLabel') }}</span>
+          <span v-if="closed.has(p.id)" class="shrink-0 text-xs text-base-content/70">{{ t('assistant.closed.closedLabel') }}</span>
         </label>
       </li>
     </ul>
