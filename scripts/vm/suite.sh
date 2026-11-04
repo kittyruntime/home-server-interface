@@ -510,7 +510,8 @@ trash_feature() {
   vm_ssh 'echo a > /srv/vm-mirror/from-ui/a.txt; echo b > /srv/vm-mirror/from-ui/b.txt; chown vmuser /srv/vm-mirror/from-ui/a.txt /srv/vm-mirror/from-ui/b.txt'
   API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/a.txt"}' >/dev/null
   API_TOKEN=/root/token-vmuser api trash.empty "{\"placeId\":\"$place\"}" >/dev/null
-  vm_ssh 'test -z "$(ls -A /srv/vm-mirror/.hsi-trash/files /srv/vm-mirror/.hsi-trash/info)"' || fail "emptying left items in the trash"
+  vm_ssh 'test -z "$(find /srv/vm-mirror/.hsi-trash/files /srv/vm-mirror/.hsi-trash/info -mindepth 1)"' \
+    || fail "emptying left items in the trash: $(vm_ssh 'find /srv/vm-mirror/.hsi-trash -mindepth 1')"
   API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/b.txt"}' >/dev/null
   api place.setTrash "{\"id\":\"$place\",\"enabled\":false,\"retentionDays\":null,\"emptyExisting\":true}" >/dev/null
   vm_ssh 'test -z "$(ls -A /srv/vm-mirror/.hsi-trash/files)"' || fail "turning the trash off did not empty it"
