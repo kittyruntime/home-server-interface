@@ -31,7 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Deleting there moves items to the trash with an Undo; Shift+Delete still
   deletes for good. The Trash in the file manager restores items where they
   were (or under a new name when something took their place) and empties it.
-  The trash is hidden from listings and shares and left out of backups.
+  Each person's trash is their own: only they (and administrators) see and
+  restore what they deleted. The trash is hidden from listings and shares,
+  cannot be opened by its path, and is left out of backups.
 - **Free space per place**: the file manager shows how much room is left on the
   current folder's disk next to the item count, and Settings > Places shows it
   for each place.
