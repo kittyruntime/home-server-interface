@@ -165,3 +165,15 @@ func TestSpecialFilesAreRefusedWithoutBlocking(t *testing.T) {
 		t.Error("a symlink is not followed for its checksum")
 	}
 }
+
+func TestCredentialOfRefusesOutOfRangeIds(t *testing.T) {
+	if c, ok := credentialOf(userCtx{uid: 1000, gid: 1000, gids: []int{1000, 1003}}); !ok || c.Uid != 1000 || len(c.Groups) != 2 {
+		t.Fatalf("credentialOf = %+v, %v", c, ok)
+	}
+	if _, ok := credentialOf(userCtx{uid: 1000, gid: 1000, gids: []int{-1}}); ok {
+		t.Error("a negative group id must be refused")
+	}
+	if _, ok := credentialOf(userCtx{uid: 1 << 33, gid: 1000}); ok {
+		t.Error("an id over 32 bits must be refused")
+	}
+}
