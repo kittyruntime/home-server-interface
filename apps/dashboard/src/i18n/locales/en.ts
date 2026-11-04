@@ -295,6 +295,14 @@ export default {
     confirmFileDeleteHint: 'Ask before deleting files and folders for good in the file manager. Deleting in a place with a trash is not asked.',
   },
   files: {
+    status: {
+      items: '{count} item(s)',
+      selected: '{count} selected',
+      free: '{free} free of {total}',
+      used: '{pct}% of the disk used',
+      volume: 'On the disk mounted at {mount}',
+      onDisk: 'on',
+    },
     trash: {
       title: 'Trash',
       intro: 'Items deleted in places that have a trash stay here until you restore them, delete them, or the place empties them after the days set for it.',

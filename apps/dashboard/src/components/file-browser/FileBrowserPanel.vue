@@ -36,6 +36,7 @@ import { useFilePrefs } from '../../lib/file-prefs'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
 import RenameBookmarkModal from './RenameBookmarkModal.vue'
 import TrashView from './TrashView.vue'
+import FolderStatusBar from './FolderStatusBar.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
 import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
@@ -955,6 +956,7 @@ onMounted(async () => {
         </template>
       </ContextMenuContent>
       </ContextMenu>
+      <FolderStatusBar :path="currentPath" :items="displayEntries.length" :selected="selected.size" />
       </template>
 
       <TransfersTray />

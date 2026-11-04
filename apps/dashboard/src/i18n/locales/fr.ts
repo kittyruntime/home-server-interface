@@ -296,6 +296,14 @@ export default {
     confirmFileDeleteHint: 'Demander avant de supprimer définitivement des fichiers et dossiers dans le gestionnaire de fichiers. Supprimer dans un emplacement qui a une corbeille ne demande rien.',
   },
   files: {
+    status: {
+      items: '{count} élément(s)',
+      selected: '{count} sélectionné(s)',
+      free: '{free} libres sur {total}',
+      used: '{pct} % du disque utilisés',
+      volume: 'Sur le disque monté sur {mount}',
+      onDisk: 'sur',
+    },
     trash: {
       title: 'Corbeille',
       intro: 'Les éléments supprimés dans les emplacements qui ont une corbeille restent ici jusqu’à ce que vous les restauriez, les supprimiez, ou que l’emplacement les vide après le nombre de jours choisi.',

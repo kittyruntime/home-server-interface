@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import PlaceIconPicker from './PlaceIconPicker.vue'
 import PlaceTrashSettings from './PlaceTrashSettings.vue'
+import { formatBytes } from '../lib/file-details'
 import { useToast } from '../lib/toast'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
@@ -47,7 +48,20 @@ async function load() {
   places.value = p as Place[]
   groups.value = g as Group[]
   users.value  = u as User[]
+  void loadUsage()
 }
+
+// Room left on each place's disk (#201): places have no enforced limit, so
+// this is what bounds them. Best effort: a place whose disk is gone shows none.
+type Usage = { total: number; free: number; fsType?: string; mountPoint?: string }
+const usage = ref<Record<string, Usage>>({})
+async function loadUsage() {
+  const results = await Promise.allSettled(places.value.map(pl => trpc.fs.diskUsage.query({ path: pl.path })))
+  const next: Record<string, Usage> = {}
+  results.forEach((r, i) => { if (r.status === 'fulfilled') next[places.value[i]!.id] = r.value })
+  usage.value = next
+}
+const usedPct = (u: Usage) => u.total > 0 ? (1 - u.free / u.total) * 100 : 0
 
 async function addPlace() {
   addError.value   = ''
@@ -56,6 +70,7 @@ async function addPlace() {
   try {
     const created = await trpc.place.create.mutate({ name: newName.value.trim(), path: newPath.value.trim() })
     places.value.push(created as Place)
+    void loadUsage()
     newName.value = ''
     newPath.value = ''
     adding.value  = false
@@ -224,6 +239,12 @@ onMounted(async () => {
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-base-content">{{ place.name }}</span>
                 <span class="font-mono text-base-content/70 text-xs ml-3">{{ place.path }}</span>
+                <span v-if="usage[place.id]" class="mt-1 flex items-center gap-2 text-xs text-base-content/70">
+                  <progress :class="['progress h-1.5 w-24', usedPct(usage[place.id]!) > 90 ? 'progress-error' : usedPct(usage[place.id]!) > 75 ? 'progress-warning' : 'progress-primary']"
+                    :value="usedPct(usage[place.id]!)" max="100" :aria-label="t('files.status.used', { pct: Math.round(usedPct(usage[place.id]!)) })" />
+                  <span class="tabular-nums">{{ t('files.status.free', { free: formatBytes(usage[place.id]!.free), total: formatBytes(usage[place.id]!.total) }) }}</span>
+                  <span v-if="usage[place.id]!.mountPoint">{{ t('files.status.onDisk') }} <span class="font-mono">{{ usage[place.id]!.mountPoint }}</span></span>
+                </span>
               </div>
               <!-- Expand chevron -->
               <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
