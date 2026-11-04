@@ -2,7 +2,8 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../index"
 import { checkPathPerm, getLinuxUser, mapWorkerError } from "./fs"
-import { trashRequest, type TrashEntry } from "../../services/trash"
+import { normalize } from "node:path"
+import { placeOf, trashRequest, type TrashEntry } from "../../services/trash"
 
 // The trash of the places that have one (#200). Who may delete in a place
 // sees, restores and removes its trash; the worker acts as that user.
@@ -39,14 +40,25 @@ export const trashRouter = router({
     .mutation(async ({ ctx, input }) => {
       const place = await trashPlace(ctx, input.placeId)
       ctx.audit.target = `${place.name}: ${input.id}`
-      // Restoring writes in the place: the worker keeps the item inside it,
-      // whatever path its info file names.
-      await checkPathPerm(ctx, input.target ?? place.path, "canWrite")
-      if (input.target) await checkPathPerm(ctx, place.path, "canWrite")
+      const linuxUsername = (await getLinuxUser(ctx)) ?? ""
+      // The destination is decided here, not by the info file (which the
+      // place's writers can edit): it must be in this place, not in another
+      // place nested in it, and the user must be allowed to write there.
+      let dst = input.target
+      if (!dst) {
+        const entries = await trashRequest<TrashEntry[]>({ op: "list", placeRoot: place.path, linuxUsername }).catch(e => { throw mapWorkerError(e) })
+        const entry = entries.find(e => e.id === input.id)
+        if (!entry) throw new TRPCError({ code: "NOT_FOUND", message: "This item is no longer in the trash" })
+        dst = entry.originalPath
+      }
+      dst = normalize(dst)
+      if (placeOf(await ctx.prisma.place.findMany(), dst)?.id !== place.id || dst === place.path) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "An item is restored inside its own place" })
+      }
+      await checkPathPerm(ctx, dst, "canWrite")
       try {
         return await trashRequest<{ path: string }>({
-          op: "restore", placeRoot: place.path, ids: [input.id], target: input.target ?? "",
-          linuxUsername: (await getLinuxUser(ctx)) ?? "",
+          op: "restore", placeRoot: place.path, ids: [input.id], target: dst, linuxUsername,
         })
       } catch (e) { throw mapWorkerError(e) }
     }),

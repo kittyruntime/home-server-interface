@@ -285,7 +285,11 @@ func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o775|os.ModeSetgid); err != nil {
 		return "", mapOsErr(err)
 	}
-	if err := os.Rename(filepath.Join(files, id), dst); err != nil {
+	// RENAME_NOREPLACE: something that appeared since the check is never overwritten.
+	if err := unix.Renameat2(unix.AT_FDCWD, filepath.Join(files, id), unix.AT_FDCWD, dst, unix.RENAME_NOREPLACE); err != nil {
+		if errors.Is(err, unix.EEXIST) {
+			return "", &fsError{Code: "EEXIST", Message: "something already exists at " + dst}
+		}
 		return "", mapOsErr(err)
 	}
 	_ = os.Remove(filepath.Join(info, id+trashInfoExt))
