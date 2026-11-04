@@ -18,6 +18,7 @@ import (
 	_ "image/png"
 	"io"
 	"io/fs"
+	"math"
 	"mime"
 	"net/http"
 	"os"
@@ -256,11 +257,11 @@ func media(ctx context.Context, path string, user userCtx) (*mediaResult, *fsErr
 	}
 	cmd := exec.CommandContext(ctx, bin, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "--", path)
 	if user.uid != 0 {
-		groups := make([]uint32, 0, len(user.gids))
-		for _, g := range user.gids {
-			groups = append(groups, uint32(g))
+		cred, ok := credentialOf(user)
+		if !ok {
+			return r, nil
 		}
-		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(user.uid), Gid: uint32(user.gid), Groups: groups}}
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: cred}
 	}
 	out, err := cmd.Output()
 	if err != nil {
@@ -295,6 +296,23 @@ func media(ctx context.Context, path string, user userCtx) (*mediaResult, *fsErr
 // deadline, and they run off the subscription's goroutine so a slow one never
 // queues the next.
 var detailsSlots = make(chan struct{}, 2)
+
+// credentialOf turns a user context into process credentials; ok is false
+// when an id does not fit a Linux uid or gid.
+func credentialOf(user userCtx) (*syscall.Credential, bool) {
+	fits := func(id int) bool { return id >= 0 && id <= math.MaxUint32 }
+	if !fits(user.uid) || !fits(user.gid) {
+		return nil, false
+	}
+	groups := make([]uint32, 0, len(user.gids))
+	for _, g := range user.gids {
+		if !fits(g) {
+			return nil, false
+		}
+		groups = append(groups, uint32(g))
+	}
+	return &syscall.Credential{Uid: uint32(user.uid), Gid: uint32(user.gid), Groups: groups}, true
+}
 
 func handleDetails(nc *nats.Conn, msg *nats.Msg) {
 	select {
