@@ -1,42 +1,46 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted } from 'vue'
-import { BellIcon, CheckIcon, InfoIcon, XIcon } from '@lucide/vue'
+import { BellIcon, CircleAlertIcon, CircleCheckIcon, InfoIcon, SettingsIcon, TriangleAlertIcon, XIcon } from '@lucide/vue'
+import type { Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useSystemNotifications, type SystemNotification } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { openJobLogs } from '../lib/jobLogs'
+import { focusSettings } from '../lib/app-focus'
+import { useAuth } from '../lib/auth'
 import SegmentedBar from './ui/SegmentedBar.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 
-const { t } = useI18n()
-
-/* Body of the Activity popover (DashboardLayout): mounted each time it opens. */
+// Body of the Activity popover (DashboardLayout), mounted each time it opens:
+// operations of this browser first, then new notifications, then earlier ones
+// (read), so marking as read visibly moves them out of the way.
 const emit = defineEmits<{ close: [] }>()
+const { t } = useI18n()
+const { isAdmin } = useAuth()
 
-function viewLogs(jobId: string) {
-  emit('close')
-  openJobLogs(jobId)
-}
-
-const { items, unread, refresh, markAllRead } = useSystemNotifications()
-// In-memory operations started from this browser (track/trackBatch): shown
-// above the persisted system notifications so progress and errors stay visible.
+const { items, unread, refresh, markAllRead, markRead } = useSystemNotifications()
+// In-memory operations started from this browser (track/trackBatch).
 const { notifications: operations, dismiss } = useNotifications()
 
-// Fresh data every time the bell opens.
 onMounted(() => { void refresh() })
 
-const hasOperations = computed(() => operations.value.length > 0)
-const hasItems = computed(() => items.value.length > 0)
-const hasUnread = computed(() => unread.value > 0)
+const fresh = computed(() => items.value.filter(n => !n.readAt))
+const earlier = computed(() => items.value.filter(n => n.readAt).slice(0, 20))
+const finishedOps = computed(() => operations.value.filter(o => o.type !== 'progress'))
+const isEmpty = computed(() => !operations.value.length && !items.value.length)
+const canClear = computed(() => unread.value > 0 || finishedOps.value.length > 0)
 
-function itemTitle(n: SystemNotification): string {
-  const action = n.eventType === 'alert.raised' ? 'Alert raised'
-    : n.eventType === 'job.failed' ? 'Failed'
-    : n.eventType === 'update.failed' ? 'Update failed'
-    : 'Alert cleared'
-  return `${action} - ${n.target}`
+type Look = { icon: Component; tint: string; kind: string }
+function look(n: SystemNotification): Look {
+  if (n.eventType === 'alert.cleared') return { icon: CircleCheckIcon, tint: 'text-success', kind: 'alertCleared' }
+  const kind = n.eventType === 'alert.raised' ? 'alertRaised'
+    : n.eventType === 'job.failed' ? 'jobFailed'
+    : n.eventType === 'update.failed' ? 'updateFailed'
+    : 'other'
+  if (n.severity === 'critical') return { icon: CircleAlertIcon, tint: 'text-error', kind }
+  if (n.severity === 'warning') return { icon: TriangleAlertIcon, tint: 'text-warning', kind }
+  return { icon: InfoIcon, tint: 'text-info', kind }
 }
 
 function formatTime(createdAt: string): string {
@@ -46,100 +50,104 @@ function formatTime(createdAt: string): string {
   if (s < 60) return t('uis.settings.NotificationMenu.justNow')
   if (s < 3600) return t('uis.settings.NotificationMenu.mAgo', { p0: Math.floor(s / 60) })
   if (s < 86400) return t('uis.settings.NotificationMenu.hAgo', { p0: Math.floor(s / 3600) })
-  const d = new Date(createdAt)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// Reading everything also clears this browser's finished operations, so the
+// badge goes back to zero.
+async function clearAll() {
+  for (const op of finishedOps.value) dismiss(op.id)
+  if (unread.value > 0) await markAllRead()
+}
+
+function viewLogs(jobId: string) {
+  emit('close')
+  openJobLogs(jobId)
+}
+
+function openSettings() {
+  emit('close')
+  focusSettings('notifications')
 }
 </script>
 
 <template>
-  <div class="flex max-h-[420px] flex-col">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-3.5 py-2 border-b shrink-0">
-          <span class="text-xs font-semibold text-base-content/80 uppercase tracking-caps">{{ t('ui.settings.NotificationMenu.activity') }}</span>
-          <Button variant="ghost" size="icon-xs" class="text-base-content/70" :aria-label="t('ui.settings.NotificationMenu.closeActivityPanel')" @click="emit('close')">
-            <XIcon />
-          </Button>
-        </div>
+  <div class="flex max-h-[min(32rem,80vh)] flex-col">
+    <!-- Header -->
+    <div class="flex shrink-0 items-center gap-2 border-b border-base-300 px-4 py-2.5">
+      <h2 class="text-sm font-semibold">{{ t('activity.title') }}</h2>
+      <span v-if="unread > 0" class="badge badge-primary badge-sm tabular-nums">{{ t('activity.unreadCount', { count: unread }) }}</span>
+      <div class="flex-1" />
+      <Button v-if="isAdmin" variant="ghost" size="icon-xs" class="text-base-content/70" :tooltip="t('activity.settings')" :aria-label="t('activity.settings')" @click="openSettings">
+        <SettingsIcon />
+      </Button>
+      <Button variant="ghost" size="icon-xs" class="text-base-content/70" :aria-label="t('activity.close')" @click="emit('close')">
+        <XIcon />
+      </Button>
+    </div>
 
-        <!-- Persisted notification list -->
-        <div class="flex-1 overflow-y-auto divide-y divide-base-300">
-
-          <!-- Operations in progress / recently finished -->
-          <div
-            v-for="op in operations"
-            :key="`op-${op.id}`"
-            class="px-3.5 py-2.5"
-          >
-            <div class="flex items-start gap-2.5 min-w-0">
-              <div class="shrink-0 w-5 h-5 rounded-md flex items-center justify-center"
-                :class="op.type === 'success' ? 'bg-success/10 text-success'
-                      : op.type === 'error'   ? 'bg-error/10 text-error'
-                      :                         'bg-base-200 text-base-content/70'">
-                <LoadingSpinner v-if="op.type === 'progress'" class="text-current" />
-                <CheckIcon v-else-if="op.type === 'success'" class="size-3" />
-                <XIcon v-else-if="op.type === 'error'" class="size-3" />
-                <InfoIcon v-else class="size-3" />
-              </div>
-
-              <div class="flex-1 min-w-0">
-                <span class="block text-xs text-base-content leading-snug truncate">{{ op.title }}</span>
-                <p v-if="op.detail" class="text-2xs mt-0.5 leading-snug break-words"
-                  :class="op.type === 'error' ? 'text-error' : 'text-base-content/70'">{{ op.detail }}</p>
-                <Button v-if="op.jobId" variant="link" class="mt-0.5 h-auto p-0 text-2xs" @click="viewLogs(op.jobId)">{{ t('ui.settings.NotificationMenu.viewLogs') }}</Button>
-                <SegmentedBar
-                  v-if="op.type === 'progress'"
-                  class="mt-1.5"
-                  :percent="op.progress ?? 0"
-                  :indeterminate="op.progress === -1 || op.progress == null"
-                  height="compact"
-                  color="var(--color-primary)"
-                />
-              </div>
-
-              <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :aria-label="t('ui.settings.NotificationMenu.dismissOperation')" @click="dismiss(op.id)">
-                <XIcon />
-              </Button>
+    <div class="flex-1 overflow-y-auto">
+      <!-- This browser's operations -->
+      <section v-if="operations.length" :aria-label="t('activity.running')">
+        <h3 class="px-4 pt-3 pb-1 text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('activity.running') }}</h3>
+        <ul class="divide-y divide-base-300">
+          <li v-for="op in operations" :key="`op-${op.id}`" class="flex items-start gap-3 px-4 py-2.5">
+            <span class="mt-0.5 shrink-0" :class="op.type === 'success' ? 'text-success' : op.type === 'error' ? 'text-error' : 'text-base-content/70'">
+              <LoadingSpinner v-if="op.type === 'progress'" class="text-current" />
+              <CircleCheckIcon v-else-if="op.type === 'success'" class="size-4" aria-hidden="true" />
+              <CircleAlertIcon v-else-if="op.type === 'error'" class="size-4" aria-hidden="true" />
+              <InfoIcon v-else class="size-4" aria-hidden="true" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm">{{ op.title }}</p>
+              <p v-if="op.detail" class="mt-0.5 break-words text-xs" :class="op.type === 'error' ? 'text-error' : 'text-base-content/70'">{{ op.detail }}</p>
+              <Button v-if="op.jobId" variant="link" class="mt-0.5 h-auto p-0 text-xs" @click="viewLogs(op.jobId)">{{ t('activity.viewLogs') }}</Button>
+              <SegmentedBar v-if="op.type === 'progress'" class="mt-1.5" :percent="op.progress ?? 0"
+                :indeterminate="op.progress === -1 || op.progress == null" height="compact" color="var(--color-primary)" />
             </div>
-          </div>
+            <Button v-if="op.type !== 'progress'" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :aria-label="t('activity.dismiss')" @click="dismiss(op.id)">
+              <XIcon />
+            </Button>
+          </li>
+        </ul>
+      </section>
 
-          <div
-            v-for="n in items"
-            :key="n.id"
-            class="px-3.5 py-2.5"
-          >
-            <div class="flex items-start gap-2.5 min-w-0">
-              <!-- Severity dot -->
-              <span
-                class="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full"
-                :class="n.severity === 'critical' ? 'bg-error'
-                     : n.severity === 'warning'  ? 'bg-warning'
-                     :                             'bg-base-content/70'"
-              />
+      <!-- New and earlier notifications -->
+      <section v-for="group in [{ key: 'new', list: fresh }, { key: 'earlier', list: earlier }]" v-show="group.list.length" :key="group.key" :aria-label="t(`activity.${group.key}`)">
+        <h3 class="px-4 pt-3 pb-1 text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t(`activity.${group.key}`) }}</h3>
+        <ul class="divide-y divide-base-300">
+          <li v-for="n in group.list" :key="n.id">
+            <button type="button" class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
+              :class="n.readAt ? 'opacity-70' : ''" :aria-label="n.readAt ? undefined : t('activity.markRead')" @click="markRead(n.id)">
+              <component :is="look(n).icon" class="mt-0.5 size-4 shrink-0" :class="look(n).tint" aria-hidden="true" />
+              <span class="min-w-0 flex-1">
+                <span class="flex items-baseline gap-2">
+                  <span class="min-w-0 flex-1 truncate text-sm" :class="n.readAt ? '' : 'font-medium'">
+                    {{ t(`activity.kind.${look(n).kind}`) }} · {{ n.target }}
+                  </span>
+                  <span class="shrink-0 text-xs tabular-nums text-base-content/70">{{ formatTime(n.createdAt) }}</span>
+                </span>
+                <span class="mt-0.5 line-clamp-2 block text-xs text-base-content/70">{{ n.message }}</span>
+              </span>
+              <span v-if="!n.readAt" class="mt-1.5 size-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+            </button>
+          </li>
+        </ul>
+      </section>
 
-              <!-- Title + detail -->
-              <div class="flex-1 min-w-0">
-                <span class="block text-xs text-base-content leading-snug truncate">{{ itemTitle(n) }}</span>
-                <p class="text-2xs text-base-content/70 mt-0.5 leading-snug truncate">{{ n.message }}</p>
-              </div>
+      <!-- Empty state -->
+      <div v-if="isEmpty" class="flex flex-col items-center gap-1.5 px-6 py-10 text-center text-base-content/70 select-none">
+        <BellIcon class="size-6 opacity-30" aria-hidden="true" />
+        <p class="text-sm">{{ t('activity.empty') }}</p>
+        <p class="text-xs">{{ t('activity.emptyHint') }}</p>
+      </div>
+    </div>
 
-              <!-- Time -->
-              <span class="shrink-0 text-2xs text-base-content/70 leading-snug whitespace-nowrap">{{ formatTime(n.createdAt) }}</span>
-            </div>
-          </div>
-
-          <!-- Empty state -->
-          <div v-if="!hasItems && !hasOperations" class="flex flex-col items-center justify-center gap-1.5 text-base-content/70 py-10 select-none">
-            <BellIcon class="size-6 opacity-25" />
-            <p class="text-xs">{{ t('ui.settings.NotificationMenu.noNotifications') }}</p>
-          </div>
-
-        </div>
-
-        <!-- Footer: mark all read -->
-        <div v-if="hasItems" class="px-3.5 py-1.5 border-t shrink-0">
-          <Button variant="ghost" size="xs" class="-ml-2 text-base-content/70" :disabled="!hasUnread" @click="markAllRead()">
-            {{ t('ui.settings.NotificationMenu.markAllRead') }}
-          </Button>
-        </div>
+    <!-- Footer -->
+    <div v-if="!isEmpty" class="flex shrink-0 items-center border-t border-base-300 px-2 py-1.5">
+      <Button variant="ghost" size="xs" class="text-base-content/70" :disabled="!canClear" @click="clearAll()">
+        {{ t('activity.markAllRead') }}
+      </Button>
+    </div>
   </div>
 </template>

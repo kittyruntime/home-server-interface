@@ -118,6 +118,13 @@ export const notificationsRouter = router({
     ctx.prisma.notification.updateMany({ where: { readAt: null }, data: { readAt: new Date() } }),
   ),
 
+  // One notification, read from the Activity panel.
+  markRead: protectedProcedure
+    .input(z.object({ id: z.string().min(1).max(64) }))
+    .mutation(({ ctx, input }) =>
+      ctx.prisma.notification.updateMany({ where: { id: input.id, readAt: null }, data: { readAt: new Date() } }),
+    ),
+
   connectors: router({
     list: adminProcedure.query(async ({ ctx }) => {
       const rows = await ctx.prisma.notificationConnector.findMany({ orderBy: { createdAt: "asc" } })

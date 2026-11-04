@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import PlaceIcon from './PlaceIcon.vue'
+import Tip from './ui/Tip.vue'
 
 const { t } = useI18n()
 
@@ -42,11 +43,14 @@ function pickCustom() {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button variant="ghost" size="icon-sm" :tooltip="'Change icon'" :aria-label="`Change the icon of ${name}`" class="shrink-0 text-base text-primary">
-        <PlaceIcon :icon="icon" class="size-4" />
-      </Button>
-    </PopoverTrigger>
+    <!-- The tooltip wraps the trigger so the popover anchors to the button. -->
+    <Tip :text="t('ui.settings.PlaceIconPicker.changeIcon')">
+      <PopoverTrigger as-child>
+        <Button variant="ghost" size="icon-sm" :aria-label="t('ui.settings.PlaceIconPicker.changeIconOf', { name })" class="shrink-0 text-base text-primary">
+          <PlaceIcon :icon="icon" class="size-4" />
+        </Button>
+      </PopoverTrigger>
+    </Tip>
     <PopoverContent align="start" class="w-64 space-y-3">
       <div class="grid grid-cols-5 gap-1">
         <Button v-for="emoji in SUGGESTIONS" :key="emoji" variant="ghost" size="icon"

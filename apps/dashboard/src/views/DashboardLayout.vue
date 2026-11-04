@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
-import { pendingAppFocus, pendingPlaceAccess } from '../lib/app-focus'
+import { pendingAppFocus, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -72,7 +72,7 @@ async function checkUpdateBadge() {
 }
 
 const activeApp        = ref<string>('dashboard')
-const settingsSection  = ref<'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'data-backups' | 'secure' | null>(null)
+const settingsSection  = ref<'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'notifications' | 'data-backups' | 'secure' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 // Unread system notifications plus operations that are running or failed.
@@ -83,6 +83,17 @@ watch(pendingAppFocus, name => {
   if (!name) return
   if (desktopMode.value && !isMobile.value) openApp('apps')
   else activeApp.value = 'apps'
+})
+
+// The Activity panel asks for the notification settings.
+watch(pendingSettings, section => {
+  if (!section) return
+  pendingSettings.value = null
+  if (desktopMode.value && !isMobile.value) openApp('settings', section)
+  else {
+    activeApp.value = 'settings'
+    settingsSection.value = section
+  }
 })
 
 // A place's properties ask for its access settings (#194).
@@ -303,12 +314,11 @@ onUnmounted(() => {
       </template>
 
       <!-- Notifications bell -->
-      <ActivityPopover v-if="!isMobile" side="right">
+      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')">
         <Button
           variant="ghost"
           size="icon-lg"
           :aria-label="t('ui.views.DashboardLayout.activity')"
-          :tooltip="t('ui.views.DashboardLayout.activity')"
           class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />

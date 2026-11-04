@@ -33,6 +33,7 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
+import { endFileDrag, isInternalDrag, startFileDrag } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
 import RenameBookmarkModal from './RenameBookmarkModal.vue'
 import TrashView from './TrashView.vue'
@@ -171,16 +172,35 @@ function closeFilter() {
   filterQuery.value = ''
 }
 
+// Desktop file manager shortcuts, only on the listing: never while typing,
+// renaming, in a dialog or with the settings open.
+function fileShortcut(e: KeyboardEvent): boolean {
+  if (showShared.value || renamingPath.value || !currentPath.value || document.querySelector('dialog[open]')) return false
+  const el = document.activeElement as HTMLElement | null
+  const tag = el?.tagName?.toLowerCase()
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable) return false
+  // Inside an open menu, keys belong to the menu.
+  if (el?.closest('[role=menu], [role=listbox]')) return false
+  const ctrl = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
+  const plain = !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey
+  const one = selectedEntries.value.length === 1 ? selectedEntries.value[0]! : null
+  const key = e.key.toLowerCase()
+  let handled = true
+  if (plain && e.key === 'Delete' && selected.value.size) void doDelete()
+  else if (plain && e.key === 'F2' && one) startRename(one)
+  else if (plain && e.key === 'Enter' && one && !el?.closest('button, a')) openEntry(one)
+  else if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'Enter' && one) openProperties()
+  else if (ctrl && key === 'x' && selected.value.size && !window.getSelection()?.toString()) doCut()
+  else if (ctrl && key === 'c' && selected.value.size && !window.getSelection()?.toString()) doCopy()
+  else if (ctrl && key === 'v' && clipboard.value) void doPaste()
+  else if (ctrl && key === 'a' && displayEntries.value.length) selectAll()
+  else handled = false
+  if (handled) e.preventDefault()
+  return handled
+}
+
 function onGlobalKeydown(e: KeyboardEvent) {
-  // Delete moves the selection to the trash where there is one; Shift+Delete removes it for good.
-  if (e.key === 'Delete' && selected.value.size && !showShared.value && !renamingPath.value) {
-    const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
-    if (tag !== 'input' && tag !== 'textarea' && !document.querySelector('dialog[open]')) {
-      e.preventDefault()
-      void doDelete(e.shiftKey)
-      return
-    }
-  }
+  if (fileShortcut(e)) return
   // Ctrl+H shows or hides dotfiles, as in desktop file managers.
   if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
@@ -282,6 +302,8 @@ const breadcrumbs = computed((): Crumb[] => {
 
 // ── navigation ───────────────────────────────────────────────────────────────
 const hasTrash = computed(() => dbPlaces.value.some(p => p.trashEnabled))
+/** Every selected item goes to a trash when deleted. */
+const selectionToTrash = computed(() => selectedEntries.value.length > 0 && selectedEntries.value.every(e => trashPlaceFor(e.path)))
 
 function openTrash() {
   handleSearch('')
@@ -373,8 +395,18 @@ function selectEntry(entry: Entry, e: MouseEvent) {
   }
 }
 
+// A plain click selects only that item, as in a desktop file manager, so a
+// shortcut right after acts on what was clicked; Ctrl or Cmd adds or removes
+// it, Shift selects a range. The checkboxes keep toggling.
+function clickSelect(entry: Entry, e: MouseEvent) {
+  if (e.shiftKey || e.ctrlKey || e.metaKey) return selectEntry(entry, e)
+  e.stopPropagation()
+  selected.value = new Set([entry.path])
+  selectionAnchor.value = entry.path
+}
+
 function handleRowClick(entry: Entry, e: MouseEvent) {
-  selectEntry(entry, e)
+  clickSelect(entry, e)
 }
 
 function handleRowDblClick(entry: Entry) {
@@ -382,8 +414,11 @@ function handleRowDblClick(entry: Entry) {
   else openFile(entry)
 }
 
+/** Opens a folder or previews a file: Enter, and the first item of the context menu. */
+const openEntry = handleRowDblClick
+
 function handleGridCardClick(entry: Entry, e: MouseEvent) {
-  selectEntry(entry, e)
+  clickSelect(entry, e)
 }
 
 function handleGridCardDblClick(entry: Entry) {
@@ -449,7 +484,26 @@ function doCut() {
 async function doPaste() {
   if (!clipboard.value || !currentPath.value) return
   const { paths, mode } = clipboard.value
-  const dst = currentPath.value
+  await transfer(mode === 'copy' ? 'copy' : 'move', [...paths], currentPath.value)
+  clipClear()
+}
+
+// Dragging items onto a folder, a place, a bookmark or a crumb moves them there.
+function onEntryDragStart(entry: Entry, e: DragEvent) {
+  if (!selected.value.has(entry.path)) {
+    selected.value = new Set([entry.path])
+    selectionAnchor.value = entry.path
+  }
+  const items = entries.value.filter(en => selected.value.has(en.path))
+  startFileDrag(e, items.map(en => en.path), items.filter(en => en.type === 'dir').map(en => en.path))
+}
+
+function moveInto(dst: string, paths: string[]) {
+  void transfer('move', paths, dst)
+}
+
+async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
+  const mode = kind === 'copy' ? 'copy' : 'cut'
   if (mode === 'cut') pendingPaths.value = [...paths]
   try {
     await trackTransfer(
@@ -466,14 +520,13 @@ async function doPaste() {
   } finally {
     pendingPaths.value = []
   }
-  clipClear()
   clearSelection()
   refresh()
 }
 
-// Deleting in a place with a trash (#200) moves items there, with an Undo;
-// anything else, and Shift+Delete, is permanent: ask first, unless the user
-// turned it off.
+// Deleting in a place with a trash (#200) moves items there, with an Undo,
+// and only the Trash removes them for good; elsewhere deleting is permanent:
+// ask first, unless the user turned it off.
 function deleteMessage(paths: string[]): string {
   if (paths.length > 1) return t('fileDelete.messageMany', { count: paths.length })
   const name = paths[0]!.split('/').pop() ?? paths[0]!
@@ -483,12 +536,15 @@ function deleteMessage(paths: string[]): string {
 
 type Trashed = { placeId: string; entry: { id: string; name: string } }
 
-async function doDelete(permanent = false) {
+async function doDelete() {
   if (!selected.value.size) return
   const paths = [...selected.value]
-  const toTrash = !permanent && paths.every(p => trashPlaceFor(p))
-  if (!toTrash && confirmFileDelete.value) {
-    const ok = await confirm(deleteMessage(paths), {
+  // Each item goes to its place's trash when it has one; only the others are
+  // deleted for good, and only those are asked about.
+  const permanent = paths.filter(p => !trashPlaceFor(p))
+  const toTrash = permanent.length === 0
+  if (permanent.length && confirmFileDelete.value) {
+    const ok = await confirm(deleteMessage(permanent), {
       title: t('fileDelete.title'),
       confirmLabel: t('fileDelete.confirm'),
       danger: true,
@@ -503,7 +559,7 @@ async function doDelete(permanent = false) {
     await trackBatch(
       t(toTrash ? 'files.trash.moving' : 'fileDelete.deleting', { count: paths.length }),
       paths.map(p => async () => {
-        const r = await trpc.fs.delete.mutate({ path: p, permanent: !toTrash })
+        const r = await trpc.fs.delete.mutate({ path: p })
         if (r.trashed) trashed.push(r.trashed)
         if (r.jobId) await awaitJob(r.jobId)
       })
@@ -646,10 +702,13 @@ function handleFileInput(e: Event) {
   ;(e.target as HTMLInputElement).value = ''
 }
 
-function handleDragEnter() { dragDepth++; dragOver.value = true }
-function handleDragLeave() { if (--dragDepth === 0) dragOver.value = false }
+// Files from the computer upload; items dragged inside the file manager do not
+// (they move where they are dropped).
+function handleDragEnter(e: DragEvent) { if (isInternalDrag(e)) return; dragDepth++; dragOver.value = true }
+function handleDragLeave(e: DragEvent) { if (isInternalDrag(e)) return; if (--dragDepth <= 0) { dragDepth = 0; dragOver.value = false } }
 function handleDrop(e: DragEvent) {
   dragDepth = 0; dragOver.value = false
+  if (isInternalDrag(e)) { endFileDrag(); return }
   if (e.dataTransfer?.files?.length) uploadFiles(e.dataTransfer.files)
 }
 
@@ -698,6 +757,8 @@ onMounted(async () => {
       @open-settings="openSettings()"
       @open-trash="openTrash"
       @open-bookmark="openBookmark"
+      @drop-into="moveInto"
+      @add-bookmarks="dirs => setBookmarks(dirs.reduce((list, d) => isBookmarked(list, d) ? list : toggleBookmark(list, d), bookmarks))"
       @rename-bookmark="renamingBookmark = $event"
       @move-bookmark="(path, delta) => setBookmarks(moveBookmark(bookmarks, path, delta))"
       @remove-bookmark="path => setBookmarks(toggleBookmark(bookmarks, path))"
@@ -762,7 +823,9 @@ onMounted(async () => {
         @update:view-mode="setFilePrefs({ view: $event })"
         @open-display-settings="openSettings('display')"
         :bookmarked="currentBookmarked"
+        :to-trash="selectionToTrash"
         @toggle-bookmark="currentPath && toggleBookmarkAt(currentPath)"
+        @drop-into="moveInto"
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @search="handleSearch"
       />
@@ -857,6 +920,8 @@ onMounted(async () => {
 
           <!-- Grid view -->
           <FileGridView
+            @drag-start="onEntryDragStart"
+            @drop-into="moveInto"
             v-if="viewMode === 'grid'"
             :entries="displayEntries"
             :selected="selected"
@@ -879,6 +944,8 @@ onMounted(async () => {
 
           <!-- List view -->
           <FileListView
+            @drag-start="onEntryDragStart"
+            @drop-into="moveInto"
             v-else
             :entries="displayEntries"
             :sort-field="sortField"
@@ -908,37 +975,43 @@ onMounted(async () => {
       </div>
       </ContextMenuTrigger>
       <ContextMenuContent class="min-w-[200px]">
-        <!-- Selection-dependent actions -->
+        <!-- Selection-dependent actions, in a desktop file manager's order:
+             open, move, change, remove, then the item's details. -->
         <template v-if="selected.size > 0">
-          <ContextMenuItem @select="doCopy()"><CopyIcon /> {{ t('ui.files.FileBrowserPanel.copy') }}</ContextMenuItem>
-          <ContextMenuItem @select="doCut()"><ScissorsIcon /> {{ t('ui.files.FileBrowserPanel.cut') }}</ContextMenuItem>
           <template v-if="selected.size === 1">
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="openFile(selectedEntries[0]!)"><EyeIcon /> {{ t('ui.files.FileBrowserPanel.open') }}</ContextMenuItem>
-            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> {{ t('ui.files.FileBrowserPanel.rename') }}</ContextMenuItem>
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
-            <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
-            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'dir'" @select="toggleBookmarkAt(selectedEntries[0]!.path)">
-              <BookmarkIcon /> {{ isBookmarked(bookmarks, selectedEntries[0]!.path) ? t('files.bookmarks.remove') : t('files.bookmarks.add') }}
+            <ContextMenuItem @select="openEntry(selectedEntries[0]!)">
+              <EyeIcon /> {{ t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
             </ContextMenuItem>
-            <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
-            <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}</ContextMenuItem>
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
+            <ContextMenuSeparator />
           </template>
-          <!-- Compress to ZIP: any selection -->
+          <ContextMenuItem @select="doCut()"><ScissorsIcon /> {{ t('ui.files.FileBrowserPanel.cut') }}<ContextMenuShortcut>Ctrl+X</ContextMenuShortcut></ContextMenuItem>
+          <ContextMenuItem @select="doCopy()"><CopyIcon /> {{ t('ui.files.FileBrowserPanel.copy') }}<ContextMenuShortcut>Ctrl+C</ContextMenuShortcut></ContextMenuItem>
+          <ContextMenuSeparator />
+          <template v-if="selected.size === 1">
+            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> {{ t('ui.files.FileBrowserPanel.rename') }}<ContextMenuShortcut>F2</ContextMenuShortcut></ContextMenuItem>
+            <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
+          </template>
           <ContextMenuItem @select="doZip()"><ArchiveIcon /> {{ t('ui.files.FileBrowserPanel.compressToZip') }}</ContextMenuItem>
-          <!-- Extract Here: only for a single .zip file -->
           <ContextMenuItem
             v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
             @select="doUnzip()"
           ><PackageOpenIcon /> {{ t('ui.files.FileBrowserPanel.extractHere') }}</ContextMenuItem>
+          <template v-if="selected.size === 1">
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'dir'" @select="toggleBookmarkAt(selectedEntries[0]!.path)">
+              <BookmarkIcon /> {{ isBookmarked(bookmarks, selectedEntries[0]!.path) ? t('files.bookmarks.remove') : t('files.bookmarks.add') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
+          </template>
           <ContextMenuSeparator />
-          <ContextMenuItem :variant="selectedEntries.every(e => trashPlaceFor(e.path)) ? undefined : 'destructive'" @select="doDelete()">
-            <Trash2Icon /> {{ selectedEntries.every(e => trashPlaceFor(e.path)) ? t('files.trash.moveToTrash') : t('ui.files.FileBrowserPanel.delete') }}
+          <ContextMenuItem :variant="selectionToTrash ? undefined : 'destructive'" @select="doDelete()">
+            <Trash2Icon /> {{ selectionToTrash ? t('files.trash.moveToTrash') : t('ui.files.FileBrowserPanel.delete') }}<ContextMenuShortcut>Del</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem v-if="selectedEntries.every(e => trashPlaceFor(e.path))" variant="destructive" @select="doDelete(true)">
-            <Trash2Icon /> {{ t('files.trash.deleteForever') }}
-            <ContextMenuShortcut>Shift+Del</ContextMenuShortcut>
-          </ContextMenuItem>
+          <template v-if="selected.size === 1">
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
+            <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}<ContextMenuShortcut>Alt+Enter</ContextMenuShortcut></ContextMenuItem>
+          </template>
           <ContextMenuSeparator v-if="currentPath" />
         </template>
 
@@ -949,7 +1022,7 @@ onMounted(async () => {
           <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> {{ t('ui.files.FileBrowserPanel.upload') }}</ContextMenuItem>
           <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
             <ClipboardPasteIcon class="text-current" />
-            {{ t('uip.files.FileBrowserPanel.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '' }) }}
+            {{ t('uip.files.FileBrowserPanel.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '' }) }}<ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem @select="refresh()"><RefreshCwIcon /> {{ t('ui.files.FileBrowserPanel.refresh') }}</ContextMenuItem>

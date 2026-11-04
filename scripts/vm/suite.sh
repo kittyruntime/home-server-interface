@@ -1084,6 +1084,10 @@ case "$scenario" in
   faults)
     vm_apt_install samba || fail "could not install Samba"
     install_build
+    # The volume guard checks every 5 s instead of every minute: the holds
+    # below are awaited, not slept through.
+    vm_ssh 'mkdir -p /etc/systemd/system/hsi-server.service.d && printf "[Service]\nEnvironment=HSI_VOLUME_GUARD_INTERVAL_MS=5000\n" > /etc/systemd/system/hsi-server.service.d/vm-tests.conf && systemctl daemon-reload && systemctl restart hsi-server' \
+      || fail "could not shorten the volume guard's interval"
     expect_running "$version"
     api_setup
     # A quarter of the disks: filling it up stays quick.

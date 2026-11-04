@@ -1,4 +1,4 @@
-import { autoUpdate, computePosition, flip, offset, shift, type Placement, type VirtualElement } from '@floating-ui/dom'
+import { autoUpdate, computePosition, flip, offset, shift, size, type Placement, type VirtualElement } from '@floating-ui/dom'
 import { nextTick, onBeforeUnmount, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
 
 export type PopoverAnchor = HTMLElement | { x: number; y: number }
@@ -117,7 +117,17 @@ export function useAnchoredPopover(options: AnchoredPopoverOptions = {}) {
       middleware: [
         offset({ mainAxis: toValue(options.offset) ?? 4, crossAxis: toValue(options.alignOffset) ?? 0 }),
         flip({ padding: 8 }),
-        shift({ padding: 8 }),
+        // Both axes: a long context menu opened low in the window moves up
+        // instead of leaving the screen.
+        shift({ padding: 8, crossAxis: true }),
+        // Never taller than the window: what does not fit scrolls.
+        size({
+          padding: 8,
+          apply({ availableHeight, elements }) {
+            elements.floating.style.maxHeight = `${Math.max(160, Math.floor(availableHeight))}px`
+            elements.floating.style.overflowY = 'auto'
+          },
+        }),
       ],
     })
     if (floating.value !== el || !isOpen.value) return

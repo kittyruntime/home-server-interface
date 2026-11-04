@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import SortMenu from './SortMenu.vue'
 import CopyPath from './CopyPath.vue'
+import { useFolderDrop } from '../../lib/file-drag'
 
 const { t } = useI18n()
 
@@ -20,6 +21,8 @@ type Crumb = { label: string; path: string; clickable: boolean }
 defineProps<{
   currentPath: string | null
   breadcrumbs: Crumb[]
+  /** The selection goes to a trash when deleted (#200). */
+  toTrash?: boolean
   /** The current folder is bookmarked (#199). */
   bookmarked?: boolean
   canGoUp: boolean
@@ -50,8 +53,13 @@ const emit = defineEmits<{
   toggleSidebar: []
   openDisplaySettings: []
   toggleBookmark: []
+  dropInto: [dir: string, paths: string[]]
   search: [query: string]
 }>()
+
+// A crumb takes items dragged onto it: they move up into that folder.
+const crumbDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+
 
 const searchQuery = ref('')
 const searchOpen  = ref(false)
@@ -99,7 +107,10 @@ async function openSearch() {
         <template v-for="(crumb, i) in breadcrumbs" :key="i">
           <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
           <BreadcrumbItem class="shrink-0 whitespace-nowrap">
-            <BreadcrumbLink v-if="crumb.clickable" as="button" type="button" class="rounded-sm px-1" @click="emit('navigate', crumb.path)">{{ crumb.label }}</BreadcrumbLink>
+            <BreadcrumbLink v-if="crumb.clickable" as="button" type="button"
+              :class="['rounded-sm px-1', crumbDrop.over.value === crumb.path ? 'bg-primary/15 text-primary outline-2 outline-primary' : '']"
+              @click="emit('navigate', crumb.path)"
+              @dragover="crumbDrop.onDragOver(crumb.path, $event)" @dragleave="crumbDrop.onDragLeave(crumb.path)" @drop="crumbDrop.onDrop(crumb.path, $event)">{{ crumb.label }}</BreadcrumbLink>
             <!-- The current folder copies its path when clicked (#197). -->
             <CopyPath v-else-if="currentPath && i === breadcrumbs.length - 1" :path="currentPath" aria-current="page" class="px-1 text-base-content">{{ crumb.label }}</CopyPath>
             <BreadcrumbPage v-else class="truncate px-1">{{ crumb.label }}</BreadcrumbPage>
@@ -121,30 +132,29 @@ async function openSearch() {
         </Button>
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
 
-        <Button variant="ghost" size="icon-sm" @click="emit('copy')" :tooltip="t('ui.files.FileToolbar.copy')" :aria-label="t('ui.files.FileToolbar.copySelection')" class="text-base-content/70">
-          <CopyIcon class="w-4 h-4" aria-hidden="true" />
+        <!-- In the order of the context menu: get it, move it, change it, remove it, then its details. -->
+        <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1 && selectedEntries[0]?.type === 'file'" @click="emit('download')" :tooltip="t('ui.files.FileToolbar.download')" :aria-label="t('ui.files.FileToolbar.downloadSelection')" class="text-base-content/70">
+          <DownloadIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon-sm" @click="emit('cut')" :tooltip="t('ui.files.FileToolbar.cut')" :aria-label="t('ui.files.FileToolbar.cutSelection')" class="text-base-content/70">
+        <Button variant="ghost" size="icon-sm" @click="emit('cut')" :tooltip="`${t('ui.files.FileToolbar.cut')} (Ctrl+X)`" :aria-label="t('ui.files.FileToolbar.cutSelection')" aria-keyshortcuts="Control+X" class="text-base-content/70">
           <ScissorsIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
-
+        <Button variant="ghost" size="icon-sm" @click="emit('copy')" :tooltip="`${t('ui.files.FileToolbar.copy')} (Ctrl+C)`" :aria-label="t('ui.files.FileToolbar.copySelection')" aria-keyshortcuts="Control+C" class="text-base-content/70">
+          <CopyIcon class="w-4 h-4" aria-hidden="true" />
+        </Button>
         <template v-if="selectedCount === 1">
-          <Button variant="ghost" size="icon-sm" @click="emit('startRename', selectedEntries[0]!)" :tooltip="t('ui.files.FileToolbar.rename')" :aria-label="t('ui.files.FileToolbar.renameSelection')" class="text-base-content/70">
+          <Button variant="ghost" size="icon-sm" @click="emit('startRename', selectedEntries[0]!)" :tooltip="`${t('ui.files.FileToolbar.rename')} (F2)`" :aria-label="t('ui.files.FileToolbar.renameSelection')" aria-keyshortcuts="F2" class="text-base-content/70">
             <PencilIcon class="w-4 h-4" aria-hidden="true" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" v-if="selectedEntries[0]?.type === 'file'" @click="emit('download')" :tooltip="t('ui.files.FileToolbar.download')" :aria-label="t('ui.files.FileToolbar.downloadSelection')" class="text-base-content/70">
-            <DownloadIcon class="w-4 h-4" aria-hidden="true" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" @click="emit('openPermissions')" :tooltip="t('ui.files.FileToolbar.permissions')" :aria-label="t('ui.files.FileToolbar.editPermissions')" class="text-base-content/70">
-            <KeyRoundIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
           <Button variant="ghost" size="icon-sm" @click="emit('share')" :tooltip="t('ui.files.FileToolbar.share')" :aria-label="t('ui.files.FileToolbar.shareSelection')" class="text-base-content/70">
             <Share2Icon class="w-4 h-4" aria-hidden="true" />
           </Button>
         </template>
-
-        <Button variant="ghost" size="icon-sm" @click="emit('delete')" :tooltip="t('ui.files.FileToolbar.delete')" :aria-label="t('ui.files.FileToolbar.deleteSelection')" class="text-base-content/70 hover:text-error hover:bg-error/10">
+        <Button variant="ghost" size="icon-sm" @click="emit('delete')" :tooltip="`${toTrash ? t('files.trash.moveToTrash') : t('ui.files.FileToolbar.delete')} (Del)`" :aria-label="toTrash ? t('files.trash.moveToTrash') : t('ui.files.FileToolbar.deleteSelection')" aria-keyshortcuts="Delete" class="text-base-content/70 hover:text-error hover:bg-error/10">
           <Trash2Icon class="w-4 h-4" aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1" @click="emit('openPermissions')" :tooltip="t('ui.files.FileToolbar.permissions')" :aria-label="t('ui.files.FileToolbar.editPermissions')" class="text-base-content/70">
+          <KeyRoundIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
       </template>

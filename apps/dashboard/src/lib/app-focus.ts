@@ -26,3 +26,13 @@ export const pendingPlaceAccess = ref<string | null>(null)
 export function focusPlaceAccess(placeId: string): void {
   pendingPlaceAccess.value = placeId
 }
+
+// Another app asks for a Settings section (the Activity panel's settings link):
+// the shell opens Settings on it and clears the request.
+
+export type SettingsFocus = 'notifications'
+export const pendingSettings = ref<SettingsFocus | null>(null)
+
+export function focusSettings(section: SettingsFocus): void {
+  pendingSettings.value = section
+}

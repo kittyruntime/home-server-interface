@@ -155,9 +155,16 @@ export async function runVolumeGuard(): Promise<void> {
   }
 }
 
+/** How often the guard checks (default a minute). HSI_VOLUME_GUARD_INTERVAL_MS
+ *  shortens it, for the VM tests that wait for a hold; never under a second. */
+export function guardIntervalMs(raw = process.env.HSI_VOLUME_GUARD_INTERVAL_MS): number {
+  const n = Number(raw)
+  return Number.isInteger(n) && n >= 1000 ? n : 60_000
+}
+
 export function startVolumeGuard(): void {
   void runVolumeGuard()
-  setInterval(() => { void runVolumeGuard() }, 60_000).unref()
+  setInterval(() => { void runVolumeGuard() }, guardIntervalMs()).unref()
 }
 
 export async function assertVolumeAvailable(paths: string | string[]): Promise<void> {
