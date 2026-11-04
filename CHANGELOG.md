@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It also works when the NAS is opened over plain HTTP.
 
 ### Changed
+- **VM tests look up the latest release reliably**: from the release page's
+  redirect, with retries, instead of the API that limits anonymous calls.
 - **New folder and file icons**: folders are filled, two-tone and take the theme's
   color; files are tinted by kind (images, videos, audio, archives, code,
   documents), so a folder is quicker to scan.

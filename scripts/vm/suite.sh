@@ -753,8 +753,22 @@ config_restore() {
 # The update helpers' paths on the VM.
 UPDATE_STATE=/var/lib/hsi/update
 
+# The latest published release, from where github.com/<repo>/releases/latest
+# redirects (releases/tag/<tag>): the web page is not under the API's small
+# anonymous limit, which a busy runner address used to hit. Retried anyway.
+latest_release() {
+  local attempt url
+  for attempt in 1 2 3; do
+    url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest") \
+      && [[ $url == */releases/tag/* ]] && { echo "${url##*/}"; return 0; }
+    log "looking up the latest release failed (attempt $attempt), retrying" >&2
+    sleep $((attempt * 20))
+  done
+  return 1
+}
+
 install_published() {
-  published=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+  published=$(latest_release) || fail "could not look up the latest published release"
   log "Installing the published $published"
   vm_ssh "curl -fsSL https://github.com/$REPO/releases/download/$published/install.sh -o /root/published-install.sh && VERSION=$published bash /root/published-install.sh" > "$VM_DIR/install-$published.log" 2>&1 \
     || { tail -40 "$VM_DIR/install-$published.log"; fail "install of $published failed"; }
