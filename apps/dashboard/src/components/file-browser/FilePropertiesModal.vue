@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Progress } from '@/components/ui/progress'
 import FileTypeIcon from './FileTypeIcon.vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import { formatDateTime } from '../../lib/format-date'
@@ -124,9 +123,9 @@ onMounted(async () => {
         <!-- Place icon -->
         <PlaceIcon v-if="isPlace" :icon="place?.icon" :root="place?.id === '__root__'" class="size-8 shrink-0 text-2xl text-base-content/70" />
         <!-- Folder icon -->
-        <FileTypeIcon v-else-if="entry?.type === 'dir'" :name="displayName" dir open class="w-8 h-8 shrink-0 text-base-content/70" aria-hidden="true" />
+        <FileTypeIcon v-else-if="entry?.type === 'dir'" :name="displayName" dir class="w-8 h-8 shrink-0" aria-hidden="true" />
         <!-- File icon -->
-        <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0 text-base-content/70" aria-hidden="true" />
+        <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0" aria-hidden="true" />
         <div class="min-w-0">
           <div class="text-sm font-semibold text-base-content truncate">{{ displayName }}</div>
           <div class="text-2xs text-base-content/70 font-mono truncate mt-0.5">{{ targetPath }}</div>
@@ -146,7 +145,7 @@ onMounted(async () => {
       <!-- Disk usage (Places only) -->
       <div v-if="isPlace && diskInfo" class="px-5 py-4 space-y-2.5">
         <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.storage') }}</div>
-        <Progress class="w-full h-2 bg-base-200 rounded-full" :model-value="Math.min(diskUsedPct, 100)" :indicator-class="['rounded-full transition-all', diskUsedPct > 90 ? 'bg-error' : 'bg-primary']" />
+        <progress :class="['progress w-full', diskUsedPct > 90 ? 'progress-error' : 'progress-primary']" :value="Math.min(diskUsedPct, 100)" max="100" :aria-label="t('ui.files.FilePropertiesModal.storage')" />
         <div class="flex justify-between text-xs text-base-content/70">
           <span><span class="text-base-content font-medium">{{ fmtBytes(diskUsed) }}</span> used</span>
           <span><span class="text-base-content font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>

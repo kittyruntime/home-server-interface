@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import FileTypeIcon from './FileTypeIcon.vue'
+import FolderGlyph from './FolderGlyph.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Item } from '@/components/ui/item'
@@ -28,7 +29,7 @@ import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
@@ -675,7 +676,7 @@ onMounted(async () => {
         <!-- No place selected -->
         <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-base-content/70 select-none">
           <div class="text-center space-y-2">
-            <FolderIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
+            <FolderGlyph class="w-10 h-10 mx-auto opacity-20" />
             <p class="text-sm">{{ t('ui.files.FileBrowserPanel.selectAPlace') }}</p>
           </div>
         </div>
@@ -690,14 +691,14 @@ onMounted(async () => {
           </div>
           <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
           <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-base-content/70">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
-          <div v-else class="divide-y divide-base-300 rounded-xl border border-base-300 overflow-hidden">
+          <div v-else class="divide-y divide-base-300 rounded-box border border-base-300 overflow-hidden">
             <Item v-for="r in searchResults" :key="r.path" as="button"
               @click="navigateToSearchResult(r)"
               class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
               <!-- directory icon -->
-              <FileTypeIcon v-if="r.isDir" :name="r.name" dir open class="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
+              <FileTypeIcon v-if="r.isDir" :name="r.name" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
               <!-- file icon -->
-              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0 text-base-content/70" aria-hidden="true" />
+              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0" aria-hidden="true" />
               <div class="flex-1 min-w-0">
                 <div class="text-sm text-base-content font-medium truncate">{{ r.name }}</div>
                 <div class="text-xs text-base-content/70 font-mono truncate">{{ r.relativePath }}</div>
