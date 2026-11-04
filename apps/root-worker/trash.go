@@ -91,33 +91,90 @@ func trashInside(placeRoot, path string) bool {
 	return path == root || strings.HasPrefix(path, root+"/")
 }
 
-// ensureUserTrash creates the calling user's trash folders. The shared top
-// folder is sticky, so a user can add their own folder but never rename or
-// remove another's.
-func ensureUserTrash(placeRoot, uid string) (files, info string, fe *fsError) {
-	root := trashRoot(placeRoot)
-	if err := os.Mkdir(root, 0o775|os.ModeSetgid|os.ModeSticky); err != nil && !errors.Is(err, os.ErrExist) {
-		return "", "", mapOsErr(err)
+// prepareUserTrash, run as root before a move, makes the user's trash
+// folders: the shared top folder is root's and not writable by the place's
+// writers (0755), and each user's folders are made by root and handed to that
+// user (0700). So nobody can create, or swap in, a folder for another uid.
+// Everything is done relative to folders opened without following symlinks.
+func prepareUserTrash(placeRoot string, owner userCtx) *fsError {
+	uid, okU := toUint32(owner.uid)
+	gid, okG := toUint32(owner.gid)
+	if !okU || !okG {
+		return &fsError{Code: "ERR", Message: "invalid owner for the trash"}
 	}
-	_ = os.Chmod(root, 0o775|os.ModeSetgid|os.ModeSticky) // owner only; best effort against the umask
-	dir, files, info := userTrash(placeRoot, uid)
-	for _, d := range []string{root, dir, files, info} {
-		if d != root {
-			if err := os.Mkdir(d, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
-				return "", "", mapOsErr(err)
-			}
+	placeFd, err := openTrashDir(filepath.Clean(placeRoot))
+	if err != nil {
+		return mapOsErr(err)
+	}
+	defer unix.Close(placeFd)
+	topFd, fe := ownedDirAt(placeFd, trashDirName, 0, 0, 0o755)
+	if fe != nil {
+		return fe
+	}
+	defer unix.Close(topFd)
+	userFd, fe := ownedDirAt(topFd, strconv.FormatUint(uint64(uid), 10), uid, gid, 0o700)
+	if fe != nil {
+		return fe
+	}
+	defer unix.Close(userFd)
+	for _, sub := range []string{"files", "info"} {
+		fd, fe := ownedDirAt(userFd, sub, uid, gid, 0o700)
+		if fe != nil {
+			return fe
 		}
+		unix.Close(fd)
+	}
+	return nil
+}
+
+// ownedDirAt makes name under dirfd a folder owned by uid:gid with mode,
+// creating it when missing, and returns it opened. A symlink is refused; an
+// existing folder is given the expected owner and mode.
+func ownedDirAt(dirfd int, name string, uid, gid uint32, mode uint32) (int, *fsError) {
+	if err := unix.Mkdirat(dirfd, name, mode); err != nil && !errors.Is(err, unix.EEXIST) {
+		return -1, mapOsErr(err)
+	}
+	fd, err := unix.Openat(dirfd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, &fsError{Code: "ERR", Message: "the trash folder is not a folder"}
+	}
+	if err := unix.Fchown(fd, int(uid), int(gid)); err != nil {
+		unix.Close(fd)
+		return -1, mapOsErr(err)
+	}
+	if err := unix.Fchmod(fd, mode); err != nil {
+		unix.Close(fd)
+		return -1, mapOsErr(err)
+	}
+	return fd, nil
+}
+
+// trashTopOwner owns the shared top trash folder: root, except in tests,
+// which cannot chown.
+var trashTopOwner = "0"
+
+// ensureUserTrash checks, as the user, the trash folders prepareUserTrash
+// made: real folders, theirs, private.
+func ensureUserTrash(placeRoot, uid string) (files, info string, fe *fsError) {
+	dir, files, info := userTrash(placeRoot, uid)
+	for _, d := range []string{trashRoot(placeRoot), dir, files, info} {
 		fi, err := os.Lstat(d)
-		if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+		if err != nil {
+			return "", "", mapOsErr(err)
+		}
+		if !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
 			return "", "", &fsError{Code: "ERR", Message: "the trash folder is not a folder"}
 		}
-		// The user's folders are theirs alone; one someone else made for
-		// this uid is refused.
-		if d != root && uid != "0" {
-			if st, ok := fi.Sys().(*syscall.Stat_t); ok && strconv.FormatUint(uint64(st.Uid), 10) != uid {
-				return "", "", &fsError{Code: "EACCES", Message: "this trash folder belongs to someone else"}
-			}
-			_ = os.Chmod(d, 0o700)
+		st, ok := fi.Sys().(*syscall.Stat_t)
+		want := uid
+		if d == trashRoot(placeRoot) {
+			want = trashTopOwner
+		}
+		if !ok || strconv.FormatUint(uint64(st.Uid), 10) != want {
+			return "", "", &fsError{Code: "EACCES", Message: "this trash folder belongs to someone else"}
+		}
+		if d != trashRoot(placeRoot) && fi.Mode().Perm() != 0o700 {
+			return "", "", &fsError{Code: "EACCES", Message: "this trash folder is not private"}
 		}
 	}
 	return files, info, nil
@@ -605,6 +662,17 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 			fsErr = &fsError{Code: "ERR", Message: fmt.Sprintf("unknown trash operation %q", req.Op)}
 		}
 		return nil
+	}
+	if req.Op == "trash" {
+		owner, err := resolveUserCtx(req.LinuxUsername)
+		if err != nil {
+			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})
+			return
+		}
+		if fe := prepareUserTrash(req.PlaceRoot, owner); fe != nil {
+			replyErr(nc, msg.Reply, fe)
+			return
+		}
 	}
 	if err := withUser(req.LinuxUsername, run); err != nil {
 		replyErr(nc, msg.Reply, toFsErr(err))
