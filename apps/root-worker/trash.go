@@ -236,6 +236,11 @@ func userDirAt(dirfd int, name string, uid, gid uint32) (int, *fsError) {
 		return -1, &fsError{Code: "EACCES", Message: "this trash folder belongs to someone else"}
 	}
 	if owner != want {
+		// Only a folder an earlier call made and left empty is handed over.
+		if names, err := dirNames(fd); err != nil || len(names) > 0 {
+			unix.Close(fd)
+			return -1, &fsError{Code: "EACCES", Message: "a trash folder is not as HSI made it"}
+		}
 		if err := unix.Fchown(fd, int(uid), int(gid)); err != nil {
 			unix.Close(fd)
 			return -1, mapOsErr(err)

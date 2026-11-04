@@ -287,7 +287,7 @@ func TestPrepareUserTrashAsRoot(t *testing.T) {
 	if err := os.Mkdir(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// A folder planted for the user beforehand is taken back and made private.
+	// A folder root left empty is handed over and made private.
 	if err := os.MkdirAll(filepath.Join(root, trashDirName, "1000"), 0o777); err != nil {
 		t.Fatal(err)
 	}
@@ -302,6 +302,13 @@ func TestPrepareUserTrashAsRoot(t *testing.T) {
 	fi, _ := os.Stat(files)
 	if st := fi.Sys().(*syscall.Stat_t); st.Uid != 1000 || fi.Mode().Perm() != 0o700 {
 		t.Errorf("files folder = uid %d mode %v", st.Uid, fi.Mode().Perm())
+	}
+	// A root folder with something in it is never handed over.
+	if err := os.MkdirAll(filepath.Join(root, trashDirName, "1001", "files", "planted"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if fe := prepareUserTrash(root, userCtx{uid: 1001, gid: 1001}); fe == nil {
+		t.Error("a non-empty root folder must not be handed to a user")
 	}
 }
 
