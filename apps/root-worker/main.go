@@ -1161,6 +1161,7 @@ func main() {
 		"root.fs.list":                   handleList,
 		"root.fs.stat":                   handleStat,
 		"root.fs.diskusage":              handleDiskUsage,
+		"root.fs.details":                handleDetails,
 		"root.fs.read":                   handleRead,
 		"root.sys.disks":                 handleDisks,
 		"root.sys.blockdevices":          handleBlockDevices,

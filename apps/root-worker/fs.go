@@ -241,6 +241,7 @@ type statResult struct {
 	Size  *int64 `json:"size"`
 	Mtime string `json:"mtime"`
 	Ctime string `json:"ctime"`
+	statExtras
 }
 
 func doStat(path string) (*statResult, *fsError) {
@@ -273,7 +274,8 @@ func doStat(path string) (*statResult, *fsError) {
 	}
 	mtime := time.Unix(sys.Mtim.Sec, sys.Mtim.Nsec).UTC().Format(time.RFC3339)
 	ctime := time.Unix(sys.Ctim.Sec, sys.Ctim.Nsec).UTC().Format(time.RFC3339)
-	return &statResult{Mode: mode, Owner: ownerName, Group: groupName, Uid: uid, Gid: gid, Type: typ, Size: size, Mtime: mtime, Ctime: ctime}, nil
+	return &statResult{Mode: mode, Owner: ownerName, Group: groupName, Uid: uid, Gid: gid, Type: typ, Size: size, Mtime: mtime, Ctime: ctime,
+		statExtras: fillStatExtras(path, info, sys)}, nil
 }
 
 // ── disk usage ───────────────────────────────────────────────────────────────
@@ -281,6 +283,10 @@ func doStat(path string) (*statResult, *fsError) {
 type diskUsageResult struct {
 	Total int64 `json:"total"`
 	Free  int64 `json:"free"`
+	// Filesystem holding the path (#198); empty when unknown.
+	FsType     string `json:"fsType,omitempty"`
+	MountPoint string `json:"mountPoint,omitempty"`
+	Source     string `json:"source,omitempty"`
 }
 
 func doDiskUsage(path string) (*diskUsageResult, *fsError) {
@@ -289,10 +295,15 @@ func doDiskUsage(path string) (*diskUsageResult, *fsError) {
 		return nil, mapOsErr(err)
 	}
 	bsize := int64(st.Bsize)
-	return &diskUsageResult{
-		Total: int64(st.Blocks) * bsize,
-		Free:  int64(st.Bavail) * bsize, // Bavail = available to non-root
-	}, nil
+	r := &diskUsageResult{
+		Total:  int64(st.Blocks) * bsize,
+		Free:   int64(st.Bavail) * bsize, // Bavail = available to non-root
+		FsType: fsTypeName(int64(st.Type)),
+	}
+	if info, err := os.ReadFile("/proc/self/mountinfo"); err == nil {
+		r.MountPoint, r.Source = mountOf(string(info), path)
+	}
+	return r, nil
 }
 
 // ── read ──────────────────────────────────────────────────────────────────────

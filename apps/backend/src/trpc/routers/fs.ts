@@ -150,6 +150,8 @@ export const fsRouter = router({
         return await requestSync<{
           mode: string; owner: string; group: string; uid: number; gid: number; type: string; size: number | null
           mtime: string; ctime: string
+          // #198: btime only where the filesystem records it; linkTarget for symlinks.
+          atime?: string; btime?: string; nlink: number; linkTarget?: string; mime?: string
         }>("root.fs.stat", { path: p, linuxUsername: linuxUser ?? "", allowedRoot: allowedRoot ?? "" })
       } catch (e: any) {
         throw mapWorkerError(e)
@@ -163,10 +165,29 @@ export const fsRouter = router({
       const p = normalize(input.path)
       const allowedRoot = await checkPathPerm(ctx, p, "canRead")
       try {
-        return await requestSync<{ total: number; free: number }>(
+        return await requestSync<{ total: number; free: number; fsType?: string; mountPoint?: string; source?: string }>(
           "root.fs.diskusage",
           { path: p, allowedRoot: allowedRoot ?? "" },
         )
+      } catch (e: any) {
+        throw mapWorkerError(e)
+      }
+    }),
+
+  // ── details (sync, on demand, #198): folder size, SHA-256 or media info.
+  // Run as the user with a deadline in the worker; never on dialog open.
+  details: protectedProcedure
+    .input(z.object({ path: z.string(), kind: z.enum(["folderSize", "checksum", "media"]) }))
+    .query(async ({ ctx, input }) => {
+      const p = normalize(input.path)
+      const allowedRoot = await checkPathPerm(ctx, p, "canRead")
+      const linuxUser = await getLinuxUser(ctx)
+      try {
+        return await requestSync<
+          | { files: number; folders: number; bytes: number; partial: boolean }
+          | { sha256: string }
+          | { width?: number; height?: number; duration?: number; format?: string; video?: string; audio?: string; probed: boolean }
+        >("root.fs.details", { path: p, kind: input.kind, linuxUsername: linuxUser ?? "", allowedRoot: allowedRoot ?? "" }, 100_000)
       } catch (e: any) {
         throw mapWorkerError(e)
       }

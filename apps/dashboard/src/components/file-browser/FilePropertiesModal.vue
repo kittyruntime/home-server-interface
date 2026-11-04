@@ -2,6 +2,8 @@
 import { useI18n } from 'vue-i18n'
 import FileTypeIcon from './FileTypeIcon.vue'
 import CopyPath from './CopyPath.vue'
+import PropertiesDetails from './PropertiesDetails.vue'
+import { formatExactBytes } from '../../lib/file-details'
 import PlaceIcon from '../PlaceIcon.vue'
 import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
@@ -13,7 +15,7 @@ import { focusPlaceAccess } from '../../lib/app-focus'
 import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | null; mtime: string }
 type Place = { id: string; name: string; path: string; icon?: string | null }
@@ -31,8 +33,9 @@ const error   = ref('')
 type StatInfo = {
   mode: string; owner: string; group: string; uid: number; gid: number
   type: string; size: number | null; mtime: string; ctime: string
+  atime?: string; btime?: string; nlink?: number; linkTarget?: string; mime?: string
 }
-type DiskInfo = { total: number; free: number }
+type DiskInfo = { total: number; free: number; fsType?: string; mountPoint?: string; source?: string }
 
 const stat     = ref<StatInfo | null>(null)
 const diskInfo = ref<DiskInfo | null>(null)
@@ -152,6 +155,12 @@ onMounted(async () => {
           <span><span class="text-base-content font-medium">{{ fmtBytes(diskInfo.free) }}</span> free</span>
           <span>{{ fmtBytes(diskInfo.total) }} total</span>
         </div>
+        <dl v-if="diskInfo.fsType || diskInfo.mountPoint" class="space-y-1.5 pt-1 text-sm">
+          <div class="flex justify-between gap-4">
+            <dt class="text-base-content/70 shrink-0">{{ t('files.details.volume') }}</dt>
+            <dd class="min-w-0 truncate text-right"><span class="font-mono text-xs">{{ diskInfo.source || diskInfo.mountPoint }}</span><template v-if="diskInfo.fsType"> · {{ diskInfo.fsType }}</template></dd>
+          </div>
+        </dl>
       </div>
 
       <!-- General -->
@@ -164,7 +173,18 @@ onMounted(async () => {
           </div>
           <div v-if="stat?.size != null" class="flex justify-between gap-4">
             <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.size') }}</dt>
-            <dd class="text-base-content text-right">{{ fmtBytes(stat.size) }}</dd>
+            <dd class="text-base-content text-right tabular-nums">
+              {{ fmtBytes(stat.size) }}
+              <span v-if="stat.size >= 1024" class="text-base-content/70">({{ t('files.details.bytes', { n: formatExactBytes(stat.size, locale) }) }})</span>
+            </dd>
+          </div>
+          <div v-if="stat?.mime" class="flex justify-between gap-4">
+            <dt class="text-base-content/70 shrink-0">{{ t('files.details.mime') }}</dt>
+            <dd class="font-mono text-xs text-base-content text-right truncate">{{ stat.mime }}</dd>
+          </div>
+          <div v-if="stat?.linkTarget" class="flex justify-between gap-4">
+            <dt class="text-base-content/70 shrink-0">{{ t('files.details.linkTarget') }}</dt>
+            <dd class="font-mono text-xs text-base-content text-right truncate">{{ stat.linkTarget }}</dd>
           </div>
           <div v-if="!isPlace" class="flex justify-between gap-4">
             <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.location') }}</dt>
@@ -180,6 +200,14 @@ onMounted(async () => {
           <div class="flex justify-between gap-4">
             <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.modified') }}</dt>
             <dd class="text-base-content text-right">{{ formatDateTime(stat.mtime) }}</dd>
+          </div>
+          <div v-if="stat.btime" class="flex justify-between gap-4">
+            <dt class="text-base-content/70 shrink-0">{{ t('files.details.created') }}</dt>
+            <dd class="text-base-content text-right">{{ formatDateTime(stat.btime) }}</dd>
+          </div>
+          <div v-if="stat.atime" class="flex justify-between gap-4">
+            <dt class="text-base-content/70 shrink-0">{{ t('files.details.accessed') }}</dt>
+            <dd class="text-base-content text-right">{{ formatDateTime(stat.atime) }}</dd>
           </div>
           <div v-if="stat.ctime" class="flex justify-between gap-4">
             <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.changed') }}</dt>
@@ -223,9 +251,15 @@ onMounted(async () => {
               <dt class="text-base-content/70 shrink-0">{{ t('ui.files.FilePropertiesModal.uidGid') }}</dt>
               <dd class="font-mono text-base-content">{{ stat.uid }} / {{ stat.gid }}</dd>
             </div>
+            <div v-if="stat.nlink" class="flex justify-between gap-4">
+              <dt class="text-base-content/70 shrink-0">{{ t('files.details.links') }}</dt>
+              <dd class="text-base-content tabular-nums">{{ stat.nlink }}</dd>
+            </div>
           </template>
         </dl>
       </div>
+
+      <PropertiesDetails v-if="stat" :path="targetPath" :is-dir="stat.type === 'dir'" :mime="stat.mime" />
 
     </div>
 

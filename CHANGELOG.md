@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Copy a path in one click**: click the path in a file's properties or the
   current folder in the breadcrumb, or use **Copy path** in the context menu.
   It also works when the NAS is opened over plain HTTP.
+- **More in the properties of a file or folder**: the exact size in bytes, the MIME
+  type, the creation and access dates, where a symlink points, and on request the
+  size of a folder, a file's SHA-256, and the dimensions, duration and codecs of
+  images and videos (duration and codecs need `ffprobe` on the NAS). A place also
+  shows the volume and filesystem it lives on.
 
 ### Changed
 - **VM tests look up the latest release reliably**: from the release page's
