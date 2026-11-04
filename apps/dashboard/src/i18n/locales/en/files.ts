@@ -57,6 +57,7 @@ export default {
     changed: 'Changed',
     permissions: 'Permissions',
     edit: 'Edit…',
+    manageAccess: 'Manage access…',
     mode: 'Mode',
     owner: 'Owner',
     group: 'Group',

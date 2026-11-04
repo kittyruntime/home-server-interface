@@ -16,3 +16,13 @@ export function appToFocus<T extends { name: string }>(pending: string | null, a
   if (!pending) return null
   return apps.find(a => a.name === pending) ?? null
 }
+
+// A place's properties lead to its access settings (#194): the shell opens
+// Settings > Permissions, which expands that place and clears the request.
+
+/** Id of the place whose access settings to show; cleared once shown. */
+export const pendingPlaceAccess = ref<string | null>(null)
+
+export function focusPlaceAccess(placeId: string): void {
+  pendingPlaceAccess.value = placeId
+}

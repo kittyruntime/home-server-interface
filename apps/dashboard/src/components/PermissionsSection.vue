@@ -5,7 +5,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDownIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ref, onMounted } from 'vue'
+import { nextTick, ref, onMounted, watch } from 'vue'
+import { pendingPlaceAccess } from '../lib/app-focus'
 import { trpc } from '../lib/trpc'
 import { Badge } from '@/components/ui/badge'
 
@@ -77,7 +78,18 @@ async function togglePerm(
   await loadPerms(placeId)
 }
 
-onMounted(load)
+let loaded: Promise<void> | undefined
+onMounted(() => { loaded ??= load() })
+
+// Opened from a place's properties (#194): expand that place, then clear the request.
+watch(pendingPlaceAccess, async id => {
+  if (!id) return
+  pendingPlaceAccess.value = null
+  await (loaded ??= load())
+  if (expandedPlace.value !== id) await togglePlace(id)
+  await nextTick()
+  document.getElementById(`place-access-${id}`)?.scrollIntoView({ block: 'start' })
+}, { immediate: true })
 </script>
 
 <template>
@@ -89,8 +101,9 @@ onMounted(load)
     <div class="space-y-2">
       <Collapsible
         v-for="place in places"
+        :id="`place-access-${place.id}`"
         :key="place.id"
-        class="bg-base-100 border border-base-300 rounded-xl overflow-hidden"
+        class="scroll-mt-4 bg-base-100 border border-base-300 rounded-xl overflow-hidden"
         :open="expandedPlace === place.id"
         @update:open="togglePlace(place.id)"
       >

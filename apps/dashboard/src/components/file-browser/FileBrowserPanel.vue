@@ -855,7 +855,7 @@ onMounted(async () => {
     v-if="propertiesEntry"
     :entry="propertiesEntry"
     @close="propertiesEntry = null"
-    @open-permissions="propertiesEntry = null; openPermissions()"
+    @open-permissions="path => { propertiesEntry = null; permDialogPath = path }"
   />
 
   <FilePropertiesModal
