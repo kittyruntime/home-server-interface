@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on (Ctrl+H). They are kept with your account.
 - **File manager settings in one place**: a Settings entry at the bottom of its
   sidebar opens Display and Shared links as two tabs.
+- **Copy a path in one click**: click the path in a file's properties or the
+  current folder in the breadcrumb, or use **Copy path** in the context menu.
+  It also works when the NAS is opened over plain HTTP.
 
 ### Changed
 - **New folder and file icons**: folders are filled, two-tone and take the theme's

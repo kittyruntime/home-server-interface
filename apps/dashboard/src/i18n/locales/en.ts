@@ -295,6 +295,13 @@ export default {
     confirmFileDeleteHint: 'Ask before deleting files and folders in the file manager. Deletion is permanent.',
   },
   files: {
+    copyPath: {
+      label: 'Copy the path {path}',
+      hint: 'Click to copy the path',
+      copied: 'Path copied',
+      failed: 'Could not copy the path',
+      menu: 'Copy path',
+    },
     sort: {
       menu: 'Sort and display',
       title: 'Sort',

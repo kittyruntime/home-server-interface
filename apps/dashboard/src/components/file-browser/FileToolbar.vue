@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import SortMenu from './SortMenu.vue'
+import CopyPath from './CopyPath.vue'
 
 const { t } = useI18n()
 
@@ -96,6 +97,8 @@ async function openSearch() {
           <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
           <BreadcrumbItem class="shrink-0 whitespace-nowrap">
             <BreadcrumbLink v-if="crumb.clickable" as="button" type="button" class="rounded-sm px-1" @click="emit('navigate', crumb.path)">{{ crumb.label }}</BreadcrumbLink>
+            <!-- The current folder copies its path when clicked (#197). -->
+            <CopyPath v-else-if="currentPath && i === breadcrumbs.length - 1" :path="currentPath" aria-current="page" class="px-1 text-base-content">{{ crumb.label }}</CopyPath>
             <BreadcrumbPage v-else class="truncate px-1">{{ crumb.label }}</BreadcrumbPage>
           </BreadcrumbItem>
         </template>
