@@ -3,9 +3,29 @@ title: Add an app to the App Store
 description: The rules of the catalog, the manifest format, and the checks an app must pass.
 ---
 
-The App Store is a free, curated catalog of open-source self-hosted apps,
-bundled with HSI in `packages/app-catalog`. Installing an app writes a
-`compose.yaml` in `/opt/containers/<name>/` that works without HSI.
+The App Store is a free, curated catalog of open-source self-hosted apps.
+Installing an app writes a `compose.yaml` in `/opt/containers/<name>/` that
+works without HSI.
+
+## Where the catalog lives
+
+Apps are added and updated in the public repository
+[kittyruntime/home-server-interface-apps](https://github.com/kittyruntime/home-server-interface-apps):
+every change there publishes a signed `catalog.json`, which every HSI fetches
+within 12 hours (or at once with **Check for new apps** in the App Store). Its
+[CONTRIBUTING.md](https://github.com/kittyruntime/home-server-interface-apps/blob/main/CONTRIBUTING.md)
+is the guide for adding an app.
+
+HSI also ships a copy in `packages/app-catalog`, used when it is offline or has
+never reached the repository, and replaced by the online catalog only when that
+one is newer and its signature checks against the key HSI ships. An online
+catalog never goes back to an older version. An app that needs a newer HSI
+(`minHsiVersion`) or that this HSI cannot read is left out on its own.
+
+The manifest format belongs to HSI (`packages/app-catalog/src/manifest.ts`).
+After changing it, export it again with `pnpm --filter @app/app-catalog schema`
+and copy `schema/` to the catalog repository; `pnpm test` fails until the export
+is up to date. The rest of this page describes the format and the bundled copy.
 
 ## Rules
 

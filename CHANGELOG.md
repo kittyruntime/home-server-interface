@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **App Store catalog updated online**: new apps and image updates now come from
+  the public repository kittyruntime/home-server-interface-apps, checked every
+  12 hours and on demand from the App Store, without waiting for an HSI release.
+  HSI only uses a catalog signed with the key it ships, never goes back to an
+  older one, keeps the last one for offline restarts, and falls back on the
+  catalog of its release. Fetching it sends nothing about what is browsed or
+  installed.
+
+### Changed
+- **App Store logos are drawn as images**: they can now come from outside HSI,
+  so an SVG logo never runs anything in the page.
+
 ## [1.80.1] - 2026-11-04
 
 ### Changed

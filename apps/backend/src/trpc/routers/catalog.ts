@@ -2,7 +2,9 @@ import { z } from "zod"
 import crypto from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
-import { CATALOG, resolveSettingRefs } from "@app/app-catalog"
+import { resolveSettingRefs } from "@app/app-catalog"
+import { catalogApps, catalogState, refreshCatalog } from "../../services/catalog-source"
+import { readCurrentVersion } from "./update"
 import { portDomainUrl, generateComposeYaml, withSidecars, type AppInput } from "@app/compose"
 import { publishJob, requestSync } from "../../nats"
 import { listStacks, readPreviousStack, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
@@ -23,6 +25,16 @@ const zInstallVolume = z.object({
 })
 
 export const catalogRouter = router({
+  // Where the App Store's apps come from (#26): this release's catalog or the
+  // newer signed one of the public catalog repository.
+  source: protectedProcedure.query(({ ctx }) => {
+    const s = catalogState()
+    return ctx.user.isAdmin ? s : { source: s.source, version: s.version, generatedAt: s.generatedAt, apps: s.apps }
+  }),
+
+  // Checks the public catalog now instead of at the next 12-hour check.
+  refresh: adminProcedure.mutation(() => refreshCatalog(readCurrentVersion())),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     // Enrich every manifest with its installed instance (if any): a declarative
     // stack carrying the `hsi.catalog.id` label. We surface the live `status`
@@ -38,7 +50,7 @@ export const catalogRouter = router({
       try { image = prev ? parseComposeYaml(prev, s.name).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
       if (image && image !== s.app?.image) previousImage.set(s.name, image)
     }))
-    return CATALOG.map((m) => {
+    return catalogApps().map((m) => {
       const stack = stacks.find((s) =>
         s.app?.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
       )
@@ -67,7 +79,7 @@ export const catalogRouter = router({
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(({ input }) => {
-    const m = CATALOG.find((x) => x.id === input.id)
+    const m = catalogApps().find((x) => x.id === input.id)
     if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
     return m
   }),
@@ -85,7 +97,7 @@ export const catalogRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
-      const m = CATALOG.find((x) => x.id === input.id)
+      const m = catalogApps().find((x) => x.id === input.id)
       if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
 
       // Fail fast on a name collision before doing any side effects (mkdirp,

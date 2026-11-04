@@ -1,4 +1,5 @@
-import { CATALOG, type AppManifest } from "@app/app-catalog"
+import type { AppManifest } from "@app/app-catalog"
+import { catalogApps } from "./catalog-source"
 
 // App updates (#26): an app installed from the App Store keeps its catalog id
 // in the `hsi.catalog.id` label. When the catalog shipped with HSI pins a newer
@@ -76,7 +77,7 @@ export function replaceImage(yaml: string, from: string, to: string): string {
 }
 
 /** The catalog app an installed app came from, from its labels. */
-export function catalogEntry(labels: Array<{ key: string; value: string }>, catalog: AppManifest[] = CATALOG): AppManifest | undefined {
+export function catalogEntry(labels: Array<{ key: string; value: string }>, catalog: AppManifest[] = catalogApps()): AppManifest | undefined {
   const id = labels.find(l => l.key === "hsi.catalog.id")?.value
   return id ? catalog.find(m => m.id === id) : undefined
 }

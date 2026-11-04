@@ -46,3 +46,5 @@ export const CATALOG: AppManifest[] = RAW.map(({ manifest, icon }) => ({
 }))
 
 export { zAppManifest, resolveSettingRefs, type AppManifest } from "./manifest"
+export { BUNDLED_CATALOG_VERSION, CATALOG_INDEX_SCHEMA, parseCatalogIndex, type CatalogIndex } from "./remote"
+export { CATALOG_SIGNING_PUBLIC_KEY, CATALOG_URL, DEV_CATALOG_KEY_FINGERPRINT } from "./signing"

@@ -8,7 +8,8 @@
     "pnpm": ">=10.18.0"
   },
   "scripts": {
-    "test": "pnpm test:compose && pnpm test:database && pnpm test:backend && pnpm test:dashboard && pnpm test:worker",
+    "test": "pnpm test:catalog && pnpm test:compose && pnpm test:database && pnpm test:backend && pnpm test:dashboard && pnpm test:worker",
+    "test:catalog": "pnpm --filter @app/app-catalog test",
     "test:compose": "pnpm --filter @app/compose test",
     "test:database": "pnpm --filter @app/database test",
     "test:backend": "pnpm --filter @app/backend test",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from './AppIcon.vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { computed, onMounted, ref } from 'vue'
@@ -37,8 +38,7 @@ onMounted(() => (backButton.value?.$el as HTMLElement | undefined)?.focus())
     <Card class="block gap-0 py-0 overflow-hidden p-5 space-y-5">
       <!-- Identity + main action -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <!-- eslint-disable-next-line vue/no-v-html -- `app.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
-        <span class="w-14 h-14 shrink-0 grid place-items-center" v-html="app.icon" />
+        <span class="w-14 h-14 shrink-0 grid place-items-center"><AppIcon :svg="app.icon" /></span>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <h3 class="text-base font-semibold text-base-content">{{ app.name }}</h3>

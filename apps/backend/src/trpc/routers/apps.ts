@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { composeBindSources } from "@app/compose"
-import { CATALOG } from "@app/app-catalog"
+import { catalogApps } from "../../services/catalog-source"
 import { router, adminProcedure } from "../index"
 import type { Context } from "../context"
 import { publishJob, requestSync } from "../../nats"
@@ -29,7 +29,7 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
     appStatus:    stackStatusNow,
     findPlace:   id => ctx.prisma.place.findUnique({ where: { id }, select: { id: true, name: true, path: true } }),
     placeAtPath: async path => (await ctx.prisma.place.findFirst({ where: { path } })) !== null,
-    catalog:     id => CATALOG.find(m => m.id === id),
+    catalog:     id => catalogApps().find(m => m.id === id),
     secret:      () => crypto.randomBytes(24).toString("base64url"),
     effects: {
       writeStack:     async (name, yaml) => { await writeStack(name, yaml) },

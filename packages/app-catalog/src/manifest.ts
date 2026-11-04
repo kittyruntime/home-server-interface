@@ -49,7 +49,9 @@ export const zAppManifest = z.object({
   added:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   tagline:       z.string().max(120),
   description:   z.string(),
-  website:       z.string().url().optional(),
+  // Every link is https: the catalog now comes from outside HSI, and a
+  // javascript: or data: link would run in the page when clicked.
+  website:       z.string().url().startsWith("https://").optional(),
   // Release notes, linked when an update is offered (#26).
   changelog:     z.string().url().startsWith("https://").optional(),
   // Shown on the app's page before installing (#26): its license (SPDX-like
