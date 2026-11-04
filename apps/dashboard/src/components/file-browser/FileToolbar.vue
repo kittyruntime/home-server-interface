@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import Tip from '../ui/Tip.vue'
 import { Button } from '@/components/ui/button'
-import { ArrowLeftIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArrowLeftIcon, BookmarkIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
 import { ref, nextTick } from 'vue'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -20,6 +20,8 @@ type Crumb = { label: string; path: string; clickable: boolean }
 defineProps<{
   currentPath: string | null
   breadcrumbs: Crumb[]
+  /** The current folder is bookmarked (#199). */
+  bookmarked?: boolean
   canGoUp: boolean
   selectedCount: number
   selectedEntries: Entry[]
@@ -47,6 +49,7 @@ const emit = defineEmits<{
   'update:viewMode': [mode: 'list' | 'grid']
   toggleSidebar: []
   openDisplaySettings: []
+  toggleBookmark: []
   search: [query: string]
 }>()
 
@@ -191,6 +194,16 @@ async function openSearch() {
       <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" :tooltip="t('ui.files.FileToolbar.refresh')" :aria-label="t('ui.files.FileToolbar.refreshFolder')"
         class="text-base-content/70 hover:text-base-content">
         <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
+      </Button>
+
+      <!-- Bookmark the current folder (#199) -->
+      <Button v-if="currentPath" variant="ghost" size="sm"
+        :tooltip="bookmarked ? t('files.bookmarks.remove') : t('files.bookmarks.add')"
+        :aria-label="bookmarked ? t('files.bookmarks.remove') : t('files.bookmarks.add')"
+        :aria-pressed="bookmarked"
+        :class="['px-2', bookmarked ? 'text-primary' : 'text-base-content/70']"
+        @click="emit('toggleBookmark')">
+        <BookmarkIcon :class="bookmarked ? 'fill-current' : ''" aria-hidden="true" />
       </Button>
 
       <!-- Sort and hidden files (#196) -->

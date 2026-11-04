@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   size of a folder, a file's SHA-256, and the dimensions, duration and codecs of
   images and videos (duration and codecs need `ffprobe` on the NAS). A place also
   shows the volume and filesystem it lives on.
+- **Bookmarks in the file manager**: bookmark a folder from its context menu or
+  the star in the toolbar; bookmarks sit in the sidebar under the places, can be
+  renamed and reordered, follow your account, and show dimmed when the folder is
+  gone or out of reach.
 
 ### Changed
 - **New folder and file icons**: folders are filled, two-tone and take the theme's
