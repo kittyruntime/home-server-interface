@@ -29,6 +29,13 @@ func validatePath(p string) error {
 	if !filepath.IsAbs(filepath.Clean(p)) {
 		return fmt.Errorf("invalid path: must be absolute")
 	}
+	// A place's trash (#200) is reached only through the trash operations,
+	// which keep each user to their own items.
+	for _, part := range strings.Split(filepath.Clean(p), "/") {
+		if part == trashDirName {
+			return fmt.Errorf("the trash is reached from the Trash view")
+		}
+	}
 	return nil
 }
 

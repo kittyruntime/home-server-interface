@@ -306,7 +306,7 @@ export default {
     },
     trash: {
       title: 'Corbeille',
-      intro: 'Les éléments supprimés dans les emplacements qui ont une corbeille restent ici jusqu’à ce que vous les restauriez, les supprimiez, ou que l’emplacement les vide après le nombre de jours choisi.',
+      intro: 'Ce que vous avez supprimé dans les emplacements qui ont une corbeille reste ici, visible uniquement par vous, jusqu’à ce que vous le restauriez, le supprimiez, ou que l’emplacement le vide après le nombre de jours choisi. Les administrateurs voient tout.',
       noPlaces: 'Aucune corbeille à afficher.',
       noPlacesHint: 'Un administrateur active la corbeille d’un emplacement dans Réglages > Emplacements.',
       emptyPlace: 'Cette corbeille est vide.',

@@ -1,11 +1,18 @@
 package main
 
 // Per-place trash (#200). A place with the trash on keeps deleted items in
-// <place>/.hsi-trash, laid out like the freedesktop.org trash: files/<id> holds
-// the item and info/<id>.trashinfo its original path, deletion date and who
-// deleted it. The info file is written first, so an interrupted move leaves at
-// worst an info file without an item, which listings skip and purges clean.
-// Moving stays on one filesystem, so it is a rename: instant and atomic.
+// <place>/.hsi-trash/<uid>, one private folder per user (0700, the user's
+// own): a file moved there keeps the protection its folders gave it, and only
+// the user who deleted it (or root) can see, restore or remove it. Each folder
+// is laid out like the freedesktop.org trash: files/<name> holds the item and
+// info/<name>.trashinfo its original path, deletion date and who deleted it.
+// The info file is written first, so an interrupted move leaves at worst an
+// info file without an item, which listings skip and purges clean. Moving
+// stays on one filesystem, so it is a rename: instant and atomic.
+//
+// An item's id is "<uid>:<name>". Moves and restores run as the user; root
+// (the purge, an administrator) reaches every user's folder. Every removal
+// goes through folders opened without following symlinks.
 
 import (
 	"bufio"
@@ -15,6 +22,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -42,37 +50,77 @@ type trashEntry struct {
 	Size         *int64 `json:"size"`
 }
 
-func trashDirs(placeRoot string) (root, files, info string) {
-	root = filepath.Join(placeRoot, trashDirName)
-	return root, filepath.Join(root, "files"), filepath.Join(root, "info")
+func trashRoot(placeRoot string) string {
+	return filepath.Join(filepath.Clean(placeRoot), trashDirName)
 }
 
-// validTrashID refuses anything that could leave the trash folders.
-func validTrashID(id string) bool {
-	return id != "" && id != "." && id != ".." && !strings.ContainsAny(id, "/\x00") && len(id) <= 255
+// userTrash is the folder of one user's trash in a place.
+func userTrash(placeRoot, uid string) (dir, files, info string) {
+	dir = filepath.Join(trashRoot(placeRoot), uid)
+	return dir, filepath.Join(dir, "files"), filepath.Join(dir, "info")
 }
 
-// ensureTrash creates the trash folders, group-writable and setgid like the
-// place root, so every writer of the place can move items in and out.
-func ensureTrash(placeRoot string) (files, info string, fe *fsError) {
-	root, files, info := trashDirs(placeRoot)
-	for _, d := range []string{root, files, info} {
-		if err := os.Mkdir(d, 0o775|os.ModeSetgid); err != nil && !errors.Is(err, os.ErrExist) {
-			return "", "", mapOsErr(err)
-		}
-		if fi, err := os.Lstat(d); err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
-			return "", "", &fsError{Code: "ERR", Message: "the trash folder is not a folder"}
-		}
-		// Mkdir's mode is masked by the umask; set it as asked (owner only, best effort).
-		_ = os.Chmod(d, 0o775|os.ModeSetgid)
+func validUID(uid string) bool {
+	if uid == "" || len(uid) > 10 {
+		return false
 	}
-	return files, info, nil
+	for _, c := range uid {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
+
+// validTrashName refuses anything that could leave a trash folder.
+func validTrashName(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, "/\x00") && len(name) <= 255
+}
+
+// splitTrashID splits "<uid>:<name>".
+func splitTrashID(id string) (uid, name string, ok bool) {
+	uid, name, ok = strings.Cut(id, ":")
+	return uid, name, ok && validUID(uid) && validTrashName(name)
+}
+
+func currentUID() string { return strconv.Itoa(unix.Geteuid()) }
 
 // trashInside reports whether path is the trash itself or inside it.
 func trashInside(placeRoot, path string) bool {
-	root, _, _ := trashDirs(placeRoot)
+	root := trashRoot(placeRoot)
 	return path == root || strings.HasPrefix(path, root+"/")
+}
+
+// ensureUserTrash creates the calling user's trash folders. The shared top
+// folder is sticky, so a user can add their own folder but never rename or
+// remove another's.
+func ensureUserTrash(placeRoot, uid string) (files, info string, fe *fsError) {
+	root := trashRoot(placeRoot)
+	if err := os.Mkdir(root, 0o775|os.ModeSetgid|os.ModeSticky); err != nil && !errors.Is(err, os.ErrExist) {
+		return "", "", mapOsErr(err)
+	}
+	_ = os.Chmod(root, 0o775|os.ModeSetgid|os.ModeSticky) // owner only; best effort against the umask
+	dir, files, info := userTrash(placeRoot, uid)
+	for _, d := range []string{root, dir, files, info} {
+		if d != root {
+			if err := os.Mkdir(d, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+				return "", "", mapOsErr(err)
+			}
+		}
+		fi, err := os.Lstat(d)
+		if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+			return "", "", &fsError{Code: "ERR", Message: "the trash folder is not a folder"}
+		}
+		// The user's folders are theirs alone; one someone else made for
+		// this uid is refused.
+		if d != root && uid != "0" {
+			if st, ok := fi.Sys().(*syscall.Stat_t); ok && strconv.FormatUint(uint64(st.Uid), 10) != uid {
+				return "", "", &fsError{Code: "EACCES", Message: "this trash folder belongs to someone else"}
+			}
+			_ = os.Chmod(d, 0o700)
+		}
+	}
+	return files, info, nil
 }
 
 func encodeTrashInfo(original string, at time.Time, by string) string {
@@ -132,7 +180,7 @@ func parseTrashInfo(data string) (trashInfo, error) {
 	return ti, nil
 }
 
-// doTrash moves path into its place's trash and returns the new entry.
+// doTrash moves path into the calling user's trash in its place.
 func doTrash(placeRoot, path, deletedBy string, now time.Time) (*trashEntry, *fsError) {
 	placeRoot = filepath.Clean(placeRoot)
 	path = filepath.Clean(path)
@@ -146,20 +194,21 @@ func doTrash(placeRoot, path, deletedBy string, now time.Time) (*trashEntry, *fs
 	if err != nil {
 		return nil, mapOsErr(err)
 	}
-	files, info, fe := ensureTrash(placeRoot)
+	uid := currentUID()
+	files, info, fe := ensureUserTrash(placeRoot, uid)
 	if fe != nil {
 		return nil, fe
 	}
 	base := filepath.Base(path)
 	content := encodeTrashInfo(path, now, deletedBy)
-	// Reserve a free id by creating its info file exclusively.
-	var id string
+	// Reserve a free name by creating its info file exclusively.
+	var name string
 	for n := 1; n < 10000; n++ {
 		candidate := base
 		if n > 1 {
 			candidate = base + "." + strconv.Itoa(n)
 		}
-		f, err := os.OpenFile(filepath.Join(info, candidate+trashInfoExt), os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o664)
+		f, err := os.OpenFile(filepath.Join(info, candidate+trashInfoExt), os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
 		if errors.Is(err, os.ErrExist) {
 			continue
 		}
@@ -173,36 +222,30 @@ func doTrash(placeRoot, path, deletedBy string, now time.Time) (*trashEntry, *fs
 			return nil, &fsError{Code: "ERR", Message: "could not record the trash entry"}
 		}
 		if _, err := os.Lstat(filepath.Join(files, candidate)); err == nil {
-			// A leftover item without its info: keep it, try the next id.
+			// A leftover item without its info: keep it, try the next name.
 			_ = os.Remove(filepath.Join(info, candidate+trashInfoExt))
 			continue
 		}
-		id = candidate
+		name = candidate
 		break
 	}
-	if id == "" {
+	if name == "" {
 		return nil, &fsError{Code: "ERR", Message: "too many items with this name in the trash"}
 	}
-	if err := os.Rename(path, filepath.Join(files, id)); err != nil {
-		_ = os.Remove(filepath.Join(info, id+trashInfoExt))
+	if err := os.Rename(path, filepath.Join(files, name)); err != nil {
+		_ = os.Remove(filepath.Join(info, name+trashInfoExt))
 		if errors.Is(err, syscall.EXDEV) {
 			return nil, &fsError{Code: "EXDEV", Message: "this item is on another volume than its place: delete it permanently instead"}
 		}
 		return nil, mapOsErr(err)
 	}
-	return entryFor(files, id, trashInfo{Path: path, DeletedAt: now, DeletedBy: deletedBy}, fi), nil
+	return entryFor(uid, name, trashInfo{Path: path, DeletedAt: now, DeletedBy: deletedBy}, fi), nil
 }
 
-func entryFor(files, id string, ti trashInfo, fi os.FileInfo) *trashEntry {
+func entryFor(uid, name string, ti trashInfo, fi os.FileInfo) *trashEntry {
 	e := &trashEntry{
-		ID: id, Name: filepath.Base(ti.Path), OriginalPath: ti.Path,
+		ID: uid + ":" + name, Name: filepath.Base(ti.Path), OriginalPath: ti.Path,
 		DeletedAt: ti.DeletedAt.UTC().Format(time.RFC3339), DeletedBy: ti.DeletedBy, Type: "file",
-	}
-	if fi == nil {
-		var err error
-		if fi, err = os.Lstat(filepath.Join(files, id)); err != nil {
-			return e
-		}
 	}
 	if fi.IsDir() {
 		e.Type = "dir"
@@ -213,57 +256,95 @@ func entryFor(files, id string, ti trashInfo, fi os.FileInfo) *trashEntry {
 	return e
 }
 
-func readTrashInfo(info, id string) (trashInfo, *fsError) {
-	data, err := os.ReadFile(filepath.Join(info, id+trashInfoExt))
-	if err != nil {
-		return trashInfo{}, mapOsErr(err)
+// trashUIDs lists whose trash folders the caller reaches: its own, or every
+// one when it runs as root.
+func trashUIDs(placeRoot string) ([]string, *fsError) {
+	uid := currentUID()
+	if uid != "0" {
+		return []string{uid}, nil
 	}
-	ti, err := parseTrashInfo(string(data))
-	if err != nil {
-		return trashInfo{}, &fsError{Code: "ERR", Message: err.Error()}
-	}
-	return ti, nil
-}
-
-// doTrashList lists the trash of a place, newest first. A missing trash is empty.
-func doTrashList(placeRoot string) ([]trashEntry, *fsError) {
-	_, files, info := trashDirs(filepath.Clean(placeRoot))
-	names, err := os.ReadDir(info)
+	fd, err := openTrashDir(trashRoot(placeRoot))
 	if errors.Is(err, os.ErrNotExist) {
-		return []trashEntry{}, nil
+		return nil, nil
 	}
 	if err != nil {
 		return nil, mapOsErr(err)
 	}
+	defer unix.Close(fd)
+	names, err := dirNames(fd)
+	if err != nil {
+		return nil, mapOsErr(err)
+	}
+	out := []string{}
+	for _, n := range names {
+		if validUID(n) {
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// doTrashList lists the trash the caller reaches in a place, newest first.
+func doTrashList(placeRoot string) ([]trashEntry, *fsError) {
+	uids, fe := trashUIDs(placeRoot)
+	if fe != nil {
+		return nil, fe
+	}
 	out := []trashEntry{}
-	for _, d := range names {
-		id, ok := strings.CutSuffix(d.Name(), trashInfoExt)
-		if !ok || !validTrashID(id) {
-			continue
-		}
-		ti, fe := readTrashInfo(info, id)
+	for _, uid := range uids {
+		files, info, ok, fe := trashFds(placeRoot, uid)
 		if fe != nil {
+			if fe.Code == "EACCES" {
+				continue
+			}
+			return nil, fe
+		}
+		if !ok {
 			continue
 		}
-		fi, err := os.Lstat(filepath.Join(files, id))
-		if err != nil {
-			continue // interrupted move: no item behind this info
+		if names, err := dirNames(info); err == nil {
+			for _, n := range names {
+				name, ok := strings.CutSuffix(n, trashInfoExt)
+				if !ok || !validTrashName(name) {
+					continue
+				}
+				ti, fe := readTrashInfoAt(info, name)
+				if fe != nil {
+					continue
+				}
+				fi, err := lstatAt(files, name)
+				if err != nil {
+					continue // interrupted move: no item behind this info
+				}
+				out = append(out, *entryFor(uid, name, ti, fi))
+			}
 		}
-		out = append(out, *entryFor(files, id, ti, fi))
+		unix.Close(files)
+		unix.Close(info)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].DeletedAt > out[j].DeletedAt })
 	return out, nil
 }
 
-// doTrashRestore puts an item back where it was, or at target when given.
-// It never overwrites: a taken destination is EEXIST and the item stays.
+// doTrashRestore puts an item back at target, or where it was when target is
+// empty. It never overwrites: a taken destination is EEXIST and the item stays.
 func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 	placeRoot = filepath.Clean(placeRoot)
-	if !validTrashID(id) {
+	uid, name, ok := splitTrashID(id)
+	if !ok {
 		return "", &fsError{Code: "ERR", Message: "invalid trash item"}
 	}
-	_, files, info := trashDirs(placeRoot)
-	ti, fe := readTrashInfo(info, id)
+	files, info, present, fe := trashFds(placeRoot, uid)
+	if fe != nil {
+		return "", fe
+	}
+	if !present {
+		return "", &fsError{Code: "ENOENT", Message: "this item is no longer in the trash"}
+	}
+	defer unix.Close(files)
+	defer unix.Close(info)
+	ti, fe := readTrashInfoAt(info, name)
 	if fe != nil {
 		return "", fe
 	}
@@ -274,8 +355,8 @@ func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 	if dst == placeRoot || !strings.HasPrefix(dst, placeRoot+"/") || trashInside(placeRoot, dst) {
 		return "", &fsError{Code: "EACCES", Message: "an item is restored inside its place"}
 	}
-	// The info file is writable by the place's writers: never trust its path
-	// past a symlink.
+	// The info file names a path chosen at deletion: never follow a symlink
+	// that appeared on the way since.
 	if err := rejectSymlinkComponents(placeRoot, dst); err != nil {
 		return "", &fsError{Code: "EACCES", Message: "the destination goes through a symlink"}
 	}
@@ -286,47 +367,75 @@ func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 		return "", mapOsErr(err)
 	}
 	// RENAME_NOREPLACE: something that appeared since the check is never overwritten.
-	if err := unix.Renameat2(unix.AT_FDCWD, filepath.Join(files, id), unix.AT_FDCWD, dst, unix.RENAME_NOREPLACE); err != nil {
+	if err := unix.Renameat2(files, name, unix.AT_FDCWD, dst, unix.RENAME_NOREPLACE); err != nil {
 		if errors.Is(err, unix.EEXIST) {
 			return "", &fsError{Code: "EEXIST", Message: "something already exists at " + dst}
 		}
 		return "", mapOsErr(err)
 	}
-	_ = os.Remove(filepath.Join(info, id+trashInfoExt))
+	_ = unix.Unlinkat(info, name+trashInfoExt, 0)
 	return dst, nil
 }
 
-// doTrashDelete removes items for good; no ids empties the trash.
+// doTrashDelete removes the given items for good.
 func doTrashDelete(placeRoot string, ids []string) *fsError {
-	files, info, ok, fe := trashFds(placeRoot)
+	for _, id := range ids {
+		uid, name, ok := splitTrashID(id)
+		if !ok {
+			return &fsError{Code: "ERR", Message: "invalid trash item"}
+		}
+		if fe := removeTrashItems(placeRoot, uid, []string{name}); fe != nil {
+			return fe
+		}
+	}
+	return nil
+}
+
+// doTrashEmpty empties the trash the caller reaches: its own, or all as root.
+func doTrashEmpty(placeRoot string) *fsError {
+	uids, fe := trashUIDs(placeRoot)
+	if fe != nil {
+		return fe
+	}
+	for _, uid := range uids {
+		if fe := removeTrashItems(placeRoot, uid, nil); fe != nil {
+			return fe
+		}
+	}
+	return nil
+}
+
+// removeTrashItems removes names from one user's trash; nil means all of it,
+// items left without an info file included.
+func removeTrashItems(placeRoot, uid string, names []string) *fsError {
+	files, info, ok, fe := trashFds(placeRoot, uid)
 	if fe != nil || !ok {
 		return fe
 	}
 	defer unix.Close(files)
 	defer unix.Close(info)
-	if len(ids) == 0 {
-		names, err := dirNames(info)
+	if names == nil {
+		infos, err := dirNames(info)
 		if err != nil {
 			return mapOsErr(err)
 		}
-		for _, n := range names {
-			if id, ok := strings.CutSuffix(n, trashInfoExt); ok {
-				ids = append(ids, id)
+		for _, n := range infos {
+			if name, ok := strings.CutSuffix(n, trashInfoExt); ok {
+				names = append(names, name)
 			}
 		}
-		// Items left without an info file go too.
 		if items, err := dirNames(files); err == nil {
-			ids = append(ids, items...)
+			names = append(names, items...)
 		}
 	}
-	for _, id := range ids {
-		if !validTrashID(id) {
+	for _, name := range names {
+		if !validTrashName(name) {
 			return &fsError{Code: "ERR", Message: "invalid trash item"}
 		}
-		if err := removeAllAt(files, id); err != nil {
+		if err := removeAllAt(files, name); err != nil {
 			return mapOsErr(err)
 		}
-		if err := unix.Unlinkat(info, id+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
+		if err := unix.Unlinkat(info, name+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
 			return mapOsErr(err)
 		}
 	}
@@ -334,9 +443,25 @@ func doTrashDelete(placeRoot string, ids []string) *fsError {
 }
 
 // doTrashPurge removes items deleted before cutoff, and info files whose item
-// is gone. It returns how many items it removed.
+// is gone, in every trash the caller reaches. It returns how many items went.
 func doTrashPurge(placeRoot string, cutoff time.Time) (int, *fsError) {
-	files, info, ok, fe := trashFds(placeRoot)
+	uids, fe := trashUIDs(placeRoot)
+	if fe != nil {
+		return 0, fe
+	}
+	removed := 0
+	for _, uid := range uids {
+		n, fe := purgeUser(placeRoot, uid, cutoff)
+		removed += n
+		if fe != nil {
+			return removed, fe
+		}
+	}
+	return removed, nil
+}
+
+func purgeUser(placeRoot, uid string, cutoff time.Time) (int, *fsError) {
+	files, info, ok, fe := trashFds(placeRoot, uid)
 	if fe != nil || !ok {
 		return 0, fe
 	}
@@ -348,13 +473,12 @@ func doTrashPurge(placeRoot string, cutoff time.Time) (int, *fsError) {
 	}
 	removed := 0
 	for _, n := range names {
-		id, ok := strings.CutSuffix(n, trashInfoExt)
-		if !ok || !validTrashID(id) {
+		name, ok := strings.CutSuffix(n, trashInfoExt)
+		if !ok || !validTrashName(name) {
 			continue
 		}
-		ti, fe := readTrashInfoAt(info, id)
-		var st unix.Stat_t
-		statErr := unix.Fstatat(files, id, &st, unix.AT_SYMLINK_NOFOLLOW)
+		ti, fe := readTrashInfoAt(info, name)
+		_, statErr := lstatAt(files, name)
 		orphan := errors.Is(statErr, unix.ENOENT)
 		if fe == nil && !orphan && !ti.DeletedAt.Before(cutoff) {
 			continue
@@ -362,10 +486,10 @@ func doTrashPurge(placeRoot string, cutoff time.Time) (int, *fsError) {
 		if fe != nil && !orphan {
 			continue // unreadable info for a present item: leave it for a person to decide
 		}
-		if err := removeAllAt(files, id); err != nil {
+		if err := removeAllAt(files, name); err != nil {
 			return removed, mapOsErr(err)
 		}
-		if err := unix.Unlinkat(info, id+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
+		if err := unix.Unlinkat(info, name+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
 			return removed, mapOsErr(err)
 		}
 		if !orphan {
@@ -373,6 +497,36 @@ func doTrashPurge(placeRoot string, cutoff time.Time) (int, *fsError) {
 		}
 	}
 	return removed, nil
+}
+
+// restoreAsOwner restores as the item's owner even when root asks (an
+// administrator): the destination comes from an info file the owner can
+// edit, so the move only goes where the owner itself may write.
+func restoreAsOwner(placeRoot, id, target string) (string, *fsError) {
+	uid, _, ok := splitTrashID(id)
+	if !ok {
+		return "", &fsError{Code: "ERR", Message: "invalid trash item"}
+	}
+	if currentUID() != "0" || uid == "0" {
+		return doTrashRestore(placeRoot, id, target)
+	}
+	u, err := user.LookupId(uid)
+	if err != nil {
+		return "", &fsError{Code: "ERR", Message: "the owner of this item no longer exists"}
+	}
+	owner, err := resolveUser(u.Username)
+	if err != nil {
+		return "", &fsError{Code: "ERR", Message: err.Error()}
+	}
+	var dst string
+	var fe *fsError
+	if err := runAsUser(owner, func() error {
+		dst, fe = doTrashRestore(placeRoot, id, target)
+		return nil
+	}); err != nil {
+		return "", toFsErr(err)
+	}
+	return dst, fe
 }
 
 // ── NATS handler ─────────────────────────────────────────────────────────────
@@ -410,10 +564,6 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid place"})
 		return
 	}
-	if fe := rejectTrashSymlink(req.PlaceRoot); fe != nil {
-		replyErr(nc, msg.Reply, fe)
-		return
-	}
 	var result interface{}
 	var fsErr *fsError
 	run := func() error {
@@ -430,7 +580,7 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 				break
 			}
 			var dst string
-			if dst, fsErr = doTrashRestore(req.PlaceRoot, req.IDs[0], req.Target); fsErr == nil {
+			if dst, fsErr = restoreAsOwner(req.PlaceRoot, req.IDs[0], req.Target); fsErr == nil {
 				result = map[string]string{"path": dst}
 			}
 		case "delete":
@@ -441,7 +591,7 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 			fsErr = doTrashDelete(req.PlaceRoot, req.IDs)
 			result = map[string]bool{"ok": true}
 		case "empty":
-			fsErr = doTrashDelete(req.PlaceRoot, nil)
+			fsErr = doTrashEmpty(req.PlaceRoot)
 			result = map[string]bool{"ok": true}
 		case "purge":
 			if req.OlderThanDays < 1 {
@@ -467,23 +617,11 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, result)
 }
 
-// rejectTrashSymlink refuses a trash folder that is a symlink, which would
-// send moves and removals somewhere else.
-func rejectTrashSymlink(placeRoot string) *fsError {
-	root, files, info := trashDirs(filepath.Clean(placeRoot))
-	for _, d := range []string{root, files, info} {
-		if fi, err := os.Lstat(d); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-			return &fsError{Code: "ERR", Message: "the trash folder is a symlink"}
-		}
-	}
-	return nil
-}
-
-// ── symlink-proof removal ────────────────────────────────────────────────────
-// Emptying and purging run as root, inside folders place writers can change.
-// The trash folders are opened without following any symlink, and every
-// removal is relative to them, never following one either: swapping a folder
-// for a link between a check and a removal can only make the removal fail.
+// ── symlink-proof access ─────────────────────────────────────────────────────
+// Trash folders sit inside folders place writers can change. They are opened
+// without following any symlink, and every read and removal is relative to
+// them, never following one either: swapping a folder for a link between a
+// check and a removal can only make the removal fail.
 
 func openTrashDir(path string) (int, error) {
 	fd, err := unix.Openat2(unix.AT_FDCWD, path, &unix.OpenHow{
@@ -500,6 +638,31 @@ func openTrashDir(path string) (int, error) {
 		return -1, &os.PathError{Op: "open", Path: path, Err: err}
 	}
 	return fd, nil
+}
+
+// trashFds opens the files and info folders of one user's trash; ok is false
+// when that trash does not exist (yet).
+func trashFds(placeRoot, uid string) (files, info int, ok bool, fe *fsError) {
+	if !validUID(uid) {
+		return -1, -1, false, &fsError{Code: "ERR", Message: "invalid trash"}
+	}
+	_, filesPath, infoPath := userTrash(placeRoot, uid)
+	ffd, err := openTrashDir(filesPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return -1, -1, false, nil
+	}
+	if err != nil {
+		return -1, -1, false, mapOsErr(err)
+	}
+	ifd, err := openTrashDir(infoPath)
+	if err != nil {
+		unix.Close(ffd)
+		if errors.Is(err, os.ErrNotExist) {
+			return -1, -1, false, nil
+		}
+		return -1, -1, false, mapOsErr(err)
+	}
+	return ffd, ifd, true, nil
 }
 
 // removeAllAt removes name under dirfd and everything inside it.
@@ -532,13 +695,24 @@ func removeAllAt(dirfd int, name string) error {
 	return unix.Unlinkat(dirfd, name, unix.AT_REMOVEDIR)
 }
 
+// lstatAt stats name under dirfd without following a symlink.
+func lstatAt(dirfd int, name string) (os.FileInfo, error) {
+	fd, err := unix.Openat(dirfd, name, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(fd), name)
+	defer f.Close()
+	return f.Stat()
+}
+
 // readTrashInfoAt reads an info file relative to the info folder, refusing a symlink.
-func readTrashInfoAt(infoFd int, id string) (trashInfo, *fsError) {
-	fd, err := unix.Openat(infoFd, id+trashInfoExt, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+func readTrashInfoAt(infoFd int, name string) (trashInfo, *fsError) {
+	fd, err := unix.Openat(infoFd, name+trashInfoExt, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return trashInfo{}, mapOsErr(err)
 	}
-	f := os.NewFile(uintptr(fd), id+trashInfoExt)
+	f := os.NewFile(uintptr(fd), name+trashInfoExt)
 	defer f.Close()
 	if fi, err := f.Stat(); err != nil || !fi.Mode().IsRegular() || fi.Size() > 64*1024 {
 		return trashInfo{}, &fsError{Code: "ERR", Message: "not a trash info file"}
@@ -552,28 +726,6 @@ func readTrashInfoAt(infoFd int, id string) (trashInfo, *fsError) {
 		return trashInfo{}, &fsError{Code: "ERR", Message: perr.Error()}
 	}
 	return ti, nil
-}
-
-// trashFds opens the files and info folders of a place's trash; ok is false
-// when there is no trash yet.
-func trashFds(placeRoot string) (files, info int, ok bool, fe *fsError) {
-	_, filesPath, infoPath := trashDirs(filepath.Clean(placeRoot))
-	ffd, err := openTrashDir(filesPath)
-	if errors.Is(err, os.ErrNotExist) {
-		return -1, -1, false, nil
-	}
-	if err != nil {
-		return -1, -1, false, mapOsErr(err)
-	}
-	ifd, err := openTrashDir(infoPath)
-	if err != nil {
-		unix.Close(ffd)
-		if errors.Is(err, os.ErrNotExist) {
-			return -1, -1, false, nil
-		}
-		return -1, -1, false, mapOsErr(err)
-	}
-	return ffd, ifd, true, nil
 }
 
 func dirNames(fd int) ([]string, error) {

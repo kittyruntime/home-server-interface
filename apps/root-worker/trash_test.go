@@ -28,7 +28,7 @@ func TestTrashRestoreRoundTrip(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe)
 	}
-	if e.ID != "docs" || e.Type != "dir" || e.DeletedBy != "alice" {
+	if e.ID != currentUID()+":docs" || e.Type != "dir" || e.DeletedBy != "alice" {
 		t.Fatalf("entry = %+v", e)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs")); !os.IsNotExist(err) {
@@ -40,7 +40,7 @@ func TestTrashRestoreRoundTrip(t *testing.T) {
 		t.Fatalf("list = %+v, %v", list, fe)
 	}
 
-	dst, fe := doTrashRestore(root, "docs", "")
+	dst, fe := doTrashRestore(root, e.ID, "")
 	if fe != nil || dst != filepath.Join(root, "docs") {
 		t.Fatalf("restore = %q, %v", dst, fe)
 	}
@@ -62,23 +62,24 @@ func TestTrashSameNameGetsANewID(t *testing.T) {
 		t.Fatal(err)
 	}
 	e, fe := doTrash(root, filepath.Join(root, "c.txt"), "", now)
-	if fe != nil || e.ID != "c.txt.2" {
+	if fe != nil || e.ID != currentUID()+":c.txt.2" {
 		t.Fatalf("second id = %+v, %v", e, fe)
 	}
 }
 
 func TestTrashRestoreNeverOverwrites(t *testing.T) {
 	root := newPlace(t)
-	if _, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now()); fe != nil {
+	e, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now())
+	if fe != nil {
 		t.Fatal(fe)
 	}
 	if err := os.WriteFile(filepath.Join(root, "c.txt"), []byte("new"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, fe := doTrashRestore(root, "c.txt", ""); fe == nil || fe.Code != "EEXIST" {
+	if _, fe := doTrashRestore(root, e.ID, ""); fe == nil || fe.Code != "EEXIST" {
 		t.Fatalf("restore over an existing file = %v", fe)
 	}
-	dst, fe := doTrashRestore(root, "c.txt", filepath.Join(root, "c (restored).txt"))
+	dst, fe := doTrashRestore(root, e.ID, filepath.Join(root, "c (restored).txt"))
 	if fe != nil || filepath.Base(dst) != "c (restored).txt" {
 		t.Fatalf("restore elsewhere = %q, %v", dst, fe)
 	}
@@ -101,10 +102,10 @@ func TestTrashRefusesPlaceRootTrashAndOutside(t *testing.T) {
 	if _, fe := doTrash(root, filepath.Join(root, trashDirName), "", time.Now()); fe == nil {
 		t.Error("the trash cannot go to the trash")
 	}
-	if _, fe := doTrashRestore(root, "../c.txt", ""); fe == nil {
+	if _, fe := doTrashRestore(root, currentUID()+":../c.txt", ""); fe == nil {
 		t.Error("ids cannot leave the trash")
 	}
-	if _, fe := doTrashRestore(root, "c.txt", "/etc/passwd"); fe == nil {
+	if _, fe := doTrashRestore(root, currentUID()+":c.txt", "/etc/passwd"); fe == nil {
 		t.Error("an item is restored inside its place only")
 	}
 }
@@ -119,7 +120,7 @@ func TestTrashPurgeAndEmpty(t *testing.T) {
 		t.Fatal(fe)
 	}
 	// An interrupted move: info without an item.
-	_, _, info := trashDirs(root)
+	_, _, info := userTrash(root, currentUID())
 	if err := os.WriteFile(filepath.Join(info, "ghost"+trashInfoExt), []byte(encodeTrashInfo(root+"/ghost", time.Now(), "")), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -131,10 +132,10 @@ func TestTrashPurgeAndEmpty(t *testing.T) {
 		t.Error("an orphan info file must be cleaned")
 	}
 	list, _ := doTrashList(root)
-	if len(list) != 1 || list[0].ID != "docs" {
+	if len(list) != 1 || list[0].ID != currentUID()+":docs" {
 		t.Fatalf("after purge = %+v", list)
 	}
-	if fe := doTrashDelete(root, nil); fe != nil {
+	if fe := doTrashEmpty(root); fe != nil {
 		t.Fatal(fe)
 	}
 	if list, _ := doTrashList(root); len(list) != 0 {
@@ -158,9 +159,6 @@ func TestTrashSymlinkRefused(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, trashDirName)); err != nil {
 		t.Fatal(err)
 	}
-	if fe := rejectTrashSymlink(root); fe == nil {
-		t.Error("a trash that is a symlink must be refused")
-	}
 	if _, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now()); fe == nil {
 		t.Error("moving into a symlinked trash must fail")
 	}
@@ -176,14 +174,14 @@ func TestTrashEmptyNeverFollowsASwappedFolder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(outside, "precious"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, files, _ := trashDirs(root)
+	_, files, _ := userTrash(root, currentUID())
 	if err := os.RemoveAll(files); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(outside, files); err != nil {
 		t.Fatal(err)
 	}
-	if fe := doTrashDelete(root, nil); fe == nil {
+	if fe := doTrashEmpty(root); fe == nil {
 		t.Error("emptying through a symlinked folder must fail")
 	}
 	if _, fe := doTrashPurge(root, time.Now().Add(time.Hour)); fe == nil {
@@ -206,10 +204,43 @@ func TestTrashRestoreRefusesASymlinkedParent(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "docs")); err != nil {
 		t.Fatal(err)
 	}
-	if _, fe := doTrashRestore(root, "a.txt", ""); fe == nil {
+	if _, fe := doTrashRestore(root, currentUID()+":a.txt", ""); fe == nil {
 		t.Error("a restore through a symlinked folder must be refused")
 	}
 	if _, err := os.Stat(filepath.Join(outside, "a.txt")); err == nil {
 		t.Error("the item was restored outside the place")
+	}
+}
+
+func TestTrashIsPrivateToItsUser(t *testing.T) {
+	root := newPlace(t)
+	if _, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now()); fe != nil {
+		t.Fatal(fe)
+	}
+	dir, files, info := userTrash(root, currentUID())
+	for _, d := range []string{dir, files, info} {
+		fi, err := os.Stat(d)
+		if err != nil || fi.Mode().Perm() != 0o700 {
+			t.Errorf("%s mode = %v, want 0700", d, fi.Mode().Perm())
+		}
+	}
+	top, _ := os.Stat(trashRoot(root))
+	if top.Mode()&os.ModeSticky == 0 {
+		t.Error("the shared trash folder must be sticky")
+	}
+	// Another user's folder is out of reach of this one's operations.
+	if _, fe := doTrashRestore(root, "4242:c.txt", ""); fe == nil {
+		t.Error("an item of another user's trash must not be restored")
+	}
+}
+
+func TestTrashPathsAreRefusedToFileOperations(t *testing.T) {
+	for _, p := range []string{"/srv/media/.hsi-trash", "/srv/media/.hsi-trash/1000/files/x"} {
+		if validatePath(p) == nil {
+			t.Errorf("%s must be refused", p)
+		}
+	}
+	if validatePath("/srv/media/.hsi-trash2/x") != nil {
+		t.Error("a name that only starts like the trash is a normal path")
 	}
 }

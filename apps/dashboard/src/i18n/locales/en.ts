@@ -305,7 +305,7 @@ export default {
     },
     trash: {
       title: 'Trash',
-      intro: 'Items deleted in places that have a trash stay here until you restore them, delete them, or the place empties them after the days set for it.',
+      intro: 'What you deleted in places that have a trash stays here, visible only to you, until you restore it, delete it, or the place empties it after the days set for it. Administrators see everyone\'s.',
       noPlaces: 'No trash to show.',
       noPlacesHint: 'An administrator turns the trash on for a place in Settings > Places.',
       emptyPlace: 'Nothing in this trash.',
