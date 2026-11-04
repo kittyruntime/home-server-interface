@@ -297,21 +297,31 @@ func media(ctx context.Context, path string, user userCtx) (*mediaResult, *fsErr
 // queues the next.
 var detailsSlots = make(chan struct{}, 2)
 
+// toUint32 narrows a Linux id; ok is false when it does not fit.
+func toUint32(id int) (uint32, bool) {
+	if id < 0 || id > math.MaxUint32 {
+		return 0, false
+	}
+	return uint32(id), true
+}
+
 // credentialOf turns a user context into process credentials; ok is false
 // when an id does not fit a Linux uid or gid.
 func credentialOf(user userCtx) (*syscall.Credential, bool) {
-	fits := func(id int) bool { return id >= 0 && id <= math.MaxUint32 }
-	if !fits(user.uid) || !fits(user.gid) {
+	uid, okU := toUint32(user.uid)
+	gid, okG := toUint32(user.gid)
+	if !okU || !okG {
 		return nil, false
 	}
 	groups := make([]uint32, 0, len(user.gids))
 	for _, g := range user.gids {
-		if !fits(g) {
+		v, ok := toUint32(g)
+		if !ok {
 			return nil, false
 		}
-		groups = append(groups, uint32(g))
+		groups = append(groups, v)
 	}
-	return &syscall.Credential{Uid: uint32(user.uid), Gid: uint32(user.gid), Groups: groups}, true
+	return &syscall.Credential{Uid: uid, Gid: gid, Groups: groups}, true
 }
 
 func handleDetails(nc *nats.Conn, msg *nats.Msg) {
