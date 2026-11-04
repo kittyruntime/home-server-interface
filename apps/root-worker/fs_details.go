@@ -71,8 +71,8 @@ func detectMime(path string) string {
 	if t := mime.TypeByExtension(strings.ToLower(filepath.Ext(path))); t != "" {
 		return strings.TrimSpace(strings.SplitN(t, ";", 2)[0])
 	}
-	f, err := os.Open(path)
-	if err != nil {
+	f, fe := openRegular(path)
+	if fe != nil {
 		return ""
 	}
 	defer f.Close()
@@ -82,6 +82,32 @@ func detectMime(path string) string {
 		return ""
 	}
 	return strings.SplitN(http.DetectContentType(head[:n]), ";", 2)[0]
+}
+
+// openRegular opens path for reading only when it is a regular file. O_NONBLOCK
+// keeps a FIFO or a device from blocking the open past any deadline.
+func openRegular(path string) (*os.File, *fsError) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		if errors.Is(err, syscall.ELOOP) {
+			return nil, &fsError{Code: "ERR", Message: "a symlink has no content of its own"}
+		}
+		return nil, mapOsErr(err)
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, mapOsErr(err)
+	}
+	if info.IsDir() {
+		f.Close()
+		return nil, &fsError{Code: "EISDIR", Message: "a folder has no content to read"}
+	}
+	if !info.Mode().IsRegular() {
+		f.Close()
+		return nil, &fsError{Code: "ERR", Message: "not a regular file"}
+	}
+	return f, nil
 }
 
 // ── on-demand details ────────────────────────────────────────────────────────
@@ -148,14 +174,14 @@ func folderSize(ctx context.Context, root string) folderSizeResult {
 }
 
 func checksum(ctx context.Context, path string) (*checksumResult, *fsError) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, mapOsErr(err)
+	f, fe := openRegular(path)
+	if fe != nil {
+		if fe.Code == "EISDIR" {
+			fe.Message = "a folder has no checksum"
+		}
+		return nil, fe
 	}
 	defer f.Close()
-	if info, err := f.Stat(); err == nil && info.IsDir() {
-		return nil, &fsError{Code: "EISDIR", Message: "a folder has no checksum"}
-	}
 	h := sha256.New()
 	buf := make([]byte, 1<<20)
 	r := bufio.NewReaderSize(f, 1<<20)
@@ -176,8 +202,8 @@ func checksum(ctx context.Context, path string) (*checksumResult, *fsError) {
 }
 
 func imageSize(path string) (int, int, bool) {
-	f, err := os.Open(path)
-	if err != nil {
+	f, fe := openRegular(path)
+	if fe != nil {
 		return 0, 0, false
 	}
 	defer f.Close()
@@ -201,16 +227,31 @@ type ffprobeOut struct {
 	} `json:"streams"`
 }
 
-// media reads an image's dimensions, or probes audio and video with ffprobe
-// when it is installed; without it the result just says it was not probed.
+// media reads an image's dimensions as the user, or probes audio and video
+// with ffprobe (run with the user's credentials) when it is installed; without
+// it the result just says it was not probed.
 func media(ctx context.Context, path string, user userCtx) (*mediaResult, *fsError) {
 	r := &mediaResult{}
-	if w, h, ok := imageSize(path); ok {
-		r.Width, r.Height = w, h
+	var ok bool
+	read := func() error {
+		r.Width, r.Height, ok = imageSize(path)
+		return nil
+	}
+	var err error
+	if user.uid == 0 {
+		err = read()
+	} else {
+		err = runAsUser(user, read)
+	}
+	if err != nil {
+		return nil, &fsError{Code: "ERR", Message: err.Error()}
+	}
+	if ok {
 		return r, nil
 	}
-	bin, err := exec.LookPath("ffprobe")
-	if err != nil {
+	r.Width, r.Height = 0, 0
+	bin, lookErr := exec.LookPath("ffprobe")
+	if lookErr != nil {
 		return r, nil
 	}
 	cmd := exec.CommandContext(ctx, bin, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "--", path)
@@ -250,7 +291,25 @@ func media(ctx context.Context, path string, user userCtx) (*mediaResult, *fsErr
 	return r, nil
 }
 
+// detailsSlots bounds concurrent detail requests: each can read for up to the
+// deadline, and they run off the subscription's goroutine so a slow one never
+// queues the next.
+var detailsSlots = make(chan struct{}, 2)
+
 func handleDetails(nc *nats.Conn, msg *nats.Msg) {
+	select {
+	case detailsSlots <- struct{}{}:
+	default:
+		replyErr(nc, msg.Reply, &fsError{Code: "EBUSY", Message: "other details are being computed, try again in a moment"})
+		return
+	}
+	go func() {
+		defer func() { <-detailsSlots }()
+		runDetails(nc, msg)
+	}()
+}
+
+func runDetails(nc *nats.Conn, msg *nats.Msg) {
 	var req detailsReq
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: err.Error()})

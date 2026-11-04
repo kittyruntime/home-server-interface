@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -126,5 +127,41 @@ func TestMountOf(t *testing.T) {
 	}
 	if fsTypeName(0x58465342) != "xfs" || fsTypeName(1) != "" {
 		t.Error("fsTypeName")
+	}
+}
+
+func TestSpecialFilesAreRefusedWithoutBlocking(t *testing.T) {
+	dir := t.TempDir()
+	fifo := filepath.Join(dir, "pipe")
+	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
+		t.Skip("mkfifo:", err)
+	}
+	done := make(chan *fsError, 1)
+	go func() {
+		_, fe := checksum(context.Background(), fifo)
+		done <- fe
+	}()
+	select {
+	case fe := <-done:
+		if fe == nil {
+			t.Fatal("a FIFO must be refused")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("checksum blocked on a FIFO")
+	}
+	if detectMime(fifo) != "" {
+		t.Error("no MIME type for a FIFO")
+	}
+
+	target := filepath.Join(dir, "real")
+	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, fe := checksum(context.Background(), link); fe == nil {
+		t.Error("a symlink is not followed for its checksum")
 	}
 }
