@@ -317,7 +317,6 @@ export default {
       list: 'Liste',
       grid: 'Grille',
       column: { size: 'Taille', modified: 'Modifié', type: 'Type' },
-      done: 'Terminé',
     },
   },
   fileDelete: {

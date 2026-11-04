@@ -28,7 +28,8 @@ import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
-import DisplaySettingsModal from './DisplaySettingsModal.vue'
+import DisplaySettings from './DisplaySettings.vue'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
@@ -73,7 +74,9 @@ const dragOver        = ref(false)
 let   dragDepth = 0
 const fileInput = ref<HTMLInputElement | null>(null)
 const sidebarOpen = ref(false)
-const showShared = ref(false)
+// The file manager's settings (shared links, display) replace the files while open.
+const settingsTab = ref<'display' | 'shared' | null>(null)
+const showShared = computed(() => settingsTab.value !== null)
 const previewEntry = ref<Entry | null>(null)
 
 // ── search ────────────────────────────────────────────────────────────────────
@@ -124,7 +127,6 @@ const { filePrefs, setFilePrefs, setSort } = useFilePrefs()
 const viewMode = computed(() => filePrefs.value.view)
 const sortField = computed(() => filePrefs.value.sortField)
 const sortDir = computed(() => filePrefs.value.sortDir)
-const showDisplaySettings = ref(false)
 
 const activeUploads = computed(() =>
   uploads.tasks.value.filter(
@@ -231,19 +233,19 @@ const breadcrumbs = computed((): Crumb[] => {
 })
 
 // ── navigation ───────────────────────────────────────────────────────────────
-function openShared() {
+function openSettings(tab: 'display' | 'shared' = 'display') {
   handleSearch('')
   closeFilter()
-  showShared.value = true
+  settingsTab.value = tab
   sidebarOpen.value = false
 }
 
 function selectPlace(place: Place) {
   if (showShared.value && place.id === activePlaceId.value) {
-    showShared.value = false
+    settingsTab.value = null
     return
   }
-  showShared.value = false
+  settingsTab.value = null
   activePlaceId.value = place.id
   selected.value = new Set()
   navigate(place.path)
@@ -591,16 +593,15 @@ onMounted(async () => {
       ]"
       :places="allPlaces"
       :active-place-id="activePlaceId"
-      :shared-active="showShared"
-      @open-shared="openShared"
-      @open-display-settings="showDisplaySettings = true"
+      :settings-active="showShared"
+      @open-settings="openSettings()"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
 
     <div class="flex-1 flex flex-col min-w-0">
 
-      <!-- Shared links replace the files while selected -->
+      <!-- Settings (display, shared links) replace the files while open -->
       <template v-if="showShared">
         <div class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11 sm:hidden" @click.stop>
           <Button variant="ghost" size="icon-sm" @click="sidebarOpen = !sidebarOpen" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
@@ -609,7 +610,17 @@ onMounted(async () => {
           </Button>
         </div>
         <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
-          <SharedLinksSection class="max-w-2xl" />
+          <div class="max-w-2xl">
+            <h2 class="mb-4 text-lg font-semibold">{{ t('ui.files.PlacesSidebar.settings') }}</h2>
+            <Tabs :model-value="settingsTab ?? 'display'" @update:model-value="v => settingsTab = v === 'shared' ? 'shared' : 'display'">
+              <TabsList :aria-label="t('ui.files.PlacesSidebar.settings')" class="mb-6">
+                <TabsTrigger value="display">{{ t('files.display.title') }}</TabsTrigger>
+                <TabsTrigger value="shared">{{ t('ui.files.PlacesSidebar.sharedLinks') }}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="display"><DisplaySettings /></TabsContent>
+              <TabsContent value="shared"><SharedLinksSection /></TabsContent>
+            </Tabs>
+          </div>
         </div>
       </template>
 
@@ -639,7 +650,7 @@ onMounted(async () => {
         @paste="doPaste"
         @refresh="refresh"
         @update:view-mode="setFilePrefs({ view: $event })"
-        @open-display-settings="showDisplaySettings = true"
+        @open-display-settings="openSettings('display')"
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @search="handleSearch"
       />
@@ -849,8 +860,6 @@ onMounted(async () => {
     :entry="previewEntry"
     @close="previewEntry = null"
   />
-
-  <DisplaySettingsModal v-if="showDisplaySettings" @close="showDisplaySettings = false" />
 
   <FilePropertiesModal
     v-if="propertiesEntry"

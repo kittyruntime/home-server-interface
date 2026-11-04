@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { InfoIcon, LinkIcon, SlidersHorizontalIcon } from '@lucide/vue'
+import { InfoIcon, SettingsIcon } from '@lucide/vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import {
   Sidebar,
@@ -21,10 +21,10 @@ type Place = { id: string; name: string; path: string; icon?: string | null }
 defineProps<{
   places: Place[]
   activePlaceId: string | null
-  sharedActive?: boolean
+  settingsActive?: boolean
 }>()
 
-defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared: []; openDisplaySettings: [] }>()
+defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openSettings: [] }>()
 </script>
 
 <template>
@@ -36,7 +36,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
           <SidebarGroupContent>
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.places')">
               <SidebarMenuItem v-for="place in places" :key="place.id">
-                <SidebarMenuButton :is-active="!sharedActive && activePlaceId === place.id" :aria-current="!sharedActive && activePlaceId === place.id ? 'page' : undefined" @click.stop="$emit('select', place)">
+                <SidebarMenuButton :is-active="!settingsActive && activePlaceId === place.id" :aria-current="!settingsActive && activePlaceId === place.id ? 'page' : undefined" @click.stop="$emit('select', place)">
                   <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm text-base-content/70" />
                   <span>{{ place.name }}</span>
                 </SidebarMenuButton>
@@ -50,21 +50,14 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
             </p>
           </SidebarGroupContent>
         </SidebarGroup>
-        <!-- File manager settings, kept apart from the places at the bottom. -->
+        <!-- The file manager's settings (display, shared links), apart from the places. -->
         <SidebarGroup class="mt-auto border-t border-base-300">
-          <SidebarGroupLabel>{{ t('ui.files.PlacesSidebar.settings') }}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.settings')">
               <SidebarMenuItem>
-                <SidebarMenuButton :is-active="sharedActive" :aria-current="sharedActive ? 'page' : undefined" @click.stop="$emit('openShared')">
-                  <LinkIcon class="size-4" aria-hidden="true" />
-                  <span>{{ t('ui.files.PlacesSidebar.sharedLinks') }}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton @click.stop="$emit('openDisplaySettings')">
-                  <SlidersHorizontalIcon class="size-4" aria-hidden="true" />
-                  <span>{{ t('files.display.title') }}</span>
+                <SidebarMenuButton :is-active="settingsActive" :aria-current="settingsActive ? 'page' : undefined" @click.stop="$emit('openSettings')">
+                  <SettingsIcon class="size-4" aria-hidden="true" />
+                  <span>{{ t('ui.files.PlacesSidebar.settings') }}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

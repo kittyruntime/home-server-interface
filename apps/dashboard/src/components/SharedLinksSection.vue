@@ -33,8 +33,7 @@ onMounted(load)
 <template>
   <div class="space-y-4">
     <div>
-      <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.SharedLinksSection.sharedLinks') }}</h2>
-      <p class="text-xs text-base-content/70 mt-1 max-w-md leading-relaxed">
+      <p class="text-xs text-base-content/70 max-w-md leading-relaxed">
         {{ t('ui.settings.SharedLinksSection.publicLinksYouHaveCreated') }}
       </p>
     </div>

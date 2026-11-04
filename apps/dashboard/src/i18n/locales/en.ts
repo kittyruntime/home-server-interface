@@ -316,7 +316,6 @@ export default {
       list: 'List',
       grid: 'Grid',
       column: { size: 'Size', modified: 'Modified', type: 'Type' },
-      done: 'Done',
     },
   },
   fileDelete: {

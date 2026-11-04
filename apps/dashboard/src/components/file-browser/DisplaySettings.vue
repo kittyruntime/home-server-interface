@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import Modal from '../ui/Modal.vue'
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
@@ -9,8 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { COLUMNS, type Column } from '../../lib/file-sort'
 
-// The file manager's display settings (#196), from its sidebar or the sort menu.
-const emit = defineEmits<{ close: [] }>()
+// The Display tab of the file manager's settings (#196).
 const { t } = useI18n()
 const { filePrefs, setFilePrefs } = useFilePrefs()
 
@@ -21,11 +18,7 @@ function toggleColumn(column: Column, on: boolean) {
 </script>
 
 <template>
-  <Modal panel-class="w-full max-w-sm" @close="emit('close')">
-    <template #header>
-      <h2 class="text-sm font-semibold">{{ t('files.display.title') }}</h2>
-    </template>
-    <div class="space-y-5 p-5">
+    <div class="space-y-6">
       <Card class="gap-0 py-0 shadow-none">
         <label class="flex cursor-pointer items-center justify-between gap-4 px-4 py-3">
           <span class="space-y-0.5">
@@ -56,9 +49,4 @@ function toggleColumn(column: Column, on: boolean) {
         </div>
       </fieldset>
     </div>
-    <template #footer>
-      <div class="flex-1" />
-      <Button size="sm" @click="emit('close')">{{ t('files.display.done') }}</Button>
-    </template>
-  </Modal>
 </template>
