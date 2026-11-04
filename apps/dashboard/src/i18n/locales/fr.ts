@@ -296,6 +296,13 @@ export default {
     confirmFileDeleteHint: 'Demander avant de supprimer des fichiers et dossiers dans le gestionnaire de fichiers. La suppression est définitive.',
   },
   files: {
+    copyPath: {
+      label: 'Copier le chemin {path}',
+      hint: 'Cliquer pour copier le chemin',
+      copied: 'Chemin copié',
+      failed: 'Impossible de copier le chemin',
+      menu: 'Copier le chemin',
+    },
     sort: {
       menu: 'Tri et affichage',
       title: 'Trier',

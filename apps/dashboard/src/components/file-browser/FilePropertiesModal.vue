@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import FileTypeIcon from './FileTypeIcon.vue'
+import CopyPath from './CopyPath.vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import { formatDateTime } from '../../lib/format-date'
 import LoadingState from '../ui/LoadingState.vue'
@@ -128,7 +129,7 @@ onMounted(async () => {
         <FileTypeIcon v-else :name="displayName" class="w-8 h-8 shrink-0" aria-hidden="true" />
         <div class="min-w-0">
           <div class="text-sm font-semibold text-base-content truncate">{{ displayName }}</div>
-          <div class="text-2xs text-base-content/70 font-mono truncate mt-0.5">{{ targetPath }}</div>
+          <CopyPath :path="targetPath" class="text-2xs text-base-content/70 font-mono mt-0.5" />
         </div>
       </div>
     </template>

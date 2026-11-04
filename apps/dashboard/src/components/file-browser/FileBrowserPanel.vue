@@ -12,6 +12,8 @@ import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useNotifications } from '../../lib/notifications'
 import { useClipboard } from '../../lib/clipboard'
+import { copyText } from '../../lib/copy-text'
+import { useToast } from '../../lib/toast'
 import { useUploads, trackTransfer } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
@@ -33,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
@@ -464,6 +466,15 @@ function openShare() {
   if (e) shareTarget.value = { path: e.path, name: e.name }
 }
 
+const toast = useToast()
+
+async function copySelectedPath() {
+  const path = selectedEntries.value[0]?.path
+  if (!path) return
+  if (await copyText(path)) toast.success(t('files.copyPath.copied'))
+  else toast.error(t('files.copyPath.failed'))
+}
+
 function openProperties() {
   if (selected.value.size !== 1) return
   propertiesEntry.value = selectedEntries.value[0] ?? null
@@ -806,6 +817,7 @@ onMounted(async () => {
             <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
             <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
             <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
+            <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
             <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}</ContextMenuItem>
           </template>
           <!-- Compress to ZIP: any selection -->
