@@ -15,3 +15,10 @@ test('an app not listed yet (still syncing) stays pending', () => {
 test('nothing is focused without a pending request', () => {
   assert.equal(appToFocus(null, apps), null)
 })
+
+test('a place properties request asks the shell for that place access settings', async () => {
+  const { focusPlaceAccess, pendingPlaceAccess } = await import('../src/lib/app-focus.ts')
+  assert.equal(pendingPlaceAccess.value, null)
+  focusPlaceAccess('place-1')
+  assert.equal(pendingPlaceAccess.value, 'place-1')
+})

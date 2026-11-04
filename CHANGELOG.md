@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Permissions from a place's properties**: **Edit** did nothing. A place now shows
+  **Manage access**, which opens its access settings, since HSI sets the owner and
+  rights of a place's folder itself. Files and folders inside still open the
+  permissions dialog, for the entry shown whatever is selected.
+
 ## [1.79.3] - 2026-11-03
 
 ### Security

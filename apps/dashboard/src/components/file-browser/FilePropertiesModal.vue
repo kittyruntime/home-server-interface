@@ -9,6 +9,7 @@ import { ref, computed, onMounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useAdvancedMode } from '../../lib/advanced-mode'
+import { focusPlaceAccess } from '../../lib/app-focus'
 import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 
@@ -18,7 +19,7 @@ type Entry = { name: string; path: string; type: 'file' | 'dir'; size: number | 
 type Place = { id: string; name: string; path: string; icon?: string | null }
 
 const props = defineProps<{ entry?: Entry; place?: Place }>()
-const emit  = defineEmits<{ close: []; openPermissions: [] }>()
+const emit  = defineEmits<{ close: []; openPermissions: [path: string] }>()
 
 const { isAdmin } = useAuth()
 const { advancedMode } = useAdvancedMode()
@@ -191,9 +192,16 @@ onMounted(async () => {
       <div v-if="stat" class="px-5 py-4 space-y-2.5">
         <div class="flex items-center justify-between">
           <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.files.FilePropertiesModal.permissions') }}</div>
+          <!-- A place root's owner, group and ACLs are set by HSI from its access
+               settings (#194): a chmod there would be undone, so it links to them. -->
           <Button variant="link"
-            v-if="isAdmin"
-            @click="emit('close'); emit('openPermissions')"
+            v-if="isAdmin && isPlace && place?.id !== '__root__'"
+            @click="focusPlaceAccess(place!.id); emit('close')"
+            class="h-auto p-0 text-primary"
+          >{{ t('ui.files.FilePropertiesModal.manageAccess') }}</Button>
+          <Button variant="link"
+            v-else-if="isAdmin && !isPlace"
+            @click="emit('openPermissions', targetPath)"
             class="h-auto p-0 text-primary"
           >{{ t('ui.files.FilePropertiesModal.edit') }}</Button>
         </div>

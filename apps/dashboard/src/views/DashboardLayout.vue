@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
-import { pendingAppFocus } from '../lib/app-focus'
+import { pendingAppFocus, pendingPlaceAccess } from '../lib/app-focus'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -72,7 +72,7 @@ async function checkUpdateBadge() {
 }
 
 const activeApp        = ref<string>('dashboard')
-const settingsSection  = ref<'profile' | 'users' | 'places' | 'groups' | 'data-backups' | 'secure' | null>(null)
+const settingsSection  = ref<'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'data-backups' | 'secure' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 // Unread system notifications plus operations that are running or failed.
@@ -83,6 +83,16 @@ watch(pendingAppFocus, name => {
   if (!name) return
   if (desktopMode.value && !isMobile.value) openApp('apps')
   else activeApp.value = 'apps'
+})
+
+// A place's properties ask for its access settings (#194).
+watch(pendingPlaceAccess, id => {
+  if (!id) return
+  if (desktopMode.value && !isMobile.value) openApp('settings', 'permissions')
+  else {
+    activeApp.value = 'settings'
+    settingsSection.value = 'permissions'
+  }
 })
 
 const activeAppLabel = computed(() => {
