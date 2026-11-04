@@ -298,6 +298,8 @@ func resticBackup(r repositoryCfg, s repoSecrets, sources, excludes, tags []stri
 	for _, t := range tags {
 		own = append(own, "--tag", t)
 	}
+	// A place's trash (#200) is not backed up: deleted items stay deleted there.
+	own = append(own, "--exclude", trashDirName)
 	for _, e := range excludes {
 		own = append(own, "--exclude", e)
 	}

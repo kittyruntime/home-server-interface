@@ -77,6 +77,8 @@ func runRsync(task taskMsg) (string, error) {
 	if task.BandwidthLimit > 0 {
 		args = append(args, "--bwlimit="+strconv.Itoa(task.BandwidthLimit))
 	}
+	// A place's trash (#200) is not backed up: deleted items stay deleted there.
+	args = append(args, "--exclude="+trashDirName+"/")
 	for _, exclude := range task.Excludes {
 		if exclude == "" || strings.ContainsAny(exclude, "\x00\r\n") {
 			return "", fmt.Errorf("invalid exclusion pattern")

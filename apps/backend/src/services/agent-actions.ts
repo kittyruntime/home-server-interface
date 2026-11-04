@@ -50,7 +50,8 @@ export const APPROVAL_PROCEDURES: Record<string, Runner> = {
     const paths = input.paths.slice(0, MAX_DELETE_PATHS)
     await assertUnchanged(caller, input.expect.filter(e => paths.includes(e.path)))
     if (input.expect.length !== paths.length) throw new TRPCError({ code: "BAD_REQUEST", message: "A path has no recorded state" })
-    const jobs: Array<{ path: string; jobId: string }> = []
+    // In a place with a trash an item moves there (jobId null, #200).
+    const jobs: Array<{ path: string; jobId: string | null; trashed?: unknown }> = []
     for (const path of paths) jobs.push({ path, ...(await caller.fs.delete({ path })) })
     return { jobs }
   },

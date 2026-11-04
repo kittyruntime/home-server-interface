@@ -56,7 +56,7 @@ function choose(v: boolean) {
           {{ confirmState.optOutLabel }}
         </label>
         <div class="modal-action mt-0 flex-col-reverse sm:flex-row">
-          <Button variant="outline" autofocus @click="choose(false)">{{ t('ui.shared.ConfirmDialog.cancel') }}</Button>
+          <Button variant="outline" autofocus @click="choose(false)">{{ confirmState.cancelLabel ?? t('ui.shared.ConfirmDialog.cancel') }}</Button>
           <Button :variant="confirmState.danger ? 'destructive' : 'default'" @click="choose(true)">{{ confirmState.confirmLabel ?? 'Confirm' }}</Button>
         </div>
       </div>

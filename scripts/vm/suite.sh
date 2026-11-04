@@ -482,6 +482,45 @@ files_feature() {
   log "vmuser created, renamed and deleted its files"
 }
 
+# The trash of a Place (#200): on, a delete as vmuser moves the item to
+# <place>/.hsi-trash, hidden from listings and the share; it comes back with
+# restore, and goes for good when the trash is emptied or turned off.
+trash_feature() {
+  local place reply id
+  log "Trash in the mirror's Place"
+  place=$(api_query place.list | python3 -c 'import json,sys; print(next(p["id"] for p in json.load(sys.stdin) if p["path"]=="/srv/vm-mirror"))')
+  api place.setTrash "{\"id\":\"$place\",\"enabled\":true,\"retentionDays\":30}" >/dev/null
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"keep.txt"}')" "making a file to trash"
+  vm_ssh 'echo kept > /srv/vm-mirror/from-ui/keep.txt'
+  reply=$(API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/keep.txt"}')
+  id=$(python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["jobId"] is None, r; print(r["trashed"]["entry"]["id"])' "$reply") \
+    || fail "the delete did not go to the trash: $reply"
+  vm_ssh "! test -e /srv/vm-mirror/from-ui/keep.txt && test -f /srv/vm-mirror/.hsi-trash/files/$id && test -f /srv/vm-mirror/.hsi-trash/info/$id.trashinfo" \
+    || fail "the trashed file is not in the Place's trash: $(vm_ssh 'ls -laR /srv/vm-mirror/.hsi-trash')"
+  [[ $(vm_ssh "stat -c %U /srv/vm-mirror/.hsi-trash/files/$id") == vmuser ]] || fail "the trashed file is no longer vmuser's"
+  API_TOKEN=/root/token-vmuser api_get fs.list '{"path":"/srv/vm-mirror"}' | grep -q '.hsi-trash' && fail "the file manager lists the trash folder"
+  vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%$USER_PASSWORD' -c ls" 2>/dev/null | grep -q '.hsi-trash' && fail "the share shows the trash folder"
+  API_TOKEN=/root/token-vmuser api_query trash.list | grep -q '"keep.txt"' || fail "the trash does not list the file"
+  API_TOKEN=/root/token-vmuser api trash.restore "{\"placeId\":\"$place\",\"id\":\"$id\"}" >/dev/null
+  [[ $(vm_ssh 'cat /srv/vm-mirror/from-ui/keep.txt') == kept ]] || fail "the restored file is not back with its content"
+  # Shift+Delete: permanent even with the trash on.
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/keep.txt","permanent":true}')" "deleting permanently"
+  vm_ssh "! test -e /srv/vm-mirror/from-ui/keep.txt && test -z \"\$(ls -A /srv/vm-mirror/.hsi-trash/files)\"" || fail "a permanent delete went to the trash"
+  # Emptying, then turning the trash off with what is left in it.
+  vm_ssh 'echo a > /srv/vm-mirror/from-ui/a.txt; echo b > /srv/vm-mirror/from-ui/b.txt; chown vmuser /srv/vm-mirror/from-ui/a.txt /srv/vm-mirror/from-ui/b.txt'
+  API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/a.txt"}' >/dev/null
+  API_TOKEN=/root/token-vmuser api trash.empty "{\"placeId\":\"$place\"}" >/dev/null
+  vm_ssh 'test -z "$(find /srv/vm-mirror/.hsi-trash/files /srv/vm-mirror/.hsi-trash/info -mindepth 1)"' \
+    || fail "emptying left items in the trash: $(vm_ssh 'find /srv/vm-mirror/.hsi-trash -mindepth 1')"
+  API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/b.txt"}' >/dev/null
+  api place.setTrash "{\"id\":\"$place\",\"enabled\":false,\"retentionDays\":null,\"emptyExisting\":true}" >/dev/null
+  vm_ssh 'test -z "$(ls -A /srv/vm-mirror/.hsi-trash/files)"' || fail "turning the trash off did not empty it"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.touch '{"parentPath":"/srv/vm-mirror/from-ui","name":"gone.txt"}')" "making a file after the trash"
+  wait_job "$(API_TOKEN=/root/token-vmuser api fs.delete '{"path":"/srv/vm-mirror/from-ui/gone.txt"}')" "deleting without a trash"
+  vm_ssh '! test -e /srv/vm-mirror/from-ui/gone.txt && test -z "$(ls -A /srv/vm-mirror/.hsi-trash/files)"' || fail "a delete without the trash did not remove the file"
+  log "Trash: moved, hidden, restored, emptied and turned off"
+}
+
 # A client connects to the share with vmuser's password and writes in it.
 smb_feature() {
   log "SMB client on the share as vmuser"
@@ -987,6 +1026,7 @@ case "$scenario" in
     account_feature
     files_feature
     smb_feature
+    trash_feature
     mcp_feature
     assistant_feature
     app_feature

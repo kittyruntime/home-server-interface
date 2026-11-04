@@ -151,6 +151,8 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		b.WriteString("\n[" + s.Name + "]\n")
 		b.WriteString("   path = " + s.Path + "\n")
 		b.WriteString("   browseable = yes\n")
+		// A place's trash (#200) is only reached from the file manager.
+		b.WriteString("   veto files = /" + trashDirName + "/\n")
 		if s.Unavailable {
 			b.WriteString("   available = no\n")
 		}

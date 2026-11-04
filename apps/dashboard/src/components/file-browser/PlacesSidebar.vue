@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, EllipsisIcon, InfoIcon, PencilIcon, SettingsIcon, XIcon } from '@lucide/vue'
+import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, EllipsisIcon, InfoIcon, PencilIcon, SettingsIcon, Trash2Icon, XIcon } from '@lucide/vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { bookmarkLabel, type Bookmark } from '../../lib/bookmarks'
 import PlaceIcon from '../PlaceIcon.vue'
@@ -29,14 +29,17 @@ const props = defineProps<{
   bookmarks?: Bookmark[]
   missingBookmarks?: Set<string>
   currentPath?: string | null
+  /** Some place has a trash (#200), and the trash is open. */
+  hasTrash?: boolean
+  trashActive?: boolean
 }>()
 
 // On a bookmarked folder the bookmark is the highlighted entry, not its place.
 const onBookmark = computed(() => !!props.currentPath && !!props.bookmarks?.some(b => b.path === props.currentPath))
-const placeActive = (id: string) => !props.settingsActive && !onBookmark.value && props.activePlaceId === id
+const placeActive = (id: string) => !props.settingsActive && !props.trashActive && !onBookmark.value && props.activePlaceId === id
 
 defineEmits<{
-  select: [place: Place]; openProperties: [place: Place]; openSettings: []
+  select: [place: Place]; openProperties: [place: Place]; openSettings: []; openTrash: []
   openBookmark: [path: string]; renameBookmark: [bookmark: Bookmark]; moveBookmark: [path: string, delta: -1 | 1]; removeBookmark: [path: string]
 }>()
 </script>
@@ -103,8 +106,14 @@ defineEmits<{
         <SidebarGroup class="mt-auto border-t border-base-300">
           <SidebarGroupContent>
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.settings')">
+              <SidebarMenuItem v-if="hasTrash">
+                <SidebarMenuButton :is-active="trashActive" :aria-current="trashActive ? 'page' : undefined" @click.stop="$emit('openTrash')">
+                  <Trash2Icon class="size-4" aria-hidden="true" />
+                  <span>{{ t('files.trash.title') }}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton :is-active="settingsActive" :aria-current="settingsActive ? 'page' : undefined" @click.stop="$emit('openSettings')">
+                <SidebarMenuButton :is-active="settingsActive && !trashActive" :aria-current="settingsActive && !trashActive ? 'page' : undefined" @click.stop="$emit('openSettings')">
                   <SettingsIcon class="size-4" aria-hidden="true" />
                   <span>{{ t('ui.files.PlacesSidebar.settings') }}</span>
                 </SidebarMenuButton>

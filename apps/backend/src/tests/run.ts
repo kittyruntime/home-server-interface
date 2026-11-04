@@ -101,6 +101,18 @@ async function testBookmarkPreferences() {
 }
 await testBookmarkPreferences()
 
+async function testTrashPlaceOf() {
+  const { placeOf, isTrashEntry } = await import("../services/trash")
+  const places = [{ id: "media", path: "/srv/media" }, { id: "films", path: "/srv/media/films" }, { id: "m2", path: "/srv/media2" }]
+  assert.equal(placeOf(places, "/srv/media/films/a.mkv")?.id, "films")
+  assert.equal(placeOf(places, "/srv/media/music/b.flac")?.id, "media")
+  assert.equal(placeOf(places, "/srv/media2/x")?.id, "m2")
+  assert.equal(placeOf(places, "/srv/other"), null)
+  assert.equal(isTrashEntry({ name: ".hsi-trash" }), true)
+  assert.equal(isTrashEntry({ name: ".hsi-trash2" }), false)
+}
+await testTrashPlaceOf()
+
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)
   const user = await authenticateSession(`Bearer ${token}`, async () => ({

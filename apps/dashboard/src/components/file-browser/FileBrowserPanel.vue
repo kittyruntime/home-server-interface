@@ -35,15 +35,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
 import RenameBookmarkModal from './RenameBookmarkModal.vue'
+import TrashView from './TrashView.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
 import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
-type Place = { id: string; name: string; path: string; icon?: string | null }
+type Place = { id: string; name: string; path: string; icon?: string | null; trashEnabled?: boolean }
 interface Crumb { label: string; path: string; clickable: boolean }
 
 const props = defineProps<{ desktopWindow?: boolean }>()
@@ -80,7 +81,9 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const sidebarOpen = ref(false)
 // The file manager's settings (shared links, display) replace the files while open.
 const settingsTab = ref<'display' | 'shared' | null>(null)
-const showShared = computed(() => settingsTab.value !== null)
+// The trash (#200) replaces the files too.
+const trashOpen = ref(false)
+const showShared = computed(() => settingsTab.value !== null || trashOpen.value)
 const previewEntry = ref<Entry | null>(null)
 
 // ── search ────────────────────────────────────────────────────────────────────
@@ -168,6 +171,15 @@ function closeFilter() {
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
+  // Delete moves the selection to the trash where there is one; Shift+Delete removes it for good.
+  if (e.key === 'Delete' && selected.value.size && !showShared.value && !renamingPath.value) {
+    const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
+    if (tag !== 'input' && tag !== 'textarea' && !document.querySelector('dialog[open]')) {
+      e.preventDefault()
+      void doDelete(e.shiftKey)
+      return
+    }
+  }
   // Ctrl+H shows or hides dotfiles, as in desktop file managers.
   if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
@@ -234,6 +246,7 @@ watch(() => bookmarks.value.map(b => b.path).join('\n'), () => { void checkBookm
 async function openBookmark(path: string) {
   const place = placeFor(allPlaces.value, path)
   settingsTab.value = null
+  trashOpen.value = false
   sidebarOpen.value = false
   if (place) activePlaceId.value = place.id
   await navigate(path)
@@ -267,9 +280,26 @@ const breadcrumbs = computed((): Crumb[] => {
 })
 
 // ── navigation ───────────────────────────────────────────────────────────────
+const hasTrash = computed(() => dbPlaces.value.some(p => p.trashEnabled))
+
+function openTrash() {
+  handleSearch('')
+  closeFilter()
+  settingsTab.value = null
+  trashOpen.value = true
+  sidebarOpen.value = false
+}
+
+/** The place a path's deletion goes to the trash of, or null when it is removed for good. */
+function trashPlaceFor(path: string): Place | null {
+  const place = placeFor(dbPlaces.value, path)
+  return place?.trashEnabled && place.path !== path ? place : null
+}
+
 function openSettings(tab: 'display' | 'shared' = 'display') {
   handleSearch('')
   closeFilter()
+  trashOpen.value = false
   settingsTab.value = tab
   sidebarOpen.value = false
 }
@@ -277,9 +307,11 @@ function openSettings(tab: 'display' | 'shared' = 'display') {
 function selectPlace(place: Place) {
   if (showShared.value && place.id === activePlaceId.value) {
     settingsTab.value = null
+    trashOpen.value = false
     return
   }
   settingsTab.value = null
+  trashOpen.value = false
   activePlaceId.value = place.id
   selected.value = new Set()
   navigate(place.path)
@@ -438,7 +470,8 @@ async function doPaste() {
   refresh()
 }
 
-// Deletion is permanent (there is no trash): ask first, unless the user
+// Deleting in a place with a trash (#200) moves items there, with an Undo;
+// anything else, and Shift+Delete, is permanent: ask first, unless the user
 // turned it off.
 function deleteMessage(paths: string[]): string {
   if (paths.length > 1) return t('fileDelete.messageMany', { count: paths.length })
@@ -447,10 +480,13 @@ function deleteMessage(paths: string[]): string {
   return t(isDir ? 'fileDelete.messageFolder' : 'fileDelete.messageFile', { name })
 }
 
-async function doDelete() {
+type Trashed = { placeId: string; entry: { id: string; name: string } }
+
+async function doDelete(permanent = false) {
   if (!selected.value.size) return
   const paths = [...selected.value]
-  if (confirmFileDelete.value) {
+  const toTrash = !permanent && paths.every(p => trashPlaceFor(p))
+  if (!toTrash && confirmFileDelete.value) {
     const ok = await confirm(deleteMessage(paths), {
       title: t('fileDelete.title'),
       confirmLabel: t('fileDelete.confirm'),
@@ -461,18 +497,34 @@ async function doDelete() {
     if (!ok) return
   }
   pendingPaths.value = [...paths]
+  const trashed: Trashed[] = []
   try {
     await trackBatch(
-      t('fileDelete.deleting', { count: paths.length }),
+      t(toTrash ? 'files.trash.moving' : 'fileDelete.deleting', { count: paths.length }),
       paths.map(p => async () => {
-        const { jobId } = await trpc.fs.delete.mutate({ path: p })
-        await awaitJob(jobId)
+        const r = await trpc.fs.delete.mutate({ path: p, permanent: !toTrash })
+        if (r.trashed) trashed.push(r.trashed)
+        if (r.jobId) await awaitJob(r.jobId)
       })
     )
   } finally {
     pendingPaths.value = []
   }
   clearSelection()
+  refresh()
+  if (trashed.length) {
+    toast.success(t('files.trash.moved', { count: trashed.length }), {
+      label: t('files.trash.undo'),
+      run: () => { void undoTrash(trashed) },
+    })
+  }
+}
+
+async function undoTrash(items: Trashed[]) {
+  for (const it of items) {
+    try { await trpc.trash.restore.mutate({ placeId: it.placeId, id: it.entry.id }) }
+    catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
+  }
   refresh()
 }
 
@@ -640,7 +692,10 @@ onMounted(async () => {
       :bookmarks="bookmarks"
       :missing-bookmarks="missingBookmarks"
       :current-path="currentPath"
+      :has-trash="hasTrash"
+      :trash-active="trashOpen"
       @open-settings="openSettings()"
+      @open-trash="openTrash"
       @open-bookmark="openBookmark"
       @rename-bookmark="renamingBookmark = $event"
       @move-bookmark="(path, delta) => setBookmarks(moveBookmark(bookmarks, path, delta))"
@@ -660,7 +715,11 @@ onMounted(async () => {
           </Button>
         </div>
         <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
-          <div class="max-w-2xl">
+          <div v-if="trashOpen" class="max-w-2xl">
+            <h2 class="mb-4 text-lg font-semibold">{{ t('files.trash.title') }}</h2>
+            <TrashView />
+          </div>
+          <div v-else class="max-w-2xl">
             <h2 class="mb-4 text-lg font-semibold">{{ t('ui.files.PlacesSidebar.settings') }}</h2>
             <Tabs :model-value="settingsTab ?? 'display'" @update:model-value="v => settingsTab = v === 'shared' ? 'shared' : 'display'">
               <TabsList :aria-label="t('ui.files.PlacesSidebar.settings')" class="mb-6">
@@ -693,7 +752,7 @@ onMounted(async () => {
         @download="downloadSelected"
         @open-permissions="openPermissions"
         @share="openShare"
-        @delete="doDelete"
+        @delete="doDelete()"
         @create-folder="createFolder"
         @create-file="createFile"
         @upload-click="fileInput?.click()"
@@ -872,7 +931,13 @@ onMounted(async () => {
             @select="doUnzip()"
           ><PackageOpenIcon /> {{ t('ui.files.FileBrowserPanel.extractHere') }}</ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem variant="destructive" @select="doDelete()"><Trash2Icon /> {{ t('ui.files.FileBrowserPanel.delete') }}</ContextMenuItem>
+          <ContextMenuItem :variant="selectedEntries.every(e => trashPlaceFor(e.path)) ? undefined : 'destructive'" @select="doDelete()">
+            <Trash2Icon /> {{ selectedEntries.every(e => trashPlaceFor(e.path)) ? t('files.trash.moveToTrash') : t('ui.files.FileBrowserPanel.delete') }}
+          </ContextMenuItem>
+          <ContextMenuItem v-if="selectedEntries.every(e => trashPlaceFor(e.path))" variant="destructive" @select="doDelete(true)">
+            <Trash2Icon /> {{ t('files.trash.deleteForever') }}
+            <ContextMenuShortcut>Shift+Del</ContextMenuShortcut>
+          </ContextMenuItem>
           <ContextMenuSeparator v-if="currentPath" />
         </template>
 

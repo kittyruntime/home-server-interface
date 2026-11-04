@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { requestSync } from "../../nats"
 import { preparePlaceDir, syncSharesBestEffort } from "../../services/sharing.service"
+import { trashRequest } from "../../services/trash"
 
 async function accessiblePlaceIds(
   ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
@@ -80,6 +81,32 @@ export const placeRouter = router({
     }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.place.update({ where: { id: input.id }, data: { icon: input.icon } })),
+
+  // The trash of a place (#200): on or off, and how long items stay. Turning it
+  // off either empties it or keeps what is there until emptied by hand.
+  setTrash: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      enabled: z.boolean(),
+      retentionDays: z.number().int().min(1).max(3650).nullable(),
+      emptyExisting: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const place = await ctx.prisma.place.findUnique({ where: { id: input.id } })
+      if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Place not found" })
+      ctx.audit.target = place.name
+      if (!input.enabled && place.trashEnabled && input.emptyExisting) {
+        try {
+          await trashRequest({ op: "empty", placeRoot: place.path }, 300_000)
+        } catch (e: any) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Could not empty the trash" })
+        }
+      }
+      return ctx.prisma.place.update({
+        where: { id: input.id },
+        data: { trashEnabled: input.enabled, trashRetentionDays: input.retentionDays },
+      })
+    }),
 
   rename: adminProcedure
     .input(z.object({ id: z.string(), name: z.string().trim().min(1).max(100) }))

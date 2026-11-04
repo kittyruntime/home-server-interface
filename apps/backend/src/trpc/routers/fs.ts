@@ -10,6 +10,7 @@ import { publishJob, requestSync, requestRead, writeChunk } from "../../nats"
 import { isWithinRoot } from "../../utils/fs-guard"
 import { looksBinary } from "../../utils/text-sniff"
 import { signFileToken } from "../auth"
+import { isTrashEntry, placeOf, trashRequest, type TrashEntry } from "../../services/trash"
 
 // Hard cap on what the text/code preview will read into memory and hand to
 // the frontend editor, checked via stat() *before* reading, so an
@@ -18,7 +19,7 @@ const MAX_TEXT_PREVIEW_BYTES = 3 * 1024 * 1024
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Promise<string | null> {
+export async function getLinuxUser(ctx: { prisma: any; user: { userId: string } }): Promise<string | null> {
   const u = await ctx.prisma.user.findUnique({
     where:  { id: ctx.user.userId },
     select: { username: true },
@@ -64,7 +65,7 @@ export async function checkPathPerm(
 }
 
 // Map worker error codes to tRPC errors.
-function mapWorkerError(e: any): TRPCError {
+export function mapWorkerError(e: any): TRPCError {
   if (e instanceof TRPCError) return e
   switch (e?.code) {
     case "EACCES": return new TRPCError({ code: "FORBIDDEN",   message: "Permission denied" })
@@ -130,10 +131,10 @@ export const fsRouter = router({
           if (allowedRoot && !(await isWithinRoot(p, allowedRoot))) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" })
           }
-          return sortEntries(await listAsProcess(p))
+          return sortEntries((await listAsProcess(p)).filter(e => !isTrashEntry(e)))
         }
         const entries = await requestSync<FsEntry[]>("root.fs.list", { path: p, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "" })
-        return sortEntries(entries)
+        return sortEntries(entries.filter(e => !isTrashEntry(e)))
       } catch (e: any) {
         throw mapWorkerError(e)
       }
@@ -367,12 +368,27 @@ export const fsRouter = router({
     }),
 
   // ── delete (async) ───────────────────────────────────────────────────────────
+  // In a place with a trash (#200) an item moves there, unless `permanent`;
+  // elsewhere, and inside the trash itself, it is removed for good.
   delete: protectedProcedure
-    .input(z.object({ path: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .input(z.object({ path: z.string(), permanent: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }): Promise<{ jobId: string | null; trashed?: { placeId: string; entry: TrashEntry } }> => {
       const p = normalize(input.path)
       const allowedRoot = await checkPathPerm(ctx, p, "canDelete")
       const linuxUser = await getLinuxUser(ctx)
+      if (!input.permanent) {
+        const place = placeOf(await ctx.prisma.place.findMany(), p) as { id: string; path: string; trashEnabled: boolean } | null
+        if (place?.trashEnabled && p !== place.path) {
+          try {
+            const entry = await trashRequest<TrashEntry>({
+              op: "trash", placeRoot: place.path, path: p, deletedBy: linuxUser ?? "", linuxUsername: linuxUser ?? "",
+            })
+            return { jobId: null, trashed: { placeId: place.id, entry } }
+          } catch (e) {
+            throw mapWorkerError(e)
+          }
+        }
+      }
       const jobId = await publishJob("fs.delete", { linuxUsername: linuxUser ?? "", path: p, allowedRoot: allowedRoot ?? "" }, ctx.user.userId)
       return { jobId }
     }),

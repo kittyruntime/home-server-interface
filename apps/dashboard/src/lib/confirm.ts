@@ -3,6 +3,8 @@ import { ref } from 'vue'
 export interface ConfirmOptions {
   title?: string
   confirmLabel?: string
+  /** Label of the button that answers no (Escape gives the same answer). */
+  cancelLabel?: string
   danger?: boolean
   /** Shows a "don't ask again" checkbox with this label. */
   optOutLabel?: string
