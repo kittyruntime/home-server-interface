@@ -296,6 +296,20 @@ export default {
     confirmFileDeleteHint: 'Demander avant de supprimer des fichiers et dossiers dans le gestionnaire de fichiers. La suppression est définitive.',
   },
   files: {
+    bookmarks: {
+      title: 'Favoris',
+      add: 'Ajouter aux favoris',
+      remove: 'Retirer des favoris',
+      actions: 'Actions pour {name}',
+      rename: 'Renommer',
+      renameTitle: 'Renommer le favori',
+      label: 'Nom',
+      moveUp: 'Monter',
+      moveDown: 'Descendre',
+      missing: '{path} n’existe plus ou vous n’y avez plus accès',
+      cancel: 'Annuler',
+      save: 'Enregistrer',
+    },
     details: {
       title: 'Détails',
       contents: 'Contenu',

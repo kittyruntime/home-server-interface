@@ -86,6 +86,21 @@ async function testFileManagerPreferences() {
 }
 await testFileManagerPreferences()
 
+async function testBookmarkPreferences() {
+  const { parsePrefs, mergePrefs } = await import("../trpc/routers/user")
+  const ok = parsePrefs({ fileManager: { bookmarks: [{ path: "/srv/media/films", label: "Films" }, { path: "/srv/docs" }] } })
+  assert.deepEqual(ok.fileManager?.bookmarks, [{ path: "/srv/media/films", label: "Films" }, { path: "/srv/docs" }])
+  const bad = parsePrefs({ fileManager: { view: "grid", bookmarks: [{ path: "" }] } })
+  assert.equal(bad.fileManager?.view, "grid")
+  assert.equal(bad.fileManager?.bookmarks, undefined)
+  assert.equal(parsePrefs({ fileManager: { bookmarks: Array.from({ length: 51 }, (_, i) => ({ path: `/p${i}` })) } }).fileManager?.bookmarks, undefined)
+  assert.deepEqual(
+    mergePrefs({ fileManager: { view: "grid", bookmarks: [{ path: "/a" }] } }, parsePrefs({ fileManager: { bookmarks: [] } })).fileManager,
+    { view: "grid", bookmarks: [] },
+  )
+}
+await testBookmarkPreferences()
+
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)
   const user = await authenticateSession(`Bearer ${token}`, async () => ({

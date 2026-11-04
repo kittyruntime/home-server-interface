@@ -36,6 +36,11 @@ const zPreferences = z.object({
     columns: z.array(z.enum(["size", "modified", "type"])).max(3).optional().catch(undefined),
     showHidden: z.boolean().optional().catch(undefined),
     view: z.enum(["list", "grid"]).optional().catch(undefined),
+    // Bookmarked folders (#199), in the user's order.
+    bookmarks: z.array(z.object({
+      path: z.string().min(1).max(4096),
+      label: z.string().max(64).optional(),
+    })).max(50).optional().catch(undefined),
   }).optional().catch(undefined),
 })
 type Prefs = z.infer<typeof zPreferences>

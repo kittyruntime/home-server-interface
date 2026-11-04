@@ -33,9 +33,11 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
+import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
+import RenameBookmarkModal from './RenameBookmarkModal.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
-import { ArchiveIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
@@ -207,6 +209,36 @@ const allPlaces = computed((): Place[] =>
 const activePlace = computed(() =>
   activePlaceId.value ? allPlaces.value.find(p => p.id === activePlaceId.value) ?? null : null
 )
+
+// ── bookmarks (#199) ─────────────────────────────────────────────────────────
+const bookmarks = computed(() => filePrefs.value.bookmarks)
+const missingBookmarks = ref(new Set<string>())
+const renamingBookmark = ref<Bookmark | null>(null)
+const currentBookmarked = computed(() => !!currentPath.value && isBookmarked(bookmarks.value, currentPath.value))
+
+function setBookmarks(next: Bookmark[]) { setFilePrefs({ bookmarks: next }) }
+function toggleBookmarkAt(path: string) { setBookmarks(toggleBookmark(bookmarks.value, path)) }
+
+// A bookmark whose folder is gone or out of reach shows dimmed; checked when
+// the list changes, never blocking the panel.
+async function checkBookmarks() {
+  const results = await Promise.allSettled(bookmarks.value.map(b => trpc.fs.stat.query({ path: b.path })))
+  const missing = new Set<string>()
+  results.forEach((r, i) => {
+    if (r.status === 'rejected' || r.value.type !== 'dir') missing.add(bookmarks.value[i]!.path)
+  })
+  missingBookmarks.value = missing
+}
+watch(() => bookmarks.value.map(b => b.path).join('\n'), () => { void checkBookmarks() }, { immediate: true })
+
+async function openBookmark(path: string) {
+  const place = placeFor(allPlaces.value, path)
+  settingsTab.value = null
+  sidebarOpen.value = false
+  if (place) activePlaceId.value = place.id
+  await navigate(path)
+  if (error.value) missingBookmarks.value = new Set([...missingBookmarks.value, path])
+}
 
 // ── breadcrumbs ──────────────────────────────────────────────────────────────
 const breadcrumbs = computed((): Crumb[] => {
@@ -605,7 +637,14 @@ onMounted(async () => {
       :places="allPlaces"
       :active-place-id="activePlaceId"
       :settings-active="showShared"
+      :bookmarks="bookmarks"
+      :missing-bookmarks="missingBookmarks"
+      :current-path="currentPath"
       @open-settings="openSettings()"
+      @open-bookmark="openBookmark"
+      @rename-bookmark="renamingBookmark = $event"
+      @move-bookmark="(path, delta) => setBookmarks(moveBookmark(bookmarks, path, delta))"
+      @remove-bookmark="path => setBookmarks(toggleBookmark(bookmarks, path))"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
@@ -662,6 +701,8 @@ onMounted(async () => {
         @refresh="refresh"
         @update:view-mode="setFilePrefs({ view: $event })"
         @open-display-settings="openSettings('display')"
+        :bookmarked="currentBookmarked"
+        @toggle-bookmark="currentPath && toggleBookmarkAt(currentPath)"
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @search="handleSearch"
       />
@@ -817,6 +858,9 @@ onMounted(async () => {
             <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
             <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
             <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
+            <ContextMenuItem v-if="selectedEntries[0]?.type === 'dir'" @select="toggleBookmarkAt(selectedEntries[0]!.path)">
+              <BookmarkIcon /> {{ isBookmarked(bookmarks, selectedEntries[0]!.path) ? t('files.bookmarks.remove') : t('files.bookmarks.add') }}
+            </ContextMenuItem>
             <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
             <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}</ContextMenuItem>
           </template>
@@ -871,6 +915,13 @@ onMounted(async () => {
     v-if="previewEntry"
     :entry="previewEntry"
     @close="previewEntry = null"
+  />
+
+  <RenameBookmarkModal
+    v-if="renamingBookmark"
+    :bookmark="renamingBookmark"
+    @save="label => { setBookmarks(renameBookmark(bookmarks, renamingBookmark!.path, label)); renamingBookmark = null }"
+    @close="renamingBookmark = null"
   />
 
   <FilePropertiesModal

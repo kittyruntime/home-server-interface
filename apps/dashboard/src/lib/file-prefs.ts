@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { COLUMNS, type Column, type FileSort, type SortDir, type SortField } from './file-sort'
+import { normalizeBookmarks, type Bookmark } from './bookmarks'
 
 // File manager display preferences (#196): sort, visible columns, hidden files
 // and view. Kept in localStorage for an instant read and synced with the
@@ -11,6 +12,7 @@ export interface FilePrefs {
   columns: Column[]
   showHidden: boolean
   view: 'list' | 'grid'
+  bookmarks: Bookmark[]
 }
 
 export const DEFAULT_FILE_PREFS: FilePrefs = {
@@ -19,6 +21,7 @@ export const DEFAULT_FILE_PREFS: FilePrefs = {
   columns: ['size', 'modified'],
   showHidden: false,
   view: 'list',
+  bookmarks: [],
 }
 
 const STORAGE_KEY = 'file-prefs'
@@ -37,6 +40,7 @@ export function normalizeFilePrefs(raw: unknown): FilePrefs {
     columns,
     showHidden: typeof v.showHidden === 'boolean' ? v.showHidden : d.showHidden,
     view: v.view === 'list' || v.view === 'grid' ? v.view : d.view,
+    bookmarks: v.bookmarks === undefined ? d.bookmarks : normalizeBookmarks(v.bookmarks),
   }
 }
 

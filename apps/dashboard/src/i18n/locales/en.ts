@@ -295,6 +295,20 @@ export default {
     confirmFileDeleteHint: 'Ask before deleting files and folders in the file manager. Deletion is permanent.',
   },
   files: {
+    bookmarks: {
+      title: 'Bookmarks',
+      add: 'Add to bookmarks',
+      remove: 'Remove from bookmarks',
+      actions: 'Actions for {name}',
+      rename: 'Rename',
+      renameTitle: 'Rename bookmark',
+      label: 'Name',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      missing: '{path} is no longer there or you no longer have access to it',
+      cancel: 'Cancel',
+      save: 'Save',
+    },
     details: {
       title: 'Details',
       contents: 'Contents',
