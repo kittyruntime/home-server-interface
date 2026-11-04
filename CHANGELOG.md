@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the star in the toolbar; bookmarks sit in the sidebar under the places, can be
   renamed and reordered, follow your account, and show dimmed when the folder is
   gone or out of reach.
+- **Trash per place**: an administrator turns it on for a place in Settings >
+  Places, with an optional emptying of items older than a number of days.
+  Deleting there moves items to the trash with an Undo; Shift+Delete still
+  deletes for good. The Trash in the file manager restores items where they
+  were (or under a new name when something took their place) and empties it.
+  The trash is hidden from listings and shares and left out of backups.
 
 ### Changed
 - **New folder and file icons**: folders are filled, two-tone and take the theme's

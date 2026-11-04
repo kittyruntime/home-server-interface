@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import PlaceIconPicker from './PlaceIconPicker.vue'
+import PlaceTrashSettings from './PlaceTrashSettings.vue'
 import { useToast } from '../lib/toast'
 import { Card } from '@/components/ui/card'
 import Tip from './ui/Tip.vue'
@@ -16,7 +17,7 @@ import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 
-type Place = { id: string; name: string; path: string; icon?: string | null }
+type Place = { id: string; name: string; path: string; icon?: string | null; trashEnabled?: boolean; trashRetentionDays?: number | null }
 type Group = { id: string; name: string }
 type User  = { id: string; username: string; isAdmin: boolean }
 type Perm  = { id: string; placeId: string; subjectType: string; subjectId: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canShare: boolean }
@@ -232,6 +233,11 @@ onMounted(async () => {
               :tooltip="t('ui.settings.PlacesSection.remove')" :aria-label="t('ui.settings.PlacesSection.remove')">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
+          </div>
+
+          <!-- Trash (#200) -->
+          <div v-if="expandedPlace === place.id" class="border-t border-base-300">
+            <PlaceTrashSettings :place="place" @changed="p => Object.assign(place, p)" />
           </div>
 
           <!-- Permissions matrix (expanded) -->

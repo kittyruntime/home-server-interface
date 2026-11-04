@@ -11,7 +11,13 @@ export interface ToastAction {
    callers keep a three-method API and the durations stay in one place. */
 export function useToast() {
   return {
-    success: (msg: string) => { toast.success(msg, { duration: 3500 }) },
+    success: (msg: string, action?: ToastAction) => {
+      toast.success(msg, {
+        // An action (Undo) needs time to be reached.
+        duration: action ? 8000 : 3500,
+        action: action ? { label: action.label, onClick: () => action.run() } : undefined,
+      })
+    },
     error: (msg: string, action?: ToastAction) => {
       toast.error(msg, {
         duration: 7000,

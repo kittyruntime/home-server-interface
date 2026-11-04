@@ -6,6 +6,10 @@ model Place {
   updatedAt       DateTime              @updatedAt
   /// Emoji shown instead of the folder icon; null keeps the folder icon.
   icon            String?
+  /// Deleting moves items to the place's .hsi-trash folder instead of removing them (#200).
+  trashEnabled    Boolean               @default(false)
+  /// Trash items older than this many days are removed; null keeps them until emptied.
+  trashRetentionDays Int?
   groupPermissions GroupPlacePermission[] @relation("GroupPerms")
   userPermissions  UserPlacePermission[] @relation("UserPerms")
   share           Share?
