@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -498,6 +499,36 @@ func purgeUser(placeRoot, uid string, cutoff time.Time) (int, *fsError) {
 	return removed, nil
 }
 
+// restoreAsOwner restores as the item's owner even when root asks (an
+// administrator): the destination comes from an info file the owner can
+// edit, so the move only goes where the owner itself may write.
+func restoreAsOwner(placeRoot, id, target string) (string, *fsError) {
+	uid, _, ok := splitTrashID(id)
+	if !ok {
+		return "", &fsError{Code: "ERR", Message: "invalid trash item"}
+	}
+	if currentUID() != "0" || uid == "0" {
+		return doTrashRestore(placeRoot, id, target)
+	}
+	u, err := user.LookupId(uid)
+	if err != nil {
+		return "", &fsError{Code: "ERR", Message: "the owner of this item no longer exists"}
+	}
+	owner, err := resolveUser(u.Username)
+	if err != nil {
+		return "", &fsError{Code: "ERR", Message: err.Error()}
+	}
+	var dst string
+	var fe *fsError
+	if err := runAsUser(owner, func() error {
+		dst, fe = doTrashRestore(placeRoot, id, target)
+		return nil
+	}); err != nil {
+		return "", toFsErr(err)
+	}
+	return dst, fe
+}
+
 // ── NATS handler ─────────────────────────────────────────────────────────────
 
 type trashReq struct {
@@ -549,7 +580,7 @@ func runTrash(nc *nats.Conn, msg *nats.Msg) {
 				break
 			}
 			var dst string
-			if dst, fsErr = doTrashRestore(req.PlaceRoot, req.IDs[0], req.Target); fsErr == nil {
+			if dst, fsErr = restoreAsOwner(req.PlaceRoot, req.IDs[0], req.Target); fsErr == nil {
 				result = map[string]string{"path": dst}
 			}
 		case "delete":
