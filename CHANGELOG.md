@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deletes for good. The Trash in the file manager restores items where they
   were (or under a new name when something took their place) and empties it.
   The trash is hidden from listings and shares and left out of backups.
+- **Free space per place**: the file manager shows how much room is left on the
+  current folder's disk next to the item count, and Settings > Places shows it
+  for each place.
 
 ### Changed
 - **VM tests look up the latest release reliably**: from the release page's
