@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **New folder and file icons**: folders are filled, two-tone and take the theme's
+  color; files are tinted by kind (images, videos, audio, archives, code,
+  documents), so a folder is quicker to scan.
+- **File manager follows the theme more closely**: its progress bars are daisyUI's
+  and its tiles use the theme's corner radius.
+
 ### Fixed
 - **Permissions from a place's properties**: **Edit** did nothing. A place now shows
   **Manage access**, which opens its access settings, since HSI sets the owner and

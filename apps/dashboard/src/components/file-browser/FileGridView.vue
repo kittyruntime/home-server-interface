@@ -3,7 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EyeIcon, FileIcon, FolderIcon } from '@lucide/vue'
+import { EyeIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -41,11 +41,11 @@ const emit = defineEmits<{
     <div
       v-for="t in uploadTasks"
       :key="t.id"
-      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 select-none pointer-events-none overflow-hidden"
+      class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box bg-base-200 select-none pointer-events-none overflow-hidden"
     >
       <!-- File icon -->
       <div class="w-11 h-11 relative flex items-center justify-center shrink-0">
-        <FileTypeIcon :name="t.name" class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
+        <FileTypeIcon :name="t.name" plain class="w-9 h-11 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-primary'" aria-hidden="true" />
         <!-- Spinner overlay on icon -->
         <div v-if="t.status === 'uploading' || t.status === 'verifying' || t.status === 'queued' || t.status === 'running'" class="absolute inset-0 flex items-center justify-center">
           <LoadingSpinner class="text-xl text-primary drop-shadow" />
@@ -64,21 +64,21 @@ const emit = defineEmits<{
     </div>
 
     <!-- Ghost card while creating a folder -->
-    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
-      <FolderIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+    <div v-if="creatingFolder" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box bg-base-200 opacity-60 select-none pointer-events-none">
+      <FileTypeIcon name="" dir class="w-11 h-11 shrink-0" aria-hidden="true" />
       <span class="text-xs text-base-content/70 italic">{{ $t('ui.files.FileGridView.newFolder') }}</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-base-100/30">
+      <div class="absolute inset-0 flex items-center justify-center rounded-box bg-base-100/30">
         <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
 
     <!-- Ghost card while creating a file -->
-    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl bg-base-200 opacity-60 select-none pointer-events-none">
-      <FileIcon class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+    <div v-if="creatingFile" class="relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box bg-base-200 opacity-60 select-none pointer-events-none">
+      <FileTypeIcon name="" class="w-9 h-11 shrink-0" aria-hidden="true" />
       <span class="text-xs text-base-content/70 italic">{{ $t('ui.files.FileGridView.newFile') }}</span>
       <!-- Centered spinner overlay -->
-      <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-base-100/30">
+      <div class="absolute inset-0 flex items-center justify-center rounded-box bg-base-100/30">
         <LoadingSpinner class="text-xl text-primary" />
       </div>
     </div>
@@ -91,7 +91,7 @@ const emit = defineEmits<{
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
-        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-xl transition-colors select-none',
+        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box transition-colors select-none',
         pendingPaths?.includes(entry.path)
           ? 'cursor-default pointer-events-none'
           : 'cursor-pointer',
@@ -102,7 +102,7 @@ const emit = defineEmits<{
     >
       <!-- Pending overlay -->
       <div v-if="pendingPaths?.includes(entry.path)"
-        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-base-100/60">
+        class="absolute inset-0 z-10 flex items-center justify-center rounded-box bg-base-100/60">
         <LoadingSpinner class="text-xl text-base-content/70" />
       </div>
 
@@ -115,9 +115,9 @@ const emit = defineEmits<{
       />
 
       <!-- Icon -->
-      <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-11 h-11 text-primary shrink-0" aria-hidden="true" />
+      <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-11 h-11 shrink-0" aria-hidden="true" />
       <div v-else class="w-11 h-11 relative flex items-center justify-center flex-shrink-0">
-        <FileTypeIcon :name="entry.name" class="w-9 h-11 text-base-content/70" aria-hidden="true" />
+        <FileTypeIcon :name="entry.name" class="w-9 h-11" aria-hidden="true" />
         <Button
           variant="ghost" size="icon-xs"
           @click.stop="emit('openFile', entry)"

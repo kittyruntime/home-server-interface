@@ -3,7 +3,7 @@ import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import SortableHeader from '../ui/SortableHeader.vue'
 import { Input } from '@/components/ui/input'
-import { EyeIcon, FileTextIcon, FolderIcon } from '@lucide/vue'
+import { EyeIcon, FileTextIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
@@ -61,7 +61,7 @@ function fileExt(name: string): string {
   <!-- Mobile: cards instead of a table that has nowhere to shrink to. -->
   <div class="sm:hidden divide-y divide-base-300">
     <div v-for="t in uploadTasks" :key="t.id" class="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
-      <FileTypeIcon :name="t.name" class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
+      <FileTypeIcon :name="t.name" plain class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-error' : 'text-base-content/80'">{{ t.name }}</span>
       <span v-if="t.status === 'error'" class="text-2xs text-error shrink-0">{{ t.error }}</span>
       <span v-else-if="t.status === 'paused'" class="text-2xs text-warning shrink-0">{{ $t('ui.files.FileListView.paused') }}</span>
@@ -69,7 +69,7 @@ function fileExt(name: string): string {
     </div>
 
     <div v-if="creatingFolder" class="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
-      <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+      <FileTypeIcon name="" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
       <span class="flex-1 text-sm italic text-base-content/70 select-none">{{ $t('ui.files.FileListView.newFolder') }}</span>
       <LoadingSpinner class="text-sm text-base-content/70 shrink-0" />
     </div>
@@ -96,8 +96,8 @@ function fileExt(name: string): string {
         <Checkbox :model-value="selected.has(entry.path)" tabindex="-1" aria-hidden="true" class="pointer-events-none" />
       </div>
 
-      <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-      <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 text-base-content/70 shrink-0" aria-hidden="true" />
+      <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
+      <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 shrink-0" aria-hidden="true" />
 
       <template v-if="renamingPath === entry.path">
         <Input
@@ -152,7 +152,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5" colspan="3">
           <div class="flex items-center gap-2.5 min-w-0">
-            <FileTypeIcon :name="t.name" class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
+            <FileTypeIcon :name="t.name" plain class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
             <span class="text-sm truncate select-none"
               :class="t.status === 'error' ? 'text-error' : 'text-base-content/80'">
               {{ t.name }}
@@ -169,7 +169,7 @@ function fileExt(name: string): string {
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
-            <FolderIcon class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+            <FileTypeIcon name="" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
             <span class="text-base-content/70 text-sm italic select-none">{{ $t('ui.files.FileListView.newFolder') }}</span>
             <LoadingSpinner class="text-sm text-base-content/70 shrink-0" />
           </div>
@@ -216,8 +216,8 @@ function fileExt(name: string): string {
         <!-- Name -->
         <TableCell class="px-3 py-2.5">
           <div class="flex items-center gap-2.5">
-            <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-            <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 text-base-content/70 shrink-0" aria-hidden="true" />
+            <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
+            <FileTypeIcon v-else :name="entry.name" class="w-4 h-4 shrink-0" aria-hidden="true" />
 
             <template v-if="renamingPath === entry.path">
               <Input

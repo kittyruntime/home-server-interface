@@ -37,7 +37,7 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
             <SidebarMenu :aria-label="t('ui.files.PlacesSidebar.places')">
               <SidebarMenuItem v-for="place in places" :key="place.id">
                 <SidebarMenuButton :is-active="!sharedActive && activePlaceId === place.id" :aria-current="!sharedActive && activePlaceId === place.id ? 'page' : undefined" @click.stop="$emit('select', place)">
-                  <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm" />
+                  <PlaceIcon :icon="place.icon" :root="place.id === '__root__'" class="size-4 text-sm text-base-content/70" />
                   <span>{{ place.name }}</span>
                 </SidebarMenuButton>
                 <SidebarMenuAction show-on-hover :aria-label="`Properties of ${place.name}`" @click.stop="$emit('openProperties', place)">

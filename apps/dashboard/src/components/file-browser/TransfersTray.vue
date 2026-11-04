@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, PauseIcon, PlayIcon, SquareIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { LOADING } from '../../lib/loading'
@@ -146,10 +145,10 @@ function handleReselectPick(e: Event) {
       </Button>
 
       <!-- Mini overall progress bar -->
-      <div v-if="activeCount > 0" class="flex-1 h-1 bg-base-200 rounded-full overflow-hidden">
-        <div v-if="overallPct !== null" class="h-full bg-primary rounded-full transition-all" :style="{ width: overallPct + '%' }" />
-        <div v-else class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
-      </div>
+      <template v-if="activeCount > 0">
+        <progress v-if="overallPct !== null" class="progress progress-primary h-1 flex-1" :value="overallPct" max="100" />
+        <progress v-else class="progress progress-primary h-1 flex-1" />
+      </template>
       <div v-else class="flex-1" />
 
       <Button variant="link"
@@ -166,7 +165,7 @@ function handleReselectPick(e: Event) {
       <div v-for="t in reversedTasks" :key="t.id" class="px-3.5 py-2.5">
         <div class="flex items-center gap-2.5 min-w-0">
           <!-- Icon -->
-          <div class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center" :class="iconClass(t)">
+          <div class="shrink-0 w-6 h-6 rounded-field flex items-center justify-center" :class="iconClass(t)">
             <CheckIcon v-if="t.status === 'done'" class="w-3.5 h-3.5" aria-hidden="true" />
             <XIcon v-else-if="t.status === 'error'" class="w-3.5 h-3.5" aria-hidden="true" />
             <CopyIcon v-else-if="t.kind === 'copy'" class="w-3.5 h-3.5" aria-hidden="true" />
@@ -182,8 +181,8 @@ function handleReselectPick(e: Event) {
             </div>
 
             <!-- Determinate bar (uploads: sentBytes/totalBytes) -->
-            <Progress v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
-              class="mt-1.5 h-1 bg-base-200 rounded-full" :model-value="pct(t)" :indicator-class="['rounded-full transition-all', t.status === 'paused' ? 'bg-warning' : 'bg-primary']" />
+            <progress v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'paused')"
+              :class="['progress mt-1.5 h-1 w-full block', t.status === 'paused' ? 'progress-warning' : 'progress-primary']" :value="pct(t)" max="100" />
 
             <!-- Verifying (server-side checksum before atomic rename) -->
             <div v-else-if="t.status === 'verifying'" class="mt-1">
@@ -191,10 +190,7 @@ function handleReselectPick(e: Event) {
             </div>
 
             <!-- Indeterminate bar (copy/move in progress) -->
-            <div v-else-if="t.kind !== 'upload' && t.status === 'running'"
-              class="mt-1.5 h-1 bg-base-200 rounded-full overflow-hidden">
-              <div class="h-full w-1/3 bg-primary rounded-full animate-[tray-slide_1.2s_ease-in-out_infinite]" />
-            </div>
+            <progress v-else-if="t.kind !== 'upload' && t.status === 'running'" class="progress progress-primary mt-1.5 h-1 w-full block" />
 
             <!-- Speed (uploads only) -->
             <div v-if="t.kind === 'upload' && t.status === 'uploading' && (t.bytesPerSec ?? 0) > 0"
@@ -237,12 +233,3 @@ function handleReselectPick(e: Event) {
     <input ref="reselectInput" type="file" class="hidden" @change="handleReselectPick" />
   </div>
 </template>
-
-<!-- Non-scoped: the keyframe name must stay un-mangled so the Tailwind arbitrary
-     class `animate-[tray-slide_…]` (emitted globally) can resolve it. -->
-<style>
-@keyframes tray-slide {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
-}
-</style>
