@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -272,6 +274,11 @@ func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 	if dst == placeRoot || !strings.HasPrefix(dst, placeRoot+"/") || trashInside(placeRoot, dst) {
 		return "", &fsError{Code: "EACCES", Message: "an item is restored inside its place"}
 	}
+	// The info file is writable by the place's writers: never trust its path
+	// past a symlink.
+	if err := rejectSymlinkComponents(placeRoot, dst); err != nil {
+		return "", &fsError{Code: "EACCES", Message: "the destination goes through a symlink"}
+	}
 	if _, err := os.Lstat(dst); err == nil {
 		return "", &fsError{Code: "EEXIST", Message: "something already exists at " + dst}
 	}
@@ -287,35 +294,35 @@ func doTrashRestore(placeRoot, id, target string) (string, *fsError) {
 
 // doTrashDelete removes items for good; no ids empties the trash.
 func doTrashDelete(placeRoot string, ids []string) *fsError {
-	_, files, info := trashDirs(filepath.Clean(placeRoot))
+	files, info, ok, fe := trashFds(placeRoot)
+	if fe != nil || !ok {
+		return fe
+	}
+	defer unix.Close(files)
+	defer unix.Close(info)
 	if len(ids) == 0 {
-		names, err := os.ReadDir(info)
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
+		names, err := dirNames(info)
 		if err != nil {
 			return mapOsErr(err)
 		}
-		for _, d := range names {
-			if id, ok := strings.CutSuffix(d.Name(), trashInfoExt); ok {
+		for _, n := range names {
+			if id, ok := strings.CutSuffix(n, trashInfoExt); ok {
 				ids = append(ids, id)
 			}
 		}
 		// Items left without an info file go too.
-		if items, err := os.ReadDir(files); err == nil {
-			for _, d := range items {
-				ids = append(ids, d.Name())
-			}
+		if items, err := dirNames(files); err == nil {
+			ids = append(ids, items...)
 		}
 	}
 	for _, id := range ids {
 		if !validTrashID(id) {
 			return &fsError{Code: "ERR", Message: "invalid trash item"}
 		}
-		if err := os.RemoveAll(filepath.Join(files, id)); err != nil {
+		if err := removeAllAt(files, id); err != nil {
 			return mapOsErr(err)
 		}
-		if err := os.Remove(filepath.Join(info, id+trashInfoExt)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err := unix.Unlinkat(info, id+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
 			return mapOsErr(err)
 		}
 	}
@@ -325,31 +332,37 @@ func doTrashDelete(placeRoot string, ids []string) *fsError {
 // doTrashPurge removes items deleted before cutoff, and info files whose item
 // is gone. It returns how many items it removed.
 func doTrashPurge(placeRoot string, cutoff time.Time) (int, *fsError) {
-	_, files, info := trashDirs(filepath.Clean(placeRoot))
-	names, err := os.ReadDir(info)
-	if errors.Is(err, os.ErrNotExist) {
-		return 0, nil
+	files, info, ok, fe := trashFds(placeRoot)
+	if fe != nil || !ok {
+		return 0, fe
 	}
+	defer unix.Close(files)
+	defer unix.Close(info)
+	names, err := dirNames(info)
 	if err != nil {
 		return 0, mapOsErr(err)
 	}
 	removed := 0
-	for _, d := range names {
-		id, ok := strings.CutSuffix(d.Name(), trashInfoExt)
+	for _, n := range names {
+		id, ok := strings.CutSuffix(n, trashInfoExt)
 		if !ok || !validTrashID(id) {
 			continue
 		}
-		ti, fe := readTrashInfo(info, id)
-		_, statErr := os.Lstat(filepath.Join(files, id))
-		orphan := errors.Is(statErr, os.ErrNotExist)
+		ti, fe := readTrashInfoAt(info, id)
+		var st unix.Stat_t
+		statErr := unix.Fstatat(files, id, &st, unix.AT_SYMLINK_NOFOLLOW)
+		orphan := errors.Is(statErr, unix.ENOENT)
 		if fe == nil && !orphan && !ti.DeletedAt.Before(cutoff) {
 			continue
 		}
 		if fe != nil && !orphan {
 			continue // unreadable info for a present item: leave it for a person to decide
 		}
-		if err := doTrashDelete(placeRoot, []string{id}); err != nil {
-			return removed, err
+		if err := removeAllAt(files, id); err != nil {
+			return removed, mapOsErr(err)
+		}
+		if err := unix.Unlinkat(info, id+trashInfoExt, 0); err != nil && !errors.Is(err, unix.ENOENT) {
+			return removed, mapOsErr(err)
 		}
 		if !orphan {
 			removed++
@@ -460,4 +473,111 @@ func rejectTrashSymlink(placeRoot string) *fsError {
 		}
 	}
 	return nil
+}
+
+// ── symlink-proof removal ────────────────────────────────────────────────────
+// Emptying and purging run as root, inside folders place writers can change.
+// The trash folders are opened without following any symlink, and every
+// removal is relative to them, never following one either: swapping a folder
+// for a link between a check and a removal can only make the removal fail.
+
+func openTrashDir(path string) (int, error) {
+	fd, err := unix.Openat2(unix.AT_FDCWD, path, &unix.OpenHow{
+		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC,
+		Resolve: unix.RESOLVE_NO_SYMLINKS,
+	})
+	if errors.Is(err, unix.ENOSYS) {
+		if real, rerr := filepath.EvalSymlinks(path); rerr != nil || real != path {
+			return -1, &os.PathError{Op: "open", Path: path, Err: unix.ELOOP}
+		}
+		fd, err = unix.Open(path, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	}
+	if err != nil {
+		return -1, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	return fd, nil
+}
+
+// removeAllAt removes name under dirfd and everything inside it.
+func removeAllAt(dirfd int, name string) error {
+	err := unix.Unlinkat(dirfd, name, 0)
+	if err == nil || errors.Is(err, unix.ENOENT) {
+		return nil
+	}
+	if !errors.Is(err, unix.EISDIR) && !errors.Is(err, unix.EPERM) {
+		return err
+	}
+	fd, err := unix.Openat(dirfd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	dir := os.NewFile(uintptr(fd), name)
+	names, rerr := dir.Readdirnames(-1)
+	if rerr == nil {
+		for _, n := range names {
+			if err := removeAllAt(fd, n); err != nil {
+				dir.Close()
+				return err
+			}
+		}
+	}
+	dir.Close()
+	if rerr != nil {
+		return rerr
+	}
+	return unix.Unlinkat(dirfd, name, unix.AT_REMOVEDIR)
+}
+
+// readTrashInfoAt reads an info file relative to the info folder, refusing a symlink.
+func readTrashInfoAt(infoFd int, id string) (trashInfo, *fsError) {
+	fd, err := unix.Openat(infoFd, id+trashInfoExt, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return trashInfo{}, mapOsErr(err)
+	}
+	f := os.NewFile(uintptr(fd), id+trashInfoExt)
+	defer f.Close()
+	if fi, err := f.Stat(); err != nil || !fi.Mode().IsRegular() || fi.Size() > 64*1024 {
+		return trashInfo{}, &fsError{Code: "ERR", Message: "not a trash info file"}
+	}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return trashInfo{}, mapOsErr(err)
+	}
+	ti, perr := parseTrashInfo(string(data))
+	if perr != nil {
+		return trashInfo{}, &fsError{Code: "ERR", Message: perr.Error()}
+	}
+	return ti, nil
+}
+
+// trashFds opens the files and info folders of a place's trash; ok is false
+// when there is no trash yet.
+func trashFds(placeRoot string) (files, info int, ok bool, fe *fsError) {
+	_, filesPath, infoPath := trashDirs(filepath.Clean(placeRoot))
+	ffd, err := openTrashDir(filesPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return -1, -1, false, nil
+	}
+	if err != nil {
+		return -1, -1, false, mapOsErr(err)
+	}
+	ifd, err := openTrashDir(infoPath)
+	if err != nil {
+		unix.Close(ffd)
+		if errors.Is(err, os.ErrNotExist) {
+			return -1, -1, false, nil
+		}
+		return -1, -1, false, mapOsErr(err)
+	}
+	return ffd, ifd, true, nil
+}
+
+func dirNames(fd int) ([]string, error) {
+	dup, err := unix.Dup(fd)
+	if err != nil {
+		return nil, err
+	}
+	d := os.NewFile(uintptr(dup), "trash")
+	defer d.Close()
+	return d.Readdirnames(-1)
 }

@@ -165,3 +165,51 @@ func TestTrashSymlinkRefused(t *testing.T) {
 		t.Error("moving into a symlinked trash must fail")
 	}
 }
+
+func TestTrashEmptyNeverFollowsASwappedFolder(t *testing.T) {
+	root := newPlace(t)
+	if _, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now()); fe != nil {
+		t.Fatal(fe)
+	}
+	// A writer swaps the trash's files folder for a link to data elsewhere.
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "precious"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, files, _ := trashDirs(root)
+	if err := os.RemoveAll(files); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, files); err != nil {
+		t.Fatal(err)
+	}
+	if fe := doTrashDelete(root, nil); fe == nil {
+		t.Error("emptying through a symlinked folder must fail")
+	}
+	if _, fe := doTrashPurge(root, time.Now().Add(time.Hour)); fe == nil {
+		t.Error("purging through a symlinked folder must fail")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "precious")); err != nil {
+		t.Fatal("data outside the trash was removed")
+	}
+}
+
+func TestTrashRestoreRefusesASymlinkedParent(t *testing.T) {
+	root := newPlace(t)
+	if _, fe := doTrash(root, filepath.Join(root, "docs", "a.txt"), "", time.Now()); fe != nil {
+		t.Fatal(fe)
+	}
+	outside := t.TempDir()
+	if err := os.RemoveAll(filepath.Join(root, "docs")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "docs")); err != nil {
+		t.Fatal(err)
+	}
+	if _, fe := doTrashRestore(root, "a.txt", ""); fe == nil {
+		t.Error("a restore through a symlinked folder must be refused")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "a.txt")); err == nil {
+		t.Error("the item was restored outside the place")
+	}
+}

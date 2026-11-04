@@ -39,7 +39,10 @@ export const trashRouter = router({
     .mutation(async ({ ctx, input }) => {
       const place = await trashPlace(ctx, input.placeId)
       ctx.audit.target = `${place.name}: ${input.id}`
-      if (input.target) await checkPathPerm(ctx, input.target, "canWrite")
+      // Restoring writes in the place: the worker keeps the item inside it,
+      // whatever path its info file names.
+      await checkPathPerm(ctx, input.target ?? place.path, "canWrite")
+      if (input.target) await checkPathPerm(ctx, place.path, "canWrite")
       try {
         return await trashRequest<{ path: string }>({
           op: "restore", placeRoot: place.path, ids: [input.id], target: input.target ?? "",
