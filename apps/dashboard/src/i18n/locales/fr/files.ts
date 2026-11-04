@@ -1,6 +1,7 @@
 export default {
   FileListView: {
     paused: 'En pause',
+    folder: 'Dossier',
     newFolder: 'Nouveau dossier…',
     newFile: 'Nouveau fichier…',
     selectAll: 'Tout sélectionner',

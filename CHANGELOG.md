@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sort and display settings in the file manager**: a sort menu (A-Z, Z-A, last
+  modified, first modified, size, type), a choice of columns including a new Type
+  column, a default view, and hidden files, which are hidden unless you turn them
+  on (Ctrl+H). They are kept with your account.
+- **File manager settings in one place**: a Settings entry at the bottom of its
+  sidebar opens Display and Shared links as two tabs.
+
 ### Changed
 - **New folder and file icons**: folders are filled, two-tone and take the theme's
   color; files are tinted by kind (images, videos, audio, archives, code,

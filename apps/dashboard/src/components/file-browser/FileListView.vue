@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { extensionOf, type Column, type SortField } from '../../lib/file-sort'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import SortableHeader from '../ui/SortableHeader.vue'
@@ -12,9 +13,8 @@ import type { Transfer } from '../../lib/uploads'
 
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
-type SortField = 'name' | 'size' | 'date'
 
-defineProps<{
+const props = defineProps<{
   entries: Entry[]
   selected: Set<string>
   renamingPath: string | null
@@ -25,7 +25,11 @@ defineProps<{
   uploadTasks?: Transfer[]
   sortField?: SortField
   sortDir?: 'asc' | 'desc'
+  /** Optional columns shown after the name (#196). */
+  columns?: Column[]
 }>()
+
+const shown = (c: Column) => (props.columns ?? ['size', 'modified']).includes(c)
 
 const emit = defineEmits<{
   rowClick: [entry: Entry, event: MouseEvent]
@@ -53,7 +57,7 @@ function formatSize(bytes: number | null): string {
 
 
 function fileExt(name: string): string {
-  return name.includes('.') ? name.split('.').pop()!.toUpperCase() : ''
+  return extensionOf(name).toUpperCase()
 }
 </script>
 
@@ -138,11 +142,14 @@ function fileExt(name: string): string {
         <TableHead class="px-3 py-2.5 font-medium">
           <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'"  @click="emit('setSort', 'name')">{{ $t('ui.files.FileListView.name') }}</SortableHeader>
         </TableHead>
-        <TableHead class="px-3 py-2.5 font-medium text-right">
+        <TableHead v-if="shown('size')" class="px-3 py-2.5 font-medium text-right">
           <SortableHeader :active="sortField === 'size'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'size')">{{ $t('ui.files.FileListView.size') }}</SortableHeader>
         </TableHead>
-        <TableHead class="px-3 py-2.5 font-medium text-right">
-          <SortableHeader :active="sortField === 'date'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'date')">{{ $t('ui.files.FileListView.modified') }}</SortableHeader>
+        <TableHead v-if="shown('modified')" class="px-3 py-2.5 font-medium text-right">
+          <SortableHeader :active="sortField === 'modified'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'modified')">{{ $t('ui.files.FileListView.modified') }}</SortableHeader>
+        </TableHead>
+        <TableHead v-if="shown('type')" class="px-3 py-2.5 font-medium">
+          <SortableHeader :active="sortField === 'type'" :dir="sortDir ?? 'asc'" @click="emit('setSort', 'type')">{{ $t('files.display.column.type') }}</SortableHeader>
         </TableHead>
       </TableRow>
     </TableHeader>
@@ -150,7 +157,7 @@ function fileExt(name: string): string {
       <!-- Upload rows (progress lives in the Transfers tray; this is a placeholder) -->
       <TableRow v-for="t in uploadTasks" :key="t.id" class="group">
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
-        <TableCell class="px-3 py-2.5" colspan="3">
+        <TableCell class="px-3 py-2.5" :colspan="1 + (columns ?? ['size', 'modified']).length">
           <div class="flex items-center gap-2.5 min-w-0">
             <FileTypeIcon :name="t.name" plain class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
             <span class="text-sm truncate select-none"
@@ -174,7 +181,7 @@ function fileExt(name: string): string {
             <LoadingSpinner class="text-sm text-base-content/70 shrink-0" />
           </div>
         </TableCell>
-        <TableCell /><TableCell />
+        <TableCell v-for="c in (columns ?? ['size', 'modified'])" :key="c" />
       </TableRow>
 
       <!-- Ghost row while creating a file -->
@@ -187,7 +194,7 @@ function fileExt(name: string): string {
             <LoadingSpinner class="text-sm text-base-content/70 shrink-0" />
           </div>
         </TableCell>
-        <TableCell /><TableCell />
+        <TableCell v-for="c in (columns ?? ['size', 'modified'])" :key="c" />
       </TableRow>
 
       <TableRow
@@ -259,11 +266,12 @@ function fileExt(name: string): string {
           </div>
         </TableCell>
 
-        <TableCell class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">
+        <TableCell v-if="shown('size')" class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">
           <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm ml-auto text-base-content/70" />
           <template v-else>{{ formatSize(entry.size) }}</template>
         </TableCell>
-        <TableCell class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">{{ formatDay(entry.mtime) }}</TableCell>
+        <TableCell v-if="shown('modified')" class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">{{ formatDay(entry.mtime) }}</TableCell>
+        <TableCell v-if="shown('type')" class="px-3 py-2.5 text-base-content/70 text-xs">{{ entry.type === 'dir' ? $t('ui.files.FileListView.folder') : (fileExt(entry.name) || '-') }}</TableCell>
       </TableRow>
     </TableBody>
   </Table>

@@ -28,6 +28,10 @@ import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
+import DisplaySettings from './DisplaySettings.vue'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useFilePrefs } from '../../lib/file-prefs'
+import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
 import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -52,7 +56,6 @@ const { openFilePreview } = useDesktop()
 const currentPath     = ref<string | null>(null)
 const entries         = ref<Entry[]>([])
 const dbPlaces        = ref<Place[]>([])
-const viewMode        = ref<'list' | 'grid'>('list')
 const loading         = ref(false)
 const error           = ref('')
 const selected        = ref<Set<string>>(new Set())
@@ -71,7 +74,9 @@ const dragOver        = ref(false)
 let   dragDepth = 0
 const fileInput = ref<HTMLInputElement | null>(null)
 const sidebarOpen = ref(false)
-const showShared = ref(false)
+// The file manager's settings (shared links, display) replace the files while open.
+const settingsTab = ref<'display' | 'shared' | null>(null)
+const showShared = computed(() => settingsTab.value !== null)
 const previewEntry = ref<Entry | null>(null)
 
 // ── search ────────────────────────────────────────────────────────────────────
@@ -117,10 +122,11 @@ watch(activePlaceId, () => {
   searchResults.value = []
 })
 
-// ── sort ─────────────────────────────────────────────────────────────────────
-type SortField = 'name' | 'size' | 'date'
-const sortField = ref<SortField>('name')
-const sortDir   = ref<'asc' | 'desc'>('asc')
+// ── sort and hidden files (#196): per-account display preferences ───────────
+const { filePrefs, setFilePrefs, setSort } = useFilePrefs()
+const viewMode = computed(() => filePrefs.value.view)
+const sortField = computed(() => filePrefs.value.sortField)
+const sortDir = computed(() => filePrefs.value.sortDir)
 
 const activeUploads = computed(() =>
   uploads.tasks.value.filter(
@@ -128,30 +134,12 @@ const activeUploads = computed(() =>
   )
 )
 
-const sortedEntries = computed(() => {
-  const arr = [...entries.value]
-  arr.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
-    let cmp: number
-    if (sortField.value === 'name') {
-      cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    } else if (sortField.value === 'size') {
-      cmp = (a.size ?? -1) - (b.size ?? -1)
-    } else {
-      cmp = new Date(a.mtime).getTime() - new Date(b.mtime).getTime()
-    }
-    return sortDir.value === 'asc' ? cmp : -cmp
-  })
-  return arr
-})
+const sortedEntries = computed(() =>
+  sortEntries(visibleEntries(entries.value, filePrefs.value.showHidden), { field: sortField.value, dir: sortDir.value }),
+)
 
-function setSort(field: SortField) {
-  if (sortField.value === field) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortField.value = field
-    sortDir.value = 'asc'
-  }
+function onHeaderSort(field: SortField) {
+  setSort(headerSort({ field: sortField.value, dir: sortDir.value }, field))
 }
 
 // ── filter (Cmd/Ctrl+K) ──────────────────────────────────────────────────────
@@ -176,6 +164,15 @@ function closeFilter() {
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
+  // Ctrl+H shows or hides dotfiles, as in desktop file managers.
+  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
+    const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
+    if (tag !== 'input' && tag !== 'textarea') {
+      e.preventDefault()
+      setFilePrefs({ showHidden: !filePrefs.value.showHidden })
+      return
+    }
+  }
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     if (showShared.value) return
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
@@ -236,19 +233,19 @@ const breadcrumbs = computed((): Crumb[] => {
 })
 
 // ── navigation ───────────────────────────────────────────────────────────────
-function openShared() {
+function openSettings(tab: 'display' | 'shared' = 'display') {
   handleSearch('')
   closeFilter()
-  showShared.value = true
+  settingsTab.value = tab
   sidebarOpen.value = false
 }
 
 function selectPlace(place: Place) {
   if (showShared.value && place.id === activePlaceId.value) {
-    showShared.value = false
+    settingsTab.value = null
     return
   }
-  showShared.value = false
+  settingsTab.value = null
   activePlaceId.value = place.id
   selected.value = new Set()
   navigate(place.path)
@@ -596,15 +593,15 @@ onMounted(async () => {
       ]"
       :places="allPlaces"
       :active-place-id="activePlaceId"
-      :shared-active="showShared"
-      @open-shared="openShared"
+      :settings-active="showShared"
+      @open-settings="openSettings()"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
 
     <div class="flex-1 flex flex-col min-w-0">
 
-      <!-- Shared links replace the files while selected -->
+      <!-- Settings (display, shared links) replace the files while open -->
       <template v-if="showShared">
         <div class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11 sm:hidden" @click.stop>
           <Button variant="ghost" size="icon-sm" @click="sidebarOpen = !sidebarOpen" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
@@ -613,7 +610,17 @@ onMounted(async () => {
           </Button>
         </div>
         <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
-          <SharedLinksSection class="max-w-2xl" />
+          <div class="max-w-2xl">
+            <h2 class="mb-4 text-lg font-semibold">{{ t('ui.files.PlacesSidebar.settings') }}</h2>
+            <Tabs :model-value="settingsTab ?? 'display'" @update:model-value="v => settingsTab = v === 'shared' ? 'shared' : 'display'">
+              <TabsList :aria-label="t('ui.files.PlacesSidebar.settings')" class="mb-6">
+                <TabsTrigger value="display">{{ t('files.display.title') }}</TabsTrigger>
+                <TabsTrigger value="shared">{{ t('ui.files.PlacesSidebar.sharedLinks') }}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="display"><DisplaySettings /></TabsContent>
+              <TabsContent value="shared"><SharedLinksSection /></TabsContent>
+            </Tabs>
+          </div>
         </div>
       </template>
 
@@ -642,7 +649,8 @@ onMounted(async () => {
         @upload-click="fileInput?.click()"
         @paste="doPaste"
         @refresh="refresh"
-        @update:view-mode="viewMode = $event"
+        @update:view-mode="setFilePrefs({ view: $event })"
+        @open-display-settings="openSettings('display')"
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @search="handleSearch"
       />
@@ -763,7 +771,8 @@ onMounted(async () => {
             :entries="displayEntries"
             :sort-field="sortField"
             :sort-dir="sortDir"
-            @set-sort="setSort"
+            :columns="filePrefs.columns"
+            @set-sort="onHeaderSort"
             :selected="selected"
             :renaming-path="renamingPath"
             :rename-value="renameValue"
