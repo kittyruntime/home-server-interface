@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.80.1] - 2026-11-04
+
 ### Changed
 - **Faster VM test of a failing volume**: it waits seconds instead of minutes for
   HSI to react.
@@ -1955,7 +1957,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...HEAD
+[1.80.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.0...v1.80.1
 [1.80.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.3...v1.80.0
 [1.79.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.2...v1.79.3
 [1.79.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.1...v1.79.2
