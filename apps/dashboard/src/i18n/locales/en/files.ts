@@ -2,6 +2,7 @@
 export default {
   FileListView: {
     paused: 'Paused',
+    folder: 'Folder',
     newFolder: 'New Folder…',
     newFile: 'New File…',
     selectAll: 'Select all',

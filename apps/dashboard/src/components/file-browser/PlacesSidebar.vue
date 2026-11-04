@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { InfoIcon, LinkIcon } from '@lucide/vue'
+import { InfoIcon, LinkIcon, SlidersHorizontalIcon } from '@lucide/vue'
 import PlaceIcon from '../PlaceIcon.vue'
 import {
   Sidebar,
@@ -24,7 +24,7 @@ defineProps<{
   sharedActive?: boolean
 }>()
 
-defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared: [] }>()
+defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared: []; openDisplaySettings: [] }>()
 </script>
 
 <template>
@@ -59,6 +59,12 @@ defineEmits<{ select: [place: Place]; openProperties: [place: Place]; openShared
                 <SidebarMenuButton :is-active="sharedActive" :aria-current="sharedActive ? 'page' : undefined" @click.stop="$emit('openShared')">
                   <LinkIcon class="size-4" aria-hidden="true" />
                   <span>{{ t('ui.files.PlacesSidebar.sharedLinks') }}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton @click.stop="$emit('openDisplaySettings')">
+                  <SlidersHorizontalIcon class="size-4" aria-hidden="true" />
+                  <span>{{ t('files.display.title') }}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

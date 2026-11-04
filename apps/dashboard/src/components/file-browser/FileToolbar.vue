@@ -9,6 +9,7 @@ import { ref, nextTick } from 'vue'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import SortMenu from './SortMenu.vue'
 
 const { t } = useI18n()
 
@@ -44,6 +45,7 @@ const emit = defineEmits<{
   refresh: []
   'update:viewMode': [mode: 'list' | 'grid']
   toggleSidebar: []
+  openDisplaySettings: []
   search: [query: string]
 }>()
 
@@ -187,6 +189,9 @@ async function openSearch() {
         class="text-base-content/70 hover:text-base-content">
         <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
+
+      <!-- Sort and hidden files (#196) -->
+      <SortMenu @open-display-settings="emit('openDisplaySettings')" />
 
       <!-- View toggle -->
       <ToggleGroup

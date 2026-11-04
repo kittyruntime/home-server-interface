@@ -28,6 +28,15 @@ const zPreferences = z.object({
     radius: z.number().int().min(0).max(4).optional().catch(undefined),
     density: z.string().max(16).optional().catch(undefined),
   }).optional().catch(undefined),
+  // File manager display (#196). Each field falls back on its own, so one bad
+  // value never drops the others.
+  fileManager: z.object({
+    sortField: z.enum(["name", "modified", "size", "type"]).optional().catch(undefined),
+    sortDir: z.enum(["asc", "desc"]).optional().catch(undefined),
+    columns: z.array(z.enum(["size", "modified", "type"])).max(3).optional().catch(undefined),
+    showHidden: z.boolean().optional().catch(undefined),
+    view: z.enum(["list", "grid"]).optional().catch(undefined),
+  }).optional().catch(undefined),
 })
 type Prefs = z.infer<typeof zPreferences>
 
@@ -43,6 +52,9 @@ export function mergePrefs(stored: Prefs, input: Prefs): Prefs {
   const merged: Prefs = { ...stored, ...defined(input) }
   if (input.appearance !== undefined) {
     merged.appearance = { ...stored.appearance, ...defined(input.appearance) }
+  }
+  if (input.fileManager !== undefined) {
+    merged.fileManager = { ...stored.fileManager, ...defined(input.fileManager) }
   }
   return merged
 }

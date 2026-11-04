@@ -66,6 +66,26 @@ async function testAppearancePreferences() {
 }
 await testAppearancePreferences()
 
+async function testFileManagerPreferences() {
+  const { parsePrefs, mergePrefs } = await import("../trpc/routers/user")
+  assert.deepEqual(
+    parsePrefs({ fileManager: { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, view: "grid" } }).fileManager,
+    { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, view: "grid" },
+  )
+  const bad = parsePrefs({ locale: "fr", fileManager: { sortField: "colour", columns: ["owner"], showHidden: "yes", view: "grid" } })
+  assert.equal(bad.locale, "fr")
+  assert.equal(bad.fileManager?.view, "grid")
+  assert.equal(bad.fileManager?.sortField, undefined)
+  assert.equal(bad.fileManager?.columns, undefined)
+  assert.equal(bad.fileManager?.showHidden, undefined)
+  assert.equal(parsePrefs({ locale: "fr", fileManager: "garbage" }).locale, "fr")
+  assert.deepEqual(
+    mergePrefs({ fileManager: { sortField: "size", showHidden: true } }, parsePrefs({ fileManager: { showHidden: false } })).fileManager,
+    { sortField: "size", showHidden: false },
+  )
+}
+await testFileManagerPreferences()
+
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)
   const user = await authenticateSession(`Bearer ${token}`, async () => ({

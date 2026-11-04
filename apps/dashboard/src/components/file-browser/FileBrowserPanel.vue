@@ -28,6 +28,9 @@ import FileListView from './FileListView.vue'
 import FileGridView from './FileGridView.vue'
 import FilePreviewModal from './preview/FilePreviewModal.vue'
 import FilePropertiesModal from './FilePropertiesModal.vue'
+import DisplaySettingsModal from './DisplaySettingsModal.vue'
+import { useFilePrefs } from '../../lib/file-prefs'
+import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
 import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -52,7 +55,6 @@ const { openFilePreview } = useDesktop()
 const currentPath     = ref<string | null>(null)
 const entries         = ref<Entry[]>([])
 const dbPlaces        = ref<Place[]>([])
-const viewMode        = ref<'list' | 'grid'>('list')
 const loading         = ref(false)
 const error           = ref('')
 const selected        = ref<Set<string>>(new Set())
@@ -117,10 +119,12 @@ watch(activePlaceId, () => {
   searchResults.value = []
 })
 
-// ── sort ─────────────────────────────────────────────────────────────────────
-type SortField = 'name' | 'size' | 'date'
-const sortField = ref<SortField>('name')
-const sortDir   = ref<'asc' | 'desc'>('asc')
+// ── sort and hidden files (#196): per-account display preferences ───────────
+const { filePrefs, setFilePrefs, setSort } = useFilePrefs()
+const viewMode = computed(() => filePrefs.value.view)
+const sortField = computed(() => filePrefs.value.sortField)
+const sortDir = computed(() => filePrefs.value.sortDir)
+const showDisplaySettings = ref(false)
 
 const activeUploads = computed(() =>
   uploads.tasks.value.filter(
@@ -128,30 +132,12 @@ const activeUploads = computed(() =>
   )
 )
 
-const sortedEntries = computed(() => {
-  const arr = [...entries.value]
-  arr.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
-    let cmp: number
-    if (sortField.value === 'name') {
-      cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    } else if (sortField.value === 'size') {
-      cmp = (a.size ?? -1) - (b.size ?? -1)
-    } else {
-      cmp = new Date(a.mtime).getTime() - new Date(b.mtime).getTime()
-    }
-    return sortDir.value === 'asc' ? cmp : -cmp
-  })
-  return arr
-})
+const sortedEntries = computed(() =>
+  sortEntries(visibleEntries(entries.value, filePrefs.value.showHidden), { field: sortField.value, dir: sortDir.value }),
+)
 
-function setSort(field: SortField) {
-  if (sortField.value === field) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortField.value = field
-    sortDir.value = 'asc'
-  }
+function onHeaderSort(field: SortField) {
+  setSort(headerSort({ field: sortField.value, dir: sortDir.value }, field))
 }
 
 // ── filter (Cmd/Ctrl+K) ──────────────────────────────────────────────────────
@@ -176,6 +162,15 @@ function closeFilter() {
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
+  // Ctrl+H shows or hides dotfiles, as in desktop file managers.
+  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
+    const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
+    if (tag !== 'input' && tag !== 'textarea') {
+      e.preventDefault()
+      setFilePrefs({ showHidden: !filePrefs.value.showHidden })
+      return
+    }
+  }
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     if (showShared.value) return
     const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase()
@@ -598,6 +593,7 @@ onMounted(async () => {
       :active-place-id="activePlaceId"
       :shared-active="showShared"
       @open-shared="openShared"
+      @open-display-settings="showDisplaySettings = true"
       @select="selectPlace($event); sidebarOpen = false"
       @open-properties="propertiesPlace = $event"
     />
@@ -642,7 +638,8 @@ onMounted(async () => {
         @upload-click="fileInput?.click()"
         @paste="doPaste"
         @refresh="refresh"
-        @update:view-mode="viewMode = $event"
+        @update:view-mode="setFilePrefs({ view: $event })"
+        @open-display-settings="showDisplaySettings = true"
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @search="handleSearch"
       />
@@ -763,7 +760,8 @@ onMounted(async () => {
             :entries="displayEntries"
             :sort-field="sortField"
             :sort-dir="sortDir"
-            @set-sort="setSort"
+            :columns="filePrefs.columns"
+            @set-sort="onHeaderSort"
             :selected="selected"
             :renaming-path="renamingPath"
             :rename-value="renameValue"
@@ -851,6 +849,8 @@ onMounted(async () => {
     :entry="previewEntry"
     @close="previewEntry = null"
   />
+
+  <DisplaySettingsModal v-if="showDisplaySettings" @close="showDisplaySettings = false" />
 
   <FilePropertiesModal
     v-if="propertiesEntry"
