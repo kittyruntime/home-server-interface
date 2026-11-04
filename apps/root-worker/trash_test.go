@@ -6,6 +6,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // newPlace makes a place with the calling user's trash folders prepared, as
@@ -244,7 +246,7 @@ func TestTrashIsPrivateToItsUser(t *testing.T) {
 	if err := os.Chmod(info, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, fe := ensureUserTrash(root, currentUID()); fe == nil {
+	if _, _, _, fe := trashFds(root, currentUID()); fe == nil {
 		t.Error("a trash folder others can read must be refused")
 	}
 	// Another user's folder is out of reach of this one's operations.
@@ -300,5 +302,33 @@ func TestPrepareUserTrashAsRoot(t *testing.T) {
 	fi, _ := os.Stat(files)
 	if st := fi.Sys().(*syscall.Stat_t); st.Uid != 1000 || fi.Mode().Perm() != 0o700 {
 		t.Errorf("files folder = uid %d mode %v", st.Uid, fi.Mode().Perm())
+	}
+}
+
+func TestTrashIgnoresAFolderSwappedAfterTheCheck(t *testing.T) {
+	root := newPlace(t)
+	files, info, ok, fe := trashFds(root, currentUID())
+	if fe != nil || !ok {
+		t.Fatal(fe)
+	}
+	defer unix.Close(files)
+	defer unix.Close(info)
+	// Someone renames the trash away and puts their own in its place: the
+	// folders already opened are still the real ones.
+	if err := os.Rename(trashRoot(root), filepath.Join(root, "moved")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(trashRoot(root), currentUID(), "files"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Mkdirat(files, "probe", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "moved", currentUID(), "files", "probe")); err != nil {
+		t.Error("work relative to the opened folder must land in the real trash")
+	}
+	// A fresh open refuses the planted folder (wrong mode).
+	if _, _, _, fe := trashFds(root, currentUID()); fe == nil {
+		t.Error("a planted trash folder must be refused")
 	}
 }
