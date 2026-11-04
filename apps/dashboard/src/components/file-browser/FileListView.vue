@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { endFileDrag, useFolderDrop } from '../../lib/file-drag'
 import { extensionOf, type Column, type SortField } from '../../lib/file-sort'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,8 @@ const props = defineProps<{
 const shown = (c: Column) => (props.columns ?? ['size', 'modified']).includes(c)
 
 const emit = defineEmits<{
+  dragStart: [entry: Entry, event: DragEvent]
+  dropInto: [dir: string, paths: string[]]
   rowClick: [entry: Entry, event: MouseEvent]
   rowDblClick: [entry: Entry]
   selectEntry: [entry: Entry, event: MouseEvent]
@@ -45,6 +48,10 @@ const emit = defineEmits<{
   openFile: [entry: Entry]
   setSort: [field: SortField]
 }>()
+
+// Folders take items dragged onto them (moved there).
+const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+
 
 function formatSize(bytes: number | null): string {
   if (bytes === null) return '-'
@@ -200,6 +207,12 @@ function fileExt(name: string): string {
       <TableRow
         v-for="entry in entries"
         :key="entry.path"
+        :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
+        @dragstart="emit('dragStart', entry, $event)"
+        @dragend="endFileDrag()"
+        @dragover="entry.type === 'dir' && folderDrop.onDragOver(entry.path, $event)"
+        @dragleave="folderDrop.onDragLeave(entry.path)"
+        @drop="entry.type === 'dir' && folderDrop.onDrop(entry.path, $event)"
         @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
         @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowDblClick', entry)"
         @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
@@ -208,7 +221,8 @@ function fileExt(name: string): string {
           pendingPaths?.includes(entry.path)
             ? 'opacity-40 pointer-events-none'
             : entry.type === 'dir' ? 'cursor-pointer hover:bg-base-200' : 'cursor-default hover:bg-base-200',
-          selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '']"
+          selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '',
+          folderDrop.over.value === entry.path ? 'bg-primary/15 outline-2 -outline-offset-2 outline-primary' : '']"
       >
         <!-- Checkbox -->
         <TableCell class="pl-3 pr-1 py-2.5 w-7" @click.stop>

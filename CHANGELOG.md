@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Faster VM test of a failing volume**: it waits seconds instead of minutes for
+  HSI to react.
+
+- **Activity panel reworked**: new notifications come first with an unread dot,
+  read ones move under Earlier, each shows an icon for its kind and two lines of
+  detail, a click marks one as read, and administrators reach the notification
+  settings from it.
+- **File manager menus in a familiar order, with shortcuts**: the context menu and
+  the toolbar go open and download, cut and copy, rename, share and compress,
+  trash or delete, then permissions and properties. Enter opens, F2 renames,
+  Ctrl+X, Ctrl+C and Ctrl+V cut, copy and paste, Ctrl+A selects everything,
+  Delete removes and Alt+Enter shows the properties; the menu shows them.
+- **Drag and drop inside the file manager**: drag files and folders onto a folder,
+  a place, a bookmark or a folder of the breadcrumb to move them there, and drag
+  a folder onto the Bookmarks group to bookmark it. Files dragged from the
+  computer still upload.
+- **A click selects only what it clicks**: Ctrl or Cmd adds to the selection and
+  Shift selects a range, as in a desktop file manager; the checkboxes still add
+  and remove.
+- **No permanent delete where there is a trash**: in a place with a trash,
+  deleting (the menu, the toolbar, Delete or Shift+Delete) always moves items
+  there; they are deleted for good from the Trash.
+
+### Fixed
+- **Menus opened in the corner or off screen**: the Activity panel, the file
+  manager's sort menu and the place icon picker now open next to their button,
+  and a long menu opened low in the window stays on screen.
+- **Mark all as read did nothing visible**: read notifications stayed listed like
+  new ones and this browser's finished operations kept the badge up; now they
+  move under Earlier and the badge clears.
+
 ## [1.80.0] - 2026-11-04
 
 ### Added

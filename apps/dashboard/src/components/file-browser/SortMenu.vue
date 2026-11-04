@@ -7,6 +7,7 @@ import {
   DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import Tip from '../ui/Tip.vue'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { SORT_CHOICES, choiceFor } from '../../lib/file-sort'
 
@@ -26,12 +27,16 @@ function choose(id: string) {
 
 <template>
   <DropdownMenu>
-    <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="sm" :tooltip="t('files.sort.menu')" :aria-label="t('files.sort.menu')"
-        class="px-2 text-base-content/70 data-[state=open]:bg-base-200 data-[state=open]:text-base-content">
-        <ArrowDownUpIcon aria-hidden="true" />
-      </Button>
-    </DropdownMenuTrigger>
+    <!-- The tooltip wraps the trigger: a Button with its own tooltip is not the
+         root element, so the menu would have nothing to anchor to. -->
+    <Tip :text="t('files.sort.menu')">
+      <DropdownMenuTrigger as-child>
+        <Button variant="ghost" size="sm" :aria-label="t('files.sort.menu')"
+          class="px-2 text-base-content/70 data-[state=open]:bg-base-200 data-[state=open]:text-base-content">
+          <ArrowDownUpIcon aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+    </Tip>
     <DropdownMenuContent align="end" class="min-w-48">
       <DropdownMenuLabel>{{ t('files.sort.title') }}</DropdownMenuLabel>
       <DropdownMenuRadioGroup :model-value="choice" @update:model-value="choose">

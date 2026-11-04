@@ -141,6 +141,8 @@ export default {
   },
   PlaceIconPicker: {
     anyEmoji: 'Any emoji',
+    changeIcon: 'Change icon',
+    changeIconOf: 'Change the icon of {name}',
     use: 'Use',
     useTheFolderIcon: 'Use the folder icon',
   },

@@ -2,10 +2,11 @@
 import { ref, watch } from 'vue'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import NotificationMenu from './NotificationMenu.vue'
+import Tip from './ui/Tip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 /* Activity panel opened from the bell, in the sidebar and in the mobile nav. */
-defineProps<{ side?: 'top' | 'right' }>()
+defineProps<{ side?: 'top' | 'right'; tooltip?: string }>()
 
 const open = ref(false)
 const { refresh } = useSystemNotifications()
@@ -17,10 +18,14 @@ watch(open, value => { if (!value) void refresh() })
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <slot :open="open" />
-    </PopoverTrigger>
-    <PopoverContent :side="side ?? 'right'" align="end" :side-offset="8" class="w-72 overflow-hidden p-0">
+    <!-- The tooltip wraps the trigger: a Button with its own tooltip is not the
+         root element, so the panel would have nothing to anchor to. -->
+    <Tip :text="tooltip">
+      <PopoverTrigger as-child>
+        <slot :open="open" />
+      </PopoverTrigger>
+    </Tip>
+    <PopoverContent :side="side ?? 'right'" align="end" :side-offset="8" class="w-[min(24rem,calc(100vw-1rem))] overflow-hidden p-0">
       <NotificationMenu @close="open = false" />
     </PopoverContent>
   </Popover>

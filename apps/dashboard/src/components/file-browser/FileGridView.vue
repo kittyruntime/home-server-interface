@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { endFileDrag, useFolderDrop } from '../../lib/file-drag'
 import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  dragStart: [entry: Entry, event: DragEvent]
+  dropInto: [dir: string, paths: string[]]
   cardClick: [entry: Entry, event: MouseEvent]
   cardDblClick: [entry: Entry]
   selectEntry: [entry: Entry, event: MouseEvent]
@@ -32,6 +35,10 @@ const emit = defineEmits<{
   'update:renameValue': [value: string]
   openFile: [entry: Entry]
 }>()
+
+// Folders take items dragged onto them (moved there).
+const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+
 
 </script>
 
@@ -86,6 +93,12 @@ const emit = defineEmits<{
     <div
       v-for="entry in entries"
       :key="entry.path"
+      :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
+      @dragstart="emit('dragStart', entry, $event)"
+      @dragend="endFileDrag()"
+      @dragover="entry.type === 'dir' && folderDrop.onDragOver(entry.path, $event)"
+      @dragleave="folderDrop.onDragLeave(entry.path)"
+      @drop="entry.type === 'dir' && folderDrop.onDrop(entry.path, $event)"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardClick', entry, $event)"
       @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('cardDblClick', entry)"
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
@@ -98,6 +111,7 @@ const emit = defineEmits<{
         selected.has(entry.path) && !pendingPaths?.includes(entry.path)
           ? 'bg-primary/10 ring-1 ring-primary'
           : 'hover:bg-base-200',
+        folderDrop.over.value === entry.path ? 'bg-primary/15 ring-2 ring-primary' : '',
       ]"
     >
       <!-- Pending overlay -->

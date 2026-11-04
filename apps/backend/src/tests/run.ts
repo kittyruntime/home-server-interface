@@ -113,6 +113,15 @@ async function testTrashPlaceOf() {
 }
 await testTrashPlaceOf()
 
+async function testVolumeGuardInterval() {
+  const { guardIntervalMs } = await import("../services/volume-guard")
+  assert.equal(guardIntervalMs(undefined), 60_000)
+  assert.equal(guardIntervalMs("5000"), 5000)
+  assert.equal(guardIntervalMs("10"), 60_000)
+  assert.equal(guardIntervalMs("soon"), 60_000)
+}
+await testVolumeGuardInterval()
+
 async function testCurrentAuthorizationWinsOverJwtClaims() {
   const token = signToken("user-1", true, true, ["storage"], false)
   const user = await authenticateSession(`Bearer ${token}`, async () => ({
