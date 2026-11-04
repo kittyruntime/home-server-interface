@@ -502,6 +502,8 @@ trash_feature() {
     || fail "the trashed file is not in the Place's trash: $(vm_ssh 'ls -laR /srv/vm-mirror/.hsi-trash')"
   [[ $(vm_ssh "stat -c %U $dir/files/$name") == vmuser ]] || fail "the trashed file is no longer vmuser's"
   [[ $(vm_ssh "stat -c '%U %a' $dir") == "vmuser 700" ]] || fail "vmuser's trash is $(vm_ssh "stat -c '%U %a' $dir"), expected vmuser's own and private"
+  [[ $(vm_ssh "stat -c '%U %a' /srv/vm-mirror/.hsi-trash") == "root 755" ]] \
+    || fail "the shared trash folder is $(vm_ssh "stat -c '%U %a' /srv/vm-mirror/.hsi-trash"), expected root's and not writable by the Place's writers"
   # The trash is not reachable through the file manager, even by its path.
   API_TOKEN=/root/token-vmuser api_error fs.readText "{\"path\":\"$dir/files/$name\"}" >/dev/null
   API_TOKEN=/root/token-vmuser api_get fs.list '{"path":"/srv/vm-mirror"}' | grep -q '.hsi-trash' && fail "the file manager lists the trash folder"

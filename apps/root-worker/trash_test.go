@@ -3,18 +3,33 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
+// newPlace makes a place with the calling user's trash folders prepared, as
+// prepareUserTrash does as root.
 func newPlace(t *testing.T) string {
 	t.Helper()
+	trashTopOwner = currentUID()
 	root := filepath.Join(t.TempDir(), "place")
 	if err := os.MkdirAll(filepath.Join(root, "docs", "sub"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range []string{"docs/a.txt", "docs/sub/b.txt", "c.txt"} {
 		if err := os.WriteFile(filepath.Join(root, f), []byte(f), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(trashRoot(root), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dir, files, info := userTrash(root, currentUID())
+	for _, d := range []string{dir, files, info} {
+		if err := os.Mkdir(d, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -156,6 +171,9 @@ func TestTrashInfoRoundTrip(t *testing.T) {
 
 func TestTrashSymlinkRefused(t *testing.T) {
 	root := newPlace(t)
+	if err := os.RemoveAll(trashRoot(root)); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, trashDirName)); err != nil {
 		t.Fatal(err)
 	}
@@ -224,9 +242,12 @@ func TestTrashIsPrivateToItsUser(t *testing.T) {
 			t.Errorf("%s mode = %v, want 0700", d, fi.Mode().Perm())
 		}
 	}
-	top, _ := os.Stat(trashRoot(root))
-	if top.Mode()&os.ModeSticky == 0 {
-		t.Error("the shared trash folder must be sticky")
+	// A folder that is not private is refused.
+	if err := os.Chmod(info, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, fe := trashFds(root, currentUID()); fe == nil {
+		t.Error("a trash folder others can read must be refused")
 	}
 	// Another user's folder is out of reach of this one's operations.
 	if _, fe := doTrashRestore(root, "4242:c.txt", ""); fe == nil {
@@ -242,5 +263,79 @@ func TestTrashPathsAreRefusedToFileOperations(t *testing.T) {
 	}
 	if validatePath("/srv/media/.hsi-trash2/x") != nil {
 		t.Error("a name that only starts like the trash is a normal path")
+	}
+}
+
+func TestTrashRefusesAFolderOwnedBySomeoneElse(t *testing.T) {
+	root := newPlace(t)
+	// The top folder's owner is checked: here it is expected to be someone else.
+	trashTopOwner = "4242"
+	defer func() { trashTopOwner = currentUID() }()
+	if _, fe := doTrash(root, filepath.Join(root, "c.txt"), "", time.Now()); fe == nil || fe.Code != "EACCES" {
+		t.Errorf("a trash folder owned by someone else = %v", fe)
+	}
+	if _, err := os.Stat(filepath.Join(root, "c.txt")); err != nil {
+		t.Error("the file must stay where it was")
+	}
+}
+
+func TestPrepareUserTrashAsRoot(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("needs root to hand folders to a user")
+	}
+	root := filepath.Join(t.TempDir(), "place")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A folder root left empty is handed over and made private.
+	if err := os.MkdirAll(filepath.Join(root, trashDirName, "1000"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if fe := prepareUserTrash(root, userCtx{uid: 1000, gid: 1000}); fe != nil {
+		t.Fatal(fe)
+	}
+	top, _ := os.Stat(trashRoot(root))
+	if st := top.Sys().(*syscall.Stat_t); st.Uid != 0 || top.Mode().Perm() != 0o755 {
+		t.Errorf("top folder = uid %d mode %v", st.Uid, top.Mode().Perm())
+	}
+	_, files, _ := userTrash(root, "1000")
+	fi, _ := os.Stat(files)
+	if st := fi.Sys().(*syscall.Stat_t); st.Uid != 1000 || fi.Mode().Perm() != 0o700 {
+		t.Errorf("files folder = uid %d mode %v", st.Uid, fi.Mode().Perm())
+	}
+	// A root folder with something in it is never handed over.
+	if err := os.MkdirAll(filepath.Join(root, trashDirName, "1001", "files", "planted"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if fe := prepareUserTrash(root, userCtx{uid: 1001, gid: 1001}); fe == nil {
+		t.Error("a non-empty root folder must not be handed to a user")
+	}
+}
+
+func TestTrashIgnoresAFolderSwappedAfterTheCheck(t *testing.T) {
+	root := newPlace(t)
+	files, info, ok, fe := trashFds(root, currentUID())
+	if fe != nil || !ok {
+		t.Fatal(fe)
+	}
+	defer unix.Close(files)
+	defer unix.Close(info)
+	// Someone renames the trash away and puts their own in its place: the
+	// folders already opened are still the real ones.
+	if err := os.Rename(trashRoot(root), filepath.Join(root, "moved")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(trashRoot(root), currentUID(), "files"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Mkdirat(files, "probe", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "moved", currentUID(), "files", "probe")); err != nil {
+		t.Error("work relative to the opened folder must land in the real trash")
+	}
+	// A fresh open refuses the planted folder (wrong mode).
+	if _, _, _, fe := trashFds(root, currentUID()); fe == nil {
+		t.Error("a planted trash folder must be refused")
 	}
 }
