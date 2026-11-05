@@ -313,6 +313,7 @@ export default {
     empty: 'Nothing new',
     emptyHint: 'Alerts, failed operations and updates show up here.',
     markAllRead: 'Mark all as read',
+    clearAll: 'Clear all',
     markRead: 'Mark as read',
     settings: 'Notification settings',
     close: 'Close',

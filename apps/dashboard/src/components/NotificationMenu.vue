@@ -19,7 +19,7 @@ const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const { isAdmin } = useAuth()
 
-const { items, unread, refresh, markAllRead, markRead } = useSystemNotifications()
+const { items, unread, refresh, markAllRead, markRead, clear } = useSystemNotifications()
 // In-memory operations started from this browser (track/trackBatch).
 const { notifications: operations, dismiss } = useNotifications()
 
@@ -29,7 +29,8 @@ const fresh = computed(() => items.value.filter(n => !n.readAt))
 const earlier = computed(() => items.value.filter(n => n.readAt).slice(0, 20))
 const finishedOps = computed(() => operations.value.filter(o => o.type !== 'progress'))
 const isEmpty = computed(() => !operations.value.length && !items.value.length)
-const canClear = computed(() => unread.value > 0 || finishedOps.value.length > 0)
+// An administrator empties the panel; another account marks it read.
+const canClear = computed(() => (isAdmin.value ? items.value.length > 0 : unread.value > 0) || finishedOps.value.length > 0)
 
 type Look = { icon: Component; tint: string; kind: string }
 function look(n: SystemNotification): Look {
@@ -53,11 +54,11 @@ function formatTime(createdAt: string): string {
   return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-// Reading everything also clears this browser's finished operations, so the
-// badge goes back to zero.
+// Also clears this browser's finished operations, so the badge goes back to zero.
 async function clearAll() {
   for (const op of finishedOps.value) dismiss(op.id)
-  if (unread.value > 0) await markAllRead()
+  if (isAdmin.value) { if (items.value.length > 0) await clear() }
+  else if (unread.value > 0) await markAllRead()
 }
 
 function viewLogs(jobId: string) {
@@ -146,7 +147,7 @@ function openSettings() {
     <!-- Footer -->
     <div v-if="!isEmpty" class="flex shrink-0 items-center border-t border-base-300 px-2 py-1.5">
       <Button variant="ghost" size="xs" class="text-base-content/70" :disabled="!canClear" @click="clearAll()">
-        {{ t('activity.markAllRead') }}
+        {{ isAdmin ? t('activity.clearAll') : t('activity.markAllRead') }}
       </Button>
     </div>
   </div>

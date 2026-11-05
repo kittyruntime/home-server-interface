@@ -199,6 +199,14 @@ button:not([data-slot]):focus-visible,
 .ui-pop-leave-to { opacity: 0; transform: scale(0.97); }
 .ui-pop-move { transition: transform var(--ui-dur, var(--dur-base)) var(--ease-out); }
 
+/* Floating layers are top-layer popovers placed by their top and left. The UA
+   sheet gives them height: fit-content, which WebKit (iOS Safari) resolves to
+   the max-height set by the placement: the mobile "more" menu, a grid, spread
+   its rows over the whole screen. Size them by their content instead. */
+@layer base {
+  .ui-float { right: auto; bottom: auto; height: auto; }
+}
+
 /* Floating layers (menus, popovers, tooltips) fade and scale in once placed.
    The direction offset comes from data-side. Shortened by the reduced motion
    durations above. On close (use-anchored-popover) the layer keeps its place
