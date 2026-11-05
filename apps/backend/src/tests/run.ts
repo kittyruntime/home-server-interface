@@ -130,22 +130,28 @@ async function testOnlineCatalog() {
   const key = crypto.createPrivateKey(readFileSync(new URL("./fixtures/catalog-dev.key", import.meta.url)))
   const index = (version: number, apps: unknown[], schema = 1) => Buffer.from(JSON.stringify({ schema, version, generatedAt: "2026-11-04T12:00:00Z", apps }))
   const sign = (body: Buffer) => crypto.sign(null, body, key).toString("base64")
+  const devPub = crypto.createPublicKey(key).export({ type: "spki", format: "pem" }).toString()
+  const opts = { key: devPub }
   const app = (over: Record<string, unknown> = {}) => {
     const { icon, ...m } = CATALOG[0]!
     return { ...m, id: "demo", name: "Demo", icon, ...over }
   }
 
-  // The development key is never trusted outside tests.
+  // The development key is never trusted outside tests; the shipped key is.
   delete process.env.HSI_ALLOW_DEV_CATALOG_KEY
-  assert.equal(cs.onlineCatalogTrusted(), false)
-  process.env.HSI_ALLOW_DEV_CATALOG_KEY = "1"
   assert.equal(cs.onlineCatalogTrusted(), true)
+  assert.equal(cs.onlineCatalogTrusted(devPub), false)
+  process.env.HSI_ALLOW_DEV_CATALOG_KEY = "1"
+  assert.equal(cs.onlineCatalogTrusted(devPub), true)
+  // An index signed with the development key never passes the shipped key.
+  const devSigned = index(BUNDLED_CATALOG_VERSION + 1, [app()])
+  assert.equal(cs.applyIndex(devSigned, sign(devSigned), "v1.80.1"), "the catalog signature does not match")
 
   cs.resetCatalogForTests()
   const good = index(BUNDLED_CATALOG_VERSION + 1, [app(), app({ id: "newer", minHsiVersion: "9.0.0" }), app({ id: "broken", image: "x:latest" }), app({ id: "noicon", icon: "<script>" })])
-  assert.equal(cs.applyIndex(good, sign(Buffer.from("tampered")), "v1.80.1"), "the catalog signature does not match")
+  assert.equal(cs.applyIndex(good, sign(Buffer.from("tampered")), "v1.80.1", opts), "the catalog signature does not match")
   assert.equal(cs.catalogState().source, "bundled")
-  assert.equal(cs.applyIndex(good, sign(good), "v1.80.1"), null)
+  assert.equal(cs.applyIndex(good, sign(good), "v1.80.1", opts), null)
   const st = cs.catalogState()
   assert.equal(st.source, "online")
   assert.deepEqual(cs.catalogApps().map(a => a.id), ["demo"])
@@ -153,15 +159,15 @@ async function testOnlineCatalog() {
 
   // An older index (a replay) never replaces the one in use.
   const old = index(BUNDLED_CATALOG_VERSION + 1 - 5, [app({ id: "old" })])
-  assert.equal(cs.applyIndex(old, sign(old), "v1.80.1"), null)
+  assert.equal(cs.applyIndex(old, sign(old), "v1.80.1", opts), null)
   assert.deepEqual(cs.catalogApps().map(a => a.id), ["demo"])
   // An index older than the bundled catalog is not used either.
   cs.resetCatalogForTests()
-  assert.equal(cs.applyIndex(old, sign(old), "v1.80.1"), null)
+  assert.equal(cs.applyIndex(old, sign(old), "v1.80.1", opts), null)
   assert.equal(cs.catalogState().source, "bundled")
   // A newer index format is refused as a whole.
   const future = index(BUNDLED_CATALOG_VERSION + 9, [app()], 2)
-  assert.throws(() => cs.applyIndex(future, sign(future), "v1.80.1"), /format 2/)
+  assert.throws(() => cs.applyIndex(future, sign(future), "v1.80.1", opts), /format 2/)
   cs.resetCatalogForTests()
   delete process.env.HSI_ALLOW_DEV_CATALOG_KEY
 }
