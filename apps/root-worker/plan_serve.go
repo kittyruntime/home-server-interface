@@ -80,7 +80,17 @@ func previewPlan(op string, input json.RawMessage) (*planPreview, *fsError) {
 	if fe != nil {
 		return nil, fe
 	}
-	return &planPreview{Steps: p.Steps, Fingerprint: p.fingerprint(input)}, nil
+	return &planPreview{Steps: orEmpty(p.Steps), Fingerprint: p.fingerprint(input)}, nil
+}
+
+// orEmpty keeps a plan with nothing to do a JSON list, not null: callers
+// spread steps and results (a user who never joined the share group has no
+// group.leave step).
+func orEmpty[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }
 
 // applyPlan rebuilds the plan and runs it only if it is still the one that
@@ -103,7 +113,7 @@ func applyPlan(op string, input json.RawMessage, fingerprint string) (*planApply
 	if ok {
 		warnings = append(warnings, refreshDescriptions(p, time.Now())...)
 	}
-	out := &planApply{OK: ok, Steps: p.Steps, Results: results, Warnings: warnings, Reply: p.Reply}
+	out := &planApply{OK: ok, Steps: orEmpty(p.Steps), Results: orEmpty(results), Warnings: warnings, Reply: p.Reply}
 	for i, r := range results {
 		if r.Status == "failed" {
 			out.Error = r.Error

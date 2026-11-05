@@ -1526,6 +1526,15 @@ await testSharePlans()
   }))
   assert.deepEqual(quiet.steps.map(s => s.kind), ["delete"])
 
+  // A user outside the share group: a worker before v1.80.3 sent null steps
+  // and results for group.leave, which made the delete plan fail.
+  const nullWorker = async (subject: string, payload: any) =>
+    subject === "root.plan.preview" ? { steps: null, fingerprint: "g0" } : { ok: true, steps: null, results: null }
+  const outside = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [], worker: nullWorker }))
+  assert.deepEqual(outside.steps.map(s => s.kind), ["delete"])
+  const outsideDone = await up.applyUserDelete("alice", outside.fingerprint, deps({ currentShareDefs: async () => [], worker: nullWorker }))
+  assert.equal(outsideDone.ok, true)
+
   // No share access, but smb.conf out of date: the user's delete does not
   // reconcile unrelated drift (no smb.conf step, no smbd reload).
   const drift = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [] }))

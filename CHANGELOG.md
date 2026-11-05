@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   download it (the way to read it on a phone).
 
 ### Fixed
+- **Deleting a user who never had write access**: the plan failed with
+  "group.steps is not iterable", so the account could not be removed.
 - **File manager on a phone or tablet**: a tap opens a folder or previews a
   file; once something is selected (checkbox or long press), taps add to the
   selection. The selection bar has an Open button, and the checkboxes and
