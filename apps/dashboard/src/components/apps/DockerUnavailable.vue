@@ -28,7 +28,7 @@ const command = computed(() => {
 
 <template>
   <div class="flex h-full w-full items-center justify-center p-6">
-    <div class="w-full max-w-lg rounded-xl border border-warning/30 bg-base-100 p-6 text-center">
+    <div role="status" class="w-full max-w-lg rounded-xl border border-warning/40 bg-warning/5 p-6 text-center">
       <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-warning/10 text-warning">
         <TriangleAlertIcon class="h-5 w-5" aria-hidden="true" />
       </div>

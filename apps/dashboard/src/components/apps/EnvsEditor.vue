@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { ref, watch } from 'vue'
+import { parseContainerEnv, serializeContainerEnv } from '../../lib/container-env'
 import RowEditor from '../ui/RowEditor.vue'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,15 +18,14 @@ const mode    = ref<'table' | 'raw'>('table')
 const rawText = ref('')
 
 function syncToRaw() {
-  rawText.value = props.modelValue.filter(e => e.key).map(e => `${e.key}=${e.value}`).join('\n')
+  rawText.value = serializeContainerEnv(props.modelValue)
 }
 function syncFromRaw() {
-  const parsed = rawText.value
-    .split('\n')
-    .filter(l => l.includes('='))
-    .map(l => ({ key: l.slice(0, l.indexOf('=')).trim(), value: l.slice(l.indexOf('=') + 1) }))
-    .filter(e => e.key)
-  emit('update:modelValue', parsed)
+  emit('update:modelValue', parseContainerEnv(rawText.value))
+}
+function updateRaw(value: string | number) {
+  rawText.value = String(value)
+  syncFromRaw()
 }
 
 function toggleMode() {
@@ -39,7 +39,8 @@ function toggleMode() {
 }
 
 watch(() => props.modelValue, () => {
-  if (mode.value === 'raw') syncToRaw()
+  // Keep incomplete lines while typing; only replace the draft on an external change.
+  if (mode.value === 'raw' && JSON.stringify(parseContainerEnv(rawText.value)) !== JSON.stringify(props.modelValue)) syncToRaw()
 }, { deep: true })
 </script>
 
@@ -65,13 +66,13 @@ watch(() => props.modelValue, () => {
       >
         <template #row="{ item, update }">
           <Input
-            :model-value="item.key" laceholder="KEY"
+            :model-value="item.key" placeholder="KEY" aria-label="Variable name"
             @input="update({ key: ($event.target as HTMLInputElement).value })"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
           <span class="text-base-content/70 text-sm">=</span>
           <Input
-            :model-value="item.value" laceholder="value"
+            :model-value="item.value" placeholder="value" aria-label="Variable value"
             @input="update({ value: ($event.target as HTMLInputElement).value })"
             class="flex-1 px-2 py-1.5 text-sm font-mono"
           />
@@ -82,7 +83,8 @@ watch(() => props.modelValue, () => {
     <!-- Raw mode -->
     <template v-else>
       <Textarea
-        v-model="rawText"
+        :model-value="rawText"
+        @update:model-value="updateRaw"
         :placeholder="t('ui.apps.EnvsEditor.keyValue10OtherFoo')"
         rows="8"
         class="w-full px-3 py-2 text-sm font-mono resize-y"

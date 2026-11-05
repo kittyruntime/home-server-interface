@@ -2,11 +2,12 @@
 import { useI18n } from 'vue-i18n'
 import RowEditor from '../ui/RowEditor.vue'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const { t } = useI18n()
 
-export interface VolumeMount { type: 'bind' | 'named' | 'place'; source: string; target: string }
+export interface VolumeMount { type: 'bind' | 'named' | 'place'; source: string; target: string; readOnly?: boolean }
 export interface Place        { id: string; name: string; path: string }
 
 const props = defineProps<{
@@ -27,12 +28,12 @@ function placePath(id: string): string | null {
     @update:model-value="$emit('update:modelValue', $event)"
     :empty-text="t('ui.apps.VolumesTable.noVolumes')"
     add-label="Add volume"
-    :new-item="(): VolumeMount => ({ type: 'bind', source: '', target: '' })"
+    :new-item="(): VolumeMount => ({ type: 'bind', source: '', target: '', readOnly: false })"
   >
     <template #row="{ item, update }">
       <!-- Type -->
       <NativeSelect wrapper-class="w-auto"
-        :model-value="item.type"
+        :model-value="item.type" aria-label="Volume type"
         @change="update({ type: ($event.target as HTMLSelectElement).value as VolumeMount['type'], source: '' })"
         class="px-2 py-1.5 text-sm"
       >
@@ -45,21 +46,21 @@ function placePath(id: string): string | null {
       <!-- bind: free-form host path -->
       <Input
         v-if="item.type === 'bind'"
-        :model-value="item.source" laceholder="/host/path"
+        :model-value="item.source" aria-label="Volume source" placeholder="/host/path"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
-        class="flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 min-w-0 px-2 py-1.5 text-sm font-mono"
       />
       <!-- named: container volume name -->
       <Input
         v-else-if="item.type === 'named'"
-        :model-value="item.source" laceholder="my-volume"
+        :model-value="item.source" aria-label="Volume source" placeholder="my-volume"
         @input="update({ source: ($event.target as HTMLInputElement).value })"
-        class="flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 min-w-0 px-2 py-1.5 text-sm font-mono"
       />
       <!-- place: select parmi les Places -->
-      <NativeSelect wrapper-class="flex-1"
+      <NativeSelect wrapper-class="flex-1 min-w-0"
         v-else
-        :model-value="item.source"
+        :model-value="item.source" aria-label="Volume source"
         @change="update({ source: ($event.target as HTMLSelectElement).value })"
         class="px-2 py-1.5 text-sm"
       >
@@ -71,16 +72,20 @@ function placePath(id: string): string | null {
 
       <!-- Target (path inside the container) -->
       <Input
-        :model-value="item.target" laceholder="/container/path"
+        :model-value="item.target" aria-label="Container mount path" placeholder="/container/path"
         @input="update({ target: ($event.target as HTMLInputElement).value })"
-        class="flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 min-w-0 px-2 py-1.5 text-sm font-mono"
       />
     </template>
 
-    <template #extra="{ item }">
+    <template #extra="{ item, update }">
+      <label class="flex items-center gap-2 text-xs text-base-content/70 py-1">
+        <Checkbox :model-value="!!item.readOnly" @update:model-value="update({ readOnly: $event === true })" />
+        {{ t('ui.apps.VolumesTable.readOnlyAccess') }}
+      </label>
       <p
         v-if="item.type === 'place' && item.source && placePath(item.source)"
-        class="ml-[calc(theme(spacing.2)+5rem)] text-xs text-base-content/70 font-mono"
+        class="text-xs text-base-content/70 font-mono"
       >
         ↳ {{ placePath(item.source) }}
       </p>

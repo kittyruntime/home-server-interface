@@ -4,6 +4,12 @@ import { trpc } from './trpc'
 export interface JobResult {
   status: 'completed' | 'failed' | 'timeout'
   error: string | null
+  failureSource?: 'task' | 'observer'
+}
+
+export interface JobObservation {
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  action: string
 }
 
 // Backend mutations that dispatch work to the root-worker (fs ops, container
@@ -12,16 +18,31 @@ export interface JobResult {
 // pending/running state and reports the terminal outcome so the caller can
 // react to a failure (e.g. surface a worker error like a checksum mismatch). Returns
 // `'timeout'` if the job never reaches a terminal state within the deadline.
-export async function pollJobResult(jobId: string, deadlineMs = 30_000): Promise<JobResult> {
+export async function pollJobResult(
+  jobId: string,
+  deadlineMs = 30_000,
+  observe?: (job: JobObservation) => void,
+  signal?: AbortSignal,
+): Promise<JobResult> {
   const deadline = Date.now() + deadlineMs
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500))
+  while (Date.now() < deadline && !signal?.aborted) {
+    await new Promise<void>(resolve => {
+      const timer = setTimeout(done, 1500)
+      function done() {
+        clearTimeout(timer)
+        signal?.removeEventListener('abort', done)
+        resolve()
+      }
+      signal?.addEventListener('abort', done, { once: true })
+    })
+    if (signal?.aborted) break
     try {
       const j = await trpc.tasks.get.query({ jobId })
+      observe?.({ status: j.status, action: j.action })
       if (j.status === 'completed') return { status: 'completed', error: null }
-      if (j.status === 'failed')    return { status: 'failed', error: j.error }
+      if (j.status === 'failed')    return { status: 'failed', error: j.error, failureSource: 'task' }
     } catch (e) {
-      return { status: 'failed', error: e instanceof Error ? e.message : String(e) }
+      return { status: 'failed', error: e instanceof Error ? e.message : String(e), failureSource: 'observer' }
     }
   }
   return {

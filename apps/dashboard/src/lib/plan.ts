@@ -51,8 +51,17 @@ export interface PlanOption { key: string; label: string; hint?: string }
 
 export type PlanOutcome =
   | { status: 'applied'; result: PlanApply }
-  | { status: 'failed'; error: string }
+  | { status: 'failed'; error: string; result?: PlanApply }
   | { status: 'cancelled'; previewError?: string; previewCode?: string }
+
+export class PlanExecutionError extends Error {
+  readonly result?: PlanApply
+  constructor(message: string, result?: PlanApply) {
+    super(message)
+    this.name = 'PlanExecutionError'
+    this.result = result
+  }
+}
 
 export const planRequest = ref<PlanRequest | null>(null)
 let nextId = 0
@@ -79,7 +88,7 @@ export async function applyPlanned(
   if (outcome.status === 'applied') {
     return { ...(outcome.result.reply ?? {}), warnings: outcome.result.warnings ?? [] }
   }
-  if (outcome.status === 'failed') throw new Error(outcome.error)
+  if (outcome.status === 'failed') throw new PlanExecutionError(outcome.error, outcome.result)
   throw Object.assign(new Error(''), { previewError: outcome.previewError, previewCode: outcome.previewCode })
 }
 

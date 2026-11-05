@@ -215,6 +215,8 @@ const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](
 
 export const APP_INPUTS = {
   "app.save": z.object({ name: zName, create: z.boolean().default(false), data: zAppInput.optional(), raw: z.string().min(1).optional() })
+    .extend({ start: z.boolean().default(false) })
+    .refine(v => !v.start || v.create, { message: "Starting is only supported when creating an app" })
     .refine(v => (v.data ? 1 : 0) + (v.raw ? 1 : 0) === 1, { message: "Give either the form data or the raw file" })
     .refine(v => !v.data || v.data.name === v.name, { message: "The app name in the form must be the app's name" }),
   "app.apply":  z.object({ name: zName }),
@@ -326,7 +328,8 @@ export async function buildAppPlan(op: AppOp, input: unknown, deps: AppPlanDeps)
         before === null ? `Create the compose file of ${req.name}`
           : before === yaml ? `No change to the compose file of ${req.name}; it is written as it is`
           : `Update the compose file of ${req.name}; the running containers change only when you apply`)
-      return { op, steps: [step], observed: { content: before ?? "" }, reply: { name: req.name } }
+      const steps = req.start ? [step, upStep(deps, req.name, yaml, true)] : [step]
+      return { op, steps, observed: { content: before ?? "", ...(req.start ? { startContent: yaml } : {}) }, reply: { name: req.name } }
     }
     case "app.apply":
     case "app.start": {
