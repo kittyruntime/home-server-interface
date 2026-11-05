@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { detectKind } from '../src/lib/file-kind.ts'
-import { isTouchClick } from '../src/lib/touch.ts'
+import { isTouchClick, setLastPointerDownForTests } from '../src/lib/touch.ts'
 
 test('a PDF opens in the PDF preview, other documents in the text one', () => {
   assert.equal(detectKind('Report.PDF'), 'pdf')
@@ -10,7 +10,8 @@ test('a PDF opens in the PDF preview, other documents in the text one', () => {
 })
 
 test('a tap is told apart from a mouse click', () => {
-  const click = (pointerType?: string) => ({ pointerType } as unknown as MouseEvent)
+  setLastPointerDownForTests(null)
+  const click = (pointerType?: string) => ({ pointerType, timeStamp: 5000 } as unknown as MouseEvent)
   assert.equal(isTouchClick(click('touch')), true)
   assert.equal(isTouchClick(click('pen')), true)
   assert.equal(isTouchClick(click('mouse')), false)
@@ -21,4 +22,16 @@ test('a tap is told apart from a mouse click', () => {
   g.window = { matchMedia: () => ({ matches: false }) }
   assert.equal(isTouchClick(click(undefined)), false)
   delete g.window
+})
+
+test('iOS: a tap whose click says mouse is still a tap, by its pointerdown', () => {
+  const click = (pointerType: string, timeStamp: number) => ({ pointerType, timeStamp } as unknown as MouseEvent)
+  setLastPointerDownForTests('touch', 1000)
+  assert.equal(isTouchClick(click('mouse', 1100)), true)
+  setLastPointerDownForTests('mouse', 1000)
+  assert.equal(isTouchClick(click('mouse', 1100)), false)
+  // A pointerdown long before (a keyboard click later) no longer decides.
+  setLastPointerDownForTests('touch', 1000)
+  assert.equal(isTouchClick(click('mouse', 5000)), false)
+  setLastPointerDownForTests(null)
 })
