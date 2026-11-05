@@ -369,7 +369,7 @@ async function unpin(app: App) {
 
               <!-- Actions -->
               <TableCell class="px-6 py-3.5">
-                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-within:opacity-100 transition-opacity">
 
                   <!-- Apply -->
                   <Button variant="outline" size="xs"

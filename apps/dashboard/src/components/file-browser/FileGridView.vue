@@ -124,7 +124,7 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
       <Checkbox
         :model-value="selected.has(entry.path)"
         :aria-label="`Select ${entry.name}`"
-        :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100']"
+        :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100']"
         @click.stop.prevent="emit('selectEntry', entry, $event)"
       />
 
@@ -137,7 +137,7 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
           @click.stop="emit('openFile', entry)"
           :tooltip="$t('ui.files.FileGridView.preview')"
           :aria-label="`Preview ${entry.name}`"
-          class="absolute -top-1 -right-1 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+          class="absolute -top-1 -right-1 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
         >
           <EyeIcon class="size-4" aria-hidden="true" />
         </Button>

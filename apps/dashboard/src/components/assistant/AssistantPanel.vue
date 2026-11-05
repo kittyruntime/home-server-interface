@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
           ><LoaderCircleIcon v-if="c.running" class="mr-1.5 inline size-3 animate-spin text-base-content/70" :aria-label="t('assistant.running')" />{{ c.title || t('assistant.untitled') }}</button>
           <Button
             size="icon-sm" variant="ghost"
-            class="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+            class="md:opacity-0 md:group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100"
             :aria-label="t('assistant.deleteNamed', { title: c.title || t('assistant.untitled') })"
             @click="remove(c)"
           >

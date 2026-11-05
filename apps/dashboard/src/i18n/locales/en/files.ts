@@ -119,6 +119,10 @@ export default {
   MediaPreview: {
     couldnTLoadThisFile: 'Couldn\'t load this file.',
   },
+  PdfPreview: {
+    openInNewTab: 'Open in a new tab',
+    download: 'Download',
+  },
   FilePreviewModal: {
     download: 'Download',
     close: 'Close',

@@ -101,6 +101,15 @@ async function testBookmarkPreferences() {
 }
 await testBookmarkPreferences()
 
+// Inline previews: passive media and PDF (shown by the browser's own viewer);
+// never a type that runs as a document of this origin.
+async function testInlinePreviewTypes() {
+  const { guessMime, isInlineSafe } = await import("../utils/mime")
+  for (const name of ["a.pdf", "a.PDF", "a.png", "a.mp4", "a.mp3"]) assert.equal(isInlineSafe(guessMime(name)), true, name)
+  for (const name of ["a.svg", "a.html", "a.xml", "a.docx", "a"]) assert.equal(isInlineSafe(guessMime(name)), false, name)
+}
+await testInlinePreviewTypes()
+
 async function testTrashPlaceOf() {
   const { placeOf, isTrashEntry } = await import("../services/trash")
   const places = [{ id: "media", path: "/srv/media" }, { id: "films", path: "/srv/media/films" }, { id: "m2", path: "/srv/media2" }]

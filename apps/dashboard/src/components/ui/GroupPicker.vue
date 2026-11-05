@@ -113,7 +113,7 @@ function onKeydown(event: KeyboardEvent) {
           :aria-label="`Remove ${item.label}`"
           :class="[
             'shrink-0 text-base-content/70',
-            item.disabled ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-error',
+            item.disabled ? '' : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100 hover:text-error',
           ]"
           @click="emit('remove', item.id)"
         >

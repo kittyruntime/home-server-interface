@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PDF preview**: a PDF opens in the file manager instead of the text editor,
+  shown in place on a computer, with buttons to open it in a new tab or
+  download it (the way to read it on a phone).
+
+### Fixed
+- **File manager on a phone or tablet**: a tap opens a folder or previews a
+  file; once something is selected (checkbox or long press), taps add to the
+  selection. The selection bar has an Open button, and the checkboxes and
+  preview buttons that only showed on hover now show on touch screens.
+- **Row actions on touch screens**: the actions of an app, a place or a group
+  member that only showed on hover are now visible on touch screens.
+
 ## [1.80.2] - 2026-11-05
 
 ### Added

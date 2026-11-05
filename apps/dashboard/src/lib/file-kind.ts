@@ -1,4 +1,4 @@
-export type FileKind = 'image' | 'video' | 'audio' | 'text'
+export type FileKind = 'image' | 'video' | 'audio' | 'pdf' | 'text'
 
 // Note: .svg is deliberately NOT treated as an image here even though
 // browsers can render it in <img>. The backend's inline-preview route
@@ -19,5 +19,6 @@ export function detectKind(name: string): FileKind {
   if (IMAGE_EXT.has(ext)) return 'image'
   if (VIDEO_EXT.has(ext)) return 'video'
   if (AUDIO_EXT.has(ext)) return 'audio'
+  if (ext === 'pdf') return 'pdf'
   return 'text'
 }

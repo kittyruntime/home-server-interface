@@ -250,7 +250,7 @@ onMounted(async () => {
               <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
+              class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
               :tooltip="t('ui.settings.PlacesSection.remove')" :aria-label="t('ui.settings.PlacesSection.remove')">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>

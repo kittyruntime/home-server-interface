@@ -229,7 +229,7 @@ function fileExt(name: string): string {
           <Checkbox
             :model-value="selected.has(entry.path)"
             :aria-label="`Select ${entry.name}`"
-            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100']"
+            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100']"
             @click.prevent="emit('selectEntry', entry, $event)"
           />
         </TableCell>
@@ -272,7 +272,7 @@ function fileExt(name: string): string {
                 @click.stop="emit('openFile', entry)"
                 :tooltip="$t('ui.files.FileListView.preview')"
                 :aria-label="`Preview ${entry.name}`"
-                class="shrink-0 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                class="shrink-0 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
               >
                 <EyeIcon class="size-4" aria-hidden="true" />
               </Button>

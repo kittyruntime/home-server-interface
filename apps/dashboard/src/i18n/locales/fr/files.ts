@@ -118,6 +118,10 @@ export default {
   MediaPreview: {
     couldnTLoadThisFile: 'Impossible de charger ce fichier.',
   },
+  PdfPreview: {
+    openInNewTab: 'Ouvrir dans un nouvel onglet',
+    download: 'Télécharger',
+  },
   FilePreviewModal: {
     download: 'Télécharger',
     close: 'Fermer',
