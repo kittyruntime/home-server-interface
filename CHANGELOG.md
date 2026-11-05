@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.80.5] - 2026-11-05
+
 ### Fixed
 - **Tap on iPhone**: a tap on a folder or a file selected it instead of
   opening it. Safari can report the click that follows a tap as a mouse
@@ -2026,7 +2028,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.4...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.5...HEAD
+[1.80.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.4...v1.80.5
 [1.80.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.3...v1.80.4
 [1.80.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...v1.80.3
 [1.80.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...v1.80.2
