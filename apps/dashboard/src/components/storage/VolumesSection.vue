@@ -101,17 +101,16 @@ const HEALTH_DOT: Record<Health, string> = { ok: 'bg-success', idle: 'bg-base-co
 const HEALTH_TEXT: Record<Health, string> = { ok: 'text-base-content/80', idle: 'text-base-content/70', warning: 'text-warning', danger: 'text-error' }
 
 const REDUNDANCY: Record<string, string> = {
-  none: 'No redundancy', raid0: 'Striped, no redundancy', raid1: 'Mirror',
+  none: t('ui.storage.VolumesSection.redundancyNone'), raid0: t('ui.storage.VolumesSection.redundancyStriped'), raid1: t('ui.storage.VolumesSection.redundancyMirror'),
   raid4: 'RAID 4', raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
 }
 
 function usedByText(v: Volume): string {
   const parts: string[] = []
-  const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
-  if (v.usedBy.places.length) parts.push(n(v.usedBy.places.length, 'Place', 'Places'))
-  if (v.usedBy.shares.length) parts.push(n(v.usedBy.shares.length, 'share', 'shares'))
-  if (v.usedBy.apps.length)   parts.push(v.usedBy.apps.length <= 2 ? v.usedBy.apps.join(', ') : n(v.usedBy.apps.length, 'app', 'apps'))
-  return parts.join(', ') || 'Not used'
+  if (v.usedBy.places.length) parts.push(t('ui.storage.VolumesSection.placesCount', v.usedBy.places.length))
+  if (v.usedBy.shares.length) parts.push(t('ui.storage.VolumesSection.sharesCount', v.usedBy.shares.length))
+  if (v.usedBy.apps.length)   parts.push(v.usedBy.apps.length <= 2 ? v.usedBy.apps.join(', ') : t('ui.storage.VolumesSection.appsCount', v.usedBy.apps.length))
+  return parts.join(', ') || t('ui.storage.VolumesSection.notUsed')
 }
 const usedPct = (v: Volume) => v.space ? Math.round((v.space.used / v.space.total) * 100) : 0
 
@@ -166,9 +165,9 @@ async function mount(v: Volume) {
       <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.VolumesSection.volumes') }}</h2>
         <p v-if="overview" class="text-sm text-base-content/70 mt-0.5">
-          {{ overview.volumes.length }} {{ overview.volumes.length === 1 ? 'volume' : 'volumes' }}
-          · {{ diskCount }} {{ diskCount === 1 ? 'disk' : 'disks' }}
-          <span v-if="warnings" class="text-warning"> · {{ warnings }} {{ warnings === 1 ? 'needs attention' : 'need attention' }}</span>
+          {{ t('ui.storage.VolumesSection.volumesCount', overview.volumes.length) }}
+          · {{ t('ui.storage.VolumesSection.disksCount', diskCount) }}
+          <span v-if="warnings" class="text-warning"> · {{ t('ui.storage.VolumesSection.needAttention', warnings) }}</span>
         </p>
       </div>
       <Tip :text="overview && !overview.freeDisks.length ? 'No free disk: connect a disk to create a volume' : undefined" wrap>
@@ -259,7 +258,7 @@ async function mount(v: Volume) {
           <Button variant="link" class="h-auto p-0 ml-1.5 text-base-content" @click="createVolume">{{ t('ui.storage.VolumesSection.createVolume2') }}</Button>
         </p>
         <p v-if="overview.system">
-          {{ t('ui.storage.VolumesSection.system') }} <span class="text-base-content/80">/ · {{ fmtBytes(overview.system.free) }} free of {{ fmtBytes(overview.system.total) }}</span>
+          {{ t('ui.storage.VolumesSection.system') }} <span class="text-base-content/80">/ · {{ t('ui.storage.VolumesSection.freeOf', { free: fmtBytes(overview.system.free), total: fmtBytes(overview.system.total) }) }}</span>
         </p>
       </div>
     </template>

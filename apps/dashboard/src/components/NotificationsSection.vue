@@ -213,7 +213,7 @@ function formatTime(at: string | Date): string {
                 <p class="text-xs text-base-content/70 font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
               <div class="ml-auto flex items-center gap-3">
-                <Tip :text="c.enabled ? 'Disable connector' : 'Enable connector'"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
+                <Tip :text="c.enabled ? $t('ui.settings.NotificationsSection.disableConnector') : $t('ui.settings.NotificationsSection.enableConnector')"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
                 <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
                 <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
               </div>
@@ -252,7 +252,7 @@ function formatTime(at: string | Date): string {
                 </div>
               </div>
               <div class="ml-auto flex items-center gap-3">
-                <Tip :text="r.enabled ? 'Disable rule' : 'Enable rule'"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
+                <Tip :text="r.enabled ? $t('ui.settings.NotificationsSection.disableRule') : $t('ui.settings.NotificationsSection.enableRule')"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
                 <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
                 <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
               </div>

@@ -80,6 +80,9 @@ export default {
     close: 'Fermer',
   },
   NetworkSection: {
+    inContainer: 'HSI tourne dans un conteneur ({kind}) : son réseau se règle sur l’hôte du conteneur.',
+    noNetworkManager: 'NetworkManager ne tourne pas sur ce serveur : HSI modifie le réseau à travers lui.',
+    noInterfacesListed: 'NetworkManager n’a pas listé les interfaces réseau.',
     network: 'Réseau',
     howThisServerGetsIts: 'Comment ce serveur obtient son adresse IPv4 et ses serveurs DNS. Un changement doit être conservé une fois appliqué ; sinon NetworkManager remet lui-même les réglages précédents, même si le tableau de bord n’est plus joignable.',
     retry: 'Réessayer',
@@ -111,6 +114,10 @@ export default {
     markAllRead: 'Tout marquer comme lu',
   },
   NotificationsSection: {
+    disableConnector: 'Désactiver le connecteur',
+    enableConnector: 'Activer le connecteur',
+    disableRule: 'Désactiver la règle',
+    enableRule: 'Activer la règle',
     notifications: 'Notifications',
     routeAlertEventsToThe: 'Envoyez les alertes vers la cloche de l’interface, des webhooks et l’e-mail. Les règles décident quelles alertes reçoit chaque cible.',
     retry: 'Réessayer',
@@ -258,6 +265,8 @@ export default {
     restartThePhysicalHostAnd: 'Redémarre la machine et tous les services qui y tournent.',
   },
   UserDetailPanel: {
+    saving: 'Enregistrement…',
+    saveChanges: 'Enregistrer',
     backToUsers: 'Retour aux utilisateurs',
     profile: 'Profil',
     displayName: 'Nom affiché',

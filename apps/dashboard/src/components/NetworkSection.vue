@@ -16,6 +16,16 @@ import ErrorState from './ui/ErrorState.vue'
 
 const { t } = useI18n()
 
+// The worker explains in English why the network cannot be changed: the
+// known reasons are shown translated, anything else as sent.
+function unavailableText(msg: string): string {
+  const container = /^HSI runs in a container \((.+)\)/.exec(msg)
+  if (container) return t('ui.settings.NetworkSection.inContainer', { kind: container[1] })
+  if (msg.startsWith('NetworkManager is not running')) return t('ui.settings.NetworkSection.noNetworkManager')
+  if (msg.startsWith('NetworkManager did not list')) return t('ui.settings.NetworkSection.noInterfacesListed')
+  return msg
+}
+
 type Status = Awaited<ReturnType<typeof trpc.network.status.query>>
 type Iface = Status['interfaces'][number]
 
@@ -152,7 +162,7 @@ onUnmounted(() => clearInterval(timer))
 
     <div v-else-if="status" class="space-y-4 max-w-2xl">
       <Alert v-if="status.unavailable" variant="info" role="status">
-        <AlertDescription class="text-base-content/80">{{ status.unavailable }}</AlertDescription>
+        <AlertDescription class="text-base-content/80">{{ unavailableText(status.unavailable) }}</AlertDescription>
       </Alert>
 
       <!-- The change just applied from this page -->

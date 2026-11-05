@@ -334,8 +334,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- Summary: each count filters the list -->
         <Card class="block gap-0 py-0 shadow-none px-4 py-3 mb-3">
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-            <span class="font-semibold text-base-content">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
-            <span class="text-base-content/70 tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
+            <span class="font-semibold text-base-content">{{ t('ui.storage.PhysicalDisksSection.disksCount', summary.disks) }}</span>
+            <span class="text-base-content/70 tabular-nums">{{ t('ui.storage.PhysicalDisksSection.total', { size: fmtBytes(summary.totalBytes) }) }}</span>
             <span v-if="summary.roles.free" class="text-base-content/70 tabular-nums">{{ t('uip.storage.PhysicalDisksSection.onFreeDisks', { p0: fmtBytes(summary.freeBytes) }) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">

@@ -81,6 +81,9 @@ export default {
     close: 'Close',
   },
   NetworkSection: {
+    inContainer: 'HSI runs in a container ({kind}): its network is set on the container host.',
+    noNetworkManager: 'NetworkManager is not running on this server: HSI changes the network through it.',
+    noInterfacesListed: 'NetworkManager did not list the network interfaces.',
     network: 'Network',
     howThisServerGetsIts: 'How this server gets its IPv4 address and DNS servers. A change has to be kept once it is applied; otherwise NetworkManager puts the previous settings back by itself, even if the dashboard is cut off.',
     retry: 'Retry',
@@ -112,6 +115,10 @@ export default {
     markAllRead: 'Mark all read',
   },
   NotificationsSection: {
+    disableConnector: 'Disable connector',
+    enableConnector: 'Enable connector',
+    disableRule: 'Disable rule',
+    enableRule: 'Enable rule',
     notifications: 'Notifications',
     routeAlertEventsToThe: 'Route alert events to the in-app bell, webhooks and email. Rules decide which alerts each target receives.',
     retry: 'Retry',
@@ -259,6 +266,8 @@ export default {
     restartThePhysicalHostAnd: 'Restart the physical host and every service running on it.',
   },
   UserDetailPanel: {
+    saving: 'Saving…',
+    saveChanges: 'Save changes',
     backToUsers: 'Back to users',
     profile: 'Profile',
     displayName: 'Display name',

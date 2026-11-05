@@ -228,7 +228,7 @@ async function deleteUser() {
           :disabled="saveLoading"
           class="disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {{ saveLoading ? 'Saving…' : 'Save changes' }}
+          {{ saveLoading ? t('ui.settings.UserDetailPanel.saving') : t('ui.settings.UserDetailPanel.saveChanges') }}
         </Button>
         <transition name="fade">
           <span v-if="saveSuccess" class="text-xs text-success flex items-center gap-1">

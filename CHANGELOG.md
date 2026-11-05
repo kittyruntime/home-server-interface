@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   download it (the way to read it on a phone).
 
 ### Fixed
+- **English left in the French interface**: storage counts, redundancy and
+  usage, free space, the LVM explanation, the user Save button, notification
+  switches and why the network cannot be changed are now translated.
 - **Deleting a user who never had write access**: the plan failed with
   "group.steps is not iterable", so the account could not be removed.
 - **File manager on a phone or tablet**: a tap opens a folder or previews a
