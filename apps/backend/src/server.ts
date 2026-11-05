@@ -3,6 +3,7 @@ import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAuditRetention } from "./services/audit-retention"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startTrashPurge } from "./services/trash"
+import { startCatalogRefresh } from "./services/catalog-source"
 import { startVolumeGuard } from "./services/volume-guard"
 import { syncSharesBestEffort } from "./services/sharing.service"
 import { startTelemetry } from "./services/telemetry"
@@ -67,6 +68,7 @@ const start = async () => {
     startAuditRetention()
     startAlertSampler()
     startTrashPurge()
+    startCatalogRefresh(readCurrentVersion)
     startVolumeGuard()
     // Shares and Place access follow the database, which a configuration
     // restore replaces just before this restart: nothing else writes them out

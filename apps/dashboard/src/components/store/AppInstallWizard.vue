@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from './AppIcon.vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { ref, computed, onMounted, watch } from 'vue'
@@ -256,8 +257,7 @@ async function install() {
     <template v-else-if="manifest">
       <!-- Header -->
       <div class="flex items-center gap-3">
-        <!-- eslint-disable-next-line vue/no-v-html -- `manifest.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
-        <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="manifest.icon" />
+        <span class="w-10 h-10 shrink-0 grid place-items-center"><AppIcon :svg="manifest.icon" /></span>
         <div class="min-w-0">
           <h3 class="text-sm font-semibold text-base-content">{{ manifest.name }}</h3>
           <p class="text-xs text-base-content/70">{{ manifest.tagline }}</p>

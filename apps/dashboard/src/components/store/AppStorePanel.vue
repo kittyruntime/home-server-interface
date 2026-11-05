@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppIcon from './AppIcon.vue'
+import CatalogSource from './CatalogSource.vue'
 import { useI18n } from 'vue-i18n'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import LoadingState from '../ui/LoadingState.vue'
@@ -186,9 +188,10 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         </div>
       </div>
       <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
-      <p v-if="!loading" class="text-xs text-base-content/70 mb-4">
+      <p v-if="!loading" class="text-xs text-base-content/70 mb-1">
         {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
       </p>
+      <CatalogSource v-if="!loading" @updated="refresh" />
 
       <!-- Filters -->
       <ToggleGroup v-if="!loading" type="single" variant="outline" size="sm" :spacing="2" :aria-label="t('ui.store.AppStorePanel.category')"
@@ -218,8 +221,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
         >
           <!-- Identity -->
           <div class="flex gap-3 items-start min-w-0">
-            <!-- eslint-disable-next-line vue/no-v-html -- `a.icon` is a bundled first-party brand logo from @app/app-catalog, not user input. -->
-            <span class="w-10 h-10 shrink-0 grid place-items-center" v-html="a.icon" />
+            <span class="w-10 h-10 shrink-0 grid place-items-center"><AppIcon :svg="a.icon" /></span>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <Button

@@ -295,6 +295,15 @@ export default {
     confirmFileDelete: 'Confirmer avant de supprimer',
     confirmFileDeleteHint: 'Demander avant de supprimer définitivement des fichiers et dossiers dans le gestionnaire de fichiers. Supprimer dans un emplacement qui a une corbeille ne demande rien.',
   },
+  store: {
+    catalog: {
+      bundled: 'Catalogue de cette version de HSI',
+      online: 'Catalogue mis à jour en ligne le {date}',
+      checked: 'vérifié le {date}',
+      check: 'Chercher de nouvelles apps',
+      skipped: '{count} app(s) demandent un HSI plus récent ou n’ont pas pu être lues : {list}',
+    },
+  },
   activity: {
     title: 'Activité',
     unreadCount: '{count} non lue(s)',

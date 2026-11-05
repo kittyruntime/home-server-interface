@@ -294,6 +294,15 @@ export default {
     confirmFileDelete: 'Confirm before deleting',
     confirmFileDeleteHint: 'Ask before deleting files and folders for good in the file manager. Deleting in a place with a trash is not asked.',
   },
+  store: {
+    catalog: {
+      bundled: 'Catalog of this HSI release',
+      online: 'Catalog updated online on {date}',
+      checked: 'checked {date}',
+      check: 'Check for new apps',
+      skipped: '{count} app(s) need a newer HSI or could not be read: {list}',
+    },
+  },
   activity: {
     title: 'Activity',
     unreadCount: '{count} unread',

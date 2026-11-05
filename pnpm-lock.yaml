@@ -232,6 +232,10 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+    devDependencies:
+      tsx:
+        specifier: 4.23.12
+        version: 4.23.12
 
   packages/compose:
     dependencies:

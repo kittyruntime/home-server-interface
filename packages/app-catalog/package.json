@@ -4,6 +4,20 @@
   "version": "0.0.0",
   "license": "MPL-2.0",
   "type": "module",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "dependencies": { "zod": "^4.6.7" }
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "scripts": {
+    "schema": "tsx scripts/export-schema.ts schema/app-manifest.schema.json",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.23.12"
+  }
 }
