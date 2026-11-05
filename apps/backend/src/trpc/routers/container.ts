@@ -12,7 +12,7 @@ import {
 import { assertDockerReady, getDockerStatus, dockerProblem } from "../../services/docker-status"
 import {
   generateComposeYaml, parseComposeYaml,
-  zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, STACK_NAME_RE, type AppInput,
+  zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, zPinnedUrl, STACK_NAME_RE, type AppInput,
 } from "@app/compose"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ const appRouter = router({
      at /containers/<name>/logs). That route keeps working unchanged: it already
      addresses containers by name. Do not add a logs procedure to the router. */
 
-  pin: adminProcedure.input(z.object({ name: z.string(), pinnedUrl: z.string().url().nullable() }))
+  pin: adminProcedure.input(z.object({ name: z.string(), pinnedUrl: zPinnedUrl.nullable() }))
     .mutation(async ({ input }) => {
       const current = await getStack(input.name)
       if (!current.app) throw new TRPCError({ code: "BAD_REQUEST", message: "Multi-service apps cannot be pinned from the UI" })

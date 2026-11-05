@@ -12,8 +12,16 @@ export function workerErrorCode(error: { cause?: unknown }): string | undefined 
   return typeof code === "string" && /^E[A-Z]{2,15}$/.test(code) ? code : undefined
 }
 
+class SessionRejectedError extends Error {}
+
+const SESSION_REJECTION_MESSAGE = "Session token is invalid or expired."
+
 const t = initTRPC.context<Context>().create({
-  errorFormatter: ({ shape, error }) => ({ ...shape, data: { ...shape.data, workerCode: workerErrorCode(error) } }),
+  errorFormatter: ({ shape, error }) => ({ ...shape, data: {
+    ...shape.data,
+    workerCode: workerErrorCode(error),
+    sessionInvalid: error.code === "UNAUTHORIZED" && error.cause instanceof SessionRejectedError,
+  } }),
 })
 
 export const router = t.router
@@ -30,7 +38,7 @@ export function closedToApiTokens(path: string): boolean {
 
 const isAuthed = t.middleware(({ ctx, path, next }) => {
   if (!ctx.user) {
-    throw new TRPCError({ code: "UNAUTHORIZED" })
+    throw new TRPCError({ code: "UNAUTHORIZED", message: SESSION_REJECTION_MESSAGE, cause: new SessionRejectedError() })
   }
   if ((ctx.apiToken || ctx.via === "assistant") && closedToApiTokens(path)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Not available to an AI assistant." })

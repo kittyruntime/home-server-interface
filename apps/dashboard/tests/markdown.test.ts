@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { Worker } from 'node:worker_threads'
 import { renderMarkdown } from '../src/lib/markdown.ts'
 
 test('markdown: HTML in the text is shown, never run', () => {
@@ -11,6 +12,28 @@ test('markdown: HTML in the text is shown, never run', () => {
 
 test('markdown: code blocks keep their text as is', () => {
   assert.equal(renderMarkdown('```yaml\na: **b**\n<x>\n```'), '<pre><code>a: **b**\n&lt;x&gt;</code></pre>')
+})
+
+test('markdown: code fences with dotted languages and info strings make forward progress', async () => {
+  const cases: [string, string][] = [
+    ['```mermaid.js\ngraph TD\n```', '<pre><code>graph TD</code></pre>'],
+    ['```text title=foo\nhello\n```', '<pre><code>hello</code></pre>'],
+    ['before\n```text title=foo\nunterminated', '<p>before</p><pre><code>unterminated</code></pre>'],
+  ]
+  for (const [source, expected] of cases) {
+    const worker = new Worker(new URL('./markdown-render.worker.ts', import.meta.url), { execArgv: ['--import', 'tsx'] })
+    const result = new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        void worker.terminate()
+        reject(new Error(`renderer stalled on ${source}`))
+      }, 1000)
+      worker.once('message', (html: string) => { clearTimeout(timer); resolve(html) })
+      worker.once('error', error => { clearTimeout(timer); reject(error) })
+      worker.postMessage(source)
+    })
+    assert.equal(await result, expected)
+    await worker.terminate()
+  }
 })
 
 test('markdown: inline formatting and links', () => {

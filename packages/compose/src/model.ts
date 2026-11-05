@@ -61,6 +61,15 @@ export const zLabelEntry = z.object({
   value: z.string(),
 })
 
+export const zPinnedUrl = z.string().url().refine(value => {
+  try {
+    const protocol = new URL(value).protocol
+    return protocol === "http:" || protocol === "https:"
+  } catch {
+    return false
+  }
+}, "Pinned URL must use HTTP or HTTPS")
+
 export const zAppInput = z.object({
   // Lowercase only: Docker Compose v2 lowercases project names, so a
   // mixed-case stack could never match its observed containers.
@@ -80,7 +89,7 @@ export const zAppInput = z.object({
   command:       z.string().nullable().optional(),
   cpuLimit:      z.number().min(0).max(64).nullable().optional(),
   memoryLimit:   z.string().regex(/^\d+[kmgKMG]?$/).nullable().optional(),
-  pinnedUrl:     z.string().url().nullable().optional(),
+  pinnedUrl:     zPinnedUrl.nullable().optional(),
 })
 
 export type AppInput = z.infer<typeof zAppInput>

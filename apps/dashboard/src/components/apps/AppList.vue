@@ -24,6 +24,7 @@ import { updateText } from '../../lib/app-update'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { safePinnedUrl } from '../../lib/pinned-url'
 
 const narrow = useNarrow()
 
@@ -46,7 +47,7 @@ const pinDialogUrl  = ref('')
 const pinDialogErr  = ref('')
 const pinDialogBusy = ref(false)
 
-const pinnedApps = computed(() => apps.value.filter(a => a.app?.pinnedUrl))
+const pinnedApps = computed(() => apps.value.filter(a => safePinnedUrl(a.app?.pinnedUrl)))
 
 async function load() {
   loading.value = true
@@ -292,13 +293,13 @@ async function unpin(app: App) {
           <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
             <a
               v-for="app in pinnedApps" :key="app.id"
-              :href="app.app?.pinnedUrl ?? ''" target="_blank" rel="noopener"
+              :href="safePinnedUrl(app.app?.pinnedUrl) ?? undefined" target="_blank" rel="noopener"
               class="group flex items-center gap-3 px-3.5 py-2.5 bg-base-200 border border-base-300 rounded-xl hover:bg-base-200 transition-all no-underline"
             >
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
               <div class="min-w-0">
                 <p class="text-sm font-semibold text-base-content font-mono leading-none">{{ app.name }}</p>
-                <p class="text-2xs text-base-content/70 mt-0.5 truncate max-w-[180px]">{{ app.app?.pinnedUrl }}</p>
+                <p class="text-2xs text-base-content/70 mt-0.5 truncate max-w-[180px]">{{ safePinnedUrl(app.app?.pinnedUrl) }}</p>
               </div>
               <ExternalLinkIcon class="w-3.5 h-3.5 text-base-content/70 group-hover:text-base-content/80 transition-colors flex-shrink-0" aria-hidden="true" />
             </a>

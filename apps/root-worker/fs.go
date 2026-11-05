@@ -109,6 +109,70 @@ func validatePathsScoped(root string, paths ...string) *fsError {
 	return nil
 }
 
+// openScopedDirectory resolves a validated destination beneath allowedRoot,
+// then walks it from an open root directory without following symlinks. The
+// resulting descriptor remains anchored to that directory even if its path is
+// renamed while the operation runs.
+func openScopedDirectory(dir, allowedRoot string) (int, error) {
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return -1, err
+	}
+	realRoot := "/"
+	if allowedRoot != "" {
+		realRoot, err = filepath.EvalSymlinks(allowedRoot)
+		if err != nil {
+			return -1, err
+		}
+	}
+	rel, err := filepath.Rel(realRoot, realDir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return -1, fmt.Errorf("directory escapes allowed root")
+	}
+
+	fd, err := unix.Open(realRoot, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, err
+	}
+	if rel == "." {
+		return fd, nil
+	}
+	for _, component := range strings.Split(rel, string(filepath.Separator)) {
+		next, openErr := unix.Openat(fd, component, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		_ = unix.Close(fd)
+		if openErr != nil {
+			return -1, openErr
+		}
+		fd = next
+	}
+	return fd, nil
+}
+
+// openRegularNoFollowAt opens a file relative to a trusted directory
+// descriptor and rejects links, special files, and multiply-linked inodes.
+// O_NONBLOCK avoids hanging while rejecting a FIFO in an attacker-controlled
+// upload directory.
+func openRegularNoFollowAt(dirFD int, name string, flags int, perm uint32) (*os.File, error) {
+	fd, err := unix.Openat(dirFD, name, flags|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, perm)
+	if err != nil {
+		return nil, err
+	}
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		_ = unix.Close(fd)
+		return nil, err
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFREG {
+		_ = unix.Close(fd)
+		return nil, fmt.Errorf("upload part is not a regular file")
+	}
+	if st.Nlink != 1 {
+		_ = unix.Close(fd)
+		return nil, fmt.Errorf("upload part has multiple hard links")
+	}
+	return os.NewFile(uintptr(fd), name), nil
+}
+
 // rejectSymlinkComponents verifies that every existing component below root is
 // a real directory/file rather than a symbolic link. resolveExisting(root)
 // deliberately allows the configured Place root itself to be a symlink, but no
@@ -607,24 +671,39 @@ func doDelete(path string) *fsError {
 // on match, atomically renames it into place (same directory, so rename
 // never crosses a filesystem). On mismatch the temp file is removed so no
 // corrupt partial is left behind.
-func doFinalize(tempFile, destFile, expectedSha string) *fsError {
-	f, err := os.Open(tempFile)
+func doFinalize(tempFile, destFile, allowedRoot, expectedSha string) *fsError {
+	tempDir := filepath.Dir(filepath.Clean(tempFile))
+	destDir := filepath.Dir(filepath.Clean(destFile))
+	if tempDir != destDir {
+		return &fsError{Code: "ERR", Message: "upload temp and destination must be in the same directory"}
+	}
+	dirFD, err := openScopedDirectory(tempDir, allowedRoot)
+	if err != nil {
+		return mapOsErr(err)
+	}
+	defer unix.Close(dirFD)
+	tempName := filepath.Base(tempFile)
+	destName := filepath.Base(destFile)
+	f, err := openRegularNoFollowAt(dirFD, tempName, unix.O_RDONLY, 0)
 	if err != nil {
 		return mapOsErr(err)
 	}
 	h := sha256.New()
 	_, cpErr := io.Copy(h, f)
-	f.Close()
+	closeErr := f.Close()
 	if cpErr != nil {
 		return &fsError{Code: "ERR", Message: cpErr.Error()}
 	}
+	if closeErr != nil {
+		return mapOsErr(closeErr)
+	}
 
 	if expectedSha != "" && hex.EncodeToString(h.Sum(nil)) != strings.ToLower(expectedSha) {
-		os.Remove(tempFile)
+		_ = unix.Unlinkat(dirFD, tempName, 0)
 		return &fsError{Code: "ECHECKSUM", Message: "checksum mismatch: file corrupted in transfer"}
 	}
 
-	if err := os.Rename(tempFile, destFile); err != nil {
+	if err := unix.Renameat(dirFD, tempName, dirFD, destName); err != nil {
 		return mapOsErr(err)
 	}
 	return nil

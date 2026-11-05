@@ -1,5 +1,5 @@
 import { parse, parseDocument, isMap, type YAMLMap } from "yaml"
-import { zAppInput, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
+import { zAppInput, zPinnedUrl, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
 
 const HEADER = "# Managed by HSI - editable by hand, re-read on load.\n"
 
@@ -300,6 +300,8 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
       const p = ports.find(p => p.containerPort === dp.containerPort)
       if (p && dp.domain) { p.domain = dp.domain; p.tls = !!dp.tls; p.publicPort = dp.publicPort ?? undefined }
     }
+    const rawPinnedUrl = svc["x-hsi"]?.pinnedUrl
+    const safePinnedUrl = zPinnedUrl.safeParse(rawPinnedUrl)
     const candidate = {
       name: svcName, image: svc.image ?? "",
       ports, envs, volumes, networkNames: Array.isArray(svc.networks) ? svc.networks : [],
@@ -307,7 +309,7 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
       restartPolicy: svc.restart ?? "no", hostname: svc.hostname ?? null, user: svc.user ?? null,
       command: typeof svc.command === "string" ? svc.command : null,
       cpuLimit: svc.cpus ?? null, memoryLimit: svc.mem_limit ?? null,
-      pinnedUrl: svc["x-hsi"]?.pinnedUrl ?? null,
+      pinnedUrl: safePinnedUrl.success ? safePinnedUrl.data : null,
     }
     const parsed = zAppInput.safeParse(candidate)
     if (parsed.success) app = parsed.data
