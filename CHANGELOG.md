@@ -14,8 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **English left in the French interface**: storage counts, redundancy and
-  usage, free space, the LVM explanation, the user Save button, notification
-  switches and why the network cannot be changed are now translated.
+  usage, free space, disk roles, health and names, the LVM explanation, RAID
+  status in the overview, the user Save button, notification switches and why
+  the network cannot be changed are now translated.
+- **Select arrows over their text**: a select with its own padding no longer
+  slides its text under the arrow.
 - **Deleting a user who never had write access**: the plan failed with
   "group.steps is not iterable", so the account could not be removed.
 - **File manager on a phone or tablet**: a tap opens a folder or previews a

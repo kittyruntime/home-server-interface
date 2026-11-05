@@ -182,7 +182,8 @@ const HEALTH_DOT: Record<DiskHealth, string> = {
   passed: 'bg-success', warning: 'bg-warning', failed: 'bg-error animate-pulse', unknown: 'bg-base-content/30',
 }
 const HEALTH_LABEL: Record<DiskHealth, string> = {
-  passed: 'Healthy', warning: 'Warning', failed: 'Failed', unknown: 'Unknown',
+  passed: t('ui.storage.PhysicalDisksSection.healthPassed'), warning: t('ui.storage.PhysicalDisksSection.healthWarning'),
+  failed: t('ui.storage.PhysicalDisksSection.healthFailed'), unknown: t('ui.storage.PhysicalDisksSection.healthUnknown'),
 }
 
 function roleText(r: DiskRow): string {
@@ -385,7 +386,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
           >
             <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v">
-              {{ v === 'table' ? 'Table' : 'Details' }}
+              {{ v === 'table' ? t('ui.storage.PhysicalDisksSection.viewTable') : t('ui.storage.PhysicalDisksSection.viewDetails') }}
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

@@ -159,7 +159,7 @@ function relTime(d: string | Date): string {
                   isRaidHealthy(r)
                     ? 'bg-success/10 text-success border-success/20'
                     : 'bg-error/10 text-error border-error/20']">
-                  {{ isRaidHealthy(r) ? 'Healthy' : 'Degraded' }}
+                  {{ isRaidHealthy(r) ? t('ui.monitor.OverviewSection.raidHealthy') : t('ui.monitor.OverviewSection.raidDegraded') }}
                 </span>
               </div>
             </template>
