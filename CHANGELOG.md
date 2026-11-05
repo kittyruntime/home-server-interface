@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.81.0] - 2026-11-06
+
 ### Added
 - **Create and start an app**: the container manager can save a new app and
   start its containers in one reviewed operation. Save without starting remains
@@ -2062,7 +2064,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.5...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.81.0...HEAD
+[1.81.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.5...v1.81.0
 [1.80.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.4...v1.80.5
 [1.80.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.3...v1.80.4
 [1.80.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...v1.80.3
