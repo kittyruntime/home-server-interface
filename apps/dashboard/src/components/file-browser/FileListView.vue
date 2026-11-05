@@ -93,6 +93,7 @@ function fileExt(name: string): string {
     <article
       v-for="entry in entries"
       :key="entry.path"
+      :data-path="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors',
@@ -207,6 +208,7 @@ function fileExt(name: string): string {
       <TableRow
         v-for="entry in entries"
         :key="entry.path"
+        :data-path="entry.path"
         :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
         @dragstart="emit('dragStart', entry, $event)"
         @dragend="endFileDrag()"

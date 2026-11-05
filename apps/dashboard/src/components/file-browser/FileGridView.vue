@@ -93,6 +93,7 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
     <div
       v-for="entry in entries"
       :key="entry.path"
+      :data-path="entry.path"
       :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
       @dragstart="emit('dragStart', entry, $event)"
       @dragend="endFileDrag()"

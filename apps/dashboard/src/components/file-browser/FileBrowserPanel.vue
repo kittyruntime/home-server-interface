@@ -726,6 +726,20 @@ function handleDrop(e: DragEvent) {
 // ── context menu ─────────────────────────────────────────────────────────────
 // Right-clicking an entry selects it first; the event then bubbles up to the
 // content area, the ContextMenu trigger, which opens the menu at the pointer.
+// A long press opens the menu without a contextmenu event on the item (iOS
+// sends none), so the item under the finger is selected when the menu opens.
+let pressedPath: string | null = null
+function onMenuPointerDown(e: PointerEvent) {
+  pressedPath = e.pointerType === 'mouse' ? null
+    : (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-path]')?.dataset.path ?? null
+}
+function onMenuOpen(open: boolean) {
+  if (!open || !pressedPath) return
+  const entry = entries.value.find(en => en.path === pressedPath)
+  pressedPath = null
+  if (entry) selectForContextMenu(entry)
+}
+
 function selectForContextMenu(entry: Entry) {
   if (!selected.value.has(entry.path)) {
     selected.value = new Set([entry.path])
@@ -843,8 +857,8 @@ onMounted(async () => {
       />
 
       <!-- Content area -->
-      <ContextMenu>
-      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0">
+      <ContextMenu @update:open="onMenuOpen">
+      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0" @pointerdown.capture="onMenuPointerDown">
       <div
         class="flex-1 overflow-auto relative"
         @dragenter="handleDragEnter"

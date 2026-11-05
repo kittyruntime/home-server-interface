@@ -46,11 +46,11 @@ onMounted(async () => {
       </div>
       <div v-else class="flex-1" />
 
-      <div class="flex flex-wrap items-center justify-center gap-2 p-3 border-t border-base-300 bg-base-100">
-        <Button as="a" :href="url ?? undefined" target="_blank" rel="noopener" :disabled="!url" :size="coarse ? 'default' : 'sm'" :class="coarse ? 'w-full sm:w-auto' : ''">
+      <div v-if="url && download" class="flex flex-wrap items-center justify-center gap-2 p-3 border-t border-base-300 bg-base-100">
+        <Button as="a" :href="url" target="_blank" rel="noopener" :size="coarse ? 'default' : 'sm'" :class="coarse ? 'w-full sm:w-auto' : ''">
           <ExternalLinkIcon aria-hidden="true" /> {{ t('ui.files.PdfPreview.openInNewTab') }}
         </Button>
-        <Button as="a" variant="ghost" :href="download ?? undefined" :download="name" :disabled="!download" :size="coarse ? 'default' : 'sm'" :class="coarse ? 'w-full sm:w-auto' : ''">
+        <Button as="a" variant="ghost" :href="download" :download="name" :size="coarse ? 'default' : 'sm'" :class="coarse ? 'w-full sm:w-auto' : ''">
           <DownloadIcon aria-hidden="true" /> {{ t('ui.files.PdfPreview.download') }}
         </Button>
       </div>
