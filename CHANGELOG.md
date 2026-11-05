@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.80.2] - 2026-11-05
+
 ### Added
 - **App Store catalog updated online**: new apps and image updates now come from
   the public repository kittyruntime/home-server-interface-apps, checked every
@@ -1970,7 +1972,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...HEAD
+[1.80.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...v1.80.2
 [1.80.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.0...v1.80.1
 [1.80.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.3...v1.80.0
 [1.79.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.2...v1.79.3
