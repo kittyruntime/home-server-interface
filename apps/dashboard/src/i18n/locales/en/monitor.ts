@@ -12,6 +12,8 @@ export default {
     clear: 'Clear',
   },
   OverviewSection: {
+    raidHealthy: 'Healthy',
+    raidDegraded: 'Degraded',
     summary: 'Summary',
     thisNasAtAGlance: 'This NAS at a glance: system, storage, containers and recent activity.',
     system: 'System',

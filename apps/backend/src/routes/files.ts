@@ -286,7 +286,7 @@ export async function fileRoutes(app: FastifyInstance) {
     const name = basename(filePath)
     const mime = guessMime(name)
     // Only ever honor `inline=1` for passive media we know is safe to render
-    // (image/video/audio, excluding SVG); anything else silently falls
+    // (image/video/audio and PDF, excluding SVG); anything else silently falls
     // back to a forced attachment download, regardless of what the caller
     // requested. See isInlineSafe() for why.
     const isInline = inline === "1" && isInlineSafe(mime)

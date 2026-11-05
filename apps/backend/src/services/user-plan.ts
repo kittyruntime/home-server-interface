@@ -38,15 +38,19 @@ function deleteStep(username: string): PlanStep {
   }
 }
 
+// A plan with nothing to do came back as null steps from workers before
+// v1.80.3 (a user outside the share group): read as an empty list.
 async function preview(deps: UserPlanDeps, op: string, input: Record<string, unknown>): Promise<Preview> {
   try {
-    return await deps.worker<Preview>("root.plan.preview", { op, input })
+    const p = await deps.worker<Preview>("root.plan.preview", { op, input })
+    return { ...p, steps: p.steps ?? [] }
   } catch (e) { workerError(e) }
 }
 
 async function apply(deps: UserPlanDeps, op: string, input: Record<string, unknown>, fingerprint: string): Promise<PlanApplyResult> {
   try {
-    return await deps.worker<PlanApplyResult>("root.plan.apply", { op, input, fingerprint })
+    const r = await deps.worker<PlanApplyResult>("root.plan.apply", { op, input, fingerprint })
+    return { ...r, steps: r.steps ?? [], results: r.results ?? [] }
   } catch (e) { workerError(e) }
 }
 

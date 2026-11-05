@@ -25,6 +25,7 @@ export default {
     copy: 'Copy',
     cut: 'Cut',
     open: 'Open',
+    view: 'View',
     rename: 'Rename',
     download: 'Download',
     share: 'Share',
@@ -118,6 +119,10 @@ export default {
   },
   MediaPreview: {
     couldnTLoadThisFile: 'Couldn\'t load this file.',
+  },
+  PdfPreview: {
+    openInNewTab: 'Open in a new tab',
+    download: 'Download',
   },
   FilePreviewModal: {
     download: 'Download',

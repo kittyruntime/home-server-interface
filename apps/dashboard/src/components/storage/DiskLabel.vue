@@ -60,9 +60,9 @@ async function save() {
       type="button"
       variant="ghost"
       :class="['h-auto max-w-full justify-start truncate p-0 text-left text-2xs font-normal rounded-sm hover:bg-transparent hover:text-base-content focus-visible:text-base-content',
-        label ? 'text-base-content/80' : 'text-base-content/70 @2xl:opacity-0 @2xl:group-hover:opacity-100 focus-visible:opacity-100']"
-      :tooltip="label ? 'Rename this disk' : 'Name this disk, for example by its bay'"
+        label ? 'text-base-content/80' : 'text-base-content/70 @2xl:opacity-0 @2xl:group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100']"
+      :tooltip="label ? t('ui.storage.DiskLabel.renameDisk') : t('ui.storage.DiskLabel.nameDisk')"
       @click="start"
-    >{{ label || 'Add label' }}</Button>
+    >{{ label || t('ui.storage.DiskLabel.addLabel') }}</Button>
   </span>
 </template>

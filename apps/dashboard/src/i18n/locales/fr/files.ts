@@ -24,6 +24,7 @@ export default {
     copy: 'Copier',
     cut: 'Couper',
     open: 'Ouvrir',
+    view: 'Afficher',
     rename: 'Renommer',
     download: 'Télécharger',
     share: 'Partager',
@@ -117,6 +118,10 @@ export default {
   },
   MediaPreview: {
     couldnTLoadThisFile: 'Impossible de charger ce fichier.',
+  },
+  PdfPreview: {
+    openInNewTab: 'Ouvrir dans un nouvel onglet',
+    download: 'Télécharger',
   },
   FilePreviewModal: {
     download: 'Télécharger',

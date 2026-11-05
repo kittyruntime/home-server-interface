@@ -4,8 +4,8 @@ import { Separator } from '@/components/ui/separator'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import Tip from '../ui/Tip.vue'
 import { Button } from '@/components/ui/button'
-import { ArrowLeftIcon, BookmarkIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
-import { ref, nextTick } from 'vue'
+import { ArrowLeftIcon, BookmarkIcon, EyeIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -18,7 +18,7 @@ const { t } = useI18n()
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 type Crumb = { label: string; path: string; clickable: boolean }
 
-defineProps<{
+const props = defineProps<{
   currentPath: string | null
   breadcrumbs: Crumb[]
   /** The selection goes to a trash when deleted (#200). */
@@ -33,6 +33,9 @@ defineProps<{
   sidebarOpen: boolean
 }>()
 
+// A file is shown (its preview), a folder is opened.
+const openLabel = computed(() => props.selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open'))
+
 const emit = defineEmits<{
   goUp: []
   navigate: [path: string]
@@ -40,6 +43,7 @@ const emit = defineEmits<{
   copy: []
   cut: []
   startRename: [entry: Entry]
+  open: [entry: Entry]
   download: []
   openPermissions: []
   share: []
@@ -59,6 +63,13 @@ const emit = defineEmits<{
 
 // A crumb takes items dragged onto it: they move up into that folder.
 const crumbDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+
+// A deep path scrolls so the current folder stays in sight.
+const crumbsEl = ref<{ $el?: HTMLElement } | null>(null)
+watch(() => props.currentPath, () => nextTick(() => {
+  const el = crumbsEl.value?.$el
+  if (el) el.scrollLeft = el.scrollWidth
+}), { immediate: true })
 
 
 const searchQuery = ref('')
@@ -85,7 +96,7 @@ async function openSearch() {
 
 <template>
   <div
-    class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11"
+    class="flex flex-wrap sm:flex-nowrap items-center gap-x-1.5 gap-y-1 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 sm:h-11"
     @click.stop
   >
     <!-- Mobile: places sidebar toggle -->
@@ -102,7 +113,8 @@ async function openSearch() {
     </Button>
 
     <!-- Breadcrumb -->
-    <Breadcrumb v-if="currentPath" class="flex-1 min-w-0 overflow-x-auto">
+    <!-- On a phone the actions fill the first row: the path gets its own, scrolled to the current folder. -->
+    <Breadcrumb v-if="currentPath" ref="crumbsEl" class="order-last basis-full grow sm:order-none sm:basis-0 min-w-0 overflow-x-auto [scrollbar-width:none]">
       <BreadcrumbList class="flex-nowrap gap-1 sm:gap-1">
         <template v-for="(crumb, i) in breadcrumbs" :key="i">
           <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
@@ -118,7 +130,7 @@ async function openSearch() {
         </template>
       </BreadcrumbList>
     </Breadcrumb>
-    <div v-else class="flex-1" />
+    <div v-else class="hidden sm:block flex-1" />
 
     <!-- Right-side actions -->
     <div class="flex items-center gap-0.5 flex-shrink-0 ml-auto">
@@ -133,6 +145,9 @@ async function openSearch() {
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
 
         <!-- In the order of the context menu: get it, move it, change it, remove it, then its details. -->
+        <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1" @click="emit('open', selectedEntries[0]!)" :tooltip="`${openLabel} (Enter)`" :aria-label="openLabel" aria-keyshortcuts="Enter" class="text-base-content/70">
+          <EyeIcon class="w-4 h-4" aria-hidden="true" />
+        </Button>
         <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1 && selectedEntries[0]?.type === 'file'" @click="emit('download')" :tooltip="t('ui.files.FileToolbar.download')" :aria-label="t('ui.files.FileToolbar.downloadSelection')" class="text-base-content/70">
           <DownloadIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
@@ -198,11 +213,11 @@ async function openSearch() {
       </Button>
 
       <!-- Divider -->
-      <Separator v-if="currentPath" orientation="vertical" class="data-[orientation=vertical]:h-4 mx-1" />
+      <Separator v-if="currentPath" orientation="vertical" class="hidden sm:block data-[orientation=vertical]:h-4 mx-1" />
 
-      <!-- Refresh -->
+      <!-- Refresh: on a phone it stays in the long-press menu, so the actions fit on one row. -->
       <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" :tooltip="t('ui.files.FileToolbar.refresh')" :aria-label="t('ui.files.FileToolbar.refreshFolder')"
-        class="text-base-content/70 hover:text-base-content">
+        class="hidden sm:inline-flex text-base-content/70 hover:text-base-content">
         <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
 

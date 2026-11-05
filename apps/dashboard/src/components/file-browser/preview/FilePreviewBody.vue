@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import MediaPreview from './MediaPreview.vue'
+import PdfPreview from './PdfPreview.vue'
 import { detectKind } from '../../../lib/file-kind'
 
 type Entry = { path: string; name: string; size: number | null }
@@ -24,6 +25,7 @@ defineExpose({ save })
 
 <template>
   <MediaPreview v-if="kind === 'image' || kind === 'video' || kind === 'audio'" :path="entry.path" :kind="kind" />
+  <PdfPreview v-else-if="kind === 'pdf'" :path="entry.path" :name="entry.name" />
   <CodeEditor
     v-else
     ref="editorRef"

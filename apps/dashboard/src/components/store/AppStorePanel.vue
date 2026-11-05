@@ -223,7 +223,7 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
           <div class="flex gap-3 items-start min-w-0">
             <span class="w-10 h-10 shrink-0 grid place-items-center"><AppIcon :svg="a.icon" /></span>
             <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <Button
                   type="button" :data-card="a.id" variant="link"
                   class="h-auto justify-start p-0 text-sm font-medium text-base-content truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"

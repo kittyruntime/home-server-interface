@@ -11,6 +11,8 @@ export default {
     clear: 'Effacer',
   },
   OverviewSection: {
+    raidHealthy: 'Sain',
+    raidDegraded: 'Dégradé',
     summary: 'Résumé',
     thisNasAtAGlance: 'Ce NAS en un coup d’œil : système, stockage, conteneurs et activité récente.',
     system: 'Système',

@@ -22,16 +22,21 @@ export function guessMime(filename: string): string {
 
 // Whitelist of MIME types it's safe to serve with Content-Disposition: inline
 // (i.e. rendered directly by the browser instead of forced to save-as).
-// Restricted to passive media (image/video/audio), explicitly excludes
+// Restricted to passive media (image/video/audio) and PDF, explicitly excludes
 // image/svg+xml (can embed <script>, executes if framed/navigated-to
 // directly), text/html, and XML variants, since those would otherwise
 // execute as an active document on this backend's own origin (where the
 // auth token lives in localStorage) if a user previews an uploaded file
 // with a misleading extension. Callers must still fall back to
 // attachment + application/octet-stream when this returns false.
+//
+// PDF is rendered by the browser's own viewer (Chrome's out-of-process
+// viewer, Firefox's pdf.js), which never runs as a document of this origin.
+// The sandbox CSP sent with every inline response still applies: Chrome
+// shows a PDF under it, top level and framed.
 const INLINE_UNSAFE = new Set(["image/svg+xml", "text/html", "application/xhtml+xml", "application/xml", "text/xml"])
 
 export function isInlineSafe(mime: string): boolean {
   if (INLINE_UNSAFE.has(mime)) return false
-  return mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+  return mime === "application/pdf" || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
 }

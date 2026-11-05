@@ -203,8 +203,8 @@ function formatTime(at: string | Date): string {
             </Button>
           </div>
           <ul v-if="connectors.length > 0" class="divide-y divide-base-300">
-            <li v-for="c in connectors" :key="c.id" class="flex items-center gap-3 px-5 py-3">
-              <div class="flex-1 min-w-0">
+            <li v-for="c in connectors" :key="c.id" class="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+              <div class="flex-1 min-w-0 basis-48">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium text-base-content truncate">{{ c.name }}</span>
                   <Badge variant="secondary">{{ c.type === 'smtp' ? 'email' : 'webhook' }}</Badge>
@@ -212,9 +212,11 @@ function formatTime(at: string | Date): string {
                 </div>
                 <p class="text-xs text-base-content/70 font-mono truncate mt-0.5">{{ connectorTarget(c) }}</p>
               </div>
-              <Tip :text="c.enabled ? 'Disable connector' : 'Enable connector'"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
-              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
-              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
+              <div class="ml-auto flex items-center gap-3">
+                <Tip :text="c.enabled ? $t('ui.settings.NotificationsSection.disableConnector') : $t('ui.settings.NotificationsSection.enableConnector')"><Switch :model-value="c.enabled" @update:model-value="toggleConnector(c)" /></Tip>
+                <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openConnectorDialog(c)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
+                <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteConnector(c)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
+              </div>
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-base-content/70">
@@ -232,8 +234,8 @@ function formatTime(at: string | Date): string {
             </Button>
           </div>
           <ul v-if="rules.length > 0" class="divide-y divide-base-300">
-            <li v-for="r in rules" :key="r.id" class="flex items-center gap-3 px-5 py-3">
-              <div class="flex-1 min-w-0">
+            <li v-for="r in rules" :key="r.id" class="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+              <div class="flex-1 min-w-0 basis-48">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-sm font-medium text-base-content">{{ r.name }}</span>
                   <Badge variant="outline" :class="severityClass(r.minSeverity)">{{ r.minSeverity }}</Badge>
@@ -249,9 +251,11 @@ function formatTime(at: string | Date): string {
                   >{{ t }}</span>
                 </div>
               </div>
-              <Tip :text="r.enabled ? 'Disable rule' : 'Enable rule'"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
-              <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
-              <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
+              <div class="ml-auto flex items-center gap-3">
+                <Tip :text="r.enabled ? $t('ui.settings.NotificationsSection.disableRule') : $t('ui.settings.NotificationsSection.enableRule')"><Switch :model-value="r.enabled" @update:model-value="toggleRule(r)" /></Tip>
+                <Button variant="ghost" size="xs" type="button" class="shrink-0" @click="openRuleDialog(r)">{{ $t('ui.settings.NotificationsSection.edit') }}</Button>
+                <Button variant="destructive" size="xs" type="button" class="shrink-0" @click="deleteRule(r)">{{ $t('ui.settings.NotificationsSection.delete') }}</Button>
+              </div>
             </li>
           </ul>
           <p v-else class="px-5 py-6 text-sm text-base-content/70">

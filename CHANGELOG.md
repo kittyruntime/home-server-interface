@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PDF preview**: a PDF opens in the file manager instead of the text editor,
+  shown in place on a computer, with buttons to open it in a new tab or
+  download it (the way to read it on a phone).
+
+### Fixed
+- **English left in the French interface**: storage counts, redundancy and
+  usage, free space, disk roles, health and names, the LVM explanation, RAID
+  status in the overview, the user Save button, notification switches and why
+  the network cannot be changed are now translated.
+- **Select arrows over their text**: a select with its own padding no longer
+  slides its text under the arrow.
+- **Deleting a user who never had write access**: the plan failed with
+  "group.steps is not iterable", so the account could not be removed.
+- **File manager on a phone or tablet**: a tap opens a folder or previews a
+  file; once something is selected (checkbox or long press), taps add to the
+  selection. The selection bar and the long-press menu have View for a file
+  (its preview) and Open for a folder, and the checkboxes and
+  preview buttons that only showed on hover now show on touch screens.
+- **Long press on a touch screen**: it opens the menu of the item under the
+  finger and selects it. A finger held still no longer cancels it, and lifting
+  it no longer picks the menu item under it.
+- **File manager path on a phone**: the current folder shows on its own row
+  instead of being squeezed out by the actions.
+- **Row actions on touch screens**: the actions of an app, a place or a group
+  member that only showed on hover are now visible on touch screens.
+- **Narrow screens**: section titles no longer squeeze into a thin column next
+  to their buttons (storage, places, users, groups, sharing diagnostics), and
+  RAID cards, notification connectors and rules, App Store cards and the apps
+  table on a tablet no longer cut their content.
+
 ## [1.80.2] - 2026-11-05
 
 ### Added

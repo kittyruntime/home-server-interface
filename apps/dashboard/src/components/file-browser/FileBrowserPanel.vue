@@ -40,6 +40,7 @@ import TrashView from './TrashView.vue'
 import FolderStatusBar from './FolderStatusBar.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import TransfersTray from './TransfersTray.vue'
+import { isTouchClick } from '../../lib/touch'
 import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '@/components/ui/context-menu'
 
@@ -405,8 +406,18 @@ function clickSelect(entry: Entry, e: MouseEvent) {
   selectionAnchor.value = entry.path
 }
 
+// On a touch screen a tap opens, as in a phone's file manager: a double tap
+// zooms instead of reaching dblclick. Once something is selected (checkbox or
+// long press), taps add to or remove from the selection until it is cleared.
+function tapOrClick(entry: Entry, e: MouseEvent) {
+  if (!isTouchClick(e)) return clickSelect(entry, e)
+  e.stopPropagation()
+  if (selected.value.size > 0) return selectEntry(entry, e)
+  openEntry(entry)
+}
+
 function handleRowClick(entry: Entry, e: MouseEvent) {
-  clickSelect(entry, e)
+  tapOrClick(entry, e)
 }
 
 function handleRowDblClick(entry: Entry) {
@@ -418,7 +429,7 @@ function handleRowDblClick(entry: Entry) {
 const openEntry = handleRowDblClick
 
 function handleGridCardClick(entry: Entry, e: MouseEvent) {
-  clickSelect(entry, e)
+  tapOrClick(entry, e)
 }
 
 function handleGridCardDblClick(entry: Entry) {
@@ -715,6 +726,20 @@ function handleDrop(e: DragEvent) {
 // ── context menu ─────────────────────────────────────────────────────────────
 // Right-clicking an entry selects it first; the event then bubbles up to the
 // content area, the ContextMenu trigger, which opens the menu at the pointer.
+// A long press opens the menu without a contextmenu event on the item (iOS
+// sends none), so the item under the finger is selected when the menu opens.
+let pressedPath: string | null = null
+function onMenuPointerDown(e: PointerEvent) {
+  pressedPath = e.pointerType === 'mouse' ? null
+    : (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-path]')?.dataset.path ?? null
+}
+function onMenuOpen(open: boolean) {
+  if (!open || !pressedPath) return
+  const entry = entries.value.find(en => en.path === pressedPath)
+  pressedPath = null
+  if (entry) selectForContextMenu(entry)
+}
+
 function selectForContextMenu(entry: Entry) {
   if (!selected.value.has(entry.path)) {
     selected.value = new Set([entry.path])
@@ -810,6 +835,7 @@ onMounted(async () => {
         @clear-selection="clearSelection"
         @copy="doCopy"
         @cut="doCut"
+        @open="openEntry"
         @start-rename="startRename"
         @download="downloadSelected"
         @open-permissions="openPermissions"
@@ -831,8 +857,8 @@ onMounted(async () => {
       />
 
       <!-- Content area -->
-      <ContextMenu>
-      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0">
+      <ContextMenu @update:open="onMenuOpen">
+      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0" @pointerdown.capture="onMenuPointerDown">
       <div
         class="flex-1 overflow-auto relative"
         @dragenter="handleDragEnter"
@@ -980,7 +1006,7 @@ onMounted(async () => {
         <template v-if="selected.size > 0">
           <template v-if="selected.size === 1">
             <ContextMenuItem @select="openEntry(selectedEntries[0]!)">
-              <EyeIcon /> {{ t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
+              <EyeIcon /> {{ selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
             <ContextMenuSeparator />

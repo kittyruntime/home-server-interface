@@ -101,6 +101,15 @@ async function testBookmarkPreferences() {
 }
 await testBookmarkPreferences()
 
+// Inline previews: passive media and PDF (shown by the browser's own viewer);
+// never a type that runs as a document of this origin.
+async function testInlinePreviewTypes() {
+  const { guessMime, isInlineSafe } = await import("../utils/mime")
+  for (const name of ["a.pdf", "a.PDF", "a.png", "a.mp4", "a.mp3"]) assert.equal(isInlineSafe(guessMime(name)), true, name)
+  for (const name of ["a.svg", "a.html", "a.xml", "a.docx", "a"]) assert.equal(isInlineSafe(guessMime(name)), false, name)
+}
+await testInlinePreviewTypes()
+
 async function testTrashPlaceOf() {
   const { placeOf, isTrashEntry } = await import("../services/trash")
   const places = [{ id: "media", path: "/srv/media" }, { id: "films", path: "/srv/media/films" }, { id: "m2", path: "/srv/media2" }]
@@ -1516,6 +1525,15 @@ await testSharePlans()
       payload.op === "smb.sync" ? { steps: [{ kind: "run", target: "smbd", summary: "reload" }], fingerprint: "s0" } : { steps: [], fingerprint: "g0" },
   }))
   assert.deepEqual(quiet.steps.map(s => s.kind), ["delete"])
+
+  // A user outside the share group: a worker before v1.80.3 sent null steps
+  // and results for group.leave, which made the delete plan fail.
+  const nullWorker = async (subject: string, payload: any) =>
+    subject === "root.plan.preview" ? { steps: null, fingerprint: "g0" } : { ok: true, steps: null, results: null }
+  const outside = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [], worker: nullWorker }))
+  assert.deepEqual(outside.steps.map(s => s.kind), ["delete"])
+  const outsideDone = await up.applyUserDelete("alice", outside.fingerprint, deps({ currentShareDefs: async () => [], worker: nullWorker }))
+  assert.equal(outsideDone.ok, true)
 
   // No share access, but smb.conf out of date: the user's delete does not
   // reconcile unrelated drift (no smb.conf step, no smbd reload).

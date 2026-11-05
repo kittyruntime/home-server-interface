@@ -4,6 +4,7 @@ import { APP_LABEL, type AppId } from '../lib/desktop'
 import { NAV_TEXT, SECTION_LABELS, type StorageSection } from '../lib/storage-nav'
 import { setTranslator } from '../lib/tr'
 import { LOADING } from '../lib/loading'
+import { ROLE_LABELS } from '../components/storage/disk-list'
 
 // Names kept in plain modules (shared with tests run outside the browser),
 // put in the interface language whenever it changes.
@@ -18,6 +19,7 @@ watchEffect(() => {
   for (const s of Object.keys(SECTION_LABELS) as StorageSection[]) SECTION_LABELS[s] = t(`storage.nav.${s}`)
   NAV_TEXT.createVolume = t('storage.createVolume')
   for (const k of Object.keys(LOADING) as (keyof typeof LOADING)[]) LOADING[k] = t(`lib.loading.${k}`)
+  for (const r of Object.keys(ROLE_LABELS) as (keyof typeof ROLE_LABELS)[]) ROLE_LABELS[r] = t(`storage.roles.${r}`)
 })
 
 // Plain modules ask through lib/tr: the message when this language has it,

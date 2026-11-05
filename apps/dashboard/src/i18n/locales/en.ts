@@ -45,6 +45,7 @@ export default {
   storage: {
     nav: { volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance' },
     createVolume: 'Create volume',
+    roles: { system: 'System', raid: 'RAID member', lvm: 'LVM PV', mounted: 'Mounted', free: 'Free', unmounted: 'Not mounted' },
   },
   monitor: {
     nav: { overview: 'Summary', systemInfo: 'System info', monitoring: 'Monitoring', alerts: 'Alerts', audit: 'Audit log' },

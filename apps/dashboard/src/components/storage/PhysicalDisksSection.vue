@@ -182,7 +182,8 @@ const HEALTH_DOT: Record<DiskHealth, string> = {
   passed: 'bg-success', warning: 'bg-warning', failed: 'bg-error animate-pulse', unknown: 'bg-base-content/30',
 }
 const HEALTH_LABEL: Record<DiskHealth, string> = {
-  passed: 'Healthy', warning: 'Warning', failed: 'Failed', unknown: 'Unknown',
+  passed: t('ui.storage.PhysicalDisksSection.healthPassed'), warning: t('ui.storage.PhysicalDisksSection.healthWarning'),
+  failed: t('ui.storage.PhysicalDisksSection.healthFailed'), unknown: t('ui.storage.PhysicalDisksSection.healthUnknown'),
 }
 
 function roleText(r: DiskRow): string {
@@ -313,8 +314,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-4">
-      <div>
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.PhysicalDisksSection.disks') }}</h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.PhysicalDisksSection.physicalDisksAndEverythingBuilt') }}</p>
       </div>
@@ -334,8 +335,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
         <!-- Summary: each count filters the list -->
         <Card class="block gap-0 py-0 shadow-none px-4 py-3 mb-3">
           <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-            <span class="font-semibold text-base-content">{{ summary.disks }} {{ summary.disks === 1 ? 'disk' : 'disks' }}</span>
-            <span class="text-base-content/70 tabular-nums">{{ fmtBytes(summary.totalBytes) }} total</span>
+            <span class="font-semibold text-base-content">{{ t('ui.storage.PhysicalDisksSection.disksCount', summary.disks) }}</span>
+            <span class="text-base-content/70 tabular-nums">{{ t('ui.storage.PhysicalDisksSection.total', { size: fmtBytes(summary.totalBytes) }) }}</span>
             <span v-if="summary.roles.free" class="text-base-content/70 tabular-nums">{{ t('uip.storage.PhysicalDisksSection.onFreeDisks', { p0: fmtBytes(summary.freeBytes) }) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
@@ -385,7 +386,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             @update:model-value="v => { if (v === 'table' || v === 'cards') prefs.view = v }"
           >
             <ToggleGroupItem v-for="v in (['table', 'cards'] as View[])" :key="v" :value="v">
-              {{ v === 'table' ? 'Table' : 'Details' }}
+              {{ v === 'table' ? t('ui.storage.PhysicalDisksSection.viewTable') : t('ui.storage.PhysicalDisksSection.viewDetails') }}
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

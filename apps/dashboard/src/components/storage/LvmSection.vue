@@ -205,8 +205,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
 <template>
   <div>
-    <div v-if="!only" class="flex items-start justify-between mb-4">
-      <div>
+    <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.LvmSection.volumeGroups') }}</h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
       </div>

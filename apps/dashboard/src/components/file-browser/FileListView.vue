@@ -93,6 +93,7 @@ function fileExt(name: string): string {
     <article
       v-for="entry in entries"
       :key="entry.path"
+      :data-path="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors',
@@ -207,6 +208,7 @@ function fileExt(name: string): string {
       <TableRow
         v-for="entry in entries"
         :key="entry.path"
+        :data-path="entry.path"
         :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
         @dragstart="emit('dragStart', entry, $event)"
         @dragend="endFileDrag()"
@@ -229,7 +231,7 @@ function fileExt(name: string): string {
           <Checkbox
             :model-value="selected.has(entry.path)"
             :aria-label="`Select ${entry.name}`"
-            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100']"
+            :class="['transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100']"
             @click.prevent="emit('selectEntry', entry, $event)"
           />
         </TableCell>
@@ -272,7 +274,7 @@ function fileExt(name: string): string {
                 @click.stop="emit('openFile', entry)"
                 :tooltip="$t('ui.files.FileListView.preview')"
                 :aria-label="`Preview ${entry.name}`"
-                class="shrink-0 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                class="shrink-0 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
               >
                 <EyeIcon class="size-4" aria-hidden="true" />
               </Button>

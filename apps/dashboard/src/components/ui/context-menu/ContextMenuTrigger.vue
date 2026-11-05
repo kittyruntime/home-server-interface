@@ -51,11 +51,43 @@ function cancelPress() {
   pressTimer = undefined
 }
 
+// A finger held still still sends pointermove events: only a real move (a
+// scroll or a drag) cancels the long press.
+const MOVE_TOLERANCE_PX = 10
+let pressStart = { x: 0, y: 0 }
+
 function onPointerdown(event: PointerEvent) {
   if (props.disabled || event.pointerType === "mouse" || isEditable(event.target)) return
   cancelPress()
   const { clientX, clientY } = event
-  pressTimer = setTimeout(() => ctx.show({ x: clientX, y: clientY }, "content"), LONG_PRESS_MS)
+  pressStart = { x: clientX, y: clientY }
+  pressTimer = setTimeout(() => {
+    pressTimer = undefined
+    ctx.show({ x: clientX, y: clientY }, "content")
+    swallowReleaseClick()
+  }, LONG_PRESS_MS)
+}
+
+// The menu opens under the finger: the click the browser sends when it lifts
+// would pick the item there. That one click is dropped.
+function swallowReleaseClick() {
+  let afterUp: ReturnType<typeof setTimeout> | undefined
+  const swallow = (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); done() }
+  const lifted = () => { afterUp = setTimeout(done, 400) }
+  const done = () => {
+    clearTimeout(afterUp)
+    window.removeEventListener("click", swallow, true)
+    window.removeEventListener("pointerup", lifted, true)
+    window.removeEventListener("pointerdown", done, true)
+  }
+  window.addEventListener("click", swallow, true)
+  window.addEventListener("pointerup", lifted, true)
+  window.addEventListener("pointerdown", done, true)
+}
+
+function onPointermove(event: PointerEvent) {
+  if (pressTimer === undefined) return
+  if (Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y) > MOVE_TOLERANCE_PX) cancelPress()
 }
 </script>
 
@@ -69,7 +101,7 @@ function onPointerdown(event: PointerEvent) {
     @contextmenu="onContextmenu"
     @keydown="onKeydown"
     @pointerdown="onPointerdown"
-    @pointermove="cancelPress"
+    @pointermove="onPointermove"
     @pointerup="cancelPress"
     @pointercancel="cancelPress"
   >

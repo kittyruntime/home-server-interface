@@ -17,15 +17,15 @@ function dismiss() {
 const stages = [
   {
     title: t('uis.storage.LvmIntro.disks'),
-    caption: 'Pick one or more disks, partitions or RAID arrays.',
+    caption: t('ui.storage.LvmIntro.disksCaption'),
   },
   {
     title: t('uis.storage.LvmIntro.volumeGroup'),
-    caption: 'They’re pooled together into one flexible pool (VG).',
+    caption: t('ui.storage.LvmIntro.volumeGroupCaption'),
   },
   {
     title: t('uis.storage.LvmIntro.logicalVolumes'),
-    caption: 'Carve out resizable volumes (LVs) from the pool as you need them.',
+    caption: t('ui.storage.LvmIntro.logicalVolumesCaption'),
   },
 ]
 </script>

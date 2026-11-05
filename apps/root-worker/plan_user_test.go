@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -146,5 +147,28 @@ func TestPasswordTargetMustBeHSIAccount(t *testing.T) {
 	hostUserShell = func(string) (string, bool) { return "", false }
 	if err := checkPasswordTarget("bob"); err != nil {
 		t.Fatal("a missing account is created by HSI afterwards")
+	}
+}
+
+// A user who never joined the share group leaves nothing to undo: the plan is
+// an empty list on the wire, which the backend spreads, never null.
+func TestGroupLeaveWithNothingToDoIsAnEmptyList(t *testing.T) {
+	stubUserHost(t, true, true, []string{"bob"})
+	input := []byte(`{"username":"alice"}`)
+	prev, fe := previewPlan("group.leave", input)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	out, _ := json.Marshal(prev)
+	if !strings.Contains(string(out), `"steps":[]`) {
+		t.Fatalf("preview: %s", out)
+	}
+	res, fe := applyPlan("group.leave", input, prev.Fingerprint)
+	if fe != nil || !res.OK {
+		t.Fatalf("apply: %+v %+v", res, fe)
+	}
+	out, _ = json.Marshal(res)
+	if !strings.Contains(string(out), `"steps":[]`) || !strings.Contains(string(out), `"results":[]`) {
+		t.Fatalf("apply: %s", out)
 	}
 }

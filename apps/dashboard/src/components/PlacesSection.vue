@@ -157,8 +157,8 @@ onMounted(async () => {
 <template>
   <section class="space-y-4">
     <!-- Header -->
-    <div class="flex items-start justify-between gap-4">
-      <div>
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.PlacesSection.places') }}</h2>
         <p class="text-xs text-base-content/70 mt-1 max-w-md leading-relaxed">
           {{ t('ui.settings.PlacesSection.foldersOnYourNasThat') }}
@@ -250,7 +250,7 @@ onMounted(async () => {
               <ChevronDownIcon :class="['w-3.5 h-3.5 text-base-content/70 shrink-0 transition-transform', expandedPlace === place.id ? 'rotate-180' : '']" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="icon-xs" @click="deletePlace(place.id)"
-              class="opacity-0 group-hover:opacity-100 text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
+              class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-base-content/70 hover:text-primary hover:bg-primary/10 shrink-0"
               :tooltip="t('ui.settings.PlacesSection.remove')" :aria-label="t('ui.settings.PlacesSection.remove')">
               <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
