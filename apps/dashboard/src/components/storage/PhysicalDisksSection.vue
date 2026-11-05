@@ -313,8 +313,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-4">
-      <div>
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.PhysicalDisksSection.disks') }}</h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.PhysicalDisksSection.physicalDisksAndEverythingBuilt') }}</p>
       </div>

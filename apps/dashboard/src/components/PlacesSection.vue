@@ -157,8 +157,8 @@ onMounted(async () => {
 <template>
   <section class="space-y-4">
     <!-- Header -->
-    <div class="flex items-start justify-between gap-4">
-      <div>
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.PlacesSection.places') }}</h2>
         <p class="text-xs text-base-content/70 mt-1 max-w-md leading-relaxed">
           {{ t('ui.settings.PlacesSection.foldersOnYourNasThat') }}

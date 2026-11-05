@@ -319,7 +319,7 @@ async function unpin(app: App) {
           <TableHeader>
             <TableRow class="border-b border-base-300">
               <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.container') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden sm:table-cell">{{ t('ui.apps.AppList.image') }}</TableHead>
+              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden lg:table-cell">{{ t('ui.apps.AppList.image') }}</TableHead>
               <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden md:table-cell">{{ t('ui.apps.AppList.ports') }}</TableHead>
               <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.status') }}</TableHead>
               <TableHead class="px-6 py-2.5 text-right"></TableHead>
@@ -350,7 +350,7 @@ async function unpin(app: App) {
               </TableCell>
 
               <!-- Image -->
-              <TableCell class="px-3 py-3.5 hidden sm:table-cell">
+              <TableCell class="px-3 py-3.5 hidden lg:table-cell">
                 <span class="font-mono text-base-content/70 text-xs truncate block">{{ app.app?.image ?? '-' }}</span>
               </TableCell>
 

@@ -162,8 +162,8 @@ async function mount(v: Volume) {
 
 <template>
   <div>
-    <div class="flex items-start justify-between gap-4 mb-5">
-      <div class="min-w-0">
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-5">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.VolumesSection.volumes') }}</h2>
         <p v-if="overview" class="text-sm text-base-content/70 mt-0.5">
           {{ overview.volumes.length }} {{ overview.volumes.length === 1 ? 'volume' : 'volumes' }}

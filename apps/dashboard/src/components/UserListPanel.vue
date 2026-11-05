@@ -177,8 +177,8 @@ onMounted(load)
     <div v-else class="space-y-6">
 
       <!-- Header -->
-      <div class="flex items-start justify-between gap-4">
-        <div>
+      <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div class="min-w-0 flex-1 basis-56">
           <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.UserListPanel.users') }}</h2>
           <p v-if="!loading && !loadError" class="text-xs text-base-content/70 mt-0.5">
             {{ t('uip.settings.UserListPanel.ofAccount', { p0: filteredUsers.length, p1: users.length, p2: users.length !== 1 ? 's' : '' }) }}

@@ -17,8 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file; once something is selected (checkbox or long press), taps add to the
   selection. The selection bar has an Open button, and the checkboxes and
   preview buttons that only showed on hover now show on touch screens.
+- **Long press on a touch screen**: it opens the menu of the item under the
+  finger and selects it. A finger held still no longer cancels it, and lifting
+  it no longer picks the menu item under it.
+- **File manager path on a phone**: the current folder shows on its own row
+  instead of being squeezed out by the actions.
 - **Row actions on touch screens**: the actions of an app, a place or a group
   member that only showed on hover are now visible on touch screens.
+- **Narrow screens**: section titles no longer squeeze into a thin column next
+  to their buttons (storage, places, users, groups, sharing diagnostics), and
+  RAID cards, notification connectors and rules, App Store cards and the apps
+  table on a tablet no longer cut their content.
 
 ## [1.80.2] - 2026-11-05
 

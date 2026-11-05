@@ -39,8 +39,8 @@ function dirWritable(s: ShareDiag): boolean {
 
 <template>
   <div class="space-y-5">
-    <div class="flex items-start justify-between gap-3">
-      <div>
+    <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.sharing.DiagnosticsSection.shareDiagnostics') }}</h2>
         <p class="text-sm text-base-content/70 mt-0.5">
           {{ t('ui.sharing.DiagnosticsSection.whoCanActuallyReadWrite') }}

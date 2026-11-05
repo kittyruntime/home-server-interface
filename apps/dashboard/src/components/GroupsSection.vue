@@ -124,8 +124,8 @@ onMounted(load)
     <!-- ── Group list ────────────────────────────────────────────────────────── -->
     <section v-else class="space-y-5">
 
-      <div class="flex items-start justify-between gap-4">
-        <div>
+      <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div class="min-w-0 flex-1 basis-56">
           <h2 class="text-lg font-semibold text-base-content">{{ t('ui.settings.GroupsSection.groups') }}</h2>
           <p class="text-xs text-base-content/70 mt-0.5">
             {{ t('uip.settings.GroupsSection.ofGroup', { p0: filteredGroups.length, p1: groups.length, p2: groups.length !== 1 ? 's' : '' }) }}

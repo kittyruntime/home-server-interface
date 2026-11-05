@@ -315,8 +315,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
 <template>
   <div>
-    <div v-if="!only" class="flex items-start justify-between mb-4">
-      <div>
+    <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+      <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.RaidSection.arrays') }}</h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
       </div>
@@ -358,14 +358,14 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
         <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-error'"/>
         <div class="flex-1 min-w-0">
           <!-- Header -->
-          <div class="flex items-center gap-3 px-4 pt-3.5 pb-2">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3.5 pb-2">
             <span class="text-2xs font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
               :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'">
               {{ raidLevelLabel(r.level) }}
             </span>
             <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
             <span v-else class="font-mono text-sm text-base-content">/dev/{{ r.name }}</span>
-            <div class="ml-auto flex items-center gap-3 shrink-0">
+            <div class="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
               <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
               <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'"/>
@@ -450,14 +450,14 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
               <Progress class="h-1.5 rounded-full bg-base-200" :model-value="r.resyncPercent" indicator-class="bg-primary transition-all" />
             </div>
             <div class="rounded-lg border border-base-300 divide-y divide-base-300">
-              <div v-for="m in membersOf(r)" :key="m.name" class="flex items-center gap-3 px-3 py-2">
+              <div v-for="m in membersOf(r)" :key="m.name" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
                 <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
                   :class="m.role === 'faulty' ? 'bg-error/10 text-error' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
                   {{ m.role === 'faulty' ? t('ui.storage.RaidSection.memberFailed') : m.role === 'spare' ? t('ui.storage.RaidSection.memberSpare') : m.role === 'rebuilding' ? t('ui.storage.RaidSection.memberRebuilding') : t('ui.storage.RaidSection.memberActive') }}
                 </span>
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 basis-40">
                   <span class="font-mono text-xs text-base-content">/dev/{{ m.name }}</span>
-                  <span v-if="memberSize(m.name)" class="text-2xs text-base-content/70 ml-2">{{ fmtBytes(memberSize(m.name)) }}</span>
+                  <span v-if="memberSize(m.name)" class="text-2xs text-base-content/70 ml-2 whitespace-nowrap">{{ fmtBytes(memberSize(m.name)) }}</span>
                   <p v-if="memberIdentity(m.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(m.name) }}</p>
                 </div>
                 <Button variant="ghost" size="xs" v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="shrink-0"
