@@ -29,7 +29,9 @@ export function renderMarkdown(source: string): string {
   let i = 0
   while (i < lines.length) {
     const line = lines[i]!
-    const fence = line.match(/^\s*```\s*([\w+-]*)\s*$/)
+    // Treat the whole info string as metadata: language names can include dots
+    // and may be followed by options such as `title=example`.
+    const fence = line.match(/^\s*```(.*)$/)
     if (fence) {
       const code: string[] = []
       i++

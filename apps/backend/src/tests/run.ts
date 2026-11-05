@@ -3041,15 +3041,29 @@ async function testBackupFinalFixes() {
   }
 
   // The worker's refusal code reaches the dashboard in the error data.
-  const { workerErrorCode, router, publicProcedure } = await import("../trpc/index")
+  const { workerErrorCode, router, publicProcedure, protectedProcedure } = await import("../trpc/index")
   const { TRPCError } = await import("@trpc/server")
-  const r = router({ fail: publicProcedure.mutation(() => { throw Object.assign(new Error("This replaces 2 files"), { code: "ECONFIRM" }) }) })
+  const r = router({
+    fail: publicProcedure.mutation(() => { throw Object.assign(new Error("This replaces 2 files"), { code: "ECONFIRM" }) }),
+    protected: protectedProcedure.query(() => "ok"),
+    publicUnauthorized: publicProcedure.query(() => { throw new TRPCError({ code: "UNAUTHORIZED", message: "Wrong password" }) }),
+    publicSameMessage: publicProcedure.query(() => { throw new TRPCError({ code: "UNAUTHORIZED", message: "Session token is invalid or expired." }) }),
+  })
   const err = await r.createCaller({} as any).fail().then(() => null, (e: unknown) => e as InstanceType<typeof TRPCError>)
   assert.ok(err)
   assert.equal(workerErrorCode(err), "ECONFIRM")
   const shape = (r as any)._def._config.errorFormatter({ shape: { message: err.message, code: -32603, data: { code: "INTERNAL_SERVER_ERROR" } }, error: err, type: "mutation", path: "fail", input: undefined, ctx: {} })
   assert.equal(shape.data.workerCode, "ECONFIRM")
   assert.equal(workerErrorCode(new TRPCError({ code: "BAD_REQUEST", cause: Object.assign(new Error("x"), { code: "not a code" }) })), undefined)
+  const formatError = (error: InstanceType<typeof TRPCError>, path: string) => (r as any)._def._config.errorFormatter({
+    shape: { message: error.message, code: -32001, data: { code: error.code } }, error, type: "query", path, input: undefined, ctx: {},
+  })
+  const rejectedSession = await r.createCaller({ user: null } as any).protected().then(() => null, (e: unknown) => e as InstanceType<typeof TRPCError>)
+  const rejectedPublic = await r.createCaller({} as any).publicUnauthorized().then(() => null, (e: unknown) => e as InstanceType<typeof TRPCError>)
+  const rejectedPublicSameMessage = await r.createCaller({} as any).publicSameMessage().then(() => null, (e: unknown) => e as InstanceType<typeof TRPCError>)
+  assert.equal(formatError(rejectedSession!, "protected").data.sessionInvalid, true)
+  assert.equal(formatError(rejectedPublic!, "publicUnauthorized").data.sessionInvalid, false)
+  assert.equal(formatError(rejectedPublicSameMessage!, "publicSameMessage").data.sessionInvalid, false)
 
   // A mutation is audited with its path, the target read from its raw input and the redacted input.
   const { adminProcedure } = await import("../trpc/index")

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	nats "github.com/nats-io/nats.go"
+	"golang.org/x/sys/unix"
 )
 
 var reLinuxUsername = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
@@ -345,13 +346,18 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		return
 	}
 
-	tempPath := filepath.Join(meta.DestDir, ".upload-"+meta.UploadID+".part")
+	partName := ".upload-" + meta.UploadID + ".part"
 	data := msg.Data
 
 	var fsErr *fsError
 	if err := withUser(meta.LinuxUsername, func() error {
+		dirFD, err := openScopedDirectory(meta.DestDir, meta.AllowedRoot)
+		if err != nil {
+			return err
+		}
+		defer unix.Close(dirFD)
 		// 0664 so the finalized upload lands group-writable (with umask 0002).
-		f, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY, 0664)
+		f, err := openRegularNoFollowAt(dirFD, partName, unix.O_CREAT|unix.O_WRONLY, 0664)
 		if err != nil {
 			return err
 		}
@@ -940,7 +946,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		fsErr = validatePathsScoped(task.AllowedRoot, task.DestFile, task.TempFile)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doFinalize(task.TempFile, task.DestFile, task.ExpectedSha)
+				fsErr = doFinalize(task.TempFile, task.DestFile, task.AllowedRoot, task.ExpectedSha)
 				if fsErr != nil {
 					return fsErr
 				}

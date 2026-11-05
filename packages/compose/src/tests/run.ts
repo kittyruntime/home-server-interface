@@ -1,7 +1,18 @@
 import assert from "node:assert/strict"
 import { composeBindSources, composeNamedVolumes, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from "../compose.js"
 import { parseDocument } from "yaml"
-import { STACK_NAME_RE, type AppInput } from "../model.js"
+import { STACK_NAME_RE, zAppInput, type AppInput } from "../model.js"
+
+for (const pinnedUrl of ["https://media.example.com", "http://192.168.1.20:8080/app", null]) {
+  assert.equal(zAppInput.safeParse({ name: "jellyfin", image: "jellyfin/jellyfin:latest", pinnedUrl }).success, true)
+}
+for (const pinnedUrl of ["javascript:alert(1)", "data:text/html,<script>alert(1)</script>"]) {
+  assert.equal(zAppInput.safeParse({ name: "jellyfin", image: "jellyfin/jellyfin:latest", pinnedUrl }).success, false)
+}
+
+const legacyUnsafePin = parseComposeYaml(`services:\n  jellyfin:\n    image: jellyfin/jellyfin:latest\n    x-hsi:\n      pinnedUrl: javascript:alert(1)\n`)
+assert.ok(legacyUnsafePin.app, "legacy unsafe pin metadata should not make a single-service app uneditable")
+assert.equal(legacyUnsafePin.app?.pinnedUrl, null)
 
 const base: AppInput = {
   name: "jellyfin", image: "jellyfin/jellyfin:latest",
