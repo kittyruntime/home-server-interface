@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import RowEditor from '../ui/RowEditor.vue'
 import { trpc } from '../../lib/trpc'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,8 @@ watch(
   },
 )
 
+onUnmounted(() => { if (timer) clearTimeout(timer) })
+
 async function runChecks() {
   const next: Record<number, string> = {}
   await Promise.all(props.modelValue.map(async (p, i) => {
@@ -58,20 +60,20 @@ async function runChecks() {
   >
     <template #row="{ item, update }">
       <Input
-        type="number" :placeholder="t('ui.apps.PortsTable.host')" min="1" max="65535"
+        type="number" aria-label="Host port" :placeholder="t('ui.apps.PortsTable.host')" min="1" max="65535"
         :model-value="item.hostPort"
         @input="update({ hostPort: +($event.target as HTMLInputElement).value })"
-        class="w-24 px-2 py-1.5 text-sm"
+        class="w-20 sm:w-24 px-2 py-1.5 text-sm"
       />
       <span class="text-base-content/70 text-sm">:</span>
       <Input
-        type="number" :placeholder="t('ui.apps.PortsTable.container')" min="1" max="65535"
+        type="number" aria-label="Container port" :placeholder="t('ui.apps.PortsTable.container')" min="1" max="65535"
         :model-value="item.containerPort"
         @input="update({ containerPort: +($event.target as HTMLInputElement).value })"
-        class="w-24 px-2 py-1.5 text-sm"
+        class="w-20 sm:w-24 px-2 py-1.5 text-sm"
       />
       <NativeSelect wrapper-class="w-auto"
-        :model-value="item.protocol"
+        :model-value="item.protocol" aria-label="Protocol"
         @change="update({ protocol: ($event.target as HTMLSelectElement).value as 'tcp' | 'udp' })"
         class="px-2 py-1.5 text-sm"
       >
@@ -88,7 +90,7 @@ async function runChecks() {
       <div class="flex items-center gap-2 flex-wrap pl-1">
         <span class="text-2xs uppercase tracking-caps text-base-content/70 w-14 shrink-0">{{ t('ui.apps.PortsTable.access') }}</span>
         <Input
-          type="text" :placeholder="t('ui.apps.PortsTable.domainOptionalEGApp')"
+          type="text" aria-label="Public domain" :placeholder="t('ui.apps.PortsTable.domainOptionalEGApp')"
           :model-value="item.domain ?? ''"
           @input="update({ domain: ($event.target as HTMLInputElement).value || undefined })"
           class="flex-1 min-w-[12rem] px-2 py-1 text-xs"
@@ -98,7 +100,7 @@ async function runChecks() {
           HTTPS
         </label>
         <Input
-          type="number" placeholder="443" min="1" max="65535"
+          type="number" aria-label="Public port" placeholder="443" min="1" max="65535"
           :model-value="item.publicPort ?? ''"
           @input="update({ publicPort: ($event.target as HTMLInputElement).value ? +($event.target as HTMLInputElement).value : undefined })"
           class="w-20 px-2 py-1 text-xs"

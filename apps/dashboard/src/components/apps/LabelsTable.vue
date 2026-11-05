@@ -21,15 +21,15 @@ defineEmits<{ 'update:modelValue': [v: LabelEntry[]] }>()
   >
     <template #row="{ item, update }">
       <Input
-        :model-value="item.key" laceholder="label.key"
+        :model-value="item.key" aria-label="Label name" placeholder="label.key"
         @input="update({ key: ($event.target as HTMLInputElement).value })"
-        class="flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 min-w-0 px-2 py-1.5 text-sm font-mono"
       />
       <span class="text-base-content/70 text-sm">=</span>
       <Input
-        :model-value="item.value" laceholder="value"
+        :model-value="item.value" aria-label="Label value" placeholder="value"
         @input="update({ value: ($event.target as HTMLInputElement).value })"
-        class="flex-1 px-2 py-1.5 text-sm font-mono"
+        class="flex-1 min-w-0 px-2 py-1.5 text-sm font-mono"
       />
     </template>
   </RowEditor>

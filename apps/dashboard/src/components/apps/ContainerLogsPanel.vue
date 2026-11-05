@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import Modal from '../ui/Modal.vue'
-import { ArrowDownIcon, XIcon } from '@lucide/vue'
+import { ArrowDownIcon, TriangleAlertIcon, XIcon } from '@lucide/vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
 
@@ -209,7 +210,7 @@ onUnmounted(() => controller?.abort())
         style="color: #e6edf3"
       >
         <!-- Error -->
-        <p v-if="error" role="alert" class="mb-2 status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
+        <Alert v-if="error" variant="destructive" class="mb-2"><TriangleAlertIcon /><AlertDescription>{{ error }}</AlertDescription></Alert>
 
         <!-- Empty -->
         <div v-if="lines.length === 0 && !error && connected"

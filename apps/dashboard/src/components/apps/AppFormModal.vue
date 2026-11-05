@@ -2,10 +2,13 @@
 import { useI18n } from 'vue-i18n'
 import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ref, shallowRef, reactive, watch, computed, onMounted } from 'vue'
+import { ref, shallowRef, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
-import { pollJobResult } from '../../lib/jobs'
-import { applyPlanned, applyPlannedJob } from '../../lib/plan'
+import { JobError, pollJobResult } from '../../lib/jobs'
+import { deployApp, isSavedBeforeStartFailure } from '../../lib/app-deployment'
+import { clearAppJob, registerAppJob } from '../../lib/app-jobs'
+import { openJobLogs, viewableJobId } from '../../lib/jobLogs'
+import { applyPlanned, applyPlannedJob, PlanExecutionError } from '../../lib/plan'
 import PortsTable,      { type PortMapping }    from './PortsTable.vue'
 import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
@@ -16,6 +19,9 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import AppDeploymentProgress from './AppDeploymentProgress.vue'
+import ContainerLogsPanel from './ContainerLogsPanel.vue'
 
 const { t } = useI18n()
 
@@ -27,6 +33,7 @@ const props = defineProps<{ editName?: string | null }>()
 const emit  = defineEmits<{
   close: []
   saved: [name: string]
+  deployed: [name: string]
 }>()
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
@@ -139,9 +146,17 @@ async function importCompose() {
     for (const v of svc.volumes) {
       if (typeof v === 'string') {
         const parts = v.split(':')
-        if (parts.length >= 2) vols.push({ type: 'bind', source: parts[0]!, target: parts[1]! })
+        if (parts.length >= 2) {
+          const source = parts[0]!
+          const mode = parts[2]?.split(',') ?? []
+          const type = source.startsWith('/') || source.startsWith('./') || source.startsWith('../') || source.startsWith('~') ? 'bind' : 'named'
+          vols.push({ type, source, target: parts[1]!, readOnly: mode.includes('ro') })
+        }
       } else if (typeof v === 'object' && v.target) {
-        vols.push({ type: v.type ?? 'bind', source: v.source ?? '', target: v.target })
+        vols.push({
+          type: v.type === 'volume' ? 'named' : v.type ?? 'bind',
+          source: v.source ?? '', target: v.target, readOnly: v.read_only === true,
+        })
       }
     }
     if (vols.length) form.volumes = vols
@@ -206,13 +221,35 @@ const unknownFields = ref<string[]>([])
 
 // Inline "saved - apply now?" prompt state
 const savedName  = ref<string | null>(null)
+const savedWithoutStarting = ref(false)
+const configurationDirty = ref(false)
 const applying   = ref(false)
 const applyState = ref<'idle' | 'applied' | 'error'>('idle')
 const applyError = ref('')
+const deployment = ref<{
+  name: string
+  jobId: string
+  status: 'pending' | 'running' | 'failed' | 'completed'
+  taskStatus: string
+  action: string
+  error: string
+} | null>(null)
+const observing = ref(false)
+const containerLogsName = ref<string | null>(null)
+const deployError = ref('')
+
+const DEPLOYMENT_DEADLINE_MS = 10 * 60 * 1000
+let activePollController: AbortController | null = null
+onUnmounted(() => activePollController?.abort())
 
 watch(() => props.editName, async (name) => {
   error.value = ''
+  deployError.value = ''
+  deployment.value = null
+  containerLogsName.value = null
   savedName.value = null
+  savedWithoutStarting.value = false
+  configurationDirty.value = false
   applyState.value = 'idle'
   showCompose.value = false
   if (name) {
@@ -268,11 +305,23 @@ watch(() => props.editName, async (name) => {
   }
 }, { immediate: true })
 
-const advanced = computed(() => ({
-  capAdd: form.capAdd, capDrop: form.capDrop, extraHosts: form.extraHosts,
-  restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user,
-  command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit,
-}))
+const advanced = computed({
+  get: () => ({
+    capAdd: form.capAdd, capDrop: form.capDrop, extraHosts: form.extraHosts,
+    restartPolicy: form.restartPolicy, hostname: form.hostname, user: form.user,
+    command: form.command, cpuLimit: form.cpuLimit, memoryLimit: form.memoryLimit,
+  }),
+  set: value => { Object.assign(form, value) },
+})
+
+watch(form, () => {
+  if (!loading.value) {
+    if (applyState.value !== 'idle') applyState.value = 'idle'
+    applyError.value = ''
+    savedWithoutStarting.value = false
+    if (savedName.value) configurationDirty.value = true
+  }
+}, { deep: true })
 
 const visibleTabs = computed(() => multiSvc.value ? tabs.filter(t => t.id === 'advanced') : tabs)
 
@@ -282,8 +331,48 @@ function addNetwork() {
   networkInput.value = ''
 }
 
-async function save() {
+function observeDeployment(job: { status: string; action: string }) {
+  if (!deployment.value) return
+  deployment.value.taskStatus = job.status
+  deployment.value.action = job.action
+  if (job.status === 'pending' || job.status === 'running') deployment.value.status = job.status
+}
+
+async function followJob(jobId: string, name: string) {
+  activePollController?.abort()
+  activePollController = new AbortController()
+  const signal = activePollController.signal
+  deployment.value = {
+    name, jobId, status: 'pending', taskStatus: 'pending', action: 'container.composeUp', error: '',
+  }
+  deployError.value = ''
+  observing.value = true
+  try {
+    const result = await pollJobResult(jobId, DEPLOYMENT_DEADLINE_MS, observeDeployment, signal)
+    if (signal.aborted || !deployment.value || deployment.value.jobId !== jobId) return
+    if (result.status === 'completed') {
+      deployment.value.status = 'completed'
+      deployment.value.error = ''
+      clearAppJob(name, jobId)
+      emit('deployed', name)
+    } else if (result.status === 'failed' && result.failureSource !== 'observer') {
+      deployment.value.status = 'failed'
+      deployment.value.error = result.error ?? t('uis.apps.AppFormModal.applyFailed')
+      clearAppJob(name, jobId)
+    } else {
+      deployment.value.status = 'pending'
+      deployment.value.error = result.error ?? ''
+    }
+  } finally {
+    observing.value = false
+  }
+}
+
+async function save(mode: 'save' | 'start' = 'save') {
   error.value = ''
+  deployError.value = ''
+  const name = form.name
+  const create = !editing.value
   loading.value = true
   try {
     const payload = {
@@ -305,19 +394,68 @@ async function save() {
       memoryLimit:   form.memoryLimit,
       pinnedUrl:     form.pinnedUrl || null,
     }
-    await applyPlanned('app.save', { name: form.name, create: !editing.value, data: payload }, {
-      domain: 'apps',
-      title: editing.value ? `Save ${form.name}` : `Create ${form.name}`,
-      actionLabel: t('uis.apps.AppFormModal.save'),
-    })
-    const name = form.name
-    editing.value = true // a created app can now be applied/updated in place
-    savedName.value = name
-    emit('saved', name)
+    if (mode === 'start' && create) {
+      activePollController?.abort()
+      activePollController = new AbortController()
+      const signal = activePollController.signal
+      const result = await deployApp(payload, async (configuration, start) => {
+        const reply = await applyPlanned('app.save', { name, create: true, start, data: configuration }, {
+          domain: 'apps', title: `Create ${name}`, actionLabel: t('ui.apps.AppFormModal.createAndStart'),
+        })
+        const jobId = typeof reply.jobId === 'string' ? reply.jobId : ''
+        if (!jobId) throw new Error('The start job was not returned')
+        registerAppJob({ name, jobId, action: 'start' })
+        editing.value = true
+        savedName.value = name
+        savedWithoutStarting.value = false
+        configurationDirty.value = false
+        emit('saved', name)
+        loading.value = false
+        return { jobId }
+      }, async jobId => {
+        deployment.value = { name, jobId, status: 'pending', taskStatus: 'pending', action: 'container.composeUp', error: '' }
+        observing.value = true
+        return pollJobResult(jobId, DEPLOYMENT_DEADLINE_MS, observeDeployment, signal)
+      })
+      if (!signal.aborted && deployment.value?.jobId === result.jobId) {
+        deployment.value.status = result.status
+        deployment.value.error = result.error ?? ''
+        if (result.status === 'completed') {
+          clearAppJob(name, result.jobId)
+          emit('deployed', name)
+        } else if (result.status === 'failed') {
+          deployment.value.error = result.error ?? t('uis.apps.AppFormModal.applyFailed')
+          clearAppJob(name, result.jobId)
+        }
+      }
+    } else {
+      await applyPlanned('app.save', { name, create, start: false, data: payload }, {
+        domain: 'apps',
+        title: create ? `Create ${name}` : `Save ${name}`,
+        actionLabel: t('uis.apps.AppFormModal.save'),
+      })
+      editing.value = true
+      savedName.value = name
+      savedWithoutStarting.value = create
+      configurationDirty.value = false
+      applyState.value = 'idle'
+      emit('saved', name)
+    }
   } catch (e: any) {
+    if (e?.message === '') return // cancelled from the plan preview
+    if (mode === 'start' && create && e instanceof PlanExecutionError && e.result && isSavedBeforeStartFailure(e.result)) {
+      editing.value = true
+      savedName.value = name
+      savedWithoutStarting.value = true
+      configurationDirty.value = false
+      emit('saved', name)
+      deployError.value = e.message
+      return
+    }
     error.value = e?.message ?? t('uis.apps.AppFormModal.failedToSave')
   } finally {
     loading.value = false
+    observing.value = false
   }
 }
 
@@ -330,11 +468,14 @@ async function applyNow() {
     const jobId = await applyPlannedJob('app.apply', { name: savedName.value }, {
       title: t('uis.apps.AppFormModal.apply', { p0: savedName.value }), actionLabel: t('uis.apps.AppFormModal.apply2'),
     })
-    const result = await pollJobResult(jobId)
-    // A failed (or timed out) job must report as an error, not as success.
-    if (result.status !== 'completed') throw new Error(result.error ?? t('uis.apps.AppFormModal.applyFailed'))
-    applyState.value = 'applied'
-    emit('saved', savedName.value)
+    registerAppJob({ name: savedName.value, jobId, action: 'apply' })
+    applying.value = false
+    await followJob(jobId, savedName.value)
+    if (deployment.value?.status === 'completed') applyState.value = 'applied'
+    else if (deployment.value?.status === 'failed') {
+      applyState.value = 'error'
+      applyError.value = deployment.value.error
+    }
   } catch (e: any) {
     // Cancelled in the plan dialog: nothing happened.
     if (e?.message === '') { applyState.value = 'idle'; return }
@@ -343,6 +484,40 @@ async function applyNow() {
   } finally {
     applying.value = false
   }
+}
+
+async function retryStart() {
+  if (!deployment.value || observing.value || deployment.value.status !== 'failed') return
+  const name = deployment.value.name
+  loading.value = true
+  try {
+    const jobId = await applyPlannedJob('app.apply', { name }, {
+      title: t('uis.apps.AppFormModal.apply', { p0: name }), actionLabel: t('uis.apps.AppFormModal.apply2'),
+    })
+    registerAppJob({ name, jobId, action: 'apply' })
+    loading.value = false
+    await followJob(jobId, name)
+  } catch (e: any) {
+    if (e?.message !== '') deployError.value = e?.message ?? t('uis.apps.AppFormModal.applyFailed')
+  } finally {
+    loading.value = false
+  }
+}
+
+function editConfiguration() {
+  if (observing.value) return
+  deployment.value = null
+  deployError.value = ''
+}
+
+function rawSaved(raw: string) {
+  rawYaml.value = raw
+  savedName.value = form.name
+  applyState.value = 'idle'
+  applyError.value = ''
+  editing.value = true
+  configurationDirty.value = false
+  emit('saved', form.name)
 }
 </script>
 
@@ -353,19 +528,20 @@ async function applyNow() {
     <div class="flex items-center gap-2 px-3 sm:px-5 py-3 border-b border-base-300 shrink-0">
       <Button variant="ghost" size="icon-sm"
         @click="emit('close')"
+        :disabled="loading || applying"
         class="text-base-content/70 hover:text-base-content"
         :tooltip="t('ui.apps.AppFormModal.back')" :aria-label="t('ui.apps.AppFormModal.back')"
       >
         <ChevronLeftIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
       <h2 class="text-sm font-semibold text-base-content flex-1">
-        {{ editName ? `Edit ${editName}` : 'New App' }}
+        {{ editing ? t('ui.apps.AppFormModal.editTitle', { p0: form.name }) : t('ui.apps.AppFormModal.newTitle') }}
       </h2>
       <Button
         v-if="!editName && !multiSvc"
         variant="ghost" size="sm"
         @click="showCompose = !showCompose"
-        :tooltip="showCompose ? 'Close Compose import' : 'Import from compose.yml'"
+        :tooltip="showCompose ? t('ui.apps.AppFormModal.closeCompose') : t('ui.apps.AppFormModal.importCompose')"
         :aria-pressed="showCompose"
         :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-base-content/70']"
       >
@@ -373,6 +549,29 @@ async function applyNow() {
         <span class="hidden sm:inline">{{ t('ui.apps.AppFormModal.importCompose') }}</span><span class="sm:hidden">{{ t('ui.apps.AppFormModal.compose') }}</span>
       </Button>
     </div>
+
+    <AppDeploymentProgress
+      v-if="deployment"
+      :name="deployment.name"
+      :status="deployment.status"
+      :task-status="deployment.taskStatus"
+      :action="deployment.action"
+      :error="deployment.error"
+      :can-view-job-logs="Boolean(viewableJobId(new JobError(deployment.error || 'Deployment task', deployment.jobId)))"
+      :can-retry="!loading && !observing"
+      @retry="retryStart"
+      @edit="editConfiguration"
+      @close="emit('close')"
+      @continue="followJob(deployment.jobId, deployment.name)"
+      @logs="openJobLogs(deployment.jobId)"
+      @container-logs="containerLogsName = deployment?.name ?? null"
+    />
+
+    <div v-else class="flex min-h-0 flex-1 flex-col">
+
+    <p class="px-5 pt-2 text-xs text-base-content/70">
+      {{ editing ? t('ui.apps.AppFormModal.editSummary') : t('ui.apps.AppFormModal.createSummary') }}
+    </p>
 
     <!-- Compose import panel -->
     <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-base-300 bg-base-200/60 space-y-3 shrink-0">
@@ -385,9 +584,9 @@ async function applyNow() {
       />
       <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-          <label class="text-xs text-base-content/70 whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
+          <label for="compose-service" class="text-xs text-base-content/70 whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
           <NativeSelect wrapper-class="flex-1"
-            v-model="composeSelectedService"
+            id="compose-service" v-model="composeSelectedService"
             class="px-3 py-1.5 text-sm"
           >
             <NativeSelectOption v-for="s in composeServices" :key="s" :value="s">{{ s }}</NativeSelectOption>
@@ -397,7 +596,9 @@ async function applyNow() {
           {{ t('ui.apps.AppFormModal.service') }} <span class="text-base-content/80">{{ composeServices[0] }}</span>
         </div>
         <div v-else class="flex-1" />
-        <p v-if="composeError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ composeError }}</p>
+        <Alert v-if="composeError" variant="destructive" role="alert" class="w-full sm:w-auto">
+          <AlertDescription>{{ composeError }}</AlertDescription>
+        </Alert>
         <Button size="sm"
           @click="importCompose"
           :disabled="!composeRaw.trim()"
@@ -414,17 +615,28 @@ async function applyNow() {
     </div>
 
     <!-- Saved - apply prompt -->
-    <div v-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
+    <div v-if="savedWithoutStarting" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-success/10 text-sm shrink-0" role="status">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span>{{ t('ui.apps.AppFormModal.savedNotStarted') }}</span>
+        <Button size="sm" variant="outline" @click="applyNow" :disabled="applying || loading">
+          {{ t('ui.apps.AppFormModal.applyChanges') }}
+        </Button>
+      </div>
+    </div>
+    <div v-else-if="savedName && !configurationDirty && !editName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
+      <p class="text-xs text-base-content/80 flex-1">{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</p>
+      <Button size="sm" @click="applyNow" :disabled="applying || loading">
+        {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.apply2') }}
+      </Button>
+    </div>
+    <div v-else-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
       <p class="text-xs text-base-content/80 flex-1">
         <template v-if="applyState === 'applied'">{{ t('ui.apps.AppFormModal.changesSavedAndApplied') }}</template>
         <template v-else-if="applyState === 'error'">{{ t('ui.apps.AppFormModal.changesSavedButApplyFailed') }} <span class="text-primary">{{ applyError }}</span></template>
         <template v-else>{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</template>
       </p>
-      <Button size="sm"
-        v-if="applyState !== 'applied'"
-        @click="applyNow" :disabled="applying"
-      >
-        {{ applying ? 'Applying…' : 'Apply' }}
+      <Button size="sm" v-if="applyState !== 'applied'" @click="applyNow" :disabled="applying || loading">
+        {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.applyChanges') }}
       </Button>
     </div>
 
@@ -436,28 +648,28 @@ async function applyNow() {
     </Tabs>
 
     <!-- Tab content -->
-    <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-y-auto px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
 
       <!-- Basic -->
       <div v-if="activeTab === 'basic'" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
+          <label for="app-name" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
           <Input
-            v-model="form.name" laceholder="my-app" :disabled="editing"
+            id="app-name" v-model="form.name" placeholder="my-app" :disabled="editing"
             class="w-full px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
+          <label for="app-image" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
           <Input
-            v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
+            id="app-image" v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
             class="w-full px-3 py-2 text-sm font-mono"
           />
         </div>
         <div class="space-y-1.5 pt-3 border-t border-base-300">
-          <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
+          <label for="app-pinned-url" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
           <Input
-            v-model="form.pinnedUrl" laceholder="http://192.168.1.x:8080"
+            id="app-pinned-url" v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
             class="w-full px-3 py-2 text-sm font-mono"
           />
           <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
@@ -517,30 +729,50 @@ async function applyNow() {
           :app-name="editName || (savedName ?? null)"
           :unknown-fields="unknownFields"
           :raw-yaml="rawYaml"
-          @raw-saved="rawYaml = $event"
+          @raw-saved="rawSaved"
         />
       </div>
+
+      <aside v-if="!editing && !multiSvc" class="h-fit rounded-xl border border-base-300 bg-base-200/60 p-4 lg:sticky lg:top-0">
+        <h3 class="font-semibold">{{ t('ui.apps.AppFormModal.deploymentSummaryTitle') }}</h3>
+        <ol class="mt-3 space-y-2 text-sm text-base-content/80">
+          <li class="flex gap-2"><span class="text-primary">1.</span>{{ t('ui.apps.AppFormModal.deploymentStepSave') }}</li>
+          <li class="flex gap-2"><span class="text-primary">2.</span>{{ t('ui.apps.AppFormModal.deploymentStepDownload') }}</li>
+          <li class="flex gap-2"><span class="text-primary">3.</span>{{ t('ui.apps.AppFormModal.deploymentStepStart') }}</li>
+        </ol>
+        <p class="mt-3 text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.deploymentSummaryDetail') }}</p>
+      </aside>
 
     </div>
 
     <!-- Footer -->
-    <div v-if="!multiSvc" class="flex items-center gap-3 px-5 py-3 border-t border-base-300 shrink-0">
-      <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-if="!multiSvc" class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
+      <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
+        <AlertDescription>{{ error || deployError }}</AlertDescription>
+      </Alert>
       <div v-else class="flex-1" />
-      <Button variant="ghost"
-        @click="emit('close')"
-      >{{ t('ui.apps.AppFormModal.cancel') }}</Button>
-      <Button
-        @click="save" :disabled="loading || !form.name || !form.image"
-      >
-        {{ loading ? 'Saving…' : 'Save' }}
+      <Button variant="ghost" @click="emit('close')" :disabled="loading || applying">{{ t('ui.apps.AppFormModal.cancel') }}</Button>
+      <template v-if="!editing">
+        <Button class="w-full sm:w-auto" variant="outline" @click="save('save')" :disabled="loading || !form.name || !form.image">
+          {{ t('ui.apps.AppFormModal.saveWithoutStarting') }}
+        </Button>
+        <Button class="w-full sm:w-auto" @click="save('start')" :disabled="loading || !form.name || !form.image">
+          {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.createAndStart') }}
+        </Button>
+      </template>
+      <Button v-else class="w-full sm:w-auto" @click="save('save')" :disabled="loading || !form.name || !form.image">
+        {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.saveChanges') }}
       </Button>
     </div>
-    <div v-else class="flex items-center gap-3 px-5 py-3 border-t border-base-300 shrink-0">
-      <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
+    <div v-else class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
+      <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
+        <AlertDescription>{{ error || deployError }}</AlertDescription>
+      </Alert>
       <div v-else class="flex-1" />
       <Button variant="ghost" @click="emit('close')">{{ t('ui.apps.AppFormModal.close') }}</Button>
     </div>
 
+  </div>
+  <ContainerLogsPanel v-if="containerLogsName" :name="containerLogsName" @close="containerLogsName = null" />
   </div>
 </template>

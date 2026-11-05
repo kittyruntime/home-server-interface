@@ -1279,8 +1279,23 @@ async function testAppPlanBuilders() {
   // save (update): masked diff against the current file.
   const upd = await ap.buildAppPlan("app.save", { name: "web", raw: "services:\n  web:\n    image: nginx:1.28\n    environment:\n      DB_PASSWORD: s3cret\n" }, deps)
   assert.equal(upd.steps[0]!.kind, "update")
+  assert.equal(upd.steps.length, 1, "save-only remains the default")
   assert.match(upd.steps[0]!.diff!, /\+ {4}image: nginx:1\.28/)
   assert.ok(!JSON.stringify(ap.publicSteps(upd)).includes("s3cret"))
+  await assert.rejects(
+    ap.buildAppPlan("app.save", { name: "web", start: true, raw: "services:\n  web:\n    image: nginx:1.28\n" }, deps),
+    /starting is only supported when creating an app/i,
+    "editing and starting must remain a separate explicit apply operation",
+  )
+  const createAndStart = await ap.buildAppPlan("app.save", {
+    name: "fresh", create: true, start: true,
+    raw: "services:\n  fresh:\n    image: nginx:1.28\n    volumes: [/srv/data:/data]\n",
+  }, deps)
+  assert.deepEqual(createAndStart.steps.map(s => s.kind), ["create", "run"])
+  assert.deepEqual(createAndStart.steps[1]!.command, ["docker", "compose", "-f", "/opt/containers/fresh/compose.yaml", "up", "-d"])
+  assert.equal(createAndStart.observed.startContent, "services:\n  fresh:\n    image: nginx:1.28\n    volumes: [/srv/data:/data]\n")
+  assert.notEqual(ap.appFingerprint(createAndStart, { name: "fresh", create: true, start: true, raw: "services:\n  fresh:\n    image: nginx:1.28\n    volumes: [/srv/data:/data]\n" }),
+    ap.appFingerprint(await ap.buildAppPlan("app.save", { name: "fresh", create: true, raw: "services:\n  fresh:\n    image: nginx:1.28\n    volumes: [/srv/data:/data]\n" }, { ...deps, readStack: async () => null }), { name: "fresh", create: true, raw: "services:\n  fresh:\n    image: nginx:1.28\n    volumes: [/srv/data:/data]\n" }), "starting is part of the reviewed plan")
   await assert.rejects(ap.buildAppPlan("app.save", { name: "web", raw: "not: [yaml" }, deps))
   await assert.rejects(ap.buildAppPlan("app.save", { name: "nope", raw: "services:\n  a:\n    image: x:1\n" }, deps), /not found/i)
   await assert.rejects(ap.buildAppPlan("app.save", { name: "web", create: true, raw: "services:\n  a:\n    image: x:1\n" }, deps), /already exists/)
@@ -1341,6 +1356,26 @@ async function testAppPlanBuilders() {
   const failed = await ap.executeAppPlan(p3)
   assert.equal(failed.ok, false)
   assert.ok(calls.includes("removeStackDir:demo2") && calls.includes("createPlace:Demo data"))
+
+  // A create-and-start saves first. A validation failure reports failure but
+  // leaves the durable Compose file in place for editing or retry.
+  calls.length = 0
+  let savedStartConfig = false
+  deps.effects.writeStack = async (name) => { calls.push(`writeStack:${name}`); savedStartConfig = true }
+  deps.effects.validate = async (name) => { calls.push(`validate:${name}`); assert.equal(savedStartConfig, true) }
+  deps.effects.publishJob = async () => { calls.push("publishJob"); return "job-start" }
+  const fresh = await ap.buildAppPlan("app.save", { name: "fresh", create: true, start: true, raw: "services:\n  fresh:\n    image: nginx:1.28\n" }, deps)
+  const started = await ap.executeAppPlan(fresh)
+  assert.equal(started.ok, true)
+  assert.equal(started.results[1]!.jobId, "job-start")
+  assert.deepEqual(calls, ["writeStack:fresh", "validate:fresh", "publishJob"])
+
+  calls.length = 0
+  deps.effects.validate = async () => { throw new Error("compose rejected") }
+  const validateFailure = await ap.executeAppPlan(fresh)
+  assert.equal(validateFailure.ok, false)
+  assert.equal(savedStartConfig, true, "failed start validation must keep the saved configuration")
+  assert.deepEqual(calls, ["writeStack:fresh"])
 }
 
 await testAppPlanBuilders()

@@ -54,6 +54,9 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
 // bind-mounting a path on a missing volume must not start (#3).
 async function preconditions(plan: AppPlan): Promise<void> {
   await assertDockerReady()
+  if (plan.op === "app.save" && plan.observed.startContent !== undefined) {
+    await assertVolumeAvailable(composeBindSources(plan.observed.startContent))
+  }
   if (plan.op === "app.apply" || plan.op === "app.start") {
     await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
   }
@@ -73,7 +76,7 @@ export const appsRouter = router({
     .mutation(async ({ ctx, input }) => {
       ctx.audit.meta = { input: appAuditInput(input) }
       const plan = await buildAppPlan(input.op, input.input, deps(ctx, ctx.user.userId))
-      if (plan.op !== "app.save") await preconditions(plan)
+      if (plan.op !== "app.save" || plan.observed.startContent !== undefined) await preconditions(plan)
       return { steps: publicSteps(plan), fingerprint: appFingerprint(plan, input.input) }
     }),
 
@@ -85,7 +88,7 @@ export const appsRouter = router({
       if (appFingerprint(plan, input.input) !== input.fingerprint) {
         throw new TRPCError({ code: "CONFLICT", message: "The app changed since the preview: review the plan again" })
       }
-      if (plan.op !== "app.save") await preconditions(plan)
+      if (plan.op !== "app.save" || plan.observed.startContent !== undefined) await preconditions(plan)
       const res = await executeAppPlan(plan)
       const steps = publicSteps(plan)
       ctx.audit.meta = { input: appAuditInput(input), plan: planAuditMeta(input.op, steps, res.results) }

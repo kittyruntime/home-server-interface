@@ -148,7 +148,7 @@ async function apply() {
 }
 
 function onClose() {
-  if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? t('uis.shared.PlanDialog.aStepFailed') })
+  if (applied.value && !applied.value.ok) settle({ status: 'failed', error: applied.value.error ?? t('uis.shared.PlanDialog.aStepFailed'), result: applied.value })
   else if (applyError.value) settle({ status: 'failed', error: applyError.value })
   else settle({ status: 'cancelled', previewError: loadError.value || undefined, previewCode: loadErrorCode.value || undefined })
   planRequest.value = null
