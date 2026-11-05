@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.80.4] - 2026-11-05
+
 ### Fixed
 - **"More" menu on iPhone**: it spread its items over the whole screen in
   Safari. Menus and popovers are now as tall as their content in every
@@ -2014,7 +2016,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.3...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.4...HEAD
+[1.80.4]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.3...v1.80.4
 [1.80.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...v1.80.3
 [1.80.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...v1.80.2
 [1.80.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.0...v1.80.1
