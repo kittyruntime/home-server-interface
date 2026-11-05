@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **"More" menu on iPhone**: it spread its items over the whole screen in
+  Safari. Menus and popovers are now as tall as their content in every
+  browser.
+- **Clearing the Activity panel**: an administrator's button now reads Clear
+  all and empties the panel. Before, it only marked notifications as read, so
+  read ones stayed. Other accounts still mark them as read, since the
+  notifications are shared.
+
 ## [1.80.3] - 2026-11-05
 
 ### Added

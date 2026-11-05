@@ -314,6 +314,7 @@ export default {
     empty: 'Rien de nouveau',
     emptyHint: 'Les alertes, les opérations en échec et les mises à jour s’affichent ici.',
     markAllRead: 'Tout marquer comme lu',
+    clearAll: 'Tout effacer',
     markRead: 'Marquer comme lu',
     settings: 'Réglages des notifications',
     close: 'Fermer',

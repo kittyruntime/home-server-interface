@@ -3649,3 +3649,23 @@ await testTelemetryChannelOptOutAndPayload()
 }
 
 console.log("Backend security tests passed")
+
+// The Activity panel is shared by every account: only an administrator empties it.
+async function testClearNotifications() {
+  const { notificationsRouter } = await import("../trpc/routers/notifications")
+  let deleted = 0
+  const ctx = (isAdmin: boolean): any => ({
+    user: { userId: isAdmin ? "a" : "u", isAdmin },
+    prisma: {
+      user: { findUnique: async () => ({ isAdmin, isUserManager: isAdmin, mustChangePassword: false, capabilities: [] }) },
+      notification: { deleteMany: async () => { deleted++; return { count: 3 } } },
+      auditLog: { create: async () => ({}) },
+    },
+    req: { ip: "127.0.0.1", headers: {} },
+  })
+  await assert.rejects(() => notificationsRouter.createCaller(ctx(false)).clear(), (e: any) => e.code === "FORBIDDEN")
+  assert.equal(deleted, 0, "a user who is not an administrator clears nothing")
+  await notificationsRouter.createCaller(ctx(true)).clear()
+  assert.equal(deleted, 1)
+}
+await testClearNotifications()

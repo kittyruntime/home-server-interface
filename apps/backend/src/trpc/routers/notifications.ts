@@ -118,6 +118,11 @@ export const notificationsRouter = router({
     ctx.prisma.notification.updateMany({ where: { readAt: null }, data: { readAt: new Date() } }),
   ),
 
+  // Empties the Activity panel. The notifications are shared by every account,
+  // so only an administrator clears them; the alerts themselves stay in
+  // Monitor and their deliveries in the outbox.
+  clear: adminProcedure.mutation(({ ctx }) => ctx.prisma.notification.deleteMany({})),
+
   // One notification, read from the Activity panel.
   markRead: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(64) }))

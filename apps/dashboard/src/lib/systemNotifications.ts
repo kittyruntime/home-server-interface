@@ -35,6 +35,10 @@ export function useSystemNotifications() {
     await trpc.notifications.markAllRead.mutate()
     await refresh()
   }
+  async function clear() {
+    await trpc.notifications.clear.mutate()
+    await refresh()
+  }
   async function markRead(id: string) {
     const n = items.value.find(i => i.id === id)
     if (!n || n.readAt) return
@@ -43,5 +47,5 @@ export function useSystemNotifications() {
     unread.value = Math.max(0, unread.value - 1)
     try { await trpc.notifications.markRead.mutate({ id }) } finally { void refresh() }
   }
-  return { items, unread, refresh, markAllRead, markRead }
+  return { items, unread, refresh, markAllRead, markRead, clear }
 }
