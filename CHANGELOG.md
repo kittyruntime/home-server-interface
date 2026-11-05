@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Create and start an app**: the container manager can save a new app and
+  start its containers in one reviewed operation. Save without starting remains
+  available, and existing apps keep their separate save and apply actions.
+- **Deployment tracking**: follow the real Docker task, open its logs, and retry
+  a failed start without losing the saved configuration. Long jobs and status
+  checks interrupted by a connection error stay pending instead of appearing
+  to fail. Pending jobs remain visible when returning to the container list,
+  with concurrent container changes blocked until their outcome is known.
+
+### Changed
+- **Container management**: consistent DaisyUI controls and feedback, summary
+  counts, search by app name, image or port, visible actions, clearer status
+  badges and retryable loading errors. Mobile cards also offer Apply, and
+  advanced settings, Compose editing and unmanaged containers remain available.
+
+### Fixed
+- **Container state after an action**: refresh Docker's observed state after
+  starting, stopping, restarting or applying an app instead of guessing it.
+- **Container settings**: advanced controls and capability additions now update
+  the form correctly. Environment variables entered in raw mode are included
+  when saving, and read-only volume settings are preserved and editable.
+- **Uploads**: reject planted symbolic links, hard links and special files used
+  as upload part files; anchor chunk writes and finalization to a directory
+  descriptor while preserving resumable uploads.
+- **Assistant Markdown**: code fences with punctuation or extra options no
+  longer trap the renderer in an infinite loop.
+- **Pinned app links**: accept only HTTP and HTTPS URLs and filter unsafe
+  legacy values before rendering links.
+- **Public shares**: an incorrect share password no longer signs an already
+  authenticated dashboard user out. Expired sessions are still rejected, and
+  a response to an older request cannot clear a newer login.
+
+
 ## [1.80.5] - 2026-11-05
 
 ### Fixed
