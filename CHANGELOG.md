@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.80.3] - 2026-11-05
+
 ### Added
 - **PDF preview**: a PDF opens in the file manager instead of the text editor,
   shown in place on a computer, with buttons to open it in a new tab or
@@ -2003,7 +2005,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.3...HEAD
+[1.80.3]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.2...v1.80.3
 [1.80.2]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.1...v1.80.2
 [1.80.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.0...v1.80.1
 [1.80.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.79.3...v1.80.0
