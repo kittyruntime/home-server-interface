@@ -671,6 +671,13 @@ async function doUnzip() {
 function startRename(entry: Entry) {
   renamingPath.value = entry.path
   renameValue.value  = entry.name
+  // autofocus does nothing on a field added after load: focus the visible one
+  // (the phone list and the table both render), still within the tap, so a
+  // phone opens its keyboard.
+  void nextTick(() => {
+    const field = [...document.querySelectorAll<HTMLInputElement>('input[data-rename]')].find(el => el.offsetParent !== null)
+    field?.focus()
+  })
 }
 
 async function commitRename() {

@@ -5,7 +5,7 @@ import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import SortableHeader from '../ui/SortableHeader.vue'
 import { Input } from '@/components/ui/input'
-import { EyeIcon, FileTextIcon } from '@lucide/vue'
+import { EyeIcon, FileTextIcon, PencilIcon } from '@lucide/vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDay } from '../../lib/format-date'
@@ -96,7 +96,7 @@ function fileExt(name: string): string {
       :data-path="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
-      :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors',
+      :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors select-none [-webkit-touch-callout:none] touch-manipulation',
         pendingPaths?.includes(entry.path) ? 'opacity-40 pointer-events-none' : '',
         selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-base-200']"
     >
@@ -121,6 +121,7 @@ function fileExt(name: string): string {
           @blur="emit('cancelRename')"
           @focus="($event.target as HTMLInputElement).select()"
           autofocus
+          data-rename
           class="min-w-0 flex-1 rounded-sm border border-primary bg-base-100 px-2 py-0.5 text-sm text-base-content focus:outline-none"
         />
       </template>
@@ -131,6 +132,15 @@ function fileExt(name: string): string {
         </div>
       </div>
       <LoadingSpinner v-if="pendingPaths?.includes(entry.path)" class="text-sm shrink-0 text-base-content/70" />
+      <Button
+        v-else-if="renamingPath !== entry.path"
+        variant="ghost" size="icon-sm"
+        class="touch-target shrink-0 text-base-content/70"
+        :aria-label="`${$t('ui.files.FileBrowserPanel.rename')} ${entry.name}`"
+        @click.stop="emit('startRename', entry)"
+      >
+        <PencilIcon class="size-4" aria-hidden="true" />
+      </Button>
     </article>
   </div>
 
@@ -219,7 +229,7 @@ function fileExt(name: string): string {
         @dblclick.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowDblClick', entry)"
         @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
-        :class="['group transition-colors',
+        :class="['group transition-colors [-webkit-touch-callout:none]',
           pendingPaths?.includes(entry.path)
             ? 'opacity-40 pointer-events-none'
             : entry.type === 'dir' ? 'cursor-pointer hover:bg-base-200' : 'cursor-default hover:bg-base-200',
@@ -252,6 +262,7 @@ function fileExt(name: string): string {
                 @blur="emit('cancelRename')"
                 @focus="($event.target as HTMLInputElement).select()"
                 autofocus
+                data-rename
                 class="h-7 min-w-0 flex-1 border-primary px-2 py-0.5"
               />
             </template>
@@ -277,6 +288,15 @@ function fileExt(name: string): string {
                 class="shrink-0 text-base-content/70 opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
               >
                 <EyeIcon class="size-4" aria-hidden="true" />
+              </Button>
+              <!-- A touch screen has no double click to rename -->
+              <Button
+                variant="ghost" size="icon-xs"
+                @click.stop="emit('startRename', entry)"
+                :aria-label="`${$t('ui.files.FileBrowserPanel.rename')} ${entry.name}`"
+                class="hidden pointer-coarse:inline-flex shrink-0 text-base-content/70"
+              >
+                <PencilIcon class="size-4" aria-hidden="true" />
               </Button>
             </template>
           </div>

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Tap on iPhone**: a tap on a folder or a file selected it instead of
+  opening it. Safari can report the click that follows a tap as a mouse
+  click; the finger is now told by the touch that starts it.
+- **Long press on iPhone**: the system callout (copy, look up) no longer
+  takes over a long press on a file or folder.
+- **Renaming on a touch screen**: each file and folder has a pencil button,
+  and the name field takes the focus at once (also after F2), so a phone
+  opens its keyboard.
+
 ## [1.80.4] - 2026-11-05
 
 ### Fixed

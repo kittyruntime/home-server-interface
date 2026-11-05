@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EyeIcon } from '@lucide/vue'
+import { EyeIcon, PencilIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
@@ -105,7 +105,7 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       @mousedown.shift.prevent
       :class="[
-        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box transition-colors select-none',
+        'group relative flex flex-col items-center gap-1.5 px-2 pt-3 pb-2.5 rounded-box transition-colors select-none [-webkit-touch-callout:none] touch-manipulation',
         pendingPaths?.includes(entry.path)
           ? 'cursor-default pointer-events-none'
           : 'cursor-pointer',
@@ -128,6 +128,17 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
         :class="['absolute top-1.5 left-1.5 bg-base-100 transition-opacity', selected.has(entry.path) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus-visible:opacity-100']"
         @click.stop.prevent="emit('selectEntry', entry, $event)"
       />
+
+      <!-- Rename: a touch screen has no double click on the name -->
+      <Button
+        v-if="renamingPath !== entry.path"
+        variant="ghost" size="icon-xs"
+        :aria-label="`${$t('ui.files.FileBrowserPanel.rename')} ${entry.name}`"
+        class="absolute top-1 right-1 hidden pointer-coarse:inline-flex text-base-content/70"
+        @click.stop="emit('startRename', entry)"
+      >
+        <PencilIcon class="size-3.5" aria-hidden="true" />
+      </Button>
 
       <!-- Icon -->
       <FileTypeIcon v-if="entry.type === 'dir'" :name="entry.name" dir class="w-11 h-11 shrink-0" aria-hidden="true" />
@@ -155,6 +166,7 @@ const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
           @blur="emit('cancelRename')"
           @focus="($event.target as HTMLInputElement).select()"
           autofocus
+          data-rename
           class="h-6 w-full border-primary px-1.5 py-0.5 text-center text-xs md:text-xs"
         />
       </template>
