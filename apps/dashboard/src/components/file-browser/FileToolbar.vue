@@ -111,7 +111,7 @@ async function openSearch() {
 
     <!-- Breadcrumb -->
     <!-- On a phone the actions fill the first row: the path gets its own, scrolled to the current folder. -->
-    <Breadcrumb v-if="currentPath" ref="crumbsEl" class="order-last basis-full grow sm:order-none sm:basis-0 min-w-0 overflow-x-auto">
+    <Breadcrumb v-if="currentPath" ref="crumbsEl" class="order-last basis-full grow sm:order-none sm:basis-0 min-w-0 overflow-x-auto [scrollbar-width:none]">
       <BreadcrumbList class="flex-nowrap gap-1 sm:gap-1">
         <template v-for="(crumb, i) in breadcrumbs" :key="i">
           <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
