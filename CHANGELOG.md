@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "group.steps is not iterable", so the account could not be removed.
 - **File manager on a phone or tablet**: a tap opens a folder or previews a
   file; once something is selected (checkbox or long press), taps add to the
-  selection. The selection bar has an Open button, and the checkboxes and
+  selection. The selection bar and the long-press menu have View for a file
+  (its preview) and Open for a folder, and the checkboxes and
   preview buttons that only showed on hover now show on touch screens.
 - **Long press on a touch screen**: it opens the menu of the item under the
   finger and selects it. A finger held still no longer cancels it, and lifting

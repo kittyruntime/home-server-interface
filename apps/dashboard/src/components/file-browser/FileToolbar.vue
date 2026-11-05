@@ -5,7 +5,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import Tip from '../ui/Tip.vue'
 import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon, BookmarkIcon, EyeIcon, ChevronDownIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, FileTextIcon, FolderPlusIcon, KeyRoundIcon, LayoutGridIcon, ListIcon, MenuIcon, PencilIcon, PlusIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, UploadIcon, XIcon } from '@lucide/vue'
-import { ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -32,6 +32,9 @@ const props = defineProps<{
   viewMode: 'list' | 'grid'
   sidebarOpen: boolean
 }>()
+
+// A file is shown (its preview), a folder is opened.
+const openLabel = computed(() => props.selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open'))
 
 const emit = defineEmits<{
   goUp: []
@@ -142,7 +145,7 @@ async function openSearch() {
         <Separator orientation="vertical" class="data-[orientation=vertical]:h-3.5 mx-0.5 shrink-0" />
 
         <!-- In the order of the context menu: get it, move it, change it, remove it, then its details. -->
-        <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1" @click="emit('open', selectedEntries[0]!)" :tooltip="`${t('ui.files.FileBrowserPanel.open')} (Enter)`" :aria-label="t('ui.files.FileBrowserPanel.open')" aria-keyshortcuts="Enter" class="text-base-content/70">
+        <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1" @click="emit('open', selectedEntries[0]!)" :tooltip="`${openLabel} (Enter)`" :aria-label="openLabel" aria-keyshortcuts="Enter" class="text-base-content/70">
           <EyeIcon class="w-4 h-4" aria-hidden="true" />
         </Button>
         <Button variant="ghost" size="icon-sm" v-if="selectedCount === 1 && selectedEntries[0]?.type === 'file'" @click="emit('download')" :tooltip="t('ui.files.FileToolbar.download')" :aria-label="t('ui.files.FileToolbar.downloadSelection')" class="text-base-content/70">

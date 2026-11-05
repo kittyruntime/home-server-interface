@@ -1006,7 +1006,7 @@ onMounted(async () => {
         <template v-if="selected.size > 0">
           <template v-if="selected.size === 1">
             <ContextMenuItem @select="openEntry(selectedEntries[0]!)">
-              <EyeIcon /> {{ t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
+              <EyeIcon /> {{ selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
             <ContextMenuSeparator />

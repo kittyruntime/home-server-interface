@@ -25,6 +25,7 @@ export default {
     copy: 'Copy',
     cut: 'Cut',
     open: 'Open',
+    view: 'View',
     rename: 'Rename',
     download: 'Download',
     share: 'Share',

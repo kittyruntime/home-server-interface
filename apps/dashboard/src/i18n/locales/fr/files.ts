@@ -24,6 +24,7 @@ export default {
     copy: 'Copier',
     cut: 'Couper',
     open: 'Ouvrir',
+    view: 'Afficher',
     rename: 'Renommer',
     download: 'Télécharger',
     share: 'Partager',
