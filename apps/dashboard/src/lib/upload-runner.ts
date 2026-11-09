@@ -494,9 +494,9 @@ registerRetryHandler('upload', id => {
     resumeUpload(id, t.file)
   }
   // else: the transfer lost its File reference (page reload): it's marked
-  // `interrupted`, and the tray never routes this case through `uploads.retry()`
-  // in the first place (see TransfersTray.vue: interrupted rows open a hidden
-  // file input directly instead of calling retry). This branch is therefore a
-  // documented no-op/safety net; the real resume path is `resumeByReselect`
-  // above, invoked once the tray has a freshly re-selected `File`.
+  // `interrupted`, and the Activity list never routes this case through
+  // `uploads.retry()` in the first place (see ActivityTaskList.vue: interrupted
+  // rows open a hidden file input directly instead of calling retry). This
+  // branch is therefore a documented no-op/safety net; the real resume path is
+  // `resumeByReselect` above, invoked once the list has a re-selected `File`.
 })

@@ -29,6 +29,7 @@ const AssistantPanel = defineAsyncComponent(() => import('../components/assistan
 const ActivityPanel = defineAsyncComponent(() => import('../components/activity/ActivityPanel.vue'))
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
+import BellIndicator from '../components/activity/BellIndicator.vue'
 import AgentRequests from '../components/AgentRequests.vue'
 import { navCapability, refreshAssistantStatus } from '../lib/assistant'
 import { raiseToasts } from '../lib/toast-layer'
@@ -330,6 +331,7 @@ onUnmounted(() => {
           class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />
+          <BellIndicator />
           <span
             v-if="badgeCount > 0"
             class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
@@ -456,6 +458,7 @@ onUnmounted(() => {
           activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
         @click="openActivity">
         <BellIcon class="size-5" />
+        <BellIndicator />
         <span v-if="badgeCount > 0"
           class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
         >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>

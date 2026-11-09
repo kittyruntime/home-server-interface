@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   archives, container operations, backups and HSI updates can be listed from
   any device, with what they work on and since when they run, instead of only
   in the browser tab that started them.
+- **Activity page**: the bell opens an Activity app with three tabs, running
+  tasks, notifications and the history of the last 7 days. On a phone the bell
+  opens it directly.
+
+### Changed
+- **Uploads and background tasks in the Activity panel**: the bell panel has a
+  "In progress" section (uploads with their percent and remaining time, NAS
+  tasks with how long they have been running) above the notifications. The
+  transfers tray at the bottom of the file manager is gone; a ring on the bell
+  fills while files are sent.
 
 ### Fixed
 - **Backend restart during a long copy**: the job was marked failed although
