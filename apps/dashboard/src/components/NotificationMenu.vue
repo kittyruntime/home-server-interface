@@ -18,6 +18,7 @@ import { useActivity } from '../lib/activity'
 // what runs in the background first (on the NAS and in this browser), then the
 // notifications: new ones, then earlier ones (read), so marking as read
 // visibly moves them out of the way.
+const props = defineProps<{ page?: boolean }>()
 const emit = defineEmits<{ close: []; openPage: [] }>()
 const { t } = useI18n()
 const { isAdmin } = useAuth()
@@ -33,7 +34,8 @@ const earlier = computed(() => items.value.filter(n => n.readAt).slice(0, 20))
 const { items: tasks } = useActivity()
 const runningOps = computed(() => operations.value.filter(o => o.type === 'progress'))
 const finishedOps = computed(() => operations.value.filter(o => o.type !== 'progress'))
-const hasRunning = computed(() => tasks.value.length > 0 || runningOps.value.length > 0)
+// The Activity page shows running tasks in their own tab.
+const hasRunning = computed(() => !props.page && (tasks.value.length > 0 || runningOps.value.length > 0))
 const hasNotifications = computed(() => finishedOps.value.length > 0 || items.value.length > 0)
 const isEmpty = computed(() => !hasRunning.value && !hasNotifications.value)
 // An administrator empties the panel; another account marks it read.
@@ -80,9 +82,9 @@ function openSettings() {
 </script>
 
 <template>
-  <div class="flex max-h-[min(32rem,80vh)] flex-col">
+  <div class="flex flex-col" :class="page ? '' : 'max-h-[min(32rem,80vh)]'">
     <!-- Header -->
-    <div class="flex shrink-0 items-center gap-2 border-b border-base-300 px-4 py-2.5">
+    <div v-if="!page" class="flex shrink-0 items-center gap-2 border-b border-base-300 px-4 py-2.5">
       <h2 class="text-sm font-semibold">{{ t('activity.title') }}</h2>
       <span v-if="unread > 0" class="badge badge-primary badge-sm tabular-nums">{{ t('activity.unreadCount', { count: unread }) }}</span>
       <div class="flex-1" />
@@ -170,7 +172,7 @@ function openSettings() {
         {{ isAdmin ? t('activity.clearAll') : t('activity.markAllRead') }}
       </Button>
       <div class="flex-1" />
-      <Button variant="ghost" size="xs" class="text-primary" @click="emit('openPage')">
+      <Button v-if="!page" variant="ghost" size="xs" class="text-primary" @click="emit('openPage')">
         {{ t('activity.seeAll') }}
       </Button>
     </div>
