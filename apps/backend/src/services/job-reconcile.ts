@@ -1,5 +1,6 @@
 import { prisma } from "@app/database"
-import { consumerState } from "../nats"
+import { announceJobEnded, consumerState } from "../nats"
+import { notifyTaskEnd } from "./task-notifications"
 import { log } from "../utils/log"
 
 // A backend restart no longer fails the jobs in flight: the worker keeps
@@ -20,23 +21,47 @@ export function staleJobIds(
   return jobs.filter(j => now.getTime() - j.createdAt.getTime() > graceMs).map(j => j.id)
 }
 
-export async function reconcileJobs(): Promise<number> {
-  const jobs = await prisma.job.findMany({
-    where: { status: { in: ["pending", "running"] } },
-    select: { id: true, createdAt: true },
-  })
+export interface ReconcileDeps {
+  unfinished(): Promise<Array<{ id: string; createdAt: Date }>>
+  consumer(): Promise<{ numPending: number; numAckPending: number } | null>
+  /** Fails the jobs still unfinished among ids; returns those it failed. */
+  fail(ids: string[], error: string): Promise<string[]>
+  /** A job ended: its waiters wake up and its owner gets a notification. */
+  ended(id: string): void
+}
+
+const defaultDeps: ReconcileDeps = {
+  unfinished: () => prisma.job.findMany({ where: { status: { in: ["pending", "running"] } }, select: { id: true, createdAt: true } }),
+  consumer: consumerState,
+  async fail(ids, error) {
+    const now = new Date()
+    const failed: string[] = []
+    for (const id of ids) {
+      const { count } = await prisma.job.updateMany({
+        where: { id, status: { in: ["pending", "running"] } },
+        data: { status: "failed", error, finishedAt: now },
+      })
+      if (count > 0) failed.push(id)
+    }
+    return failed
+  },
+  ended(id) {
+    announceJobEnded(id)
+    void notifyTaskEnd(id)
+  },
+}
+
+export async function reconcileJobs(deps: ReconcileDeps = defaultDeps): Promise<number> {
+  const jobs = await deps.unfinished()
   if (jobs.length === 0) return 0
-  const consumer = await consumerState()
+  const consumer = await deps.consumer()
   if (!consumer) return 0
-  const now = new Date()
-  const ids = staleJobIds(jobs, consumer, now)
+  const ids = staleJobIds(jobs, consumer, new Date())
   if (ids.length === 0) return 0
-  const { count } = await prisma.job.updateMany({
-    where: { id: { in: ids }, status: { in: ["pending", "running"] } },
-    data: { status: "failed", error: LOST_JOB_ERROR, finishedAt: now },
-  })
-  if (count > 0) log.warn({ count }, "jobs: gave up jobs the worker no longer has")
-  return count
+  const failed = await deps.fail(ids, LOST_JOB_ERROR)
+  for (const id of failed) deps.ended(id)
+  if (failed.length > 0) log.warn({ count: failed.length }, "jobs: gave up jobs the worker no longer has")
+  return failed.length
 }
 
 export function startJobReconcile(): void {

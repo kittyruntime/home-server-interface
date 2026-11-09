@@ -3883,3 +3883,21 @@ async function testTtlCache() {
   assert.equal(x, 3); assert.equal(y, 3)
 }
 await testTtlCache()
+
+async function testReconcileAnnouncesLostJobs() {
+  const { reconcileJobs, LOST_JOB_ERROR } = await import("../services/job-reconcile")
+  const old = new Date(Date.now() - 3_600_000)
+  const failed: string[] = []
+  const ended: string[] = []
+  const count = await reconcileJobs({
+    unfinished: async () => [{ id: "a", createdAt: old }, { id: "b", createdAt: new Date() }],
+    consumer: async () => ({ numPending: 0, numAckPending: 0 }),
+    fail: async (ids, error) => { assert.equal(error, LOST_JOB_ERROR); failed.push(...ids); return ids },
+    ended: id => { ended.push(id) },
+  })
+  assert.equal(count, 1)
+  assert.deepEqual(failed, ["a"])
+  // Waiters and the owner hear about it, like any other end.
+  assert.deepEqual(ended, ["a"])
+}
+await testReconcileAnnouncesLostJobs()

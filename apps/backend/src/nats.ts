@@ -253,6 +253,11 @@ export function natsSubscribe(subject: string): Subscription {
 const jobEnded = new EventEmitter()
 jobEnded.setMaxListeners(0)
 
+/** A job ended outside the worker's events (given up by reconcile): wake its waiters. */
+export function announceJobEnded(jobId: string): void {
+  jobEnded.emit(jobId)
+}
+
 // A job's end could still be missed (a backend restart in between, an event
 // lost): waiters look at the row again at least this often.
 const JOB_RECHECK_MS = 5_000
