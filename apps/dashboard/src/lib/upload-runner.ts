@@ -257,6 +257,7 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
     // while the upload state + staging survive (bounded by UPLOAD_TTL GC).
     const sha = hasher.digest('hex')
     const jobId = await completeUpload(uploadId, sha, ac)
+    uploads.addFinalizeJob(t.id, jobId)
 
     // Server-side finalize hashes the whole file before the atomic rename,
     // surface that as a distinct "verifying" phase instead of a bar stuck
@@ -425,6 +426,7 @@ export async function hydrateInterruptedUploads(): Promise<void> {
         totalChunks: totalChunks || p.totalChunks,
         sentChunks,
         sentBytes: fullyStaged ? p.totalBytes : sentBytes,
+        finalizeJobIds: [status.jobId],
       })
       void monitorHydratedFinalization(p.id, status.jobId, p.totalBytes)
       continue
