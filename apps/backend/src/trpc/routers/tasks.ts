@@ -7,7 +7,7 @@ import type { BackupStatus } from "../../services/backup-status"
 import { readUpdateAttempt } from "../../services/update-watch"
 import { updateStateDir } from "./update"
 import {
-  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, isListed, jobWhere, systemTasks, toHistoryView, toTaskView,
+  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, isListed, redactSystem, jobWhere, systemTasks, toHistoryView, toTaskView,
   type JobRow, type TaskHistoryView, type TaskView,
 } from "../../services/activity"
 
@@ -45,7 +45,8 @@ export const tasksRouter = router({
     const listed = rows.filter(isListed)
     const usernames = await usernamesOf(ctx.prisma, listed, viewer.userId)
     const [backup, attempt] = await Promise.all([backupStatusOrNull(), readUpdateAttempt(updateStateDir())])
-    return { running: [...systemTasks(backup, attempt), ...listed.map(j => toTaskView(j, viewer.userId, usernames))] }
+    const running = [...systemTasks(backup, attempt), ...listed.map(j => toTaskView(j, viewer.userId, usernames))]
+    return { running: running.map(v => redactSystem(v, viewer.isAdmin)) }
   }),
 
   // Finished background work of the last days, newest first.
@@ -68,7 +69,7 @@ export const tasksRouter = router({
       const nextCursor = rows.length > HISTORY_PAGE ? page[page.length - 1]!.id : null
       const listed = page.filter(isListed)
       const usernames = await usernamesOf(ctx.prisma, listed, viewer.userId)
-      return { items: listed.map(j => toHistoryView(j, viewer.userId, usernames)), nextCursor }
+      return { items: listed.map(j => redactSystem(toHistoryView(j, viewer.userId, usernames), viewer.isAdmin)), nextCursor }
     }),
 
   get: protectedProcedure

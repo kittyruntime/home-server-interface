@@ -110,3 +110,14 @@ export function systemTasks(backup: Pick<BackupStatus, "plans"> | null, attempt:
   }
   return out
 }
+
+/**
+ * A system task as a non-admin may see it: its kind and timing, not what it
+ * works on nor its error (backup plans and app details are admin only).
+ */
+export function redactSystem<T extends { owner: TaskOwner; meta: JobMeta; error?: string | null }>(view: T, isAdmin: boolean): T {
+  if (isAdmin || view.owner !== "system") return view
+  const out = { ...view, meta: { kind: view.meta.kind } }
+  if ("error" in view) out.error = null
+  return out
+}

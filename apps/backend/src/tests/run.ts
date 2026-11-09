@@ -3782,3 +3782,17 @@ async function testActivityViews() {
   assert.equal(done.status, "cancelled")
 }
 await testActivityViews()
+
+async function testActivityRedaction() {
+  const a = await import("../services/activity")
+  const sysJob = { id: "s", kind: "container", status: "running", meta: { kind: "container", name: "media" }, owner: "system", createdAt: "x", startedAt: null, percent: null } as any
+  // A non-admin sees that the system works, not on what (backup.status and app
+  // details are admin only).
+  assert.deepEqual(a.redactSystem(sysJob, false).meta, { kind: "container" })
+  assert.deepEqual(a.redactSystem(sysJob, true).meta, { kind: "container", name: "media" })
+  const own = { ...sysJob, owner: "me" }
+  assert.deepEqual(a.redactSystem(own, false).meta, { kind: "container", name: "media" })
+  const hist = { ...sysJob, status: "failed", finishedAt: null, error: "compose: secret path /srv/x" }
+  assert.equal(a.redactSystem(hist, false).error, null)
+}
+await testActivityRedaction()
