@@ -11,7 +11,8 @@ export const HISTORY_DAYS = 7
 export const HISTORY_PAGE = 50
 
 export type TaskKind = JobKind | "backup" | "update"
-export type TaskOwner = "me" | "system" | { userId: string; username: string }
+/** username is null once the account was deleted. */
+export type TaskOwner = "me" | "system" | { userId: string; username: string | null }
 
 export interface TaskView {
   id: string
@@ -55,7 +56,7 @@ export function isListed(job: { action: string; meta: string | null }): boolean 
 function ownerOf(userId: string | null, viewerId: string, usernames: Map<string, string>): TaskOwner {
   if (!userId) return "system"
   if (userId === viewerId) return "me"
-  return { userId, username: usernames.get(userId) ?? "?" }
+  return { userId, username: usernames.get(userId) ?? null }
 }
 
 function base(job: JobRow, viewerId: string, usernames: Map<string, string>) {

@@ -3763,6 +3763,7 @@ async function testActivityViews() {
   assert.equal(v.meta.kind, "copy")
   assert.equal(a.toTaskView({ ...job, userId: "u1", status: "running" }, "u1", new Map()).owner, "me")
   assert.equal(a.toTaskView({ ...job, userId: null }, "u1", new Map()).owner, "system")
+  assert.deepEqual(a.toTaskView({ ...job, userId: "gone" }, "u1", new Map()).owner, { userId: "gone", username: null })
   assert.ok(a.isListed({ action: "fs.copy", meta: null }))
   assert.ok(!a.isListed({ action: "fs.mkdir", meta: null }))
   assert.ok(!a.isListed({ action: "fs.delete", meta: '{"kind":"delete","internal":true}' }))
