@@ -518,7 +518,7 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   if (mode === 'cut') pendingPaths.value = [...paths]
   try {
     await runTransferBatch(
-      `${mode === 'copy' ? 'Copying' : 'Moving'} ${paths.length} item${paths.length === 1 ? '' : 's'}`,
+      mode === 'copy' ? 'copy' : 'move',
       paths.map(src => async () => {
         const { jobId } = mode === 'copy'
           ? await trpc.fs.copy.mutate({ src, dstDir: dst })

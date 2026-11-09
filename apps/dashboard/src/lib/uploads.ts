@@ -1,5 +1,6 @@
 import { ref, readonly } from 'vue'
 import { useToast } from './toast'
+import { tr } from './tr'
 
 export type TransferKind = 'upload'
 export type TransferStatus =
@@ -254,11 +255,24 @@ function errorMessage(reason: unknown): string {
   return String(reason)
 }
 
+// The worker's message for a job its owner cancelled (apps/root-worker/cancel.go).
+const CANCELLED = 'Cancelled'
+
+/** The toast for a copy/move batch's failures; null when there is nothing to report. */
+export function transferFailureMessage(kind: 'copy' | 'move', total: number, failures: unknown[]): string | null {
+  // A cancel is the user's own doing, not a failure.
+  const real = failures.filter(f => errorMessage(f) !== CANCELLED)
+  if (real.length === 0) return null
+  const params = { failed: real.length, total, error: errorMessage(real[0]) }
+  return kind === 'copy'
+    ? tr('lib.transfers.copyFailed', `Copy: ${params.failed} of ${total} failed (${params.error})`, params)
+    : tr('lib.transfers.moveFailed', `Move: ${params.failed} of ${total} failed (${params.error})`, params)
+}
+
 /** Run a copy/move batch; a toast names the failures. */
-export async function runTransferBatch(title: string, ops: Array<() => Promise<unknown>>): Promise<void> {
+export async function runTransferBatch(kind: 'copy' | 'move', ops: Array<() => Promise<unknown>>): Promise<void> {
   const results = await Promise.allSettled(ops.map(op => op()))
-  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-  if (failures.length > 0) {
-    useToast().error(`${title}: ${failures.length} of ${ops.length} failed (${errorMessage(failures[0]!.reason)})`)
-  }
+  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected').map(r => r.reason)
+  const message = transferFailureMessage(kind, ops.length, failures)
+  if (message) useToast().error(message)
 }
