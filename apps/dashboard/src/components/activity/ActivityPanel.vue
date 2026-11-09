@@ -47,6 +47,7 @@ async function loadHistory(more = false) {
 
 function select(value: unknown) {
   tab.value = value as Tab
+  void activity.refresh()
   if (tab.value === 'history') void loadHistory()
 }
 
@@ -70,11 +71,15 @@ const runningCount = computed(() => activity.items.value.length)
 <template>
   <div class="flex h-full flex-col overflow-hidden">
     <div class="shrink-0 px-4 pt-4 sm:px-6">
-      <Tabs :model-value="tab" @update:model-value="select">
-        <TabsList>
-          <TabsTrigger value="running">{{ t('activity.running') }} <span v-if="runningCount" class="badge badge-ghost badge-xs ms-1 tabular-nums">{{ runningCount }}</span></TabsTrigger>
-          <TabsTrigger value="notifications">{{ t('activity.notifications') }} <span v-if="unread" class="badge badge-primary badge-xs ms-1 tabular-nums">{{ unread }}</span></TabsTrigger>
-          <TabsTrigger value="history">{{ t('activity.history') }}</TabsTrigger>
+      <Tabs :model-value="tab" class="mx-auto max-w-3xl" @update:model-value="select">
+        <TabsList class="max-w-full overflow-x-auto">
+          <TabsTrigger value="running">
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap">{{ t('activity.running') }}<span v-if="runningCount" class="badge badge-ghost badge-xs tabular-nums">{{ runningCount }}</span></span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap">{{ t('activity.notifications') }}<span v-if="unread" class="badge badge-primary badge-xs tabular-nums">{{ unread > 99 ? '99+' : unread }}</span></span>
+          </TabsTrigger>
+          <TabsTrigger value="history"><span class="whitespace-nowrap">{{ t('activity.history') }}</span></TabsTrigger>
         </TabsList>
       </Tabs>
     </div>
@@ -113,7 +118,7 @@ const runningCount = computed(() => activity.items.value.length)
                   <p class="mt-0.5 text-xs text-base-content/70">
                     {{ t(`activity.result.${h.status}`) }} · <span class="tabular-nums">{{ when(h) }}</span>
                     <template v-if="duration(h)"> · {{ t('activity.took', { time: duration(h) }) }}</template>
-                    <template v-if="typeof h.owner === 'object'"> · {{ t('activity.owner.user', { name: h.owner.username }) }}</template>
+                    <template v-if="typeof h.owner === 'object'"> · {{ h.owner.username ? t('activity.owner.user', { name: h.owner.username }) : t('activity.owner.deleted') }}</template>
                   </p>
                   <p v-if="h.error && h.status === 'failed'" class="mt-0.5 break-words text-xs text-error">{{ h.error }}</p>
                   <Button v-if="isAdmin && h.status === 'failed'" variant="link" class="mt-0.5 h-auto p-0 text-xs" @click="openJobLogs(h.id)">{{ t('activity.viewLogs') }}</Button>

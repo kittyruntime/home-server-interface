@@ -117,7 +117,7 @@ function openSettings() {
 
       <!-- Notifications: this browser's finished operations, then new and earlier ones -->
       <section v-if="hasNotifications" :aria-label="t('activity.notifications')">
-        <h3 class="px-4 pt-3 pb-1 text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('activity.notifications') }}</h3>
+        <h3 v-if="!page" class="px-4 pt-3 pb-1 text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('activity.notifications') }}</h3>
         <ul v-if="finishedOps.length" class="divide-y divide-base-300">
           <li v-for="op in finishedOps" :key="`op-${op.id}`" class="flex items-start gap-3 px-4 py-2.5">
             <span class="mt-0.5 shrink-0" :class="op.type === 'success' ? 'text-success' : op.type === 'error' ? 'text-error' : 'text-base-content/70'">

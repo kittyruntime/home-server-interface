@@ -15,7 +15,7 @@ import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
 import { syncPreferences } from '../lib/preferences'
-import { appFromQuery, appQuery } from '../lib/app-route'
+import { appFromQuery, appQuery, allowedAppIds } from '../lib/app-route'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -131,7 +131,7 @@ const { items: navItems } = useSidebarNav(() => isAdmin.value, navCapability)
 
 // The open app is in the URL (?app=storage, #90): a reload or a link opens it
 // again, and the browser's back button returns to the previous app.
-const allowedApps = () => navItems.value.map(item => item.id)
+const allowedApps = () => allowedAppIds(navItems.value.map(item => item.id))
 activeApp.value = appFromQuery(route.query.app, allowedApps())
 watch(activeApp, id => {
   if ((route.query.app ?? 'dashboard') !== id) void router.push({ query: appQuery(route.query, id) as Record<string, string> })

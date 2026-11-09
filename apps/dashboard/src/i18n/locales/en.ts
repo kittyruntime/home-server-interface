@@ -327,6 +327,7 @@ export default {
     loadMore: 'Show more',
     took: 'took {time}',
     result: { completed: 'Finished', failed: 'Failed', cancelled: 'Cancelled' },
+    uploading: 'Sending files',
     notifications: 'Notifications',
     seeAll: 'See all activity',
     queued: 'Waiting',
@@ -341,6 +342,7 @@ export default {
       browser: 'in this browser',
       system: 'system',
       user: 'by {name}',
+      deleted: 'by a deleted account',
     },
     task: {
       copy: 'Copying {src} to {dst}',

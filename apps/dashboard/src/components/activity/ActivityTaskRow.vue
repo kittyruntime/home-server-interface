@@ -51,7 +51,7 @@ const owner = computed(() => {
   if (o === 'me') return ''
   if (o === 'browser') return t('activity.owner.browser')
   if (o === 'system') return t('activity.owner.system')
-  return t('activity.owner.user', { name: o.username })
+  return o.username ? t('activity.owner.user', { name: o.username }) : t('activity.owner.deleted')
 })
 </script>
 

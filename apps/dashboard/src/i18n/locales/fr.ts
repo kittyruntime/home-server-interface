@@ -328,6 +328,7 @@ export default {
     loadMore: 'Afficher plus',
     took: 'en {time}',
     result: { completed: 'Terminée', failed: 'Échouée', cancelled: 'Annulée' },
+    uploading: 'Envoi de fichiers',
     notifications: 'Notifications',
     seeAll: "Voir toute l'activité",
     queued: 'En attente',
@@ -342,6 +343,7 @@ export default {
       browser: 'dans ce navigateur',
       system: 'système',
       user: 'par {name}',
+      deleted: 'par un compte supprimé',
     },
     task: {
       copy: 'Copie de {src} → {dst}',
