@@ -1216,6 +1216,7 @@ var afterUnzipEntry func(i int)
 // unzipUndo remembers what an extraction created, so a cancel removes exactly
 // that: files it replaced keep their new content, nothing else is touched.
 type unzipUndo struct {
+	root  string // the extraction folder: nothing outside it is removed
 	files []string
 	dirs  []string
 }
@@ -1235,12 +1236,17 @@ func (u *unzipUndo) noteDirs(root, dir string) {
 	}
 }
 
+// undo removes them again, never through a folder swapped for a link since.
 func (u *unzipUndo) undo() {
 	for _, f := range u.files {
-		_ = os.Remove(f)
+		if rejectSymlinkComponents(u.root, f) == nil {
+			_ = os.Remove(f)
+		}
 	}
 	for i := len(u.dirs) - 1; i >= 0; i-- {
-		_ = os.Remove(u.dirs[i]) // only if empty
+		if rejectSymlinkComponents(u.root, u.dirs[i]) == nil {
+			_ = os.Remove(u.dirs[i]) // only if empty
+		}
 	}
 }
 
@@ -1340,7 +1346,7 @@ func doUnzip(ctx context.Context, archivePath, destDir string) *fsError {
 		entries = append(entries, validatedEntry{file: f, entryPath: entryPath, target: target, isDir: isDir})
 	}
 
-	var undo unzipUndo
+	undo := unzipUndo{root: destDir}
 	cancelled := func() *fsError {
 		undo.undo()
 		return errCancelled

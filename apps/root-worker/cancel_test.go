@@ -196,3 +196,30 @@ func TestCancelSingleFileCopyLeavesNoPartialFile(t *testing.T) {
 		t.Fatalf("destination holds %v, want nothing", got)
 	}
 }
+
+func TestUnzipUndoDoesNotFollowASwappedParent(t *testing.T) {
+	root := t.TempDir()
+	dest := filepath.Join(root, "out")
+	outside := filepath.Join(root, "outside")
+	for _, d := range []string{filepath.Join(dest, "dir"), outside} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	victim := filepath.Join(outside, "e.txt")
+	if err := os.WriteFile(victim, []byte("not ours"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	u := unzipUndo{root: dest, files: []string{filepath.Join(dest, "dir", "e.txt")}}
+	// The extracted folder is replaced by a link to somewhere else.
+	if err := os.RemoveAll(filepath.Join(dest, "dir")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dest, "dir")); err != nil {
+		t.Fatal(err)
+	}
+	u.undo()
+	if _, err := os.Stat(victim); err != nil {
+		t.Fatalf("undo followed the link and removed %s", victim)
+	}
+}
