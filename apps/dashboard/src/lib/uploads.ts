@@ -28,6 +28,7 @@ export interface Transfer {
   file?: File
   uploadId?: string
   jobId?: string          // copy/move worker job
+  finalizeJobIds?: readonly string[] // upload: its server finalize jobs (shown here, not as server tasks)
   interrupted?: boolean   // reload: needs re-select to resume
 }
 
@@ -158,6 +159,12 @@ export function useUploads() {
     }
   }
 
+  /** Remember an upload's finalize job, so the Activity list shows it once. */
+  function addFinalizeJob(id: string, jobId: string) {
+    const t = tasks.value.find(x => x.id === id)
+    if (t) t.finalizeJobIds = [...(t.finalizeJobIds ?? []), jobId]
+  }
+
   /** Reset byte/chunk progress to zero, called at the start of each upload run
    *  (incl. resume/retry) so `updateProgress`'s additive `sentBytes` recomputes
    *  from scratch instead of stacking onto a prior run's total. */
@@ -217,6 +224,7 @@ export function useUploads() {
   return {
     tasks: readonly(tasks),
     register,
+    addFinalizeJob,
     setStatus,
     attachFile,
     updateProgress,
