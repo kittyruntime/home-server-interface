@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activityLabel } from '../src/lib/activity-label.ts'
+import { activityLabel, taskKindOf } from '../src/lib/activity-label.ts'
 import type { ActivityItem } from '../src/lib/activity.ts'
 
 const t = (key: string, p?: Record<string, unknown>) => key + (p ? JSON.stringify(p) : '')
@@ -29,4 +29,11 @@ test('a system task without its details gets the generic label of its kind', () 
 test('an upload names the file and the folder', () => {
   const label = activityLabel(item({ kind: 'upload', meta: { kind: 'other', name: 'a.mkv', dst: '/srv/Photos/2026' } }), t)
   assert.ok(label.startsWith('activity.task.upload') && label.includes('"dst":"2026"') && label.includes('"name":"a.mkv"'))
+})
+
+test('a task notification names its task from the action', () => {
+  assert.equal(taskKindOf('fs.copy'), 'copy')
+  assert.equal(taskKindOf('fs.unzip'), 'unzip')
+  assert.equal(taskKindOf('container.composeUp'), 'container')
+  assert.equal(taskKindOf('fs.chmod'), 'other')
 })

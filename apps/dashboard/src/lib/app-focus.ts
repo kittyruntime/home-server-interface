@@ -36,3 +36,20 @@ export const pendingSettings = ref<SettingsFocus | null>(null)
 export function focusSettings(section: SettingsFocus): void {
   pendingSettings.value = section
 }
+
+// A task notification opens the folder it is about: the shell opens the file
+// manager (a new window on the desktop), which takes the request when it
+// mounts, or at once when it is already the open app.
+
+export const pendingFolder = ref<string | null>(null)
+
+export function focusFolder(path: string): void {
+  pendingFolder.value = path
+}
+
+/** The folder to open, cleared: only one file manager opens it. */
+export function takeFolderFocus(): string | null {
+  const path = pendingFolder.value
+  pendingFolder.value = null
+  return path
+}

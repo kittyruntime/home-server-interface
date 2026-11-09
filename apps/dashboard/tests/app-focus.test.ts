@@ -22,3 +22,12 @@ test('a place properties request asks the shell for that place access settings',
   focusPlaceAccess('place-1')
   assert.equal(pendingPlaceAccess.value, 'place-1')
 })
+
+test('a folder request is taken once, by the file manager that opens it', async () => {
+  const { focusFolder, takeFolderFocus, pendingFolder } = await import('../src/lib/app-focus.ts')
+  assert.equal(takeFolderFocus(), null)
+  focusFolder('/srv/b/Archives')
+  assert.equal(pendingFolder.value, '/srv/b/Archives')
+  assert.equal(takeFolderFocus(), '/srv/b/Archives')
+  assert.equal(takeFolderFocus(), null)
+})

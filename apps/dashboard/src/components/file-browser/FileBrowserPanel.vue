@@ -16,6 +16,7 @@ import { copyText } from '../../lib/copy-text'
 import { useToast } from '../../lib/toast'
 import { useUploads, runTransferBatch } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
+import { pendingFolder, takeFolderFocus } from '../../lib/app-focus'
 import { downloadUrl } from '../../lib/file-url'
 import { awaitJob } from '../../lib/jobs'
 import { useConfirm } from '../../lib/confirm'
@@ -754,8 +755,18 @@ function selectForContextMenu(entry: Entry) {
 // ── init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   dbPlaces.value = (await trpc.place.list.query()) as Place[]
-  if (allPlaces.value.length > 0) selectPlace(allPlaces.value[0]!)
+  const folder = takeFolderFocus()
+  if (folder) void openBookmark(folder)
+  else if (allPlaces.value.length > 0) selectPlace(allPlaces.value[0]!)
   void hydrateInterruptedUploads()
+})
+
+// The open file manager (outside the desktop, where a new window opens
+// instead) goes to a folder a notification asks for.
+watch(pendingFolder, path => {
+  if (!path || props.desktopWindow || !dbPlaces.value.length) return
+  const folder = takeFolderFocus()
+  if (folder) void openBookmark(folder)
 })
 </script>
 

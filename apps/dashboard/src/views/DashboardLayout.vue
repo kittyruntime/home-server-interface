@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
-import { pendingAppFocus, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
+import { pendingAppFocus, pendingFolder, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -88,6 +88,13 @@ watch(pendingAppFocus, name => {
 })
 
 // The Activity panel asks for the notification settings.
+// A notification opens its folder: the file manager takes the request.
+watch(pendingFolder, path => {
+  if (!path) return
+  if (desktopMode.value && !isMobile.value) openApp('files')
+  else activeApp.value = 'files'
+})
+
 watch(pendingSettings, section => {
   if (!section) return
   pendingSettings.value = null
