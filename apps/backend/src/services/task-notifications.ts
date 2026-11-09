@@ -33,8 +33,11 @@ const parentOf = (path: string) => {
 export function taskNotification(job: {
   userId: string | null; action: string; status: string; error: string | null; meta: string | null; cancelledAt: Date | null
 }): TaskNotification | null {
-  if (!job.userId || job.cancelledAt || !NOTIFY_ACTIONS.includes(job.action)) return null
+  if (!job.userId || !NOTIFY_ACTIONS.includes(job.action)) return null
   if (job.status !== "completed" && job.status !== "failed") return null
+  // The user stopped it: nothing to tell. A cancel that came too late (the job
+  // completed anyway) still gets its "finished".
+  if (job.status === "failed" && job.cancelledAt) return null
   const meta = decodeJobMeta(job.meta, job.action)
   if (meta.internal) return null
   const link = meta.kind === "container" ? null

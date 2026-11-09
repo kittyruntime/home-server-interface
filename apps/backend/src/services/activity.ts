@@ -92,7 +92,9 @@ export function toTaskView(job: JobRow, viewerId: string, usernames: Map<string,
 }
 
 export function toHistoryView(job: JobRow, viewerId: string, usernames: Map<string, string>): TaskHistoryView {
-  const status = job.cancelledAt ? "cancelled" : job.status === "completed" ? "completed" : "failed"
+  // A cancel only counts when the job did stop: one asked too late (an instant
+  // rename, the last chunk) still ends completed.
+  const status = job.status === "completed" ? "completed" : job.cancelledAt ? "cancelled" : "failed"
   return { ...base(job, viewerId, usernames), status, finishedAt: job.finishedAt?.toISOString() ?? null, error: job.error }
 }
 

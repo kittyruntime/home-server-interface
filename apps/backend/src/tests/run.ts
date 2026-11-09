@@ -3836,7 +3836,7 @@ async function testTaskNotifications() {
   // Containers have no folder to open.
   assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.link, null)
   assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.target, "media")
-  assert.equal(n.taskNotification({ ...base, cancelledAt: new Date() }), null)
+  assert.equal(n.taskNotification({ ...base, status: "failed", error: "Cancelled", cancelledAt: new Date() }), null)
   assert.equal(n.taskNotification({ ...base, action: "fs.finalize" }), null)
   assert.equal(n.taskNotification({ ...base, action: "fs.mkdir" }), null)
   assert.equal(n.taskNotification({ ...base, userId: null }), null)
@@ -3852,3 +3852,17 @@ async function testNotificationPruneScope() {
   assert.deepEqual(pruneScope("u"), { userId: "u" })
 }
 await testNotificationPruneScope()
+
+async function testCancelledButFinished() {
+  const a = await import("../services/activity")
+  const n = await import("../services/task-notifications")
+  const at = new Date("2026-11-09T12:00:00Z")
+  const job = { id: "j", status: "completed", action: "fs.move", userId: "u", meta: '{"kind":"move","src":"/a/x","dst":"/b"}', createdAt: at, startedAt: at, finishedAt: at, cancelledAt: at, error: null }
+  // A cancel that came too late (an instant rename): the task did finish.
+  assert.equal(a.toHistoryView(job, "u", new Map()).status, "completed")
+  assert.equal(n.taskNotification(job)?.eventType, "task.completed")
+  // A cancel that took: the job ended failed.
+  assert.equal(a.toHistoryView({ ...job, status: "failed", error: "Cancelled" }, "u", new Map()).status, "cancelled")
+  assert.equal(n.taskNotification({ ...job, status: "failed", error: "Cancelled" }), null)
+}
+await testCancelledButFinished()

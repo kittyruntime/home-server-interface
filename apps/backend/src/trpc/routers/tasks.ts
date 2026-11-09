@@ -98,7 +98,13 @@ export const tasksRouter = router({
       if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
       if (!canCancel(job, ctx.user.userId)) throw new TRPCError({ code: "FORBIDDEN", message: "This task cannot be cancelled" })
       await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: new Date() } })
-      await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      try {
+        await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      } catch (e) {
+        // The worker never got it: the task runs on and can be cancelled again.
+        await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: null } })
+        throw e
+      }
       return { ok: true }
     }),
 
