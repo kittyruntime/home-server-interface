@@ -26,6 +26,7 @@ const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/Mo
 const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
 const AssistantPanel = defineAsyncComponent(() => import('../components/assistant/AssistantPanel.vue'))
+const ActivityPanel = defineAsyncComponent(() => import('../components/activity/ActivityPanel.vue'))
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
 import AgentRequests from '../components/AgentRequests.vue'
@@ -116,6 +117,7 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
   if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
   if (activeApp.value === 'assistant') return t('apps.assistant')
+  if (activeApp.value === 'activity') return t('apps.activity')
   return t('uis.views.DashboardLayout.overview')
 })
 
@@ -209,6 +211,12 @@ function onDashboardNavigate(target: 'places' | 'store' | 'backups' | 'secure') 
   }
   activeApp.value = 'settings'
   settingsSection.value = target === 'places' ? 'places' : target === 'secure' ? 'secure' : 'data-backups'
+}
+
+// The Activity app: a window on the desktop, the whole screen elsewhere.
+function openActivity() {
+  if (desktopMode.value && !isMobile.value) openApp('activity')
+  else activeApp.value = 'activity'
 }
 
 function goToProfile() {
@@ -314,7 +322,7 @@ onUnmounted(() => {
       </template>
 
       <!-- Notifications bell -->
-      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')">
+      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')" @open-page="openActivity">
         <Button
           variant="ghost"
           size="icon-lg"
@@ -391,6 +399,7 @@ onUnmounted(() => {
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
           <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
+          <ActivityPanel v-else-if="activeApp === 'activity'" class="h-full" />
           <div v-else class="flex items-center justify-center h-full text-base-content/70 select-none">
             <div class="text-center space-y-3">
               <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
@@ -440,18 +449,17 @@ onUnmounted(() => {
       </DropdownMenu>
 
       <!-- Notifications bell -->
-      <ActivityPopover v-if="isMobile" side="top">
-        <template #default="{ open }">
-          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
-            :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
-              open ? 'text-primary' : 'text-base-content/70']">
-            <BellIcon class="size-5" />
-            <span v-if="badgeCount > 0"
-              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
-            >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
-          </Button>
-        </template>
-      </ActivityPopover>
+      <!-- On a phone the bell opens the Activity page itself: a popover there
+           would cover the whole screen anyway. -->
+      <Button v-if="isMobile" variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
+        :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
+          activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
+        @click="openActivity">
+        <BellIcon class="size-5" />
+        <span v-if="badgeCount > 0"
+          class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
+        >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
+      </Button>
 
       <!-- User avatar -->
       <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">

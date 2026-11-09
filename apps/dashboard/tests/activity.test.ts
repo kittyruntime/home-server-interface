@@ -49,3 +49,9 @@ test('formatElapsed', () => {
   assert.equal(formatElapsed(252_000), '4 min 12 s')
   assert.equal(formatElapsed(7_500_000), '2 h 05 min')
 })
+
+test('interrupted upload exposes a reselect action', () => {
+  const [item] = mergeActivity([], [upload({ status: 'paused', interrupted: true })])
+  assert.equal(item!.interrupted, true)
+  assert.equal(item!.pausable, false)
+})
