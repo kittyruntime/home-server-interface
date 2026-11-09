@@ -87,7 +87,7 @@ type syncResponse struct {
 // jobEvent is what the worker publishes back to the backend.
 type jobEvent struct {
 	JobID  string      `json:"jobId"`
-	Status string      `json:"status"` // completed | failed
+	Status string      `json:"status"` // running | completed | failed
 	Result interface{} `json:"result,omitempty"`
 	Error  string      `json:"error,omitempty"`
 }
@@ -108,10 +108,20 @@ func replyErr(nc *nats.Conn, replySubject string, e *fsError) {
 // jobStarts records when each async job was received, for duration logging.
 var jobStarts sync.Map
 
-// logJobReceived logs an async job and remembers its start time.
-func logJobReceived(subject, jobID, linuxUser string) {
+// publishEvent sends a job event; tests swap it to record what is sent.
+var publishEvent = func(nc *nats.Conn, subject string, data []byte) error {
+	return nc.Publish(subject, data)
+}
+
+// jobStarted logs an async job, remembers its start time and tells the
+// backend it is running, so the Activity panel can tell it from a queued one.
+func jobStarted(nc *nats.Conn, subject, jobID, linuxUser string) {
 	jobStarts.Store(jobID, time.Now())
 	logger.Info("job received", "subject", subject, "jobId", jobID, "linuxUser", linuxUser)
+	data, _ := json.Marshal(jobEvent{JobID: jobID, Status: "running"})
+	if err := publishEvent(nc, fmt.Sprintf("events.job.%s", jobID), data); err != nil {
+		log.Printf("publish running event for job %s: %v", jobID, err)
+	}
 }
 
 func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, errMsg string) {
@@ -127,7 +137,7 @@ func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, e
 	event := jobEvent{JobID: jobID, Status: status, Result: result, Error: errMsg}
 	data, _ := json.Marshal(event)
 	subject := fmt.Sprintf("events.job.%s", jobID)
-	if err := nc.Publish(subject, data); err != nil {
+	if err := publishEvent(nc, subject, data); err != nil {
 		log.Printf("publish event for job %s: %v", jobID, err)
 	}
 }
@@ -834,7 +844,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	subject := msg.Subject
-	logJobReceived(subject, task.JobID, task.LinuxUsername)
+	jobStarted(nc, subject, task.JobID, task.LinuxUsername)
 
 	var result interface{}
 	var fsErr *fsError

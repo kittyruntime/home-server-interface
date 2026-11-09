@@ -268,11 +268,22 @@ export function jobEndSignal(jobId: string, ms: number): { ended: Promise<void>;
   return { ended, cancel }
 }
 
-type JobEvent = {
+export type JobEvent = {
   jobId:   string
-  status:  "completed" | "failed"
+  status:  "running" | "completed" | "failed"
   result?: unknown
   error?:  string
+}
+
+/** Row update for a worker event: "running" stamps the start, an end the finish. */
+export function jobEventUpdate(event: JobEvent, now: Date) {
+  if (event.status === "running") return { status: "running", startedAt: now }
+  return {
+    status: event.status,
+    result: event.result != null ? JSON.stringify(event.result) : null,
+    error:  event.error ?? null,
+    finishedAt: now,
+  }
 }
 
 export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void> {
@@ -291,13 +302,17 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         log.warn("nats: event subscriber received message without jobId, skipping")
         continue
       }
+      if (event.status === "running") {
+        // A late "running" never overwrites an end that was already recorded.
+        await prisma.job.updateMany({
+          where: { id: event.jobId, status: { in: ["pending", "running"] } },
+          data: jobEventUpdate(event, new Date()),
+        })
+        continue
+      }
       const job = await prisma.job.update({
         where: { id: event.jobId },
-        data: {
-          status: event.status,
-          result: event.result != null ? JSON.stringify(event.result) : null,
-          error:  event.error  ?? null,
-        },
+        data: jobEventUpdate(event, new Date()),
       })
       jobEnded.emit(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.

@@ -3731,3 +3731,12 @@ async function testJobMeta() {
   assert.equal(m.decodeJobMeta(m.encodeJobMeta({ kind: "copy", src: "x".repeat(5000) }), "fs.copy").src!.length, 1024)
 }
 await testJobMeta()
+
+async function testJobEventUpdate() {
+  const { jobEventUpdate } = await import("../nats")
+  const d = new Date("2026-11-09T12:00:00Z")
+  assert.deepEqual(jobEventUpdate({ jobId: "j", status: "running" }, d), { status: "running", startedAt: d })
+  assert.deepEqual(jobEventUpdate({ jobId: "j", status: "failed", error: "x" }, d), { status: "failed", result: null, error: "x", finishedAt: d })
+  assert.deepEqual(jobEventUpdate({ jobId: "j", status: "completed", result: { ok: true } }, d), { status: "completed", result: '{"ok":true}', error: null, finishedAt: d })
+}
+await testJobEventUpdate()
