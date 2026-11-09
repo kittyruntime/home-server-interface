@@ -207,20 +207,30 @@ func ensureConsumer(js nats.JetStreamContext) {
 	}
 }
 
-// Async jobs run on two serial lanes, file jobs and container jobs, so a copy
-// that takes hours does not hold back an app start. The lanes live in this
-// process on purpose: the JetStream consumer stays "root-worker" on "root.>",
-// because the consumer outlives the worker and the previous release, which a
-// rollback starts again, cannot subscribe to any other.
+// Async jobs run on serial lanes, so a copy that takes hours does not hold
+// back an app start. The lanes live in this process on purpose: the JetStream
+// consumer stays "root-worker" on "root.>", because the consumer outlives the
+// worker and the previous release, which a rollback starts again, cannot
+// subscribe to any other.
+//
+// Creating a folder or an empty file has its own lane: it only adds a new
+// name, so it depends on no long file job queued before it, and it must not
+// wait behind one (an upload's finalize hashes the whole file). Renames,
+// moves and deletes stay on the file lane, where their order against copies
+// and uploads in progress still matters.
 const (
 	fileLane = iota
 	containerLane
+	createLane
 	jobLaneCount
 )
 
 func jobLane(subject string) int {
-	if strings.HasPrefix(subject, "root.container.") {
+	switch {
+	case strings.HasPrefix(subject, "root.container."):
 		return containerLane
+	case subject == "root.fs.mkdir" || subject == "root.fs.touch":
+		return createLane
 	}
 	return fileLane
 }

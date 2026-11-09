@@ -18,6 +18,13 @@ export interface JobObservation {
 // pending/running state and reports the terminal outcome so the caller can
 // react to a failure (e.g. surface a worker error like a checksum mismatch). Returns
 // `'timeout'` if the job never reaches a terminal state within the deadline.
+// Most jobs (a new folder, a rename) end within a few hundred milliseconds:
+// the first checks come quickly, then every 1.5 s for the long ones.
+const POLL_DELAYS_MS = [100, 250, 500, 1000]
+export function pollDelay(attempt: number): number {
+  return POLL_DELAYS_MS[attempt] ?? 1500
+}
+
 export async function pollJobResult(
   jobId: string,
   deadlineMs = 30_000,
@@ -25,9 +32,11 @@ export async function pollJobResult(
   signal?: AbortSignal,
 ): Promise<JobResult> {
   const deadline = Date.now() + deadlineMs
+  let attempt = 0
   while (Date.now() < deadline && !signal?.aborted) {
+    const delay = pollDelay(attempt++)
     await new Promise<void>(resolve => {
-      const timer = setTimeout(done, 1500)
+      const timer = setTimeout(done, delay)
       function done() {
         clearTimeout(timer)
         signal?.removeEventListener('abort', done)

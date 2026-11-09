@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Creating a folder during an upload**: it waited until the upload was
+  verified (a whole-file checksum, minutes for a large file) or a copy had
+  finished, 28 s on a real NAS. New folders and files no longer wait behind
+  file jobs, and the file manager sees a finished job within a fraction of a
+  second instead of 1.5 s.
+
 ## [1.81.0] - 2026-11-06
 
 ### Added
