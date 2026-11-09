@@ -3750,3 +3750,35 @@ async function testStaleJobIds() {
   assert.deepEqual(staleJobIds([{ id: "a", createdAt: old }, { id: "b", createdAt: fresh }], { numPending: 0, numAckPending: 0 }, now), ["a"])
 }
 await testStaleJobIds()
+
+async function testActivityViews() {
+  const a = await import("../services/activity")
+  assert.deepEqual(a.jobWhere({ userId: "u", isAdmin: false }), { OR: [{ userId: "u" }, { userId: null }] })
+  assert.deepEqual(a.jobWhere({ userId: "u", isAdmin: true }), {})
+  const created = new Date("2026-11-09T12:00:00Z")
+  const job = { id: "j", status: "pending", action: "fs.copy", userId: "u2", meta: null, createdAt: created, startedAt: null, finishedAt: null, cancelledAt: null, error: null }
+  const v = a.toTaskView(job, "u1", new Map([["u2", "marie"]]))
+  assert.equal(v.status, "queued")
+  assert.deepEqual(v.owner, { userId: "u2", username: "marie" })
+  assert.equal(v.meta.kind, "copy")
+  assert.equal(a.toTaskView({ ...job, userId: "u1", status: "running" }, "u1", new Map()).owner, "me")
+  assert.equal(a.toTaskView({ ...job, userId: null }, "u1", new Map()).owner, "system")
+  assert.ok(a.isListed({ action: "fs.copy", meta: null }))
+  assert.ok(!a.isListed({ action: "fs.mkdir", meta: null }))
+  assert.ok(!a.isListed({ action: "fs.delete", meta: '{"kind":"delete","internal":true}' }))
+
+  const plan = { id: "p1", name: "Nuit", last: { status: "running", start: "2026-11-09T11:00:00Z" }, progress: { percentDone: 0.42 } }
+  const sys = a.systemTasks({ plans: [plan, { ...plan, id: "p2", last: { status: "success", start: "x" }, progress: null }] } as any, null)
+  assert.equal(sys.length, 1)
+  assert.equal(sys[0]!.id, "backup:p1")
+  assert.equal(sys[0]!.percent, 42)
+  assert.equal(sys[0]!.owner, "system")
+  assert.deepEqual(a.systemTasks(null, null), [])
+  const upd = a.systemTasks(null, { from: "1.80.5", target: "1.81.0", requestedAt: "2026-11-09T11:30:00Z" })
+  assert.equal(upd[0]!.kind, "update")
+  assert.equal(upd[0]!.meta.name, "1.81.0")
+
+  const done = a.toHistoryView({ ...job, userId: "u1", status: "failed", cancelledAt: created, finishedAt: created }, "u1", new Map())
+  assert.equal(done.status, "cancelled")
+}
+await testActivityViews()
