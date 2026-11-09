@@ -6,6 +6,7 @@ import type { JetStreamClient, JetStreamManager } from "@nats-io/jetstream"
 import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
+import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -65,13 +66,17 @@ export async function connectNats(): Promise<void> {
       throw e
     }
   }
+}
 
-  // Mark any jobs that were pending/running before this process started as failed.
-  // (They will never receive their result event since the server restarted.)
-  await prisma.job.updateMany({
-    where: { status: { in: ["pending", "running"] } },
-    data:  { status: "failed", error: "Server restarted before job completed" },
-  })
+/** What the worker's consumer still holds, or null when NATS cannot say. */
+export async function consumerState(): Promise<{ numPending: number; numAckPending: number } | null> {
+  try {
+    const jsm = await jetstreamManager(nc)
+    const info = await jsm.consumers.info("TASKS", "root-worker")
+    return { numPending: info.num_pending, numAckPending: info.num_ack_pending }
+  } catch {
+    return null
+  }
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────
@@ -82,15 +87,21 @@ export function isNatsConnected(): boolean {
 
 // ── Publish async job ─────────────────────────────────────────────────────────
 
+// Container jobs all carry the app name: no call site has to repeat it.
+function defaultMeta(action: string, payload: Record<string, unknown>): Omit<JobMeta, "kind"> {
+  return jobKind(action) === "container" && typeof payload.name === "string" ? { name: payload.name } : {}
+}
+
 export async function publishJob(
   action:  string,
   payload: Record<string, unknown>,
   userId?: string,
+  meta?: Omit<JobMeta, "kind">,
 ): Promise<string> {
   const jobId = crypto.randomUUID()
 
   await prisma.job.create({
-    data: { id: jobId, status: "pending", action, userId },
+    data: { id: jobId, status: "pending", action, userId, meta: encodeJobMeta({ kind: jobKind(action), ...defaultMeta(action, payload), ...meta }) },
   })
 
   const subject = `root.${action}`
@@ -261,11 +272,22 @@ export function jobEndSignal(jobId: string, ms: number): { ended: Promise<void>;
   return { ended, cancel }
 }
 
-type JobEvent = {
+export type JobEvent = {
   jobId:   string
-  status:  "completed" | "failed"
+  status:  "running" | "completed" | "failed"
   result?: unknown
   error?:  string
+}
+
+/** Row update for a worker event: "running" stamps the start, an end the finish. */
+export function jobEventUpdate(event: JobEvent, now: Date) {
+  if (event.status === "running") return { status: "running", startedAt: now }
+  return {
+    status: event.status,
+    result: event.result != null ? JSON.stringify(event.result) : null,
+    error:  event.error ?? null,
+    finishedAt: now,
+  }
 }
 
 export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void> {
@@ -284,13 +306,17 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         log.warn("nats: event subscriber received message without jobId, skipping")
         continue
       }
+      if (event.status === "running") {
+        // A late "running" never overwrites an end that was already recorded.
+        await prisma.job.updateMany({
+          where: { id: event.jobId, status: { in: ["pending", "running"] } },
+          data: jobEventUpdate(event, new Date()),
+        })
+        continue
+      }
       const job = await prisma.job.update({
         where: { id: event.jobId },
-        data: {
-          status: event.status,
-          result: event.result != null ? JSON.stringify(event.result) : null,
-          error:  event.error  ?? null,
-        },
+        data: jobEventUpdate(event, new Date()),
       })
       jobEnded.emit(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.

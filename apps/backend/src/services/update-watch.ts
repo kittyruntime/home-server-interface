@@ -49,6 +49,16 @@ function isAttempt(v: unknown): v is UpdateAttempt {
   return !!a && typeof a.from === "string" && typeof a.target === "string" && typeof a.requestedAt === "string"
 }
 
+/** The update in progress, if one was requested and not yet judged. */
+export async function readUpdateAttempt(dir: string): Promise<UpdateAttempt | null> {
+  try {
+    const attempt: unknown = JSON.parse(await readFile(join(dir, ATTEMPT_FILE), "utf8"))
+    return isAttempt(attempt) ? attempt : null
+  } catch {
+    return null
+  }
+}
+
 export async function checkUpdateAttempt(
   dir: string, current: string, now: Date, dispatch: (e: NotificationEvent) => unknown, startedAt: Date,
 ): Promise<"none" | "wait" | "succeeded" | "failed" | "corrupt"> {

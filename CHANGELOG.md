@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Background tasks tracked on the server**: copies, moves, deletions,
+  archives, container operations, backups and HSI updates can be listed from
+  any device, with what they work on and since when they run, instead of only
+  in the browser tab that started them.
+
 ### Fixed
+- **Backend restart during a long copy**: the job was marked failed although
+  the NAS kept copying. It now stays running and is only given up once the
+  worker no longer holds it.
 - **Creating a folder during an upload**: it waited until the upload was
   verified (a whole-file checksum, minutes for a large file) or a copy had
   finished, 28 s on a real NAS. New folders and files no longer wait behind
