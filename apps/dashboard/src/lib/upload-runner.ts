@@ -257,6 +257,7 @@ async function runUpload(t: Transfer, file: File, opts: UploadOpts): Promise<voi
     // while the upload state + staging survive (bounded by UPLOAD_TTL GC).
     const sha = hasher.digest('hex')
     const jobId = await completeUpload(uploadId, sha, ac)
+    uploads.addFinalizeJob(t.id, jobId)
 
     // Server-side finalize hashes the whole file before the atomic rename,
     // surface that as a distinct "verifying" phase instead of a bar stuck
@@ -425,6 +426,7 @@ export async function hydrateInterruptedUploads(): Promise<void> {
         totalChunks: totalChunks || p.totalChunks,
         sentChunks,
         sentBytes: fullyStaged ? p.totalBytes : sentBytes,
+        finalizeJobIds: [status.jobId],
       })
       void monitorHydratedFinalization(p.id, status.jobId, p.totalBytes)
       continue
@@ -492,9 +494,9 @@ registerRetryHandler('upload', id => {
     resumeUpload(id, t.file)
   }
   // else: the transfer lost its File reference (page reload): it's marked
-  // `interrupted`, and the tray never routes this case through `uploads.retry()`
-  // in the first place (see TransfersTray.vue: interrupted rows open a hidden
-  // file input directly instead of calling retry). This branch is therefore a
-  // documented no-op/safety net; the real resume path is `resumeByReselect`
-  // above, invoked once the tray has a freshly re-selected `File`.
+  // `interrupted`, and the Activity list never routes this case through
+  // `uploads.retry()` in the first place (see ActivityTaskList.vue: interrupted
+  // rows open a hidden file input directly instead of calling retry). This
+  // branch is therefore a documented no-op/safety net; the real resume path is
+  // `resumeByReselect` above, invoked once the list has a re-selected `File`.
 })

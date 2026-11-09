@@ -4,9 +4,6 @@ export default {
     resultFor: '{p0} result{p1} for "',
     paste: 'Paste {p0}',
   },
-  TransfersTray: {
-    transfersActive: 'Transfers · {p0} active',
-  },
   FileToolbar: {
     paste: 'Paste {p0} {p1}',
   },

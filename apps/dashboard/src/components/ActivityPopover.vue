@@ -1,19 +1,31 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useSystemNotifications } from '../lib/systemNotifications'
+import { useActivity } from '../lib/activity'
 import NotificationMenu from './NotificationMenu.vue'
 import Tip from './ui/Tip.vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 /* Activity panel opened from the bell, in the sidebar and in the mobile nav. */
 defineProps<{ side?: 'top' | 'right'; tooltip?: string }>()
+const emit = defineEmits<{ openPage: [] }>()
 
 const open = ref(false)
 const { refresh } = useSystemNotifications()
+const activity = useActivity()
 
 // Refreshing on close keeps the badge accurate right after the user has read
-// the list, without waiting for the next 60s poll.
-watch(open, value => { if (!value) void refresh() })
+// the list, without waiting for the next 60s poll. While open, running tasks
+// refresh every few seconds.
+watch(open, value => {
+  activity.setOpen(value)
+  if (!value) void refresh()
+})
+
+function openPage() {
+  open.value = false
+  emit('openPage')
+}
 </script>
 
 <template>
@@ -26,7 +38,7 @@ watch(open, value => { if (!value) void refresh() })
       </PopoverTrigger>
     </Tip>
     <PopoverContent :side="side ?? 'right'" align="end" :side-offset="8" class="w-[min(24rem,calc(100vw-1rem))] overflow-hidden p-0">
-      <NotificationMenu @close="open = false" />
+      <NotificationMenu @close="open = false" @open-page="openPage" />
     </PopoverContent>
   </Popover>
 </template>
