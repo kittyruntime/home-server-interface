@@ -141,3 +141,21 @@ export function redactSystem<T extends { owner: TaskOwner; meta: JobMeta; error?
   if ("error" in view) out.error = null
   return out
 }
+
+/**
+ * fetch's value, reused for ttlMs; callers at the same moment share one call.
+ * The backup status is costly for the worker (it runs restic and systemctl),
+ * and every open Activity panel asks for the task list every few seconds.
+ */
+export function ttlCache<T>(fetch: () => Promise<T>, ttlMs: number, now: () => number = Date.now): () => Promise<T> {
+  let at = -Infinity
+  let value: Promise<T> | null = null
+  return () => {
+    if (!value || now() - at > ttlMs) {
+      at = now()
+      value = fetch()
+      value.catch(() => { value = null })
+    }
+    return value
+  }
+}

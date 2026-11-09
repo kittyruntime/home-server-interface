@@ -3866,3 +3866,20 @@ async function testCancelledButFinished() {
   assert.equal(n.taskNotification({ ...job, status: "failed", error: "Cancelled" }), null)
 }
 await testCancelledButFinished()
+
+async function testTtlCache() {
+  const { ttlCache } = await import("../services/activity")
+  let calls = 0
+  let now = 0
+  const get = ttlCache(async () => ++calls, 15_000, () => now)
+  assert.equal(await get(), 1)
+  now = 10_000
+  assert.equal(await get(), 1, "a fresh value is reused")
+  now = 16_000
+  assert.equal(await get(), 2, "an old one is fetched again")
+  // Callers at the same moment share one fetch.
+  now = 40_000
+  const [x, y] = await Promise.all([get(), get()])
+  assert.equal(x, 3); assert.equal(y, 3)
+}
+await testTtlCache()
