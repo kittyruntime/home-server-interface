@@ -6,6 +6,7 @@ import type { JetStreamClient, JetStreamManager } from "@nats-io/jetstream"
 import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
+import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -82,15 +83,21 @@ export function isNatsConnected(): boolean {
 
 // ── Publish async job ─────────────────────────────────────────────────────────
 
+// Container jobs all carry the app name: no call site has to repeat it.
+function defaultMeta(action: string, payload: Record<string, unknown>): Omit<JobMeta, "kind"> {
+  return jobKind(action) === "container" && typeof payload.name === "string" ? { name: payload.name } : {}
+}
+
 export async function publishJob(
   action:  string,
   payload: Record<string, unknown>,
   userId?: string,
+  meta?: Omit<JobMeta, "kind">,
 ): Promise<string> {
   const jobId = crypto.randomUUID()
 
   await prisma.job.create({
-    data: { id: jobId, status: "pending", action, userId },
+    data: { id: jobId, status: "pending", action, userId, meta: encodeJobMeta({ kind: jobKind(action), ...defaultMeta(action, payload), ...meta }) },
   })
 
   const subject = `root.${action}`

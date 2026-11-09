@@ -301,6 +301,7 @@ export const fsRouter = router({
           expectedSha,
         },
         ctx.user.userId,
+        { dst: p },
       )
       return { jobId }
     }),
@@ -336,7 +337,7 @@ export const fsRouter = router({
       const srcRoot = await checkPathPerm(ctx, src,    "canRead")
       const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId)
+      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId, { src, dst: dstDir })
       return { jobId }
     }),
 
@@ -349,7 +350,7 @@ export const fsRouter = router({
       const srcRoot = await checkPathPerm(ctx, src,    "canWrite")
       const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId)
+      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId, { src, dst: dstDir })
       return { jobId }
     }),
 
@@ -389,7 +390,7 @@ export const fsRouter = router({
           }
         }
       }
-      const jobId = await publishJob("fs.delete", { linuxUsername: linuxUser ?? "", path: p, allowedRoot: allowedRoot ?? "" }, ctx.user.userId)
+      const jobId = await publishJob("fs.delete", { linuxUsername: linuxUser ?? "", path: p, allowedRoot: allowedRoot ?? "" }, ctx.user.userId, { src: p })
       return { jobId }
     }),
 
@@ -411,6 +412,7 @@ export const fsRouter = router({
         "fs.zip",
         { linuxUsername: linuxUser ?? "", paths, dstDir: destDir, name: input.name, allowedRoot: allowedRoot ?? "" },
         ctx.user.userId,
+        { dst: destDir, name: input.name, count: paths.length },
       )
       return { jobId }
     }),
@@ -431,6 +433,7 @@ export const fsRouter = router({
         "fs.unzip",
         { linuxUsername: linuxUser ?? "", src, dstDir: destDir, allowedRoot: allowedRoot ?? "", dstAllowedRoot: dstAllowedRoot ?? "" },
         ctx.user.userId,
+        { src, dst: destDir },
       )
       return { jobId }
     }),

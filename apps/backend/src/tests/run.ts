@@ -3718,3 +3718,16 @@ async function testClearNotifications() {
   assert.equal(deleted, 1)
 }
 await testClearNotifications()
+
+async function testJobMeta() {
+  const m = await import("../services/job-meta")
+  assert.equal(m.jobKind("fs.copy"), "copy")
+  assert.equal(m.jobKind("container.composeUp"), "container")
+  assert.equal(m.jobKind("fs.mkdir"), "other")
+  assert.deepEqual(m.decodeJobMeta(m.encodeJobMeta({ kind: "copy", src: "/a/Films", dst: "/b/Archives" }), "fs.copy"),
+    { kind: "copy", src: "/a/Films", dst: "/b/Archives" })
+  assert.deepEqual(m.decodeJobMeta("{not json", "fs.zip"), { kind: "zip" })
+  assert.deepEqual(m.decodeJobMeta(null, "fs.unzip"), { kind: "unzip" })
+  assert.equal(m.decodeJobMeta(m.encodeJobMeta({ kind: "copy", src: "x".repeat(5000) }), "fs.copy").src!.length, 1024)
+}
+await testJobMeta()

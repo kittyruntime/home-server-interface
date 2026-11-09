@@ -1,10 +1,17 @@
 model Job {
-  id        String   @id @default(uuid())
-  status    String   // pending | running | completed | failed
-  action    String   // fs.mkdir | fs.copy | etc.
-  result    String?  // JSON encoded result payload
-  error     String?
-  userId    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid())
+  status      String // pending | running | completed | failed
+  action      String // fs.mkdir | fs.copy | etc.
+  result      String? // JSON encoded result payload
+  error       String?
+  userId      String?
+  meta        String? // JSON JobMeta: what the job works on (kind, src, dst, name, count)
+  startedAt   DateTime? // the worker reported it running
+  finishedAt  DateTime?
+  cancelledAt DateTime? // the owner asked to cancel it (it then ends as failed)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId, createdAt])
 }
