@@ -18,7 +18,7 @@ export interface ActivityItem {
   startedAt: string | null
   percent: number | null
   remainingSec: number | null
-  /** Server task the viewer may cancel (set once cancel exists). */
+  /** Server task the viewer may cancel (their own copy, move, zip or unzip). */
   cancellable: boolean
   pausable: boolean
   /** Upload cut by a reload: the file must be chosen again to resume. */
@@ -84,7 +84,7 @@ function fromServer(v: ServerTask): ActivityItem {
     startedAt: v.startedAt,
     percent: v.percent,
     remainingSec: null,
-    cancellable: 'cancellable' in v ? Boolean((v as { cancellable?: boolean }).cancellable) : false,
+    cancellable: v.cancellable,
     pausable: false,
     interrupted: false,
   }

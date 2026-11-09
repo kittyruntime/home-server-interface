@@ -3797,3 +3797,22 @@ async function testActivityRedaction() {
   assert.equal(a.redactSystem(hist, false).error, null)
 }
 await testActivityRedaction()
+
+async function testCanCancel() {
+  const a = await import("../services/activity")
+  const own = { userId: "u", action: "fs.copy", status: "running" }
+  assert.equal(a.canCancel(own, "u"), true)
+  assert.equal(a.canCancel({ ...own, status: "pending" }, "u"), true)
+  // Another user's task, even seen by an administrator, stays theirs.
+  assert.equal(a.canCancel(own, "admin"), false)
+  assert.equal(a.canCancel({ ...own, action: "container.composeUp" }, "u"), false)
+  assert.equal(a.canCancel({ ...own, status: "completed" }, "u"), false)
+  assert.equal(a.canCancel({ ...own, userId: null }, "u"), false)
+  const created = new Date("2026-11-09T12:00:00Z")
+  const job = { id: "j", status: "running", action: "fs.zip", userId: "u", meta: null, createdAt: created, startedAt: created, finishedAt: null, cancelledAt: null, error: null }
+  assert.equal(a.toTaskView(job, "u", new Map()).cancellable, true)
+  assert.equal(a.toTaskView(job, "other", new Map()).cancellable, false)
+  // A cancel already asked for: the task is on its way out.
+  assert.equal(a.toTaskView({ ...job, cancelledAt: created }, "u", new Map()).cancellable, false)
+}
+await testCanCancel()

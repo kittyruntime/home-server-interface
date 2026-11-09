@@ -7,9 +7,12 @@ import type { BackupStatus } from "../../services/backup-status"
 import { readUpdateAttempt } from "../../services/update-watch"
 import { updateStateDir } from "./update"
 import {
-  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, isListed, redactSystem, jobWhere, systemTasks, toHistoryView, toTaskView,
+  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, canCancel, isListed, redactSystem, jobWhere, systemTasks, toHistoryView, toTaskView,
   type JobRow, type TaskHistoryView, type TaskView,
 } from "../../services/activity"
+
+/** apps/root-worker/cancel.go */
+const CANCEL_SUBJECT = "root.jobs.cancel"
 
 const JOB_FIELDS = {
   id: true, status: true, action: true, userId: true, meta: true, error: true,
@@ -84,6 +87,19 @@ export const tasksRouter = router({
         result: job.result ? (() => { try { return JSON.parse(job.result!) } catch { return null } })() : null,
         error:  job.error ?? null,
       }
+    }),
+
+  // Stop one of your own copies, moves or archive jobs. The worker removes what
+  // it wrote and reports the job failed; a queued job never starts.
+  cancel: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const job = await ctx.prisma.job.findUnique({ where: { id: input.jobId }, select: { userId: true, action: true, status: true } })
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
+      if (!canCancel(job, ctx.user.userId)) throw new TRPCError({ code: "FORBIDDEN", message: "This task cannot be cancelled" })
+      await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: new Date() } })
+      await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      return { ok: true }
     }),
 
   // Log lines of one job from the backend and worker logs (admin only: they

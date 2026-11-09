@@ -13,7 +13,7 @@ import { activityLabel } from '../../lib/activity-label'
 
 /* One background task in the Activity panel and page. `now` ticks from the
    parent so every row's elapsed time moves together. */
-const props = defineProps<{ item: ActivityItem; now: number }>()
+const props = defineProps<{ item: ActivityItem; now: number; cancelling?: boolean }>()
 const emit = defineEmits<{ pause: []; resume: []; cancel: []; reselect: []; retry: [] }>()
 const { t } = useI18n()
 
@@ -36,6 +36,7 @@ const label = computed(() => activityLabel(props.item, t))
 const detail = computed(() => {
   const i = props.item
   if (i.status === 'error') return i.error ?? ''
+  if (props.cancelling) return t('activity.cancelling')
   if (i.status === 'queued') return t('activity.queued')
   const parts: string[] = []
   if (i.percent !== null) parts.push(`${i.percent} %`)
@@ -81,7 +82,7 @@ const owner = computed(() => {
     <Button v-if="item.kind === 'upload' && item.status === 'paused' && !item.interrupted" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :tooltip="t('activity.resume')" :aria-label="t('activity.resume')" @click="emit('resume')">
       <PlayIcon />
     </Button>
-    <Button v-if="item.cancellable || item.kind === 'upload'" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :tooltip="t('activity.cancel')" :aria-label="t('activity.cancel')" @click="emit('cancel')">
+    <Button v-if="item.cancellable || item.kind === 'upload'" variant="ghost" size="icon-xs" class="shrink-0 text-base-content/70" :disabled="cancelling" :tooltip="t('activity.cancel')" :aria-label="t('activity.cancel')" @click="emit('cancel')">
       <XIcon />
     </Button>
   </div>

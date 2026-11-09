@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tasks, notifications and the history of the last 7 days. On a phone the bell
   opens it directly.
 
+- **Cancel a background task**: your own copies, moves, compressions and
+  extractions can be cancelled from the Activity panel. The NAS stops within a
+  second or so and removes what the task wrote (an extraction keeps the files
+  it had already replaced); a task still waiting never starts.
+
 ### Changed
 - **Uploads and background tasks in the Activity panel**: the bell panel has a
   "In progress" section (uploads with their percent and remaining time, NAS
