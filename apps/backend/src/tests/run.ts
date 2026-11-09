@@ -3816,3 +3816,31 @@ async function testCanCancel() {
   assert.equal(a.toTaskView({ ...job, cancelledAt: created }, "u", new Map()).cancellable, false)
 }
 await testCanCancel()
+
+async function testTaskNotifications() {
+  const n = await import("../services/task-notifications")
+  const base = { userId: "u", action: "fs.copy", status: "completed", error: null, meta: '{"kind":"copy","src":"/a/Films","dst":"/b/Archives"}', cancelledAt: null }
+  const done = n.taskNotification(base)!
+  assert.equal(done.eventType, "task.completed")
+  assert.equal(done.severity, "info")
+  assert.equal(done.userId, "u")
+  assert.equal(done.link, "/b/Archives")
+  assert.equal(done.source, "fs.copy")
+  assert.equal(done.target, "Archives")
+  const failed = n.taskNotification({ ...base, status: "failed", error: "disk full" })!
+  assert.equal(failed.eventType, "task.failed")
+  assert.equal(failed.severity, "warning")
+  assert.equal(failed.message, "disk full")
+  // Deleting: the folder the item was in.
+  assert.equal(n.taskNotification({ ...base, action: "fs.delete", meta: '{"kind":"delete","src":"/a/Films/x.mkv"}' })!.link, "/a/Films")
+  // Containers have no folder to open.
+  assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.link, null)
+  assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.target, "media")
+  assert.equal(n.taskNotification({ ...base, cancelledAt: new Date() }), null)
+  assert.equal(n.taskNotification({ ...base, action: "fs.finalize" }), null)
+  assert.equal(n.taskNotification({ ...base, action: "fs.mkdir" }), null)
+  assert.equal(n.taskNotification({ ...base, userId: null }), null)
+  assert.equal(n.taskNotification({ ...base, meta: '{"kind":"delete","internal":true}', action: "fs.delete" }), null)
+  assert.deepEqual(n.notificationWhere({ userId: "u" }), { OR: [{ userId: null }, { userId: "u" }] })
+}
+await testTaskNotifications()

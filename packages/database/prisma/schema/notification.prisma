@@ -29,7 +29,11 @@ model Notification {
   message   String
   eventType String // alert.raised | alert.cleared
   createdAt DateTime  @default(now())
-  readAt    DateTime? // global read state shared by all users
+  readAt    DateTime? // read state (shared by all users for a global row)
+  userId    String? // set: a task result for that user only; null: a global alert
+  link      String? // folder the notification opens (task results)
+
+  @@index([userId, createdAt])
 }
 
 // Outbox and journal: pending rows are drained by the delivery queue

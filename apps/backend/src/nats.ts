@@ -7,6 +7,7 @@ import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
 import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
+import { notifyTaskEnd } from "./services/task-notifications"
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -319,6 +320,7 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         data: jobEventUpdate(event, new Date()),
       })
       jobEnded.emit(job.id)
+      void notifyTaskEnd(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.
       if (event.status === "failed") {
         log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, "job failed")

@@ -213,9 +213,14 @@ async function loadConfig() {
 }
 
 async function deliverInApp(event: NotificationEvent): Promise<void> {
-  await prisma.notification.create({
-    data: { severity: event.severity, source: event.source, target: event.target, message: event.message, eventType: event.type },
-  })
+  await recordInApp({ severity: event.severity, source: event.source, target: event.target, message: event.message, eventType: event.type })
+}
+
+/** Stores one in-app notification, keeping the 200 most recent rows. */
+export async function recordInApp(data: {
+  severity: string; source: string; target: string; message: string; eventType: string; userId?: string; link?: string | null
+}): Promise<void> {
+  await prisma.notification.create({ data })
   // Prune: keep the 200 most recent rows.
   const keep = await prisma.notification.findMany({ orderBy: { createdAt: "desc" }, take: 200, select: { createdAt: true } })
   if (keep.length === 200) {
