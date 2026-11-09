@@ -10,6 +10,10 @@ export interface SystemNotification {
   eventType: string
   createdAt: string
   readAt: string | null
+  /** Set on a task result: the user it belongs to. */
+  userId?: string | null
+  /** The folder a task result opens. */
+  link?: string | null
 }
 
 const items = ref<SystemNotification[]>([])

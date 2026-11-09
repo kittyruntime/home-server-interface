@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { useSystemNotifications, type SystemNotification } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { openJobLogs } from '../lib/jobLogs'
-import { focusSettings } from '../lib/app-focus'
+import { focusFolder, focusSettings } from '../lib/app-focus'
+import { taskKindOf } from '../lib/activity-label'
 import { useAuth } from '../lib/auth'
 import SegmentedBar from './ui/SegmentedBar.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
@@ -44,6 +45,8 @@ const canClear = computed(() => (isAdmin.value ? items.value.length > 0 : unread
 type Look = { icon: Component; tint: string; kind: string }
 function look(n: SystemNotification): Look {
   if (n.eventType === 'alert.cleared') return { icon: CircleCheckIcon, tint: 'text-success', kind: 'alertCleared' }
+  if (n.eventType === 'task.completed') return { icon: CircleCheckIcon, tint: 'text-success', kind: 'task' }
+  if (n.eventType === 'task.failed') return { icon: TriangleAlertIcon, tint: 'text-warning', kind: 'task' }
   const kind = n.eventType === 'alert.raised' ? 'alertRaised'
     : n.eventType === 'job.failed' ? 'jobFailed'
     : n.eventType === 'update.failed' ? 'updateFailed'
@@ -68,6 +71,22 @@ async function clearAll() {
   for (const op of finishedOps.value) dismiss(op.id)
   if (isAdmin.value) { if (items.value.length > 0) await clear() }
   else if (unread.value > 0) await markAllRead()
+}
+
+// A whole phrase per task ("Copy finished", "Move failed"), so languages
+// with gendered nouns agree with each one.
+function title(n: SystemNotification): string {
+  const l = look(n)
+  if (l.kind !== 'task') return t(`activity.kind.${l.kind}`)
+  return t(`activity.${n.eventType === 'task.failed' ? 'taskFailed' : 'taskDone'}.${taskKindOf(n.source)}`)
+}
+
+// Reading a task result opens its folder.
+function openNotification(n: SystemNotification) {
+  void markRead(n.id)
+  if (!n.link) return
+  emit('close')
+  focusFolder(n.link)
 }
 
 function viewLogs(jobId: string) {
@@ -140,12 +159,12 @@ function openSettings() {
           <ul v-show="group.list.length" class="divide-y divide-base-300" :aria-label="t(`activity.${group.key}`)">
             <li v-for="n in group.list" :key="n.id">
               <button type="button" class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
-                :class="n.readAt ? 'opacity-70' : ''" :aria-label="n.readAt ? undefined : t('activity.markRead')" @click="markRead(n.id)">
+                :class="n.readAt ? 'opacity-70' : ''" :aria-label="n.link ? t('activity.openFolder') : n.readAt ? undefined : t('activity.markRead')" @click="openNotification(n)">
                 <component :is="look(n).icon" class="mt-0.5 size-4 shrink-0" :class="look(n).tint" aria-hidden="true" />
                 <span class="min-w-0 flex-1">
                   <span class="flex items-baseline gap-2">
                     <span class="min-w-0 flex-1 truncate text-sm" :class="n.readAt ? '' : 'font-medium'">
-                      {{ t(`activity.kind.${look(n).kind}`) }} · {{ n.target }}
+                      {{ title(n) }}<template v-if="n.target"> · {{ n.target }}</template>
                     </span>
                     <span class="shrink-0 text-xs tabular-nums text-base-content/70">{{ formatTime(n.createdAt) }}</span>
                   </span>

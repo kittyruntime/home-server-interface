@@ -3816,3 +3816,88 @@ async function testCanCancel() {
   assert.equal(a.toTaskView({ ...job, cancelledAt: created }, "u", new Map()).cancellable, false)
 }
 await testCanCancel()
+
+async function testTaskNotifications() {
+  const n = await import("../services/task-notifications")
+  const base = { userId: "u", action: "fs.copy", status: "completed", error: null, meta: '{"kind":"copy","src":"/a/Films","dst":"/b/Archives"}', cancelledAt: null }
+  const done = n.taskNotification(base)!
+  assert.equal(done.eventType, "task.completed")
+  assert.equal(done.severity, "info")
+  assert.equal(done.userId, "u")
+  assert.equal(done.link, "/b/Archives")
+  assert.equal(done.source, "fs.copy")
+  assert.equal(done.target, "Archives")
+  const failed = n.taskNotification({ ...base, status: "failed", error: "disk full" })!
+  assert.equal(failed.eventType, "task.failed")
+  assert.equal(failed.severity, "warning")
+  assert.equal(failed.message, "disk full")
+  // Deleting: the folder the item was in.
+  assert.equal(n.taskNotification({ ...base, action: "fs.delete", meta: '{"kind":"delete","src":"/a/Films/x.mkv"}' })!.link, "/a/Films")
+  // Containers have no folder to open.
+  assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.link, null)
+  assert.equal(n.taskNotification({ ...base, action: "container.composeUp", meta: '{"kind":"container","name":"media"}' })!.target, "media")
+  assert.equal(n.taskNotification({ ...base, status: "failed", error: "Cancelled", cancelledAt: new Date() }), null)
+  assert.equal(n.taskNotification({ ...base, action: "fs.finalize" }), null)
+  assert.equal(n.taskNotification({ ...base, action: "fs.mkdir" }), null)
+  assert.equal(n.taskNotification({ ...base, userId: null }), null)
+  assert.equal(n.taskNotification({ ...base, meta: '{"kind":"delete","internal":true}', action: "fs.delete" }), null)
+  assert.deepEqual(n.notificationWhere({ userId: "u" }), { OR: [{ userId: null }, { userId: "u" }] })
+}
+await testTaskNotifications()
+
+async function testNotificationPruneScope() {
+  const { pruneScope } = await import("../services/notifications")
+  // Task results never push global alerts (or another user's results) out.
+  assert.deepEqual(pruneScope(undefined), { userId: null })
+  assert.deepEqual(pruneScope("u"), { userId: "u" })
+}
+await testNotificationPruneScope()
+
+async function testCancelledButFinished() {
+  const a = await import("../services/activity")
+  const n = await import("../services/task-notifications")
+  const at = new Date("2026-11-09T12:00:00Z")
+  const job = { id: "j", status: "completed", action: "fs.move", userId: "u", meta: '{"kind":"move","src":"/a/x","dst":"/b"}', createdAt: at, startedAt: at, finishedAt: at, cancelledAt: at, error: null }
+  // A cancel that came too late (an instant rename): the task did finish.
+  assert.equal(a.toHistoryView(job, "u", new Map()).status, "completed")
+  assert.equal(n.taskNotification(job)?.eventType, "task.completed")
+  // A cancel that took: the job ended failed.
+  assert.equal(a.toHistoryView({ ...job, status: "failed", error: "Cancelled" }, "u", new Map()).status, "cancelled")
+  assert.equal(n.taskNotification({ ...job, status: "failed", error: "Cancelled" }), null)
+}
+await testCancelledButFinished()
+
+async function testTtlCache() {
+  const { ttlCache } = await import("../services/activity")
+  let calls = 0
+  let now = 0
+  const get = ttlCache(async () => ++calls, 15_000, () => now)
+  assert.equal(await get(), 1)
+  now = 10_000
+  assert.equal(await get(), 1, "a fresh value is reused")
+  now = 16_000
+  assert.equal(await get(), 2, "an old one is fetched again")
+  // Callers at the same moment share one fetch.
+  now = 40_000
+  const [x, y] = await Promise.all([get(), get()])
+  assert.equal(x, 3); assert.equal(y, 3)
+}
+await testTtlCache()
+
+async function testReconcileAnnouncesLostJobs() {
+  const { reconcileJobs, LOST_JOB_ERROR } = await import("../services/job-reconcile")
+  const old = new Date(Date.now() - 3_600_000)
+  const failed: string[] = []
+  const ended: string[] = []
+  const count = await reconcileJobs({
+    unfinished: async () => [{ id: "a", createdAt: old }, { id: "b", createdAt: new Date() }],
+    consumer: async () => ({ numPending: 0, numAckPending: 0 }),
+    fail: async (ids, error) => { assert.equal(error, LOST_JOB_ERROR); failed.push(...ids); return ids },
+    ended: id => { ended.push(id) },
+  })
+  assert.equal(count, 1)
+  assert.deepEqual(failed, ["a"])
+  // Waiters and the owner hear about it, like any other end.
+  assert.deepEqual(ended, ["a"])
+}
+await testReconcileAnnouncesLostJobs()

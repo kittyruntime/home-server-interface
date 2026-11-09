@@ -117,7 +117,11 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
   if (target.isAdmin && !caller.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
   const d = deps(target.username, async () => {
-    await ctx.prisma.user.delete({ where: { id: input.userId } })
+    // Their task notifications go with them (no foreign key to cascade).
+    await ctx.prisma.$transaction([
+      ctx.prisma.notification.deleteMany({ where: { userId: input.userId } }),
+      ctx.prisma.user.delete({ where: { id: input.userId } }),
+    ])
     void syncPlaceAccess(ctx.prisma).catch(() => {})
   })
   return {

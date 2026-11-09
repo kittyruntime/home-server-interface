@@ -92,7 +92,9 @@ export function toTaskView(job: JobRow, viewerId: string, usernames: Map<string,
 }
 
 export function toHistoryView(job: JobRow, viewerId: string, usernames: Map<string, string>): TaskHistoryView {
-  const status = job.cancelledAt ? "cancelled" : job.status === "completed" ? "completed" : "failed"
+  // A cancel only counts when the job did stop: one asked too late (an instant
+  // rename, the last chunk) still ends completed.
+  const status = job.status === "completed" ? "completed" : job.cancelledAt ? "cancelled" : "failed"
   return { ...base(job, viewerId, usernames), status, finishedAt: job.finishedAt?.toISOString() ?? null, error: job.error }
 }
 
@@ -138,4 +140,22 @@ export function redactSystem<T extends { owner: TaskOwner; meta: JobMeta; error?
   const out = { ...view, meta: { kind: view.meta.kind } }
   if ("error" in view) out.error = null
   return out
+}
+
+/**
+ * fetch's value, reused for ttlMs; callers at the same moment share one call.
+ * The backup status is costly for the worker (it runs restic and systemctl),
+ * and every open Activity panel asks for the task list every few seconds.
+ */
+export function ttlCache<T>(fetch: () => Promise<T>, ttlMs: number, now: () => number = Date.now): () => Promise<T> {
+  let at = -Infinity
+  let value: Promise<T> | null = null
+  return () => {
+    if (!value || now() - at > ttlMs) {
+      at = now()
+      value = fetch()
+      value.catch(() => { value = null })
+    }
+    return value
+  }
 }

@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   second or so and removes what the task wrote (an extraction keeps the files
   it had already replaced); a task still waiting never starts.
 
+- **A notification when your task ends**: "Copy finished" or "Copy failed"
+  with the reason, for your own copies, moves, deletions, archives and app
+  operations, even when the tab was closed. It opens the folder concerned.
+  Only you see it, and it stays in HSI (no e-mail or webhook).
+
 ### Changed
 - **Uploads and background tasks in the Activity panel**: the bell panel has a
   "In progress" section (uploads with their percent and remaining time, NAS

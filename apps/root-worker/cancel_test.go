@@ -3,10 +3,13 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	nats "github.com/nats-io/nats.go"
 )
 
 func TestCancelBeforeStartSkipsJob(t *testing.T) {
@@ -36,7 +39,7 @@ func TestCancelRunningJobCancelsItsContext(t *testing.T) {
 	}
 }
 
-func TestCancelAfterEndIsNotRemembered(t *testing.T) {
+func TestCancelOfOneJobLeavesOthersAlone(t *testing.T) {
 	r := newCancelRegistry()
 	_, done, _ := r.begin("j")
 	done()
@@ -221,5 +224,24 @@ func TestUnzipUndoDoesNotFollowASwappedParent(t *testing.T) {
 	u.undo()
 	if _, err := os.Stat(victim); err != nil {
 		t.Fatalf("undo followed the link and removed %s", victim)
+	}
+}
+
+func TestCancelledQueuedJobNeverReportsRunning(t *testing.T) {
+	var statuses []string
+	prev := publishEvent
+	publishEvent = func(_ *nats.Conn, _ string, data []byte) error {
+		var ev jobEvent
+		_ = json.Unmarshal(data, &ev)
+		statuses = append(statuses, ev.Status)
+		return nil
+	}
+	defer func() { publishEvent = prev }()
+
+	jobCancels.cancel("queued-1")
+	handleTask(nil, &nats.Msg{Subject: "root.fs.copy", Data: []byte(`{"jobId":"queued-1"}`)})
+
+	if len(statuses) != 1 || statuses[0] != "failed" {
+		t.Fatalf("published %v, want only [failed]", statuses)
 	}
 }

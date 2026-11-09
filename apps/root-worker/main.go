@@ -844,17 +844,18 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	subject := msg.Subject
-	jobStarted(nc, subject, task.JobID, task.LinuxUsername)
-
-	// A job cancelled while it waited for its lane never runs; a running one
-	// sees ctx cancelled (copy, move, zip and unzip check it).
+	// A job cancelled while it waited for its lane never runs (nor shows as
+	// running); a running one sees ctx cancelled (copy, move, zip and unzip
+	// check it).
 	ctx, done, cancelled := jobCancels.begin(task.JobID)
 	defer done()
 	if cancelled {
+		logger.Info("job cancelled before it started", "subject", subject, "jobId", task.JobID)
 		_ = msg.Term()
 		publishJobResult(nc, task.JobID, "failed", nil, errCancelled.Message)
 		return
 	}
+	jobStarted(nc, subject, task.JobID, task.LinuxUsername)
 
 	var result interface{}
 	var fsErr *fsError

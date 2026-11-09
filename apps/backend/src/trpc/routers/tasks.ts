@@ -7,7 +7,7 @@ import type { BackupStatus } from "../../services/backup-status"
 import { readUpdateAttempt } from "../../services/update-watch"
 import { updateStateDir } from "./update"
 import {
-  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, canCancel, isListed, redactSystem, jobWhere, systemTasks, toHistoryView, toTaskView,
+  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, canCancel, isListed, redactSystem, ttlCache, jobWhere, systemTasks, toHistoryView, toTaskView,
   type JobRow, type TaskHistoryView, type TaskView,
 } from "../../services/activity"
 
@@ -27,13 +27,11 @@ async function usernamesOf(prisma: any, rows: JobRow[], viewerId: string): Promi
 }
 
 // Backups are optional (no engine, worker busy): the panel lists jobs anyway.
-async function backupStatusOrNull(): Promise<BackupStatus | null> {
-  try {
-    return await requestSync<BackupStatus>("root.backup.status", {}, 3_000)
-  } catch {
-    return null
-  }
-}
+// The status costs the worker a few processes: shared by every panel for 15 s.
+const backupStatusOrNull = ttlCache(
+  () => requestSync<BackupStatus>("root.backup.status", {}, 3_000).catch(() => null),
+  15_000,
+)
 
 export const tasksRouter = router({
   // Background work running now, oldest first.
@@ -98,7 +96,13 @@ export const tasksRouter = router({
       if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
       if (!canCancel(job, ctx.user.userId)) throw new TRPCError({ code: "FORBIDDEN", message: "This task cannot be cancelled" })
       await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: new Date() } })
-      await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      try {
+        await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      } catch (e) {
+        // The worker never got it: the task runs on and can be cancelled again.
+        await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: null } })
+        throw e
+      }
       return { ok: true }
     }),
 

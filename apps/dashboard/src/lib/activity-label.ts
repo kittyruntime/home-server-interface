@@ -31,3 +31,12 @@ export function activityLabel(item: ActivityItem, t: Translate): string {
   if (!needs || needs.some(k => !params[k])) return t(`activity.taskGeneric.${needs ? item.kind : 'other'}`)
   return t(`activity.task.${item.kind}`, Object.fromEntries(needs.map(k => [k, params[k]])))
 }
+
+export type NotifiedTask = 'copy' | 'move' | 'delete' | 'zip' | 'unzip' | 'container' | 'other'
+
+/** The task a notification is about, from its job action (fs.copy, container.composeUp...). */
+export function taskKindOf(action: string): NotifiedTask {
+  if (action.startsWith('container.')) return 'container'
+  const kind = action.replace(/^fs\./, '')
+  return (['copy', 'move', 'delete', 'zip', 'unzip'] as const).find(k => k === kind) ?? 'other'
+}

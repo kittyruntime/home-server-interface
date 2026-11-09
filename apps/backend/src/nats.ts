@@ -7,6 +7,7 @@ import type { FastifyBaseLogger } from "fastify"
 import { prisma } from "@app/database"
 import crypto from "node:crypto"
 import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
+import { notifyTaskEnd } from "./services/task-notifications"
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -252,6 +253,11 @@ export function natsSubscribe(subject: string): Subscription {
 const jobEnded = new EventEmitter()
 jobEnded.setMaxListeners(0)
 
+/** A job ended outside the worker's events (given up by reconcile): wake its waiters. */
+export function announceJobEnded(jobId: string): void {
+  jobEnded.emit(jobId)
+}
+
 // A job's end could still be missed (a backend restart in between, an event
 // lost): waiters look at the row again at least this often.
 const JOB_RECHECK_MS = 5_000
@@ -319,6 +325,7 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         data: jobEventUpdate(event, new Date()),
       })
       jobEnded.emit(job.id)
+      void notifyTaskEnd(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.
       if (event.status === "failed") {
         log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, "job failed")
