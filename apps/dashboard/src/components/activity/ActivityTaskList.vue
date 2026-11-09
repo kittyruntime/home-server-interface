@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import ActivityTaskRow from './ActivityTaskRow.vue'
 import type { ActivityItem } from '../../lib/activity'
 import { useUploads } from '../../lib/uploads'
@@ -11,14 +11,19 @@ import { useI18n } from 'vue-i18n'
 
 /* Running background tasks with their actions. Uploads are driven here (they
    live in this browser); server tasks only show. */
-defineProps<{ items: ActivityItem[] }>()
+const props = defineProps<{ items: ActivityItem[] }>()
 
 const uploads = useUploads()
 const activity = useActivity()
 const toast = useToast()
 const { t } = useI18n()
-// Cancels on their way: the task leaves the list once the NAS has cleaned up.
+// Cancels on their way: shown until the task leaves the list, once the NAS has
+// cleaned up (a moment after the request is accepted).
 const cancelling = ref(new Set<string>())
+watch(() => props.items.map(i => i.id), ids => {
+  const left = [...cancelling.value].filter(id => ids.includes(id))
+  if (left.length !== cancelling.value.size) cancelling.value = new Set(left)
+})
 const now = ref(Date.now())
 const ticker = setInterval(() => { now.value = Date.now() }, 1000)
 onBeforeUnmount(() => clearInterval(ticker))
@@ -49,11 +54,10 @@ async function cancel(item: ActivityItem) {
     await trpc.tasks.cancel.mutate({ jobId: item.id })
     await activity.refresh()
   } catch (e) {
-    toast.error(t('activity.cancelFailed', { error: e instanceof Error ? e.message : String(e) }))
-  } finally {
     const next = new Set(cancelling.value)
     next.delete(item.id)
     cancelling.value = next
+    toast.error(t('activity.cancelFailed', { error: e instanceof Error ? e.message : String(e) }))
   }
 }
 </script>
