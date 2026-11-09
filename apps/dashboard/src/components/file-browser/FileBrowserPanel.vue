@@ -14,7 +14,7 @@ import { useNotifications } from '../../lib/notifications'
 import { useClipboard } from '../../lib/clipboard'
 import { copyText } from '../../lib/copy-text'
 import { useToast } from '../../lib/toast'
-import { useUploads, trackTransfer } from '../../lib/uploads'
+import { useUploads, runTransferBatch } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { downloadUrl } from '../../lib/file-url'
 import { awaitJob } from '../../lib/jobs'
@@ -39,7 +39,6 @@ import RenameBookmarkModal from './RenameBookmarkModal.vue'
 import TrashView from './TrashView.vue'
 import FolderStatusBar from './FolderStatusBar.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
-import TransfersTray from './TransfersTray.vue'
 import { isTouchClick } from '../../lib/touch'
 import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -517,10 +516,8 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   const mode = kind === 'copy' ? 'copy' : 'cut'
   if (mode === 'cut') pendingPaths.value = [...paths]
   try {
-    await trackTransfer(
-      mode === 'copy' ? 'copy' : 'move',
+    await runTransferBatch(
       `${mode === 'copy' ? 'Copying' : 'Moving'} ${paths.length} item${paths.length === 1 ? '' : 's'}`,
-      dst,
       paths.map(src => async () => {
         const { jobId } = mode === 'copy'
           ? await trpc.fs.copy.mutate({ src, dstDir: dst })
@@ -1065,7 +1062,6 @@ onMounted(async () => {
       <FolderStatusBar :path="currentPath" :items="displayEntries.length" :selected="selected.size" />
       </template>
 
-      <TransfersTray />
     </div>
   </div>
 
