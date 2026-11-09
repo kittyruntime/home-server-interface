@@ -3844,3 +3844,11 @@ async function testTaskNotifications() {
   assert.deepEqual(n.notificationWhere({ userId: "u" }), { OR: [{ userId: null }, { userId: "u" }] })
 }
 await testTaskNotifications()
+
+async function testNotificationPruneScope() {
+  const { pruneScope } = await import("../services/notifications")
+  // Task results never push global alerts (or another user's results) out.
+  assert.deepEqual(pruneScope(undefined), { userId: null })
+  assert.deepEqual(pruneScope("u"), { userId: "u" })
+}
+await testNotificationPruneScope()

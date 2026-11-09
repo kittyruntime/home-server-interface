@@ -216,16 +216,22 @@ async function deliverInApp(event: NotificationEvent): Promise<void> {
   await recordInApp({ severity: event.severity, source: event.source, target: event.target, message: event.message, eventType: event.type })
 }
 
-/** Stores one in-app notification, keeping the 200 most recent rows. */
+/** Stores one in-app notification, keeping the 200 most recent of its scope. */
 export async function recordInApp(data: {
   severity: string; source: string; target: string; message: string; eventType: string; userId?: string; link?: string | null
 }): Promise<void> {
   await prisma.notification.create({ data })
-  // Prune: keep the 200 most recent rows.
-  const keep = await prisma.notification.findMany({ orderBy: { createdAt: "desc" }, take: 200, select: { createdAt: true } })
+  // Prune: keep the 200 most recent rows of this scope.
+  const scope = pruneScope(data.userId)
+  const keep = await prisma.notification.findMany({ where: scope, orderBy: { createdAt: "desc" }, take: 200, select: { createdAt: true } })
   if (keep.length === 200) {
-    await prisma.notification.deleteMany({ where: { createdAt: { lt: keep[keep.length - 1]!.createdAt } } })
+    await prisma.notification.deleteMany({ where: { ...scope, createdAt: { lt: keep[keep.length - 1]!.createdAt } } })
   }
+}
+
+/** Rows pruned together: global alerts, or one user's task results. */
+export function pruneScope(userId: string | undefined): { userId: string | null } {
+  return { userId: userId ?? null }
 }
 
 // Fire-and-forget entry point: callers do NOT await this in the sampling path.
