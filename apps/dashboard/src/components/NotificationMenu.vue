@@ -73,8 +73,8 @@ async function clearAll() {
   else if (unread.value > 0) await markAllRead()
 }
 
-// "Copie terminée", "Échec du déplacement": a whole phrase per task, so the
-// French agrees with each noun.
+// A whole phrase per task ("Copy finished", "Move failed"), so languages
+// with gendered nouns agree with each one.
 function title(n: SystemNotification): string {
   const l = look(n)
   if (l.kind !== 'task') return t(`activity.kind.${l.kind}`)
