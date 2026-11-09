@@ -66,13 +66,17 @@ export async function connectNats(): Promise<void> {
       throw e
     }
   }
+}
 
-  // Mark any jobs that were pending/running before this process started as failed.
-  // (They will never receive their result event since the server restarted.)
-  await prisma.job.updateMany({
-    where: { status: { in: ["pending", "running"] } },
-    data:  { status: "failed", error: "Server restarted before job completed" },
-  })
+/** What the worker's consumer still holds, or null when NATS cannot say. */
+export async function consumerState(): Promise<{ numPending: number; numAckPending: number } | null> {
+  try {
+    const jsm = await jetstreamManager(nc)
+    const info = await jsm.consumers.info("TASKS", "root-worker")
+    return { numPending: info.num_pending, numAckPending: info.num_ack_pending }
+  } catch {
+    return null
+  }
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────

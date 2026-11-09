@@ -3740,3 +3740,13 @@ async function testJobEventUpdate() {
   assert.deepEqual(jobEventUpdate({ jobId: "j", status: "completed", result: { ok: true } }, d), { status: "completed", result: '{"ok":true}', error: null, finishedAt: d })
 }
 await testJobEventUpdate()
+
+async function testStaleJobIds() {
+  const { staleJobIds } = await import("../services/job-reconcile")
+  const now = new Date("2026-11-09T12:00:00Z"); const old = new Date("2026-11-09T11:00:00Z"); const fresh = new Date("2026-11-09T11:59:50Z")
+  // staleJobIds keeps jobs while the worker still holds messages
+  assert.deepEqual(staleJobIds([{ id: "a", createdAt: old }], { numPending: 0, numAckPending: 1 }, now), [])
+  assert.deepEqual(staleJobIds([{ id: "a", createdAt: old }], { numPending: 2, numAckPending: 0 }, now), [])
+  assert.deepEqual(staleJobIds([{ id: "a", createdAt: old }, { id: "b", createdAt: fresh }], { numPending: 0, numAckPending: 0 }, now), ["a"])
+}
+await testStaleJobIds()
