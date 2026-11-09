@@ -338,6 +338,8 @@ export default {
     resume: 'Reprendre',
     cancel: 'Annuler',
     retry: 'Réessayer',
+    cancelling: 'Annulation…',
+    cancelFailed: "Impossible d'annuler : {error}",
     reselect: 'Choisir à nouveau le fichier',
     owner: {
       browser: 'dans ce navigateur',

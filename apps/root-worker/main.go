@@ -846,6 +846,16 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	subject := msg.Subject
 	jobStarted(nc, subject, task.JobID, task.LinuxUsername)
 
+	// A job cancelled while it waited for its lane never runs; a running one
+	// sees ctx cancelled (copy, move, zip and unzip check it).
+	ctx, done, cancelled := jobCancels.begin(task.JobID)
+	defer done()
+	if cancelled {
+		_ = msg.Term()
+		publishJobResult(nc, task.JobID, "failed", nil, errCancelled.Message)
+		return
+	}
+
 	var result interface{}
 	var fsErr *fsError
 
@@ -895,7 +905,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *copyResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doCopy(task.Src, task.DstDir)
+				res, fsErr = doCopy(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -915,7 +925,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *moveResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doMove(task.Src, task.DstDir)
+				res, fsErr = doMove(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1001,7 +1011,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doZip(task.Paths, task.DstDir, task.Name)
+				fsErr = doZip(ctx, task.Paths, task.DstDir, task.Name)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1021,7 +1031,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doUnzip(task.Src, task.DstDir)
+				fsErr = doUnzip(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1226,6 +1236,7 @@ func main() {
 		"root.fs.write-chunk":            handleWriteChunk,
 		"root.fs.zip-temp":               handleZipTemp,
 		"root.fs.rm-temp":                handleRmTemp,
+		cancelSubject:                    serveCancel,
 		"root.container.listAll":         handleDockerListAll,
 		"root.container.logs":            handleDockerLogs,
 		"root.container.logs.stop":       handleDockerLogsStop,

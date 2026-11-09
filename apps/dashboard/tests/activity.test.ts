@@ -6,7 +6,7 @@ import type { Transfer } from '../src/lib/uploads.ts'
 function view(p: Partial<ServerTask> & { id: string }): ServerTask {
   return {
     kind: 'copy', status: 'running', meta: { kind: 'copy' }, owner: 'me',
-    createdAt: '2026-11-09T12:00:00Z', startedAt: '2026-11-09T12:00:01Z', percent: null, ...p,
+    createdAt: '2026-11-09T12:00:00Z', startedAt: '2026-11-09T12:00:01Z', percent: null, cancellable: false, ...p,
   } as ServerTask
 }
 
@@ -54,4 +54,10 @@ test('interrupted upload exposes a reselect action', () => {
   const [item] = mergeActivity([], [upload({ status: 'paused', interrupted: true })])
   assert.equal(item!.interrupted, true)
   assert.equal(item!.pausable, false)
+})
+
+test('a server task the viewer may cancel offers it', () => {
+  const [mine, theirs] = mergeActivity([view({ id: 'a', cancellable: true }), view({ id: 'b', cancellable: false })], [])
+  assert.equal(mine!.cancellable, true)
+  assert.equal(theirs!.cancellable, false)
 })

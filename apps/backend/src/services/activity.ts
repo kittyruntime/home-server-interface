@@ -9,6 +9,8 @@ import { decodeJobMeta, type JobKind, type JobMeta } from "./job-meta"
 export const HIDDEN_ACTIONS = ["fs.mkdir", "fs.touch", "fs.rename", "fs.chmod", "fs.chown"]
 export const HISTORY_DAYS = 7
 export const HISTORY_PAGE = 50
+/** File jobs the worker can stop part-way and clean up after. */
+export const CANCELLABLE_ACTIONS = ["fs.copy", "fs.move", "fs.zip", "fs.unzip"]
 
 export type TaskKind = JobKind | "backup" | "update"
 /** username is null once the account was deleted. */
@@ -23,9 +25,11 @@ export interface TaskView {
   createdAt: string
   startedAt: string | null
   percent: number | null
+  /** The viewer may cancel it (their own copy, move, zip or unzip). */
+  cancellable: boolean
 }
 
-export interface TaskHistoryView extends Omit<TaskView, "status" | "percent"> {
+export interface TaskHistoryView extends Omit<TaskView, "status" | "percent" | "cancellable"> {
   status: "completed" | "failed" | "cancelled"
   finishedAt: string | null
   error: string | null
@@ -72,8 +76,19 @@ function base(job: JobRow, viewerId: string, usernames: Map<string, string>) {
   }
 }
 
+/** Only the owner cancels a task, administrators included: it is their work. */
+export function canCancel(job: { userId: string | null; action: string; status: string }, viewerId: string): boolean {
+  return !!job.userId && job.userId === viewerId && CANCELLABLE_ACTIONS.includes(job.action)
+    && (job.status === "pending" || job.status === "running")
+}
+
 export function toTaskView(job: JobRow, viewerId: string, usernames: Map<string, string>): TaskView {
-  return { ...base(job, viewerId, usernames), status: job.status === "running" ? "running" : "queued", percent: null }
+  return {
+    ...base(job, viewerId, usernames),
+    status: job.status === "running" ? "running" : "queued",
+    percent: null,
+    cancellable: !job.cancelledAt && canCancel(job, viewerId),
+  }
 }
 
 export function toHistoryView(job: JobRow, viewerId: string, usernames: Map<string, string>): TaskHistoryView {
@@ -95,6 +110,7 @@ export function systemTasks(backup: Pick<BackupStatus, "plans"> | null, attempt:
       createdAt: plan.last.start,
       startedAt: plan.last.start,
       percent: typeof pct === "number" ? Math.round(pct * 100) : null,
+      cancellable: false,
     })
   }
   if (attempt) {
@@ -107,6 +123,7 @@ export function systemTasks(backup: Pick<BackupStatus, "plans"> | null, attempt:
       createdAt: attempt.requestedAt,
       startedAt: attempt.requestedAt,
       percent: null,
+      cancellable: false,
     })
   }
   return out

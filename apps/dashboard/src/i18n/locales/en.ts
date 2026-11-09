@@ -337,6 +337,8 @@ export default {
     resume: 'Resume',
     cancel: 'Cancel',
     retry: 'Try again',
+    cancelling: 'Cancelling…',
+    cancelFailed: 'Could not cancel: {error}',
     reselect: 'Choose the file again',
     owner: {
       browser: 'in this browser',
