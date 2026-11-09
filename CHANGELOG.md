@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Drag between file manager windows**: items dragged from one window onto
+  the list of another move into the folder it shows (Ctrl or Alt held copies
+  them). Every window showing a folder that changed refreshes.
+
 ### Fixed
 - **Creating a folder during an upload**: it waited until the upload was
   verified (a whole-file checksum, minutes for a large file) or a copy had

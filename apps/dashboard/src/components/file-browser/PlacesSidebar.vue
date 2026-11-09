@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowDownIcon, ArrowUpIcon, BookmarkIcon, EllipsisIcon, InfoIcon, PencilIcon, SettingsIcon, Trash2Icon, XIcon } from '@lucide/vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { bookmarkLabel, type Bookmark } from '../../lib/bookmarks'
-import { fileDrag, isInternalDrag, endFileDrag, useFolderDrop } from '../../lib/file-drag'
+import { fileDrag, isInternalDrag, endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
 import PlaceIcon from '../PlaceIcon.vue'
 import {
   Sidebar,
@@ -41,12 +41,12 @@ const placeActive = (id: string) => !props.settingsActive && !props.trashActive 
 
 const emit = defineEmits<{
   select: [place: Place]; openProperties: [place: Place]; openSettings: []; openTrash: []
-  openBookmark: [path: string]; dropInto: [dir: string, paths: string[]]; addBookmarks: [dirs: string[]]; renameBookmark: [bookmark: Bookmark]; moveBookmark: [path: string, delta: -1 | 1]; removeBookmark: [path: string]
+  openBookmark: [path: string]; dropInto: [dir: string, paths: string[], action: DropAction]; addBookmarks: [dirs: string[]]; renameBookmark: [bookmark: Bookmark]; moveBookmark: [path: string, delta: -1 | 1]; removeBookmark: [path: string]
 }>()
 
 // Items dragged onto a place or a bookmark move into it; folders dragged onto
 // the Bookmarks group are bookmarked.
-const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
 const bookmarkZoneOver = ref(false)
 const draggingDirs = computed(() => (fileDrag.value?.dirs.length ?? 0) > 0)
 function onBookmarkZoneOver(e: DragEvent) {

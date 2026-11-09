@@ -13,6 +13,9 @@ export default {
   },
   FileBrowserPanel: {
     dropToUpload: 'Drop to upload',
+    dropToMove: 'Drop to move here',
+    dropToCopy: 'Drop to copy here',
+    dropCopyHint: 'Hold Ctrl or Alt to copy instead',
     selectAPlace: 'Select a place',
     searching: 'Searching…',
     noResultsFound: 'No results found.',

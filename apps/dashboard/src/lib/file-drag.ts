@@ -1,7 +1,8 @@
 import { ref } from 'vue'
 
-// Dragging files and folders inside the file manager: onto a folder, a place
-// or a crumb moves them there; a folder onto the Bookmarks group bookmarks it.
+// Dragging files and folders inside the file manager, also from one window to
+// another: onto a folder, a place, a crumb or another window's open folder
+// moves them there (copies them with Ctrl or Alt held); a folder onto the Bookmarks group bookmarks it.
 // The dragged paths live here, shared by the list, the grid, the toolbar and
 // the sidebar; the dataTransfer type only tells an internal drag from files
 // dropped from the computer (which upload).
@@ -9,14 +10,20 @@ import { ref } from 'vue'
 export const DRAG_TYPE = 'application/x-hsi-paths'
 
 export interface FileDrag { paths: string[]; dirs: string[] }
+export type DropAction = 'move' | 'copy'
+
+/** Ctrl (Option on a Mac reports altKey) copies; a plain drop moves. */
+export function dropAction(e: { ctrlKey: boolean; altKey: boolean }): DropAction {
+  return e.ctrlKey || e.altKey ? 'copy' : 'move'
+}
 
 export const fileDrag = ref<FileDrag | null>(null)
 
 export function startFileDrag(e: DragEvent, paths: string[], dirs: string[]): void {
   fileDrag.value = { paths, dirs }
   if (e.dataTransfer) {
-    // Moving into a folder, or linking it as a bookmark.
-    e.dataTransfer.effectAllowed = 'linkMove'
+    // Moving or copying into a folder, or linking it as a bookmark.
+    e.dataTransfer.effectAllowed = 'all'
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(paths))
     e.dataTransfer.setData('text/plain', paths.join('\n'))
   }
@@ -52,13 +59,13 @@ export function canDropInto(drag: FileDrag | null, dir: string): boolean {
  * A set of folders that accept dragged items: `over` is the one hovered, for a
  * highlight; `onDrop` hands the dragged paths over, then the drag ends.
  */
-export function useFolderDrop(drop: (dir: string, paths: string[]) => void) {
+export function useFolderDrop(drop: (dir: string, paths: string[], action: DropAction) => void) {
   const over = ref<string | null>(null)
   function onDragOver(dir: string, e: DragEvent) {
     if (!isInternalDrag(e) || !canDropInto(fileDrag.value, dir)) return
     e.preventDefault()
     e.stopPropagation()
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    if (e.dataTransfer) e.dataTransfer.dropEffect = dropAction(e)
     over.value = dir
   }
   function onDragLeave(dir: string) {
@@ -71,7 +78,7 @@ export function useFolderDrop(drop: (dir: string, paths: string[]) => void) {
     e.preventDefault()
     e.stopPropagation()
     endFileDrag()
-    drop(dir, drag!.paths)
+    drop(dir, drag!.paths, dropAction(e))
   }
   return { over, onDragOver, onDragLeave, onDrop }
 }

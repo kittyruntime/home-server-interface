@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { endFileDrag, useFolderDrop } from '../../lib/file-drag'
+import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
 import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ defineProps<{
 
 const emit = defineEmits<{
   dragStart: [entry: Entry, event: DragEvent]
-  dropInto: [dir: string, paths: string[]]
+  dropInto: [dir: string, paths: string[], action: DropAction]
   cardClick: [entry: Entry, event: MouseEvent]
   cardDblClick: [entry: Entry]
   selectEntry: [entry: Entry, event: MouseEvent]
@@ -37,7 +37,7 @@ const emit = defineEmits<{
 }>()
 
 // Folders take items dragged onto them (moved there).
-const folderDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
 
 
 </script>
