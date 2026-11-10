@@ -911,9 +911,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 		if fsErr == nil {
 			var res *copyResult
-			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(task.Src))
-			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
+				// Measured as the user: no size of what they cannot read.
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(ctx, task.Src))
+				defer stopProgress()
 				res, fsErr = doCopy(pctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
@@ -1019,9 +1020,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		allPaths := append(task.Paths, task.DstDir)
 		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
 		if fsErr == nil {
-			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(task.Paths...))
-			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(ctx, task.Paths...))
+				defer stopProgress()
 				fsErr = doZip(pctx, task.Paths, task.DstDir, task.Name)
 				if fsErr != nil {
 					return fsErr
@@ -1041,9 +1042,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 		if fsErr == nil {
-			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, zipContentSize(task.Src))
-			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, zipContentSize(task.Src))
+				defer stopProgress()
 				fsErr = doUnzip(pctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr

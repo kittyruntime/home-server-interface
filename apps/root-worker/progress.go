@@ -43,10 +43,13 @@ func addProgress(ctx context.Context, n int64) {
 
 // treeSize is the size of the regular files under the paths (links are not
 // followed: a copy refuses them anyway).
-func treeSize(paths ...string) int64 {
+func treeSize(ctx context.Context, paths ...string) int64 {
 	var total int64
 	for _, root := range paths {
 		_ = filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+			if ctx.Err() != nil {
+				return ctx.Err() // cancelled while measuring
+			}
 			if err != nil {
 				return nil
 			}

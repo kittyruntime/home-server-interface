@@ -21,7 +21,7 @@ func TestTreeSizeCountsRegularFilesOnly(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(root, "d", "a"), make([]byte, 100), 0o644)
 	_ = os.WriteFile(filepath.Join(root, "d", "e", "b"), make([]byte, 50), 0o644)
 	_ = os.Symlink("/etc/passwd", filepath.Join(root, "d", "link"))
-	if got := treeSize(filepath.Join(root, "d")); got != 150 {
+	if got := treeSize(context.Background(), filepath.Join(root, "d")); got != 150 {
 		t.Fatalf("treeSize = %d, want 150 (links are not followed)", got)
 	}
 }
@@ -29,7 +29,7 @@ func TestTreeSizeCountsRegularFilesOnly(t *testing.T) {
 func TestCopyCountsItsBytes(t *testing.T) {
 	root := t.TempDir()
 	writeFiles(t, filepath.Join(root, "src"), 3, 1000)
-	p := &jobProgress{total: treeSize(filepath.Join(root, "src"))}
+	p := &jobProgress{total: treeSize(context.Background(), filepath.Join(root, "src"))}
 	ctx := withProgress(context.Background(), p)
 	if err := os.MkdirAll(filepath.Join(root, "dst"), 0o755); err != nil {
 		t.Fatal(err)
@@ -99,5 +99,13 @@ func TestProgressIsPublishedWhileItMoves(t *testing.T) {
 	}
 	if events[1].Progress.Done != 500 {
 		t.Fatalf("second event %+v", events[1])
+	}
+}
+
+func TestMeasuringStopsOnCancel(t *testing.T) {
+	root := t.TempDir()
+	writeFiles(t, filepath.Join(root, "d"), 3, 100)
+	if got := treeSize(cancelledCtx(), filepath.Join(root, "d")); got != 0 {
+		t.Fatalf("a cancelled measure counted %d bytes", got)
 	}
 }
