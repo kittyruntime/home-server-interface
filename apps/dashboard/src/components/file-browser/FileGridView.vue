@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, toRef } from 'vue'
+import { useProgressiveList } from '../../lib/progressive-list'
 import { slowClick } from '../../lib/slow-click'
 import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
@@ -41,6 +42,10 @@ const emit = defineEmits<{
 
 // A double click on the row opens; a click on the name of the item already
 // selected alone renames it after a pause (a touch tap opens, the pencil renames).
+// Only the items near the screen: a folder of thousands of files stays responsive.
+const { visible, sentinel, hasMore } = useProgressiveList(toRef(props, 'entries'), toRef(props, 'selected'))
+const setSentinel = (el: unknown) => { sentinel.value = el instanceof HTMLElement ? el : null }
+
 const nameClick = slowClick()
 onBeforeUnmount(() => nameClick.cancel())
 function onNameClick(entry: Entry, e: MouseEvent) {
@@ -103,7 +108,7 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
     </div>
 
     <div
-      v-for="entry in entries"
+      v-for="entry in visible"
       :key="entry.path"
       :data-path="entry.path"
       :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
@@ -191,5 +196,7 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
         </span>
       </template>
     </div>
+    <!-- The next items render as this comes near the end of the scroll area. -->
+    <div v-if="hasMore" :ref="setSentinel" class="col-span-full h-px" aria-hidden="true" />
   </div>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, toRef } from 'vue'
+import { useNarrow } from '../../lib/viewport'
+import { useProgressiveList } from '../../lib/progressive-list'
 import { slowClick } from '../../lib/slow-click'
 import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
@@ -54,6 +56,12 @@ const emit = defineEmits<{
 
 // A double click on the row opens; a click on the name of the item already
 // selected alone renames it after a pause (a touch tap opens, the pencil renames).
+// One layout rendered (phone cards or the table), and only the items near the
+// screen: a folder of thousands of files stays responsive.
+const narrow = useNarrow()
+const { visible, sentinel, hasMore } = useProgressiveList(toRef(props, 'entries'), toRef(props, 'selected'))
+const setSentinel = (el: unknown) => { sentinel.value = el instanceof HTMLElement ? el : null }
+
 const nameClick = slowClick()
 onBeforeUnmount(() => nameClick.cancel())
 function onNameClick(entry: Entry, e: MouseEvent) {
@@ -82,7 +90,7 @@ function fileExt(name: string): string {
 
 <template>
   <!-- Mobile: cards instead of a table that has nowhere to shrink to. -->
-  <div class="sm:hidden divide-y divide-base-300">
+  <div v-if="narrow" class="divide-y divide-base-300">
     <div v-for="t in uploadTasks" :key="t.id" class="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
       <FileTypeIcon :name="t.name" plain class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-error' : 'text-base-content/80'">{{ t.name }}</span>
@@ -103,7 +111,7 @@ function fileExt(name: string): string {
     </div>
 
     <article
-      v-for="entry in entries"
+      v-for="entry in visible"
       :key="entry.path"
       :data-path="entry.path"
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
@@ -154,10 +162,11 @@ function fileExt(name: string): string {
         <PencilIcon class="size-4" aria-hidden="true" />
       </Button>
     </article>
+    <div v-if="hasMore" :ref="setSentinel" class="h-px" aria-hidden="true" />
   </div>
 
   <!-- Desktop / tablet: sortable table -->
-  <Table container-class="hidden sm:block overflow-visible" class="w-full text-sm">
+  <Table v-if="!narrow" container-class="overflow-visible" class="w-full text-sm">
     <TableHeader class="sticky top-0 bg-base-100 border-b border-base-300 z-10">
       <TableRow class="text-left text-xs uppercase tracking-caps text-base-content/70">
         <TableHead class="pl-3 pr-1 py-2.5 w-7">
@@ -228,7 +237,7 @@ function fileExt(name: string): string {
       </TableRow>
 
       <TableRow
-        v-for="entry in entries"
+        v-for="entry in visible"
         :key="entry.path"
         :data-path="entry.path"
         :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
@@ -321,6 +330,8 @@ function fileExt(name: string): string {
         <TableCell v-if="shown('modified')" class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">{{ formatDay(entry.mtime) }}</TableCell>
         <TableCell v-if="shown('type')" class="px-3 py-2.5 text-base-content/70 text-xs">{{ entry.type === 'dir' ? $t('ui.files.FileListView.folder') : (fileExt(entry.name) || '-') }}</TableCell>
       </TableRow>
+      <!-- The next items render as this comes near the end of the scroll area. -->
+      <tr v-if="hasMore" aria-hidden="true"><td :ref="setSentinel" :colspan="99" class="h-px p-0" /></tr>
     </TableBody>
   </Table>
 </template>
