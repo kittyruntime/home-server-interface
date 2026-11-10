@@ -173,6 +173,31 @@ button:not([data-slot]):focus-visible,
   color: inherit;
 }
 
+/* Toasts in the interface's look: vue-sonner sets its own font stack and a
+   black (white in dark) pill for the action. The action is the toast's one
+   choice (Undo, View logs): a small primary button, like the app's others. */
+[data-sonner-toaster] {
+  font-family: var(--font-sans);
+}
+[data-sonner-toaster] [data-sonner-toast] [data-button][data-button] {
+  height: 1.75rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-field);
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+[data-sonner-toaster] [data-sonner-toast] [data-button][data-button]:hover {
+  background: color-mix(in oklab, var(--color-primary) 88%, black);
+}
+[data-sonner-toaster] [data-sonner-toast] [data-button][data-button]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 /* ── Named Vue transitions ───────────────────────────────────────────────────
    <Transition name="ui-fade|ui-pop|ui-slide-up">. Duration defaults to
    --dur-base; override with --ui-dur on the element.
