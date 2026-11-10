@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import SortMenu from './SortMenu.vue'
 import CopyPath from './CopyPath.vue'
-import { useFolderDrop } from '../../lib/file-drag'
+import { useFolderDrop, type DropAction } from '../../lib/file-drag'
 
 const { t } = useI18n()
 
@@ -57,12 +57,12 @@ const emit = defineEmits<{
   toggleSidebar: []
   openDisplaySettings: []
   toggleBookmark: []
-  dropInto: [dir: string, paths: string[]]
+  dropInto: [dir: string, paths: string[], action: DropAction]
   search: [query: string]
 }>()
 
 // A crumb takes items dragged onto it: they move up into that folder.
-const crumbDrop = useFolderDrop((dir, paths) => emit('dropInto', dir, paths))
+const crumbDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
 
 // A deep path scrolls so the current folder stays in sight.
 const crumbsEl = ref<{ $el?: HTMLElement } | null>(null)

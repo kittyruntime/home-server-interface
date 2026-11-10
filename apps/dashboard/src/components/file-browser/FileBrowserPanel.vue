@@ -34,14 +34,15 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
-import { endFileDrag, isInternalDrag, startFileDrag } from '../../lib/file-drag'
+import { affectedDirs, announceFolderChanges, folderChanges } from '../../lib/folder-changes'
+import { canDropInto, dropAction, endFileDrag, fileDrag, isInternalDrag, startFileDrag, type DropAction } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
 import RenameBookmarkModal from './RenameBookmarkModal.vue'
 import TrashView from './TrashView.vue'
 import FolderStatusBar from './FolderStatusBar.vue'
 import { headerSort, sortEntries, visibleEntries, type SortField } from '../../lib/file-sort'
 import { isTouchClick } from '../../lib/touch'
-import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ArchiveIcon, BookmarkIcon, ClipboardCopyIcon, ClipboardPasteIcon, CopyIcon, DownloadIcon, EyeIcon, FilePlusIcon, FolderPlusIcon, InfoIcon, KeyRoundIcon, MenuIcon, PackageOpenIcon, PencilIcon, FolderInputIcon, RefreshCwIcon, ScissorsIcon, SearchIcon, Share2Icon, Trash2Icon, TriangleAlertIcon, UploadIcon, XIcon } from '@lucide/vue'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 const { t } = useI18n()
@@ -509,8 +510,8 @@ function onEntryDragStart(entry: Entry, e: DragEvent) {
   startFileDrag(e, items.map(en => en.path), items.filter(en => en.type === 'dir').map(en => en.path))
 }
 
-function moveInto(dst: string, paths: string[]) {
-  void transfer('move', paths, dst)
+function moveInto(dst: string, paths: string[], action: DropAction = 'move') {
+  void transfer(action, paths, dst)
 }
 
 async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
@@ -530,8 +531,17 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
     pendingPaths.value = []
   }
   clearSelection()
-  refresh()
+  // Every window showing a changed folder refreshes, this one included; this
+  // one also when the items went into a subfolder of what it shows.
+  const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', paths, dst)
+  announceFolderChanges(dirs)
+  if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
 }
+
+// Another window moved or copied items into or out of the folder shown here.
+watch(folderChanges, change => {
+  if (currentPath.value && change.dirs.includes(currentPath.value)) refresh()
+})
 
 // Deleting in a place with a trash (#200) moves items there, with an Undo,
 // and only the Trash removes them for good; elsewhere deleting is permanent:
@@ -718,15 +728,47 @@ function handleFileInput(e: Event) {
   ;(e.target as HTMLInputElement).value = ''
 }
 
-// Files from the computer upload; items dragged inside the file manager do not
-// (they move where they are dropped).
-function handleDragEnter(e: DragEvent) { if (isInternalDrag(e)) return; dragDepth++; dragOver.value = true }
-function handleDragLeave(e: DragEvent) { if (isInternalDrag(e)) return; if (--dragDepth <= 0) { dragDepth = 0; dragOver.value = false } }
+// Files from the computer upload. Items dragged in the file manager move (or
+// copy, Ctrl/Alt held) where they are dropped: onto a folder, or onto the list
+// of another window, into the folder that window has open.
+const dragKind = ref<'upload' | DropAction | null>(null)
+const acceptsInternal = () => !!currentPath.value && !isSearchMode.value && canDropInto(fileDrag.value, currentPath.value)
+function handleDragEnter(e: DragEvent) {
+  if (isInternalDrag(e) && !acceptsInternal()) return
+  dragDepth++
+  dragOver.value = true
+}
+function handleDragOver(e: DragEvent) {
+  if (isInternalDrag(e)) {
+    if (!acceptsInternal()) return
+    e.preventDefault()
+    const action = dropAction(e)
+    if (e.dataTransfer) e.dataTransfer.dropEffect = action
+    dragKind.value = action
+    return
+  }
+  e.preventDefault()
+  dragKind.value = 'upload'
+}
+function handleDragLeave(e: DragEvent) {
+  if (isInternalDrag(e) && !acceptsInternal()) return
+  if (--dragDepth <= 0) { dragDepth = 0; dragOver.value = false; dragKind.value = null }
+}
 function handleDrop(e: DragEvent) {
-  dragDepth = 0; dragOver.value = false
-  if (isInternalDrag(e)) { endFileDrag(); return }
+  dragDepth = 0; dragOver.value = false; dragKind.value = null
+  if (isInternalDrag(e)) {
+    const drag = fileDrag.value
+    const into = acceptsInternal() ? currentPath.value : null
+    endFileDrag()
+    if (drag && into) moveInto(into, drag.paths, dropAction(e))
+    return
+  }
   if (e.dataTransfer?.files?.length) uploadFiles(e.dataTransfer.files)
 }
+// A folder row that takes the drop stops the event before it reaches the
+// list: the capture phase clears the hint, the list sets it back only when the
+// drop would land in the open folder.
+function clearDragHint() { dragKind.value = null }
 
 // ── context menu ─────────────────────────────────────────────────────────────
 // Right-clicking an entry selects it first; the event then bubbles up to the
@@ -878,14 +920,20 @@ watch(pendingFolder, path => {
         class="flex-1 overflow-auto relative"
         @dragenter="handleDragEnter"
         @dragleave="handleDragLeave"
-        @dragover.prevent
+        @dragover.capture="clearDragHint"
+        @dragover="handleDragOver"
         @drop.prevent="handleDrop"
       >
         <!-- Drag overlay -->
-        <div v-if="dragOver && currentPath"
+        <div v-if="dragOver && currentPath && dragKind"
           class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-primary/10 border-2 border-dashed border-primary rounded-sm pointer-events-none select-none">
-          <UploadIcon class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
-          <span class="text-sm text-primary font-medium">{{ t('ui.files.FileBrowserPanel.dropToUpload') }}</span>
+          <CopyIcon v-if="dragKind === 'copy'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+          <FolderInputIcon v-else-if="dragKind === 'move'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+          <UploadIcon v-else class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+          <span class="text-sm text-primary font-medium">
+            {{ dragKind === 'copy' ? t('ui.files.FileBrowserPanel.dropToCopy') : dragKind === 'move' ? t('ui.files.FileBrowserPanel.dropToMove') : t('ui.files.FileBrowserPanel.dropToUpload') }}
+          </span>
+          <span v-if="dragKind === 'move'" class="text-xs text-primary/80">{{ t('ui.files.FileBrowserPanel.dropCopyHint') }}</span>
         </div>
 
         <!-- Loading -->
