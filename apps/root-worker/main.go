@@ -88,9 +88,11 @@ type syncResponse struct {
 // jobEvent is what the worker publishes back to the backend.
 type jobEvent struct {
 	JobID  string      `json:"jobId"`
-	Status string      `json:"status"` // running | completed | failed
+	Status string      `json:"status"` // running | progress | completed | failed
 	Result interface{} `json:"result,omitempty"`
 	Error  string      `json:"error,omitempty"`
+	// status "progress": bytes done out of the total measured at the start.
+	Progress *progressInfo `json:"progress,omitempty"`
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -909,8 +911,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 		if fsErr == nil {
 			var res *copyResult
+			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(task.Src))
+			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doCopy(ctx, task.Src, task.DstDir, task.OnConflict)
+				res, fsErr = doCopy(pctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1015,8 +1019,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		allPaths := append(task.Paths, task.DstDir)
 		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
 		if fsErr == nil {
+			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(task.Paths...))
+			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doZip(ctx, task.Paths, task.DstDir, task.Name)
+				fsErr = doZip(pctx, task.Paths, task.DstDir, task.Name)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1035,8 +1041,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		}
 
 		if fsErr == nil {
+			pctx, stopProgress := trackProgress(ctx, nc, task.JobID, zipContentSize(task.Src))
+			defer stopProgress()
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doUnzip(ctx, task.Src, task.DstDir)
+				fsErr = doUnzip(pctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}

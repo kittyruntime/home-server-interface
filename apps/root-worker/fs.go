@@ -513,7 +513,8 @@ func copyContents(ctx context.Context, out *os.File, in *os.File) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		_, err := io.CopyN(out, in, copyChunk)
+		n, err := io.CopyN(out, in, copyChunk)
+		addProgress(ctx, n)
 		if err == io.EOF {
 			return nil
 		}

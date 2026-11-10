@@ -61,3 +61,9 @@ test('a server task the viewer may cancel offers it', () => {
   assert.equal(mine!.cancellable, true)
   assert.equal(theirs!.cancellable, false)
 })
+
+test('a server copy shows its percent and time left once known', () => {
+  const [item] = mergeActivity([view({ id: 'c', percent: 42, remainingSec: 30 } as Partial<ServerTask> & { id: string })], [])
+  assert.equal(item!.percent, 42)
+  assert.equal(item!.remainingSec, 30)
+})

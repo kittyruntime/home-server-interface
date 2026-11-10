@@ -5,6 +5,7 @@ import { readJobLogs } from "../../services/jobLogs"
 import { requestSync } from "../../nats"
 import type { BackupStatus } from "../../services/backup-status"
 import { readUpdateAttempt } from "../../services/update-watch"
+import { jobProgress } from "../../services/job-progress"
 import { updateStateDir } from "./update"
 import {
   HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, canCancel, isListed, redactSystem, ttlCache, jobWhere, systemTasks, toHistoryView, toTaskView,
@@ -46,7 +47,7 @@ export const tasksRouter = router({
     const listed = rows.filter(isListed)
     const usernames = await usernamesOf(ctx.prisma, listed, viewer.userId)
     const [backup, attempt] = await Promise.all([backupStatusOrNull(), readUpdateAttempt(updateStateDir())])
-    const running = [...systemTasks(backup, attempt), ...listed.map(j => toTaskView(j, viewer.userId, usernames))]
+    const running = [...systemTasks(backup, attempt), ...listed.map(j => toTaskView(j, viewer.userId, usernames, jobProgress.view(j.id)))]
     return { running: running.map(v => redactSystem(v, viewer.isAdmin)) }
   }),
 

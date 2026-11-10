@@ -91,7 +91,9 @@ func (c ctxReader) Read(p []byte) (int, error) {
 	if err := c.ctx.Err(); err != nil {
 		return 0, err
 	}
-	return c.r.Read(p)
+	n, err := c.r.Read(p)
+	addProgress(c.ctx, int64(n))
+	return n, err
 }
 
 // asFsErr turns a context error from deep inside a copy into errCancelled.
