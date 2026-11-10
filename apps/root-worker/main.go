@@ -391,6 +391,9 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 	}); err != nil {
 		fsErr = toFsErr(err)
 	}
+	if fsErr == nil {
+		uploadStaging.note(meta.DestDir, meta.UploadID)
+	}
 
 	if fsErr != nil {
 		replyErr(nc, msg.Reply, fsErr)
@@ -1262,6 +1265,7 @@ func main() {
 
 	// Periodically clear orphaned share archives (safety net for a build whose
 	// caller timed out or disconnected before rm-temp ran).
+	startStagingSweep()
 	go func() {
 		sweepShareTemps(2 * time.Hour)
 		t := time.NewTicker(30 * time.Minute)

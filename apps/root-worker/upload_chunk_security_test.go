@@ -80,6 +80,7 @@ func TestHandleWriteChunkRejectsHardLinkedPartFile(t *testing.T) {
 }
 
 func TestHandleWriteChunkResumesRegularPartFile(t *testing.T) {
+	t.Setenv("HSI_UPLOAD_STAGING", filepath.Join(t.TempDir(), "staging.json"))
 	destDir := t.TempDir()
 	part := filepath.Join(destDir, ".upload-abc.part")
 	if err := os.WriteFile(part, []byte("old-chunk"), 0o600); err != nil {
@@ -98,6 +99,8 @@ func TestHandleWriteChunkResumesRegularPartFile(t *testing.T) {
 }
 
 func TestHandleWriteChunkCreatesRegularPartFile(t *testing.T) {
+	state := filepath.Join(t.TempDir(), "staging.json")
+	t.Setenv("HSI_UPLOAD_STAGING", state)
 	destDir := t.TempDir()
 	part := filepath.Join(destDir, ".upload-new.part")
 
@@ -116,6 +119,10 @@ func TestHandleWriteChunkCreatesRegularPartFile(t *testing.T) {
 	}
 	if string(got) != "first chunk" {
 		t.Fatalf("new part contents = %q, want %q", got, "first chunk")
+	}
+	// Noted, so the sweep removes it if the upload is abandoned.
+	if noted := newStagingRegistry(state).load(); len(noted) != 1 || noted[0] != (stagingEntry{Dir: destDir, ID: "new"}) {
+		t.Fatalf("staging registry holds %+v, want this part", noted)
 	}
 }
 
