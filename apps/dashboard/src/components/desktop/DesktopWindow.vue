@@ -155,6 +155,7 @@ function onMaximizeClick() {
   <div
     class="absolute flex flex-col rounded-box overflow-hidden bg-base-100 border"
     :class="focused ? 'border-primary ring-1 ring-primary shadow-2xl' : 'border-base-300 shadow-sm'"
+    :data-window-focused="focused || undefined"
     :style="{ left: win.x + 'px', top: win.y + 'px', width: win.w + 'px', height: win.h + 'px', zIndex: win.zIndex }"
     @pointerdown="focusWindow(win.id)"
     @contextmenu.stop

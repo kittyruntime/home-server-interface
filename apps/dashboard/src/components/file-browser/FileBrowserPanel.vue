@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { askConflict, planTransfer } from '../../lib/conflicts'
 import { undoPlan, type MovedItem } from '../../lib/move-undo'
+import { moveIndex, ownsKeyboard, typeAhead, TYPE_AHEAD_MS } from '../../lib/file-keys'
 import { affectedDirs, announceFolderChanges, folderChanges } from '../../lib/folder-changes'
 import { canDropInto, dropAction, endFileDrag, fileDrag, isInternalDrag, startFileDrag, type DropAction } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
@@ -181,7 +182,58 @@ function closeFilter() {
 
 // Desktop file manager shortcuts, only on the listing: never while typing,
 // renaming, in a dialog or with the settings open.
+// The panel's root: on the desktop only the front window answers keys.
+const rootEl = ref<HTMLElement | null>(null)
+const ownsKeys = () => ownsKeyboard(rootEl.value, !!props.desktopWindow)
+
+// Keyboard cursor: the item the arrows move from (the last one moved to).
+const cursorPath = ref<string | null>(null)
+let typed = ''
+let typedAt = 0
+
+function selectAt(index: number, extend: boolean) {
+  const list = displayEntries.value
+  const entry = list[index]
+  if (!entry) return
+  if (extend && selectionAnchor.value) {
+    const a = list.findIndex(e => e.path === selectionAnchor.value)
+    const [from, to] = a < index ? [a, index] : [index, a]
+    selected.value = new Set(list.slice(Math.max(0, from), to + 1).map(e => e.path))
+  } else {
+    selected.value = new Set([entry.path])
+    selectionAnchor.value = entry.path
+  }
+  cursorPath.value = entry.path
+  void nextTick(() => rootEl.value?.querySelector(`[data-path="${CSS.escape(entry.path)}"]`)?.scrollIntoView({ block: 'nearest' }))
+}
+
+// Arrows, Home/End, Backspace (up a folder) and typing a name's first letters.
+function navigationKey(e: KeyboardEvent, plain: boolean): boolean {
+  const list = displayEntries.value
+  const from = cursorPath.value ?? selectionAnchor.value
+  const current = from ? list.findIndex(x => x.path === from) : -1
+  const shiftOnly = e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
+  if (plain || shiftOnly) {
+    const to = moveIndex(current, list.length, e.key)
+    if (to !== null) {
+      if (to >= 0) selectAt(to, shiftOnly)
+      return true
+    }
+  }
+  if (plain && e.key === 'Backspace') { goUp(); return true }
+  if ((plain || shiftOnly) && e.key.length === 1 && e.key !== ' ') {
+    const now = Date.now()
+    typed = now - typedAt > TYPE_AHEAD_MS ? e.key : typed + e.key
+    typedAt = now
+    const i = typeAhead(list.map(x => x.name), typed)
+    if (i >= 0) selectAt(i, false)
+    return true
+  }
+  return false
+}
+
 function fileShortcut(e: KeyboardEvent): boolean {
+  if (!ownsKeys()) return false
   if (showShared.value || renamingPath.value || !currentPath.value || document.querySelector('dialog[open]')) return false
   const el = document.activeElement as HTMLElement | null
   const tag = el?.tagName?.toLowerCase()
@@ -201,12 +253,13 @@ function fileShortcut(e: KeyboardEvent): boolean {
   else if (ctrl && key === 'c' && selected.value.size && !window.getSelection()?.toString()) doCopy()
   else if (ctrl && key === 'v' && clipboard.value) void doPaste()
   else if (ctrl && key === 'a' && displayEntries.value.length) selectAll()
-  else handled = false
+  else handled = navigationKey(e, plain)
   if (handled) e.preventDefault()
   return handled
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
+  if (!ownsKeys()) return
   if (fileShortcut(e)) return
   // Ctrl+H shows or hides dotfiles, as in desktop file managers.
   if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
@@ -865,7 +918,7 @@ watch(pendingFolder, path => {
 </script>
 
 <template>
-  <div class="flex h-full relative overflow-hidden" @click="clearSelection">
+  <div ref="rootEl" class="flex h-full relative overflow-hidden" @click="clearSelection">
 
     <!-- Mobile sidebar overlay -->
     <div
