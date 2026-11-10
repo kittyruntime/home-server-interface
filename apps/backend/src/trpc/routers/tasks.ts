@@ -2,8 +2,77 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import { readJobLogs } from "../../services/jobLogs"
+import { requestSync } from "../../nats"
+import type { BackupStatus } from "../../services/backup-status"
+import { readUpdateAttempt } from "../../services/update-watch"
+import { updateStateDir } from "./update"
+import {
+  HIDDEN_ACTIONS, HISTORY_DAYS, HISTORY_PAGE, canCancel, isListed, redactSystem, ttlCache, jobWhere, systemTasks, toHistoryView, toTaskView,
+  type JobRow, type TaskHistoryView, type TaskView,
+} from "../../services/activity"
+
+/** apps/root-worker/cancel.go */
+const CANCEL_SUBJECT = "root.jobs.cancel"
+
+const JOB_FIELDS = {
+  id: true, status: true, action: true, userId: true, meta: true, error: true,
+  createdAt: true, startedAt: true, finishedAt: true, cancelledAt: true,
+} as const
+
+async function usernamesOf(prisma: any, rows: JobRow[], viewerId: string): Promise<Map<string, string>> {
+  const ids = [...new Set(rows.map(r => r.userId).filter((id): id is string => !!id && id !== viewerId))]
+  if (ids.length === 0) return new Map()
+  const users: Array<{ id: string; username: string }> = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true } })
+  return new Map(users.map(u => [u.id, u.username]))
+}
+
+// Backups are optional (no engine, worker busy): the panel lists jobs anyway.
+// The status costs the worker a few processes: shared by every panel for 15 s.
+const backupStatusOrNull = ttlCache(
+  () => requestSync<BackupStatus>("root.backup.status", {}, 3_000).catch(() => null),
+  15_000,
+)
 
 export const tasksRouter = router({
+  // Background work running now, oldest first.
+  list: protectedProcedure.query(async ({ ctx }): Promise<{ running: TaskView[] }> => {
+    const viewer = { userId: ctx.user.userId, isAdmin: !!ctx.user.isAdmin }
+    const rows: JobRow[] = await ctx.prisma.job.findMany({
+      where: { AND: [jobWhere(viewer), { status: { in: ["pending", "running"] } }] },
+      orderBy: { createdAt: "asc" },
+      select: JOB_FIELDS,
+      take: 200,
+    })
+    const listed = rows.filter(isListed)
+    const usernames = await usernamesOf(ctx.prisma, listed, viewer.userId)
+    const [backup, attempt] = await Promise.all([backupStatusOrNull(), readUpdateAttempt(updateStateDir())])
+    const running = [...systemTasks(backup, attempt), ...listed.map(j => toTaskView(j, viewer.userId, usernames))]
+    return { running: running.map(v => redactSystem(v, viewer.isAdmin)) }
+  }),
+
+  // Finished background work of the last days, newest first.
+  history: protectedProcedure
+    .input(z.object({ cursor: z.string().uuid().optional() }))
+    .query(async ({ ctx, input }): Promise<{ items: TaskHistoryView[]; nextCursor: string | null }> => {
+      const viewer = { userId: ctx.user.userId, isAdmin: !!ctx.user.isAdmin }
+      const since = new Date(Date.now() - HISTORY_DAYS * 86_400_000)
+      const rows: JobRow[] = await ctx.prisma.job.findMany({
+        where: {
+          AND: [jobWhere(viewer), { status: { in: ["completed", "failed"] } }, { updatedAt: { gte: since } },
+            { action: { notIn: HIDDEN_ACTIONS } }],
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        select: JOB_FIELDS,
+        take: HISTORY_PAGE + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      })
+      const page = rows.slice(0, HISTORY_PAGE)
+      const nextCursor = rows.length > HISTORY_PAGE ? page[page.length - 1]!.id : null
+      const listed = page.filter(isListed)
+      const usernames = await usernamesOf(ctx.prisma, listed, viewer.userId)
+      return { items: listed.map(j => redactSystem(toHistoryView(j, viewer.userId, usernames), viewer.isAdmin)), nextCursor }
+    }),
+
   get: protectedProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
@@ -16,6 +85,25 @@ export const tasksRouter = router({
         result: job.result ? (() => { try { return JSON.parse(job.result!) } catch { return null } })() : null,
         error:  job.error ?? null,
       }
+    }),
+
+  // Stop one of your own copies, moves or archive jobs. The worker removes what
+  // it wrote and reports the job failed; a queued job never starts.
+  cancel: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const job = await ctx.prisma.job.findUnique({ where: { id: input.jobId }, select: { userId: true, action: true, status: true } })
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
+      if (!canCancel(job, ctx.user.userId)) throw new TRPCError({ code: "FORBIDDEN", message: "This task cannot be cancelled" })
+      await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: new Date() } })
+      try {
+        await requestSync(CANCEL_SUBJECT, { jobId: input.jobId })
+      } catch (e) {
+        // The worker never got it: the task runs on and can be cancelled again.
+        await ctx.prisma.job.update({ where: { id: input.jobId }, data: { cancelledAt: null } })
+        throw e
+      }
+      return { ok: true }
     }),
 
   // Log lines of one job from the backend and worker logs (admin only: they

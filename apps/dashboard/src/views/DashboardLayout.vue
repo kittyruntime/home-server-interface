@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
 import { useDesktop } from '../lib/desktop'
-import { pendingAppFocus, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
+import { pendingAppFocus, pendingFolder, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -15,7 +15,7 @@ import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
 import { syncPreferences } from '../lib/preferences'
-import { appFromQuery, appQuery } from '../lib/app-route'
+import { appFromQuery, appQuery, allowedAppIds } from '../lib/app-route'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
@@ -26,8 +26,10 @@ const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/Mo
 const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
 const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
 const AssistantPanel = defineAsyncComponent(() => import('../components/assistant/AssistantPanel.vue'))
+const ActivityPanel = defineAsyncComponent(() => import('../components/activity/ActivityPanel.vue'))
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
+import BellIndicator from '../components/activity/BellIndicator.vue'
 import AgentRequests from '../components/AgentRequests.vue'
 import { navCapability, refreshAssistantStatus } from '../lib/assistant'
 import { raiseToasts } from '../lib/toast-layer'
@@ -86,6 +88,13 @@ watch(pendingAppFocus, name => {
 })
 
 // The Activity panel asks for the notification settings.
+// A notification opens its folder: the file manager takes the request.
+watch(pendingFolder, path => {
+  if (!path) return
+  if (desktopMode.value && !isMobile.value) openApp('files')
+  else activeApp.value = 'files'
+})
+
 watch(pendingSettings, section => {
   if (!section) return
   pendingSettings.value = null
@@ -116,6 +125,7 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
   if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
   if (activeApp.value === 'assistant') return t('apps.assistant')
+  if (activeApp.value === 'activity') return t('apps.activity')
   return t('uis.views.DashboardLayout.overview')
 })
 
@@ -128,7 +138,7 @@ const { items: navItems } = useSidebarNav(() => isAdmin.value, navCapability)
 
 // The open app is in the URL (?app=storage, #90): a reload or a link opens it
 // again, and the browser's back button returns to the previous app.
-const allowedApps = () => navItems.value.map(item => item.id)
+const allowedApps = () => allowedAppIds(navItems.value.map(item => item.id))
 activeApp.value = appFromQuery(route.query.app, allowedApps())
 watch(activeApp, id => {
   if ((route.query.app ?? 'dashboard') !== id) void router.push({ query: appQuery(route.query, id) as Record<string, string> })
@@ -209,6 +219,12 @@ function onDashboardNavigate(target: 'places' | 'store' | 'backups' | 'secure') 
   }
   activeApp.value = 'settings'
   settingsSection.value = target === 'places' ? 'places' : target === 'secure' ? 'secure' : 'data-backups'
+}
+
+// The Activity app: a window on the desktop, the whole screen elsewhere.
+function openActivity() {
+  if (desktopMode.value && !isMobile.value) openApp('activity')
+  else activeApp.value = 'activity'
 }
 
 function goToProfile() {
@@ -314,7 +330,7 @@ onUnmounted(() => {
       </template>
 
       <!-- Notifications bell -->
-      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')">
+      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')" @open-page="openActivity">
         <Button
           variant="ghost"
           size="icon-lg"
@@ -322,6 +338,7 @@ onUnmounted(() => {
           class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
         >
           <BellIcon />
+          <BellIndicator />
           <span
             v-if="badgeCount > 0"
             class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
@@ -391,6 +408,7 @@ onUnmounted(() => {
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
           <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
+          <ActivityPanel v-else-if="activeApp === 'activity'" class="h-full" />
           <div v-else class="flex items-center justify-center h-full text-base-content/70 select-none">
             <div class="text-center space-y-3">
               <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
@@ -440,18 +458,18 @@ onUnmounted(() => {
       </DropdownMenu>
 
       <!-- Notifications bell -->
-      <ActivityPopover v-if="isMobile" side="top">
-        <template #default="{ open }">
-          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
-            :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
-              open ? 'text-primary' : 'text-base-content/70']">
-            <BellIcon class="size-5" />
-            <span v-if="badgeCount > 0"
-              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
-            >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
-          </Button>
-        </template>
-      </ActivityPopover>
+      <!-- On a phone the bell opens the Activity page itself: a popover there
+           would cover the whole screen anyway. -->
+      <Button v-if="isMobile" variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
+        :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
+          activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
+        @click="openActivity">
+        <BellIcon class="size-5" />
+        <BellIndicator />
+        <span v-if="badgeCount > 0"
+          class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
+        >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
+      </Button>
 
       <!-- User avatar -->
       <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">

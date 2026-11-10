@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -484,7 +485,7 @@ func uniqueDst(src, dstDir string) string {
 	return candidate
 }
 
-func copyAll(src, dst string) error {
+func copyAll(ctx context.Context, src, dst string) error {
 	info, err := os.Lstat(src)
 	if err != nil {
 		return err
@@ -493,15 +494,36 @@ func copyAll(src, dst string) error {
 		return fmt.Errorf("%w: %s", errRefuseSymlink, src)
 	}
 	if info.IsDir() {
-		return copyDir(src, dst, info)
+		return copyDir(ctx, src, dst, info)
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("%w: %s", errUnsupportedFsType, src)
 	}
-	return copyFile(src, dst)
+	return copyFile(ctx, src, dst)
 }
 
-func copyFile(src, dst string) error {
+// copyChunk is how much a file copy moves between two looks at its context:
+// small enough to stop a cancelled copy within a second or so, large enough to
+// keep the kernel's copy_file_range doing the work.
+const copyChunk = 64 << 20
+
+// copyContents copies in to out, stopping between chunks once ctx is cancelled.
+func copyContents(ctx context.Context, out *os.File, in *os.File) error {
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		_, err := io.CopyN(out, in, copyChunk)
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func copyFile(ctx context.Context, src, dst string) error {
 	// O_NOFOLLOW closes the race where a checked regular file is swapped for a
 	// symlink before it is opened. Without it, a link nested in an allowed Place
 	// could disclose the contents of an arbitrary file outside that Place.
@@ -530,7 +552,7 @@ func copyFile(src, dst string) error {
 			_ = os.Remove(dst)
 		}
 	}()
-	if _, err := io.Copy(out, in); err != nil {
+	if err := copyContents(ctx, out, in); err != nil {
 		return err
 	}
 	if err := out.Close(); err != nil {
@@ -540,7 +562,7 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
-func copyDir(src, dst string, info fs.FileInfo) error {
+func copyDir(ctx context.Context, src, dst string, info fs.FileInfo) error {
 	if info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("%w: %s", errRefuseSymlink, src)
 	}
@@ -574,6 +596,9 @@ func copyDir(src, dst string, info fs.FileInfo) error {
 		return err
 	}
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		s := filepath.Join(src, e.Name())
 		d := filepath.Join(dst, e.Name())
 		ei, err := os.Lstat(s)
@@ -584,11 +609,11 @@ func copyDir(src, dst string, info fs.FileInfo) error {
 			return fmt.Errorf("%w: %s", errRefuseSymlink, s)
 		}
 		if ei.IsDir() {
-			if err := copyDir(s, d, ei); err != nil {
+			if err := copyDir(ctx, s, d, ei); err != nil {
 				return err
 			}
 		} else if ei.Mode().IsRegular() {
-			if err := copyFile(s, d); err != nil {
+			if err := copyFile(ctx, s, d); err != nil {
 				return err
 			}
 		} else {
@@ -599,10 +624,10 @@ func copyDir(src, dst string, info fs.FileInfo) error {
 	return nil
 }
 
-func doCopy(src, dstDir string) (*copyResult, *fsError) {
+func doCopy(ctx context.Context, src, dstDir string) (*copyResult, *fsError) {
 	dst := uniqueDst(src, dstDir)
-	if err := copyAll(src, dst); err != nil {
-		return nil, mapOsErr(err)
+	if err := copyAll(ctx, src, dst); err != nil {
+		return nil, asFsErr(err)
 	}
 	return &copyResult{Ok: true, Dst: dst}, nil
 }
@@ -614,7 +639,7 @@ type moveResult struct {
 	Dst string `json:"dst"`
 }
 
-func doMove(src, dstDir string) (*moveResult, *fsError) {
+func doMove(ctx context.Context, src, dstDir string) (*moveResult, *fsError) {
 	dst := filepath.Join(dstDir, filepath.Base(src))
 	if _, err := os.Lstat(dst); err == nil {
 		return nil, &fsError{Code: "EEXIST", Message: "destination already exists"}
@@ -624,11 +649,8 @@ func doMove(src, dstDir string) (*moveResult, *fsError) {
 		var linkErr *os.LinkError
 		if errors.As(err, &linkErr) {
 			if errno, ok := linkErr.Err.(syscall.Errno); ok && errno == syscall.EXDEV {
-				if err2 := copyAll(src, dst); err2 != nil {
-					return nil, mapOsErr(err2)
-				}
-				if err2 := os.RemoveAll(src); err2 != nil {
-					return nil, mapOsErr(err2)
+				if fsErr := moveByCopy(ctx, src, dst); fsErr != nil {
+					return nil, fsErr
 				}
 				return &moveResult{Ok: true, Dst: dst}, nil
 			}
@@ -636,6 +658,19 @@ func doMove(src, dstDir string) (*moveResult, *fsError) {
 		return nil, mapOsErr(err)
 	}
 	return &moveResult{Ok: true, Dst: dst}, nil
+}
+
+// moveByCopy moves across filesystems: copy, then remove the source. A cancel
+// during the copy removes the partial destination and keeps the source; once
+// the copy is complete the move finishes.
+func moveByCopy(ctx context.Context, src, dst string) *fsError {
+	if err := copyAll(ctx, src, dst); err != nil {
+		return asFsErr(err)
+	}
+	if err := os.RemoveAll(src); err != nil {
+		return mapOsErr(err)
+	}
+	return nil
 }
 
 // ── rename ────────────────────────────────────────────────────────────────────
@@ -755,7 +790,7 @@ func doChown(path, ownerStr, groupStr string) *fsError {
 
 // ── zip ───────────────────────────────────────────────────────────────────────
 
-func addZipRegular(zw *zip.Writer, archiveName, srcPath string) error {
+func addZipRegular(ctx context.Context, zw *zip.Writer, archiveName, srcPath string) error {
 	in, err := os.OpenFile(srcPath, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
@@ -774,7 +809,7 @@ func addZipRegular(zw *zip.Writer, archiveName, srcPath string) error {
 		in.Close()
 		return err
 	}
-	_, copyErr := io.Copy(w, in)
+	_, copyErr := io.Copy(w, ctxReader{ctx, in})
 	closeErr := in.Close()
 	if copyErr != nil {
 		return copyErr
@@ -869,7 +904,7 @@ func applyReplacementMetadata(file *os.File, metadata replacementMetadata) error
 	return nil
 }
 
-func doZip(paths []string, destDir, name string) *fsError {
+func doZip(ctx context.Context, paths []string, destDir, name string) *fsError {
 	// Reject any name that tries to escape destDir via separators or dot-segments.
 	clean := filepath.Base(filepath.Clean(name))
 	if clean == "." || clean == ".." || strings.ContainsAny(clean, "/\\\x00") {
@@ -901,10 +936,13 @@ func doZip(paths []string, destDir, name string) *fsError {
 		_ = zw.Close()
 		_ = f.Close()
 		_ = os.Remove(tmpPath)
-		return mapOsErr(err)
+		return asFsErr(err)
 	}
 
 	for _, src := range paths {
+		if err := ctx.Err(); err != nil {
+			return fail(err)
+		}
 		info, err := os.Lstat(src)
 		if err != nil {
 			return fail(err)
@@ -938,12 +976,12 @@ func doZip(paths []string, destDir, name string) *fsError {
 				if err != nil {
 					return err
 				}
-				return addZipRegular(zw, rel, walkPath)
+				return addZipRegular(ctx, zw, rel, walkPath)
 			}); walkErr != nil {
 				return fail(walkErr)
 			}
 		} else if info.Mode().IsRegular() {
-			if err := addZipRegular(zw, filepath.Base(src), src); err != nil {
+			if err := addZipRegular(ctx, zw, filepath.Base(src), src); err != nil {
 				return fail(err)
 			}
 		} else {
@@ -1115,7 +1153,7 @@ func doZipToTemp(srcPath string) (string, int64, *fsError) {
 		if err != nil {
 			return err
 		}
-		return addZipRegular(zw, rel, walkPath)
+		return addZipRegular(context.Background(), zw, rel, walkPath)
 	}); walkErr != nil {
 		if gw.spaceErr != nil {
 			return fail(&fsError{Code: "NOSPC", Message: "ran out of temporary disk space while building the archive"})
@@ -1172,7 +1210,47 @@ func sweepShareTemps(maxAge time.Duration) {
 
 // ── unzip ─────────────────────────────────────────────────────────────────────
 
-func doUnzip(archivePath, destDir string) *fsError {
+// afterUnzipEntry runs after each extracted entry (tests cancel mid-way with it).
+var afterUnzipEntry func(i int)
+
+// unzipUndo remembers what an extraction created, so a cancel removes exactly
+// that: files it replaced keep their new content, nothing else is touched.
+type unzipUndo struct {
+	root  string // the extraction folder: nothing outside it is removed
+	files []string
+	dirs  []string
+}
+
+// noteDirs records the directories MkdirAll is about to create under root.
+func (u *unzipUndo) noteDirs(root, dir string) {
+	var missing []string
+	for d := dir; d != root && strings.HasPrefix(d, root+string(filepath.Separator)); d = filepath.Dir(d) {
+		if _, err := os.Lstat(d); err == nil {
+			break
+		}
+		missing = append(missing, d)
+	}
+	// Outermost first, so removal in reverse goes deepest first.
+	for i := len(missing) - 1; i >= 0; i-- {
+		u.dirs = append(u.dirs, missing[i])
+	}
+}
+
+// undo removes them again, never through a folder swapped for a link since.
+func (u *unzipUndo) undo() {
+	for _, f := range u.files {
+		if rejectSymlinkComponents(u.root, f) == nil {
+			_ = os.Remove(f)
+		}
+	}
+	for i := len(u.dirs) - 1; i >= 0; i-- {
+		if rejectSymlinkComponents(u.root, u.dirs[i]) == nil {
+			_ = os.Remove(u.dirs[i]) // only if empty
+		}
+	}
+}
+
+func doUnzip(ctx context.Context, archivePath, destDir string) *fsError {
 	archive, err := os.OpenFile(archivePath, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return mapOsErr(err)
@@ -1268,16 +1346,29 @@ func doUnzip(archivePath, destDir string) *fsError {
 		entries = append(entries, validatedEntry{file: f, entryPath: entryPath, target: target, isDir: isDir})
 	}
 
-	for _, entry := range entries {
+	undo := unzipUndo{root: destDir}
+	cancelled := func() *fsError {
+		undo.undo()
+		return errCancelled
+	}
+	for i, entry := range entries {
+		if i > 0 && afterUnzipEntry != nil {
+			afterUnzipEntry(i - 1)
+		}
+		if ctx.Err() != nil {
+			return cancelled()
+		}
 		f := entry.file
 		target := entry.target
 		if entry.isDir {
+			undo.noteDirs(destDir, target)
 			if err := os.MkdirAll(target, f.Mode().Perm()|0111); err != nil {
 				return mapOsErr(err)
 			}
 			continue
 		}
 
+		undo.noteDirs(destDir, filepath.Dir(target))
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 			return mapOsErr(err)
 		}
@@ -1297,11 +1388,14 @@ func doUnzip(archivePath, destDir string) *fsError {
 		}
 		tmpPath := out.Name()
 
-		_, copyErr := io.Copy(out, rc)
+		_, copyErr := io.Copy(out, ctxReader{ctx, rc})
 		rcCloseErr := rc.Close()
 		if copyErr != nil {
 			_ = out.Close()
 			_ = os.Remove(tmpPath)
+			if ctx.Err() != nil {
+				return cancelled()
+			}
 			return mapOsErr(copyErr)
 		}
 		if rcCloseErr != nil {
@@ -1328,10 +1422,20 @@ func doUnzip(archivePath, destDir string) *fsError {
 			_ = os.Remove(tmpPath)
 			return mapOsErr(err)
 		}
+		_, beforeErr := os.Lstat(target)
 		if err := os.Rename(tmpPath, target); err != nil {
 			_ = os.Remove(tmpPath)
 			return mapOsErr(err)
 		}
+		if beforeErr != nil { // it did not exist: this extraction created it
+			undo.files = append(undo.files, target)
+		}
+	}
+	if len(entries) > 0 && afterUnzipEntry != nil {
+		afterUnzipEntry(len(entries) - 1)
+	}
+	if ctx.Err() != nil {
+		return cancelled()
 	}
 	return nil
 }

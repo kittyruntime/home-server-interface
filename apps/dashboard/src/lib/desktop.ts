@@ -1,7 +1,7 @@
 import { ref, reactive } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'assistant' | 'file-preview'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'assistant' | 'file-preview' | 'activity'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure'
 
 export interface FilePreviewPayload {
@@ -30,7 +30,7 @@ export interface DesktopWindow {
 // English names; i18n/labels.ts puts them in the interface language.
 export const APP_LABEL = reactive<Record<AppId, string>>({
   files: 'Files', apps: 'Apps', settings: 'Settings', storage: 'Storage',
-  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview',
+  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview', activity: 'Activity',
 })
 
 const STORAGE_KEY = 'desktop'
@@ -50,6 +50,7 @@ const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   sharing: { w: 860, h: 560 },
   assistant: { w: 820, h: 600 },
   'file-preview': { w: 760, h: 560 },
+  activity: { w: 720, h: 560 },
 }
 
 function loadWindows(): DesktopWindow[] {

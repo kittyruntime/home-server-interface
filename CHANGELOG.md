@@ -8,11 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Background tasks tracked on the server**: copies, moves, deletions,
+  archives, container operations, backups and HSI updates can be listed from
+  any device, with what they work on and since when they run, instead of only
+  in the browser tab that started them.
+- **Activity page**: the bell opens an Activity app with three tabs, running
+  tasks, notifications and the history of the last 7 days. On a phone the bell
+  opens it directly.
+- **Cancel a background task**: your own copies, moves, compressions and
+  extractions can be cancelled from the Activity panel. The NAS stops within a
+  second or so and removes what the task wrote (an extraction keeps the files
+  it had already replaced); a task still waiting never starts.
+- **A notification when your task ends**: "Copy finished" or "Copy failed"
+  with the reason, for your own copies, moves, deletions, archives and app
+  operations, even when the tab was closed. It opens the folder concerned.
+  Only you see it, and it stays in HSI (no e-mail or webhook).
 - **Drag between file manager windows**: items dragged from one window onto
   the list of another move into the folder it shows (Ctrl or Alt held copies
   them). Every window showing a folder that changed refreshes.
 
+### Changed
+- **Uploads and background tasks in the Activity panel**: the bell panel has a
+  "In progress" section (uploads with their percent and remaining time, NAS
+  tasks with how long they have been running) above the notifications. The
+  transfers tray at the bottom of the file manager is gone; a bar under the
+  bell fills while files are sent.
+
 ### Fixed
+- **Backend restart during a long copy**: the job was marked failed although
+  the NAS kept copying. It now stays running and is only given up once the
+  worker no longer holds it.
 - **Creating a folder during an upload**: it waited until the upload was
   verified (a whole-file checksum, minutes for a large file) or a copy had
   finished, 28 s on a real NAS. New folders and files no longer wait behind

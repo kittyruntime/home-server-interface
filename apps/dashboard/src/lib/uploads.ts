@@ -1,7 +1,8 @@
 import { ref, readonly } from 'vue'
-import { randomId } from './uuid'
+import { useToast } from './toast'
+import { tr } from './tr'
 
-export type TransferKind = 'upload' | 'copy' | 'move'
+export type TransferKind = 'upload'
 export type TransferStatus =
   | 'queued'
   | 'uploading'
@@ -28,6 +29,7 @@ export interface Transfer {
   file?: File
   uploadId?: string
   jobId?: string          // copy/move worker job
+  finalizeJobIds?: readonly string[] // upload: its server finalize jobs (shown here, not as server tasks)
   interrupted?: boolean   // reload: needs re-select to resume
 }
 
@@ -158,6 +160,12 @@ export function useUploads() {
     }
   }
 
+  /** Remember an upload's finalize job, so the Activity list shows it once. */
+  function addFinalizeJob(id: string, jobId: string) {
+    const t = tasks.value.find(x => x.id === id)
+    if (t) t.finalizeJobIds = [...(t.finalizeJobIds ?? []), jobId]
+  }
+
   /** Reset byte/chunk progress to zero, called at the start of each upload run
    *  (incl. resume/retry) so `updateProgress`'s additive `sentBytes` recomputes
    *  from scratch instead of stacking onto a prior run's total. */
@@ -217,6 +225,7 @@ export function useUploads() {
   return {
     tasks: readonly(tasks),
     register,
+    addFinalizeJob,
     setStatus,
     attachFile,
     updateProgress,
@@ -232,29 +241,10 @@ export function useUploads() {
   }
 }
 
-// ── Transfers: copy/move ────────────────────────────────────────────────────
-// Copy/move don't go through the chunked upload runner: each item is a
-// single tRPC mutate + pollJobResult call. `trackTransfer` registers the batch as
-// one `copy`/`move` transfer in the tray, drives it via `Promise.allSettled`,
-// and keeps the original ops around so a retry can genuinely re-issue the
-// same copy/move calls (each op is self-contained: it captures its own
-// src/dst, so it stays runnable even after the clipboard that spawned it
-// has been cleared).
-
-interface TransferSpec {
-  kind: 'copy' | 'move'
-  name: string
-  destDir: string
-  ops: Array<() => Promise<unknown>>
-}
-
-const transferSpecs = new Map<string, TransferSpec>()
-
-// Module-level store handle, same pattern as `upload-runner.ts`'s `const
-// uploads = useUploads()`: the returned functions all close over the shared
-// module-level `tasks` ref, so a single instance here is equivalent to
-// calling `useUploads()` per-component.
-const store = useUploads()
+// ── Copy/move batches ───────────────────────────────────────────────────────
+// Copy and move run on the NAS: the Activity panel lists them from the server,
+// on every device, even once this tab is closed. Here a batch only waits for
+// its jobs, so the file list refreshes, and reports the failures.
 
 function errorMessage(reason: unknown): string {
   if (reason instanceof Error) return reason.message
@@ -265,54 +255,24 @@ function errorMessage(reason: unknown): string {
   return String(reason)
 }
 
-/** Run (or re-run, for retry) the ops of an already-registered transfer. */
-async function runTransfer(id: string): Promise<void> {
-  const spec = transferSpecs.get(id)
-  if (!spec) return
+// The worker's message for a job its owner cancelled (apps/root-worker/cancel.go).
+const CANCELLED = 'Cancelled'
 
-  store.setStatus(id, 'running')
-  store.resetProgress(id)
-
-  let done = 0
-  const results = await Promise.allSettled(
-    spec.ops.map(op =>
-      op().then(
-        (r: unknown) => { done++; store.updateProgress(id, done, 0); return r },
-        (e: unknown) => { done++; store.updateProgress(id, done, 0); throw e }
-      )
-    )
-  )
-
-  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-  if (failures.length === 0) {
-    store.setStatus(id, 'done')
-    setTimeout(() => { store.remove(id); transferSpecs.delete(id) }, 3000)
-  } else {
-    const message = errorMessage(failures[0]!.reason)
-    store.setStatus(id, 'error', `${failures.length} failed: ${message}`)
-  }
+/** The toast for a copy/move batch's failures; null when there is nothing to report. */
+export function transferFailureMessage(kind: 'copy' | 'move', total: number, failures: unknown[]): string | null {
+  // A cancel is the user's own doing, not a failure.
+  const real = failures.filter(f => errorMessage(f) !== CANCELLED)
+  if (real.length === 0) return null
+  const params = { failed: real.length, total, error: errorMessage(real[0]) }
+  return kind === 'copy'
+    ? tr('lib.transfers.copyFailed', `Copy: ${params.failed} of ${total} failed (${params.error})`, params)
+    : tr('lib.transfers.moveFailed', `Move: ${params.failed} of ${total} failed (${params.error})`, params)
 }
 
-/** Register a copy/move batch as one transfer in the tray and run it. */
-export async function trackTransfer(
-  kind: 'copy' | 'move',
-  name: string,
-  destDir: string,
-  ops: Array<() => Promise<unknown>>,
-): Promise<void> {
-  const id = randomId()
-  transferSpecs.set(id, { kind, name, destDir, ops })
-  store.register({
-    id,
-    kind,
-    name,
-    destDir,
-    status: 'running',
-    totalChunks: ops.length,
-    sentChunks: 0,
-  })
-  await runTransfer(id)
+/** Run a copy/move batch; a toast names the failures. */
+export async function runTransferBatch(kind: 'copy' | 'move', ops: Array<() => Promise<unknown>>): Promise<void> {
+  const results = await Promise.allSettled(ops.map(op => op()))
+  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected').map(r => r.reason)
+  const message = transferFailureMessage(kind, ops.length, failures)
+  if (message) useToast().error(message)
 }
-
-registerRetryHandler('copy', id => { void runTransfer(id) })
-registerRetryHandler('move', id => { void runTransfer(id) })

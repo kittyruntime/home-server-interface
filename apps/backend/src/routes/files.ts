@@ -138,6 +138,7 @@ async function finalizeUploadState(
       expectedSha,
     },
     user.userId,
+    { dst: join(state.destDir, state.fileName) },
   )
   state.finalizeJobId = jobId
   state.linuxUser = linuxUser
@@ -233,7 +234,7 @@ export async function fileRoutes(app: FastifyInstance) {
   startUploadGc((id, state) => {
     app.log.warn({ uploadId: id }, "Stale upload evicted by GC")
     markUploadCancellationPending(id, state.ownerUserId)
-    publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot })
+    publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot }, undefined, { internal: true })
       .then(async jobId => {
         if (await waitForCleanupCompletion(jobId)) {
           clearUploadCancellation(id, state.ownerUserId)
@@ -734,6 +735,8 @@ export async function fileRoutes(app: FastifyInstance) {
         const cleanupJobId = await publishJob(
           "fs.delete",
           { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot },
+          undefined,
+          { internal: true },
         )
         return waitForCleanupCompletion(cleanupJobId)
       })()

@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -57,7 +58,7 @@ func TestDoCopyRejectsNestedSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, fsErr := doCopy(src, dstDir)
+	_, fsErr := doCopy(context.Background(), src, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink copy to fail with EACCES, got %#v", fsErr)
 	}
@@ -84,7 +85,7 @@ func TestDoZipRejectsNestedSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsErr := doZip([]string{src}, dstDir, "archive.zip")
+	fsErr := doZip(context.Background(), []string{src}, dstDir, "archive.zip")
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink zip to fail with EACCES, got %#v", fsErr)
 	}
@@ -114,7 +115,7 @@ func TestDoZipPreservesExistingArchiveWhenSourceFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsErr := doZip([]string{src}, dstDir, "archive.zip")
+	fsErr := doZip(context.Background(), []string{src}, dstDir, "archive.zip")
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected invalid source to fail with EACCES, got %#v", fsErr)
 	}
@@ -133,7 +134,7 @@ func TestDoZipCanReplaceASelectedDestinationFile(t *testing.T) {
 	if err := os.WriteFile(archivePath, []byte("old contents"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if fsErr := doZip([]string{archivePath}, root, "archive.zip"); fsErr != nil {
+	if fsErr := doZip(context.Background(), []string{archivePath}, root, "archive.zip"); fsErr != nil {
 		t.Fatalf("zip with destination as source failed: %#v", fsErr)
 	}
 	r, err := zip.OpenReader(archivePath)
@@ -165,7 +166,7 @@ func TestDoZipUsesSafeModeAndPreservesExistingMetadata(t *testing.T) {
 	if err := os.WriteFile(src, []byte("data"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if fsErr := doZip([]string{src}, root, "archive.zip"); fsErr != nil {
+	if fsErr := doZip(context.Background(), []string{src}, root, "archive.zip"); fsErr != nil {
 		t.Fatalf("new zip failed: %#v", fsErr)
 	}
 	info, err := os.Stat(archivePath)
@@ -178,7 +179,7 @@ func TestDoZipUsesSafeModeAndPreservesExistingMetadata(t *testing.T) {
 	if err := os.Chmod(archivePath, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	if fsErr := doZip([]string{src}, root, "archive.zip"); fsErr != nil {
+	if fsErr := doZip(context.Background(), []string{src}, root, "archive.zip"); fsErr != nil {
 		t.Fatalf("replacement zip failed: %#v", fsErr)
 	}
 	info, err = os.Stat(archivePath)
@@ -208,7 +209,7 @@ func TestDoZipDoesNotTruncateThroughDestinationSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsErr := doZip([]string{src}, dstDir, "archive.zip")
+	fsErr := doZip(context.Background(), []string{src}, dstDir, "archive.zip")
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink destination to fail with EACCES, got %#v", fsErr)
 	}
@@ -261,7 +262,7 @@ func TestDoUnzipRejectsSymlinkedDestinationParent(t *testing.T) {
 	}
 	writeZipEntry(t, archivePath, "redirect/owned.txt", "owned", 0o644)
 
-	fsErr := doUnzip(archivePath, dstDir)
+	fsErr := doUnzip(context.Background(), archivePath, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlinked extraction path to fail with EACCES, got %#v", fsErr)
 	}
@@ -279,7 +280,7 @@ func TestDoUnzipRejectsSymlinkArchiveEntry(t *testing.T) {
 	}
 	writeZipEntry(t, archivePath, "link", "../../outside", os.ModeSymlink|0o777)
 
-	fsErr := doUnzip(archivePath, dstDir)
+	fsErr := doUnzip(context.Background(), archivePath, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink archive entry to fail with EACCES, got %#v", fsErr)
 	}
@@ -319,7 +320,7 @@ func TestDoUnzipPrevalidatesBeforeWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsErr := doUnzip(archivePath, dstDir)
+	fsErr := doUnzip(context.Background(), archivePath, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected invalid archive to fail with EACCES, got %#v", fsErr)
 	}
@@ -340,7 +341,7 @@ func TestDoUnzipRejectsSymlinkArchivePath(t *testing.T) {
 	if err := os.Symlink(realArchive, archiveLink); err != nil {
 		t.Fatal(err)
 	}
-	fsErr := doUnzip(archiveLink, dstDir)
+	fsErr := doUnzip(context.Background(), archiveLink, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink archive path to fail with EACCES, got %#v", fsErr)
 	}
@@ -354,7 +355,7 @@ func TestDoUnzipUsesSafeModeAndPreservesExistingMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeZipEntry(t, archivePath, "file.txt", "first", 0o777)
-	if fsErr := doUnzip(archivePath, dstDir); fsErr != nil {
+	if fsErr := doUnzip(context.Background(), archivePath, dstDir); fsErr != nil {
 		t.Fatalf("new extraction failed: %#v", fsErr)
 	}
 	target := filepath.Join(dstDir, "file.txt")
@@ -369,7 +370,7 @@ func TestDoUnzipUsesSafeModeAndPreservesExistingMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeZipEntry(t, archivePath, "file.txt", "replacement", 0o777)
-	if fsErr := doUnzip(archivePath, dstDir); fsErr != nil {
+	if fsErr := doUnzip(context.Background(), archivePath, dstDir); fsErr != nil {
 		t.Fatalf("replacement extraction failed: %#v", fsErr)
 	}
 	info, err = os.Stat(target)
@@ -485,7 +486,7 @@ func TestDoUnzipCannotReplaceReadOnlyFileThroughWritableParent(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeZipEntry(t, archivePath, "file.txt", "replace", 0o644)
-	fsErr := doUnzip(archivePath, dstDir)
+	fsErr := doUnzip(context.Background(), archivePath, dstDir)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected read-only target replacement to fail with EACCES, got %#v", fsErr)
 	}
@@ -511,10 +512,10 @@ func TestDoZipAndUnzipStillHandleRegularFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(src, "regular.txt"), []byte("regular data"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	if fsErr := doZip([]string{src}, archiveDir, "archive.zip"); fsErr != nil {
+	if fsErr := doZip(context.Background(), []string{src}, archiveDir, "archive.zip"); fsErr != nil {
 		t.Fatalf("regular zip failed: %#v", fsErr)
 	}
-	if fsErr := doUnzip(filepath.Join(archiveDir, "archive.zip"), extractDir); fsErr != nil {
+	if fsErr := doUnzip(context.Background(), filepath.Join(archiveDir, "archive.zip"), extractDir); fsErr != nil {
 		t.Fatalf("regular unzip failed: %#v", fsErr)
 	}
 	got, err := os.ReadFile(filepath.Join(extractDir, "source", "regular.txt"))

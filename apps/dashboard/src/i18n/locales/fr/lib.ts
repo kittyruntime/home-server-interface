@@ -50,6 +50,10 @@ export default {
     theOperationDidNotFinish: 'L’opération ne s’est pas terminée en {p0} s. Elle tourne peut-être encore ; actualisez pour vérifier.',
     operationFailed: 'L’opération a échoué',
   },
+  transfers: {
+    copyFailed: 'Copie : {failed} sur {total} en échec ({error})',
+    moveFailed: 'Déplacement : {failed} sur {total} en échec ({error})',
+  },
   notifications: { unknownError: 'Erreur inconnue' },
   sidebar_nav: {
     overview: 'Vue d’ensemble',

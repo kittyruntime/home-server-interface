@@ -10,7 +10,7 @@ import { ROLE_LABELS } from '../components/storage/disk-list'
 // put in the interface language whenever it changes.
 const APPS: Record<AppId, string> = {
   files: 'files', apps: 'apps', settings: 'settings', storage: 'storage',
-  store: 'store', monitor: 'monitor', sharing: 'sharing', assistant: 'assistant', 'file-preview': 'filePreview',
+  store: 'store', monitor: 'monitor', sharing: 'sharing', assistant: 'assistant', 'file-preview': 'filePreview', activity: 'activity',
 }
 
 watchEffect(() => {

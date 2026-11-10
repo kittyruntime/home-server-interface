@@ -8,6 +8,7 @@ import {
   toPublicConnector, toStoredFields, type ConnectorInput, type ResolvedConnector,
 } from "../../services/notification-connectors"
 import { deliverResolved, renderEmail } from "../../services/notification-transports"
+import { notificationWhere } from "../../services/task-notifications"
 
 const severityEnum = z.enum(["info", "warning", "critical"])
 
@@ -106,28 +107,30 @@ async function resolveConnectorIds(db: PrismaClient, connectorIds: string[]): Pr
 }
 
 export const notificationsRouter = router({
+  // Global alerts and the viewer's own task results (other users' stay theirs).
   list: protectedProcedure.query(async ({ ctx }) => {
+    const mine = notificationWhere(ctx.user)
     const [items, unread] = await Promise.all([
-      ctx.prisma.notification.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-      ctx.prisma.notification.count({ where: { readAt: null } }),
+      ctx.prisma.notification.findMany({ where: mine, orderBy: { createdAt: "desc" }, take: 100 }),
+      ctx.prisma.notification.count({ where: { AND: [mine, { readAt: null }] } }),
     ])
     return { items, unread }
   }),
 
   markAllRead: protectedProcedure.mutation(({ ctx }) =>
-    ctx.prisma.notification.updateMany({ where: { readAt: null }, data: { readAt: new Date() } }),
+    ctx.prisma.notification.updateMany({ where: { AND: [notificationWhere(ctx.user), { readAt: null }] }, data: { readAt: new Date() } }),
   ),
 
-  // Empties the Activity panel. The notifications are shared by every account,
-  // so only an administrator clears them; the alerts themselves stay in
-  // Monitor and their deliveries in the outbox.
-  clear: adminProcedure.mutation(({ ctx }) => ctx.prisma.notification.deleteMany({})),
+  // Empties the Activity panel. The alerts are shared by every account, so
+  // only an administrator clears them (with their own task results); the
+  // alerts themselves stay in Monitor and their deliveries in the outbox.
+  clear: adminProcedure.mutation(({ ctx }) => ctx.prisma.notification.deleteMany({ where: notificationWhere(ctx.user) })),
 
   // One notification, read from the Activity panel.
   markRead: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(64) }))
     .mutation(({ ctx, input }) =>
-      ctx.prisma.notification.updateMany({ where: { id: input.id, readAt: null }, data: { readAt: new Date() } }),
+      ctx.prisma.notification.updateMany({ where: { AND: [notificationWhere(ctx.user), { id: input.id, readAt: null }] }, data: { readAt: new Date() } }),
     ),
 
   connectors: router({

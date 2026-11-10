@@ -367,7 +367,7 @@ func handleDockerTask(nc *nats.Conn, msg *nats.Msg, subject string) {
 		_ = msg.Term()
 		return
 	}
-	logJobReceived(subject, task.JobID, "")
+	jobStarted(nc, subject, task.JobID, "")
 
 	var err error
 	switch subject {

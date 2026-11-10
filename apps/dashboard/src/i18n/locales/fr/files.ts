@@ -39,11 +39,6 @@ export default {
     newFile: 'Nouveau fichier',
     refresh: 'Actualiser',
   },
-  TransfersTray: {
-    clearCompleted: 'Effacer les terminés',
-    cancel: 'Annuler',
-    remove: 'Retirer',
-  },
   PlacesSidebar: {
     sharedLinks: 'Liens partagés',
     settings: 'Réglages',

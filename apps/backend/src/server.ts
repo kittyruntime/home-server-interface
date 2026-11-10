@@ -1,4 +1,5 @@
 import { buildApp, connectNats, startEventSubscriber } from "./app"
+import { startJobReconcile } from "./services/job-reconcile"
 import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAuditRetention } from "./services/audit-retention"
 import { startAlertSampler } from "./services/alert-sampler"
@@ -83,6 +84,7 @@ const start = async () => {
     startTelemetry(app.log)
     void migrateRsyncPlans()
     startTlsWatch()
+    startJobReconcile()
     void startEventSubscriber(app.log).catch(err => {
       app.log.error(err, "nats: event subscriber fatal error")
       process.exit(1)

@@ -40,11 +40,6 @@ export default {
     newFile: 'New file',
     refresh: 'Refresh',
   },
-  TransfersTray: {
-    clearCompleted: 'Clear completed',
-    cancel: 'Cancel',
-    remove: 'Remove',
-  },
   PlacesSidebar: {
     sharedLinks: 'Shared links',
     settings: 'Settings',

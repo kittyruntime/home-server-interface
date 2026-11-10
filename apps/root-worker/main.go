@@ -87,7 +87,7 @@ type syncResponse struct {
 // jobEvent is what the worker publishes back to the backend.
 type jobEvent struct {
 	JobID  string      `json:"jobId"`
-	Status string      `json:"status"` // completed | failed
+	Status string      `json:"status"` // running | completed | failed
 	Result interface{} `json:"result,omitempty"`
 	Error  string      `json:"error,omitempty"`
 }
@@ -108,10 +108,20 @@ func replyErr(nc *nats.Conn, replySubject string, e *fsError) {
 // jobStarts records when each async job was received, for duration logging.
 var jobStarts sync.Map
 
-// logJobReceived logs an async job and remembers its start time.
-func logJobReceived(subject, jobID, linuxUser string) {
+// publishEvent sends a job event; tests swap it to record what is sent.
+var publishEvent = func(nc *nats.Conn, subject string, data []byte) error {
+	return nc.Publish(subject, data)
+}
+
+// jobStarted logs an async job, remembers its start time and tells the
+// backend it is running, so the Activity panel can tell it from a queued one.
+func jobStarted(nc *nats.Conn, subject, jobID, linuxUser string) {
 	jobStarts.Store(jobID, time.Now())
 	logger.Info("job received", "subject", subject, "jobId", jobID, "linuxUser", linuxUser)
+	data, _ := json.Marshal(jobEvent{JobID: jobID, Status: "running"})
+	if err := publishEvent(nc, fmt.Sprintf("events.job.%s", jobID), data); err != nil {
+		log.Printf("publish running event for job %s: %v", jobID, err)
+	}
 }
 
 func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, errMsg string) {
@@ -127,7 +137,7 @@ func publishJobResult(nc *nats.Conn, jobID, status string, result interface{}, e
 	event := jobEvent{JobID: jobID, Status: status, Result: result, Error: errMsg}
 	data, _ := json.Marshal(event)
 	subject := fmt.Sprintf("events.job.%s", jobID)
-	if err := nc.Publish(subject, data); err != nil {
+	if err := publishEvent(nc, subject, data); err != nil {
 		log.Printf("publish event for job %s: %v", jobID, err)
 	}
 }
@@ -834,7 +844,18 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 	}
 
 	subject := msg.Subject
-	logJobReceived(subject, task.JobID, task.LinuxUsername)
+	// A job cancelled while it waited for its lane never runs (nor shows as
+	// running); a running one sees ctx cancelled (copy, move, zip and unzip
+	// check it).
+	ctx, done, cancelled := jobCancels.begin(task.JobID)
+	defer done()
+	if cancelled {
+		logger.Info("job cancelled before it started", "subject", subject, "jobId", task.JobID)
+		_ = msg.Term()
+		publishJobResult(nc, task.JobID, "failed", nil, errCancelled.Message)
+		return
+	}
+	jobStarted(nc, subject, task.JobID, task.LinuxUsername)
 
 	var result interface{}
 	var fsErr *fsError
@@ -885,7 +906,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *copyResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doCopy(task.Src, task.DstDir)
+				res, fsErr = doCopy(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -905,7 +926,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *moveResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doMove(task.Src, task.DstDir)
+				res, fsErr = doMove(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -991,7 +1012,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doZip(task.Paths, task.DstDir, task.Name)
+				fsErr = doZip(ctx, task.Paths, task.DstDir, task.Name)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1011,7 +1032,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doUnzip(task.Src, task.DstDir)
+				fsErr = doUnzip(ctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1216,6 +1237,7 @@ func main() {
 		"root.fs.write-chunk":            handleWriteChunk,
 		"root.fs.zip-temp":               handleZipTemp,
 		"root.fs.rm-temp":                handleRmTemp,
+		cancelSubject:                    serveCancel,
 		"root.container.listAll":         handleDockerListAll,
 		"root.container.logs":            handleDockerLogs,
 		"root.container.logs.stop":       handleDockerLogsStop,

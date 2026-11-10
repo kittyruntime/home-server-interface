@@ -14,3 +14,11 @@ export function appQuery<T extends Record<string, unknown>>(query: T, id: string
   const { app: _app, ...rest } = query
   return id === 'dashboard' ? rest : { ...rest, app: id }
 }
+
+/** Apps opened from elsewhere than the sidebar (the bell opens Activity). */
+const UNLISTED_APPS = ['activity']
+
+/** The apps a URL may open: this user's sidebar apps plus the unlisted ones. */
+export function allowedAppIds(navIds: string[]): string[] {
+  return [...navIds, ...UNLISTED_APPS.filter(id => !navIds.includes(id))]
+}

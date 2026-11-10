@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { appFromQuery, appQuery } from '../src/lib/app-route.ts'
+import { allowedAppIds, appFromQuery, appQuery } from '../src/lib/app-route.ts'
 
 const allowed = ['dashboard', 'files', 'storage', 'settings']
 
@@ -15,4 +15,9 @@ test('appFromQuery opens an app the user has, else Overview', () => {
 test('appQuery keeps other parameters and drops app for Overview', () => {
   assert.deepEqual(appQuery({ x: '1' }, 'files'), { x: '1', app: 'files' })
   assert.deepEqual(appQuery({ x: '1', app: 'files' }, 'dashboard'), { x: '1' })
+})
+
+test('the Activity app opens from the URL although it is not in the sidebar', () => {
+  assert.equal(appFromQuery('activity', allowedAppIds(['dashboard', 'files'])), 'activity')
+  assert.deepEqual(allowedAppIds(['files']), ['files', 'activity'])
 })
