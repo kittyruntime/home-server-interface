@@ -259,9 +259,16 @@ function errorMessage(reason: unknown): string {
 const CANCELLED = 'Cancelled'
 
 /** The toast for a copy/move batch's failures; null when there is nothing to report. */
+const isStillRunning = (f: unknown) => typeof f === 'object' && f !== null && (f as { stillRunning?: unknown }).stillRunning === true
+
+/** How many items of a batch were still running when it stopped waiting. */
+export function stillRunningCount(failures: unknown[]): number {
+  return failures.filter(isStillRunning).length
+}
+
 export function transferFailureMessage(kind: 'copy' | 'move', total: number, failures: unknown[]): string | null {
-  // A cancel is the user's own doing, not a failure.
-  const real = failures.filter(f => errorMessage(f) !== CANCELLED)
+  // A cancel is the user's own doing, and a task still running is no failure.
+  const real = failures.filter(f => errorMessage(f) !== CANCELLED && !isStillRunning(f))
   if (real.length === 0) return null
   const params = { failed: real.length, total, error: errorMessage(real[0]) }
   return kind === 'copy'
@@ -275,4 +282,6 @@ export async function runTransferBatch(kind: 'copy' | 'move', ops: Array<() => P
   const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected').map(r => r.reason)
   const message = transferFailureMessage(kind, ops.length, failures)
   if (message) useToast().error(message)
+  const running = stillRunningCount(failures)
+  if (running > 0) useToast().info(tr('lib.transfers.stillRunning', `${running} item(s) still being transferred: follow them in Activity`, { count: running }))
 }

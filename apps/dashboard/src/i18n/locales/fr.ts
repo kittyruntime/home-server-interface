@@ -384,6 +384,8 @@ export default {
     },
   },
   files: {
+    moved: '{count} élément(s) déplacé(s) vers {dir}',
+    undo: 'Annuler',
     conflict: {
       title: 'Ce nom est déjà pris',
       messageFile: 'Un fichier nommé « {name} » existe déjà dans {dir}.',

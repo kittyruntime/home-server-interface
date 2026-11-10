@@ -18,7 +18,10 @@ import { useUploads, runTransferBatch } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { pendingFolder, takeFolderFocus } from '../../lib/app-focus'
 import { downloadUrl } from '../../lib/file-url'
-import { awaitJob } from '../../lib/jobs'
+import { awaitJob, awaitJobResult } from '../../lib/jobs'
+
+// How long a copy or move is waited for before it goes on in the background.
+const TRANSFER_WAIT_MS = 30 * 60_000
 import { useConfirm } from '../../lib/confirm'
 import { useDeleteConfirm } from '../../lib/delete-confirm'
 import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
@@ -35,6 +38,7 @@ import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
 import { askConflict, planTransfer } from '../../lib/conflicts'
+import { undoPlan, type MovedItem } from '../../lib/move-undo'
 import { affectedDirs, announceFolderChanges, folderChanges } from '../../lib/folder-changes'
 import { canDropInto, dropAction, endFileDrag, fileDrag, isInternalDrag, startFileDrag, type DropAction } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
@@ -537,6 +541,7 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   }))
   if (!plan || plan.length === 0) return
   if (mode === 'cut') pendingPaths.value = plan.map(p => p.src)
+  const moved: MovedItem[] = []
   try {
     await runTransferBatch(
       mode === 'copy' ? 'copy' : 'move',
@@ -544,17 +549,43 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
         const { jobId } = mode === 'copy'
           ? await trpc.fs.copy.mutate({ src, dstDir: dst, onConflict })
           : await trpc.fs.move.mutate({ src, dstDir: dst, onConflict })
-        await awaitJob(jobId)
+        // Long transfers go on in the background, followed in Activity.
+        const result = await awaitJobResult(jobId, TRANSFER_WAIT_MS) as { dst?: string } | null
+        moved.push({ from: src, to: result?.dst ?? `${dst === '/' ? '' : dst}/${src.split('/').pop()}` })
       })
     )
   } finally {
     pendingPaths.value = []
+  }
+  // A move can be undone, unless it replaced something (that item is gone).
+  if (mode === 'cut' && moved.length > 0 && plan.every(p => p.onConflict !== 'replace')) {
+    toast.success(t('files.moved', { count: moved.length, dir: dst.split('/').pop() || '/' }), {
+      label: t('files.undo'),
+      run: () => { void undoMoves(moved) },
+    })
   }
   const done = plan.map(p => p.src)
   clearSelection()
   // Every window showing a changed folder refreshes, this one included; this
   // one also when the items went into a subfolder of what it shows.
   const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', done, dst)
+  announceFolderChanges(dirs)
+  if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
+}
+
+// Puts moved items back where they were, under their former names.
+async function undoMoves(moved: MovedItem[]) {
+  const back = undoPlan(moved)
+  await runTransferBatch('move', back.map(({ src, dstDir, name }) => async () => {
+    const { jobId } = await trpc.fs.move.mutate({ src, dstDir })
+    await awaitJob(jobId)
+    const now = `${dstDir === '/' ? '' : dstDir}/${src.split('/').pop()}`
+    if (src.split('/').pop() !== name) {
+      const { jobId: renameJob } = await trpc.fs.rename.mutate({ path: now, newName: name })
+      await awaitJob(renameJob)
+    }
+  }))
+  const dirs = [...new Set([...back.map(b => b.dstDir), ...moved.map(m => m.to.slice(0, m.to.lastIndexOf('/')) || '/')])]
   announceFolderChanges(dirs)
   if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
 }

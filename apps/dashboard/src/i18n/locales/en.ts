@@ -383,6 +383,8 @@ export default {
     },
   },
   files: {
+    moved: '{count} item(s) moved to {dir}',
+    undo: 'Undo',
     conflict: {
       title: 'This name is already taken',
       messageFile: 'A file named "{name}" already exists in {dir}.',
