@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { tr } from './tr'
 
 // Dragging files and folders inside the file manager, also from one window to
 // another: onto a folder, a place, a crumb or another window's open folder
@@ -19,9 +20,29 @@ export function dropAction(e: { ctrlKey: boolean; altKey: boolean }): DropAction
 
 export const fileDrag = ref<FileDrag | null>(null)
 
+/** What the drag preview says: the item's name, or how many items. */
+export function dragLabel(paths: string[]): string {
+  if (paths.length === 1) return paths[0]!.split('/').pop() || paths[0]!
+  return tr('lib.file_drag.items', `${paths.length} items`, { count: paths.length })
+}
+
+// A small chip under the pointer instead of the browser's ghost of the row:
+// with several items selected, the ghost showed only the one under the pointer.
+function setDragPreview(dt: DataTransfer, paths: string[]): void {
+  if (typeof document === 'undefined' || typeof dt.setDragImage !== 'function') return
+  const chip = document.createElement('div')
+  chip.textContent = dragLabel(paths)
+  chip.className = 'fixed -top-24 left-0 max-w-64 truncate rounded-field bg-primary px-2.5 py-1 text-xs font-semibold text-primary-content shadow-md'
+  document.body.appendChild(chip)
+  dt.setDragImage(chip, -12, -8)
+  // The browser takes its picture now; the element is not needed after.
+  setTimeout(() => chip.remove(), 0)
+}
+
 export function startFileDrag(e: DragEvent, paths: string[], dirs: string[]): void {
   fileDrag.value = { paths, dirs }
   if (e.dataTransfer) {
+    setDragPreview(e.dataTransfer, paths)
     // Moving or copying into a folder, or linking it as a bookmark.
     e.dataTransfer.effectAllowed = 'all'
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(paths))

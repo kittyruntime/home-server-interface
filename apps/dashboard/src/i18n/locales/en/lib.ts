@@ -53,6 +53,7 @@ export default {
     theOperationDidNotFinish: 'The operation did not finish within {p0} s. It may still be running; refresh to check.',
     operationFailed: 'Operation failed',
   },
+  file_drag: { items: '{count} items' },
   transfers: {
     copyFailed: 'Copy: {failed} of {total} failed ({error})',
     moveFailed: 'Move: {failed} of {total} failed ({error})',

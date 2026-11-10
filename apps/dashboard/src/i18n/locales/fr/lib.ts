@@ -50,6 +50,7 @@ export default {
     theOperationDidNotFinish: 'L’opération ne s’est pas terminée en {p0} s. Elle tourne peut-être encore ; actualisez pour vérifier.',
     operationFailed: 'L’opération a échoué',
   },
+  file_drag: { items: '{count} éléments' },
   transfers: {
     copyFailed: 'Copie : {failed} sur {total} en échec ({error})',
     moveFailed: 'Déplacement : {failed} sur {total} en échec ({error})',
