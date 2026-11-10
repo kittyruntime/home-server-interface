@@ -46,7 +46,7 @@ const dirName = (path: string) => path.split('/').pop() || path
     @close="onNativeClose"
   >
     <Transition name="ui-pop" appear @after-leave="finish">
-      <div v-if="open && q" class="modal-box flex w-full flex-col gap-4 sm:max-w-md">
+      <div v-if="open && q" class="modal-box flex w-full flex-col gap-4 sm:max-w-lg">
         <div class="flex flex-col gap-2">
           <h2 :id="titleId" class="text-lg font-semibold">{{ t('files.conflict.title') }}</h2>
           <p :id="descId" class="text-sm text-base-content/70">
@@ -57,11 +57,14 @@ const dirName = (path: string) => path.split('/').pop() || path
           <Checkbox v-model="all" />
           {{ t('files.conflict.applyToAll', { count: q.remaining }) }}
         </label>
-        <div class="flex flex-col gap-2 sm:flex-row-reverse">
-          <Button variant="default" autofocus @click="choose('keep')">{{ t('files.conflict.keepBoth') }}</Button>
+        <!-- Phone: stacked, the safe choice first. Wider: Cancel on the left,
+             the three answers on the right. -->
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Button variant="ghost" class="order-last sm:order-first" @click="choose('cancel')">{{ t('ui.shared.ConfirmDialog.cancel') }}</Button>
+          <div class="hidden flex-1 sm:block" />
+          <Button variant="outline" class="sm:order-none" @click="choose('skip')">{{ t('files.conflict.skip') }}</Button>
           <Button variant="destructive" @click="choose('replace')">{{ t('files.conflict.replace') }}</Button>
-          <Button variant="outline" @click="choose('skip')">{{ t('files.conflict.skip') }}</Button>
-          <Button variant="ghost" class="sm:me-auto" @click="choose('cancel')">{{ t('ui.shared.ConfirmDialog.cancel') }}</Button>
+          <Button variant="default" class="order-first sm:order-none" autofocus @click="choose('keep')">{{ t('files.conflict.keepBoth') }}</Button>
         </div>
       </div>
     </Transition>

@@ -572,26 +572,21 @@ function moveInto(dst: string, paths: string[], action: DropAction = 'move') {
   void transfer(action, paths, dst)
 }
 
-// The names already in dst: the open folder's list, or a quick listing.
-async function namesIn(dst: string): Promise<Set<string>> {
-  if (dst === currentPath.value) return new Set(entries.value.map(e => e.name))
-  try {
-    return new Set(((await trpc.fs.list.query({ path: dst })) as Entry[]).map(e => e.name))
-  } catch {
-    return new Set() // unreadable here: the NAS numbers a taken name anyway
-  }
+// What is already in dst (name to type): the open folder's list, or a quick listing.
+async function itemsIn(dst: string): Promise<Map<string, Entry['type']>> {
+  const list = dst === currentPath.value ? entries.value : await trpc.fs.list.query({ path: dst }).then(l => l as Entry[]).catch(() => [] as Entry[])
+  return new Map(list.map(e => [e.name, e.type]))
 }
 
 async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   const mode = kind === 'copy' ? 'copy' : 'cut'
   // A taken name asks: replace, keep both or skip (or cancel everything).
-  const existing = await namesIn(dst)
-  const plan = await planTransfer(paths, dst, existing, (src, remaining) => askConflict({
-    name: src.split('/').pop() || src,
-    dir: dst,
-    isDir: entries.value.find(e => e.path === src)?.type === 'dir',
-    remaining,
-  }))
+  const existing = await itemsIn(dst)
+  const plan = await planTransfer(paths, dst, new Set(existing.keys()), (src, remaining) => {
+    const name = src.split('/').pop() || src
+    // The message is about the item already there, the one a replace deletes.
+    return askConflict({ name, dir: dst, isDir: existing.get(name) === 'dir', remaining })
+  })
   if (!plan || plan.length === 0) return
   if (mode === 'cut') pendingPaths.value = plan.map(p => p.src)
   const moved: MovedItem[] = []
@@ -1114,6 +1109,7 @@ watch(pendingFolder, path => {
 
           <!-- Grid view -->
           <FileGridView
+            :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"
             v-if="viewMode === 'grid'"
@@ -1138,6 +1134,7 @@ watch(pendingFolder, path => {
 
           <!-- List view -->
           <FileListView
+            :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"
             v-else
