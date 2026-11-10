@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDesktop } from '../../lib/desktop'
+import { shownWindows } from '../../lib/desktop-order'
 import { useWallpaper } from '../../lib/wallpaper'
 import type { Widget, WidgetType } from '../../lib/dashboard-widgets'
 import DesktopWindow from './DesktopWindow.vue'
@@ -58,9 +59,7 @@ onMounted(() => {
 })
 onUnmounted(() => window.removeEventListener('resize', onResize))
 
-const visibleWindows = computed(() =>
-  windows.value.filter(w => !w.minimized).slice().sort((a, b) => a.zIndex - b.zIndex)
-)
+const visibleWindows = computed(() => shownWindows(windows.value))
 
 function isFocused(id: string): boolean {
   const visible = windows.value.filter(w => !w.minimized)
