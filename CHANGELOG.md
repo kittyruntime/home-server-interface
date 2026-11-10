@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.83.0] - 2026-11-10
+
 ### Fixed
 - **Path squeezed in a narrow Files window**: on a wide screen, a small Files
   window showed its path cut to a few letters ("p" for "ui-up"). The file
@@ -2110,7 +2112,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.82.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...HEAD
+[1.83.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.82.0...v1.83.0
 [1.82.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.81.0...v1.82.0
 [1.81.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.5...v1.81.0
 [1.80.5]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.4...v1.80.5
