@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Path squeezed in a narrow Files window**: on a wide screen, a small Files
+  window showed its path cut to a few letters ("p" for "ui-up"). The file
+  manager's toolbar now follows the width of its own window: when narrow, the
+  path gets its own row, and the buttons of a selection wrap instead of being
+  cut off (on a phone too).
+
 ## [1.82.0] - 2026-11-10
 
 ### Added
