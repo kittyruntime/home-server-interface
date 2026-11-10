@@ -39,6 +39,7 @@ type taskMsg struct {
 	ParentPath    string `json:"parentPath"`
 	Name          string `json:"name"`
 	Src           string `json:"src"`
+	OnConflict    string `json:"onConflict"` // copy/move: rename | replace | skip
 	DstDir        string `json:"dstDir"`
 	NewName       string `json:"newName"`
 	DestFile      string `json:"destFile"`
@@ -87,9 +88,11 @@ type syncResponse struct {
 // jobEvent is what the worker publishes back to the backend.
 type jobEvent struct {
 	JobID  string      `json:"jobId"`
-	Status string      `json:"status"` // running | completed | failed
+	Status string      `json:"status"` // running | progress | completed | failed
 	Result interface{} `json:"result,omitempty"`
 	Error  string      `json:"error,omitempty"`
+	// status "progress": bytes done out of the total measured at the start.
+	Progress *progressInfo `json:"progress,omitempty"`
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -390,6 +393,9 @@ func handleWriteChunk(nc *nats.Conn, msg *nats.Msg) {
 		return f.Close()
 	}); err != nil {
 		fsErr = toFsErr(err)
+	}
+	if fsErr == nil {
+		uploadStaging.note(meta.DestDir, meta.UploadID)
 	}
 
 	if fsErr != nil {
@@ -906,7 +912,10 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *copyResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doCopy(ctx, task.Src, task.DstDir)
+				// Measured as the user: no size of what they cannot read.
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(ctx, task.Src))
+				defer stopProgress()
+				res, fsErr = doCopy(pctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -926,7 +935,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *moveResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doMove(ctx, task.Src, task.DstDir)
+				res, fsErr = doMove(ctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1012,7 +1021,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		fsErr = validatePathsScoped(task.AllowedRoot, allPaths...)
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doZip(ctx, task.Paths, task.DstDir, task.Name)
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, treeSize(ctx, task.Paths...))
+				defer stopProgress()
+				fsErr = doZip(pctx, task.Paths, task.DstDir, task.Name)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1032,7 +1043,9 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 
 		if fsErr == nil {
 			err := withUser(task.LinuxUsername, func() error {
-				fsErr = doUnzip(ctx, task.Src, task.DstDir)
+				pctx, stopProgress := trackProgress(ctx, nc, task.JobID, zipContentSize(task.Src))
+				defer stopProgress()
+				fsErr = doUnzip(pctx, task.Src, task.DstDir)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -1262,6 +1275,7 @@ func main() {
 
 	// Periodically clear orphaned share archives (safety net for a build whose
 	// caller timed out or disconnected before rm-temp ran).
+	startStagingSweep()
 	go func() {
 		sweepShareTemps(2 * time.Hour)
 		t := time.NewTicker(30 * time.Minute)

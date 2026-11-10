@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { transferFailureMessage } from '../src/lib/uploads.ts'
+import { stillRunningCount, transferFailureMessage } from '../src/lib/uploads.ts'
 import { JobError } from '../src/lib/jobs.ts'
 
 test('a failed copy names how many failed and the first reason', () => {
@@ -11,4 +11,10 @@ test('a failed copy names how many failed and the first reason', () => {
 test('a copy the user cancelled is not an error', () => {
   assert.equal(transferFailureMessage('copy', 2, [new JobError('Cancelled', 'j1')]), null)
   assert.equal(transferFailureMessage('copy', 2, [new JobError('Cancelled', 'j1'), new JobError('disk full', 'j2')]), 'Copy: 1 of 2 failed (disk full)')
+})
+
+test('a copy still running after the wait is not a failure (the Activity panel follows it)', async () => {
+  const { JobStillRunning } = await import('../src/lib/jobs.ts')
+  assert.equal(transferFailureMessage('copy', 1, [new JobStillRunning('j1')]), null)
+  assert.equal(stillRunningCount([new JobStillRunning('j1'), new JobError('disk full', 'j2')]), 1)
 })

@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Name conflicts ask what to do**: copying or moving onto a name already taken
+  asks to replace the existing item, keep both (the new one is numbered) or skip
+  it, for one item or all the remaining conflicts. Replacing needs the right to
+  delete the existing item; in a place with a trash it goes there first.
+- **Undo a move**: after a move, the toast offers Undo, which puts the items back
+  where they were, under their former names.
+- **Percent and time left** for copies, compressions and extractions in the
+  Activity panel.
+- **Keyboard in the file manager**: arrows (Shift extends the selection), Home and
+  End, Backspace for the parent folder, and typing a name's first letters jumps
+  to it.
+- **Drag preview**: a drag shows the item's name, or how many items.
+
+### Changed
+- **Double click opens, a slow click renames**: a double click on a name opened
+  its rename box; it now opens the item, like the rest of the row. A click on
+  the name of the item already selected alone renames it, as do F2, the menu and
+  the pencil.
+- **Long copies go on in the background**: a copy or move still running after a
+  while was reported as failed in the file manager. It now carries on, followed
+  in the Activity panel.
+
 ### Fixed
+- **Folders of thousands of files**: a folder of 10,000 files froze the page.
+  Only the rows in view are rendered now: it opens in under half a second, and
+  End or a typed name jumps there at once.
+- **Abandoned uploads left on disk**: the staging file of an upload abandoned
+  across a server restart (every update) stayed forever. The NAS removes the
+  ones nobody wrote to for a day.
+- **First click on a window behind**: on the desktop, the first click on a window
+  in the background only brought it forward; it now also does what it was for.
+- **Keys in several Files windows**: with two Files windows open, a key (Delete,
+  Ctrl+V) acted in both. Only the window in front answers now.
 - **Toast buttons**: the Undo and View logs buttons of a toast were vue-sonner's
   black pill, in a font that was not the interface's. They are now small primary
   buttons in the app's style, and toasts use its font.

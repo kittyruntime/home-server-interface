@@ -8,6 +8,7 @@ import { prisma } from "@app/database"
 import crypto from "node:crypto"
 import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
 import { notifyTaskEnd } from "./services/task-notifications"
+import { jobProgress } from "./services/job-progress"
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -280,13 +281,18 @@ export function jobEndSignal(jobId: string, ms: number): { ended: Promise<void>;
 
 export type JobEvent = {
   jobId:   string
-  status:  "running" | "completed" | "failed"
+  status:  "running" | "progress" | "completed" | "failed"
   result?: unknown
   error?:  string
+  /** status "progress": bytes done out of the total. */
+  progress?: { done: number; total: number }
 }
 
 /** Row update for a worker event: "running" stamps the start, an end the finish. */
-export function jobEventUpdate(event: JobEvent, now: Date) {
+/** A worker event that changes the job's row (progress stays in memory). */
+export type JobRowEvent = JobEvent & { status: "running" | "completed" | "failed" }
+
+export function jobEventUpdate(event: JobRowEvent, now: Date) {
   if (event.status === "running") return { status: "running", startedAt: now }
   return {
     status: event.status,
@@ -312,18 +318,24 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
         log.warn("nats: event subscriber received message without jobId, skipping")
         continue
       }
+      if (event.status === "progress") {
+        // In memory only: once a second per job, the database has no use for it.
+        if (event.progress) jobProgress.record(event.jobId, event.progress)
+        continue
+      }
       if (event.status === "running") {
         // A late "running" never overwrites an end that was already recorded.
         await prisma.job.updateMany({
           where: { id: event.jobId, status: { in: ["pending", "running"] } },
-          data: jobEventUpdate(event, new Date()),
+          data: jobEventUpdate(event as JobRowEvent, new Date()),
         })
         continue
       }
       const job = await prisma.job.update({
         where: { id: event.jobId },
-        data: jobEventUpdate(event, new Date()),
+        data: jobEventUpdate(event as JobRowEvent, new Date()),
       })
+      jobProgress.forget(job.id)
       jobEnded.emit(job.id)
       void notifyTaskEnd(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.

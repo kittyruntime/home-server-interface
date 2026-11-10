@@ -58,7 +58,7 @@ func TestDoCopyRejectsNestedSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, fsErr := doCopy(context.Background(), src, dstDir)
+	_, fsErr := doCopy(context.Background(), src, dstDir, conflictRename)
 	if fsErr == nil || fsErr.Code != "EACCES" {
 		t.Fatalf("expected symlink copy to fail with EACCES, got %#v", fsErr)
 	}

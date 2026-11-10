@@ -49,10 +49,13 @@ export default {
   jobs: {
     theOperationDidNotFinish: 'L’opération ne s’est pas terminée en {p0} s. Elle tourne peut-être encore ; actualisez pour vérifier.',
     operationFailed: 'L’opération a échoué',
+    stillRunning: 'Se poursuit en arrière-plan',
   },
+  file_drag: { items: '{count} éléments' },
   transfers: {
     copyFailed: 'Copie : {failed} sur {total} en échec ({error})',
     moveFailed: 'Déplacement : {failed} sur {total} en échec ({error})',
+    stillRunning: '{count} élément(s) encore en transfert : suivez-les dans Activité',
   },
   notifications: { unknownError: 'Erreur inconnue' },
   sidebar_nav: {

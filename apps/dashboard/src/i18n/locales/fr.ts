@@ -384,6 +384,17 @@ export default {
     },
   },
   files: {
+    moved: '{count} élément(s) déplacé(s) vers {dir}',
+    undo: 'Annuler',
+    conflict: {
+      title: 'Ce nom est déjà pris',
+      messageFile: 'Un fichier nommé « {name} » existe déjà dans {dir}.',
+      messageFolder: 'Un dossier nommé « {name} » existe déjà dans {dir}. Le remplacer supprime le dossier existant et tout son contenu.',
+      applyToAll: 'Faire de même pour les {count} conflits',
+      keepBoth: 'Garder les deux',
+      replace: 'Remplacer',
+      skip: 'Ignorer',
+    },
     status: {
       items: '{count} élément(s)',
       selected: '{count} sélectionné(s)',

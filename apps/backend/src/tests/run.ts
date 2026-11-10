@@ -3901,3 +3901,21 @@ async function testReconcileAnnouncesLostJobs() {
   assert.deepEqual(ended, ["a"])
 }
 await testReconcileAnnouncesLostJobs()
+
+async function testJobProgress() {
+  const { createProgressBook } = await import("../services/job-progress")
+  const book = createProgressBook()
+  assert.equal(book.view("j"), null)
+  book.record("j", { done: 0, total: 1000 }, 0)
+  // Too early to tell a rate: the percent only.
+  assert.deepEqual(book.view("j", 1_000), { percent: 0, remainingSec: null })
+  book.record("j", { done: 250, total: 1000 }, 5_000)
+  // 250 bytes in 5 s: 750 left take 15 s.
+  assert.deepEqual(book.view("j", 5_000), { percent: 25, remainingSec: 15 })
+  book.forget("j")
+  assert.equal(book.view("j"), null)
+  // A total of zero never divides by zero.
+  book.record("k", { done: 0, total: 0 }, 0)
+  assert.deepEqual(book.view("k", 10_000), { percent: 0, remainingSec: null })
+}
+await testJobProgress()

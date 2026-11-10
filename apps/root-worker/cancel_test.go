@@ -94,7 +94,7 @@ func TestCancelCopyRemovesOnlyItsOutput(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dst, "keep.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, fsErr := doCopy(cancelledCtx(), src, dst)
+	_, fsErr := doCopy(cancelledCtx(), src, dst, conflictRename)
 	if fsErr == nil || fsErr.Code != "ECANCELED" {
 		t.Fatalf("got %v, want ECANCELED", fsErr)
 	}
@@ -191,7 +191,7 @@ func TestCancelSingleFileCopyLeavesNoPartialFile(t *testing.T) {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, fsErr := doCopy(cancelledCtx(), src, dst)
+	_, fsErr := doCopy(cancelledCtx(), src, dst, conflictRename)
 	if fsErr == nil || fsErr.Code != "ECANCELED" {
 		t.Fatalf("got %v, want ECANCELED", fsErr)
 	}

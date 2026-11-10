@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { onBeforeUnmount, ref, toRef } from 'vue'
+import { useVirtualRows } from '../../lib/virtual-rows'
+import { slowClick } from '../../lib/slow-click'
+import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
 import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
@@ -11,7 +15,7 @@ import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
-defineProps<{
+const props = defineProps<{
   entries: Entry[]
   selected: Set<string>
   renamingPath: string | null
@@ -36,6 +40,30 @@ const emit = defineEmits<{
   openFile: [entry: Entry]
 }>()
 
+// A double click on the row opens; a click on the name of the item already
+// selected alone renames it after a pause (a touch tap opens, the pencil renames).
+// Only the items near the screen: a folder of thousands of files stays responsive.
+const gridRoot = ref<HTMLElement | null>(null)
+const GRID_GAP = 4 // gap-1
+const { visible, range, reveal } = useVirtualRows(toRef(props, 'entries'), gridRoot, {
+  estimate: 120,
+  rowHeight: () => {
+    const card = gridRoot.value?.querySelector('[data-path]')
+    return card ? card.getBoundingClientRect().height + GRID_GAP : null
+  },
+  perRow: () => gridRoot.value ? getComputedStyle(gridRoot.value).gridTemplateColumns.split(' ').filter(Boolean).length : 1,
+})
+/** Scrolls the item into view (the keyboard moves to items not rendered yet). */
+function revealPath(path: string) { reveal(props.entries.findIndex(e => e.path === path)) }
+defineExpose({ revealPath })
+
+const nameClick = slowClick()
+onBeforeUnmount(() => nameClick.cancel())
+function onNameClick(entry: Entry, e: MouseEvent) {
+  if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || isTouchClick(e)) return
+  if (props.selected.size === 1 && props.selected.has(entry.path)) nameClick.arm(() => emit('startRename', entry))
+}
+
 // Folders take items dragged onto them (moved there).
 const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
 
@@ -43,7 +71,7 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
 </script>
 
 <template>
-  <div class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
+  <div ref="gridRoot" class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
     <!-- Upload cards (progress lives in the Transfers tray; this is a placeholder) -->
     <div
       v-for="t in uploadTasks"
@@ -90,8 +118,10 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
       </div>
     </div>
 
+    <!-- Rows of cards out of view are left out: these spacers keep the scroll height. -->
+    <div v-if="range.padTop" class="col-span-full" :style="{ height: `${range.padTop - GRID_GAP}px` }" aria-hidden="true" />
     <div
-      v-for="entry in entries"
+      v-for="entry in visible"
       :key="entry.path"
       :data-path="entry.path"
       :draggable="renamingPath !== entry.path && !pendingPaths?.includes(entry.path)"
@@ -172,12 +202,13 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
       </template>
       <template v-else>
         <span
-          @dblclick.stop="emit('startRename', entry)"
+          @click="onNameClick(entry, $event)"
           class="text-xs leading-tight text-base-content/80 w-full text-center truncate px-1 hover:text-base-content transition-colors"
           :title="entry.name">
           {{ entry.name }}
         </span>
       </template>
     </div>
+    <div v-if="range.padBottom" class="col-span-full" :style="{ height: `${range.padBottom - GRID_GAP}px` }" aria-hidden="true" />
   </div>
 </template>

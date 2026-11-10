@@ -83,7 +83,7 @@ function fromServer(v: ServerTask): ActivityItem {
     owner: v.owner,
     startedAt: v.startedAt,
     percent: v.percent,
-    remainingSec: null,
+    remainingSec: v.remainingSec ?? null,
     cancellable: v.cancellable,
     pausable: false,
     interrupted: false,

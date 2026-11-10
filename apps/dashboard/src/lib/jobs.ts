@@ -4,6 +4,8 @@ import { trpc } from './trpc'
 export interface JobResult {
   status: 'completed' | 'failed' | 'timeout'
   error: string | null
+  /** What a completed job returned (a copy or move: its destination). */
+  result?: unknown
   failureSource?: 'task' | 'observer'
 }
 
@@ -48,7 +50,7 @@ export async function pollJobResult(
     try {
       const j = await trpc.tasks.get.query({ jobId })
       observe?.({ status: j.status, action: j.action })
-      if (j.status === 'completed') return { status: 'completed', error: null }
+      if (j.status === 'completed') return { status: 'completed', error: null, result: j.result }
       if (j.status === 'failed')    return { status: 'failed', error: j.error, failureSource: 'task' }
     } catch (e) {
       return { status: 'failed', error: e instanceof Error ? e.message : String(e), failureSource: 'observer' }
@@ -71,9 +73,26 @@ export class JobError extends Error {
   }
 }
 
-// Waits for a job and throws a JobError unless it completed, so a `track`
-// notification surfaces the real worker error.
+// A job not finished when the caller stopped waiting: it goes on in the
+// background (the Activity panel follows it), which is not a failure.
+export class JobStillRunning extends JobError {
+  readonly stillRunning = true
+  constructor(jobId: string) {
+    super(tr('lib.jobs.stillRunning', 'Still running in the background'), jobId)
+  }
+}
+
+// Waits for a job and returns what it returned; throws a JobError unless it
+// completed (JobStillRunning when the wait ran out), so a `track` notification
+// surfaces the real worker error.
+export async function awaitJobResult(jobId: string, deadlineMs = 30_000, fallback = tr('lib.jobs.operationFailed', 'Operation failed')): Promise<unknown> {
+  const r = await pollJobResult(jobId, deadlineMs)
+  if (r.status === 'completed') return r.result
+  if (r.status === 'timeout') throw new JobStillRunning(jobId)
+  throw new JobError(r.error ?? fallback, jobId)
+}
+
 export async function awaitJob(jobId: string, fallback = tr('lib.jobs.operationFailed', 'Operation failed')): Promise<void> {
-  const result = await pollJobResult(jobId)
-  if (result.status !== 'completed') throw new JobError(result.error ?? fallback, jobId)
+  const r = await pollJobResult(jobId)
+  if (r.status !== 'completed') throw new JobError(r.error ?? fallback, jobId)
 }

@@ -18,7 +18,10 @@ import { useUploads, runTransferBatch } from '../../lib/uploads'
 import { useDesktop } from '../../lib/desktop'
 import { pendingFolder, takeFolderFocus } from '../../lib/app-focus'
 import { downloadUrl } from '../../lib/file-url'
-import { awaitJob } from '../../lib/jobs'
+import { awaitJob, awaitJobResult } from '../../lib/jobs'
+
+// How long a copy or move is waited for before it goes on in the background.
+const TRANSFER_WAIT_MS = 30 * 60_000
 import { useConfirm } from '../../lib/confirm'
 import { useDeleteConfirm } from '../../lib/delete-confirm'
 import { startUpload, hydrateInterruptedUploads } from '../../lib/upload-runner'
@@ -34,6 +37,9 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
+import { askConflict, planTransfer } from '../../lib/conflicts'
+import { undoPlan, type MovedItem } from '../../lib/move-undo'
+import { moveIndex, ownsKeyboard, typeAhead, TYPE_AHEAD_MS } from '../../lib/file-keys'
 import { affectedDirs, announceFolderChanges, folderChanges } from '../../lib/folder-changes'
 import { canDropInto, dropAction, endFileDrag, fileDrag, isInternalDrag, startFileDrag, type DropAction } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
@@ -176,7 +182,62 @@ function closeFilter() {
 
 // Desktop file manager shortcuts, only on the listing: never while typing,
 // renaming, in a dialog or with the settings open.
+// The panel's root: on the desktop only the front window answers keys.
+const rootEl = ref<HTMLElement | null>(null)
+const ownsKeys = () => ownsKeyboard(rootEl.value, !!props.desktopWindow)
+
+// The list or grid shown, to scroll to an item it has not rendered yet.
+const viewRef = ref<{ revealPath(path: string): void } | null>(null)
+
+// Keyboard cursor: the item the arrows move from (the last one moved to).
+const cursorPath = ref<string | null>(null)
+let typed = ''
+let typedAt = 0
+
+function selectAt(index: number, extend: boolean) {
+  const list = displayEntries.value
+  const entry = list[index]
+  if (!entry) return
+  if (extend && selectionAnchor.value) {
+    const a = list.findIndex(e => e.path === selectionAnchor.value)
+    const [from, to] = a < index ? [a, index] : [index, a]
+    selected.value = new Set(list.slice(Math.max(0, from), to + 1).map(e => e.path))
+  } else {
+    selected.value = new Set([entry.path])
+    selectionAnchor.value = entry.path
+  }
+  cursorPath.value = entry.path
+  // The list renders only what is in view: it scrolls to the item first.
+  viewRef.value?.revealPath(entry.path)
+}
+
+// Arrows, Home/End, Backspace (up a folder) and typing a name's first letters.
+function navigationKey(e: KeyboardEvent, plain: boolean): boolean {
+  const list = displayEntries.value
+  const from = cursorPath.value ?? selectionAnchor.value
+  const current = from ? list.findIndex(x => x.path === from) : -1
+  const shiftOnly = e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
+  if (plain || shiftOnly) {
+    const to = moveIndex(current, list.length, e.key)
+    if (to !== null) {
+      if (to >= 0) selectAt(to, shiftOnly)
+      return true
+    }
+  }
+  if (plain && e.key === 'Backspace') { goUp(); return true }
+  if ((plain || shiftOnly) && e.key.length === 1 && e.key !== ' ') {
+    const now = Date.now()
+    typed = now - typedAt > TYPE_AHEAD_MS ? e.key : typed + e.key
+    typedAt = now
+    const i = typeAhead(list.map(x => x.name), typed)
+    if (i >= 0) selectAt(i, false)
+    return true
+  }
+  return false
+}
+
 function fileShortcut(e: KeyboardEvent): boolean {
+  if (!ownsKeys()) return false
   if (showShared.value || renamingPath.value || !currentPath.value || document.querySelector('dialog[open]')) return false
   const el = document.activeElement as HTMLElement | null
   const tag = el?.tagName?.toLowerCase()
@@ -196,12 +257,13 @@ function fileShortcut(e: KeyboardEvent): boolean {
   else if (ctrl && key === 'c' && selected.value.size && !window.getSelection()?.toString()) doCopy()
   else if (ctrl && key === 'v' && clipboard.value) void doPaste()
   else if (ctrl && key === 'a' && displayEntries.value.length) selectAll()
-  else handled = false
+  else handled = navigationKey(e, plain)
   if (handled) e.preventDefault()
   return handled
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
+  if (!ownsKeys()) return
   if (fileShortcut(e)) return
   // Ctrl+H shows or hides dotfiles, as in desktop file managers.
   if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'h' && !showShared.value) {
@@ -514,26 +576,68 @@ function moveInto(dst: string, paths: string[], action: DropAction = 'move') {
   void transfer(action, paths, dst)
 }
 
+// What is already in dst (name to type): the open folder's list, or a quick listing.
+async function itemsIn(dst: string): Promise<Map<string, Entry['type']>> {
+  const list = dst === currentPath.value ? entries.value : await trpc.fs.list.query({ path: dst }).then(l => l as Entry[]).catch(() => [] as Entry[])
+  return new Map(list.map(e => [e.name, e.type]))
+}
+
 async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   const mode = kind === 'copy' ? 'copy' : 'cut'
-  if (mode === 'cut') pendingPaths.value = [...paths]
+  // A taken name asks: replace, keep both or skip (or cancel everything).
+  const existing = await itemsIn(dst)
+  const plan = await planTransfer(paths, dst, new Set(existing.keys()), (src, remaining) => {
+    const name = src.split('/').pop() || src
+    // The message is about the item already there, the one a replace deletes.
+    return askConflict({ name, dir: dst, isDir: existing.get(name) === 'dir', remaining })
+  })
+  if (!plan || plan.length === 0) return
+  if (mode === 'cut') pendingPaths.value = plan.map(p => p.src)
+  const moved: MovedItem[] = []
   try {
     await runTransferBatch(
       mode === 'copy' ? 'copy' : 'move',
-      paths.map(src => async () => {
+      plan.map(({ src, onConflict }) => async () => {
         const { jobId } = mode === 'copy'
-          ? await trpc.fs.copy.mutate({ src, dstDir: dst })
-          : await trpc.fs.move.mutate({ src, dstDir: dst })
-        await awaitJob(jobId)
+          ? await trpc.fs.copy.mutate({ src, dstDir: dst, onConflict })
+          : await trpc.fs.move.mutate({ src, dstDir: dst, onConflict })
+        // Long transfers go on in the background, followed in Activity.
+        const result = await awaitJobResult(jobId, TRANSFER_WAIT_MS) as { dst?: string } | null
+        moved.push({ from: src, to: result?.dst ?? `${dst === '/' ? '' : dst}/${src.split('/').pop()}` })
       })
     )
   } finally {
     pendingPaths.value = []
   }
+  // A move can be undone, unless it replaced something (that item is gone).
+  if (mode === 'cut' && moved.length > 0 && plan.every(p => p.onConflict !== 'replace')) {
+    toast.success(t('files.moved', { count: moved.length, dir: dst.split('/').pop() || '/' }), {
+      label: t('files.undo'),
+      run: () => { void undoMoves(moved) },
+    })
+  }
+  const done = plan.map(p => p.src)
   clearSelection()
   // Every window showing a changed folder refreshes, this one included; this
   // one also when the items went into a subfolder of what it shows.
-  const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', paths, dst)
+  const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', done, dst)
+  announceFolderChanges(dirs)
+  if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
+}
+
+// Puts moved items back where they were, under their former names.
+async function undoMoves(moved: MovedItem[]) {
+  const back = undoPlan(moved)
+  await runTransferBatch('move', back.map(({ src, dstDir, name }) => async () => {
+    const { jobId } = await trpc.fs.move.mutate({ src, dstDir })
+    await awaitJob(jobId)
+    const now = `${dstDir === '/' ? '' : dstDir}/${src.split('/').pop()}`
+    if (src.split('/').pop() !== name) {
+      const { jobId: renameJob } = await trpc.fs.rename.mutate({ path: now, newName: name })
+      await awaitJob(renameJob)
+    }
+  }))
+  const dirs = [...new Set([...back.map(b => b.dstDir), ...moved.map(m => m.to.slice(0, m.to.lastIndexOf('/')) || '/')])]
   announceFolderChanges(dirs)
   if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
 }
@@ -813,7 +917,7 @@ watch(pendingFolder, path => {
 </script>
 
 <template>
-  <div class="flex h-full relative overflow-hidden" @click="clearSelection">
+  <div ref="rootEl" class="flex h-full relative overflow-hidden" @click="clearSelection">
 
     <!-- Mobile sidebar overlay -->
     <div
@@ -1009,6 +1113,8 @@ watch(pendingFolder, path => {
 
           <!-- Grid view -->
           <FileGridView
+            ref="viewRef"
+            :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"
             v-if="viewMode === 'grid'"
@@ -1033,6 +1139,8 @@ watch(pendingFolder, path => {
 
           <!-- List view -->
           <FileListView
+            ref="viewRef"
+            :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"
             v-else

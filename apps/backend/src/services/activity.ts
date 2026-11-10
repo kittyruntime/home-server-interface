@@ -1,6 +1,7 @@
 import type { BackupStatus } from "./backup-status"
 import type { UpdateAttempt } from "./update-watch"
 import { decodeJobMeta, type JobKind, type JobMeta } from "./job-meta"
+import type { ProgressView } from "./job-progress"
 
 // What the Activity panel lists: the viewer's background jobs, other users'
 // for an administrator, and what the system itself runs (backups, updates).
@@ -25,11 +26,13 @@ export interface TaskView {
   createdAt: string
   startedAt: string | null
   percent: number | null
+  /** Once the rate is known (copies, archives). */
+  remainingSec: number | null
   /** The viewer may cancel it (their own copy, move, zip or unzip). */
   cancellable: boolean
 }
 
-export interface TaskHistoryView extends Omit<TaskView, "status" | "percent" | "cancellable"> {
+export interface TaskHistoryView extends Omit<TaskView, "status" | "percent" | "remainingSec" | "cancellable"> {
   status: "completed" | "failed" | "cancelled"
   finishedAt: string | null
   error: string | null
@@ -82,11 +85,12 @@ export function canCancel(job: { userId: string | null; action: string; status: 
     && (job.status === "pending" || job.status === "running")
 }
 
-export function toTaskView(job: JobRow, viewerId: string, usernames: Map<string, string>): TaskView {
+export function toTaskView(job: JobRow, viewerId: string, usernames: Map<string, string>, progress: ProgressView | null = null): TaskView {
   return {
     ...base(job, viewerId, usernames),
     status: job.status === "running" ? "running" : "queued",
-    percent: null,
+    percent: progress?.percent ?? null,
+    remainingSec: progress?.remainingSec ?? null,
     cancellable: !job.cancelledAt && canCancel(job, viewerId),
   }
 }
@@ -112,6 +116,7 @@ export function systemTasks(backup: Pick<BackupStatus, "plans"> | null, attempt:
       createdAt: plan.last.start,
       startedAt: plan.last.start,
       percent: typeof pct === "number" ? Math.round(pct * 100) : null,
+      remainingSec: null,
       cancellable: false,
     })
   }
@@ -125,6 +130,7 @@ export function systemTasks(backup: Pick<BackupStatus, "plans"> | null, attempt:
       createdAt: attempt.requestedAt,
       startedAt: attempt.requestedAt,
       percent: null,
+      remainingSec: null,
       cancellable: false,
     })
   }

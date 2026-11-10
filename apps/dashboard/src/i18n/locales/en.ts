@@ -383,6 +383,17 @@ export default {
     },
   },
   files: {
+    moved: '{count} item(s) moved to {dir}',
+    undo: 'Undo',
+    conflict: {
+      title: 'This name is already taken',
+      messageFile: 'A file named "{name}" already exists in {dir}.',
+      messageFolder: 'A folder named "{name}" already exists in {dir}. Replacing it deletes the existing folder and everything in it.',
+      applyToAll: 'Do the same for the {count} conflicts',
+      keepBoth: 'Keep both',
+      replace: 'Replace',
+      skip: 'Skip',
+    },
     status: {
       items: '{count} item(s)',
       selected: '{count} selected',

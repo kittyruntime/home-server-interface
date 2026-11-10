@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { canDropInto, dropAction } from '../src/lib/file-drag.ts'
+import { canDropInto, dragLabel, dropAction } from '../src/lib/file-drag.ts'
 
 const drag = (...paths: string[]) => ({ paths, dirs: [] })
 
@@ -30,4 +30,9 @@ test('a drop copies with Ctrl or Alt held, else moves', () => {
 test('the open folder of another window accepts items from elsewhere only', () => {
   assert.equal(canDropInto(drag('/srv/games/zelda.zip'), '/srv/games/switch'), true)
   assert.equal(canDropInto(drag('/srv/games/zelda.zip'), '/srv/games'), false)
+})
+
+test('the drag preview names one item, or counts several', () => {
+  assert.equal(dragLabel(['/srv/games/zelda.zip']), 'zelda.zip')
+  assert.equal(dragLabel(['/srv/a', '/srv/b', '/srv/c']), '3 items')
 })
