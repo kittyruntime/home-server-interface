@@ -39,6 +39,7 @@ type taskMsg struct {
 	ParentPath    string `json:"parentPath"`
 	Name          string `json:"name"`
 	Src           string `json:"src"`
+	OnConflict    string `json:"onConflict"` // copy/move: rename | replace | skip
 	DstDir        string `json:"dstDir"`
 	NewName       string `json:"newName"`
 	DestFile      string `json:"destFile"`
@@ -909,7 +910,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *copyResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doCopy(ctx, task.Src, task.DstDir)
+				res, fsErr = doCopy(ctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
 				}
@@ -929,7 +930,7 @@ func handleTask(nc *nats.Conn, msg *nats.Msg) {
 		if fsErr == nil {
 			var res *moveResult
 			err := withUser(task.LinuxUsername, func() error {
-				res, fsErr = doMove(ctx, task.Src, task.DstDir)
+				res, fsErr = doMove(ctx, task.Src, task.DstDir, task.OnConflict)
 				if fsErr != nil {
 					return fsErr
 				}

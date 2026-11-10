@@ -624,7 +624,69 @@ func copyDir(ctx context.Context, src, dst string, info fs.FileInfo) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, src, dstDir string) (*copyResult, *fsError) {
+// What a copy or move does when its name is already taken in the destination,
+// as the user chose it: number it ("Films (1)"), replace the existing item, or
+// leave both as they are. A move with no choice keeps refusing (EEXIST).
+const (
+	conflictRename  = "rename"
+	conflictReplace = "replace"
+	conflictSkip    = "skip"
+)
+
+// hiddenSibling is a name for staging next to target that nothing else uses.
+var hiddenSeq uint64
+
+func hiddenSibling(target, what string) string {
+	hiddenSeq++
+	return filepath.Join(filepath.Dir(target), fmt.Sprintf(".hsi-%s-%d-%d", what, time.Now().UnixNano(), hiddenSeq))
+}
+
+// swapInto puts staged where target is, then removes the old target. The old
+// item is only deleted once the new one is in place.
+func swapInto(target, staged string) error {
+	old := hiddenSibling(target, "replaced")
+	if err := os.Rename(target, old); err != nil {
+		return err
+	}
+	if err := os.Rename(staged, target); err != nil {
+		_ = os.Rename(old, target)
+		return err
+	}
+	if err := os.RemoveAll(old); err != nil {
+		logger.Warn("replace: the replaced item could not be removed", "path", old, "error", err)
+	}
+	return nil
+}
+
+// errReplaceHolder: replacing the folder that holds the item would delete it.
+var errReplaceHolder = &fsError{Code: "EINVAL", Message: "cannot replace the folder that holds the item"}
+
+func holds(dir, path string) bool {
+	rel, err := filepath.Rel(dir, path)
+	return err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func doCopy(ctx context.Context, src, dstDir, onConflict string) (*copyResult, *fsError) {
+	target := filepath.Join(dstDir, filepath.Base(src))
+	_, statErr := os.Lstat(target)
+	taken := statErr == nil && filepath.Clean(target) != filepath.Clean(src)
+	switch {
+	case taken && onConflict == conflictSkip:
+		return &copyResult{Ok: true, Dst: target}, nil
+	case taken && onConflict == conflictReplace:
+		if holds(target, src) {
+			return nil, errReplaceHolder
+		}
+		staged := hiddenSibling(target, "copy")
+		if err := copyAll(ctx, src, staged); err != nil {
+			return nil, asFsErr(err) // copyAll removed what it wrote
+		}
+		if err := swapInto(target, staged); err != nil {
+			_ = os.RemoveAll(staged)
+			return nil, mapOsErr(err)
+		}
+		return &copyResult{Ok: true, Dst: target}, nil
+	}
 	dst := uniqueDst(src, dstDir)
 	if err := copyAll(ctx, src, dst); err != nil {
 		return nil, asFsErr(err)
@@ -639,10 +701,22 @@ type moveResult struct {
 	Dst string `json:"dst"`
 }
 
-func doMove(ctx context.Context, src, dstDir string) (*moveResult, *fsError) {
+func doMove(ctx context.Context, src, dstDir, onConflict string) (*moveResult, *fsError) {
 	dst := filepath.Join(dstDir, filepath.Base(src))
-	if _, err := os.Lstat(dst); err == nil {
-		return nil, &fsError{Code: "EEXIST", Message: "destination already exists"}
+	if _, err := os.Lstat(dst); err == nil && filepath.Clean(dst) != filepath.Clean(src) {
+		switch onConflict {
+		case conflictSkip:
+			return &moveResult{Ok: true, Dst: dst}, nil
+		case conflictReplace:
+			if fsErr := moveReplacing(ctx, src, dst); fsErr != nil {
+				return nil, fsErr
+			}
+			return &moveResult{Ok: true, Dst: dst}, nil
+		case conflictRename:
+			dst = uniqueDst(src, dstDir)
+		default:
+			return nil, &fsError{Code: "EEXIST", Message: "destination already exists"}
+		}
 	}
 	err := os.Rename(src, dst)
 	if err != nil {
@@ -658,6 +732,41 @@ func doMove(ctx context.Context, src, dstDir string) (*moveResult, *fsError) {
 		return nil, mapOsErr(err)
 	}
 	return &moveResult{Ok: true, Dst: dst}, nil
+}
+
+// moveReplacing moves src over the existing target: staged beside it first
+// (a rename, or a copy across filesystems), swapped in, and only then are the
+// old target and, for a copy, the source removed. On failure src stays.
+func moveReplacing(ctx context.Context, src, target string) *fsError {
+	if holds(target, src) {
+		return errReplaceHolder
+	}
+	staged := hiddenSibling(target, "move")
+	copied := false
+	if err := os.Rename(src, staged); err != nil {
+		var linkErr *os.LinkError
+		if !errors.As(err, &linkErr) || linkErr.Err != syscall.EXDEV {
+			return mapOsErr(err)
+		}
+		if err := copyAll(ctx, src, staged); err != nil {
+			return asFsErr(err)
+		}
+		copied = true
+	}
+	if err := swapInto(target, staged); err != nil {
+		if copied {
+			_ = os.RemoveAll(staged)
+		} else {
+			_ = os.Rename(staged, src)
+		}
+		return mapOsErr(err)
+	}
+	if copied {
+		if err := os.RemoveAll(src); err != nil {
+			return mapOsErr(err)
+		}
+	}
+	return nil
 }
 
 // moveByCopy moves across filesystems: copy, then remove the source. A cancel

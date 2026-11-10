@@ -107,6 +107,11 @@ function sortEntries(entries: FsEntry[]): FsEntry[] {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
+// A name already taken where items are copied or moved: number the new one,
+// replace the existing item, or skip it (apps/root-worker/fs.go). Without a
+// choice a copy numbers it and a move refuses, as before.
+const zConflict = z.enum(["rename", "replace", "skip"])
+
 export const fsRouter = router({
 
   // ── list (sync) ─────────────────────────────────────────────────────────────
@@ -330,27 +335,27 @@ export const fsRouter = router({
 
   // ── copy (async) ─────────────────────────────────────────────────────────────
   copy: protectedProcedure
-    .input(z.object({ src: z.string(), dstDir: z.string() }))
+    .input(z.object({ src: z.string(), dstDir: z.string(), onConflict: zConflict.optional() }))
     .mutation(async ({ ctx, input }) => {
       const src    = normalize(input.src)
       const dstDir = normalize(input.dstDir)
       const srcRoot = await checkPathPerm(ctx, src,    "canRead")
       const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId, { src, dst: dstDir })
+      const jobId = await publishJob("fs.copy", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "", onConflict: input.onConflict ?? "rename" }, ctx.user.userId, { src, dst: dstDir })
       return { jobId }
     }),
 
   // ── move (async) ─────────────────────────────────────────────────────────────
   move: protectedProcedure
-    .input(z.object({ src: z.string(), dstDir: z.string() }))
+    .input(z.object({ src: z.string(), dstDir: z.string(), onConflict: zConflict.optional() }))
     .mutation(async ({ ctx, input }) => {
       const src    = normalize(input.src)
       const dstDir = normalize(input.dstDir)
       const srcRoot = await checkPathPerm(ctx, src,    "canWrite")
       const dstRoot = await checkPathPerm(ctx, dstDir, "canWrite")
       const linuxUser = await getLinuxUser(ctx)
-      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "" }, ctx.user.userId, { src, dst: dstDir })
+      const jobId = await publishJob("fs.move", { linuxUsername: linuxUser ?? "", src, dstDir, allowedRoot: srcRoot ?? "", dstAllowedRoot: dstRoot ?? "", onConflict: input.onConflict ?? "" }, ctx.user.userId, { src, dst: dstDir })
       return { jobId }
     }),
 

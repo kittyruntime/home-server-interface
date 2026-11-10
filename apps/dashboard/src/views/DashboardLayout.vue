@@ -34,6 +34,8 @@ import AgentRequests from '../components/AgentRequests.vue'
 import { navCapability, refreshAssistantStatus } from '../lib/assistant'
 import { raiseToasts } from '../lib/toast-layer'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import ConflictDialog from '../components/ui/ConflictDialog.vue'
+import { conflictQuestion } from '../lib/conflicts'
 import PlanDialog from '../components/ui/PlanDialog.vue'
 import JobLogsDialog from '../components/JobLogsDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
@@ -494,6 +496,7 @@ onUnmounted(() => {
     <Toaster v-if="!maintenance.kind" position="top-right" close-button />
   </div>
   <ConfirmDialog />
+  <ConflictDialog v-if="conflictQuestion" :key="conflictQuestion.id" />
   <AgentRequests v-if="!maintenance.kind" />
   <PlanDialog />
   <JobLogsDialog v-if="isAdmin" />

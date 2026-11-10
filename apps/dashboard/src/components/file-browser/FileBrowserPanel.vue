@@ -34,6 +34,7 @@ import FilePropertiesModal from './FilePropertiesModal.vue'
 import DisplaySettings from './DisplaySettings.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFilePrefs } from '../../lib/file-prefs'
+import { askConflict, planTransfer } from '../../lib/conflicts'
 import { affectedDirs, announceFolderChanges, folderChanges } from '../../lib/folder-changes'
 import { canDropInto, dropAction, endFileDrag, fileDrag, isInternalDrag, startFileDrag, type DropAction } from '../../lib/file-drag'
 import { isBookmarked, moveBookmark, placeFor, renameBookmark, toggleBookmark, type Bookmark } from '../../lib/bookmarks'
@@ -514,26 +515,46 @@ function moveInto(dst: string, paths: string[], action: DropAction = 'move') {
   void transfer(action, paths, dst)
 }
 
+// The names already in dst: the open folder's list, or a quick listing.
+async function namesIn(dst: string): Promise<Set<string>> {
+  if (dst === currentPath.value) return new Set(entries.value.map(e => e.name))
+  try {
+    return new Set(((await trpc.fs.list.query({ path: dst })) as Entry[]).map(e => e.name))
+  } catch {
+    return new Set() // unreadable here: the NAS numbers a taken name anyway
+  }
+}
+
 async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
   const mode = kind === 'copy' ? 'copy' : 'cut'
-  if (mode === 'cut') pendingPaths.value = [...paths]
+  // A taken name asks: replace, keep both or skip (or cancel everything).
+  const existing = await namesIn(dst)
+  const plan = await planTransfer(paths, dst, existing, (src, remaining) => askConflict({
+    name: src.split('/').pop() || src,
+    dir: dst,
+    isDir: entries.value.find(e => e.path === src)?.type === 'dir',
+    remaining,
+  }))
+  if (!plan || plan.length === 0) return
+  if (mode === 'cut') pendingPaths.value = plan.map(p => p.src)
   try {
     await runTransferBatch(
       mode === 'copy' ? 'copy' : 'move',
-      paths.map(src => async () => {
+      plan.map(({ src, onConflict }) => async () => {
         const { jobId } = mode === 'copy'
-          ? await trpc.fs.copy.mutate({ src, dstDir: dst })
-          : await trpc.fs.move.mutate({ src, dstDir: dst })
+          ? await trpc.fs.copy.mutate({ src, dstDir: dst, onConflict })
+          : await trpc.fs.move.mutate({ src, dstDir: dst, onConflict })
         await awaitJob(jobId)
       })
     )
   } finally {
     pendingPaths.value = []
   }
+  const done = plan.map(p => p.src)
   clearSelection()
   // Every window showing a changed folder refreshes, this one included; this
   // one also when the items went into a subfolder of what it shows.
-  const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', paths, dst)
+  const dirs = affectedDirs(mode === 'copy' ? 'copy' : 'move', done, dst)
   announceFolderChanges(dirs)
   if (!currentPath.value || !dirs.includes(currentPath.value)) refresh()
 }
