@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount, toRef } from 'vue'
+import { onBeforeUnmount, ref, toRef } from 'vue'
 import { useNarrow } from '../../lib/viewport'
-import { useProgressiveList } from '../../lib/progressive-list'
+import { useVirtualRows } from '../../lib/virtual-rows'
 import { slowClick } from '../../lib/slow-click'
 import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
@@ -59,8 +59,15 @@ const emit = defineEmits<{
 // One layout rendered (phone cards or the table), and only the items near the
 // screen: a folder of thousands of files stays responsive.
 const narrow = useNarrow()
-const { visible, sentinel, hasMore } = useProgressiveList(toRef(props, 'entries'), toRef(props, 'selected'))
-const setSentinel = (el: unknown) => { sentinel.value = el instanceof HTMLElement ? el : null }
+const listRoot = ref<HTMLElement | null>(null)
+const setRoot = (el: unknown) => { listRoot.value = el instanceof HTMLElement ? el : ((el as { $el?: unknown } | null)?.$el as HTMLElement | null) ?? null }
+const { visible, range, reveal } = useVirtualRows(toRef(props, 'entries'), listRoot, {
+  estimate: 43,
+  rowHeight: () => listRoot.value?.querySelector('[data-path]')?.getBoundingClientRect().height ?? null,
+})
+/** Scrolls the item into view (the keyboard moves to items not rendered yet). */
+function revealPath(path: string) { reveal(props.entries.findIndex(e => e.path === path)) }
+defineExpose({ revealPath })
 
 const nameClick = slowClick()
 onBeforeUnmount(() => nameClick.cancel())
@@ -90,7 +97,7 @@ function fileExt(name: string): string {
 
 <template>
   <!-- Mobile: cards instead of a table that has nowhere to shrink to. -->
-  <div v-if="narrow" class="divide-y divide-base-300">
+  <div v-if="narrow" :ref="setRoot" class="divide-y divide-base-300">
     <div v-for="t in uploadTasks" :key="t.id" class="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
       <FileTypeIcon :name="t.name" plain class="w-4 h-4 shrink-0" :class="t.status === 'error' ? 'text-error' : t.status === 'paused' ? 'text-warning' : 'text-base-content/70'" aria-hidden="true" />
       <span class="flex-1 min-w-0 truncate text-sm select-none" :class="t.status === 'error' ? 'text-error' : 'text-base-content/80'">{{ t.name }}</span>
@@ -110,6 +117,7 @@ function fileExt(name: string): string {
       <LoadingSpinner class="text-sm text-base-content/70 shrink-0" />
     </div>
 
+    <div v-if="range.padTop" :style="{ height: `${range.padTop}px` }" aria-hidden="true" />
     <article
       v-for="entry in visible"
       :key="entry.path"
@@ -162,7 +170,7 @@ function fileExt(name: string): string {
         <PencilIcon class="size-4" aria-hidden="true" />
       </Button>
     </article>
-    <div v-if="hasMore" :ref="setSentinel" class="h-px" aria-hidden="true" />
+    <div v-if="range.padBottom" :style="{ height: `${range.padBottom}px` }" aria-hidden="true" />
   </div>
 
   <!-- Desktop / tablet: sortable table -->
@@ -192,7 +200,7 @@ function fileExt(name: string): string {
         </TableHead>
       </TableRow>
     </TableHeader>
-    <TableBody class="divide-y divide-base-300">
+    <TableBody :ref="setRoot" class="divide-y divide-base-300">
       <!-- Upload rows (progress lives in the Transfers tray; this is a placeholder) -->
       <TableRow v-for="t in uploadTasks" :key="t.id" class="group">
         <TableCell class="pl-3 pr-1 py-2.5 w-7" />
@@ -236,6 +244,8 @@ function fileExt(name: string): string {
         <TableCell v-for="c in (columns ?? ['size', 'modified'])" :key="c" />
       </TableRow>
 
+      <!-- Rows out of view are left out: these spacers keep the scroll height. -->
+      <tr v-if="range.padTop" aria-hidden="true"><td :colspan="99" class="p-0" :style="{ height: `${range.padTop}px` }" /></tr>
       <TableRow
         v-for="entry in visible"
         :key="entry.path"
@@ -330,8 +340,7 @@ function fileExt(name: string): string {
         <TableCell v-if="shown('modified')" class="px-3 py-2.5 text-right text-base-content/70 text-xs tabular-nums">{{ formatDay(entry.mtime) }}</TableCell>
         <TableCell v-if="shown('type')" class="px-3 py-2.5 text-base-content/70 text-xs">{{ entry.type === 'dir' ? $t('ui.files.FileListView.folder') : (fileExt(entry.name) || '-') }}</TableCell>
       </TableRow>
-      <!-- The next items render as this comes near the end of the scroll area. -->
-      <tr v-if="hasMore" aria-hidden="true"><td :ref="setSentinel" :colspan="99" class="h-px p-0" /></tr>
+      <tr v-if="range.padBottom" aria-hidden="true"><td :colspan="99" class="p-0" :style="{ height: `${range.padBottom}px` }" /></tr>
     </TableBody>
   </Table>
 </template>

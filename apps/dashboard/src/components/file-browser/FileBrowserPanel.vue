@@ -186,6 +186,9 @@ function closeFilter() {
 const rootEl = ref<HTMLElement | null>(null)
 const ownsKeys = () => ownsKeyboard(rootEl.value, !!props.desktopWindow)
 
+// The list or grid shown, to scroll to an item it has not rendered yet.
+const viewRef = ref<{ revealPath(path: string): void } | null>(null)
+
 // Keyboard cursor: the item the arrows move from (the last one moved to).
 const cursorPath = ref<string | null>(null)
 let typed = ''
@@ -204,7 +207,8 @@ function selectAt(index: number, extend: boolean) {
     selectionAnchor.value = entry.path
   }
   cursorPath.value = entry.path
-  void nextTick(() => rootEl.value?.querySelector(`[data-path="${CSS.escape(entry.path)}"]`)?.scrollIntoView({ block: 'nearest' }))
+  // The list renders only what is in view: it scrolls to the item first.
+  viewRef.value?.revealPath(entry.path)
 }
 
 // Arrows, Home/End, Backspace (up a folder) and typing a name's first letters.
@@ -1109,6 +1113,7 @@ watch(pendingFolder, path => {
 
           <!-- Grid view -->
           <FileGridView
+            ref="viewRef"
             :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"
@@ -1134,6 +1139,7 @@ watch(pendingFolder, path => {
 
           <!-- List view -->
           <FileListView
+            ref="viewRef"
             :key="currentPath ?? ''"
             @drag-start="onEntryDragStart"
             @drop-into="moveInto"

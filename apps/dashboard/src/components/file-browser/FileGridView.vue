@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, toRef } from 'vue'
-import { useProgressiveList } from '../../lib/progressive-list'
+import { onBeforeUnmount, ref, toRef } from 'vue'
+import { useVirtualRows } from '../../lib/virtual-rows'
 import { slowClick } from '../../lib/slow-click'
 import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
@@ -43,8 +43,19 @@ const emit = defineEmits<{
 // A double click on the row opens; a click on the name of the item already
 // selected alone renames it after a pause (a touch tap opens, the pencil renames).
 // Only the items near the screen: a folder of thousands of files stays responsive.
-const { visible, sentinel, hasMore } = useProgressiveList(toRef(props, 'entries'), toRef(props, 'selected'))
-const setSentinel = (el: unknown) => { sentinel.value = el instanceof HTMLElement ? el : null }
+const gridRoot = ref<HTMLElement | null>(null)
+const GRID_GAP = 4 // gap-1
+const { visible, range, reveal } = useVirtualRows(toRef(props, 'entries'), gridRoot, {
+  estimate: 120,
+  rowHeight: () => {
+    const card = gridRoot.value?.querySelector('[data-path]')
+    return card ? card.getBoundingClientRect().height + GRID_GAP : null
+  },
+  perRow: () => gridRoot.value ? getComputedStyle(gridRoot.value).gridTemplateColumns.split(' ').filter(Boolean).length : 1,
+})
+/** Scrolls the item into view (the keyboard moves to items not rendered yet). */
+function revealPath(path: string) { reveal(props.entries.findIndex(e => e.path === path)) }
+defineExpose({ revealPath })
 
 const nameClick = slowClick()
 onBeforeUnmount(() => nameClick.cancel())
@@ -60,7 +71,7 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
 </script>
 
 <template>
-  <div class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
+  <div ref="gridRoot" class="p-3 grid gap-1" style="grid-template-columns: repeat(auto-fill, minmax(108px, 1fr))">
     <!-- Upload cards (progress lives in the Transfers tray; this is a placeholder) -->
     <div
       v-for="t in uploadTasks"
@@ -107,6 +118,8 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
       </div>
     </div>
 
+    <!-- Rows of cards out of view are left out: these spacers keep the scroll height. -->
+    <div v-if="range.padTop" class="col-span-full" :style="{ height: `${range.padTop - GRID_GAP}px` }" aria-hidden="true" />
     <div
       v-for="entry in visible"
       :key="entry.path"
@@ -196,7 +209,6 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
         </span>
       </template>
     </div>
-    <!-- The next items render as this comes near the end of the scroll area. -->
-    <div v-if="hasMore" :ref="setSentinel" class="col-span-full h-px" aria-hidden="true" />
+    <div v-if="range.padBottom" class="col-span-full" :style="{ height: `${range.padBottom - GRID_GAP}px` }" aria-hidden="true" />
   </div>
 </template>
