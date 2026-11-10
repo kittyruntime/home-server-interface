@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue'
+import { slowClick } from '../../lib/slow-click'
+import { isTouchClick } from '../../lib/touch'
 import { endFileDrag, useFolderDrop, type DropAction } from '../../lib/file-drag'
 import { Checkbox } from '@/components/ui/checkbox'
 import FileTypeIcon from './FileTypeIcon.vue'
@@ -11,7 +14,7 @@ import type { Transfer } from '../../lib/uploads'
 
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
-defineProps<{
+const props = defineProps<{
   entries: Entry[]
   selected: Set<string>
   renamingPath: string | null
@@ -35,6 +38,15 @@ const emit = defineEmits<{
   'update:renameValue': [value: string]
   openFile: [entry: Entry]
 }>()
+
+// A double click on the row opens; a click on the name of the item already
+// selected alone renames it after a pause (a touch tap opens, the pencil renames).
+const nameClick = slowClick()
+onBeforeUnmount(() => nameClick.cancel())
+function onNameClick(entry: Entry, e: MouseEvent) {
+  if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || isTouchClick(e)) return
+  if (props.selected.size === 1 && props.selected.has(entry.path)) nameClick.arm(() => emit('startRename', entry))
+}
 
 // Folders take items dragged onto them (moved there).
 const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
@@ -172,7 +184,7 @@ const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, p
       </template>
       <template v-else>
         <span
-          @dblclick.stop="emit('startRename', entry)"
+          @click="onNameClick(entry, $event)"
           class="text-xs leading-tight text-base-content/80 w-full text-center truncate px-1 hover:text-base-content transition-colors"
           :title="entry.name">
           {{ entry.name }}
