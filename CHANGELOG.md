@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Toast buttons**: the Undo and View logs buttons of a toast were vue-sonner's
+  black pill, in a font that was not the interface's. They are now small primary
+  buttons in the app's style, and toasts use its font.
+
 ## [1.83.0] - 2026-11-10
 
 ### Fixed
