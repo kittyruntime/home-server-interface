@@ -95,10 +95,11 @@ async function openSearch() {
 </script>
 
 <template>
-  <div
-    class="flex flex-wrap sm:flex-nowrap items-center gap-x-1.5 gap-y-1 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 sm:h-11"
-    @click.stop
-  >
+  <!-- Laid out by its own width (container queries), not the screen's: a
+       narrow window on a wide screen gets the phone layout, the path on its own
+       row, instead of a path squeezed to a few letters. -->
+  <div class="@container flex-shrink-0 border-b border-base-300 bg-base-200" @click.stop>
+  <div class="flex flex-wrap @3xl:flex-nowrap items-center gap-x-1.5 gap-y-1 px-3 py-2 @3xl:h-11">
     <!-- Mobile: places sidebar toggle -->
     <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" :tooltip="t('ui.files.FileToolbar.places')" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
       class="sm:hidden flex-shrink-0"
@@ -114,8 +115,8 @@ async function openSearch() {
 
     <!-- Breadcrumb -->
     <!-- On a phone the actions fill the first row: the path gets its own, scrolled to the current folder. -->
-    <Breadcrumb v-if="currentPath" ref="crumbsEl" class="order-last basis-full grow sm:order-none sm:basis-0 min-w-0 overflow-x-auto [scrollbar-width:none]">
-      <BreadcrumbList class="flex-nowrap gap-1 sm:gap-1">
+    <Breadcrumb v-if="currentPath" ref="crumbsEl" class="order-last basis-full grow @3xl:order-none @3xl:basis-0 min-w-0 overflow-x-auto [scrollbar-width:none]">
+      <BreadcrumbList class="flex-nowrap gap-1">
         <template v-for="(crumb, i) in breadcrumbs" :key="i">
           <BreadcrumbSeparator v-if="i > 0" class="shrink-0" />
           <BreadcrumbItem class="shrink-0 whitespace-nowrap">
@@ -130,10 +131,11 @@ async function openSearch() {
         </template>
       </BreadcrumbList>
     </Breadcrumb>
-    <div v-else class="hidden sm:block flex-1" />
+    <div v-else class="hidden @3xl:block flex-1" />
 
-    <!-- Right-side actions -->
-    <div class="flex items-center gap-0.5 flex-shrink-0 ml-auto">
+    <!-- Right-side actions: they wrap (right-aligned) rather than overflow when
+         a selection adds its buttons to a narrow bar. -->
+    <div class="flex flex-1 @3xl:flex-none flex-wrap items-center justify-end gap-0.5 gap-y-1 min-w-0 ml-auto">
 
       <!-- Selection actions -->
       <template v-if="selectedCount > 0">
@@ -179,8 +181,8 @@ async function openSearch() {
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" size="sm" :aria-label="t('ui.files.FileToolbar.createNewFolderOrFile')" class="gap-1 px-2 text-xs text-base-content/70 data-[state=open]:bg-base-200 data-[state=open]:text-base-content">
             <PlusIcon aria-hidden="true" />
-            <span class="hidden sm:inline">{{ t('ui.files.FileToolbar.new') }}</span>
-            <ChevronDownIcon class="hidden sm:block size-3" aria-hidden="true" />
+            <span class="hidden @xl:inline">{{ t('ui.files.FileToolbar.new') }}</span>
+            <ChevronDownIcon class="hidden @xl:block size-3" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" class="min-w-[160px]">
@@ -199,7 +201,7 @@ async function openSearch() {
       <Button variant="ghost" size="sm" v-if="currentPath" @click="emit('uploadClick')" :tooltip="t('ui.files.FileToolbar.uploadFiles')" :aria-label="t('ui.files.FileToolbar.uploadFiles')"
         class="gap-1 px-2 text-xs text-base-content/70">
         <UploadIcon aria-hidden="true" />
-        <span class="hidden sm:inline">{{ t('ui.files.FileToolbar.upload') }}</span>
+        <span class="hidden @xl:inline">{{ t('ui.files.FileToolbar.upload') }}</span>
       </Button>
 
       <!-- Paste -->
@@ -209,15 +211,15 @@ async function openSearch() {
             ? 'bg-warning/15 text-warning hover:bg-warning/25 hover:text-warning'
             : 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary']">
         <ClipboardPasteIcon aria-hidden="true" />
-        <span class="hidden sm:inline">{{ t('uip.files.FileToolbar.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '', p1: clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }) }}</span>
+        <span class="hidden @xl:inline">{{ t('uip.files.FileToolbar.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '', p1: clipboard.paths.length > 1 ? clipboard.paths.length + ' items' : '' }) }}</span>
       </Button>
 
       <!-- Divider -->
-      <Separator v-if="currentPath" orientation="vertical" class="hidden sm:block data-[orientation=vertical]:h-4 mx-1" />
+      <Separator v-if="currentPath" orientation="vertical" class="hidden @xl:block data-[orientation=vertical]:h-4 mx-1" />
 
       <!-- Refresh: on a phone it stays in the long-press menu, so the actions fit on one row. -->
       <Button variant="ghost" size="icon-sm" v-if="currentPath" @click="emit('refresh')" :tooltip="t('ui.files.FileToolbar.refresh')" :aria-label="t('ui.files.FileToolbar.refreshFolder')"
-        class="hidden sm:inline-flex text-base-content/70 hover:text-base-content">
+        class="hidden @xl:inline-flex text-base-content/70 hover:text-base-content">
         <RefreshCwIcon class="w-4 h-4" aria-hidden="true" />
       </Button>
 
@@ -266,7 +268,7 @@ async function openSearch() {
             @keydown.escape="clearSearch"
             type="text"
             :placeholder="t('ui.files.FileToolbar.search2')"
-            class="h-7 pl-6 pr-6 text-xs w-28 sm:w-36"
+            class="h-7 pl-6 pr-6 text-xs w-28 @xl:w-36"
           />
           <Button variant="ghost" size="icon-xs" @click="clearSearch" :tooltip="t('ui.files.FileToolbar.closeSearch')" :aria-label="t('ui.files.FileToolbar.closeSearch')"
             class="absolute right-0.5 top-1/2 -translate-y-1/2 size-5 text-base-content/70">
@@ -275,6 +277,7 @@ async function openSearch() {
         </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
