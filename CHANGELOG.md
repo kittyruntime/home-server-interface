@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.84.0] - 2026-11-11
+
 ### Added
 - **Name conflicts ask what to do**: copying or moving onto a name already taken
   asks to replace the existing item, keep both (the new one is numbered) or skip
@@ -2150,7 +2152,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.84.0...HEAD
+[1.84.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...v1.84.0
 [1.83.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.82.0...v1.83.0
 [1.82.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.81.0...v1.82.0
 [1.81.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.80.5...v1.81.0
