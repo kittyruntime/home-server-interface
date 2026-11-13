@@ -78,7 +78,11 @@ export const tasksRouter = router({
     .input(z.object({ jobId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const job = await ctx.prisma.job.findUnique({ where: { id: input.jobId } })
-      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
+      // Another user's job is as good as missing: its paths and errors are
+      // theirs (administrators see every job, as in the Activity panel).
+      if (!job || (!ctx.user.isAdmin && job.userId !== ctx.user.userId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
+      }
       return {
         id:     job.id,
         status: job.status as "pending" | "running" | "completed" | "failed",
