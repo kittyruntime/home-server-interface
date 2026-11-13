@@ -3919,3 +3919,21 @@ async function testJobProgress() {
   assert.deepEqual(book.view("k", 10_000), { percent: 0, remainingSec: null })
 }
 await testJobProgress()
+
+async function testTaskGetIsOwnerOnly() {
+  const { tasksRouter } = await import("../trpc/routers/tasks")
+  const job = { id: "7b6f1c2e-1111-4a4a-9a9a-123456789abc", status: "completed", action: "fs.copy", result: null, error: null, userId: "alice" }
+  const ctx = (userId: string, isAdmin: boolean): any => ({
+    user: { userId, isAdmin },
+    prisma: {
+      user: { findUnique: async () => ({ isAdmin, isUserManager: isAdmin, mustChangePassword: false, capabilities: [] }) },
+      job: { findUnique: async () => job },
+    },
+    req: { ip: "127.0.0.1", headers: {} },
+  })
+  // Another user's job is as good as missing: its paths and errors are theirs.
+  await assert.rejects(() => tasksRouter.createCaller(ctx("bob", false)).get({ jobId: job.id }), (e: any) => e.code === "NOT_FOUND")
+  assert.equal((await tasksRouter.createCaller(ctx("alice", false)).get({ jobId: job.id })).status, "completed")
+  assert.equal((await tasksRouter.createCaller(ctx("admin", true)).get({ jobId: job.id })).status, "completed")
+}
+await testTaskGetIsOwnerOnly()

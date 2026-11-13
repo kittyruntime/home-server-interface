@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **A job's details stay its owner's**: anyone signed in could read any
+  background job (its paths and error) by its id. A job is now visible to the
+  user who started it and to administrators only.
+
 ## [1.84.0] - 2026-11-11
 
 ### Added
