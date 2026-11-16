@@ -3,7 +3,7 @@ import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
 import { overlayShares, type ShareChange } from "./sharing-plan"
-import { smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
+import { noteRenderedSmb, smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
 
 /** The settings every smb.sync input carries, so no sync drops them. */
 export async function currentSmbSettings(prisma: PrismaClient, patch?: SmbSettingsPatch) {
@@ -188,7 +188,9 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
  *  reflects the current DB/permission state, no incremental diffing. */
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings: await currentSmbSettings(prisma) })
+    const settings = await currentSmbSettings(prisma)
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings })
+    noteRenderedSmb(settings)
   })
 }
 

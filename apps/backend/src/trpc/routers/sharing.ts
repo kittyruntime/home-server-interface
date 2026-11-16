@@ -18,7 +18,7 @@ import {
   type ShareChange, type ShareOp, type SharePlanDeps,
 } from "../../services/sharing-plan"
 import { planAuditMeta } from "../../services/storage-plan"
-import { getSmbSettings, listBlocks, smbServiceState } from "../../services/smb-events.service"
+import { getSmbSettings, liftBlock, listBlocks, smbServiceState } from "../../services/smb-events.service"
 import { listEvents, reachableShares, repairNetworkPassword, viewerOf, visibleSessions } from "../../services/sharing-view.service"
 import { syncSystemPassword, verifyPassword } from "../../services/user.service"
 import type { Context } from "../context"
@@ -136,8 +136,11 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
         const s = await prisma.smbSettings.update({ where: { id: 1 }, data: patch })
         // Announcements follow the stored settings; a missing tool is shown
         // in the settings, not raised as a failed save.
-        if (patch.discoveryWsd !== undefined || patch.discoveryMdns !== undefined || patch.netbiosName !== undefined) {
-          await requestSync("root.sharing.discovery", { wsd: s.discoveryWsd, mdns: s.discoveryMdns, name: s.netbiosName }).catch(() => {})
+        // Only what changed: a wsdd the admin runs is left alone by a rename.
+        const wsd = patch.discoveryWsd
+        const mdns = patch.discoveryMdns ?? (patch.netbiosName !== undefined && s.discoveryMdns ? true : undefined)
+        if (wsd !== undefined || mdns !== undefined) {
+          await requestSync("root.sharing.discovery", { wsd, mdns, name: s.netbiosName }).catch(() => {})
         }
       },
     }
@@ -309,7 +312,7 @@ export const sharingRouter = router({
     .input(z.object({ ip: z.string().max(64).refine(v => isIP(v) !== 0, "Not an address") }))
     .mutation(async ({ ctx, input }) => {
       ctx.audit.target = input.ip
-      await ctx.prisma.smbBlock.deleteMany({ where: { ip: input.ip } })
+      await liftBlock(ctx.prisma, input.ip)
       await syncShares(ctx.prisma)
       return { ok: true }
     }),

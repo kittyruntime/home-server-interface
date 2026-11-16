@@ -77,13 +77,13 @@ func TestDiscoveryRemovesOnlyItsOwnFile(t *testing.T) {
 	stubSmbRun(t)
 	other := filepath.Join(dir, "ssh.service")
 	_ = os.WriteFile(other, []byte("x"), 0o644)
-	if fe := applySmbDiscovery(false, true, "NAS"); fe != nil {
+	if fe := applySmbDiscovery(nil, ptr(true), "NAS"); fe != nil {
 		t.Fatal(fe)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "hsi-smb.service")); err != nil {
 		t.Fatal("service file not written")
 	}
-	if fe := applySmbDiscovery(false, false, ""); fe != nil {
+	if fe := applySmbDiscovery(nil, ptr(false), ""); fe != nil {
 		t.Fatal(fe)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "hsi-smb.service")); !os.IsNotExist(err) {
@@ -92,7 +92,7 @@ func TestDiscoveryRemovesOnlyItsOwnFile(t *testing.T) {
 	if _, err := os.Stat(other); err != nil {
 		t.Fatal("another service file was removed")
 	}
-	if fe := applySmbDiscovery(true, false, ""); fe == nil || fe.Code != "TOOL_MISSING" {
+	if fe := applySmbDiscovery(ptr(true), nil, ""); fe == nil || fe.Code != "TOOL_MISSING" {
 		t.Fatalf("wsd without wsdd: %v", fe)
 	}
 }
@@ -116,5 +116,31 @@ func TestSmbAuditSupported(t *testing.T) {
 	}
 	if smbAuditSupported("   vfs_full_audit_init\n", true) {
 		t.Fatal("audit without jansson accepted")
+	}
+}
+
+func ptr(b bool) *bool { return &b }
+
+func TestDiscoveryLeavesWsddAloneWhenNotAsked(t *testing.T) {
+	ran := stubSmbRun(t)
+	prevDir, prevLook := avahiServicesDir, hostLookPath
+	avahiServicesDir = t.TempDir()
+	hostLookPath = func(n string) bool { return n == "wsdd" || n == "avahi-daemon" }
+	t.Cleanup(func() { avahiServicesDir, hostLookPath = prevDir, prevLook })
+	// A rename or the macOS switch must not touch a wsdd the admin runs.
+	if fe := applySmbDiscovery(nil, ptr(true), "NAS"); fe != nil {
+		t.Fatal(fe)
+	}
+	if len(*ran) != 0 {
+		t.Fatalf("ran %v without a Windows discovery change", *ran)
+	}
+	if fe := applySmbDiscovery(ptr(false), nil, ""); fe != nil {
+		t.Fatal(fe)
+	}
+	if len(*ran) != 1 || strings.Join((*ran)[0], " ") != "systemctl disable --now wsdd" {
+		t.Fatalf("ran %v", *ran)
+	}
+	if _, err := os.Stat(filepath.Join(avahiServicesDir, "hsi-smb.service")); err != nil {
+		t.Fatal("a Windows-only change removed the macOS announcement")
 	}
 }

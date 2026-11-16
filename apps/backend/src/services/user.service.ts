@@ -121,11 +121,16 @@ export async function syncSystemPassword(
     if (res?.linuxOk === false) {
       log.warn({ username: user.username }, "password-sync: Linux password NOT set: chpasswd failed")
     }
-    return res?.smbOk === true || res?.smbSkipped === true
+    return sambaPasswordWritten(res ?? {})
   } catch (e) {
     log.warn({ err: e }, "password-sync failed (non-fatal)")
     return false
   }
+}
+
+/** The Samba password was set by this sync (skipped is not written). */
+export function sambaPasswordWritten(res: { smbOk?: boolean; smbSkipped?: boolean }): boolean {
+  return res.smbOk === true
 }
 
 export type IdentityStatus = {

@@ -3938,7 +3938,8 @@ function fakeSmbDb(init: { events?: any[]; blocks?: any[]; settings?: any } = {}
     smbBlock: {
       findMany: async ({ where }: any = {}) => db.blocks.filter(b => !where?.until?.gt || b.until > where.until.gt),
       upsert: async ({ where, create, update }: any) => { const b = db.blocks.find(x => x.ip === where.ip); if (b) Object.assign(b, update); else db.blocks.push(create); return create },
-      deleteMany: async ({ where }: any) => { const n = db.blocks.length; db.blocks = db.blocks.filter(b => !(where?.until?.lte ? b.until <= where.until.lte : where?.ip ? b.ip === where.ip : true)); return { count: n - db.blocks.length } },
+      deleteMany: async ({ where }: any) => { const n = db.blocks.length; db.blocks = db.blocks.filter(b => !(where?.until?.lt ? b.until < where.until.lt : where?.until?.lte ? b.until <= where.until.lte : where?.ip ? b.ip === where.ip : true)); return { count: n - db.blocks.length } },
+      updateMany: async ({ where, data }: any) => { const hit = db.blocks.filter(b => b.ip === where.ip && (!where.until?.gt || b.until > where.until.gt)); hit.forEach(b => Object.assign(b, data)); return { count: hit.length } },
     },
   }
   return { db, prisma }
@@ -3985,13 +3986,14 @@ async function testPullSmbEventsAdvancesCursor() {
   const worker: any = async (_s: string, p: any) => {
     asked.push(p)
     return { available: true, cursor: { inode: 1, offset: 200 }, events: [
-      { at: "2026-11-16T12:00:00Z", kind: "auth", result: "ok", user: "alice", ip: "192.168.1.5", machine: "PC" },
+      { at: "2026-11-16T12:00:00Z", kind: "auth", result: "ok", user: "Alice", ip: "192.168.1.5", machine: "PC" },
       { at: "2026-11-16T12:00:01Z", kind: "connect", result: "refused", reason: "no_access", user: "bob", share: "Films" },
     ] }
   }
   assert.equal(await pullSmbEvents(prisma, worker), 2)
   assert.equal(db.events.length, 2)
   assert.ok(db.events[0].at instanceof Date)
+  assert.equal(db.events[0].user, "alice", "Samba accounts ignore case: the journal keeps the account name")
   assert.equal(db.events[1].ip, "", "missing fields are stored empty")
   assert.deepEqual(JSON.parse(db.settings.eventCursor), { inode: 1, offset: 200 })
   await pullSmbEvents(prisma, worker)
@@ -4006,11 +4008,11 @@ async function testPruneKeepsThirtyDays() {
   const day = 86_400_000
   const { db, prisma } = fakeSmbDb({
     events: [{ at: new Date(now.getTime() - 31 * day) }, { at: new Date(now.getTime() - 29 * day) }],
-    blocks: [{ ip: "1.2.3.4", until: new Date(now.getTime() - 1) }, { ip: "1.2.3.5", until: new Date(now.getTime() + day) }],
+    blocks: [{ ip: "1.2.3.3", until: new Date(now.getTime() - 2 * day) }, { ip: "1.2.3.4", until: new Date(now.getTime() - 1) }, { ip: "1.2.3.5", until: new Date(now.getTime() + day) }],
   })
   await pruneSmbEvents(prisma, now)
   assert.equal(db.events.length, 1)
-  assert.deepEqual(db.blocks.map(b => b.ip), ["1.2.3.5"])
+  assert.deepEqual(db.blocks.map(b => b.ip), ["1.2.3.4", "1.2.3.5"], "a block lifted lately is kept to know when it was lifted")
 }
 await testPruneKeepsThirtyDays()
 
@@ -4018,7 +4020,7 @@ async function testAutoBlockThreshold() {
   const { applyAutoBlock } = await import("../services/smb-events.service")
   const now = new Date("2026-11-16T12:00:00Z")
   const refusals = (ip: string, n: number, minutesAgo: number) =>
-    Array.from({ length: n }, () => ({ at: new Date(now.getTime() - minutesAgo * 60_000), result: "refused", ip }))
+    Array.from({ length: n }, () => ({ at: new Date(now.getTime() - minutesAgo * 60_000), result: "refused", reason: "wrong_password", ip }))
   const { db, prisma } = fakeSmbDb({ events: [
     ...refusals("192.168.1.9", 10, 2), ...refusals("192.168.1.8", 9, 2), ...refusals("192.168.1.7", 10, 30),
   ] })
@@ -4033,7 +4035,7 @@ await testAutoBlockThreshold()
 async function testAutoBlockNeverBlocksLoopback() {
   const { applyAutoBlock } = await import("../services/smb-events.service")
   const now = new Date("2026-11-16T12:00:00Z")
-  const ev = (ip: string) => Array.from({ length: 50 }, () => ({ at: now, result: "refused", ip }))
+  const ev = (ip: string) => Array.from({ length: 50 }, () => ({ at: now, result: "refused", reason: "wrong_password", ip }))
   const { prisma } = fakeSmbDb({ events: [...ev("127.0.0.1"), ...ev("::1"), ...ev(""), ...ev("fe80::1%eth0"), ...ev("1.2.3.4 ALL")] })
   assert.deepEqual(await applyAutoBlock(prisma, now), [], "loopback, a zone or junk is never blocked")
   const { normalizeIp } = await import("../services/smb-events.service")
@@ -4050,6 +4052,68 @@ async function testBlockingMarksCallerAddress() {
   assert.deepEqual(rows.map(r => [r.ip, r.mine]), [["192.168.1.8", false], ["192.168.1.9", true]])
 }
 await testBlockingMarksCallerAddress()
+
+async function testAutoBlockCountsOnlyPasswordFailures() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ev = (reason: string, n: number) => Array.from({ length: n }, () => ({ at: now, result: "refused", reason, ip: "192.168.1.9" }))
+  // A PC signed in under a name the NAS does not know gets guest access; one
+  // already blocked keeps knocking; neither is guessing a password.
+  const { prisma } = fakeSmbDb({ events: [...ev("unknown_user", 20), ...ev("blocked", 20), ...ev("no_access", 20)] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), [])
+  const bad = fakeSmbDb({ events: [...ev("wrong_password", 5), ...ev("account_disabled", 5)] })
+  assert.deepEqual(await applyAutoBlock(bad.prisma, now), ["192.168.1.9"])
+}
+await testAutoBlockCountsOnlyPasswordFailures()
+
+async function testAutoBlockNotAgainAfterLift() {
+  const { applyAutoBlock, liftBlock, listBlocks } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ip = "192.168.1.9"
+  const at = (msAgo: number, n: number) => Array.from({ length: n }, () => ({ at: new Date(now.getTime() - msAgo), result: "refused", reason: "wrong_password", ip }))
+  // Expired a minute ago: the refusals that caused it do not block it again.
+  const expired = fakeSmbDb({ events: at(3 * 60_000, 10), blocks: [{ ip, until: new Date(now.getTime() - 60_000) }] })
+  assert.deepEqual(await applyAutoBlock(expired.prisma, now), [])
+  expired.db.events.push(...at(30_000, 10))
+  assert.deepEqual(await applyAutoBlock(expired.prisma, now), [ip], "new failures after the lift still count")
+  // Unblocked by hand: same.
+  const manual = fakeSmbDb({ events: at(60_000, 10), blocks: [{ ip, until: new Date(now.getTime() + 30 * 60_000) }] })
+  await liftBlock(manual.prisma, ip, now)
+  assert.deepEqual(await listBlocks(manual.prisma, undefined, now), [])
+  assert.deepEqual(await applyAutoBlock(manual.prisma, new Date(now.getTime() + 1000)), [])
+}
+await testAutoBlockNotAgainAfterLift()
+
+async function testJournalResyncsOnDrift() {
+  const { smbDrift, noteRenderedSmb } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { prisma } = fakeSmbDb({ blocks: [{ ip: "1.2.3.4", until: new Date(now.getTime() - 1) }] })
+  assert.equal(await smbDrift(prisma, true, now), false, "nothing rendered yet: no opinion")
+  noteRenderedSmb({ hostsDeny: ["1.2.3.4"], audit: true })
+  assert.equal(await smbDrift(prisma, true, now), true, "an expired block still in smb.conf")
+  noteRenderedSmb({ hostsDeny: [], audit: true })
+  assert.equal(await smbDrift(prisma, true, now), false)
+  assert.equal(await smbDrift(prisma, false, now), true, "audit support changed")
+}
+await testJournalResyncsOnDrift()
+
+async function testAuditSupportIsNotStuckOnFalse() {
+  const { smbAuditSupported } = await import("../services/smb-events.service")
+  let installed = false
+  const state = async () => ({ installed, audit: true }) as any
+  assert.equal(await smbAuditSupported(state), false)
+  installed = true // Samba installed while HSI runs
+  assert.equal(await smbAuditSupported(state), true)
+}
+await testAuditSupportIsNotStuckOnFalse()
+
+async function testRepairNeedsTheSambaPasswordWritten() {
+  const { sambaPasswordWritten } = await import("../services/user.service")
+  assert.equal(sambaPasswordWritten({ smbOk: true }), true)
+  assert.equal(sambaPasswordWritten({ smbOk: false, smbSkipped: true }), false, "network sharing turned off for the account: not repaired")
+  assert.equal(sambaPasswordWritten({ smbOk: false }), false)
+}
+await testRepairNeedsTheSambaPasswordWritten()
 
 // Sharing app: what a signed-in user may see of SMB.
 function fakeSharingDb() {

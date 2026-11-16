@@ -71,14 +71,14 @@ export function smbServiceState(): Promise<SmbServiceState> {
 }
 
 // Whether this Samba can write the journal changes with a package upgrade,
-// not between two syncs: asked once per backend run, again after a failure.
+// not between two syncs: a yes is kept for the backend run, a no is asked
+// again, so installing Samba while HSI runs turns the journal on.
 let auditSupport: Promise<boolean> | null = null
-export function smbAuditSupported(): Promise<boolean> {
-  auditSupport ??= smbServiceState().then(s => s.installed && s.audit).catch(() => {
-    auditSupport = null
-    return false
-  })
-  return auditSupport
+export function smbAuditSupported(state: () => Promise<SmbServiceState> = smbServiceState): Promise<boolean> {
+  if (auditSupport) return auditSupport
+  const ask = state().then(s => s.installed && s.audit).catch(() => false)
+  void ask.then(yes => { if (yes) auditSupport = ask })
+  return ask
 }
 
 type WorkerCall = <T>(subject: string, payload: Record<string, unknown>) => Promise<T>
@@ -99,7 +99,7 @@ export async function pullSmbEvents(prisma: Db, worker: WorkerCall = requestSync
     await prisma.shareEvent.createMany({
       data: res.events.map(e => ({
         at: new Date(e.at), kind: e.kind, result: e.result,
-        reason: e.reason ?? "", user: e.user ?? "", ip: e.ip ?? "", machine: e.machine ?? "", share: e.share ?? "",
+        reason: e.reason ?? "", user: (e.user ?? "").toLowerCase(), ip: e.ip ?? "", machine: e.machine ?? "", share: e.share ?? "",
       })),
     })
   }
@@ -109,14 +109,35 @@ export async function pullSmbEvents(prisma: Db, worker: WorkerCall = requestSync
 
 export async function pruneSmbEvents(prisma: Db, now = new Date()): Promise<void> {
   await prisma.shareEvent.deleteMany({ where: { at: { lt: new Date(now.getTime() - SMB_EVENT_RETENTION_DAYS * DAY_MS) } } })
-  await prisma.smbBlock.deleteMany({ where: { until: { lte: now } } })
+  // A lifted block stays a day: auto-block counts only failures after it.
+  await prisma.smbBlock.deleteMany({ where: { until: { lt: new Date(now.getTime() - DAY_MS) } } })
 }
 
-/** Removes blocks whose time is over; true when Samba must be resynced. */
-export async function expireSmbBlocks(prisma: Db, now = new Date()): Promise<boolean> {
-  const { count } = await prisma.smbBlock.deleteMany({ where: { until: { lte: now } } })
-  return count > 0
+/** Lifts a block now; the row stays so older failures are not counted again. */
+export async function liftBlock(prisma: Db, ip: string, now = new Date()): Promise<void> {
+  await prisma.smbBlock.updateMany({ where: { ip, until: { gt: now } }, data: { until: now } })
 }
+
+// What the last successful sync wrote; null until one succeeded.
+let rendered: string | null = null
+const renderKey = (s: { hostsDeny: string[]; audit: boolean }) => JSON.stringify({ deny: [...s.hostsDeny].sort(), audit: s.audit })
+
+export function noteRenderedSmb(s: { hostsDeny: string[]; audit: boolean }): void {
+  rendered = renderKey(s)
+}
+
+/** True when smb.conf no longer matches the blocks and audit support: a
+ *  block expired or was lifted, or Samba gained or lost the audit modules. */
+export async function smbDrift(prisma: Db, audit: boolean, now = new Date()): Promise<boolean> {
+  if (rendered === null) return false
+  const active = await prisma.smbBlock.findMany({ where: { until: { gt: now } } })
+  return renderKey({ hostsDeny: active.map(b => b.ip), audit }) !== rendered
+}
+
+// Failures that mean someone tries passwords: an unknown account name is
+// mapped to guest (a PC signed in under another name), an address already
+// blocked keeps knocking, and a refused share is not a password.
+const BLOCKING_REASONS = ["wrong_password", "account_disabled"]
 
 /** The address as Go's net.ParseIP writes it back, or "" when it is not a
  *  plain address (a zone or anything else is refused, never stored). */
@@ -130,24 +151,34 @@ function isLoopback(ip: string): boolean {
   return ip === "::1" || ip.startsWith("127.")
 }
 
-/** Blocks the addresses with too many refusals in the window; returns the
+/** Blocks the addresses with too many password failures in the window,
+ *  counting only failures after the address's last block ended; returns the
  *  ones newly blocked. Loopback is never blocked. */
 export async function applyAutoBlock(prisma: Db, now = new Date()): Promise<string[]> {
   const s = await getSmbSettings(prisma)
   if (!s.autoBlock) return []
   const since = new Date(now.getTime() - s.blockWindowMin * 60_000)
-  const refused = await prisma.shareEvent.findMany({ where: { result: "refused", at: { gte: since } }, select: { ip: true } })
+  const refused = await prisma.shareEvent.findMany({
+    where: { result: "refused", reason: { in: BLOCKING_REASONS }, at: { gte: since } },
+    select: { ip: true, at: true, reason: true },
+  })
+  const blocks = new Map((await prisma.smbBlock.findMany()).map(b => [b.ip, b.until]))
   const counts = new Map<string, number>()
   for (const e of refused) {
+    if (!BLOCKING_REASONS.includes(e.reason)) continue
     const ip = normalizeIp(e.ip)
-    if (ip && !isLoopback(ip)) counts.set(ip, (counts.get(ip) ?? 0) + 1)
+    if (!ip || isLoopback(ip)) continue
+    const lastEnd = blocks.get(ip)
+    if (lastEnd && e.at <= lastEnd) continue
+    counts.set(ip, (counts.get(ip) ?? 0) + 1)
   }
-  const active = new Set((await prisma.smbBlock.findMany({ where: { until: { gt: now } } })).map(b => b.ip))
   const until = new Date(now.getTime() + s.blockForMin * 60_000)
   const blocked: string[] = []
   for (const [ip, n] of [...counts].sort()) {
-    if (n < s.blockThreshold || active.has(ip)) continue
-    await prisma.smbBlock.upsert({ where: { ip }, create: { ip, until, reason: "auto" }, update: { until, reason: "auto" } })
+    if (n < s.blockThreshold) continue
+    const end = blocks.get(ip)
+    if (end && end > now) continue
+    await prisma.smbBlock.upsert({ where: { ip }, create: { ip, until, reason: "auto" }, update: { until, reason: "auto", createdAt: now } })
     blocked.push(ip)
   }
   return blocked
@@ -175,11 +206,12 @@ export function startSmbJournal(prisma: Db, resync: () => Promise<void>, log: { 
     if (busy) return
     busy = true
     try {
-      let changed = await expireSmbBlocks(prisma)
-      if (await smbAuditSupported()) {
-        if (await pullSmbEvents(prisma) > 0) changed = (await applyAutoBlock(prisma)).length > 0 || changed
-      }
-      if (changed) await resync()
+      const audit = await smbAuditSupported()
+      if (audit && await pullSmbEvents(prisma) > 0) await applyAutoBlock(prisma)
+      // Any difference with what smb.conf holds (a new, expired or lifted
+      // block, audit gained or lost) is written; a failed sync is retried
+      // on the next tick, since the rendered state did not change.
+      if (await smbDrift(prisma, audit)) await resync()
     } catch (e) {
       log.warn({ err: e }, "smb journal: pull failed")
     } finally {

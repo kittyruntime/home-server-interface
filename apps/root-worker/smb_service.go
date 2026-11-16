@@ -157,22 +157,30 @@ func avahiServiceFile(name string) string {
 `
 }
 
-// applySmbDiscovery turns the announcements on or off. Turning one off only
-// removes what HSI added.
-func applySmbDiscovery(wsd, mdns bool, name string) *fsError {
-	if unit := wsddUnit(); unit != "" {
-		verb := "disable"
-		if wsd {
-			verb = "enable"
+// applySmbDiscovery turns the announcements that are asked about on or off
+// (nil leaves one as it is, so a wsdd the admin runs is never touched by an
+// unrelated change). Turning one off only removes what HSI added.
+func applySmbDiscovery(wsd, mdns *bool, name string) *fsError {
+	if wsd != nil {
+		unit := wsddUnit()
+		switch {
+		case unit != "":
+			verb := "disable"
+			if *wsd {
+				verb = "enable"
+			}
+			if err := smbRun("systemctl", verb, "--now", unit); err != nil {
+				return &fsError{Code: "ERR", Message: "systemctl " + verb + " " + unit + " failed: " + err.Error()}
+			}
+		case *wsd:
+			return &fsError{Code: "TOOL_MISSING", Message: "wsdd is not installed"}
 		}
-		if err := smbRun("systemctl", verb, "--now", unit); err != nil {
-			return &fsError{Code: "ERR", Message: "systemctl " + verb + " " + unit + " failed: " + err.Error()}
-		}
-	} else if wsd {
-		return &fsError{Code: "TOOL_MISSING", Message: "wsdd is not installed"}
+	}
+	if mdns == nil {
+		return nil
 	}
 	path := filepath.Join(avahiServicesDir, avahiServiceName)
-	if !mdns {
+	if !*mdns {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return &fsError{Code: "ERR", Message: err.Error()}
 		}
@@ -242,8 +250,8 @@ func handleSharingDisconnect(nc *nats.Conn, msg *nats.Msg) {
 
 func handleSharingDiscovery(nc *nats.Conn, msg *nats.Msg) {
 	var req struct {
-		Wsd  bool   `json:"wsd"`
-		Mdns bool   `json:"mdns"`
+		Wsd  *bool  `json:"wsd"`
+		Mdns *bool  `json:"mdns"`
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
