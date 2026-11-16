@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A complete Sharing app**: a banner tells whether network sharing runs, under
+  which name and how many people are connected, with Start and Restart. Each
+  share opens a detail with the address to copy for Windows, macOS and Linux,
+  which credentials to use, who has access and whether their network password
+  is ready, who is connected right now (with Disconnect), its recent activity
+  and its checks.
+- **Connection journal**: connections and refused attempts of the last 30 days,
+  with the reason in plain words (wrong password, unknown account or no network
+  password yet, no access to this share, address blocked), filterable by share,
+  user, result and period. Repeated attempts show as one line with a count,
+  grouped by day, and new lines appear on their own.
+- **SMB settings**: network name, workgroup, announcing the NAS to Windows
+  (wsdd) and macOS (Avahi) when they are installed, oldest protocol accepted,
+  encryption, and automatic blocking of an address after repeated failed
+  sign-ins (10 in 10 minutes block it 30 minutes by default; loopback never),
+  with the list of blocked addresses and Unblock.
+- **My shares** for every user: the shares they can open, how to connect, their
+  own connections, and a Repair button when their network password is missing.
+- **Hidden shares**: a share can stay out of network browsing and still be
+  opened by its address.
+
+### Changed
+- The Connections and Diagnostics tabs of Sharing are replaced by the share
+  detail and the banner.
+
 ## [1.84.0] - 2026-11-11
 
 ### Added

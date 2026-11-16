@@ -28,6 +28,7 @@ export interface VolumeRemoveDeps {
   smbdInstalled(): Promise<boolean>
   /** Share definitions without the shares of these Places. */
   shareDefsWithout(placeIds: string[]): Promise<unknown[]>
+  smbSettings?(): Promise<unknown>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   deletePlace(id: string): Promise<void>
@@ -73,7 +74,7 @@ async function preview(deps: VolumeRemoveDeps, op: string, input: Record<string,
 async function parts(t: RemoveTarget, deps: VolumeRemoveDeps) {
   let smb: (Preview & { input: Record<string, unknown> }) | null = null
   if (t.shared && await deps.smbdInstalled()) {
-    const smbInput = { shares: await deps.shareDefsWithout(t.places.map(p => p.id)) }
+    const smbInput = { shares: await deps.shareDefsWithout(t.places.map(p => p.id)), settings: await deps.smbSettings?.() }
     smb = { ...await preview(deps, "smb.sync", smbInput), input: smbInput }
   }
   const volume = await preview(deps, "volume.remove", workerInput(t, !!smb))

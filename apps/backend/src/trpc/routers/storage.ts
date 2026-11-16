@@ -9,7 +9,7 @@ import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarg
 import { expandOptions, type ExpandInput, type PendingExpansion } from "../../services/expand-options"
 import type { DescriptionStatus } from "../../services/storage-descriptions"
 import { buildVolumes, type VDev, type VolumeInput } from "../../services/volumes"
-import { desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
+import { currentSmbSettings, desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from "../../services/sharing.service"
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from "../../services/storage-plan"
 import { prisma } from "@app/database"
 import { appSources, fetchVolumes, resumeVolume, volumeStates } from "../../services/volume-guard"
@@ -268,8 +268,9 @@ async function volumeDeps(ctx: Context, input: z.infer<typeof zVolumeInput>, tim
     isAdmin: !!ctx.user?.isAdmin,
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    smbSettings: () => currentSmbSettings(ctx.prisma),
     shareDefs: () => desiredShareDefs(ctx.prisma, { kind: "create", row: {
-      id: "(new)", placeId: "(new place)", smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false, enabled: true,
+      id: "(new)", placeId: "(new place)", smbName: input.share?.smbName ?? null, readOnly: false, guestOk: false, enabled: true, hidden: false,
       place: { name: placeName, path: mp },
     } }),
     serialize: withShareLock,
@@ -322,6 +323,7 @@ function removeDeps(ctx: Context, timeout: number): VolumeRemoveDeps {
     syncAccess: () => syncPlaceAccess(ctx.prisma),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    smbSettings: () => currentSmbSettings(ctx.prisma),
     shareDefsWithout: async (placeIds: string[]) => {
       const gone = await ctx.prisma.place.findMany({ where: { id: { in: placeIds } }, select: { path: true } })
       const paths = new Set(gone.map(p => p.path))

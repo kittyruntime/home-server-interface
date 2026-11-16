@@ -19,6 +19,7 @@ export interface VolumePlanDeps {
   smbdInstalled(): Promise<boolean>
   /** Share definitions with the new share (on the new Place) overlaid. */
   shareDefs(): Promise<unknown[]>
+  smbSettings?(): Promise<unknown>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   createPlace(): Promise<{ id: string }>
@@ -50,7 +51,7 @@ async function parts(input: VolumeInput, deps: VolumePlanDeps) {
   if (input.share) {
     if (!await deps.smbdInstalled())
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Samba is not installed on the host. Run: apt install samba" })
-    const smbInput = { shares: await deps.shareDefs() }
+    const smbInput = { shares: await deps.shareDefs(), settings: await deps.smbSettings?.() }
     smb = { ...await preview(deps, "smb.sync", smbInput), input: smbInput }
   }
   const fingerprint = crypto.createHash("sha256")

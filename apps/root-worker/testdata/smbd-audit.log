@@ -1,0 +1,26 @@
+/usr/bin/smbclient
+[2026/11/16 15:18:02.273172,  0] source3/smbd/server.c:1971(main)
+  smbd version 4.22.11-Debian-4.22.11+dfsg-0+deb13u1 started.
+  Copyright Andrew Tridgell and the Samba Team 1992-2025
+[2026/11/16 15:18:02.275311,  1] source3/profile/profile.c:49(set_profile_level)
+  INFO: Profiling turned OFF from pid 647605
+  {"timestamp": "2026-11-16T15:18:04.364341+0100", "type": "Authentication", "Authentication": {"version": {"major": 1, "minor": 3}, "eventId": 4624, "logonId": "0", "logonType": 3, "status": "NT_STATUS_OK", "localAddress": "ipv4:192.168.1.48:445", "remoteAddress": "ipv4:192.168.1.48:60384", "serviceDescription": "SMB2", "authDescription": null, "clientDomain": "WORKGROUP", "clientAccount": "fxa", "workstation": "HSI", "becameAccount": "fxa", "becameDomain": "HSI", "becameSid": "S-1-5-21-239907619-202450933-1151175918-1006", "mappedAccount": "fxa", "mappedDomain": "WORKGROUP", "netlogonComputer": null, "netlogonTrustAccount": null, "netlogonNegotiateFlags": "0x00000000", "netlogonSecureChannelType": 0, "netlogonTrustAccountSid": null, "passwordType": "NTLMv2", "clientPolicyAccessCheck": null, "serverPolicyAccessCheck": null, "duration": 12227}}
+[2026/11/16 15:18:04.375483,  1] source3/modules/vfs_full_audit.c:637(do_log)
+  fxa|192.168.1.48|hsi|Films|connect|ok|Films
+[2026/11/16 15:18:04.392962,  1] source3/modules/vfs_full_audit.c:637(do_log)
+  fxa|192.168.1.48|hsi|Films|disconnect|ok|Films
+  {"timestamp": "2026-11-16T15:18:04.433753+0100", "type": "Authentication", "Authentication": {"version": {"major": 1, "minor": 3}, "eventId": 4625, "logonId": "0", "logonType": 3, "status": "NT_STATUS_WRONG_PASSWORD", "localAddress": "ipv4:192.168.1.48:445", "remoteAddress": "ipv4:192.168.1.48:60396", "serviceDescription": "SMB2", "authDescription": null, "clientDomain": "WORKGROUP", "clientAccount": "fxa", "workstation": "HSI", "becameAccount": null, "becameDomain": null, "becameSid": null, "mappedAccount": "fxa", "mappedDomain": "WORKGROUP", "netlogonComputer": null, "netlogonTrustAccount": null, "netlogonNegotiateFlags": "0x00000000", "netlogonSecureChannelType": 0, "netlogonTrustAccountSid": null, "passwordType": "NTLMv2", "clientPolicyAccessCheck": null, "serverPolicyAccessCheck": null, "duration": 1010}}
+  {"timestamp": "2026-11-16T15:18:04.473412+0100", "type": "Authentication", "Authentication": {"version": {"major": 1, "minor": 3}, "eventId": 4625, "logonId": "0", "logonType": 3, "status": "NT_STATUS_NO_SUCH_USER", "localAddress": "ipv4:192.168.1.48:445", "remoteAddress": "ipv4:192.168.1.48:60412", "serviceDescription": "SMB2", "authDescription": null, "clientDomain": "WORKGROUP", "clientAccount": "ghost", "workstation": "HSI", "becameAccount": null, "becameDomain": null, "becameSid": null, "mappedAccount": "ghost", "mappedDomain": "WORKGROUP", "netlogonComputer": null, "netlogonTrustAccount": null, "netlogonNegotiateFlags": "0x00000000", "netlogonSecureChannelType": 0, "netlogonTrustAccountSid": null, "passwordType": "NTLMv2", "clientPolicyAccessCheck": null, "serverPolicyAccessCheck": null, "duration": 642}}
+[2026/11/16 15:18:04.474631,  1] source3/smbd/smb2_service.c:328(create_connection_session_info)
+  create_connection_session_info: guest user (from session setup) not permitted to access this share (Films)
+[2026/11/16 15:18:04.474646,  1] source3/smbd/smb2_service.c:519(make_connection_snum)
+  make_connection_snum: create_connection_session_info failed: NT_STATUS_ACCESS_DENIED
+  {"timestamp": "2026-11-16T15:18:04.515534+0100", "type": "Authentication", "Authentication": {"version": {"major": 1, "minor": 3}, "eventId": 4624, "logonId": "0", "logonType": 3, "status": "NT_STATUS_OK", "localAddress": "ipv4:192.168.1.48:445", "remoteAddress": "ipv4:192.168.1.48:60428", "serviceDescription": "SMB2", "authDescription": null, "clientDomain": "WORKGROUP", "clientAccount": "fxb", "workstation": "HSI", "becameAccount": "fxb", "becameDomain": "HSI", "becameSid": "S-1-5-21-239907619-202450933-1151175918-1007", "mappedAccount": "fxb", "mappedDomain": "WORKGROUP", "netlogonComputer": null, "netlogonTrustAccount": null, "netlogonNegotiateFlags": "0x00000000", "netlogonSecureChannelType": 0, "netlogonTrustAccountSid": null, "passwordType": "NTLMv2", "clientPolicyAccessCheck": null, "serverPolicyAccessCheck": null, "duration": 1406}}
+[2026/11/16 15:18:04.519646,  1] source3/smbd/smb2_service.c:337(create_connection_session_info)
+  create_connection_session_info: user 'fxb' (from session setup) not permitted to access this share (Films)
+[2026/11/16 15:18:04.519666,  1] source3/smbd/smb2_service.c:519(make_connection_snum)
+  make_connection_snum: create_connection_session_info failed: NT_STATUS_ACCESS_DENIED
+[2026/11/16 15:18:29.964698,  0, pid=647721] lib/util/access.c:372(allow_access)
+  Denied connection from 10.42.0.4 (10.42.0.4)
+[2026/11/16 15:18:29.965326,  1, pid=647721] source3/smbd/smb2_process.c:1354(smbd_add_connection)
+  Connection denied from ipv4:10.42.0.4:37860 to ipv4:10.42.0.4:445

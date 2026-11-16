@@ -1,18 +1,20 @@
 import { TRPCError } from "@trpc/server"
 import type { PlanApplyResult, PlanStep } from "./storage-plan"
+import type { SmbSettingsPatch } from "./smb-events.service"
 
 // Operation plans for Samba shares (#36): the worker previews smb.conf and the
 // smbd reload for the share definitions as they will be after the change; the
 // database row is written only once that plan ran.
 
-export const SHARE_OPS = ["share.create", "share.update", "share.remove"] as const
+export const SHARE_OPS = ["share.create", "share.update", "share.remove", "smb.settings"] as const
 export type ShareOp = typeof SHARE_OPS[number]
 
-export interface ShareRow { id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; place: { name: string; path: string } }
+export interface ShareRow { id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; hidden: boolean; place: { name: string; path: string } }
 export type ShareChange =
   | { kind: "create"; row: ShareRow }
-  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName">> }
+  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden">> }
   | { kind: "remove"; id: string }
+  | { kind: "settings"; patch: SmbSettingsPatch }
 
 export function overlayShares(rows: ShareRow[], change?: ShareChange): ShareRow[] {
   if (!change) return rows
@@ -20,12 +22,15 @@ export function overlayShares(rows: ShareRow[], change?: ShareChange): ShareRow[
     case "create": return [...rows, change.row]
     case "update": return rows.map(r => (r.id === change.id ? { ...r, ...change.patch } : r))
     case "remove": return rows.filter(r => r.id !== change.id)
+    case "settings": return rows
   }
 }
 
 export interface SharePlanDeps {
   smbdInstalled(): Promise<boolean>
   defs(): Promise<unknown[]>
+  /** The service settings smb.conf is rendered with (absent: the defaults). */
+  smbSettings?(): Promise<unknown>
   worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
   commit(): Promise<unknown>
   /** Runs defs, plan and commit without an automatic resync in between. */
@@ -58,13 +63,17 @@ export function workerError(e: unknown): never {
   throw new TRPCError({ code: code === "ERR" ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message })
 }
 
+async function smbSyncInput(deps: SharePlanDeps): Promise<Record<string, unknown>> {
+  return { shares: await deps.defs(), settings: await deps.smbSettings?.() }
+}
+
 export async function previewShareChange(op: ShareOp, name: string, deps: SharePlanDeps): Promise<{ steps: PlanStep[]; fingerprint: string }> {
   if (!await deps.smbdInstalled()) {
     if (op !== "share.remove") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
     return { steps: [noSambaRemoval(name)], fingerprint: NO_SAMBA_FINGERPRINT }
   }
   try {
-    return await deps.worker("root.plan.preview", { op: "smb.sync", input: { shares: await deps.defs() } })
+    return await deps.worker("root.plan.preview", { op: "smb.sync", input: await smbSyncInput(deps) })
   } catch (e) { workerError(e) }
 }
 
@@ -81,7 +90,7 @@ export async function applyShareChange(op: ShareOp, name: string, fingerprint: s
     return await deps.serialize(async () => {
       let res: PlanApplyResult
       try {
-        res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: { shares: await deps.defs() }, fingerprint })
+        res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: await smbSyncInput(deps), fingerprint })
       } catch (e) { workerError(e) }
       if (!res.ok) { failed = true; return res }
       try {

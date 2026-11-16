@@ -1266,6 +1266,11 @@ func main() {
 		"root.sharing.diag":              handleSharingDiag,
 		"root.sharing.setPassword":       handleSharingSetPassword,
 		"root.sharing.status":            handleSharingStatus,
+		"root.sharing.events":            handleSharingEvents,
+		"root.sharing.service":           handleSharingService,
+		"root.sharing.serviceAction":     handleSharingServiceAction,
+		"root.sharing.disconnect":        handleSharingDisconnect,
+		"root.sharing.discovery":         handleSharingDiscovery,
 	} {
 		h, s := handler, subj // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { serveSync(nc, s, h, msg) }); err != nil {

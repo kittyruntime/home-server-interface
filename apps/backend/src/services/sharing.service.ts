@@ -3,6 +3,12 @@ import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
 import { overlayShares, type ShareChange } from "./sharing-plan"
+import { noteRenderedSmb, smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
+
+/** The settings every smb.sync input carries, so no sync drops them. */
+export async function currentSmbSettings(prisma: PrismaClient, patch?: SmbSettingsPatch) {
+  return workerSmbSettings(prisma, { audit: await smbAuditSupported(), patch })
+}
 
 // Never expose privileged/system accounts over Samba: writing to shares as root
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
@@ -34,6 +40,8 @@ export interface ShareUserEntry {
   username:      string        // HSI username
   linuxUsername: string | null
   write:         boolean
+  /** How the access is granted: directly, or through a group. */
+  via:           "user" | "group"
 }
 
 export interface ResolvedShareUsers {
@@ -75,14 +83,14 @@ export async function resolveShareUsers(
     }),
   ])
 
-  const byUsername = new Map<string, { linux: string | null; write: boolean }>()
-  const add = (u: { username: string; linuxUsername: string | null }, write: boolean) => {
+  const byUsername = new Map<string, { linux: string | null; write: boolean; via: "user" | "group" }>()
+  const add = (u: { username: string; linuxUsername: string | null }, write: boolean, via: "user" | "group") => {
     const cur = byUsername.get(u.username)
     if (cur) cur.write = cur.write || write
-    else byUsername.set(u.username, { linux: u.linuxUsername, write })
+    else byUsername.set(u.username, { linux: u.linuxUsername, write, via })
   }
-  for (const p of userPerms) add({ username: p.user.username, linuxUsername: p.user.username }, p.canWrite)
-  for (const p of groupPerms) for (const m of p.group.members) add({ username: m.user.username, linuxUsername: m.user.username }, p.canWrite)
+  for (const p of userPerms) add({ username: p.user.username, linuxUsername: p.user.username }, p.canWrite, "user")
+  for (const p of groupPerms) for (const m of p.group.members) add({ username: m.user.username, linuxUsername: m.user.username }, p.canWrite, "group")
 
   const validUsers: string[] = []
   const writeUsers: string[] = []
@@ -100,7 +108,7 @@ export async function resolveShareUsers(
   writeUsers.sort()
   excludedUsernames.sort()
   const entries: ShareUserEntry[] = [...byUsername.entries()].map(([username, info]) => ({
-    username, linuxUsername: info.linux, write: info.write,
+    username, linuxUsername: info.linux, write: info.write, via: info.via,
   }))
   return { validUsers, writeUsers, excludedUsernames, entries }
 }
@@ -157,6 +165,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
       path: s.place.path,
       readOnly: s.readOnly,
       guestOk: s.guestOk,
+      hidden: s.hidden,
       validUsers: uniqSorted([...users.validUsers, ...adminLinux]),
       writeUsers: s.readOnly ? [] : uniqSorted([...users.writeUsers, ...adminLinux]),
       unavailable: holdFor(holds, s.place.path) !== null,
@@ -179,7 +188,9 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
  *  reflects the current DB/permission state, no incremental diffing. */
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma) })
+    const settings = await currentSmbSettings(prisma)
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings })
+    noteRenderedSmb(settings)
   })
 }
 

@@ -6,14 +6,14 @@ import (
 )
 
 func TestRenderSmbConfUnavailableShare(t *testing.T) {
-	conf, err := renderSmbConf([]shareDef{{Name: "data", Path: "/mnt/data/share", ValidUsers: []string{"alice"}, Unavailable: true}})
+	conf, err := renderSmbConf([]shareDef{{Name: "data", Path: "/mnt/data/share", ValidUsers: []string{"alice"}, Unavailable: true}}, smbSettings{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(conf, "[data]") || strings.Count(conf, "   available = no\n") != 1 {
 		t.Fatalf("share not disabled exactly once:\n%s", conf)
 	}
-	conf, err = renderSmbConf([]shareDef{{Name: "empty", Path: "/mnt/data/e", Unavailable: true}})
+	conf, err = renderSmbConf([]shareDef{{Name: "empty", Path: "/mnt/data/e", Unavailable: true}}, smbSettings{})
 	if err != nil {
 		t.Fatal(err)
 	}
