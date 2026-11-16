@@ -84,6 +84,7 @@ export default {
     },
     detail: {
       back: 'Partages',
+      guest: 'Invité',
       select: 'Choisissez un partage pour voir comment s’y connecter et qui l’utilise.',
       active: 'Actif',
       disabled: 'Désactivé',

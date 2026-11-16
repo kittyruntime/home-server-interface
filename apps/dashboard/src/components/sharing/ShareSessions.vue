@@ -16,7 +16,7 @@ const { t, locale } = useI18n()
     <p v-if="sessions.length === 0" class="text-sm text-base-content/70">{{ t('sharing.detail.nobody') }}</p>
     <ul v-else class="space-y-1.5">
       <li v-for="s in sessions" :key="`${s.pid}-${s.share}-${s.connectedAt}`" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        <span class="font-medium text-base-content">{{ s.user || 'guest' }}</span>
+        <span class="font-medium text-base-content">{{ s.user || t('sharing.detail.guest') }}</span>
         <span class="text-xs text-base-content/70">{{ s.client }}<template v-if="s.ip && s.ip !== s.client"> · {{ s.ip }}</template></span>
         <span class="text-xs text-base-content/70" :title="formatDateTime(s.connectedAt)">{{ t('sharing.detail.since', { time: relativeTime(s.connectedAt, Date.now(), locale) }) }}</span>
         <Button v-if="canDisconnect && s.pid" variant="ghost" size="xs" class="ml-auto" @click="emit('disconnect', s)">{{ t('sharing.detail.disconnect') }}</Button>

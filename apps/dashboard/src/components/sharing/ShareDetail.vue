@@ -86,7 +86,7 @@ async function remove() {
 
 async function disconnect(session: ShareSession) {
   const share = data.value?.share.name ?? ''
-  const user = session.user || 'guest'
+  const user = session.user || t('sharing.detail.guest')
   if (!await confirm(t('sharing.detail.disconnectConfirm', { user, share }), { confirmLabel: t('sharing.detail.disconnect'), danger: true })) return
   try {
     await trpc.sharing.disconnect.mutate({ pid: session.pid! })

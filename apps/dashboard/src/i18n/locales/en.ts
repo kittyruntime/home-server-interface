@@ -83,6 +83,7 @@ export default {
     },
     detail: {
       back: 'Shares',
+      guest: 'Guest',
       select: 'Pick a share to see how to connect and who uses it.',
       active: 'Active',
       disabled: 'Disabled',
