@@ -8,6 +8,7 @@ import {
   adminLinuxUsers,
   shareExclusionReason,
   desiredShareDefs,
+  currentSmbSettings,
   syncShares,
   withShareLock,
 } from "../../services/sharing.service"
@@ -16,6 +17,7 @@ import {
   type ShareChange, type ShareOp, type SharePlanDeps,
 } from "../../services/sharing-plan"
 import { planAuditMeta } from "../../services/storage-plan"
+import { getSmbSettings } from "../../services/smb-events.service"
 import type { Context } from "../context"
 
 type DirState = {
@@ -48,15 +50,29 @@ const zShareInputs = {
     smbName: z.string().regex(reSmbName).optional(),
     readOnly: z.boolean().default(false),
     guestOk: z.boolean().default(false),
+    hidden: z.boolean().default(false),
   }),
   "share.update": z.object({
     id: z.string(),
     enabled: z.boolean().optional(),
     readOnly: z.boolean().optional(),
     guestOk: z.boolean().optional(),
+    hidden: z.boolean().optional(),
     smbName: z.string().regex(reSmbName).nullable().optional(),
   }),
   "share.remove": z.object({ id: z.string() }),
+  "smb.settings": z.object({
+    netbiosName: z.string().regex(/^[A-Za-z0-9-]{0,15}$/).optional(),
+    workgroup: z.string().regex(/^[A-Za-z0-9-]{0,15}$/).optional(),
+    minProtocol: z.enum(["SMB2", "SMB3"]).optional(),
+    encryption: z.enum(["off", "desired", "required"]).optional(),
+    discoveryWsd: z.boolean().optional(),
+    discoveryMdns: z.boolean().optional(),
+    autoBlock: z.boolean().optional(),
+    blockThreshold: z.number().int().min(1).max(100).optional(),
+    blockWindowMin: z.number().int().min(1).max(1440).optional(),
+    blockForMin: z.number().int().min(1).max(10080).optional(),
+  }),
 } satisfies Record<ShareOp, z.ZodTypeAny>
 
 function parseInput<T extends ShareOp>(op: T, input: unknown): z.infer<typeof zShareInputs[T]> {
@@ -77,11 +93,27 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
       throw new TRPCError({ code: "CONFLICT", message: "This place is already shared" })
     const name = effectiveSmbName({ smbName: input.smbName ?? null }, place.name)
     await assertUniqueName(prisma, name)
-    const data = { placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk }
+    const data = { placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk, hidden: input.hidden }
     return {
       name,
       change: { kind: "create", row: { id: "(new)", ...data, enabled: true, place: { name: place.name, path: place.path } } },
       commit: () => prisma.share.create({ data }),
+    }
+  }
+  if (op === "smb.settings") {
+    const patch = parseInput(op, raw)
+    return {
+      name: "SMB",
+      change: { kind: "settings", patch },
+      commit: async () => {
+        await getSmbSettings(prisma)
+        const s = await prisma.smbSettings.update({ where: { id: 1 }, data: patch })
+        // Announcements follow the stored settings; a missing tool is shown
+        // in the settings, not raised as a failed save.
+        if (patch.discoveryWsd !== undefined || patch.discoveryMdns !== undefined || patch.netbiosName !== undefined) {
+          await requestSync("root.sharing.discovery", { wsd: s.discoveryWsd, mdns: s.discoveryMdns, name: s.netbiosName }).catch(() => {})
+        }
+      },
     }
   }
   const input = parseInput(op, raw)
@@ -99,6 +131,7 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
     ...(u.enabled !== undefined && { enabled: u.enabled }),
     ...(u.readOnly !== undefined && { readOnly: u.readOnly }),
     ...(u.guestOk !== undefined && { guestOk: u.guestOk }),
+    ...(u.hidden !== undefined && { hidden: u.hidden }),
     ...(u.smbName !== undefined && { smbName: u.smbName }),
   }
   const name = effectiveSmbName({ smbName: u.smbName !== undefined ? u.smbName : share.smbName }, share.place.name)
@@ -114,6 +147,7 @@ function planDeps(ctx: Context, change: ShareChange, commit: () => Promise<unkno
   return {
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
     defs:   () => desiredShareDefs(ctx.prisma, change),
+    smbSettings: () => currentSmbSettings(ctx.prisma, change.kind === "settings" ? change.patch : undefined),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     commit,
     serialize: withShareLock,

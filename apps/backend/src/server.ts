@@ -7,6 +7,7 @@ import { startTrashPurge } from "./services/trash"
 import { startCatalogRefresh } from "./services/catalog-source"
 import { startVolumeGuard } from "./services/volume-guard"
 import { syncSharesBestEffort } from "./services/sharing.service"
+import { startSmbJournal } from "./services/smb-events.service"
 import { startTelemetry } from "./services/telemetry"
 import { migrateRsyncPlans } from "./services/backup-status"
 import { startTlsWatch } from "./services/tls-watch"
@@ -85,6 +86,7 @@ const start = async () => {
     void migrateRsyncPlans()
     startTlsWatch()
     startJobReconcile()
+    startSmbJournal(prisma, () => syncSharesBestEffort(prisma), log)
     void startEventSubscriber(app.log).catch(err => {
       app.log.error(err, "nats: event subscriber fatal error")
       process.exit(1)

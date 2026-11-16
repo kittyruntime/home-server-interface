@@ -1417,7 +1417,7 @@ await testAppPlanBuilders()
 async function testSharePlans() {
   const sp = await import("../services/sharing-plan")
   const row = (id: string, over: Partial<import("../services/sharing-plan").ShareRow> = {}) =>
-    ({ id, placeId: `p-${id}`, smbName: null, readOnly: false, guestOk: false, enabled: true, place: { name: id, path: `/srv/${id}` }, ...over })
+    ({ id, placeId: `p-${id}`, smbName: null, readOnly: false, guestOk: false, enabled: true, hidden: false, place: { name: id, path: `/srv/${id}` }, ...over })
   const rows = [row("a"), row("b", { enabled: false })]
 
   // Overlay: nothing written, the change is visible.
@@ -3919,3 +3919,131 @@ async function testJobProgress() {
   assert.deepEqual(book.view("k", 10_000), { percent: 0, remainingSec: null })
 }
 await testJobProgress()
+
+// SMB journal (Sharing app): an in-memory stand-in for the three tables.
+function fakeSmbDb(init: { events?: any[]; blocks?: any[]; settings?: any } = {}) {
+  const db = { events: [...(init.events ?? [])], blocks: [...(init.blocks ?? [])], settings: { id: 1, netbiosName: "", workgroup: "", minProtocol: "SMB2", encryption: "off", discoveryWsd: false, discoveryMdns: false, autoBlock: true, blockThreshold: 10, blockWindowMin: 10, blockForMin: 30, eventCursor: "", ...init.settings } }
+  const atGte = (w: any, e: any) => !w?.at?.gte || e.at >= w.at.gte
+  const prisma: any = {
+    smbSettings: {
+      upsert: async () => db.settings,
+      findUnique: async () => db.settings,
+      update: async ({ data }: any) => Object.assign(db.settings, data),
+    },
+    shareEvent: {
+      createMany: async ({ data }: any) => { db.events.push(...data); return { count: data.length } },
+      findMany: async ({ where }: any = {}) => db.events.filter(e => (!where?.result || e.result === where.result) && atGte(where, e)),
+      deleteMany: async ({ where }: any) => { const n = db.events.length; db.events = db.events.filter(e => !(e.at < where.at.lt)); return { count: n - db.events.length } },
+    },
+    smbBlock: {
+      findMany: async ({ where }: any = {}) => db.blocks.filter(b => !where?.until?.gt || b.until > where.until.gt),
+      upsert: async ({ where, create, update }: any) => { const b = db.blocks.find(x => x.ip === where.ip); if (b) Object.assign(b, update); else db.blocks.push(create); return create },
+      deleteMany: async ({ where }: any) => { const n = db.blocks.length; db.blocks = db.blocks.filter(b => !(where?.until?.lte ? b.until <= where.until.lte : where?.ip ? b.ip === where.ip : true)); return { count: n - db.blocks.length } },
+    },
+  }
+  return { db, prisma }
+}
+
+async function testSmbSettingsPayload() {
+  const { workerSmbSettings } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { prisma } = fakeSmbDb({
+    settings: { minProtocol: "SMB3", netbiosName: "NAS" },
+    blocks: [{ ip: "192.168.1.9", until: new Date(now.getTime() + 60_000) }, { ip: "192.168.1.8", until: new Date(now.getTime() - 1) }],
+  })
+  const s = await workerSmbSettings(prisma, { audit: true, now })
+  assert.equal(s.minProtocol, "SMB3")
+  assert.equal(s.netbiosName, "NAS")
+  assert.equal(s.audit, true)
+  assert.deepEqual(s.hostsDeny, ["192.168.1.9"], "an expired block is not written")
+  const patched = await workerSmbSettings(prisma, { audit: false, now, patch: { encryption: "required" } })
+  assert.equal(patched.encryption, "required", "a planned change is previewed before it is stored")
+}
+await testSmbSettingsPayload()
+
+async function testSmbSyncCarriesSettingsAndHidden() {
+  const sp = await import("../services/sharing-plan")
+  const row = { id: "s1", placeId: "p1", smbName: null, readOnly: false, guestOk: false, enabled: true, hidden: false, place: { name: "Films", path: "/srv/Films" } }
+  assert.equal(sp.overlayShares([row], { kind: "update", id: "s1", patch: { hidden: true } })[0].hidden, true)
+  assert.deepEqual(sp.overlayShares([row], { kind: "settings", patch: { minProtocol: "SMB3" } }), [row])
+  let sent: any = null
+  const deps: any = {
+    smbdInstalled: async () => true, defs: async () => [{ name: "Films", hidden: true }],
+    smbSettings: async () => ({ minProtocol: "SMB3" }),
+    worker: async (_s: string, p: any) => { sent = p; return { steps: [], fingerprint: "f" } },
+  }
+  await sp.previewShareChange("smb.settings", "SMB", deps)
+  assert.equal(sent.input.settings.minProtocol, "SMB3")
+  assert.equal(sent.input.shares[0].hidden, true)
+}
+await testSmbSyncCarriesSettingsAndHidden()
+
+async function testPullSmbEventsAdvancesCursor() {
+  const { pullSmbEvents } = await import("../services/smb-events.service")
+  const { db, prisma } = fakeSmbDb()
+  const asked: any[] = []
+  const worker: any = async (_s: string, p: any) => {
+    asked.push(p)
+    return { available: true, cursor: { inode: 1, offset: 200 }, events: [
+      { at: "2026-11-16T12:00:00Z", kind: "auth", result: "ok", user: "alice", ip: "192.168.1.5", machine: "PC" },
+      { at: "2026-11-16T12:00:01Z", kind: "connect", result: "refused", reason: "no_access", user: "bob", share: "Films" },
+    ] }
+  }
+  assert.equal(await pullSmbEvents(prisma, worker), 2)
+  assert.equal(db.events.length, 2)
+  assert.ok(db.events[0].at instanceof Date)
+  assert.equal(db.events[1].ip, "", "missing fields are stored empty")
+  assert.deepEqual(JSON.parse(db.settings.eventCursor), { inode: 1, offset: 200 })
+  await pullSmbEvents(prisma, worker)
+  assert.deepEqual(asked[1].cursor, { inode: 1, offset: 200 })
+  assert.equal(asked[0].cursor, undefined, "the first pull starts from the beginning")
+}
+await testPullSmbEventsAdvancesCursor()
+
+async function testPruneKeepsThirtyDays() {
+  const { pruneSmbEvents } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const day = 86_400_000
+  const { db, prisma } = fakeSmbDb({
+    events: [{ at: new Date(now.getTime() - 31 * day) }, { at: new Date(now.getTime() - 29 * day) }],
+    blocks: [{ ip: "1.2.3.4", until: new Date(now.getTime() - 1) }, { ip: "1.2.3.5", until: new Date(now.getTime() + day) }],
+  })
+  await pruneSmbEvents(prisma, now)
+  assert.equal(db.events.length, 1)
+  assert.deepEqual(db.blocks.map(b => b.ip), ["1.2.3.5"])
+}
+await testPruneKeepsThirtyDays()
+
+async function testAutoBlockThreshold() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const refusals = (ip: string, n: number, minutesAgo: number) =>
+    Array.from({ length: n }, () => ({ at: new Date(now.getTime() - minutesAgo * 60_000), result: "refused", ip }))
+  const { db, prisma } = fakeSmbDb({ events: [
+    ...refusals("192.168.1.9", 10, 2), ...refusals("192.168.1.8", 9, 2), ...refusals("192.168.1.7", 10, 30),
+  ] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), ["192.168.1.9"])
+  assert.equal(db.blocks[0].until.getTime(), now.getTime() + 30 * 60_000)
+  assert.deepEqual(await applyAutoBlock(prisma, now), [], "an address already blocked is not new")
+  const off = fakeSmbDb({ events: refusals("192.168.1.9", 20, 1), settings: { autoBlock: false } })
+  assert.deepEqual(await applyAutoBlock(off.prisma, now), [])
+}
+await testAutoBlockThreshold()
+
+async function testAutoBlockNeverBlocksLoopback() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ev = (ip: string) => Array.from({ length: 50 }, () => ({ at: now, result: "refused", ip }))
+  const { prisma } = fakeSmbDb({ events: [...ev("127.0.0.1"), ...ev("::1"), ...ev("")] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), [])
+}
+await testAutoBlockNeverBlocksLoopback()
+
+async function testBlockingMarksCallerAddress() {
+  const { listBlocks } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { prisma } = fakeSmbDb({ blocks: [{ ip: "192.168.1.9", until: new Date(now.getTime() + 1000) }, { ip: "192.168.1.8", until: new Date(now.getTime() + 1000) }] })
+  const rows = await listBlocks(prisma, "::ffff:192.168.1.9", now)
+  assert.deepEqual(rows.map(r => [r.ip, r.mine]), [["192.168.1.8", false], ["192.168.1.9", true]])
+}
+await testBlockingMarksCallerAddress()

@@ -3,6 +3,12 @@ import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
 import { overlayShares, type ShareChange } from "./sharing-plan"
+import { smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
+
+/** The settings every smb.sync input carries, so no sync drops them. */
+export async function currentSmbSettings(prisma: PrismaClient, patch?: SmbSettingsPatch) {
+  return workerSmbSettings(prisma, { audit: await smbAuditSupported(), patch })
+}
 
 // Never expose privileged/system accounts over Samba: writing to shares as root
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
@@ -157,6 +163,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
       path: s.place.path,
       readOnly: s.readOnly,
       guestOk: s.guestOk,
+      hidden: s.hidden,
       validUsers: uniqSorted([...users.validUsers, ...adminLinux]),
       writeUsers: s.readOnly ? [] : uniqSorted([...users.writeUsers, ...adminLinux]),
       unavailable: holdFor(holds, s.place.path) !== null,
@@ -179,7 +186,7 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
  *  reflects the current DB/permission state, no incremental diffing. */
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma) })
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings: await currentSmbSettings(prisma) })
   })
 }
 
