@@ -112,11 +112,9 @@ func (s smbSettings) globalLines() ([]string, error) {
 	}
 	var deny []string
 	for _, h := range s.HostsDeny {
+		// A bad entry is dropped: one stored value must never stop every sync.
 		ip := net.ParseIP(h)
-		if ip == nil {
-			return nil, fmt.Errorf("invalid blocked address %q", h)
-		}
-		if ip.IsLoopback() {
+		if ip == nil || ip.IsLoopback() {
 			continue
 		}
 		deny = append(deny, ip.String())

@@ -61,6 +61,18 @@ func TestParseSmbLogIPv6(t *testing.T) {
 	if len(got) != 1 || got[0].IP != "fe80::1" {
 		t.Fatalf("got %+v", got)
 	}
+	// Samba's own form has no brackets; a zone never reaches the journal.
+	for in, want := range map[string]string{
+		"ipv6:fe80::1:51000":      "fe80::1",
+		"ipv6:fe80::1%eth0:445":   "fe80::1",
+		"ipv6:2a01:e0a::5:445":    "2a01:e0a::5",
+		"ipv4:192.168.1.5:445":    "192.168.1.5",
+		"ipv6:[fe80::1%eth0]:445": "fe80::1",
+	} {
+		if got := smbAddr(in); got != want {
+			t.Errorf("smbAddr(%q) = %q, want %q", in, got, want)
+		}
+	}
 }
 
 func copyFixture(t *testing.T) string {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -59,18 +60,35 @@ type smbLogParser struct {
 
 func newSmbLogParser() *smbLogParser { return &smbLogParser{lastAuth: map[string]string{}} }
 
-// smbAddr turns "ipv4:1.2.3.4:445" or "ipv6:[fe80::1]:445" into the address.
+// smbAddr turns Samba's "ipv4:1.2.3.4:445", "ipv6:fe80::1:445" (no
+// brackets) or "ipv6:[fe80::1]:445" into the bare address, zone dropped.
 func smbAddr(s string) string {
-	s = strings.TrimPrefix(strings.TrimPrefix(s, "ipv4:"), "ipv6:")
-	if strings.HasPrefix(s, "[") {
-		if i := strings.Index(s, "]"); i > 0 {
-			return s[1:i]
+	var host string
+	switch {
+	case strings.HasPrefix(s, "ipv6:["):
+		rest := strings.TrimPrefix(s, "ipv6:[")
+		i := strings.Index(rest, "]")
+		if i < 0 {
+			return ""
 		}
+		host = rest[:i]
+	case strings.HasPrefix(s, "ipv6:"), strings.HasPrefix(s, "ipv4:"):
+		rest := s[5:]
+		i := strings.LastIndex(rest, ":")
+		if i < 0 {
+			return ""
+		}
+		host = rest[:i]
+	default:
+		host = s
 	}
-	if i := strings.LastIndex(s, ":"); i > 0 && strings.Count(s, ":") == 1 {
-		return s[:i]
+	if i := strings.Index(host, "%"); i >= 0 {
+		host = host[:i]
 	}
-	return s
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String()
+	}
+	return ""
 }
 
 func (p *smbLogParser) line(l string) (smbEvent, bool) {
@@ -90,7 +108,7 @@ func (p *smbLogParser) line(l string) (smbEvent, bool) {
 		if len(f) != 7 || (f[4] != "connect" && f[4] != "disconnect") || f[0] == "" {
 			return smbEvent{}, false
 		}
-		ev := smbEvent{At: p.at, Kind: f[4], Result: "ok", User: f[0], IP: f[1], Machine: f[2], Share: f[3]}
+		ev := smbEvent{At: p.at, Kind: f[4], Result: "ok", User: f[0], IP: smbAddr(f[1]), Machine: f[2], Share: f[3]}
 		if f[5] != "ok" {
 			ev.Result, ev.Reason = "refused", "no_access"
 		}
@@ -100,7 +118,7 @@ func (p *smbLogParser) line(l string) (smbEvent, bool) {
 		if len(ip) == 0 {
 			return smbEvent{}, false
 		}
-		return smbEvent{At: p.at, Kind: "connect", Result: "refused", Reason: "blocked", IP: ip[0]}, true
+		return smbEvent{At: p.at, Kind: "connect", Result: "refused", Reason: "blocked", IP: smbAddr(ip[0])}, true
 	}
 	if m := reNotPermitted.FindStringSubmatch(msg); m != nil {
 		return smbEvent{At: p.at, Kind: "connect", Result: "refused", Reason: "no_access",

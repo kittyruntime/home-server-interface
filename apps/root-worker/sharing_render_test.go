@@ -93,9 +93,12 @@ func TestRenderHiddenShare(t *testing.T) {
 func TestRenderHostsDenyValidatesIPs(t *testing.T) {
 	conf := mustRender(t, renderShares, smbSettings{HostsDeny: []string{"192.168.1.9", "127.0.0.1", "::1", "fe80::2"}})
 	wantLines(t, conf, "hosts deny = 192.168.1.9 fe80::2")
-	for _, bad := range [][]string{{"1.2.3.4 ALL"}, {"x\n[evil]"}, {"10.0.0.0/8"}} {
-		if _, err := renderSmbConf(renderShares, smbSettings{HostsDeny: bad}); err == nil {
-			t.Errorf("hosts deny %q accepted", bad)
+	// A bad entry is dropped, never written and never blocks the whole sync.
+	conf = mustRender(t, renderShares, smbSettings{HostsDeny: []string{"1.2.3.4 ALL", "x\n[evil]", "10.0.0.0/8", "fe80::1%eth0", "192.168.1.9"}})
+	wantLines(t, conf, "hosts deny = 192.168.1.9")
+	for _, bad := range []string{"ALL", "[evil]", "10.0.0.0", "%eth0"} {
+		if strings.Contains(conf, bad) {
+			t.Errorf("%q written:\n%s", bad, conf)
 		}
 	}
 	if strings.Contains(mustRender(t, renderShares, smbSettings{HostsDeny: []string{"127.0.0.1"}}), "hosts deny") {
